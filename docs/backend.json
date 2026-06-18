@@ -1,0 +1,54 @@
+
+{
+  "entities": {
+    "GlobalUser": {
+      "title": "Global User Mapping",
+      "description": "يربط المعرف الفريد للمستخدم بالشركة التي ينتمي إليها.",
+      "type": "object",
+      "properties": {
+        "companyId": { "type": "string", "description": "معرف الشركة" },
+        "role": { "type": "string", "enum": ["admin", "user", "developer"] },
+        "isDeveloper": { "type": "boolean" }
+      },
+      "required": ["companyId", "role"]
+    },
+    "Company": {
+      "title": "Company Profile",
+      "description": "بيانات الشركة الأساسية.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "logo": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name"]
+    },
+    "UserProfile": {
+      "title": "User Profile (Tenanted)",
+      "description": "ملف المستخدم الخاص داخل الشركة.",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "joinedAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "auth": {
+    "providers": ["password"]
+  },
+  "firestore": {
+    "/global_users/{uid}": {
+      "schema": "#/entities/GlobalUser",
+      "description": "تخزين المسار الأساسي للمستخدم"
+    },
+    "/companies/{companyId}": {
+      "schema": "#/entities/Company",
+      "description": "بيانات الشركة"
+    },
+    "/companies/{companyId}/users/{uid}": {
+      "schema": "#/entities/UserProfile",
+      "description": "بيانات المستخدم داخل بيئة الشركة"
+    }
+  }
+}
