@@ -12,8 +12,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sparkles, Loader2, CheckCircle2, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -100,8 +98,10 @@ export default function RegisterPage() {
         description: "بدأت الآن فترة تجريبية لمدة 14 يوماً مع كامل الصلاحيات.",
       });
 
-      // جلسة تسجيل الدخول
+      // جلسة تسجيل الدخول البسيطة
       document.cookie = `session=true; path=/; max-age=${60 * 60 * 24 * 7}`;
+      
+      // توجيه تلقائي بعد نجاح العملية
       setTimeout(() => router.push('/dashboard'), 2000);
 
     } catch (error: any) {
