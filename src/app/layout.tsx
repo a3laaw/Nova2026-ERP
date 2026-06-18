@@ -1,11 +1,10 @@
-
-import type {Metadata} from 'next';
+import type { Metadata } from 'next';
 import './globals.css';
-import { Toaster } from "@/components/ui/toaster";
+import { Providers } from './providers';
 
 export const metadata: Metadata = {
-  title: 'NovaFlow ERP - Engineering & Construction Management',
-  description: 'The executive operational intelligence platform for modern engineering and contracting firms.',
+  title: 'NovaFlow ERP - نظام إدارة هندسي متكامل',
+  description: 'نظام ذكاء عمليات تنفيذي لشركات المقاولات والهندسة الحديثة.',
 };
 
 export default function RootLayout({
@@ -14,15 +13,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="ar" dir="rtl">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&family=PT+Sans:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased selection:bg-primary/20">
-        {children}
-        <Toaster />
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );
