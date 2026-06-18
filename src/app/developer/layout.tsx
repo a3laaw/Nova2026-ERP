@@ -1,17 +1,20 @@
-
 'use client';
 
 import { useAuthContext } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { Loader2, ShieldCheck } from 'lucide-react';
+import { Loader2, ShieldCheck, Languages, LogOut } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useLanguage } from '@/context/language-context';
+import { cn } from '@/lib/utils';
 
 export default function DeveloperLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const { user, globalUser, loading } = useAuthContext();
+  const { user, globalUser, loading, logout } = useAuthContext();
+  const { lang, setLang, t } = useLanguage();
   const router = useRouter();
 
   useEffect(() => {
@@ -32,23 +35,46 @@ export default function DeveloperLayout({
     );
   }
 
+  const handleLogout = async () => {
+    await logout();
+    router.push('/');
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       <header className="bg-slate-900 text-white p-4 flex items-center justify-between shadow-2xl">
-        <div className="flex items-center gap-3">
+        <div className={cn("flex items-center gap-3", lang === 'ar' ? "flex-row-reverse" : "flex-row")}>
           <div className="p-2 bg-primary rounded-xl">
             <ShieldCheck className="h-6 w-6" />
           </div>
-          <div>
-            <h1 className="font-headline font-bold text-xl leading-none">Developer Console</h1>
+          <div className={lang === 'ar' ? "text-right" : "text-left"}>
+            <h1 className="font-headline font-bold text-xl leading-none">{t('devConsole')}</h1>
             <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-1">NovaFlow Core Management</p>
           </div>
         </div>
-        <div className="flex items-center gap-4">
-          <span className="text-xs bg-slate-800 px-3 py-1 rounded-full text-slate-300">
+        <div className={cn("flex items-center gap-4", lang === 'ar' ? "flex-row-reverse" : "flex-row")}>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
+            className="text-white hover:bg-slate-800 gap-2"
+          >
+            <Languages className="h-4 w-4" />
+            {t('switchLang')}
+          </Button>
+          <div className="h-6 w-[1px] bg-slate-700" />
+          <span className="text-xs bg-slate-800 px-3 py-1 rounded-full text-slate-300 hidden sm:inline">
             {user?.email}
           </span>
-          <button onClick={() => router.push('/')} className="text-sm hover:text-primary">Exit Console</button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleLogout}
+            className="text-slate-400 hover:text-white hover:bg-slate-800"
+          >
+            <LogOut className="h-4 w-4 ml-2" />
+            {t('logout')}
+          </Button>
         </div>
       </header>
       <main className="p-8 max-w-7xl mx-auto">
