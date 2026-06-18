@@ -37,18 +37,15 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      // 1. إنشاء حساب المستخدم في Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const uid = userCredential.user.uid;
 
-      // 2. إعداد البيانات والمسارات (SaaS Provisioning)
       const batch = writeBatch(db);
       const companyId = `comp_${Math.random().toString(36).substr(2, 9)}`;
       
       const trialEndDate = new Date();
       trialEndDate.setDate(trialEndDate.getDate() + 14);
 
-      // سجل الطلب (للأرشفة)
       const requestRef = doc(collection(db, 'company_requests'));
       batch.set(requestRef, {
         companyName: formData.companyName,
@@ -59,7 +56,6 @@ export default function RegisterPage() {
         createdAt: serverTimestamp(),
       });
 
-      // سجل المنشأة الجديدة
       const companyRef = doc(db, 'companies', companyId);
       batch.set(companyRef, {
         name: formData.companyName,
@@ -71,7 +67,6 @@ export default function RegisterPage() {
         ownerUid: uid
       });
 
-      // ربط المستخدم العالمي (Global User)
       const globalUserRef = doc(db, 'global_users', uid);
       batch.set(globalUserRef, {
         companyId,
@@ -81,7 +76,6 @@ export default function RegisterPage() {
         email: formData.email
       });
 
-      // ملف المستخدم داخل الشركة (Tenanted Profile)
       const tenantUserRef = doc(db, 'companies', companyId, 'users', uid);
       batch.set(tenantUserRef, {
         displayName: formData.contactName,
@@ -98,10 +92,8 @@ export default function RegisterPage() {
         description: "بدأت الآن فترة تجريبية لمدة 14 يوماً مع كامل الصلاحيات.",
       });
 
-      // جلسة تسجيل الدخول البسيطة
       document.cookie = `session=true; path=/; max-age=${60 * 60 * 24 * 7}`;
       
-      // توجيه تلقائي بعد نجاح العملية
       setTimeout(() => router.push('/dashboard'), 2000);
 
     } catch (error: any) {
@@ -179,6 +171,7 @@ export default function RegisterPage() {
                   onChange={(e) => setFormData({...formData, contactName: e.target.value})} 
                   required 
                   className="h-12 rounded-xl border-2" 
+                  placeholder="محمد عبدالله"
                 />
               </div>
               <div className="space-y-2">
@@ -200,6 +193,7 @@ export default function RegisterPage() {
                   required 
                   className="h-12 rounded-xl border-2 text-left" 
                   dir="ltr"
+                  placeholder="name@company.com"
                 />
               </div>
               <div className="space-y-2 relative">
@@ -212,6 +206,7 @@ export default function RegisterPage() {
                     required 
                     className="h-12 rounded-xl border-2 text-left pr-10" 
                     dir="ltr"
+                    placeholder="••••••••"
                   />
                   <button 
                     type="button"

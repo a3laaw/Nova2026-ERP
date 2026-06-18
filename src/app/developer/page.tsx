@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -24,14 +23,12 @@ export default function DeveloperDashboard() {
   const db = useFirestore();
   const isRtl = lang === 'ar';
   
-  // جلب الشركات النشطة للإدارة
   const companiesQuery = db ? query(collection(db, 'companies'), orderBy('createdAt', 'desc')) : null;
   const { data: companies, loading: companiesLoading } = useCollection(companiesQuery);
 
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [editingCompany, setEditingCompany] = useState<any>(null);
 
-  // وظيفة تصدير البيانات إلى ملف CSV (متوافق مع إكسل)
   const exportToExcel = () => {
     if (!companies || companies.length === 0) return;
 
@@ -45,7 +42,7 @@ export default function DeveloperDashboard() {
       c.createdAt?.toDate().toLocaleDateString() || 'N/A'
     ]);
 
-    let csvContent = "\uFEFF"; // UTF-8 BOM for Excel Arabic support
+    let csvContent = "\uFEFF"; 
     csvContent += headers.join(",") + "\n";
     rows.forEach(row => {
       csvContent += row.join(",") + "\n";
@@ -76,7 +73,7 @@ export default function DeveloperDashboard() {
     try {
       await updateDoc(companyRef, {
         name: editingCompany.name,
-        maxUsers: Number(editingCompany.maxUsers),
+        maxUsers: editingCompany.maxUsers ? Number(editingCompany.maxUsers) : 5,
         trialEndsAt: editingCompany.trialEndsAt,
         activity: editingCompany.activity
       });
@@ -222,15 +219,28 @@ export default function DeveloperDashboard() {
                             <div className="grid gap-4 py-4">
                               <div className="space-y-2">
                                 <Label>اسم الشركة</Label>
-                                <Input value={editingCompany?.name || ''} onChange={e => setEditingCompany({...editingCompany, name: e.target.value})} />
+                                <Input 
+                                  value={editingCompany?.name || ''} 
+                                  placeholder="مثال: شركة المقاولات الحديثة"
+                                  onChange={e => setEditingCompany({...editingCompany, name: e.target.value})} 
+                                />
                               </div>
                               <div className="space-y-2">
                                 <Label>الحد الأقصى للمستخدمين</Label>
-                                <Input type="number" value={editingCompany?.maxUsers || ''} onChange={e => setEditingCompany({...editingCompany, maxUsers: e.target.value})} />
+                                <Input 
+                                  type="number" 
+                                  value={editingCompany?.maxUsers || ''} 
+                                  placeholder="5"
+                                  onChange={e => setEditingCompany({...editingCompany, maxUsers: e.target.value})} 
+                                />
                               </div>
                               <div className="space-y-2">
                                 <Label>تاريخ انتهاء الفترة التجريبية</Label>
-                                <Input type="date" value={editingCompany?.trialEndsAt?.split('T')[0] || ''} onChange={e => setEditingCompany({...editingCompany, trialEndsAt: e.target.value})} />
+                                <Input 
+                                  type="date" 
+                                  value={editingCompany?.trialEndsAt?.split('T')[0] || ''} 
+                                  onChange={e => setEditingCompany({...editingCompany, trialEndsAt: e.target.value})} 
+                                />
                               </div>
                             </div>
                             <DialogFooter>
