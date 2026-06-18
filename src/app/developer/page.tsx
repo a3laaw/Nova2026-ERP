@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -6,8 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useCollection, useFirestore } from '@/firebase';
-import { collection, query, orderBy, doc, updateDoc } from 'firebase/firestore';
-import { Loader2, CheckCircle, XCircle, Clock, ExternalLink, ShieldAlert } from 'lucide-react';
+import { collection, query, orderBy, doc, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { Loader2, CheckCircle, XCircle, Clock, ExternalLink, ShieldAlert, Sparkles } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -19,26 +20,72 @@ export default function DeveloperDashboard() {
   const db = useFirestore();
   const requestsQuery = db ? query(collection(db, 'company_requests'), orderBy('createdAt', 'desc')) : null;
   const { data: requests, loading } = useCollection(requestsQuery);
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
-  const handleUpdateStatus = async (requestId: string, newStatus: 'activated' | 'rejected') => {
+  const handleActivateRequest = async (request: any) => {
+    if (!db) return;
+    setProcessingId(request.id);
+
+    try {
+      const batch = writeBatch(db);
+      
+      // 1. تحديث حالة الطلب
+      const requestRef = doc(db, 'company_requests', request.id);
+      batch.update(requestRef, { status: 'activated' });
+
+      // 2. إنشاء معرف الشركة الجديد
+      const companyId = `comp_${Math.random().toString(36).substr(2, 9)}`;
+      const companyRef = doc(db, 'companies', companyId);
+
+      // 3. حساب تاريخ انتهاء الفترة التجريبية (14 يوماً)
+      const trialEndDate = new Date();
+      trialEndDate.setDate(trialEndDate.getDate() + 14);
+
+      // 4. إعداد سجل المنشأة الجديد
+      batch.set(companyRef, {
+        name: request.companyName,
+        status: 'active',
+        createdAt: serverTimestamp(),
+        trialEndsAt: trialEndDate.toISOString(),
+        maxUsers: 5,
+        activity: request.activity,
+        ownerEmail: request.email,
+        contactName: request.contactName
+      });
+
+      await batch.commit();
+      
+      toast({
+        title: lang === 'ar' ? "تم تفعيل المنشأة" : "Tenant Activated",
+        description: lang === 'ar' ? "14 يوماً فترة تجريبية، بحد أقصى 5 مستخدمين." : "14 days trial, max 5 users.",
+      });
+    } catch (error: any) {
+      const permissionError = new FirestorePermissionError({
+        path: `companies / company_requests`,
+        operation: 'write',
+      });
+      errorEmitter.emit('permission-error', permissionError);
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleRejectRequest = async (requestId: string) => {
     if (!db) return;
     const requestRef = doc(db, 'company_requests', requestId);
     
-    updateDoc(requestRef, { status: newStatus })
-      .then(() => {
-        toast({
-          title: newStatus === 'activated' ? t('live') : t('declined'),
-          description: "Success",
-        });
-      })
-      .catch(async (error) => {
-        const permissionError = new FirestorePermissionError({
-          path: `company_requests/${requestId}`,
-          operation: 'update',
-          requestResourceData: { status: newStatus },
-        });
-        errorEmitter.emit('permission-error', permissionError);
+    try {
+      const batch = writeBatch(db);
+      batch.update(requestRef, { status: 'rejected' });
+      await batch.commit();
+      
+      toast({
+        title: lang === 'ar' ? "تم رفض الطلب" : "Request Rejected",
+        variant: "destructive"
       });
+    } catch (error) {
+      // التعامل مع الخطأ عبر النظام المركزي
+    }
   };
 
   const isRtl = lang === 'ar';
@@ -162,17 +209,24 @@ export default function DeveloperDashboard() {
                           <Button 
                             size="sm" 
                             variant="outline"
-                            onClick={() => handleUpdateStatus(req.id, 'rejected')}
+                            onClick={() => handleRejectRequest(req.id)}
+                            disabled={processingId === req.id}
                             className="text-rose-600 border-rose-200 hover:bg-rose-50"
                           >
                             <XCircle className="h-4 w-4 ml-1" /> {t('reject')}
                           </Button>
                           <Button 
                             size="sm" 
-                            onClick={() => handleUpdateStatus(req.id, 'activated')}
+                            onClick={() => handleActivateRequest(req)}
+                            disabled={processingId === req.id}
                             className="bg-primary hover:bg-primary/90 text-white font-bold"
                           >
-                            <CheckCircle className="h-4 w-4 ml-1" /> {t('activate')}
+                            {processingId === req.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin ml-1" />
+                            ) : (
+                              <Sparkles className="h-4 w-4 ml-1" />
+                            )}
+                            {t('activate')}
                           </Button>
                         </div>
                       ) : (

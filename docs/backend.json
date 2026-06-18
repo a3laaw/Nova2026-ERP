@@ -15,13 +15,15 @@
     },
     "Company": {
       "title": "Company Profile",
-      "description": "بيانات الشركة الأساسية.",
+      "description": "بيانات الشركة الأساسية وقيود الاشتراك.",
       "type": "object",
       "properties": {
         "name": { "type": "string" },
         "logo": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" },
-        "status": { "type": "string", "enum": ["active", "suspended", "pending"] }
+        "status": { "type": "string", "enum": ["active", "suspended", "pending"] },
+        "trialEndsAt": { "type": "string", "format": "date-time", "description": "تاريخ انتهاء الفترة التجريبية" },
+        "maxUsers": { "type": "number", "description": "الحد الأقصى للمستخدمين المسموح بهم" }
       },
       "required": ["name"]
     },
