@@ -29,7 +29,8 @@ export default function LoginPage() {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       document.cookie = `session=true; path=/; max-age=${60 * 60 * 24 * 7}`;
-      router.push('/dashboard');
+      // التوجه للصفحة الرئيسية لتقوم هي بعملية التوجيه الذكي بناءً على الدور
+      router.push('/');
     } catch (err: any) {
       setError('فشل تسجيل الدخول. يرجى التأكد من البريد الإلكتروني وكلمة المرور.');
     } finally {
@@ -45,8 +46,8 @@ export default function LoginPage() {
             <Sparkles className="h-8 w-8" />
           </div>
           <div className="space-y-2">
-            <CardTitle className="text-3xl font-black font-headline tracking-tight">NovaFlow ERP</CardTitle>
-            <CardDescription className="text-lg">مرحباً بك مجدداً، يرجى تسجيل الدخول للوصول إلى لوحة التحكم.</CardDescription>
+            <CardTitle className="text-3xl font-black font-headline tracking-tight text-right">NovaFlow ERP</CardTitle>
+            <CardDescription className="text-lg text-right">مرحباً بك مجدداً، يرجى تسجيل الدخول للوصول إلى لوحة التحكم.</CardDescription>
           </div>
         </CardHeader>
         <CardContent>
@@ -54,12 +55,12 @@ export default function LoginPage() {
             {error && (
               <Alert variant="destructive" className="rounded-2xl border-2">
                 <AlertCircle className="h-4 w-4" />
-                <AlertTitle>خطأ</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
+                <AlertTitle className="text-right">خطأ</AlertTitle>
+                <AlertDescription className="text-right">{error}</AlertDescription>
               </Alert>
             )}
             <div className="space-y-2">
-              <Label htmlFor="email">البريد الإلكتروني</Label>
+              <Label htmlFor="email" className="block text-right">البريد الإلكتروني</Label>
               <Input
                 id="email"
                 type="email"
