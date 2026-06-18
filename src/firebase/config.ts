@@ -2,14 +2,14 @@
 
 /**
  * إعدادات Firebase.
- * انسخ القيم من Firebase Console (Project Settings > Your Apps > SDK Setup and Configuration > Config)
- * وضعها هنا مباشرة بين علامات التنصيص.
+ * انسخ القيم من Firebase Console (خيار Config) وضعها هنا.
+ * ملاحظة: أبقينا على كلمة 'export' لكي يتمكن التطبيق من قراءة الإعدادات.
  */
 export const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID",
+  apiKey: "لصق_API_KEY_هنا",
+  authDomain: "لصق_AUTH_DOMAIN_هنا",
+  projectId: "لصق_PROJECT_ID_هنا",
+  storageBucket: "لصق_STORAGE_BUCKET_هنا",
+  messagingSenderId: "لصق_SENDER_ID_هنا",
+  appId: "لصق_APP_ID_هنا",
 };
