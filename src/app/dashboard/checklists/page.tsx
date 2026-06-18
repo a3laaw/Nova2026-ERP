@@ -4,13 +4,14 @@ import { useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  Database, Building2, MapPin, Workflow, LayoutGrid
+  Database, Building2, MapPin, Workflow, LayoutGrid, Settings2
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import DepartmentsPage from './departments/page';
 import GeoPage from './geo/page';
 import ServiceTypesPage from './service-types/page';
 import TechnicalPathsPage from './technical-paths/page';
+import { SeedTool } from './seed-tool';
 
 export default function ReferenceHubPage() {
   const { t, lang, dir } = useLanguage();
@@ -32,20 +33,25 @@ export default function ReferenceHubPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" dir={dir}>
-        <TabsList className="grid grid-cols-4 w-full max-w-4xl mx-auto h-16 bg-muted/30 rounded-3xl p-2 shadow-inner">
-          <TabsTrigger value="org" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg flex items-center justify-center">
-            <Building2 className="h-5 w-5" /> {t('orgRef')}
-          </TabsTrigger>
-          <TabsTrigger value="services" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg flex items-center justify-center">
-            <LayoutGrid className="h-5 w-5" /> {isRtl ? 'أنشطة الأعمال' : 'Service Types'}
-          </TabsTrigger>
-          <TabsTrigger value="technical" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg flex items-center justify-center">
-            <Workflow className="h-5 w-5" /> {t('techRef')}
-          </TabsTrigger>
-          <TabsTrigger value="geo" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg flex items-center justify-center">
-            <MapPin className="h-5 w-5" /> {t('geoRef')}
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto pb-4 scrollbar-hide">
+          <TabsList className="flex w-fit min-w-full md:min-w-0 md:grid md:grid-cols-5 h-16 bg-muted/30 rounded-3xl p-2 shadow-inner gap-2">
+            <TabsTrigger value="org" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg flex items-center justify-center px-6">
+              <Building2 className="h-5 w-5" /> {t('orgRef')}
+            </TabsTrigger>
+            <TabsTrigger value="services" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg flex items-center justify-center px-6">
+              <LayoutGrid className="h-5 w-5" /> {isRtl ? 'أنشطة الأعمال' : 'Service Types'}
+            </TabsTrigger>
+            <TabsTrigger value="technical" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg flex items-center justify-center px-6">
+              <Workflow className="h-5 w-5" /> {t('techRef')}
+            </TabsTrigger>
+            <TabsTrigger value="geo" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg flex items-center justify-center px-6">
+              <MapPin className="h-5 w-5" /> {t('geoRef')}
+            </TabsTrigger>
+            <TabsTrigger value="setup" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-lg flex items-center justify-center px-6">
+              <Settings2 className="h-5 w-5" /> {isRtl ? 'تهيئة النظام' : 'System Setup'}
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="org" className="mt-8">
           <DepartmentsPage />
@@ -61,6 +67,10 @@ export default function ReferenceHubPage() {
 
         <TabsContent value="geo" className="mt-8">
            <GeoPage />
+        </TabsContent>
+
+        <TabsContent value="setup" className="mt-8 max-w-4xl mx-auto">
+           <SeedTool />
         </TabsContent>
       </Tabs>
     </div>
