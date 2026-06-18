@@ -4,11 +4,12 @@ import { useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  Database, Building2, MapPin, Workflow, ShieldCheck
+  Database, Building2, MapPin, Workflow, LayoutGrid
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import DepartmentsPage from './departments/page';
 import GeoPage from './geo/page';
+import ServiceTypesPage from './service-types/page';
 
 export default function ReferenceHubPage() {
   const { t, lang, dir } = useLanguage();
@@ -30,9 +31,12 @@ export default function ReferenceHubPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" dir={dir}>
-        <TabsList className="grid grid-cols-3 w-full max-w-3xl mx-auto h-16 bg-muted/30 rounded-3xl p-2 shadow-inner">
+        <TabsList className="grid grid-cols-4 w-full max-w-4xl mx-auto h-16 bg-muted/30 rounded-3xl p-2 shadow-inner">
           <TabsTrigger value="org" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg flex items-center justify-center">
             <Building2 className="h-5 w-5" /> {t('orgRef')}
+          </TabsTrigger>
+          <TabsTrigger value="services" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg flex items-center justify-center">
+            <LayoutGrid className="h-5 w-5" /> {isRtl ? 'أنشطة الأعمال' : 'Service Types'}
           </TabsTrigger>
           <TabsTrigger value="technical" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg flex items-center justify-center">
             <Workflow className="h-5 w-5" /> {t('techRef')}
@@ -44,6 +48,10 @@ export default function ReferenceHubPage() {
 
         <TabsContent value="org" className="mt-8">
           <DepartmentsPage />
+        </TabsContent>
+
+        <TabsContent value="services" className="mt-8">
+          <ServiceTypesPage />
         </TabsContent>
 
         <TabsContent value="technical" className="mt-8 text-center py-20 bg-white rounded-[3rem] shadow-xl">

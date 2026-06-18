@@ -48,7 +48,15 @@ export interface Area extends BaseReference {
 }
 
 export interface ServiceType extends BaseReference {
+  code: string;
   name: string;
+  nameEn: string;
+  description?: string;
+  moduleScope?: string;
+  color?: string;
+  icon?: string;
+  isActive: boolean;
+  order: number;
 }
 
 export interface TransactionType extends BaseReference {
