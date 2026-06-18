@@ -1,15 +1,17 @@
+
 {
   "entities": {
     "GlobalUser": {
       "title": "Global User Mapping",
-      "description": "يربط المعرف الفريد للمستخدم بالشركة التي ينتمي إليها.",
+      "description": "يربط المعرف الفريد للمستخدم بالشركة التي ينتمي إليها ويحدد دوره العالمي.",
       "type": "object",
       "properties": {
         "companyId": { "type": "string", "description": "معرف الشركة" },
         "role": { "type": "string", "enum": ["admin", "user", "developer"] },
-        "isDeveloper": { "type": "boolean" }
+        "isDeveloper": { "type": "boolean" },
+        "username": { "type": "string" }
       },
-      "required": ["companyId", "role"]
+      "required": ["companyId", "role", "username"]
     },
     "Company": {
       "title": "Company Profile",
@@ -18,9 +20,24 @@
       "properties": {
         "name": { "type": "string" },
         "logo": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "createdAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["active", "suspended", "pending"] }
       },
       "required": ["name"]
+    },
+    "CompanyRequest": {
+      "title": "Onboarding Request",
+      "description": "طلب انضمام شركة جديدة للنظام.",
+      "type": "object",
+      "properties": {
+        "companyName": { "type": "string" },
+        "contactName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
+        "activity": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "activated", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
     },
     "UserProfile": {
       "title": "User Profile (Tenanted)",
@@ -52,6 +69,10 @@
     "/global_users/{uid}": {
       "schema": "#/entities/GlobalUser",
       "description": "تخزين المسار الأساسي للمستخدم"
+    },
+    "/company_requests/{requestId}": {
+      "schema": "#/entities/CompanyRequest",
+      "description": "طلبات الانضمام الجديدة"
     },
     "/companies/{companyId}": {
       "schema": "#/entities/Company",

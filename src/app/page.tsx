@@ -1,13 +1,30 @@
+
 'use client';
 
-import { Button } from '@/components/ui/button';
-import { useAuthContext } from '@/context/auth-context';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Sparkles, ArrowLeft } from 'lucide-react';
+import { useAuthContext } from '@/context/auth-context';
+import { Button } from '@/components/ui/button';
+import { Sparkles, Loader2, ArrowLeft } from 'lucide-react';
 
 export default function Home() {
-  const { user, globalUser } = useAuthContext();
+  const { user, globalUser, loading } = useAuthContext();
   const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && user && globalUser) {
+      const target = globalUser.isDeveloper ? '/developer' : '/dashboard';
+      router.push(target);
+    }
+  }, [user, globalUser, loading, router]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 text-center">
@@ -23,7 +40,7 @@ export default function Home() {
         <div className="space-y-4">
           <p className="font-bold">مرحباً بك، {user.email}</p>
           <Button 
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push(globalUser?.isDeveloper ? '/developer' : '/dashboard')}
             className="bg-primary text-white px-8 py-6 rounded-2xl text-lg font-bold"
           >
             الانتقال إلى لوحة التحكم
@@ -31,25 +48,22 @@ export default function Home() {
           </Button>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4">
           <Button 
-            onClick={() => router.push('/login')} // Placeholder path
-            className="bg-primary text-white px-8 py-6 rounded-2xl text-lg font-bold"
+            onClick={() => router.push('/login')}
+            className="bg-primary text-white px-12 py-6 rounded-2xl text-xl font-bold shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform"
           >
             تسجيل الدخول للنظام
           </Button>
-          <p className="text-sm text-muted-foreground">تواصل مع الإدارة للحصول على صلاحية الوصول.</p>
+          <Button 
+            variant="outline"
+            onClick={() => router.push('/register')}
+            className="px-12 py-6 rounded-2xl text-lg font-bold border-2"
+          >
+            طلب انضمام شركة جديدة
+          </Button>
+          <p className="text-sm text-muted-foreground mt-4">نظام مغلق للمؤسسات المعتمدة فقط.</p>
         </div>
-      )}
-      
-      {globalUser?.isDeveloper && (
-        <Button 
-          variant="outline"
-          onClick={() => router.push('/developer')}
-          className="mt-8 border-primary/20 text-primary"
-        >
-          أدوات المطور
-        </Button>
       )}
     </div>
   );
