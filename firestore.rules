@@ -2,56 +2,123 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // وظيفة للتحقق مما إذا كان المستخدم هو المطور
+    // --- وظائف المساعدة الأساسية (Helpers) ---
+
+    // التحقق من تسجيل الدخول
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // جلب بيانات المستخدم العالمي
+    function getGlobalUser() {
+      return get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
+    }
+
+    // التحقق مما إذا كان المستخدم مطوراً للنظام (Global Developer)
     function isDeveloper() {
-      return request.auth != null && (
-        get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.isDeveloper == true ||
+      return isAuthenticated() && (
+        getGlobalUser().isDeveloper == true ||
         request.auth.token.email == 'admin@novaflow.com'
       );
     }
 
-    // قواعد المستخدمين العالميين
+    // التحقق من الانتماء للشركة (Tenant Isolation)
+    function belongsToCompany(companyId) {
+      return isAuthenticated() && (
+        getGlobalUser().companyId == companyId ||
+        isDeveloper()
+      );
+    }
+
+    // التحقق من دور المدير (Admin) داخل الشركة
+    function isAdmin(companyId) {
+      return isAuthenticated() && (
+        (getGlobalUser().companyId == companyId && getGlobalUser().role == 'admin') ||
+        isDeveloper()
+      );
+    }
+
+    // --- قواعد المجموعات (Collection Rules) ---
+
+    // 1. حسابات المستخدمين العالميين
     match /global_users/{uid} {
-      // السماح بإنشاء السجل للمستخدم نفسه أثناء التسجيل
-      allow create: if request.auth != null && request.auth.uid == uid;
-      allow read: if request.auth != null && (request.auth.uid == uid || isDeveloper());
-      allow update, delete: if request.auth != null && (request.auth.uid == uid || isDeveloper());
+      allow read: if isAuthenticated() && (request.auth.uid == uid || isDeveloper());
+      allow write: if isDeveloper() || (isAuthenticated() && request.auth.uid == uid);
     }
     
-    // قواعد طلبات الانضمام
+    // 2. طلبات الانضمام
     match /company_requests/{requestId} {
       allow create: if true; 
-      allow read, update, delete: if isDeveloper();
+      allow read, write: if isDeveloper();
     }
     
-    // قواعد الشركات
+    // 3. هيكل الشركات والبيانات الموزعة (Multi-tenant)
     match /companies/{companyId} {
-      // السماح بإنشاء شركة جديدة لأي مستخدم مسجل (التفعيل الذاتي)
-      allow create: if request.auth != null;
-      
-      // القراءة للمنتمين للشركة أو المطور
-      allow read: if request.auth != null && (
-        get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.companyId == companyId ||
-        isDeveloper()
-      );
+      // قراءة بيانات الشركة الأساسية
+      allow read: if belongsToCompany(companyId);
+      // تحديث بيانات الشركة للمدير أو المطور
+      allow update: if isAdmin(companyId);
+      // الإنشاء محصور في منطق التسجيل والمطور
+      allow create: if isAuthenticated();
 
-      // السماح بالتحديث للمطور أو لمالك الشركة (يمكن إضافة منطق المالك لاحقاً)
-      allow update: if request.auth != null && (
-        get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.companyId == companyId ||
-        isDeveloper()
-      );
+      // --- المرجعيات والقواعد (Reference Data) ---
+      // القراءة متاحة للجميع في الشركة، الكتابة للمدير فقط
       
-      // قواعد البيانات الداخلية للشركة (المستندات الفرعية)
-      match /{allPaths=**} {
-        // السماح بإنشاء أول مستخدم (Admin) داخل الشركة أثناء التسجيل
-        // نستخدم التحقق من الـ UID مباشرة لأن الـ get() للمستخدم العالمي قد لا يكون متاحاً فوراً في نفس الـ batch
-        allow create: if request.auth != null; 
+      // الأقسام والوظائف
+      match /departments/{allPaths=**} {
+        allow read: if belongsToCompany(companyId);
+        allow write: if isAdmin(companyId);
+      }
+      
+      // الجغرافيا (المحافظات والمناطق)
+      match /governorates/{allPaths=**} {
+        allow read: if belongsToCompany(companyId);
+        allow write: if isAdmin(companyId);
+      }
+      
+      // تصنيفات الأنشطة
+      match /serviceTypes/{allPaths=**} {
+        allow read: if belongsToCompany(companyId);
+        allow write: if isAdmin(companyId);
+      }
+      
+      // المسارات الفنية والخدمات والمراحل (Technical Path Engine)
+      match /transactionTypes/{allPaths=**} {
+        allow read: if belongsToCompany(companyId);
+        allow write: if isAdmin(companyId);
+      }
+
+      // --- البيانات التشغيلية (Operational Data) ---
+      // القراءة والكتابة متاحة لأعضاء الشركة حسب المهام
+      
+      // المشاريع والعقود والمراحل التنفيذية
+      match /projects/{projectId} {
+        allow read, write: if belongsToCompany(companyId);
         
-        // باقي العمليات تتطلب الانتماء للشركة
-        allow read, write: if request.auth != null && (
-          get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.companyId == companyId ||
-          isDeveloper()
-        );
+        // مراحل المشروع (Instances)
+        match /stages/{instanceId} {
+          allow read, write: if belongsToCompany(companyId);
+        }
+        
+        // العقود (Contracts)
+        match /contracts/{contractId} {
+          allow read: if belongsToCompany(companyId);
+          allow write: if isAdmin(companyId); // العقود غالباً للمديرين
+        }
+      }
+
+      // العملاء المحتملين (CRM)
+      match /leads/{leadId} {
+        allow read, write: if belongsToCompany(companyId);
+      }
+
+      // المعاملات المالية (Transactions) والجدول الزمني (Timeline)
+      match /transactions/{txId} {
+        allow read, write: if belongsToCompany(companyId);
+      }
+      
+      match /timelineEvents/{eventId} {
+        allow read, write: if belongsToCompany(companyId);
       }
     }
   }
