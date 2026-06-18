@@ -18,7 +18,6 @@ import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -117,18 +116,26 @@ export default function ReferenceHubPage() {
             <Database className="h-10 w-10 text-primary" />
             {t('checklists')}
           </h1>
-          <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">إدارة الدستور التشغيلي والقواعد المرجعية للنظام</p>
+          <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
+            {lang === 'ar' ? 'إدارة الدستور التشغيلي والقواعد المرجعية للنظام' : 'Manage operational constitution and system references'}
+          </p>
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" dir={dir}>
         <TabsList className="grid grid-cols-3 w-full max-w-3xl mx-auto h-16 bg-muted/30 rounded-3xl p-2 shadow-inner">
-          <TabsTrigger value="technical" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg flex items-center justify-center"><Workflow className="h-5 w-5" /> {t('techRef')}</TabsTrigger>
-          <TabsTrigger value="org" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg flex items-center justify-center"><Building2 className="h-5 w-5" /> {t('orgRef')}</TabsTrigger>
-          <TabsTrigger value="geo" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg flex items-center justify-center"><MapPin className="h-5 w-5" /> {t('geoRef')}</TabsTrigger>
+          <TabsTrigger value="technical" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg flex items-center justify-center">
+            <Workflow className="h-5 w-5" /> {t('techRef')}
+          </TabsTrigger>
+          <TabsTrigger value="org" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg flex items-center justify-center">
+            <Building2 className="h-5 w-5" /> {t('orgRef')}
+          </TabsTrigger>
+          <TabsTrigger value="geo" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg flex items-center justify-center">
+            <MapPin className="h-5 w-5" /> {t('geoRef')}
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="technical" className="mt-8 space-y-6">
+        <TabsContent value="technical" className="mt-8 space-y-6" dir={dir}>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
               <CardHeader className="bg-slate-50 border-b p-6 flex flex-row items-center justify-between">
@@ -162,7 +169,7 @@ export default function ReferenceHubPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDelete('tx', tx.id); }} className="opacity-0 group-hover:opacity-100 h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>
-                        <ChevronRight className={cn("h-5 w-5 transition-transform", selectedTxType?.id === tx.id ? (dir === 'rtl' ? 'rotate-180 text-primary' : 'text-primary') : 'text-muted-foreground', dir === 'rtl' && !selectedTxType?.id === tx.id && 'rotate-180')} />
+                        <ChevronRight className={cn("h-5 w-5 transition-transform", selectedTxType?.id === tx.id ? (dir === 'rtl' ? 'rotate-180 text-primary' : 'text-primary') : 'text-muted-foreground', dir === 'rtl' && selectedTxType?.id !== tx.id && 'rotate-180')} />
                       </div>
                     </div>
                   ))
@@ -186,7 +193,7 @@ export default function ReferenceHubPage() {
                 </Dialog>
               </CardHeader>
               <CardContent className="p-0 max-h-[600px] overflow-y-auto">
-                {!selectedTxType ? <div className="p-20 text-center text-xs text-muted-foreground font-bold italic">اختر مساراً فنياً</div> : (
+                {!selectedTxType ? <div className="p-20 text-center text-xs text-muted-foreground font-bold italic">{lang === 'ar' ? 'اختر مساراً فنياً' : 'Select technical path'}</div> : (
                   subLoading ? <div className="p-12 text-center"><Loader2 className="animate-spin mx-auto h-8 w-8 text-primary/50" /></div> : (
                     subServices?.map(sub => (
                       <div 
@@ -200,7 +207,7 @@ export default function ReferenceHubPage() {
                         <span className="text-sm font-black text-slate-800 text-start">{sub.name}</span>
                         <div className="flex items-center gap-2">
                            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDelete('sub', sub.id); }} className="opacity-0 group-hover:opacity-100 h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>
-                           <ChevronRight className={cn("h-5 w-5 transition-transform", selectedSubService?.id === sub.id ? (dir === 'rtl' ? 'rotate-180 text-primary' : 'text-primary') : 'text-muted-foreground', dir === 'rtl' && !selectedSubService?.id === sub.id && 'rotate-180')} />
+                           <ChevronRight className={cn("h-5 w-5 transition-transform", selectedSubService?.id === sub.id ? (dir === 'rtl' ? 'rotate-180 text-primary' : 'text-primary') : 'text-muted-foreground', dir === 'rtl' && selectedSubService?.id !== sub.id && 'rotate-180')} />
                         </div>
                       </div>
                     ))
@@ -227,7 +234,7 @@ export default function ReferenceHubPage() {
                 </Dialog>
               </CardHeader>
               <CardContent className="p-6 space-y-4 max-h-[600px] overflow-y-auto">
-                {!selectedSubService ? <div className="p-20 text-center text-xs text-muted-foreground font-bold italic">اختر خدمة فرعية</div> : (
+                {!selectedSubService ? <div className="p-20 text-center text-xs text-muted-foreground font-bold italic">{lang === 'ar' ? 'اختر خدمة فرعية' : 'Select sub service'}</div> : (
                   stageLoading ? <div className="p-12 text-center"><Loader2 className="animate-spin mx-auto h-8 w-8 text-primary/50" /></div> : (
                     stages?.map((stage, idx) => (
                       <div key={stage.id} className="p-4 bg-muted/30 rounded-[1.5rem] border-2 border-transparent hover:border-primary/20 transition-all flex items-center gap-4 group">
@@ -246,7 +253,7 @@ export default function ReferenceHubPage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="org" className="mt-8 space-y-6">
+        <TabsContent value="org" className="mt-8 space-y-6" dir={dir}>
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
              <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
                 <CardHeader className="bg-slate-50 border-b p-6 flex flex-row items-center justify-between">
@@ -313,7 +320,7 @@ export default function ReferenceHubPage() {
            </div>
         </TabsContent>
 
-        <TabsContent value="geo" className="mt-8 space-y-6">
+        <TabsContent value="geo" className="mt-8 space-y-6" dir={dir}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
              <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
                 <CardHeader className="bg-slate-50 border-b p-6 flex flex-row items-center justify-between">
@@ -383,3 +390,4 @@ export default function ReferenceHubPage() {
     </div>
   );
 }
+
