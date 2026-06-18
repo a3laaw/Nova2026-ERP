@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -46,7 +45,7 @@ export default function RegisterPage() {
       await setDoc(doc(db, 'global_users', user.uid), {
         companyId: companyId,
         role: 'admin',
-        isDeveloper: true, // Defaulting to dev for setup
+        isDeveloper: true,
       });
 
       // 4. Create Local User Profile
@@ -60,7 +59,11 @@ export default function RegisterPage() {
       router.push('/dashboard');
     } catch (err: any) {
       console.error(err);
-      setError('فشل إنشاء الحساب: ' + (err.message || 'خطأ غير متوقع'));
+      if (err.code === 'auth/configuration-not-found') {
+        setError('يرجى تفعيل خيار (Email/Password) في قسم Authentication داخل لوحة تحكم Firebase أولاً.');
+      } else {
+        setError(err.message || 'حدث خطأ أثناء إنشاء الحساب، يرجى التحقق من إعدادات Firestore وقواعد الأمان.');
+      }
     } finally {
       setLoading(false);
     }
@@ -83,7 +86,7 @@ export default function RegisterPage() {
             {error && (
               <Alert variant="destructive" className="rounded-2xl border-2">
                 <AlertCircle className="h-4 w-4" />
-                <AlertTitle>خطأ</AlertTitle>
+                <AlertTitle>خطأ في الإعدادات</AlertTitle>
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
@@ -129,7 +132,14 @@ export default function RegisterPage() {
               disabled={loading}
               className="w-full h-14 bg-primary text-white rounded-2xl text-lg font-bold shadow-lg shadow-primary/20 hover:scale-[1.01] active:scale-[0.99] transition-all"
             >
-              {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'إنشاء حساب NovaFlow'}
+              {loading ? (
+                <>
+                  <Loader2 className="ml-2 h-5 w-5 animate-spin" />
+                  جاري إنشاء الحساب والتهيئة...
+                </>
+              ) : (
+                'إنشاء حساب NovaFlow'
+              )}
             </Button>
           </form>
         </CardContent>
