@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Sparkles, Loader2, AlertCircle, ExternalLink } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
@@ -32,18 +32,14 @@ export default function RegisterPage() {
     setError(null);
 
     try {
-      // 1. Create Auth User
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-
-      // 2. Create Company
       const companyId = `comp_${Date.now()}`;
       
       const companyRef = doc(db, 'companies', companyId);
       const globalUserRef = doc(db, 'global_users', user.uid);
       const userProfileRef = doc(db, 'companies', companyId, 'users', user.uid);
 
-      // We don't await immediately, we use catch for rich errors
       setDoc(companyRef, {
         name: companyName,
         createdAt: serverTimestamp(),
@@ -86,7 +82,6 @@ export default function RegisterPage() {
       document.cookie = `session=true; path=/; max-age=${60 * 60 * 24 * 7}`;
       router.push('/dashboard');
     } catch (err: any) {
-      console.error("Registration Error:", err);
       if (err.code === 'auth/configuration-not-found') {
         setError({
           message: 'يرجى تفعيل خيار (Email/Password) في قسم Authentication داخل لوحة تحكم Firebase أولاً.',

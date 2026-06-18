@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -32,7 +31,6 @@ export default function LoginPage() {
       document.cookie = `session=true; path=/; max-age=${60 * 60 * 24 * 7}`;
       router.push('/dashboard');
     } catch (err: any) {
-      console.error(err);
       setError('فشل تسجيل الدخول. يرجى التأكد من البريد الإلكتروني وكلمة المرور.');
     } finally {
       setLoading(false);
