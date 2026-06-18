@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Sparkles, Loader2, AlertCircle } from 'lucide-react';
+import { Sparkles, Loader2, AlertCircle, ExternalLink } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function RegisterPage() {
@@ -17,7 +17,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ message: string; link?: string } | null>(null);
   const router = useRouter();
   const auth = useAuth();
   const db = useFirestore();
@@ -60,9 +60,17 @@ export default function RegisterPage() {
     } catch (err: any) {
       console.error(err);
       if (err.code === 'auth/configuration-not-found') {
-        setError('يرجى تفعيل خيار (Email/Password) في قسم Authentication داخل لوحة تحكم Firebase أولاً.');
+        setError({
+          message: 'يرجى تفعيل خيار (Email/Password) في قسم Authentication داخل لوحة تحكم Firebase.',
+          link: 'https://console.firebase.google.com/project/_/authentication/providers'
+        });
+      } else if (err.code === 'permission-denied') {
+        setError({
+          message: 'فشل الوصول لقاعدة البيانات. يرجى التأكد من إنشاء Firestore Database وتفعيل قواعد الأمان (Rules).',
+          link: 'https://console.firebase.google.com/project/_/firestore'
+        });
       } else {
-        setError(err.message || 'حدث خطأ أثناء إنشاء الحساب، يرجى التحقق من إعدادات Firestore وقواعد الأمان.');
+        setError({ message: err.message || 'حدث خطأ غير متوقع أثناء التسجيل.' });
       }
     } finally {
       setLoading(false);
@@ -84,10 +92,22 @@ export default function RegisterPage() {
         <CardContent>
           <form onSubmit={handleRegister} className="space-y-6">
             {error && (
-              <Alert variant="destructive" className="rounded-2xl border-2">
+              <Alert variant="destructive" className="rounded-2xl border-2 bg-destructive/5">
                 <AlertCircle className="h-4 w-4" />
-                <AlertTitle>خطأ في الإعدادات</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
+                <AlertTitle>إجراء مطلوب</AlertTitle>
+                <AlertDescription className="flex flex-col gap-2">
+                  <span>{error.message}</span>
+                  {error.link && (
+                    <a 
+                      href={error.link} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="flex items-center gap-1 font-bold underline hover:text-primary"
+                    >
+                      اذهب للوحة تحكم Firebase <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
+                </AlertDescription>
               </Alert>
             )}
             <div className="space-y-2">
@@ -135,7 +155,7 @@ export default function RegisterPage() {
               {loading ? (
                 <>
                   <Loader2 className="ml-2 h-5 w-5 animate-spin" />
-                  جاري إنشاء الحساب والتهيئة...
+                  جاري إنشاء الحساب...
                 </>
               ) : (
                 'إنشاء حساب NovaFlow'
