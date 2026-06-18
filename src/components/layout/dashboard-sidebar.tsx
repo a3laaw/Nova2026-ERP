@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -36,7 +35,7 @@ import {
 export function DashboardSidebar() {
   const pathname = usePathname()
   const { state } = useSidebar()
-  const { t, lang } = useLanguage()
+  const { t, lang, dir } = useLanguage()
 
   const menuItems = [
     { title: t('dashboard'), icon: LayoutDashboard, url: "/dashboard" },
@@ -58,7 +57,7 @@ export function DashboardSidebar() {
           <Sparkles className="h-6 w-6" />
         </div>
         {state === "expanded" && (
-          <div className="flex flex-col text-right">
+          <div className={cn("flex flex-col text-start")}>
             <span className="font-headline font-bold text-lg leading-tight text-white">NovaFlow</span>
             <span className="text-[10px] uppercase tracking-widest text-sidebar-foreground/50">ERP Ecosystem</span>
           </div>
@@ -66,7 +65,7 @@ export function DashboardSidebar() {
       </SidebarHeader>
       <SidebarContent className="bg-sidebar">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-sidebar-foreground/40 font-semibold px-4 py-2">
+          <SidebarGroupLabel className="text-sidebar-foreground/40 font-semibold px-4 py-2 text-start">
             {lang === 'ar' ? 'التنقل' : 'Navigation'}
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -82,11 +81,11 @@ export function DashboardSidebar() {
                       pathname === item.url ? "bg-primary/20 text-white font-semibold" : "text-sidebar-foreground"
                     )}
                   >
-                    <Link href={item.url} className={cn("flex items-center gap-3", lang === 'ar' ? 'flex-row-reverse' : 'flex-row')}>
+                    <Link href={item.url} className={cn("flex items-center gap-3")}>
                       <item.icon className={cn("h-5 w-5", pathname === item.url ? "text-primary" : "text-sidebar-foreground/70")} />
-                      <span className="flex-1">{item.title}</span>
+                      <span className="flex-1 text-start">{item.title}</span>
                       {pathname === item.url && (
-                        <div className={cn("absolute top-1/2 -translate-y-1/2 h-8 w-1 bg-primary rounded-full", lang === 'ar' ? 'right-0' : 'left-0')} />
+                        <div className={cn("absolute top-1/2 -translate-y-1/2 h-8 w-1 bg-primary rounded-full", dir === 'rtl' ? 'right-0' : 'left-0')} />
                       )}
                     </Link>
                   </SidebarMenuButton>
@@ -100,9 +99,9 @@ export function DashboardSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild tooltip={t('settings')} className="text-sidebar-foreground hover:bg-sidebar-accent py-6">
-              <Link href="/dashboard/settings" className={cn("flex items-center gap-3", lang === 'ar' ? 'flex-row-reverse' : 'flex-row')}>
+              <Link href="/dashboard/settings" className={cn("flex items-center gap-3")}>
                 <Settings className="h-5 w-5 text-sidebar-foreground/70" />
-                <span>{t('settings')}</span>
+                <span className="text-start">{t('settings')}</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

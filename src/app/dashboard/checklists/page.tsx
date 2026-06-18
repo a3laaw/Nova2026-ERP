@@ -28,31 +28,22 @@ export default function ReferenceHubPage() {
   const db = useFirestore();
   const [activeTab, setActiveTab] = useState("technical");
 
-  // --- State for Technical Drill-down ---
   const [selectedTxType, setSelectedTxType] = useState<any>(null);
   const [selectedSubService, setSelectedSubService] = useState<any>(null);
-
-  // --- State for Organizational Drill-down ---
   const [selectedDept, setSelectedDept] = useState<any>(null);
-
-  // --- State for Geographical Drill-down ---
   const [selectedGov, setSelectedGov] = useState<any>(null);
 
-  // --- Management State ---
   const [isAdding, setIsAdding] = useState(false);
   const [newItemName, setNewItemName] = useState("");
   const [extraField, setExtraField] = useState<any>("");
 
-  // --- Queries ---
   const companyId = globalUser?.companyId;
 
   const txTypesQuery = useMemo(() => companyId && db ? query(collection(db, paths.transactionTypes(companyId)), orderBy('name')) : null, [db, companyId]);
   const subServicesQuery = useMemo(() => companyId && db && selectedTxType ? query(collection(db, paths.subServices(companyId, selectedTxType.id)), orderBy('name')) : null, [db, companyId, selectedTxType]);
   const stagesQuery = useMemo(() => companyId && db && selectedTxType && selectedSubService ? query(collection(db, paths.technicalStages(companyId, selectedTxType.id, selectedSubService.id)), orderBy('order')) : null, [db, companyId, selectedTxType, selectedSubService]);
-
   const deptsQuery = useMemo(() => companyId && db ? query(collection(db, paths.departments(companyId)), orderBy('name')) : null, [db, companyId]);
   const jobsQuery = useMemo(() => companyId && db && selectedDept ? query(collection(db, paths.jobs(companyId, selectedDept.id)), orderBy('name')) : null, [db, companyId, selectedDept]);
-
   const govsQuery = useMemo(() => companyId && db ? query(collection(db, paths.governorates(companyId)), orderBy('name')) : null, [db, companyId]);
   const areasQuery = useMemo(() => companyId && db && selectedGov ? query(collection(db, paths.areas(companyId, selectedGov.id)), orderBy('name')) : null, [db, companyId, selectedGov]);
 
@@ -64,7 +55,7 @@ export default function ReferenceHubPage() {
   const { data: govs, loading: govsLoading } = useCollection(govsQuery);
   const { data: areas, loading: areasLoading } = useCollection(areasQuery);
 
-  const handleAdd = async (type: string, parentId?: string) => {
+  const handleAdd = async (type: string) => {
     if (!newItemName.trim() || !companyId || !db) return;
     setIsAdding(true);
     try {
@@ -119,22 +110,22 @@ export default function ReferenceHubPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start">
           <h1 className="text-4xl font-black font-headline flex items-center gap-3">
             <Database className="h-10 w-10 text-primary" />
             {t('checklists')}
           </h1>
-          <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">إدارة الدستور التشغيلي والقواعد المرجعية للذكاء الاصطناعي</p>
+          <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">إدارة الدستور التشغيلي والقواعد المرجعية للنظام</p>
         </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid grid-cols-3 w-full max-w-3xl mx-auto h-16 bg-muted/30 rounded-3xl p-2 shadow-inner">
-          <TabsTrigger value="technical" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg"><Workflow className="h-5 w-5" /> {t('techRef')}</TabsTrigger>
-          <TabsTrigger value="org" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg"><Building2 className="h-5 w-5" /> {t('orgRef')}</TabsTrigger>
-          <TabsTrigger value="geo" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg"><MapPin className="h-5 w-5" /> {t('geoRef')}</TabsTrigger>
+          <TabsTrigger value="technical" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg flex items-center justify-center"><Workflow className="h-5 w-5" /> {t('techRef')}</TabsTrigger>
+          <TabsTrigger value="org" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg flex items-center justify-center"><Building2 className="h-5 w-5" /> {t('orgRef')}</TabsTrigger>
+          <TabsTrigger value="geo" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg flex items-center justify-center"><MapPin className="h-5 w-5" /> {t('geoRef')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="technical" className="mt-8 space-y-6">
@@ -144,13 +135,13 @@ export default function ReferenceHubPage() {
                 <CardTitle className="text-sm font-black flex items-center gap-2"><Layers className="h-4 w-4 text-primary" /> {t('txTypes')}</CardTitle>
                 <Dialog>
                   <DialogTrigger asChild><Button size="icon" variant="ghost" className="h-10 w-10 rounded-xl text-primary bg-primary/5 hover:bg-primary/10"><Plus className="h-5 w-5" /></Button></DialogTrigger>
-                  <DialogContent className="rounded-3xl border-0 shadow-2xl">
-                    <DialogHeader><DialogTitle className="text-start font-headline font-black text-2xl">إضافة مسار فني جديد</DialogTitle></DialogHeader>
+                  <DialogContent className="rounded-3xl border-0 shadow-2xl" dir={dir}>
+                    <DialogHeader><DialogTitle className="text-start font-headline font-black text-2xl">{t('newPath')}</DialogTitle></DialogHeader>
                     <div className="py-6 space-y-4">
-                      <Label className="text-start block">اسم المسار (مثال: تصميم بلدية)</Label>
-                      <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="أدخل اسم المسار هنا..." className="h-14 rounded-2xl border-2 focus:border-primary/50 text-start" />
+                      <Label className="text-start block">{t('txTypes')}</Label>
+                      <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder={t('search')} className="h-14 rounded-2xl border-2 focus:border-primary/50 text-start" />
                     </div>
-                    <DialogFooter><Button onClick={() => handleAdd('tx')} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">{isAdding ? <Loader2 className="animate-spin" /> : "حفظ المسار الفني"}</Button></DialogFooter>
+                    <DialogFooter><Button onClick={() => handleAdd('tx')} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">{isAdding ? <Loader2 className="animate-spin" /> : t('save')}</Button></DialogFooter>
                   </DialogContent>
                 </Dialog>
               </CardHeader>
@@ -171,7 +162,7 @@ export default function ReferenceHubPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDelete('tx', tx.id); }} className="opacity-0 group-hover:opacity-100 h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>
-                        <ChevronRight className={cn("h-5 w-5 transition-transform", selectedTxType?.id === tx.id ? (lang === 'ar' ? 'rotate-180 text-primary' : 'rotate-90 text-primary') : 'text-muted-foreground')} />
+                        <ChevronRight className={cn("h-5 w-5 transition-transform", selectedTxType?.id === tx.id ? (dir === 'rtl' ? 'rotate-180 text-primary' : 'text-primary') : 'text-muted-foreground', dir === 'rtl' && !selectedTxType?.id === tx.id && 'rotate-180')} />
                       </div>
                     </div>
                   ))
@@ -184,18 +175,18 @@ export default function ReferenceHubPage() {
                 <CardTitle className="text-sm font-black flex items-center gap-2"><Settings2 className="h-4 w-4 text-primary" /> {t('subSrvs')}</CardTitle>
                 <Dialog>
                   <DialogTrigger asChild><Button size="icon" variant="ghost" className="h-10 w-10 rounded-xl text-primary bg-primary/5 hover:bg-primary/10"><Plus className="h-5 w-5" /></Button></DialogTrigger>
-                  <DialogContent className="rounded-3xl border-0 shadow-2xl">
-                    <DialogHeader><DialogTitle className="text-start font-headline font-black text-2xl">إضافة خدمة لـ {selectedTxType?.name}</DialogTitle></DialogHeader>
+                  <DialogContent className="rounded-3xl border-0 shadow-2xl" dir={dir}>
+                    <DialogHeader><DialogTitle className="text-start font-headline font-black text-2xl">{t('addEntry')}</DialogTitle></DialogHeader>
                     <div className="py-6 space-y-4">
-                      <Label className="text-start block">اسم الخدمة الفرعية</Label>
-                      <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="مثال: مخططات إنشائية..." className="h-14 rounded-2xl border-2 focus:border-primary/50 text-start" />
+                      <Label className="text-start block">{t('subSrvs')}</Label>
+                      <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder={t('search')} className="h-14 rounded-2xl border-2 focus:border-primary/50 text-start" />
                     </div>
-                    <DialogFooter><Button onClick={() => handleAdd('sub')} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">{isAdding ? <Loader2 className="animate-spin" /> : "إضافة الخدمة"}</Button></DialogFooter>
+                    <DialogFooter><Button onClick={() => handleAdd('sub')} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">{isAdding ? <Loader2 className="animate-spin" /> : t('save')}</Button></DialogFooter>
                   </DialogContent>
                 </Dialog>
               </CardHeader>
               <CardContent className="p-0 max-h-[600px] overflow-y-auto">
-                {!selectedTxType ? <div className="p-20 text-center text-xs text-muted-foreground font-bold italic">يرجى اختيار مسار فني لعرض خدماته</div> : (
+                {!selectedTxType ? <div className="p-20 text-center text-xs text-muted-foreground font-bold italic">اختر مساراً فنياً</div> : (
                   subLoading ? <div className="p-12 text-center"><Loader2 className="animate-spin mx-auto h-8 w-8 text-primary/50" /></div> : (
                     subServices?.map(sub => (
                       <div 
@@ -209,7 +200,7 @@ export default function ReferenceHubPage() {
                         <span className="text-sm font-black text-slate-800 text-start">{sub.name}</span>
                         <div className="flex items-center gap-2">
                            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDelete('sub', sub.id); }} className="opacity-0 group-hover:opacity-100 h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>
-                           <ChevronRight className={cn("h-5 w-5 transition-transform", selectedSubService?.id === sub.id ? (lang === 'ar' ? 'rotate-180 text-primary' : 'rotate-90 text-primary') : 'text-muted-foreground')} />
+                           <ChevronRight className={cn("h-5 w-5 transition-transform", selectedSubService?.id === sub.id ? (dir === 'rtl' ? 'rotate-180 text-primary' : 'text-primary') : 'text-muted-foreground', dir === 'rtl' && !selectedSubService?.id === sub.id && 'rotate-180')} />
                         </div>
                       </div>
                     ))
@@ -223,47 +214,31 @@ export default function ReferenceHubPage() {
                 <CardTitle className="text-sm font-black flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> {t('stages')}</CardTitle>
                 <Dialog>
                   <DialogTrigger asChild><Button size="icon" variant="ghost" className="h-10 w-10 rounded-xl text-primary bg-primary/5 hover:bg-primary/10"><Plus className="h-5 w-5" /></Button></DialogTrigger>
-                  <DialogContent className="rounded-3xl border-0 shadow-2xl">
-                    <DialogHeader><DialogTitle className="text-start font-headline font-black text-2xl">إضافة مرحلة عمل WBS</DialogTitle></DialogHeader>
+                  <DialogContent className="rounded-3xl border-0 shadow-2xl" dir={dir}>
+                    <DialogHeader><DialogTitle className="text-start font-headline font-black text-2xl">{t('addEntry')}</DialogTitle></DialogHeader>
                     <div className="py-6 space-y-4 text-start">
                       <div className="space-y-2">
-                        <Label>اسم المرحلة (WBS Item)</Label>
-                        <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="مثال: إعداد المسودة الأولى..." className="h-14 rounded-2xl border-2 focus:border-primary/50" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>نوع التحكم (Control Type)</Label>
-                        <Select value={extraField} onValueChange={setExtraField}>
-                          <SelectTrigger className="h-14 rounded-2xl border-2"><SelectValue placeholder="اختر نوع التحكم" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="TimeBased">زمني (Time Based)</SelectItem>
-                            <SelectItem value="Numeric">رقمي (Numeric)</SelectItem>
-                            <SelectItem value="Hybrid">هجين (Hybrid)</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <Label>{t('stages')}</Label>
+                        <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder={t('search')} className="h-14 rounded-2xl border-2 focus:border-primary/50" />
                       </div>
                     </div>
-                    <DialogFooter><Button onClick={() => handleAdd('stage')} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">{isAdding ? <Loader2 className="animate-spin" /> : "حفظ المرحلة"}</Button></DialogFooter>
+                    <DialogFooter><Button onClick={() => handleAdd('stage')} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">{isAdding ? <Loader2 className="animate-spin" /> : t('save')}</Button></DialogFooter>
                   </DialogContent>
                 </Dialog>
               </CardHeader>
               <CardContent className="p-6 space-y-4 max-h-[600px] overflow-y-auto">
-                {!selectedSubService ? <div className="p-20 text-center text-xs text-muted-foreground font-bold italic">اختر خدمة فرعية لبناء مراحل الـ WBS</div> : (
+                {!selectedSubService ? <div className="p-20 text-center text-xs text-muted-foreground font-bold italic">اختر خدمة فرعية</div> : (
                   stageLoading ? <div className="p-12 text-center"><Loader2 className="animate-spin mx-auto h-8 w-8 text-primary/50" /></div> : (
-                    stages?.length === 0 ? <p className="text-center text-xs text-muted-foreground py-12 font-bold bg-muted/20 rounded-3xl border-2 border-dashed">لا توجد مراحل معرفة بعد لهذه الخدمة</p> : (
-                      stages?.map((stage, idx) => (
-                        <div key={stage.id} className="p-4 bg-muted/30 rounded-[1.5rem] border-2 border-transparent hover:border-primary/20 transition-all flex items-center gap-4 group">
-                          <span className="h-8 w-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-black shadow-lg shrink-0">{idx + 1}</span>
-                          <div className="flex-1 text-start">
-                            <p className="text-sm font-black text-slate-800">{stage.name}</p>
-                            <div className="flex gap-2 mt-1">
-                                <Badge variant="secondary" className="text-[9px] px-2 py-0.5 rounded-lg font-bold bg-white text-primary border-primary/20">{stage.controlType}</Badge>
-                                {stage.isEditable && <Badge variant="outline" className="text-[9px] px-2 py-0.5 rounded-lg font-bold border-emerald-200 text-emerald-600">قابل للتعديل</Badge>}
-                            </div>
-                          </div>
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete('stage', stage.id)} className="opacity-0 group-hover:opacity-100 h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                    stages?.map((stage, idx) => (
+                      <div key={stage.id} className="p-4 bg-muted/30 rounded-[1.5rem] border-2 border-transparent hover:border-primary/20 transition-all flex items-center gap-4 group">
+                        <span className="h-8 w-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-black shadow-lg shrink-0">{idx + 1}</span>
+                        <div className="flex-1 text-start">
+                          <p className="text-sm font-black text-slate-800">{stage.name}</p>
+                          <Badge variant="secondary" className="text-[9px] px-2 py-0.5 rounded-lg font-bold bg-white text-primary border-primary/20 mt-1">{stage.controlType}</Badge>
                         </div>
-                      ))
-                    )
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete('stage', stage.id)} className="opacity-0 group-hover:opacity-100 h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                      </div>
+                    ))
                   )
                 )}
               </CardContent>
@@ -275,16 +250,16 @@ export default function ReferenceHubPage() {
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
              <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
                 <CardHeader className="bg-slate-50 border-b p-6 flex flex-row items-center justify-between">
-                  <CardTitle className="text-sm font-black flex items-center gap-2"><Building2 className="h-4 w-4 text-primary" /> الأقسام الإدارية</CardTitle>
+                  <CardTitle className="text-sm font-black flex items-center gap-2"><Building2 className="h-4 w-4 text-primary" /> {t('depts')}</CardTitle>
                   <Dialog>
                     <DialogTrigger asChild><Button size="icon" variant="ghost" className="h-10 w-10 rounded-xl text-primary bg-primary/5 hover:bg-primary/10"><Plus className="h-5 w-5" /></Button></DialogTrigger>
-                    <DialogContent className="rounded-3xl border-0 shadow-2xl">
-                      <DialogHeader><DialogTitle className="text-start font-headline font-black text-2xl">إضافة قسم جديد</DialogTitle></DialogHeader>
+                    <DialogContent className="rounded-3xl border-0 shadow-2xl" dir={dir}>
+                      <DialogHeader><DialogTitle className="text-start font-headline font-black text-2xl">{t('newDept')}</DialogTitle></DialogHeader>
                       <div className="py-6 space-y-4">
-                        <Label className="text-start block">اسم القسم (مثال: القسم المعماري)</Label>
-                        <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="أدخل اسم القسم..." className="h-14 rounded-2xl border-2 focus:border-primary/50 text-start" />
+                        <Label className="text-start block">{t('depts')}</Label>
+                        <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder={t('search')} className="h-14 rounded-2xl border-2 focus:border-primary/50 text-start" />
                       </div>
-                      <DialogFooter><Button onClick={() => handleAdd('dept')} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">{isAdding ? <Loader2 className="animate-spin" /> : "حفظ القسم"}</Button></DialogFooter>
+                      <DialogFooter><Button onClick={() => handleAdd('dept')} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">{isAdding ? <Loader2 className="animate-spin" /> : t('save')}</Button></DialogFooter>
                     </DialogContent>
                   </Dialog>
                 </CardHeader>
@@ -300,7 +275,7 @@ export default function ReferenceHubPage() {
                         )}
                       >
                         <span className="text-sm font-black text-start">{dept.name}</span>
-                        <ChevronRight className={cn("h-5 w-5", selectedDept?.id === dept.id ? 'text-primary' : 'text-muted-foreground', lang === 'ar' && 'rotate-180')} />
+                        <ChevronRight className={cn("h-5 w-5", selectedDept?.id === dept.id ? 'text-primary' : 'text-muted-foreground', dir === 'rtl' && 'rotate-180')} />
                       </div>
                     ))
                   )}
@@ -309,21 +284,21 @@ export default function ReferenceHubPage() {
 
              <Card className={cn("border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 transition-opacity", !selectedDept && 'opacity-30 pointer-events-none')}>
                 <CardHeader className="bg-slate-50 border-b p-6 flex flex-row items-center justify-between">
-                  <CardTitle className="text-sm font-black flex items-center gap-2"><Briefcase className="h-4 w-4 text-primary" /> المسميات الوظيفية لـ {selectedDept?.name}</CardTitle>
+                  <CardTitle className="text-sm font-black flex items-center gap-2"><Briefcase className="h-4 w-4 text-primary" /> {t('jobs')}</CardTitle>
                   <Dialog>
                     <DialogTrigger asChild><Button size="icon" variant="ghost" className="h-10 w-10 rounded-xl text-primary bg-primary/5 hover:bg-primary/10"><Plus className="h-5 w-5" /></Button></DialogTrigger>
-                    <DialogContent className="rounded-3xl border-0 shadow-2xl">
-                      <DialogHeader><DialogTitle className="text-start font-headline font-black text-2xl">إضافة وظيفة جديدة</DialogTitle></DialogHeader>
+                    <DialogContent className="rounded-3xl border-0 shadow-2xl" dir={dir}>
+                      <DialogHeader><DialogTitle className="text-start font-headline font-black text-2xl">{t('addEntry')}</DialogTitle></DialogHeader>
                       <div className="py-6 space-y-4">
-                        <Label className="text-start block">المسمى الوظيفي</Label>
-                        <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="مثال: مهندس موقع..." className="h-14 rounded-2xl border-2 focus:border-primary/50 text-start" />
+                        <Label className="text-start block">{t('jobs')}</Label>
+                        <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder={t('search')} className="h-14 rounded-2xl border-2 focus:border-primary/50 text-start" />
                       </div>
-                      <DialogFooter><Button onClick={() => handleAdd('job')} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">{isAdding ? <Loader2 className="animate-spin" /> : "حفظ الوظيفة"}</Button></DialogFooter>
+                      <DialogFooter><Button onClick={() => handleAdd('job')} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">{isAdding ? <Loader2 className="animate-spin" /> : t('save')}</Button></DialogFooter>
                     </DialogContent>
                   </Dialog>
                 </CardHeader>
                 <CardContent className="p-0">
-                  {!selectedDept ? <div className="p-20 text-center text-xs text-muted-foreground font-bold">اختر قسماً لعرض مسمياته الوظيفية</div> : (
+                  {!selectedDept ? <div className="p-20 text-center text-xs text-muted-foreground font-bold">{t('orgRef')}</div> : (
                     jobsLoading ? <div className="p-12 text-center"><Loader2 className="animate-spin mx-auto h-8 w-8 text-primary/50" /></div> : (
                       jobs?.map(job => (
                         <div key={job.id} className="p-5 border-b flex items-center justify-between group hover:bg-muted/30 transition-all">
@@ -342,16 +317,16 @@ export default function ReferenceHubPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
              <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
                 <CardHeader className="bg-slate-50 border-b p-6 flex flex-row items-center justify-between">
-                  <CardTitle className="text-sm font-black flex items-center gap-2"><Map className="h-4 w-4 text-primary" /> المحافظات</CardTitle>
+                  <CardTitle className="text-sm font-black flex items-center gap-2"><Map className="h-4 w-4 text-primary" /> {t('govs')}</CardTitle>
                   <Dialog>
                     <DialogTrigger asChild><Button size="icon" variant="ghost" className="h-10 w-10 rounded-xl text-primary bg-primary/5 hover:bg-primary/10"><Plus className="h-5 w-5" /></Button></DialogTrigger>
-                    <DialogContent className="rounded-3xl border-0 shadow-2xl">
-                      <DialogHeader><DialogTitle className="text-start font-headline font-black text-2xl">إضافة محافظة</DialogTitle></DialogHeader>
+                    <DialogContent className="rounded-3xl border-0 shadow-2xl" dir={dir}>
+                      <DialogHeader><DialogTitle className="text-start font-headline font-black text-2xl">{t('newGov')}</DialogTitle></DialogHeader>
                       <div className="py-6 space-y-4">
-                        <Label className="text-start block">اسم المحافظة</Label>
-                        <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="مثال: العاصمة..." className="h-14 rounded-2xl border-2 focus:border-primary/50 text-start" />
+                        <Label className="text-start block">{t('govs')}</Label>
+                        <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder={t('search')} className="h-14 rounded-2xl border-2 focus:border-primary/50 text-start" />
                       </div>
-                      <DialogFooter><Button onClick={() => handleAdd('gov')} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">{isAdding ? <Loader2 className="animate-spin" /> : "حفظ المحافظة"}</Button></DialogFooter>
+                      <DialogFooter><Button onClick={() => handleAdd('gov')} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">{isAdding ? <Loader2 className="animate-spin" /> : t('save')}</Button></DialogFooter>
                     </DialogContent>
                   </Dialog>
                 </CardHeader>
@@ -367,7 +342,7 @@ export default function ReferenceHubPage() {
                         )}
                       >
                         <span className="text-sm font-black text-start">{gov.name}</span>
-                        <ChevronRight className={cn("h-5 w-5", selectedGov?.id === gov.id ? 'text-primary' : 'text-muted-foreground', lang === 'ar' && 'rotate-180')} />
+                        <ChevronRight className={cn("h-5 w-5", selectedGov?.id === gov.id ? 'text-primary' : 'text-muted-foreground', dir === 'rtl' && 'rotate-180')} />
                       </div>
                     ))
                   )}
@@ -376,21 +351,21 @@ export default function ReferenceHubPage() {
 
              <Card className={cn("border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 transition-opacity", !selectedGov && 'opacity-30 pointer-events-none')}>
                 <CardHeader className="bg-slate-50 border-b p-6 flex flex-row items-center justify-between">
-                  <CardTitle className="text-sm font-black flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" /> المناطق التابعة لـ {selectedGov?.name}</CardTitle>
+                  <CardTitle className="text-sm font-black flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" /> {t('areas')}</CardTitle>
                   <Dialog>
                     <DialogTrigger asChild><Button size="icon" variant="ghost" className="h-10 w-10 rounded-xl text-primary bg-primary/5 hover:bg-primary/10"><Plus className="h-5 w-5" /></Button></DialogTrigger>
-                    <DialogContent className="rounded-3xl border-0 shadow-2xl">
-                      <DialogHeader><DialogTitle className="text-start font-headline font-black text-2xl">إضافة منطقة جديدة</DialogTitle></DialogHeader>
+                    <DialogContent className="rounded-3xl border-0 shadow-2xl" dir={dir}>
+                      <DialogHeader><DialogTitle className="text-start font-headline font-black text-2xl">{t('addEntry')}</DialogTitle></DialogHeader>
                       <div className="py-6 space-y-4">
-                        <Label className="text-start block">اسم المنطقة</Label>
-                        <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="مثال: الخالدية..." className="h-14 rounded-2xl border-2 focus:border-primary/50 text-start" />
+                        <Label className="text-start block">{t('areas')}</Label>
+                        <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder={t('search')} className="h-14 rounded-2xl border-2 focus:border-primary/50 text-start" />
                       </div>
-                      <DialogFooter><Button onClick={() => handleAdd('area')} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">{isAdding ? <Loader2 className="animate-spin" /> : "حفظ المنطقة"}</Button></DialogFooter>
+                      <DialogFooter><Button onClick={() => handleAdd('area')} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">{isAdding ? <Loader2 className="animate-spin" /> : t('save')}</Button></DialogFooter>
                     </DialogContent>
                   </Dialog>
                 </CardHeader>
                 <CardContent className="p-0">
-                  {!selectedGov ? <div className="p-20 text-center text-xs text-muted-foreground font-bold italic">اختر محافظة أولاً لعرض مناطقها الجغرافية</div> : (
+                  {!selectedGov ? <div className="p-20 text-center text-xs text-muted-foreground font-bold italic">{t('geoRef')}</div> : (
                     areasLoading ? <div className="p-12 text-center"><Loader2 className="animate-spin mx-auto h-8 w-8 text-primary/50" /></div> : (
                       areas?.map(area => (
                         <div key={area.id} className="p-5 border-b flex items-center justify-between group hover:bg-muted/30 transition-all">

@@ -20,7 +20,7 @@ const translations: Record<Language, Record<string, string>> = {
     hr: 'الموارد البشرية',
     procurement: 'المشتريات',
     inventory: 'المخازن والعهد',
-    checklists: 'قواعد البيانات المرجعية',
+    checklists: 'القوائم المرجعية',
     reports: 'التقارير التنفيذية',
     ai: 'مساعد الذكاء الاصطناعي',
     settings: 'الإعدادات',
@@ -37,20 +37,26 @@ const translations: Record<Language, Record<string, string>> = {
     saveFailed: 'فشل الحفظ في السحاب.',
     deleteFailed: 'تعذر الحذف حالياً.',
     confirmDelete: 'هل أنت متأكد من حذف هذا السجل المرجعي؟',
-    // Reference Data Specific
     orgRef: 'الهيكل التنظيمي',
     geoRef: 'البيانات الجغرافية',
     techRef: 'المسارات الفنية',
-    depts: 'الأقسام',
-    jobs: 'الوظائف',
+    depts: 'الأقسام الإدارية',
+    jobs: 'المسميات الوظيفية',
     govs: 'المحافظات',
-    areas: 'المناطق',
-    srvTypes: 'أنشطة الأعمال',
+    areas: 'المناطق التابعة',
     txTypes: 'أنواع المعاملات',
     subSrvs: 'الخدمات الفرعية',
     stages: 'مراحل العمل / WBS',
-    addEntry: 'إضافة سجل مرجعي',
-    devConsole: 'لوحة المطور'
+    addEntry: 'إضافة سجل',
+    devConsole: 'لوحة المطور',
+    active: 'نشط',
+    suspended: 'موقوف',
+    search: 'بحث...',
+    newPath: 'إضافة مسار فني جديد',
+    newDept: 'إضافة قسم جديد',
+    newGov: 'إضافة محافظة جديدة',
+    save: 'حفظ',
+    cancel: 'إلغاء'
   },
   en: {
     dashboard: 'Dashboard',
@@ -60,7 +66,7 @@ const translations: Record<Language, Record<string, string>> = {
     hr: 'HR',
     procurement: 'Procurement',
     inventory: 'Inventory',
-    checklists: 'Reference Data',
+    checklists: 'Reference Hub',
     reports: 'Reports',
     ai: 'AI Assistant',
     settings: 'Settings',
@@ -73,24 +79,30 @@ const translations: Record<Language, Record<string, string>> = {
     error: 'Error',
     deleted: 'Deleted',
     entryAdded: 'Entry added successfully.',
-    entryRemoved: 'Entry removed from database.',
-    saveFailed: 'Cloud save failed.',
-    deleteFailed: 'Deletion failed at the moment.',
-    confirmDelete: 'Are you sure you want to delete this reference entry?',
-    // Reference Data Specific
-    orgRef: 'Organizational',
-    geoRef: 'Geographical',
+    entryRemoved: 'Entry removed.',
+    saveFailed: 'Save failed.',
+    deleteFailed: 'Deletion failed.',
+    confirmDelete: 'Are you sure?',
+    orgRef: 'Organization',
+    geoRef: 'Geography',
     techRef: 'Technical Path',
     depts: 'Departments',
-    jobs: 'Jobs',
+    jobs: 'Job Titles',
     govs: 'Governorates',
     areas: 'Areas',
-    srvTypes: 'Service Categories',
     txTypes: 'Transaction Types',
     subSrvs: 'Sub Services',
     stages: 'Work Stages / WBS',
-    addEntry: 'Add Reference',
-    devConsole: 'Developer Console'
+    addEntry: 'Add Entry',
+    devConsole: 'Developer Console',
+    active: 'Active',
+    suspended: 'Suspended',
+    search: 'Search...',
+    newPath: 'Add New Path',
+    newDept: 'Add New Department',
+    newGov: 'Add New Governorate',
+    save: 'Save',
+    cancel: 'Cancel'
   }
 };
 
@@ -100,9 +112,8 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Language>('ar');
 
   useEffect(() => {
-    const savedLang = localStorage.getItem('lang') as Language;
-    if (savedLang) setLang(savedLang);
-    else setLang('ar');
+    const savedLang = localStorage.getItem('lang') as Language || 'ar';
+    setLang(savedLang);
   }, []);
 
   const setLang = (newLang: Language) => {
@@ -116,7 +127,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <LanguageContext.Provider value={{ lang, dir: lang === 'ar' ? 'rtl' : 'ltr', setLang, t }}>
-      <div dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+      <div dir={lang === 'ar' ? 'rtl' : 'ltr'} className="min-h-screen">
         {children}
       </div>
     </LanguageContext.Provider>
