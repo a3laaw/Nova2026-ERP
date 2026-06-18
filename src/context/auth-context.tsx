@@ -1,9 +1,8 @@
-
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, User, signOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth, useFirestore } from '@/firebase';
 
 interface GlobalUserData {
@@ -40,14 +39,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (firebaseUser) {
         try {
-          // حساب المطور الرئيسي للتجربة (Hardcoded Developer)
+          // حساب المطور الرئيسي - ضمان وجود السجل في Firestore
           if (firebaseUser.email === 'admin@novaflow.com') {
-            setGlobalUser({
+            const devData: GlobalUserData = {
               companyId: 'dev_hq',
               role: 'developer',
               isDeveloper: true,
               username: 'super_dev'
-            });
+            };
+            
+            // تحديث السجل في Firestore لضمان عمل القواعد الأمنية
+            const devRef = doc(db, 'global_users', firebaseUser.uid);
+            const devSnap = await getDoc(devRef);
+            
+            if (!devSnap.exists()) {
+              setDoc(devRef, {
+                ...devData,
+                email: firebaseUser.email,
+                createdAt: serverTimestamp()
+              }, { merge: true });
+            }
+            
+            setGlobalUser(devData);
           } else {
             const docRef = doc(db, 'global_users', firebaseUser.uid);
             const docSnap = await getDoc(docRef);
@@ -58,7 +71,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           }
         } catch (err: any) {
-          // الخطأ يعالج مركزياً، لا نستخدم console.log
           setError("حدث خطأ في جلب بيانات المستخدم.");
         }
       } else {

@@ -4,8 +4,10 @@ service cloud.firestore {
     
     // وظيفة للتحقق مما إذا كان المستخدم هو المطور
     function isDeveloper() {
-      return request.auth != null && 
-             get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.isDeveloper == true;
+      return request.auth != null && (
+        get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.isDeveloper == true ||
+        request.auth.token.email == 'admin@novaflow.com'
+      );
     }
 
     // قواعد المستخدمين العالميين
