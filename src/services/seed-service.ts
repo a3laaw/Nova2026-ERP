@@ -13,24 +13,33 @@ import {
 import { paths } from '@/firebase/multi-tenant';
 import { SEED_DATA } from '@/lib/seed-data';
 
+/**
+ * خدمة التغذية المرجعية (Seed Service).
+ * مسؤولة عن ضخ البيانات المرجعية الأساسية للشركة عند الطلب.
+ */
 export class SeedService {
   constructor(private db: Firestore, private companyId: string) {}
 
   /**
-   * تشغيل عملية التغذية المرجعية الشاملة
+   * تشغيل المحرك لضخ كافة البيانات المرجعية
    */
   async runSeed() {
-    console.log('Starting seed process for company:', this.companyId);
-    
     try {
+      // 1. ضخ الهيكل التنظيمي
       await this.seedOrganization();
+      
+      // 2. ضخ الجغرافيا
       await this.seedGeography();
+      
+      // 3. ضخ أنواع الأنشطة
       await this.seedServiceTypes();
+      
+      // 4. ضخ المسارات الفنية (بناءً على الأنشطة)
       await this.seedTechnicalPaths();
       
       return { success: true };
     } catch (error) {
-      console.error('Seed process failed:', error);
+      console.error('Seed execution failed:', error);
       throw error;
     }
   }
@@ -116,6 +125,7 @@ export class SeedService {
   }
 
   private async seedTechnicalPaths() {
+    // نحتاج لجلب المعرفات الحقيقية لأنواع الأنشطة لربطها
     const serviceTypesSnap = await getDocs(collection(this.db, paths.serviceTypes(this.companyId)));
     const stMap = new Map(serviceTypesSnap.docs.map(d => [d.data().code, d.id]));
 
@@ -176,7 +186,7 @@ export class SeedService {
   }
 
   /**
-   * للتحقق مما إذا كانت البيانات موجودة مسبقاً
+   * للتحقق مما إذا كانت البيانات موجودة مسبقاً (حماية من التكرار)
    */
   async isSystemSeeded() {
     const q = query(collection(this.db, paths.departments(this.companyId)), limit(1));

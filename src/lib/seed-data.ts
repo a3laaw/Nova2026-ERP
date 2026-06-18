@@ -1,5 +1,6 @@
 /**
  * @fileOverview البيانات المرجعية الأساسية لنظام Nova ERP (النموذج الهندسي الكويتي).
+ * تشمل الهيكل التنظيمي، الجغرافي، المسارات الفنية، وأنواع الأنشطة.
  */
 
 export const SEED_DATA = {
@@ -48,7 +49,7 @@ export const SEED_DATA = {
     }
   ],
 
-  // البيانات الجغرافية (الكويت)
+  // البيانات الجغرافية (دولة الكويت)
   governorates: [
     {
       name: 'العاصمة',
@@ -81,14 +82,14 @@ export const SEED_DATA = {
     }
   ],
 
-  // أنواع الأنشطة
+  // أنواع الأنشطة الكبرى
   serviceTypes: [
     { code: 'CONS', name: 'استشارات هندسية', nameEn: 'Engineering Consulting', moduleScope: 'technical', color: '#f57c00', order: 1 },
     { code: 'CONTRACT', name: 'مقاولات عامة', nameEn: 'General Contracting', moduleScope: 'technical', color: '#1976d2', order: 2 },
     { code: 'INTERIOR', name: 'تصميم داخلي', nameEn: 'Interior Design', moduleScope: 'technical', color: '#7b1fa2', order: 3 },
   ],
 
-  // المسارات الفنية
+  // المسارات الفنية النموذجية
   transactionTypes: [
     {
       code: 'MUN-DESIGN',
