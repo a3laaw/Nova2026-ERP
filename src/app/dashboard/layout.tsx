@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useAuthContext } from '@/context/auth-context';
@@ -12,6 +11,7 @@ import { UserNav } from "@/components/layout/user-nav"
 import { NotificationBell } from "@/components/layout/notification-bell"
 import { Loader2, Languages } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 export default function DashboardLayout({
   children,
