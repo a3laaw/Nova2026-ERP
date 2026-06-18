@@ -34,11 +34,17 @@ export interface Job extends BaseReference {
 
 export interface Governorate extends BaseReference {
   name: string;
+  nameEn: string;
+  isActive: boolean;
+  order: number;
 }
 
 export interface Area extends BaseReference {
   name: string;
+  nameEn: string;
   governorateId: string;
+  isActive: boolean;
+  order: number;
 }
 
 export interface ServiceType extends BaseReference {

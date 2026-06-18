@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import DepartmentsPage from './departments/page';
+import GeoPage from './geo/page';
 
 export default function ReferenceHubPage() {
   const { t, lang, dir } = useLanguage();
@@ -50,9 +51,8 @@ export default function ReferenceHubPage() {
            <p className="font-bold text-muted-foreground italic">{isRtl ? 'قيد التطوير - المسارات الفنية' : 'Under Development - Technical Paths'}</p>
         </TabsContent>
 
-        <TabsContent value="geo" className="mt-8 text-center py-20 bg-white rounded-[3rem] shadow-xl">
-           <MapPin className="h-20 w-20 mx-auto text-muted-foreground/20 mb-4" />
-           <p className="font-bold text-muted-foreground italic">{isRtl ? 'قيد التطوير - البيانات الجغرافية' : 'Under Development - Geographic Data'}</p>
+        <TabsContent value="geo" className="mt-8">
+           <GeoPage />
         </TabsContent>
       </Tabs>
     </div>
