@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -39,7 +38,6 @@ export default function ProjectsPage() {
     status: 'active' 
   });
 
-  // Queries for Reference Data
   const projectsQuery = useMemo(() => companyId && db ? query(collection(db, paths.projects(companyId)), orderBy('createdAt', 'desc')) : null, [db, companyId]);
   const txTypesQuery = useMemo(() => companyId && db ? query(collection(db, paths.transactionTypes(companyId)), orderBy('name')) : null, [db, companyId]);
   const subServicesQuery = useMemo(() => companyId && db && newProject.transactionTypeId ? query(collection(db, paths.subServices(companyId, newProject.transactionTypeId)), orderBy('name')) : null, [db, companyId, newProject.transactionTypeId]);
@@ -69,61 +67,63 @@ export default function ProjectsPage() {
   const filteredProjects = projects?.filter(p => p.name?.toLowerCase().includes(searchTerm.toLowerCase())) || [];
 
   return (
-    <div className="space-y-8" dir={dir}>
+    <div className="space-y-12" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start">
-          <h1 className="text-4xl font-black font-headline flex items-center gap-3">
-            <HardHat className="h-10 w-10 text-primary" />
+          <h1 className="text-5xl font-black font-headline flex items-center gap-4">
+            <div className="p-3 bg-solaris-gradient rounded-2xl text-white shadow-lg">
+              <HardHat className="h-10 w-10" />
+            </div>
             {t('projects')}
           </h1>
-          <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-            {lang === 'ar' ? 'إدارة المشاريع الهندسية وربطها بالدستور الفني للشركة' : 'Manage engineering projects and link them to the technical constitution'}
+          <p className="text-black/40 mt-3 text-lg font-bold tracking-tight">
+            {lang === 'ar' ? 'إدارة المسارات الهندسية في Solaris' : 'Managing Engineering Paths in Solaris'}
           </p>
         </div>
 
         <Dialog>
           <DialogTrigger asChild>
-            <Button className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform">
-              <Plus className="me-2 h-6 w-6" />
+            <Button className="bg-solaris-gradient text-white font-black rounded-3xl px-10 py-8 text-xl shadow-xl hover:scale-[1.02] transition-all">
+              <Plus className="me-3 h-7 w-7" />
               {lang === 'ar' ? 'مشروع جديد' : 'New Project'}
             </Button>
           </DialogTrigger>
-          <DialogContent className="rounded-3xl border-0 shadow-2xl max-w-2xl" dir={dir}>
+          <DialogContent className="rounded-[2.5rem] border-0 shadow-2xl max-w-2xl bg-white/95 backdrop-blur-xl" dir={dir}>
             <DialogHeader>
-              <DialogTitle className="text-start font-headline font-black text-2xl">{lang === 'ar' ? 'فتح مشروع جديد' : 'Open New Project'}</DialogTitle>
-              <DialogDescription className="text-start">{lang === 'ar' ? 'قم بتعريف المشروع وربطه بمسار فني من القوائم المرجعية.' : 'Define project and link it to a technical path from reference data.'}</DialogDescription>
+              <DialogTitle className="text-start font-headline font-black text-3xl mb-2">{lang === 'ar' ? 'فتح مشروع جديد' : 'Open New Project'}</DialogTitle>
+              <DialogDescription className="text-start text-lg">{lang === 'ar' ? 'قم بتعريف المشروع وربطه بمسار فني.' : 'Define project and link it to a technical path.'}</DialogDescription>
             </DialogHeader>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-6">
-              <div className="space-y-2 text-start">
-                <Label>{lang === 'ar' ? 'اسم المشروع' : 'Project Name'}</Label>
-                <Input value={newProject.name} onChange={e => setNewProject({...newProject, name: e.target.value})} placeholder={lang === 'ar' ? 'فيلا الجابرية - ق4' : 'Jabriya Villa - B4'} className="h-14 rounded-2xl border-2" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-8">
+              <div className="space-y-3 text-start">
+                <Label className="text-black font-black">{lang === 'ar' ? 'اسم المشروع' : 'Project Name'}</Label>
+                <Input value={newProject.name} onChange={e => setNewProject({...newProject, name: e.target.value})} placeholder={lang === 'ar' ? 'فيلا الجابرية' : 'Jabriya Villa'} className="h-14 rounded-2xl border-2 focus:border-primary/50" />
               </div>
-              <div className="space-y-2 text-start">
-                <Label>{lang === 'ar' ? 'الميزانية (د.ك)' : 'Budget (KWD)'}</Label>
-                <Input type="number" value={newProject.budget} onChange={e => setNewProject({...newProject, budget: e.target.value})} placeholder="5000" className="h-14 rounded-2xl border-2" />
+              <div className="space-y-3 text-start">
+                <Label className="text-black font-black">{lang === 'ar' ? 'الميزانية (د.ك)' : 'Budget (KWD)'}</Label>
+                <Input type="number" value={newProject.budget} onChange={e => setNewProject({...newProject, budget: e.target.value})} placeholder="5000" className="h-14 rounded-2xl border-2 focus:border-primary/50" />
               </div>
-              <div className="space-y-2 text-start">
-                <Label>{t('txTypes')}</Label>
+              <div className="space-y-3 text-start">
+                <Label className="text-black font-black">{t('txTypes')}</Label>
                 <Select value={newProject.transactionTypeId} onValueChange={val => setNewProject({...newProject, transactionTypeId: val, subServiceId: ''})}>
                   <SelectTrigger className="h-14 rounded-2xl border-2"><SelectValue placeholder={t('search')} /></SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="rounded-2xl">
                     {txTypes?.map(tx => <SelectItem key={tx.id} value={tx.id}>{tx.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2 text-start">
-                <Label>{t('subSrvs')}</Label>
+              <div className="space-y-3 text-start">
+                <Label className="text-black font-black">{t('subSrvs')}</Label>
                 <Select value={newProject.subServiceId} onValueChange={val => setNewProject({...newProject, subServiceId: val})} disabled={!newProject.transactionTypeId}>
                   <SelectTrigger className="h-14 rounded-2xl border-2"><SelectValue placeholder={t('search')} /></SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="rounded-2xl">
                     {subServices?.map(sub => <SelectItem key={sub.id} value={sub.id}>{sub.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
             </div>
             <DialogFooter>
-              <Button onClick={handleCreateProject} disabled={isAdding || !newProject.name} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">
-                {isAdding ? <Loader2 className="animate-spin" /> : <Sparkles className="me-2 h-5 w-5" />}
+              <Button onClick={handleCreateProject} disabled={isAdding || !newProject.name} className="w-full h-16 rounded-3xl font-black text-xl bg-solaris-gradient text-white shadow-xl">
+                {isAdding ? <Loader2 className="animate-spin" /> : <Sparkles className="me-2 h-6 w-6" />}
                 {lang === 'ar' ? 'بدء المشروع' : 'Start Project'}
               </Button>
             </DialogFooter>
@@ -131,86 +131,91 @@ export default function ProjectsPage() {
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="bg-white border-0 shadow-lg rounded-3xl p-6">
-          <p className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-2 text-start">{lang === 'ar' ? 'إجمالي المشاريع' : 'Total Projects'}</p>
-          <div className="flex items-center justify-between">
-            <h3 className="text-4xl font-black font-headline">{projects?.length || 0}</h3>
-            <div className="p-3 bg-primary/10 rounded-2xl text-primary"><FolderKanban className="h-6 w-6" /></div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="glass-card p-10 rounded-[2.5rem] flex items-center justify-between group hover:scale-[1.02] transition-all">
+          <div className="text-start">
+            <p className="text-xs font-black text-black/40 uppercase tracking-[0.3em] mb-3">{lang === 'ar' ? 'إجمالي المشاريع' : 'Total Projects'}</p>
+            <h3 className="text-6xl font-black font-headline text-black">{projects?.length || 0}</h3>
           </div>
-        </Card>
-        <Card className="bg-white border-0 shadow-lg rounded-3xl p-6">
-          <p className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-2 text-start">{lang === 'ar' ? 'السيولة المستهدفة' : 'Target Liquidity'}</p>
-          <div className="flex items-center justify-between">
-            <h3 className="text-2xl font-black font-headline text-emerald-600">{filteredProjects.reduce((acc, p) => acc + (p.budget || 0), 0).toLocaleString()} د.ك</h3>
-            <div className="p-3 bg-emerald-50 rounded-2xl text-emerald-600"><DollarSign className="h-6 w-6" /></div>
+          <div className="p-6 bg-primary/10 rounded-3xl text-primary group-hover:bg-solaris-gradient group-hover:text-white transition-all shadow-inner">
+            <FolderKanban className="h-12 w-12" />
           </div>
-        </Card>
+        </div>
+        <div className="glass-card p-10 rounded-[2.5rem] flex items-center justify-between group hover:scale-[1.02] transition-all">
+          <div className="text-start">
+            <p className="text-xs font-black text-black/40 uppercase tracking-[0.3em] mb-3">{lang === 'ar' ? 'السيولة المستهدفة' : 'Target Liquidity'}</p>
+            <h3 className="text-4xl font-black font-headline text-black">
+              {filteredProjects.reduce((acc, p) => acc + (p.budget || 0), 0).toLocaleString()} <span className="text-2xl text-black/30">د.ك</span>
+            </h3>
+          </div>
+          <div className="p-6 bg-emerald-500/10 rounded-3xl text-emerald-600 shadow-inner">
+            <DollarSign className="h-12 w-12" />
+          </div>
+        </div>
       </div>
 
-      <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
-        <CardHeader className="bg-slate-50 border-b p-6 flex flex-row items-center justify-between">
-          <div className="relative w-full max-w-sm">
-            <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <div className="relative">
+        <div className="mb-8 flex justify-between items-center">
+          <div className="relative w-full max-w-md">
+            <Search className="absolute start-5 top-1/2 -translate-y-1/2 h-5 w-5 text-black/30" />
             <Input 
               placeholder={t('search')} 
-              className="ps-10 rounded-xl h-12 bg-white text-start" 
+              className="ps-14 h-16 rounded-3xl border-0 bg-white/50 backdrop-blur-md shadow-inner text-lg font-bold" 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-        </CardHeader>
-        <CardContent className="p-0 overflow-x-auto">
-          <Table>
-            <TableHeader className="bg-muted/30">
-              <TableRow>
-                <TableHead className="text-start font-black">{lang === 'ar' ? 'المشروع' : 'Project'}</TableHead>
-                <TableHead className="text-start font-black">{t('txTypes')}</TableHead>
-                <TableHead className="text-start font-black">{lang === 'ar' ? 'الحالة' : 'Status'}</TableHead>
-                <TableHead className="text-end font-black">{lang === 'ar' ? 'الميزانية' : 'Budget'}</TableHead>
-                <TableHead className="text-center font-black">{lang === 'ar' ? 'المسار' : 'Path'}</TableHead>
+        </div>
+
+        <div className="overflow-hidden rounded-[2.5rem] bg-transparent">
+          <Table className="border-separate border-spacing-y-4">
+            <TableHeader>
+              <TableRow className="bg-solaris-gradient hover:bg-solaris-gradient rounded-2xl overflow-hidden border-0 shadow-lg">
+                <TableHead className="text-start font-black text-white h-16 ps-8 rounded-s-2xl uppercase tracking-widest text-xs">{lang === 'ar' ? 'المشروع' : 'Project'}</TableHead>
+                <TableHead className="text-start font-black text-white h-16 uppercase tracking-widest text-xs">{t('txTypes')}</TableHead>
+                <TableHead className="text-start font-black text-white h-16 uppercase tracking-widest text-xs">{lang === 'ar' ? 'الحالة' : 'Status'}</TableHead>
+                <TableHead className="text-end font-black text-white h-16 uppercase tracking-widest text-xs">{lang === 'ar' ? 'الميزانية' : 'Budget'}</TableHead>
+                <TableHead className="text-center font-black text-white h-16 rounded-e-2xl uppercase tracking-widest text-xs pe-8">{lang === 'ar' ? 'المسار' : 'Path'}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {projectsLoading ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-24"><Loader2 className="animate-spin h-14 w-14 mx-auto text-primary/30" /></TableCell></TableRow>
               ) : filteredProjects.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-20 text-muted-foreground font-bold italic">{lang === 'ar' ? 'لا توجد مشاريع نشطة حالياً' : 'No active projects found'}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-24 glass-card rounded-[2.5rem] text-black/30 font-black text-2xl italic">{lang === 'ar' ? 'لا توجد مشاريع نشطة' : 'No active projects'}</TableCell></TableRow>
               ) : (
                 filteredProjects.map((project: any) => (
-                  <TableRow key={project.id} className="hover:bg-muted/10 transition-colors group">
-                    <TableCell className="text-start">
+                  <TableRow key={project.id} className="floating-row group cursor-pointer border-0">
+                    <TableCell className="text-start py-8 ps-8">
                       <div className="flex flex-col">
-                        <span className="font-black text-slate-800">{project.name}</span>
-                        <span className="text-[10px] text-muted-foreground font-mono">{project.id.substring(0,8)}</span>
+                        <span className="font-black text-2xl text-black group-hover:text-primary transition-colors">{project.name}</span>
+                        <span className="text-[10px] text-black/30 font-mono tracking-tighter">REF: {project.id}</span>
                       </div>
                     </TableCell>
                     <TableCell className="text-start">
-                      <Badge variant="outline" className="bg-white font-bold">{txTypes?.find(t => t.id === project.transactionTypeId)?.name || '...'}</Badge>
+                      <Badge variant="secondary" className="bg-black/5 text-black font-black px-4 py-1.5 rounded-xl border-0">{txTypes?.find(t => t.id === project.transactionTypeId)?.name || '...'}</Badge>
                     </TableCell>
                     <TableCell className="text-start">
-                      <Badge className={cn(
-                        "font-black px-3",
-                        project.status === 'active' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-slate-500/10 text-slate-600'
-                      )}>
-                        {project.status === 'active' ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'مكتمل' : 'Completed')}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <span className={cn("h-3 w-3 rounded-full", project.status === 'active' ? 'bg-emerald-500 animate-pulse' : 'bg-black/20')} />
+                        <span className="font-black text-sm">{project.status === 'active' ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'مكتمل' : 'Completed')}</span>
+                      </div>
                     </TableCell>
-                    <TableCell className="text-end font-mono font-black text-primary">
-                      {project.budget?.toLocaleString()} د.ك
+                    <TableCell className="text-end font-mono font-black text-2xl text-black">
+                      {project.budget?.toLocaleString()} <span className="text-sm text-black/30">د.ك</span>
                     </TableCell>
-                    <TableCell className="text-center">
-                      <Button variant="ghost" size="icon" className="rounded-xl group-hover:bg-primary group-hover:text-white transition-all">
-                        <ArrowRight className={cn("h-5 w-5", dir === 'rtl' && "rotate-180")} />
-                      </Button>
+                    <TableCell className="text-center pe-8">
+                      <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-black/5 text-black group-hover:bg-solaris-gradient group-hover:text-white transition-all shadow-sm">
+                        <ArrowRight className={cn("h-6 w-6", dir === 'rtl' && "rotate-180")} />
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
               )}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

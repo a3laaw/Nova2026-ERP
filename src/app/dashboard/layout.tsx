@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useAuthContext } from '@/context/auth-context';
@@ -38,7 +37,6 @@ export default function DashboardLayout({
     );
   }
 
-  // منع الوصول إذا كان الحساب موقوفاً
   if (company?.status === 'suspended') {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-background p-6" dir="rtl">
@@ -53,7 +51,7 @@ export default function DashboardLayout({
             <span className="text-xs mt-2 block font-bold text-destructive">تنبيه: سيتم حذف كافة البيانات تلقائياً بعد 3 أشهر من تاريخ الإيقاف.</span>
           </p>
           <div className="space-y-4">
-            <Button className="w-full bg-primary py-6 text-lg font-bold rounded-2xl">تجديد الاشتراك الآن</Button>
+            <Button className="w-full bg-solaris-gradient py-6 text-lg font-bold rounded-2xl text-white">تجديد الاشتراك الآن</Button>
             <Button variant="ghost" onClick={logout} className="w-full flex items-center justify-center gap-2">
               <LogOut className="h-4 w-4" />
               تسجيل الخروج
@@ -68,31 +66,31 @@ export default function DashboardLayout({
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background overflow-x-hidden">
         <DashboardSidebar />
-        <SidebarInset className="flex flex-col">
-          <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-white/80 backdrop-blur-md px-6 shadow-sm">
+        <SidebarInset className="flex flex-col bg-transparent">
+          <header className="sticky top-0 z-30 flex h-20 items-center gap-4 px-8 mt-4 mx-4 rounded-3xl glass-card">
             <SidebarTrigger className={lang === 'ar' ? 'ml-0' : '-mr-1'} />
             <div className="flex-1">
-              <h2 className={cn("text-xs font-semibold text-muted-foreground uppercase tracking-widest", lang === 'ar' ? 'text-right' : 'text-left')}>
-                {company?.name || t('workspace')} / {t('dashboard')}
+              <h2 className={cn("text-xs font-black text-black/40 uppercase tracking-[0.2em]", lang === 'ar' ? 'text-right' : 'text-left')}>
+                {company?.name || t('workspace')} / <span className="text-black">{t('dashboard')}</span>
               </h2>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-6">
               <Button 
                 variant="ghost" 
                 size="sm" 
                 onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
-                className="font-bold gap-2 text-primary"
+                className="font-black gap-2 text-primary hover:bg-primary/5 rounded-xl"
               >
                 <Languages className="h-4 w-4" />
                 {t('switchLang')}
               </Button>
-              <div className="h-6 w-[1px] bg-border" />
+              <div className="h-8 w-[1px] bg-black/5" />
               <NotificationBell />
-              <div className="h-6 w-[1px] bg-border" />
+              <div className="h-8 w-[1px] bg-black/5" />
               <UserNav />
             </div>
           </header>
-          <main className="flex-1 p-6 lg:p-10 animate-in fade-in duration-500">
+          <main className="flex-1 p-8 lg:p-12 animate-in fade-in duration-700">
             {children}
           </main>
         </SidebarInset>
