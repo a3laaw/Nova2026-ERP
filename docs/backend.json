@@ -22,10 +22,11 @@
         "logo": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" },
         "status": { "type": "string", "enum": ["active", "suspended", "pending"] },
+        "suspendedAt": { "type": "string", "format": "date-time", "description": "تاريخ إيقاف الحساب" },
         "trialEndsAt": { "type": "string", "format": "date-time", "description": "تاريخ انتهاء الفترة التجريبية" },
         "maxUsers": { "type": "number", "description": "الحد الأقصى للمستخدمين المسموح بهم" }
       },
-      "required": ["name"]
+      "required": ["name", "status"]
     },
     "CompanyRequest": {
       "title": "Onboarding Request",
