@@ -28,6 +28,28 @@
       },
       "required": ["name", "status"]
     },
+    "Checklist": {
+      "title": "Reference Checklist",
+      "description": "قائمة مرجعية أو قاعدة بيانات مصغرة للمعايير والإجراءات الخاصة بالشركة.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "عنوان القائمة المرجعية" },
+        "category": { "type": "string", "description": "تصنيف القائمة (هندسي، محاسبي، إداري)" },
+        "description": { "type": "string" },
+        "items": { 
+          "type": "array", 
+          "items": {
+            "type": "object",
+            "properties": {
+              "text": { "type": "string" },
+              "isRequired": { "type": "boolean" }
+            }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "category"]
+    },
     "CompanyRequest": {
       "title": "Onboarding Request",
       "description": "طلب انضمام شركة جديدة للنظام.",
@@ -80,6 +102,10 @@
     "/companies/{companyId}": {
       "schema": "#/entities/Company",
       "description": "بيانات الشركة"
+    },
+    "/companies/{companyId}/checklists/{checklistId}": {
+      "schema": "#/entities/Checklist",
+      "description": "القوائم المرجعية والمعايير الخاصة بالشركة"
     },
     "/companies/{companyId}/users/{uid}": {
       "schema": "#/entities/UserProfile",

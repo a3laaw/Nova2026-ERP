@@ -15,6 +15,7 @@ import {
   BarChart3,
   Sparkles,
   Settings,
+  ClipboardList
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
@@ -45,6 +46,7 @@ export function DashboardSidebar() {
     { title: t('hr'), icon: UserCircle, url: "/dashboard/hr" },
     { title: t('procurement'), icon: ShoppingCart, url: "/dashboard/procurement" },
     { title: t('inventory'), icon: Warehouse, url: "/dashboard/inventory" },
+    { title: t('checklists'), icon: ClipboardList, url: "/dashboard/checklists" },
     { title: t('reports'), icon: BarChart3, url: "/dashboard/reports" },
     { title: t('ai'), icon: Sparkles, url: "/dashboard/ai" },
   ]

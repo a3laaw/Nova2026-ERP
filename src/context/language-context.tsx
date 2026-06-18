@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
@@ -20,6 +21,7 @@ const translations: Record<Language, Record<string, string>> = {
     hr: 'الموارد البشرية',
     procurement: 'المشتريات',
     inventory: 'المخازن والعهد',
+    checklists: 'القوائم المرجعية',
     reports: 'التقارير التنفيذية',
     ai: 'مساعد الذكاء الاصطناعي',
     settings: 'الإعدادات',
@@ -61,6 +63,7 @@ const translations: Record<Language, Record<string, string>> = {
     hr: 'Human Resources',
     procurement: 'Procurement',
     inventory: 'Inventory',
+    checklists: 'Reference Lists',
     reports: 'Executive Reports',
     ai: 'AI Assistant',
     settings: 'Settings',
