@@ -1,15 +1,13 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { 
-  Database, Plus, Search, Loader2, Trash2, 
+  Database, Plus, Loader2, Trash2, 
   ChevronRight, Building2, MapPin, Workflow, 
-  Settings2, ArrowLeft, Layers 
+  Settings2, Layers, Briefcase, Map, ShieldCheck
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -20,70 +18,102 @@ import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from '@/hooks/use-toast';
 
 export default function ReferenceHubPage() {
   const { globalUser } = useAuthContext();
   const { t } = useLanguage();
   const db = useFirestore();
-  const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("technical");
 
-  // State for drill-down navigation in Technical Path
+  // --- State for Technical Drill-down ---
   const [selectedTxType, setSelectedTxType] = useState<any>(null);
   const [selectedSubService, setSelectedSubService] = useState<any>(null);
 
-  // Firestore Collections
-  const txTypesQuery = useMemo(() => {
-    if (!db || !globalUser?.companyId) return null;
-    return query(collection(db, paths.transactionTypes(globalUser.companyId)), orderBy('name'));
-  }, [db, globalUser?.companyId]);
+  // --- State for Organizational Drill-down ---
+  const [selectedDept, setSelectedDept] = useState<any>(null);
 
-  const subServicesQuery = useMemo(() => {
-    if (!db || !globalUser?.companyId || !selectedTxType) return null;
-    return query(collection(db, paths.subServices(globalUser.companyId, selectedTxType.id)), orderBy('name'));
-  }, [db, globalUser?.companyId, selectedTxType]);
+  // --- State for Geographical Drill-down ---
+  const [selectedGov, setSelectedGov] = useState<any>(null);
 
-  const stagesQuery = useMemo(() => {
-    if (!db || !globalUser?.companyId || !selectedTxType || !selectedSubService) return null;
-    return query(collection(db, paths.technicalStages(globalUser.companyId, selectedTxType.id, selectedSubService.id)), orderBy('order'));
-  }, [db, globalUser?.companyId, selectedTxType, selectedSubService]);
+  // --- Management State ---
+  const [isAdding, setIsAdding] = useState(false);
+  const [newItemName, setNewItemName] = useState("");
+  const [extraField, setExtraField] = useState<any>("");
+
+  // --- Queries ---
+  const companyId = globalUser?.companyId;
+
+  const txTypesQuery = useMemo(() => companyId && db ? query(collection(db, paths.transactionTypes(companyId)), orderBy('name')) : null, [db, companyId]);
+  const subServicesQuery = useMemo(() => companyId && db && selectedTxType ? query(collection(db, paths.subServices(companyId, selectedTxType.id)), orderBy('name')) : null, [db, companyId, selectedTxType]);
+  const stagesQuery = useMemo(() => companyId && db && selectedTxType && selectedSubService ? query(collection(db, paths.technicalStages(companyId, selectedTxType.id, selectedSubService.id)), orderBy('order')) : null, [db, companyId, selectedTxType, selectedSubService]);
+
+  const deptsQuery = useMemo(() => companyId && db ? query(collection(db, paths.departments(companyId)), orderBy('name')) : null, [db, companyId]);
+  const jobsQuery = useMemo(() => companyId && db && selectedDept ? query(collection(db, paths.jobs(companyId, selectedDept.id)), orderBy('name')) : null, [db, companyId, selectedDept]);
+
+  const govsQuery = useMemo(() => companyId && db ? query(collection(db, paths.governorates(companyId)), orderBy('name')) : null, [db, companyId]);
+  const areasQuery = useMemo(() => companyId && db && selectedGov ? query(collection(db, paths.areas(companyId, selectedGov.id)), orderBy('name')) : null, [db, companyId, selectedGov]);
 
   const { data: txTypes, loading: txLoading } = useCollection(txTypesQuery);
   const { data: subServices, loading: subLoading } = useCollection(subServicesQuery);
   const { data: stages, loading: stageLoading } = useCollection(stagesQuery);
+  const { data: depts, loading: deptsLoading } = useCollection(deptsQuery);
+  const { data: jobs, loading: jobsLoading } = useCollection(jobsQuery);
+  const { data: govs, loading: govsLoading } = useCollection(govsQuery);
+  const { data: areas, loading: areasLoading } = useCollection(areasQuery);
 
-  // Management State
-  const [isAdding, setIsAdding] = useState(false);
-  const [newItemName, setNewItemName] = useState("");
-
-  const handleAdd = async (type: 'tx' | 'sub' | 'stage') => {
-    if (!newItemName.trim() || !globalUser?.companyId || !db) return;
+  const handleAdd = async (type: string, parentId?: string) => {
+    if (!newItemName.trim() || !companyId || !db) return;
     setIsAdding(true);
     try {
       let ref;
       let data: any = { name: newItemName, createdAt: serverTimestamp() };
 
-      if (type === 'tx') {
-        ref = collection(db, paths.transactionTypes(globalUser.companyId));
-      } else if (type === 'sub' && selectedTxType) {
-        ref = collection(db, paths.subServices(globalUser.companyId, selectedTxType.id));
-        data.parentId = selectedTxType.id;
-      } else if (type === 'stage' && selectedTxType && selectedSubService) {
-        ref = collection(db, paths.technicalStages(globalUser.companyId, selectedTxType.id, selectedSubService.id));
-        data.order = (stages?.length || 0) + 1;
-        data.controlType = 'TimeBased';
+      switch (type) {
+        case 'tx': ref = collection(db, paths.transactionTypes(companyId)); break;
+        case 'sub': ref = collection(db, paths.subServices(companyId, selectedTxType.id)); data.parentId = selectedTxType.id; break;
+        case 'stage': 
+          ref = collection(db, paths.technicalStages(companyId, selectedTxType.id, selectedSubService.id)); 
+          data.order = (stages?.length || 0) + 1;
+          data.controlType = extraField || 'TimeBased';
+          break;
+        case 'dept': ref = collection(db, paths.departments(companyId)); break;
+        case 'job': ref = collection(db, paths.jobs(companyId, selectedDept.id)); data.departmentId = selectedDept.id; break;
+        case 'gov': ref = collection(db, paths.governorates(companyId)); break;
+        case 'area': ref = collection(db, paths.areas(companyId, selectedGov.id)); data.governorateId = selectedGov.id; break;
       }
 
       if (ref) {
         await addDoc(ref, data);
-        toast({ title: "تم الحفظ", description: "تمت إضافة السجل المرجعي بنجاح." });
+        toast({ title: "تم الحفظ", description: "تمت إضافة السجل بنجاح." });
         setNewItemName("");
+        setExtraField("");
       }
     } catch (e) {
-      toast({ variant: "destructive", title: "خطأ", description: "تعذر الحفظ." });
+      toast({ variant: "destructive", title: "خطأ", description: "فشل الحفظ في السحاب." });
     } finally {
       setIsAdding(false);
+    }
+  };
+
+  const handleDelete = async (type: string, id: string) => {
+    if (!companyId || !db || !confirm("هل أنت متأكد من حذف هذا السجل المرجعي؟")) return;
+    try {
+      let path = "";
+      switch (type) {
+        case 'tx': path = paths.transactionTypes(companyId); break;
+        case 'sub': path = paths.subServices(companyId, selectedTxType.id); break;
+        case 'stage': path = paths.technicalStages(companyId, selectedTxType.id, selectedSubService.id); break;
+        case 'dept': path = paths.departments(companyId); break;
+        case 'job': path = paths.jobs(companyId, selectedDept.id); break;
+        case 'gov': path = paths.governorates(companyId); break;
+        case 'area': path = paths.areas(companyId, selectedGov.id); break;
+      }
+      await deleteDoc(doc(db, path, id));
+      toast({ title: "تم الحذف", description: "تم إزالة السجل من قاعدة البيانات." });
+    } catch (e) {
+      toast({ variant: "destructive", title: "خطأ", description: "تعذر الحذف." });
     }
   };
 
@@ -91,49 +121,56 @@ export default function ReferenceHubPage() {
     <div className="space-y-8" dir="rtl">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-right">
-          <h1 className="text-3xl font-black font-headline flex items-center gap-3 flex-row-reverse">
-            <Database className="h-8 w-8 text-primary" />
+          <h1 className="text-4xl font-black font-headline flex items-center gap-3 flex-row-reverse">
+            <Database className="h-10 w-10 text-primary" />
             {t('checklists')}
           </h1>
-          <p className="text-muted-foreground mt-1 text-sm font-bold">هيكلة المسارات الفنية، الأقسام، والقواعد المرجعية للنظام</p>
+          <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">إدارة الدستور التشغيلي والقواعد المرجعية للذكاء الاصطناعي</p>
         </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-3 w-full max-w-2xl mx-auto h-14 bg-muted/50 rounded-2xl p-1">
-          <TabsTrigger value="technical" className="rounded-xl font-bold gap-2 flex-row-reverse"><Workflow className="h-4 w-4" /> {t('techRef')}</TabsTrigger>
-          <TabsTrigger value="org" className="rounded-xl font-bold gap-2 flex-row-reverse"><Building2 className="h-4 w-4" /> {t('orgRef')}</TabsTrigger>
-          <TabsTrigger value="geo" className="rounded-xl font-bold gap-2 flex-row-reverse"><MapPin className="h-4 w-4" /> {t('geoRef')}</TabsTrigger>
+        <TabsList className="grid grid-cols-3 w-full max-w-3xl mx-auto h-16 bg-muted/30 rounded-3xl p-2 shadow-inner">
+          <TabsTrigger value="technical" className="rounded-2xl font-black gap-2 flex-row-reverse transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg"><Workflow className="h-5 w-5" /> {t('techRef')}</TabsTrigger>
+          <TabsTrigger value="org" className="rounded-2xl font-black gap-2 flex-row-reverse transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg"><Building2 className="h-5 w-5" /> {t('orgRef')}</TabsTrigger>
+          <TabsTrigger value="geo" className="rounded-2xl font-black gap-2 flex-row-reverse transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg"><MapPin className="h-5 w-5" /> {t('geoRef')}</TabsTrigger>
         </TabsList>
 
+        {/* --- Technical Path Tab --- */}
         <TabsContent value="technical" className="mt-8 space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Column 1: Transaction Types */}
-            <Card className="border-0 shadow-lg rounded-3xl bg-white overflow-hidden">
-              <CardHeader className="bg-slate-50 border-b p-5 flex flex-row items-center justify-between">
-                <CardTitle className="text-sm font-bold">{t('txTypes')}</CardTitle>
+            <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
+              <CardHeader className="bg-slate-50 border-b p-6 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm font-black flex items-center gap-2 flex-row-reverse"><Layers className="h-4 w-4 text-primary" /> {t('txTypes')}</CardTitle>
                 <Dialog>
-                  <DialogTrigger asChild><Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg text-primary"><Plus className="h-4 w-4" /></Button></DialogTrigger>
-                  <DialogContent className="rounded-3xl" dir="rtl">
-                    <DialogHeader><DialogTitle className="text-right">إضافة نوع معاملة جديد</DialogTitle></DialogHeader>
-                    <div className="py-4 space-y-4">
-                      <Label>اسم نوع المعاملة</Label>
-                      <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="مثال: تصميم بلدية" className="h-12 rounded-xl" />
+                  <DialogTrigger asChild><Button size="icon" variant="ghost" className="h-10 w-10 rounded-xl text-primary bg-primary/5 hover:bg-primary/10"><Plus className="h-5 w-5" /></Button></DialogTrigger>
+                  <DialogContent className="rounded-3xl border-0 shadow-2xl" dir="rtl">
+                    <DialogHeader><DialogTitle className="text-right font-headline font-black text-2xl">إضافة مسار فني جديد</DialogTitle></DialogHeader>
+                    <div className="py-6 space-y-4">
+                      <Label className="text-right block">اسم المسار (مثال: تصميم بلدية)</Label>
+                      <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="أدخل اسم المسار هنا..." className="h-14 rounded-2xl border-2 focus:border-primary/50 text-right" />
                     </div>
-                    <DialogFooter><Button onClick={() => handleAdd('tx')} className="w-full h-12 rounded-xl font-bold">{isAdding ? <Loader2 className="animate-spin" /> : "حفظ"}</Button></DialogFooter>
+                    <DialogFooter><Button onClick={() => handleAdd('tx')} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">{isAdding ? <Loader2 className="animate-spin" /> : "حفظ المسار الفني"}</Button></DialogFooter>
                   </DialogContent>
                 </Dialog>
               </CardHeader>
-              <CardContent className="p-0 max-h-[500px] overflow-y-auto">
-                {txLoading ? <div className="p-8 text-center"><Loader2 className="animate-spin mx-auto h-6 w-6" /></div> : (
+              <CardContent className="p-0 max-h-[600px] overflow-y-auto">
+                {txLoading ? <div className="p-12 text-center"><Loader2 className="animate-spin mx-auto h-8 w-8 text-primary/50" /></div> : (
                   txTypes?.map(tx => (
                     <div 
                       key={tx.id} 
                       onClick={() => { setSelectedTxType(tx); setSelectedSubService(null); }}
-                      className={`p-4 border-b flex items-center justify-between cursor-pointer transition-colors ${selectedTxType?.id === tx.id ? 'bg-primary/5 border-r-4 border-r-primary' : 'hover:bg-muted/30'}`}
+                      className={`p-5 border-b flex items-center justify-between cursor-pointer transition-all group ${selectedTxType?.id === tx.id ? 'bg-primary/5 border-r-8 border-r-primary' : 'hover:bg-muted/30'}`}
                     >
-                      <span className="text-sm font-bold">{tx.name}</span>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex flex-col">
+                        <span className="text-sm font-black text-slate-800">{tx.name}</span>
+                        <span className="text-[10px] text-muted-foreground font-mono">ID: {tx.id.substring(0,8)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDelete('tx', tx.id); }} className="opacity-0 group-hover:opacity-100 h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                        <ChevronRight className={`h-5 w-5 transition-transform ${selectedTxType?.id === tx.id ? 'rotate-90 text-primary' : 'text-muted-foreground'}`} />
+                      </div>
                     </div>
                   ))
                 )}
@@ -141,32 +178,35 @@ export default function ReferenceHubPage() {
             </Card>
 
             {/* Column 2: Sub Services */}
-            <Card className={`border-0 shadow-lg rounded-3xl bg-white overflow-hidden transition-opacity ${!selectedTxType ? 'opacity-30 pointer-events-none' : ''}`}>
-              <CardHeader className="bg-slate-50 border-b p-5 flex flex-row items-center justify-between">
-                <CardTitle className="text-sm font-bold">{t('subSrvs')}</CardTitle>
+            <Card className={`border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 transition-opacity ${!selectedTxType ? 'opacity-30 pointer-events-none' : ''}`}>
+              <CardHeader className="bg-slate-50 border-b p-6 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm font-black flex items-center gap-2 flex-row-reverse"><Settings2 className="h-4 w-4 text-primary" /> {t('subSrvs')}</CardTitle>
                 <Dialog>
-                  <DialogTrigger asChild><Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg text-primary"><Plus className="h-4 w-4" /></Button></DialogTrigger>
-                  <DialogContent className="rounded-3xl" dir="rtl">
-                    <DialogHeader><DialogTitle className="text-right">إضافة خدمة فرعية لـ {selectedTxType?.name}</DialogTitle></DialogHeader>
-                    <div className="py-4 space-y-4">
-                      <Label>اسم الخدمة الفرعية</Label>
-                      <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="مثال: مخططات معمارية" className="h-12 rounded-xl" />
+                  <DialogTrigger asChild><Button size="icon" variant="ghost" className="h-10 w-10 rounded-xl text-primary bg-primary/5 hover:bg-primary/10"><Plus className="h-5 w-5" /></Button></DialogTrigger>
+                  <DialogContent className="rounded-3xl border-0 shadow-2xl" dir="rtl">
+                    <DialogHeader><DialogTitle className="text-right font-headline font-black text-2xl">إضافة خدمة لـ {selectedTxType?.name}</DialogTitle></DialogHeader>
+                    <div className="py-6 space-y-4">
+                      <Label className="text-right block">اسم الخدمة الفرعية</Label>
+                      <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="مثال: مخططات إنشائية..." className="h-14 rounded-2xl border-2 focus:border-primary/50 text-right" />
                     </div>
-                    <DialogFooter><Button onClick={() => handleAdd('sub')} className="w-full h-12 rounded-xl font-bold">{isAdding ? <Loader2 className="animate-spin" /> : "حفظ"}</Button></DialogFooter>
+                    <DialogFooter><Button onClick={() => handleAdd('sub')} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">{isAdding ? <Loader2 className="animate-spin" /> : "إضافة الخدمة"}</Button></DialogFooter>
                   </DialogContent>
                 </Dialog>
               </CardHeader>
-              <CardContent className="p-0 max-h-[500px] overflow-y-auto">
-                {!selectedTxType ? <div className="p-12 text-center text-xs text-muted-foreground">اختر نوع معاملة أولاً</div> : (
-                  subLoading ? <div className="p-8 text-center"><Loader2 className="animate-spin mx-auto h-6 w-6" /></div> : (
+              <CardContent className="p-0 max-h-[600px] overflow-y-auto">
+                {!selectedTxType ? <div className="p-20 text-center text-xs text-muted-foreground font-bold">يرجى اختيار مسار فني لعرض خدماته</div> : (
+                  subLoading ? <div className="p-12 text-center"><Loader2 className="animate-spin mx-auto h-8 w-8 text-primary/50" /></div> : (
                     subServices?.map(sub => (
                       <div 
                         key={sub.id} 
                         onClick={() => setSelectedSubService(sub)}
-                        className={`p-4 border-b flex items-center justify-between cursor-pointer transition-colors ${selectedSubService?.id === sub.id ? 'bg-primary/5 border-r-4 border-r-primary' : 'hover:bg-muted/30'}`}
+                        className={`p-5 border-b flex items-center justify-between cursor-pointer transition-all group ${selectedSubService?.id === sub.id ? 'bg-primary/5 border-r-8 border-r-primary' : 'hover:bg-muted/30'}`}
                       >
-                        <span className="text-sm font-bold">{sub.name}</span>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-black text-slate-800">{sub.name}</span>
+                        <div className="flex items-center gap-2">
+                           <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDelete('sub', sub.id); }} className="opacity-0 group-hover:opacity-100 h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                           <ChevronRight className={`h-5 w-5 transition-transform ${selectedSubService?.id === sub.id ? 'rotate-90 text-primary' : 'text-muted-foreground'}`} />
+                        </div>
                       </div>
                     ))
                   )
@@ -175,32 +215,49 @@ export default function ReferenceHubPage() {
             </Card>
 
             {/* Column 3: Technical Stages (WBS) */}
-            <Card className={`border-0 shadow-lg rounded-3xl bg-white overflow-hidden transition-opacity ${!selectedSubService ? 'opacity-30 pointer-events-none' : ''}`}>
-              <CardHeader className="bg-slate-50 border-b p-5 flex flex-row items-center justify-between">
-                <CardTitle className="text-sm font-bold">{t('stages')}</CardTitle>
+            <Card className={`border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 transition-opacity ${!selectedSubService ? 'opacity-30 pointer-events-none' : ''}`}>
+              <CardHeader className="bg-slate-50 border-b p-6 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm font-black flex items-center gap-2 flex-row-reverse"><ShieldCheck className="h-4 w-4 text-primary" /> {t('stages')}</CardTitle>
                 <Dialog>
-                  <DialogTrigger asChild><Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg text-primary"><Plus className="h-4 w-4" /></Button></DialogTrigger>
-                  <DialogContent className="rounded-3xl" dir="rtl">
-                    <DialogHeader><DialogTitle className="text-right">إضافة مرحلة عمل لـ {selectedSubService?.name}</DialogTitle></DialogHeader>
-                    <div className="py-4 space-y-4">
-                      <Label>اسم المرحلة (WBS Item)</Label>
-                      <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="مثال: إعداد المسودة الأولى" className="h-12 rounded-xl" />
+                  <DialogTrigger asChild><Button size="icon" variant="ghost" className="h-10 w-10 rounded-xl text-primary bg-primary/5 hover:bg-primary/10"><Plus className="h-5 w-5" /></Button></DialogTrigger>
+                  <DialogContent className="rounded-3xl border-0 shadow-2xl" dir="rtl">
+                    <DialogHeader><DialogTitle className="text-right font-headline font-black text-2xl">إضافة مرحلة عمل WBS</DialogTitle></DialogHeader>
+                    <div className="py-6 space-y-4 text-right">
+                      <div className="space-y-2">
+                        <Label>اسم المرحلة (WBS Item)</Label>
+                        <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="مثال: إعداد المسودة الأولى..." className="h-14 rounded-2xl border-2 focus:border-primary/50" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>نوع التحكم (Control Type)</Label>
+                        <Select value={extraField} onValueChange={setExtraField}>
+                          <SelectTrigger className="h-14 rounded-2xl border-2"><SelectValue placeholder="اختر نوع التحكم" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="TimeBased">زمني (Time Based)</SelectItem>
+                            <SelectItem value="Numeric">رقمي (Numeric)</SelectItem>
+                            <SelectItem value="Hybrid">هجين (Hybrid)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
-                    <DialogFooter><Button onClick={() => handleAdd('stage')} className="w-full h-12 rounded-xl font-bold">{isAdding ? <Loader2 className="animate-spin" /> : "حفظ"}</Button></DialogFooter>
+                    <DialogFooter><Button onClick={() => handleAdd('stage')} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">{isAdding ? <Loader2 className="animate-spin" /> : "حفظ المرحلة"}</Button></DialogFooter>
                   </DialogContent>
                 </Dialog>
               </CardHeader>
-              <CardContent className="p-4 space-y-3 max-h-[500px] overflow-y-auto">
-                {!selectedSubService ? <div className="p-12 text-center text-xs text-muted-foreground">اختر خدمة فرعية أولاً</div> : (
-                  stageLoading ? <div className="p-8 text-center"><Loader2 className="animate-spin mx-auto h-6 w-6" /></div> : (
-                    stages?.length === 0 ? <p className="text-center text-xs text-muted-foreground py-8">لا يوجد مراحل بعد</p> : (
+              <CardContent className="p-6 space-y-4 max-h-[600px] overflow-y-auto">
+                {!selectedSubService ? <div className="p-20 text-center text-xs text-muted-foreground font-bold italic">اختر خدمة فرعية لبناء مراحل الـ WBS</div> : (
+                  stageLoading ? <div className="p-12 text-center"><Loader2 className="animate-spin mx-auto h-8 w-8 text-primary/50" /></div> : (
+                    stages?.length === 0 ? <p className="text-center text-xs text-muted-foreground py-12 font-bold bg-muted/20 rounded-3xl border-2 border-dashed">لا توجد مراحل معرفة بعد لهذه الخدمة</p> : (
                       stages?.map((stage, idx) => (
-                        <div key={stage.id} className="p-3 bg-muted/40 rounded-xl border flex items-center gap-3">
-                          <span className="h-6 w-6 rounded-full bg-primary text-white flex items-center justify-center text-[10px] font-bold">{idx + 1}</span>
+                        <div key={stage.id} className="p-4 bg-muted/30 rounded-[1.5rem] border-2 border-transparent hover:border-primary/20 transition-all flex items-center gap-4 group">
+                          <span className="h-8 w-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-black shadow-lg">{idx + 1}</span>
                           <div className="flex-1">
-                            <p className="text-xs font-bold">{stage.name}</p>
-                            <Badge variant="outline" className="text-[9px] mt-1 bg-white">TimeBased</Badge>
+                            <p className="text-sm font-black text-slate-800">{stage.name}</p>
+                            <div className="flex gap-2 mt-1">
+                                <Badge variant="secondary" className="text-[9px] px-2 py-0.5 rounded-lg font-bold bg-white text-primary border-primary/20">{stage.controlType}</Badge>
+                                {stage.isEditable && <Badge variant="outline" className="text-[9px] px-2 py-0.5 rounded-lg font-bold border-emerald-200 text-emerald-600">قابل للتعديل</Badge>}
+                            </div>
                           </div>
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete('stage', stage.id)} className="opacity-0 group-hover:opacity-100 h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>
                         </div>
                       ))
                     )
@@ -211,24 +268,138 @@ export default function ReferenceHubPage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="org" className="mt-8">
-          <div className="flex items-center justify-center py-20 bg-muted/20 rounded-3xl border-2 border-dashed opacity-50">
-            <div className="text-center space-y-2">
-              <Building2 className="h-12 w-12 mx-auto text-muted-foreground" />
-              <p className="font-bold">قيد البرمجة: موديول الأقسام والوظائف</p>
-              <p className="text-xs">سيتم ربط الموظفين بالأقسام المرجعية هنا.</p>
-            </div>
-          </div>
+        {/* --- Organizational Tab --- */}
+        <TabsContent value="org" className="mt-8 space-y-6">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+             {/* Departments */}
+             <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
+                <CardHeader className="bg-slate-50 border-b p-6 flex flex-row items-center justify-between">
+                  <CardTitle className="text-sm font-black flex items-center gap-2 flex-row-reverse"><Building2 className="h-4 w-4 text-primary" /> الأقسام الإدارية</CardTitle>
+                  <Dialog>
+                    <DialogTrigger asChild><Button size="icon" variant="ghost" className="h-10 w-10 rounded-xl text-primary bg-primary/5 hover:bg-primary/10"><Plus className="h-5 w-5" /></Button></DialogTrigger>
+                    <DialogContent className="rounded-3xl border-0 shadow-2xl" dir="rtl">
+                      <DialogHeader><DialogTitle className="text-right font-headline font-black text-2xl">إضافة قسم جديد</DialogTitle></DialogHeader>
+                      <div className="py-6 space-y-4">
+                        <Label className="text-right block">اسم القسم (مثال: القسم المعماري)</Label>
+                        <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="أدخل اسم القسم..." className="h-14 rounded-2xl border-2 focus:border-primary/50 text-right" />
+                      </div>
+                      <DialogFooter><Button onClick={() => handleAdd('dept')} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">{isAdding ? <Loader2 className="animate-spin" /> : "حفظ القسم"}</Button></DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {deptsLoading ? <div className="p-12 text-center"><Loader2 className="animate-spin mx-auto h-8 w-8 text-primary/50" /></div> : (
+                    depts?.map(dept => (
+                      <div 
+                        key={dept.id} 
+                        onClick={() => setSelectedDept(dept)}
+                        className={`p-5 border-b flex items-center justify-between cursor-pointer transition-all ${selectedDept?.id === dept.id ? 'bg-primary/5 border-r-8 border-r-primary' : 'hover:bg-muted/30'}`}
+                      >
+                        <span className="text-sm font-black">{dept.name}</span>
+                        <ChevronRight className={`h-5 w-5 ${selectedDept?.id === dept.id ? 'text-primary' : 'text-muted-foreground'}`} />
+                      </div>
+                    ))
+                  )}
+                </CardContent>
+             </Card>
+
+             {/* Jobs */}
+             <Card className={`border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 transition-opacity ${!selectedDept ? 'opacity-30 pointer-events-none' : ''}`}>
+                <CardHeader className="bg-slate-50 border-b p-6 flex flex-row items-center justify-between">
+                  <CardTitle className="text-sm font-black flex items-center gap-2 flex-row-reverse"><Briefcase className="h-4 w-4 text-primary" /> المسميات الوظيفية لـ {selectedDept?.name}</CardTitle>
+                  <Dialog>
+                    <DialogTrigger asChild><Button size="icon" variant="ghost" className="h-10 w-10 rounded-xl text-primary bg-primary/5 hover:bg-primary/10"><Plus className="h-5 w-5" /></Button></DialogTrigger>
+                    <DialogContent className="rounded-3xl border-0 shadow-2xl" dir="rtl">
+                      <DialogHeader><DialogTitle className="text-right font-headline font-black text-2xl">إضافة وظيفة جديدة</DialogTitle></DialogHeader>
+                      <div className="py-6 space-y-4">
+                        <Label className="text-right block">المسمى الوظيفي</Label>
+                        <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="مثال: مهندس موقع..." className="h-14 rounded-2xl border-2 focus:border-primary/50 text-right" />
+                      </div>
+                      <DialogFooter><Button onClick={() => handleAdd('job')} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">{isAdding ? <Loader2 className="animate-spin" /> : "حفظ الوظيفة"}</Button></DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {!selectedDept ? <div className="p-20 text-center text-xs text-muted-foreground font-bold">اختر قسماً لعرض مسمياته الوظيفية</div> : (
+                    jobsLoading ? <div className="p-12 text-center"><Loader2 className="animate-spin mx-auto h-8 w-8 text-primary/50" /></div> : (
+                      jobs?.map(job => (
+                        <div key={job.id} className="p-5 border-b flex items-center justify-between group hover:bg-muted/30 transition-all">
+                          <span className="text-sm font-bold text-slate-700">{job.name}</span>
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete('job', job.id)} className="opacity-0 group-hover:opacity-100 text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                        </div>
+                      ))
+                    )
+                  )}
+                </CardContent>
+             </Card>
+           </div>
         </TabsContent>
 
-        <TabsContent value="geo" className="mt-8">
-           <div className="flex items-center justify-center py-20 bg-muted/20 rounded-3xl border-2 border-dashed opacity-50">
-            <div className="text-center space-y-2">
-              <MapPin className="h-12 w-12 mx-auto text-muted-foreground" />
-              <p className="font-bold">قيد البرمجة: موديول المحافظات والمناطق</p>
-              <p className="text-xs">سيتم استخدامها في عناوين المشاريع والعملاء.</p>
-            </div>
-          </div>
+        {/* --- Geographical Tab --- */}
+        <TabsContent value="geo" className="mt-8 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+             {/* Governorates */}
+             <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
+                <CardHeader className="bg-slate-50 border-b p-6 flex flex-row items-center justify-between">
+                  <CardTitle className="text-sm font-black flex items-center gap-2 flex-row-reverse"><Map className="h-4 w-4 text-primary" /> المحافظات</CardTitle>
+                  <Dialog>
+                    <DialogTrigger asChild><Button size="icon" variant="ghost" className="h-10 w-10 rounded-xl text-primary bg-primary/5 hover:bg-primary/10"><Plus className="h-5 w-5" /></Button></DialogTrigger>
+                    <DialogContent className="rounded-3xl border-0 shadow-2xl" dir="rtl">
+                      <DialogHeader><DialogTitle className="text-right font-headline font-black text-2xl">إضافة محافظة</DialogTitle></DialogHeader>
+                      <div className="py-6 space-y-4">
+                        <Label className="text-right block">اسم المحافظة</Label>
+                        <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="مثال: العاصمة..." className="h-14 rounded-2xl border-2 focus:border-primary/50 text-right" />
+                      </div>
+                      <DialogFooter><Button onClick={() => handleAdd('gov')} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">{isAdding ? <Loader2 className="animate-spin" /> : "حفظ المحافظة"}</Button></DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {govsLoading ? <div className="p-12 text-center"><Loader2 className="animate-spin mx-auto h-8 w-8 text-primary/50" /></div> : (
+                    govs?.map(gov => (
+                      <div 
+                        key={gov.id} 
+                        onClick={() => setSelectedGov(gov)}
+                        className={`p-5 border-b flex items-center justify-between cursor-pointer transition-all ${selectedGov?.id === gov.id ? 'bg-primary/5 border-r-8 border-r-primary' : 'hover:bg-muted/30'}`}
+                      >
+                        <span className="text-sm font-black">{gov.name}</span>
+                        <ChevronRight className={`h-5 w-5 ${selectedGov?.id === gov.id ? 'text-primary' : 'text-muted-foreground'}`} />
+                      </div>
+                    ))
+                  )}
+                </CardContent>
+             </Card>
+
+             {/* Areas */}
+             <Card className={`border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 transition-opacity ${!selectedGov ? 'opacity-30 pointer-events-none' : ''}`}>
+                <CardHeader className="bg-slate-50 border-b p-6 flex flex-row items-center justify-between">
+                  <CardTitle className="text-sm font-black flex items-center gap-2 flex-row-reverse"><MapPin className="h-4 w-4 text-primary" /> المناطق التابعة لـ {selectedGov?.name}</CardTitle>
+                  <Dialog>
+                    <DialogTrigger asChild><Button size="icon" variant="ghost" className="h-10 w-10 rounded-xl text-primary bg-primary/5 hover:bg-primary/10"><Plus className="h-5 w-5" /></Button></DialogTrigger>
+                    <DialogContent className="rounded-3xl border-0 shadow-2xl" dir="rtl">
+                      <DialogHeader><DialogTitle className="text-right font-headline font-black text-2xl">إضافة منطقة جديدة</DialogTitle></DialogHeader>
+                      <div className="py-6 space-y-4">
+                        <Label className="text-right block">اسم المنطقة</Label>
+                        <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="مثال: الخالدية..." className="h-14 rounded-2xl border-2 focus:border-primary/50 text-right" />
+                      </div>
+                      <DialogFooter><Button onClick={() => handleAdd('area')} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">{isAdding ? <Loader2 className="animate-spin" /> : "حفظ المنطقة"}</Button></DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {!selectedGov ? <div className="p-20 text-center text-xs text-muted-foreground font-bold italic">اختر محافظة أولاً لعرض مناطقها الجغرافية</div> : (
+                    areasLoading ? <div className="p-12 text-center"><Loader2 className="animate-spin mx-auto h-8 w-8 text-primary/50" /></div> : (
+                      areas?.map(area => (
+                        <div key={area.id} className="p-5 border-b flex items-center justify-between group hover:bg-muted/30 transition-all">
+                          <span className="text-sm font-bold text-slate-700">{area.name}</span>
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete('area', area.id)} className="opacity-0 group-hover:opacity-100 text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                        </div>
+                      ))
+                    )
+                  )}
+                </CardContent>
+             </Card>
+           </div>
         </TabsContent>
       </Tabs>
     </div>
