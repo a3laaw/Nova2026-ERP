@@ -1,7 +1,7 @@
 
 /**
  * @fileOverview تعريف واجهات البيانات المرجعية والتشغيلية لنظام Nova ERP.
- * تم تحديثه ليشمل الربط بين المسارات الفنية والعقود المالية.
+ * تم تحديثه لضمان الاتساق الكامل بين القوالب المرجعية والنسخ التنفيذية.
  */
 
 export type ControlType = 'TimeBased' | 'Numeric' | 'Hybrid';
@@ -15,7 +15,7 @@ export interface BaseReference {
   companyId: string;
 }
 
-// --- المرجعيات الأساسية ---
+// --- المرجعيات الأساسية (The Foundation) ---
 
 export interface Department extends BaseReference {
   code: string;
@@ -64,6 +64,8 @@ export interface ServiceType extends BaseReference {
   order: number;
 }
 
+// --- المسار الفني: القوالب المرجعية (Technical Path Templates) ---
+
 export interface TransactionType extends BaseReference {
   code: string;
   name: string;
@@ -94,6 +96,9 @@ export interface SubService extends BaseReference {
   isActive: boolean;
 }
 
+/**
+ * TechnicalStage - القالب المرجعي للمرحلة
+ */
 export interface TechnicalStage extends BaseReference {
   code: string;
   name: string;
@@ -125,7 +130,7 @@ export interface TechnicalStage extends BaseReference {
   isActive: boolean;
 }
 
-// --- الكيانات التشغيلية والربط المالي ---
+// --- الكيانات التشغيلية (Operational Entities) ---
 
 export interface ContractMilestone {
   id: string;
@@ -133,7 +138,7 @@ export interface ContractMilestone {
   amount: number;
   percentage: number;
   status: 'pending' | 'due' | 'paid';
-  linkedStageId?: string; // ربط بمرحلة محددة
+  linkedStageInstanceId?: string; // ربط بنسخة تنفيذية محددة
   linkedMilestoneKey?: string; // ربط بمفتاح مرحلة (مثلاً M1)
 }
 
@@ -146,14 +151,20 @@ export interface Contract extends BaseReference {
   milestones: ContractMilestone[];
 }
 
+/**
+ * StageInstance - نسخة تنفيذية حية من المرحلة المرجعية
+ */
 export interface StageInstance extends BaseReference {
   projectId: string;
-  stageId: string; // المرجع للقالب المرجعي
+  templateStageId: string; // الرابط للقالب المرجعي TechnicalStage
+  subServiceId: string; // السياق التشغيلي
   name: string;
   code: string;
   status: 'pending' | 'in-progress' | 'completed' | 'skipped';
   billableTrigger: boolean;
   milestoneKey: string;
+  order: number;
+  startedAt?: any;
   completedAt?: any;
   completedBy?: string;
 }

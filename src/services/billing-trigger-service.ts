@@ -7,52 +7,46 @@ import {
   doc, 
   updateDoc, 
   getDocs, 
-  query, 
-  where, 
   serverTimestamp,
   writeBatch
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
-import { StageInstance, Contract, ContractMilestone } from '@/types/reference';
+import { Contract, StageInstance } from '@/types/reference';
 
 /**
  * خدمة ذكاء الربط المالي (Billing Intelligence Service).
- * مسؤولة عن مراقبة اكتمال المراحل الفنية وتحويلها إلى استحقاقات مالية.
+ * مسؤولة عن مراقبة اكتمال مراحل التنفيذ (StageInstances) وتحويلها إلى استحقاقات مالية.
  */
 export class BillingTriggerService {
   constructor(private db: Firestore, private companyId: string) {}
 
   /**
-   * إكمال مرحلة فنية والتحقق من التبعات المالية
+   * إكمال مرحلة تنفيذية والتحقق من التبعات المالية
    */
-  async completeStage(projectId: string, instanceId: string, userId: string) {
-    const stageRef = doc(this.db, paths.projectStages(this.companyId, projectId), instanceId);
+  async completeStageInstance(projectId: string, instanceId: string, userId: string) {
+    const instanceRef = doc(this.db, paths.stageInstances(this.companyId, projectId), instanceId);
     
     try {
-      // 1. تحديث حالة المرحلة
-      await updateDoc(stageRef, {
+      // 1. تحديث حالة النسخة التنفيذية
+      await updateDoc(instanceRef, {
         status: 'completed',
         completedAt: serverTimestamp(),
         completedBy: userId,
         updatedAt: serverTimestamp()
       });
 
-      // سنحتاج لقراءة بيانات المرحلة المكتملة لمعرفة ما إذا كانت Billable
-      // (يفضل جلبها قبل التحديث أو استخدام snapshot)
-      // للتبسيط، سنفترض وجود وظيفة تكتشف العقود المتأثرة
+      // 2. فحص الأثر المالي
       return await this.checkFinancialImpact(projectId, instanceId);
     } catch (error) {
-      console.error('Failed to complete stage:', error);
+      console.error('Failed to complete stage instance:', error);
       throw error;
     }
   }
 
   /**
-   * فحص الأثر المالي لاكتمال المرحلة
+   * فحص الأثر المالي لاكتمال النسخة التنفيذية
    */
   private async checkFinancialImpact(projectId: string, stageInstanceId: string) {
-    // 1. جلب بيانات المرحلة المكتملة
-    // 2. جلب عقود المشروع
     const contractsRef = collection(this.db, paths.projectContracts(this.companyId, projectId));
     const contractsSnap = await getDocs(contractsRef);
 
@@ -64,8 +58,8 @@ export class BillingTriggerService {
 
       // تحديث الـ Milestones المرتبطة
       const updatedMilestones = contract.milestones.map(milestone => {
-        // إذا كان الربط عبر معرف المرحلة أو المفتاح المرجعي (مثل M1)
-        if (milestone.linkedStageId === stageInstanceId || (milestone.linkedMilestoneKey && milestone.status === 'pending')) {
+        // الربط يتم عبر معرف النسخة التنفيذية أو عبر مفتاح المرحلة (Milestone Key)
+        if (milestone.linkedStageInstanceId === stageInstanceId || (milestone.linkedMilestoneKey && milestone.status === 'pending')) {
           hasChange = true;
           return { ...milestone, status: 'due' as const };
         }
@@ -73,11 +67,11 @@ export class BillingTriggerService {
       });
 
       if (hasChange) {
-        await updateDoc(contractDoc.ref, { milestones: updatedMilestones });
+        await updateDoc(contractDoc.ref, { 
+          milestones: updatedMilestones,
+          updatedAt: serverTimestamp()
+        });
         affectedContracts.push(contractDoc.id);
-        
-        // هنا يمكن توليد تنبيه (Notification) أو مسودة مستخلص (Payment Application Draft)
-        console.log(`Milestone triggered for contract: ${contract.title}`);
       }
     }
 
@@ -85,26 +79,29 @@ export class BillingTriggerService {
   }
 
   /**
-   * تهيئة مراحل المشروع بناءً على القالب المرجعي
+   * تهيئة مراحل المشروع (Instances) بناءً على القالب المرجعي (Template)
    */
-  async initializeProjectStages(projectId: string, templateStages: any[]) {
+  async instantiateTechnicalStages(projectId: string, subServiceId: string, templateStages: any[]) {
     const batch = writeBatch(this.db);
-    const stagesRef = collection(this.db, paths.projectStages(this.companyId, projectId));
+    const instancesRef = collection(this.db, paths.stageInstances(this.companyId, projectId));
 
-    templateStages.forEach(stage => {
-      const newStageRef = doc(stagesRef);
-      batch.set(newStageRef, {
+    templateStages.forEach(template => {
+      const newInstanceRef = doc(instancesRef);
+      const instanceData: StageInstance = {
         projectId,
-        stageId: stage.id,
-        name: stage.name,
-        code: stage.code,
+        templateStageId: template.id,
+        subServiceId,
+        name: template.name,
+        code: template.code,
         status: 'pending',
-        billableTrigger: stage.billableTrigger || false,
-        milestoneKey: stage.milestoneKey || '',
-        order: stage.order,
+        billableTrigger: template.billableTrigger || false,
+        milestoneKey: template.milestoneKey || '',
+        order: template.order,
         companyId: this.companyId,
-        createdAt: serverTimestamp()
-      });
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      };
+      batch.set(newInstanceRef, instanceData);
     });
 
     await batch.commit();

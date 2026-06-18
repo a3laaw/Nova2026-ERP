@@ -45,7 +45,7 @@
               "amount": { "type": "number" },
               "percentage": { "type": "number" },
               "status": { "type": "string", "enum": ["pending", "due", "paid"] },
-              "linkedStageId": { "type": "string" },
+              "linkedStageInstanceId": { "type": "string" },
               "linkedMilestoneKey": { "type": "string" }
             }
           }
@@ -54,11 +54,12 @@
     },
     "StageInstance": {
       "title": "Stage Execution Instance",
-      "description": "نسخة تشغيلية من المرحلة الفنية مرتبطة بمشروع فعلي.",
+      "description": "نسخة تشغيلية حية من المرحلة الفنية مرتبطة بمشروع فعلي.",
       "type": "object",
       "properties": {
         "projectId": { "type": "string" },
-        "stageId": { "type": "string" },
+        "templateStageId": { "type": "string" },
+        "subServiceId": { "type": "string" },
         "status": { "type": "string", "enum": ["pending", "in-progress", "completed", "skipped"] },
         "billableTrigger": { "type": "boolean" },
         "milestoneKey": { "type": "string" },
@@ -74,6 +75,6 @@
     "/global_users/{uid}": { "schema": "#/entities/GlobalUser", "description": "تخزين المسار الأساسي للمستخدم" },
     "/companies/{companyId}": { "schema": "#/entities/Company", "description": "بيانات الشركة" },
     "/companies/{companyId}/projects/{projectId}/contracts/{contractId}": { "schema": "#/entities/Contract", "description": "عقود المشاريع" },
-    "/companies/{companyId}/projects/{projectId}/stages/{instanceId}": { "schema": "#/entities/StageInstance", "description": "تنفيذ مراحل المشروع" }
+    "/companies/{companyId}/projects/{projectId}/stageInstances/{instanceId}": { "schema": "#/entities/StageInstance", "description": "تنفيذ مراحل المشروع" }
   }
 }
