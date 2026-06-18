@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -6,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ClipboardList, Plus, Search, Loader2, Trash2, FileText, CheckCircle2 } from "lucide-react";
+import { ClipboardList, Plus, Search, Loader2, Trash2, FileText, CheckCircle2, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy, deleteDoc, doc } from 'firebase/firestore';
@@ -22,9 +21,13 @@ export default function ChecklistsPage() {
   const db = useFirestore();
   const [searchTerm, setSearchTerm] = useState("");
   const [isAdding, setIsAdding] = useState(false);
-  const [newChecklist, setNewChecklist] = useState({ title: '', category: 'technical', description: '' });
+  
+  // الحالة الخاصة بالقائمة الجديدة
+  const [newChecklist, setNewChecklist] = useState({ title: '', category: '', description: '' });
+  const [tempItems, setTempItems] = useState<string[]>([]);
+  const [newItemText, setNewItemText] = useState("");
 
-  // SaaS Logic: Fetching scoped to company
+  // جلب البيانات من السحاب بناءً على معرف الشركة
   const checklistsRef = useMemo(() => {
     if (!db || !globalUser?.companyId) return null;
     return collection(db, paths.checklists(globalUser.companyId));
@@ -37,19 +40,33 @@ export default function ChecklistsPage() {
 
   const { data: checklists, loading } = useCollection(checklistsQuery);
 
+  const handleAddItem = () => {
+    if (newItemText.trim()) {
+      setTempItems([...tempItems, newItemText.trim()]);
+      setNewItemText("");
+    }
+  };
+
+  const removeItem = (index: number) => {
+    setTempItems(tempItems.filter((_, i) => i !== index));
+  };
+
   const handleAddChecklist = async () => {
-    if (!checklistsRef) return;
+    if (!checklistsRef || !newChecklist.title) return;
     setIsAdding(true);
     try {
       await addDoc(checklistsRef, {
-        ...newChecklist,
-        items: [], // Start with empty items
+        title: newChecklist.title,
+        category: newChecklist.category || 'technical',
+        description: newChecklist.description,
+        items: tempItems.map(text => ({ text, isRequired: true })),
         createdAt: serverTimestamp(),
       });
-      toast({ title: "تم الإنشاء", description: "تمت إضافة القائمة المرجعية الجديدة لقاعدة بياناتك." });
-      setNewChecklist({ title: '', category: 'technical', description: '' });
+      toast({ title: "تم الحفظ", description: "تمت إضافة المعيار الجديد لقاعدة بيانات الشركة." });
+      setNewChecklist({ title: '', category: '', description: '' });
+      setTempItems([]);
     } catch (error) {
-      toast({ variant: "destructive", title: "خطأ", description: "حدث خطأ أثناء حفظ القائمة." });
+      toast({ variant: "destructive", title: "خطأ", description: "تعذر حفظ البيانات حالياً." });
     } finally {
       setIsAdding(false);
     }
@@ -61,7 +78,7 @@ export default function ChecklistsPage() {
       await deleteDoc(doc(checklistsRef, id));
       toast({ title: "تم الحذف", description: "تم إزالة القائمة المرجعية بنجاح." });
     } catch (error) {
-      toast({ variant: "destructive", title: "خطأ", description: "تعذر الحذف حالياً." });
+      toast({ variant: "destructive", title: "خطأ", description: "تعذر الحذف." });
     }
   };
 
@@ -74,49 +91,93 @@ export default function ChecklistsPage() {
     <div className="space-y-8" dir="rtl">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-right">
-          <h1 className="text-3xl font-black font-headline">القوائم المرجعية والمعايير</h1>
-          <p className="text-muted-foreground mt-1">قاعدة بيانات الشركة المصغرة للنماذج، الإجراءات، والمعايير الفنية</p>
+          <h1 className="text-3xl font-black font-headline">قاعدة البيانات المرجعية</h1>
+          <p className="text-muted-foreground mt-1 text-sm font-bold">إدارة المعايير، النماذج الفنية، وإجراءات الجودة للشركة</p>
         </div>
         
         <Dialog>
           <DialogTrigger asChild>
-            <Button className="bg-primary text-white font-bold rounded-xl px-6 py-6 shadow-lg shadow-primary/20">
+            <Button className="bg-primary text-white font-bold rounded-2xl px-8 py-7 shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform">
               <Plus className="ml-2 h-5 w-5" />
-              إنشاء قاعدة بيانات جديدة
+              إنشاء نموذج معيار جديد
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]" dir="rtl">
+          <DialogContent className="sm:max-w-[500px] rounded-3xl" dir="rtl">
             <DialogHeader>
-              <DialogTitle className="text-right">إضافة قائمة مرجعية</DialogTitle>
-              <DialogDescription className="text-right">قم بتعريف إجراء أو معيار جديد ليتم الرجوع إليه من قبل الفريق.</DialogDescription>
+              <DialogTitle className="text-right font-headline font-bold text-xl">إضافة معيار / قائمة مرجعية</DialogTitle>
+              <DialogDescription className="text-right">أدخل تفاصيل الإجراء أو قائمة المهام الفنية المطلوبة من فريقك.</DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4 text-right">
+            <div className="grid gap-6 py-4 text-right">
               <div className="space-y-2">
-                <Label htmlFor="title">عنوان القائمة / المعيار</Label>
-                <Input id="title" value={newChecklist.title} onChange={e => setNewChecklist({...newChecklist, title: e.target.value})} placeholder="مثال: إجراءات تسليم الموقع" />
+                <Label htmlFor="title" className="font-bold">عنوان النموذج</Label>
+                <Input 
+                  id="title" 
+                  value={newChecklist.title} 
+                  onChange={e => setNewChecklist({...newChecklist, title: e.target.value})} 
+                  placeholder="مثال: إجراءات استلام حديد التسليح"
+                  className="rounded-xl border-2 h-12"
+                />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="category">التصنيف</Label>
-                <Select value={newChecklist.category} onValueChange={val => setNewChecklist({...newChecklist, category: val})}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="technical">فني / هندسي</SelectItem>
-                    <SelectItem value="financial">محاسبي / مالي</SelectItem>
-                    <SelectItem value="hr">موارد بشرية</SelectItem>
-                    <SelectItem value="safety">أمن وسلامة</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="category" className="font-bold">التصنيف الرئيسي</Label>
+                  <Select value={newChecklist.category} onValueChange={val => setNewChecklist({...newChecklist, category: val})}>
+                    <SelectTrigger className="rounded-xl border-2 h-12">
+                      <SelectValue placeholder="اختر التصنيف..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="technical">فني / هندسي</SelectItem>
+                      <SelectItem value="financial">محاسبي / مالي</SelectItem>
+                      <SelectItem value="safety">أمن وسلامة</SelectItem>
+                      <SelectItem value="hr">إداري / HR</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="description" className="font-bold">وصف المعيار</Label>
+                  <Input 
+                    id="description" 
+                    value={newChecklist.description} 
+                    onChange={e => setNewChecklist({...newChecklist, description: e.target.value})} 
+                    placeholder="مثال: يطبق في مصفاة الزور"
+                    className="rounded-xl border-2 h-12"
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">وصف مختصر</Label>
-                <Input id="description" value={newChecklist.description} onChange={e => setNewChecklist({...newChecklist, description: e.target.value})} />
+
+              <div className="space-y-4 pt-2">
+                <Label className="font-bold">بنود التحقق (Checklist Items)</Label>
+                <div className="flex gap-2">
+                  <Input 
+                    value={newItemText} 
+                    onChange={e => setNewItemText(e.target.value)} 
+                    placeholder="اكتب بنداً جديداً هنا..."
+                    className="rounded-xl border-2 h-12 flex-1"
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddItem()}
+                  />
+                  <Button type="button" onClick={handleAddItem} className="h-12 w-12 rounded-xl bg-secondary text-secondary-foreground">
+                    <Plus className="h-5 w-5" />
+                  </Button>
+                </div>
+                <div className="max-h-[150px] overflow-y-auto space-y-2 p-2 bg-muted/30 rounded-2xl border">
+                  {tempItems.length === 0 ? (
+                    <p className="text-[10px] text-muted-foreground text-center py-4">لم يتم إضافة أي بنود بعد.</p>
+                  ) : (
+                    tempItems.map((item, idx) => (
+                      <div key={idx} className="flex items-center justify-between bg-white p-2 px-3 rounded-lg border text-xs group">
+                        <span>{item}</span>
+                        <button onClick={() => removeItem(idx)} className="text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
             <DialogFooter>
-              <Button onClick={handleAddChecklist} disabled={isAdding || !newChecklist.title} className="w-full">
-                {isAdding ? <Loader2 className="animate-spin" /> : "حفظ القائمة"}
+              <Button onClick={handleAddChecklist} disabled={isAdding || !newChecklist.title} className="w-full h-14 rounded-2xl text-lg font-bold shadow-lg shadow-primary/20">
+                {isAdding ? <Loader2 className="animate-spin" /> : "حفظ المعيار في قاعدة البيانات"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -124,101 +185,113 @@ export default function ChecklistsPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="bg-primary/5 border-primary/20 shadow-sm">
-          <CardHeader className="p-4 text-right">
-            <div className="flex items-center justify-between flex-row-reverse">
-              <div className="p-2 bg-primary/10 rounded-lg text-primary"><ClipboardList className="h-5 w-5" /></div>
-              <CardDescription>إجمالي القوائم</CardDescription>
-            </div>
-            <CardTitle className="text-2xl font-black mt-2">{filteredChecklists.length}</CardTitle>
-          </CardHeader>
+        <Card className="bg-white border-0 shadow-lg rounded-2xl p-6 text-right">
+          <div className="flex items-center justify-between flex-row-reverse mb-4">
+            <div className="p-3 bg-primary/10 rounded-2xl text-primary"><ClipboardList className="h-6 w-6" /></div>
+            <span className="text-xs font-bold text-muted-foreground">قواعد البيانات</span>
+          </div>
+          <h3 className="text-3xl font-black font-headline">{filteredChecklists.length}</h3>
+          <p className="text-xs text-muted-foreground mt-1">إجمالي القوائم والنماذج المعتمدة</p>
         </Card>
-        <Card className="bg-blue-50 border-blue-200 shadow-sm">
-          <CardHeader className="p-4 text-right">
-            <div className="flex items-center justify-between flex-row-reverse">
-              <div className="p-2 bg-blue-100 rounded-lg text-blue-600"><CheckCircle2 className="h-5 w-5" /></div>
-              <CardDescription>النماذج الفنية</CardDescription>
-            </div>
-            <CardTitle className="text-2xl font-black mt-2">{filteredChecklists.filter(c => c.category === 'technical').length}</CardTitle>
-          </CardHeader>
+        
+        <Card className="bg-white border-0 shadow-lg rounded-2xl p-6 text-right">
+          <div className="flex items-center justify-between flex-row-reverse mb-4">
+            <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-600"><CheckCircle2 className="h-6 w-6" /></div>
+            <span className="text-xs font-bold text-muted-foreground">التصنيف الفني</span>
+          </div>
+          <h3 className="text-3xl font-black font-headline">{filteredChecklists.filter(c => c.category === 'technical').length}</h3>
+          <p className="text-xs text-muted-foreground mt-1">نماذج هندسية وفنية</p>
         </Card>
-        <Card className="bg-emerald-50 border-emerald-200 shadow-sm">
-          <CardHeader className="p-4 text-right">
-            <div className="flex items-center justify-between flex-row-reverse">
-              <div className="p-2 bg-emerald-100 rounded-lg text-emerald-600"><FileText className="h-5 w-5" /></div>
-              <CardDescription>تحديثات هذا الشهر</CardDescription>
-            </div>
-            <CardTitle className="text-2xl font-black mt-2">جديد</CardTitle>
-          </CardHeader>
+
+        <Card className="bg-slate-900 text-white border-0 shadow-lg rounded-2xl p-6 text-right">
+          <div className="flex items-center justify-between flex-row-reverse mb-4">
+            <div className="p-3 bg-white/10 rounded-2xl text-white"><FileText className="h-6 w-6" /></div>
+            <span className="text-xs font-bold text-slate-400">آخر التحديثات</span>
+          </div>
+          <h3 className="text-xl font-bold font-headline mt-2">نوفا إنسايتس</h3>
+          <p className="text-[10px] text-slate-400 mt-1">قاعدة البيانات محدثة وتعمل بسلاسة سحابياً</p>
         </Card>
       </div>
 
-      <Card className="border-0 shadow-xl rounded-3xl bg-white overflow-hidden">
-        <CardHeader className="p-6 border-b flex flex-row items-center justify-between flex-row-reverse">
-          <div className="relative w-full max-w-sm">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <Card className="border-0 shadow-2xl rounded-3xl bg-white overflow-hidden">
+        <CardHeader className="p-6 border-b flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="relative w-full max-w-md">
+            <Search className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input 
-              placeholder="بحث في القواعد والبيانات..." 
-              className="pr-10 rounded-xl" 
+              placeholder="بحث في القواعد والمعايير الفنية..." 
+              className="pr-12 h-12 rounded-2xl border-2 focus:border-primary/50 transition-all" 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <h3 className="font-bold text-lg hidden md:block">سجل المعايير والبيانات</h3>
+          <div className="flex gap-2">
+            <Badge variant="secondary" className="px-4 py-2 rounded-xl bg-muted/50">تصنيف تلقائي (AI)</Badge>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
-            <TableHeader className="bg-muted/30">
-              <TableRow>
-                <TableHead className="text-right">عنوان المعيار / القائمة</TableHead>
-                <TableHead className="text-right">التصنيف</TableHead>
-                <TableHead className="text-right">تاريخ الإضافة</TableHead>
-                <TableHead className="text-center">الإجراء</TableHead>
+            <TableHeader className="bg-slate-50">
+              <TableRow className="border-b">
+                <TableHead className="text-right font-bold text-slate-600">عنوان المعيار / القائمة المرجعية</TableHead>
+                <TableHead className="text-right font-bold text-slate-600">التصنيف</TableHead>
+                <TableHead className="text-right font-bold text-slate-600">عدد البنود</TableHead>
+                <TableHead className="text-right font-bold text-slate-600">تاريخ الإضافة</TableHead>
+                <TableHead className="text-center font-bold text-slate-600">الإجراءات</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-10">
-                    <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                  <TableCell colSpan={5} className="text-center py-16">
+                    <Loader2 className="h-10 w-10 animate-spin mx-auto text-primary" />
+                    <p className="mt-4 text-sm font-bold text-muted-foreground">جاري استرجاع بياناتك من السحاب...</p>
                   </TableCell>
                 </TableRow>
               ) : filteredChecklists.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-10 text-muted-foreground">
-                    لا توجد قوائم مرجعية مضافة حالياً لشركتك.
+                  <TableCell colSpan={5} className="text-center py-16">
+                    <div className="max-w-xs mx-auto text-center space-y-2 opacity-40">
+                      <ClipboardList className="h-12 w-12 mx-auto" />
+                      <p className="text-sm font-bold">لا يوجد سجلات مطابقة حالياً.</p>
+                      <p className="text-xs">ابدأ بإنشاء أول معيار مرجعي لشركتك الآن.</p>
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredChecklists.map((checklist: any) => (
-                  <TableRow key={checklist.id} className="hover:bg-muted/10 transition-colors">
-                    <TableCell className="font-bold">
+                  <TableRow key={checklist.id} className="hover:bg-primary/5 transition-colors border-b">
+                    <TableCell className="font-bold py-5">
                       <div className="flex flex-col">
-                        <span>{checklist.title}</span>
-                        <span className="text-[10px] text-muted-foreground font-normal">{checklist.description}</span>
+                        <span className="text-sm">{checklist.title}</span>
+                        <span className="text-[10px] text-muted-foreground font-normal mt-0.5">{checklist.description || "بدون وصف إضافي"}</span>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={
-                        checklist.category === 'technical' ? 'border-blue-200 text-blue-700 bg-blue-50' :
-                        checklist.category === 'financial' ? 'border-amber-200 text-amber-700 bg-amber-50' :
-                        checklist.category === 'hr' ? 'border-purple-200 text-purple-700 bg-purple-50' :
-                        'border-emerald-200 text-emerald-700 bg-emerald-50'
+                      <Badge className={
+                        checklist.category === 'technical' ? 'bg-blue-500/10 text-blue-700 hover:bg-blue-500/20' :
+                        checklist.category === 'financial' ? 'bg-amber-500/10 text-amber-700 hover:bg-amber-500/20' :
+                        checklist.category === 'safety' ? 'bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20' :
+                        'bg-purple-500/10 text-purple-700 hover:bg-purple-500/20'
                       }>
                         {checklist.category === 'technical' ? 'فني / هندسي' : 
                          checklist.category === 'financial' ? 'محاسبي' : 
-                         checklist.category === 'hr' ? 'موارد بشرية' : 'أمن وسلامة'}
+                         checklist.category === 'safety' ? 'أمن وسلامة' : 'إداري / HR'}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-muted-foreground text-xs font-mono">
+                    <TableCell>
+                      <span className="text-xs font-mono font-bold bg-muted px-2 py-1 rounded-lg">
+                        {checklist.items?.length || 0} بند
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-[10px] font-mono">
                       {checklist.createdAt?.toDate().toLocaleDateString('ar-KW')}
                     </TableCell>
                     <TableCell className="text-center">
-                      <div className="flex justify-center gap-2">
-                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary">
+                      <div className="flex justify-center gap-1">
+                        <Button variant="ghost" size="icon" className="h-9 w-9 text-blue-600 hover:bg-blue-50 rounded-xl">
                           <FileText className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => handleDelete(checklist.id)}>
+                        <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive hover:bg-destructive/10 rounded-xl" onClick={() => handleDelete(checklist.id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
