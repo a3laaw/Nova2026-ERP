@@ -1,15 +1,14 @@
 'use client';
 
 /**
- * إعدادات Firebase.
- * انسخ القيم من Firebase Console (خيار Config) وضعها هنا.
- * ملاحظة: أبقينا على كلمة 'export' لكي يتمكن التطبيق من قراءة الإعدادات.
+ * إعدادات Firebase الفعلية للمشروع.
+ * تم تحديثها تلقائياً بناءً على القيم المستخرجة من لوحة تحكم Firebase الخاصة بك.
  */
 export const firebaseConfig = {
-  apiKey: "لصق_API_KEY_هنا",
-  authDomain: "لصق_AUTH_DOMAIN_هنا",
-  projectId: "لصق_PROJECT_ID_هنا",
-  storageBucket: "لصق_STORAGE_BUCKET_هنا",
-  messagingSenderId: "لصق_SENDER_ID_هنا",
-  appId: "لصق_APP_ID_هنا",
+  apiKey: "AIzaSyBgegLx1kBUwaCLGRapZX8R7Djas9uVEjo",
+  authDomain: "studio-2485061478-24bde.firebaseapp.com",
+  projectId: "studio-2485061478-24bde",
+  storageBucket: "studio-2485061478-24bde.firebasestorage.app",
+  messagingSenderId: "1094628419873",
+  appId: "1:1094628419873:web:b60ec6cf4a3d287f283660"
 };
