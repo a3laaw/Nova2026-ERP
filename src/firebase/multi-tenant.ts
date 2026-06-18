@@ -1,36 +1,33 @@
-
 'use client';
 
 import { getTenantPath } from '@/lib/utils';
 
 /**
- * Utility to build firestore paths based on the current active company.
- * Follows the patterns defined in the Reference Data Constitution.
+ * محرك المسارات الموحد لنظام Nova ERP.
+ * يضمن هذا الملف أن كافة البيانات يتم تخزينها داخل نطاق الشركة (Company Scope).
  */
 export const paths = {
-  // Core Entities
-  user: (companyId: string, uid: string) => getTenantPath(companyId, 'users', uid),
-  settings: (companyId: string) => getTenantPath(companyId, 'settings', 'general'),
-  company: (companyId: string) => `companies/${companyId}`,
+  // الحسابات العالمية
   globalUser: (uid: string) => `global_users/${uid}`,
-
-  // Organizational Reference
+  company: (companyId: string) => `companies/${companyId}`,
+  
+  // المرجعيات التنظيمية
   departments: (companyId: string) => getTenantPath(companyId, 'departments'),
   jobs: (companyId: string, deptId: string) => getTenantPath(companyId, 'departments', deptId, 'jobs'),
 
-  // Geographical Reference
+  // المرجعيات الجغرافية
   governorates: (companyId: string) => getTenantPath(companyId, 'governorates'),
   areas: (companyId: string, govId: string) => getTenantPath(companyId, 'governorates', govId, 'areas'),
 
-  // Technical Path Engine (The Heart)
+  // المسارات الفنية (Technical Path Engine)
   serviceTypes: (companyId: string) => getTenantPath(companyId, 'serviceTypes'),
   transactionTypes: (companyId: string) => getTenantPath(companyId, 'transactionTypes'),
-  subServices: (companyId: string, txId: string) => getTenantPath(companyId, 'transactionTypes', txId, 'subServices'),
+  subServices: (companyId: string, txId: string) => 
+    getTenantPath(companyId, 'transactionTypes', txId, 'subServices'),
   technicalStages: (companyId: string, txId: string, subId: string) => 
     getTenantPath(companyId, 'transactionTypes', txId, 'subServices', subId, 'technicalStages'),
 
-  // Operational
+  // الموديولات التشغيلية
   projects: (companyId: string) => getTenantPath(companyId, 'projects'),
   leads: (companyId: string) => getTenantPath(companyId, 'leads'),
-  checklists: (companyId: string) => getTenantPath(companyId, 'checklists'),
 };
