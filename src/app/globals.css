@@ -24,10 +24,6 @@
     --input: 210 20% 90%;
     --ring: 31 100% 48%;
     --radius: 1rem;
-    
-    /* Solaris Specifics */
-    --solaris-gradient: linear-gradient(135deg, #f57c00 0%, #ffb300 100%);
-    --sidebar-glass: rgba(255, 255, 255, 0.7);
   }
 }
 
@@ -40,20 +36,6 @@
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-headline text-foreground tracking-tight font-black;
-  }
-}
-
-@layer components {
-  .bg-solaris-gradient {
-    background: var(--solaris-gradient);
-  }
-  
-  .glass-card {
-    @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-xl;
-  }
-  
-  .floating-row {
-    @apply bg-white mb-3 rounded-2xl shadow-sm border border-transparent hover:border-primary/20 hover:shadow-md transition-all;
   }
 }
 
