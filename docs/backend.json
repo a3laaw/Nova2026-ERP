@@ -6,7 +6,7 @@
       "description": "يربط المعرف الفريد للمستخدم بالشركة التي ينتمي إليها ويحدد دوره العالمي.",
       "type": "object",
       "properties": {
-        "companyId": { "type": "string", "description": "معرف الشركة" },
+        "companyId": { "type": "string" },
         "role": { "type": "string", "enum": ["admin", "user", "developer"] },
         "isDeveloper": { "type": "boolean" },
         "username": { "type": "string" }
@@ -19,71 +19,67 @@
       "type": "object",
       "properties": {
         "name": { "type": "string" },
-        "logo": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" },
         "status": { "type": "string", "enum": ["active", "suspended", "pending"] },
-        "suspendedAt": { "type": "string", "format": "date-time", "description": "تاريخ إيقاف الحساب" },
-        "trialEndsAt": { "type": "string", "format": "date-time", "description": "تاريخ انتهاء الفترة التجريبية" },
-        "maxUsers": { "type": "number", "description": "الحد الأقصى للمستخدمين المسموح بهم" }
+        "trialEndsAt": { "type": "string", "format": "date-time" },
+        "maxUsers": { "type": "number" }
       },
       "required": ["name", "status"]
     },
-    "Checklist": {
-      "title": "Reference Checklist",
-      "description": "قائمة مرجعية أو قاعدة بيانات مصغرة للمعايير والإجراءات الخاصة بالشركة.",
-      "type": "object",
-      "properties": {
-        "title": { "type": "string", "description": "عنوان القائمة المرجعية" },
-        "category": { "type": "string", "description": "تصنيف القائمة (هندسي، محاسبي، إداري)" },
-        "description": { "type": "string" },
-        "items": { 
-          "type": "array", 
-          "items": {
-            "type": "object",
-            "properties": {
-              "text": { "type": "string" },
-              "isRequired": { "type": "boolean" }
-            }
-          }
-        },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["title", "category"]
-    },
-    "CompanyRequest": {
-      "title": "Onboarding Request",
-      "description": "طلب انضمام شركة جديدة للنظام.",
-      "type": "object",
-      "properties": {
-        "companyName": { "type": "string" },
-        "contactName": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
-        "phone": { "type": "string" },
-        "activity": { "type": "string" },
-        "status": { "type": "string", "enum": ["pending", "activated", "rejected"] },
-        "createdAt": { "type": "string", "format": "date-time" }
-      }
-    },
-    "UserProfile": {
-      "title": "User Profile (Tenanted)",
-      "description": "ملف المستخدم الخاص داخل الشركة.",
-      "type": "object",
-      "properties": {
-        "displayName": { "type": "string" },
-        "email": { "type": "string" },
-        "joinedAt": { "type": "string", "format": "date-time" }
-      }
-    },
-    "Lead": {
-      "title": "CRM Lead",
-      "description": "بيانات العميل المحتمل أو الفرصة البيعية.",
+    "Department": {
+      "title": "Department",
+      "description": "الأقسام الإدارية والفنية (معماري، إنشائي، إلخ).",
       "type": "object",
       "properties": {
         "name": { "type": "string" },
-        "company": { "type": "string" },
-        "status": { "type": "string", "enum": ["new", "contacted", "qualified", "closed"] },
-        "value": { "type": "number" },
-        "email": { "type": "string", "format": "email" }
+        "order": { "type": "number" }
+      }
+    },
+    "Job": {
+      "title": "Job Title",
+      "description": "المسميات الوظيفية التابعة للأقسام.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "departmentId": { "type": "string" }
+      }
+    },
+    "ServiceType": {
+      "title": "Service Category",
+      "description": "أنشطة الأعمال الكبرى (استشارات، مقاولات).",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" }
+      }
+    },
+    "TransactionType": {
+      "title": "Transaction Type",
+      "description": "أنواع المعاملات والمسارات الفنية (تصميم بلدية، عقد ترميم).",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "serviceTypeId": { "type": "string" },
+        "departmentIds": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "SubService": {
+      "title": "Sub Service",
+      "description": "الخدمات التفصيلية التابعة لنوع المعاملة.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "parentId": { "type": "string" }
+      }
+    },
+    "TechnicalStage": {
+      "title": "WBS / Technical Stage",
+      "description": "مراحل العمل التفصيلية (WBS) للمسار الفني.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "controlType": { "type": "string", "enum": ["TimeBased", "Numeric", "Hybrid"] },
+        "controlValue": { "type": "object" },
+        "nextStageIds": { "type": "array", "items": { "type": "string" } },
+        "isEditable": { "type": "boolean" }
       }
     }
   },
@@ -91,29 +87,12 @@
     "providers": ["password"]
   },
   "firestore": {
-    "/global_users/{uid}": {
-      "schema": "#/entities/GlobalUser",
-      "description": "تخزين المسار الأساسي للمستخدم"
-    },
-    "/company_requests/{requestId}": {
-      "schema": "#/entities/CompanyRequest",
-      "description": "طلبات الانضمام الجديدة"
-    },
-    "/companies/{companyId}": {
-      "schema": "#/entities/Company",
-      "description": "بيانات الشركة"
-    },
-    "/companies/{companyId}/checklists/{checklistId}": {
-      "schema": "#/entities/Checklist",
-      "description": "القوائم المرجعية والمعايير الخاصة بالشركة"
-    },
-    "/companies/{companyId}/users/{uid}": {
-      "schema": "#/entities/UserProfile",
-      "description": "بيانات المستخدم داخل بيئة الشركة"
-    },
-    "/companies/{companyId}/leads/{leadId}": {
-      "schema": "#/entities/Lead",
-      "description": "إدارة العملاء والفرص داخل الشركة"
-    }
+    "/global_users/{uid}": { "schema": "#/entities/GlobalUser", "description": "تخزين المسار الأساسي للمستخدم" },
+    "/companies/{companyId}": { "schema": "#/entities/Company", "description": "بيانات الشركة" },
+    "/companies/{companyId}/departments/{id}": { "schema": "#/entities/Department", "description": "الأقسام" },
+    "/companies/{companyId}/serviceTypes/{id}": { "schema": "#/entities/ServiceType", "description": "أنشطة الأعمال" },
+    "/companies/{companyId}/transactionTypes/{id}": { "schema": "#/entities/TransactionType", "description": "أنواع المسارات الفنية" },
+    "/companies/{companyId}/transactionTypes/{txId}/subServices/{subId}": { "schema": "#/entities/SubService", "description": "الخدمات الفرعية" },
+    "/companies/{companyId}/transactionTypes/{txId}/subServices/{subId}/technicalStages/{stageId}": { "schema": "#/entities/TechnicalStage", "description": "مراحل WBS" }
   }
 }
