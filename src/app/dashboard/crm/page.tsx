@@ -146,7 +146,7 @@ export default function CRMPage() {
             <CardDescription>نشط حالياً</CardDescription>
             <CardTitle className="text-2xl font-black font-headline text-blue-600">
               {filteredLeads.filter(l => l.status !== 'closed').length}
-            </SelectItem>
+            </CardTitle>
           </CardHeader>
         </Card>
         <Card className="bg-white border-0 shadow-sm">
