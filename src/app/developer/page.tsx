@@ -6,12 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCollection, useFirestore } from '@/firebase';
-import { collection, query, orderBy, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { 
-  Loader2, CheckCircle, Clock, ShieldAlert, Ban, RefreshCcw, 
-  FileSpreadsheet, Edit3, Save, Trash2, Users, Calendar 
+  Loader2, CheckCircle, ShieldAlert, Ban, RefreshCcw, 
+  FileSpreadsheet, Edit3, Save, Users 
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useLanguage } from '@/context/language-context';
@@ -101,6 +100,10 @@ export default function DeveloperDashboard() {
       await updateDoc(doc(db, 'companies', companyId), {
         status: newStatus,
         suspendedAt: newStatus === 'suspended' ? new Date().toISOString() : null
+      });
+      toast({
+        title: isRtl ? "تحديث الحالة" : "Status Updated",
+        description: isRtl ? `تم ${newStatus === 'active' ? 'تنشيط' : 'إيقاف'} الشركة.` : `Company has been ${newStatus}.`,
       });
     } finally {
       setProcessingId(null);
@@ -219,15 +222,15 @@ export default function DeveloperDashboard() {
                             <div className="grid gap-4 py-4">
                               <div className="space-y-2">
                                 <Label>اسم الشركة</Label>
-                                <Input value={editingCompany?.name} onChange={e => setEditingCompany({...editingCompany, name: e.target.value})} />
+                                <Input value={editingCompany?.name || ''} onChange={e => setEditingCompany({...editingCompany, name: e.target.value})} />
                               </div>
                               <div className="space-y-2">
                                 <Label>الحد الأقصى للمستخدمين</Label>
-                                <Input type="number" value={editingCompany?.maxUsers} onChange={e => setEditingCompany({...editingCompany, maxUsers: e.target.value})} />
+                                <Input type="number" value={editingCompany?.maxUsers || ''} onChange={e => setEditingCompany({...editingCompany, maxUsers: e.target.value})} />
                               </div>
                               <div className="space-y-2">
                                 <Label>تاريخ انتهاء الفترة التجريبية</Label>
-                                <Input type="date" value={editingCompany?.trialEndsAt?.split('T')[0]} onChange={e => setEditingCompany({...editingCompany, trialEndsAt: e.target.value})} />
+                                <Input type="date" value={editingCompany?.trialEndsAt?.split('T')[0] || ''} onChange={e => setEditingCompany({...editingCompany, trialEndsAt: e.target.value})} />
                               </div>
                             </div>
                             <DialogFooter>
