@@ -30,6 +30,7 @@ export const paths = {
     getTenantPath(companyId, 'transactionTypes', txId, 'subServices', subId, 'technicalStages'),
 
   // Operational
+  projects: (companyId: string) => getTenantPath(companyId, 'projects'),
   leads: (companyId: string) => getTenantPath(companyId, 'leads'),
   checklists: (companyId: string) => getTenantPath(companyId, 'checklists'),
 };

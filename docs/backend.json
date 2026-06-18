@@ -81,6 +81,21 @@
         "nextStageIds": { "type": "array", "items": { "type": "string" } },
         "isEditable": { "type": "boolean" }
       }
+    },
+    "Project": {
+      "title": "Engineering Project",
+      "description": "مشروع هندسي مرتبط بمسار فني وعميل معين.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "clientId": { "type": "string" },
+        "transactionTypeId": { "type": "string" },
+        "subServiceId": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "completed", "on_hold"] },
+        "startDate": { "type": "string", "format": "date" },
+        "budget": { "type": "number" }
+      },
+      "required": ["name", "transactionTypeId", "status"]
     }
   },
   "auth": {
@@ -93,6 +108,7 @@
     "/companies/{companyId}/serviceTypes/{id}": { "schema": "#/entities/ServiceType", "description": "أنشطة الأعمال" },
     "/companies/{companyId}/transactionTypes/{id}": { "schema": "#/entities/TransactionType", "description": "أنواع المسارات الفنية" },
     "/companies/{companyId}/transactionTypes/{txId}/subServices/{subId}": { "schema": "#/entities/SubService", "description": "الخدمات الفرعية" },
-    "/companies/{companyId}/transactionTypes/{txId}/subServices/{subId}/technicalStages/{stageId}": { "schema": "#/entities/TechnicalStage", "description": "مراحل WBS" }
+    "/companies/{companyId}/transactionTypes/{txId}/subServices/{subId}/technicalStages/{stageId}": { "schema": "#/entities/TechnicalStage", "description": "مراحل WBS" },
+    "/companies/{companyId}/projects/{projectId}": { "schema": "#/entities/Project", "description": "المشاريع الهندسية" }
   }
 }

@@ -1,170 +1,216 @@
+
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { HardHat, Sparkles, TrendingUp, DollarSign, Calendar, RefreshCw } from "lucide-react";
-import { generateCashFlowProjection } from "@/ai/flows/cash-flow-projection-flow";
-import { toast } from "@/hooks/use-toast";
+import { 
+  HardHat, Sparkles, TrendingUp, DollarSign, 
+  Calendar, RefreshCw, Plus, Search, 
+  FolderKanban, Loader2, ArrowRight
+} from "lucide-react";
+import { useFirestore, useCollection } from '@/firebase';
+import { collection, addDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
+import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
-
-const initialMilestones = [
-  { id: "m1", description: "إتمام حفر وتجهيز الأساسات الهيكلية", dueDate: "2024-08-15", expectedRevenue: 45000 },
-  { id: "m2", description: "صب الخرسانة المسلحة للمرحلة الأولى", dueDate: "2024-09-20", expectedRevenue: 60000 },
-  { id: "m3", description: "التشطيبات والوجهات الهندسية الخارجية", dueDate: "2024-11-05", expectedRevenue: 85000 }
-];
-
-const initialSchedules = [
-  { contractId: "c_zor_01", paymentDate: "2024-08-20", amount: 30000 },
-  { contractId: "c_zor_02", paymentDate: "2024-10-10", amount: 50000 }
-];
-
-const historicalData = [
-  { period: "2024-04", inflows: 40000, outflows: 25000 },
-  { period: "2024-05", inflows: 55000, outflows: 30000 },
-  { period: "2024-06", inflows: 62000, outflows: 41000 }
-];
+import { paths } from '@/firebase/multi-tenant';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 export default function ProjectsPage() {
-  const { t } = useLanguage();
-  const [loading, setLoading] = useState(false);
-  const [projectionResult, setProjectionResult] = useState<any>(null);
+  const { globalUser } = useAuthContext();
+  const { t, lang, dir } = useLanguage();
+  const db = useFirestore();
+  const companyId = globalUser?.companyId;
 
-  const handleGenerateForecast = async () => {
-    setLoading(true);
+  const [isAdding, setIsAdding] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [newProject, setNewProject] = useState({ 
+    name: '', 
+    transactionTypeId: '', 
+    subServiceId: '', 
+    budget: '', 
+    status: 'active' 
+  });
+
+  // Queries for Reference Data
+  const projectsQuery = useMemo(() => companyId && db ? query(collection(db, paths.projects(companyId)), orderBy('createdAt', 'desc')) : null, [db, companyId]);
+  const txTypesQuery = useMemo(() => companyId && db ? query(collection(db, paths.transactionTypes(companyId)), orderBy('name')) : null, [db, companyId]);
+  const subServicesQuery = useMemo(() => companyId && db && newProject.transactionTypeId ? query(collection(db, paths.subServices(companyId, newProject.transactionTypeId)), orderBy('name')) : null, [db, companyId, newProject.transactionTypeId]);
+
+  const { data: projects, loading: projectsLoading } = useCollection(projectsQuery);
+  const { data: txTypes } = useCollection(txTypesQuery);
+  const { data: subServices } = useCollection(subServicesQuery);
+
+  const handleCreateProject = async () => {
+    if (!newProject.name || !newProject.transactionTypeId || !companyId || !db) return;
+    setIsAdding(true);
     try {
-      const response = await generateCashFlowProjection({
-        projectMilestones: initialMilestones,
-        contractPaymentSchedules: initialSchedules,
-        historicalFinancialData: historicalData,
-        projectionHorizonMonths: 4,
-        currentCashBalance: 120000
+      await addDoc(collection(db, paths.projects(companyId)), {
+        ...newProject,
+        budget: Number(newProject.budget) || 0,
+        createdAt: serverTimestamp(),
       });
-      setProjectionResult(response);
-      toast({
-        title: "اكتمل التنبؤ بالتدفق النقدي",
-        description: "تم تحليل جداول العقود وجداول WBS بنجاح بالذكاء الاصطناعي.",
-      });
-    } catch (error) {
-      toast({
-        title: "فشل التوقع المالي",
-        description: "عذراً، لم نتمكن من حساب التوقعات الهندسية حالياً.",
-        variant: "destructive"
-      });
+      toast({ title: t('saved'), description: lang === 'ar' ? 'تم إنشاء المشروع وربطه بالمسار الفني.' : 'Project created and linked to technical path.' });
+      setNewProject({ name: '', transactionTypeId: '', subServiceId: '', budget: '', status: 'active' });
+    } catch (e) {
+      toast({ variant: "destructive", title: t('error'), description: t('saveFailed') });
     } finally {
-      setLoading(false);
+      setIsAdding(false);
     }
   };
 
+  const filteredProjects = projects?.filter(p => p.name?.toLowerCase().includes(searchTerm.toLowerCase())) || [];
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start">
-          <h1 className="text-3xl font-black font-headline">{t('projects')}</h1>
-          <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80">ربط معالم WBS ومخططات جدول الكميات (BOQ) بالسيولة المتاحة</p>
+          <h1 className="text-4xl font-black font-headline flex items-center gap-3">
+            <HardHat className="h-10 w-10 text-primary" />
+            {t('projects')}
+          </h1>
+          <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
+            {lang === 'ar' ? 'إدارة المشاريع الهندسية وربطها بالدستور الفني للشركة' : 'Manage engineering projects and link them to the technical constitution'}
+          </p>
         </div>
-        <Button onClick={handleGenerateForecast} disabled={loading} className="bg-primary text-white font-bold rounded-xl px-6 py-5 shadow-lg shadow-primary/20">
-          {loading ? <RefreshCw className="me-2 h-4 w-4 animate-spin" /> : <Sparkles className="me-2 h-4 w-4" />}
-          توليد التوقعات المالية (AI)
-        </Button>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="border-0 shadow-md rounded-[2rem] bg-white lg:col-span-2 overflow-hidden ring-1 ring-black/5">
-          <CardHeader className="p-6 border-b">
-            <CardTitle className="text-lg font-bold flex items-center gap-2"><HardHat className="text-primary h-5 w-5" /> المعالم الهندسية القادمة (WBS)</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-start">المعرف</TableHead>
-                  <TableHead className="text-start">الوصف الهندسي</TableHead>
-                  <TableHead className="text-start">الاستحقاق</TableHead>
-                  <TableHead className="text-end">العائد المتوقع</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {initialMilestones.map((m) => (
-                  <TableRow key={m.id}>
-                    <TableCell className="font-mono text-xs text-start">{m.id}</TableCell>
-                    <TableCell className="font-bold text-xs text-start">{m.description}</TableCell>
-                    <TableCell className="text-muted-foreground text-xs text-start"><Calendar className="inline me-1 h-3 w-3" />{m.dueDate}</TableCell>
-                    <TableCell className="font-mono text-end text-emerald-600 font-bold text-xs">{m.expectedRevenue.toLocaleString()} د.ك</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-md rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/5">
-          <CardHeader className="p-6 border-b">
-            <CardTitle className="text-lg font-bold flex items-center gap-2"><DollarSign className="text-blue-500 h-5 w-5" /> دفعات العقود</CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="space-y-4">
-              {initialSchedules.map((s, idx) => (
-                <div key={idx} className="flex justify-between items-center p-4 rounded-2xl bg-muted/40 border">
-                  <div className="text-start">
-                    <p className="text-xs font-bold text-secondary-foreground">{s.contractId}</p>
-                    <p className="text-[10px] text-muted-foreground">{s.paymentDate}</p>
-                  </div>
-                  <span className="font-mono font-bold text-sm text-primary">{s.amount.toLocaleString()} د.ك</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {projectionResult && (
-        <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden animate-in fade-in duration-500">
-          <CardHeader className="bg-primary/5 p-8 border-b text-start">
-            <CardTitle className="font-headline font-bold text-xl flex items-center gap-2">
-              <TrendingUp className="text-primary h-6 w-6" />
-              التحليل التنبئي للسيولة النقدية
-            </CardTitle>
-            <CardDescription>محاكاة حركة المال والتدفقات النقدية المتوقعة للأشهر القادمة</CardDescription>
-          </CardHeader>
-          <CardContent className="p-8 space-y-6 text-start">
-            {projectionResult.summary && (
-              <div className="p-5 rounded-2xl bg-primary/5 border border-primary/20 text-sm leading-relaxed font-bold">
-                <strong>التوجيه الاستراتيجي (AI):</strong> {projectionResult.summary}
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform">
+              <Plus className="me-2 h-6 w-6" />
+              {lang === 'ar' ? 'مشروع جديد' : 'New Project'}
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="rounded-3xl border-0 shadow-2xl max-w-2xl" dir={dir}>
+            <DialogHeader>
+              <DialogTitle className="text-start font-headline font-black text-2xl">{lang === 'ar' ? 'فتح مشروع جديد' : 'Open New Project'}</DialogTitle>
+              <DialogDescription className="text-start">{lang === 'ar' ? 'قم بتعريف المشروع وربطه بمسار فني من القوائم المرجعية.' : 'Define project and link it to a technical path from reference data.'}</DialogDescription>
+            </DialogHeader>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-6">
+              <div className="space-y-2 text-start">
+                <Label>{lang === 'ar' ? 'اسم المشروع' : 'Project Name'}</Label>
+                <Input value={newProject.name} onChange={e => setNewProject({...newProject, name: e.target.value})} placeholder={lang === 'ar' ? 'فيلا الجابرية - ق4' : 'Jabriya Villa - B4'} className="h-14 rounded-2xl border-2" />
               </div>
-            )}
-
-            <div className="overflow-hidden rounded-2xl border">
-              <Table>
-                <TableHeader className="bg-muted/50">
-                  <TableRow>
-                    <TableHead className="text-start">الفترة</TableHead>
-                    <TableHead className="text-end">التدفق الداخل</TableHead>
-                    <TableHead className="text-end">التدفق الخارج</TableHead>
-                    <TableHead className="text-end">صافي التدفق</TableHead>
-                    <TableHead className="text-end">الرصيد التراكمي</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {projectionResult.projectionPeriods?.map((p: any, index: number) => (
-                    <TableRow key={index}>
-                      <TableCell className="font-bold text-xs text-start">{p.periodName}</TableCell>
-                      <TableCell className="font-mono text-end text-emerald-600 font-bold text-xs">+{p.projectedInflows?.toLocaleString()} د.ك</TableCell>
-                      <TableCell className="font-mono text-end text-destructive font-medium text-xs">-{p.projectedOutflows?.toLocaleString()} د.ك</TableCell>
-                      <TableCell className={`font-mono text-end font-bold text-xs ${p.netCashFlow >= 0 ? 'text-emerald-700' : 'text-destructive'}`}>
-                        {p.netCashFlow?.toLocaleString()} د.ك
-                      </TableCell>
-                      <TableCell className="font-mono text-end bg-muted/20 font-bold text-xs text-primary">{p.cumulativeCashFlow?.toLocaleString()} د.ك</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <div className="space-y-2 text-start">
+                <Label>{lang === 'ar' ? 'الميزانية (د.ك)' : 'Budget (KWD)'}</Label>
+                <Input type="number" value={newProject.budget} onChange={e => setNewProject({...newProject, budget: e.target.value})} placeholder="5000" className="h-14 rounded-2xl border-2" />
+              </div>
+              <div className="space-y-2 text-start">
+                <Label>{t('txTypes')}</Label>
+                <Select value={newProject.transactionTypeId} onValueChange={val => setNewProject({...newProject, transactionTypeId: val, subServiceId: ''})}>
+                  <SelectTrigger className="h-14 rounded-2xl border-2"><SelectValue placeholder={t('search')} /></SelectTrigger>
+                  <SelectContent>
+                    {txTypes?.map(tx => <SelectItem key={tx.id} value={tx.id}>{tx.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2 text-start">
+                <Label>{t('subSrvs')}</Label>
+                <Select value={newProject.subServiceId} onValueChange={val => setNewProject({...newProject, subServiceId: val})} disabled={!newProject.transactionTypeId}>
+                  <SelectTrigger className="h-14 rounded-2xl border-2"><SelectValue placeholder={t('search')} /></SelectTrigger>
+                  <SelectContent>
+                    {subServices?.map(sub => <SelectItem key={sub.id} value={sub.id}>{sub.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          </CardContent>
+            <DialogFooter>
+              <Button onClick={handleCreateProject} disabled={isAdding || !newProject.name} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">
+                {isAdding ? <Loader2 className="animate-spin" /> : <Sparkles className="me-2 h-5 w-5" />}
+                {lang === 'ar' ? 'بدء المشروع' : 'Start Project'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card className="bg-white border-0 shadow-lg rounded-3xl p-6">
+          <p className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-2 text-start">{lang === 'ar' ? 'إجمالي المشاريع' : 'Total Projects'}</p>
+          <div className="flex items-center justify-between">
+            <h3 className="text-4xl font-black font-headline">{projects?.length || 0}</h3>
+            <div className="p-3 bg-primary/10 rounded-2xl text-primary"><FolderKanban className="h-6 w-6" /></div>
+          </div>
         </Card>
-      )}
+        <Card className="bg-white border-0 shadow-lg rounded-3xl p-6">
+          <p className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-2 text-start">{lang === 'ar' ? 'السيولة المستهدفة' : 'Target Liquidity'}</p>
+          <div className="flex items-center justify-between">
+            <h3 className="text-2xl font-black font-headline text-emerald-600">{filteredProjects.reduce((acc, p) => acc + (p.budget || 0), 0).toLocaleString()} د.ك</h3>
+            <div className="p-3 bg-emerald-50 rounded-2xl text-emerald-600"><DollarSign className="h-6 w-6" /></div>
+          </div>
+        </Card>
+      </div>
+
+      <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
+        <CardHeader className="bg-slate-50 border-b p-6 flex flex-row items-center justify-between">
+          <div className="relative w-full max-w-sm">
+            <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+              placeholder={t('search')} 
+              className="ps-10 rounded-xl h-12 bg-white text-start" 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </CardHeader>
+        <CardContent className="p-0 overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-muted/30">
+              <TableRow>
+                <TableHead className="text-start font-black">{lang === 'ar' ? 'المشروع' : 'Project'}</TableHead>
+                <TableHead className="text-start font-black">{t('txTypes')}</TableHead>
+                <TableHead className="text-start font-black">{lang === 'ar' ? 'الحالة' : 'Status'}</TableHead>
+                <TableHead className="text-end font-black">{lang === 'ar' ? 'الميزانية' : 'Budget'}</TableHead>
+                <TableHead className="text-center font-black">{lang === 'ar' ? 'المسار' : 'Path'}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {projectsLoading ? (
+                <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
+              ) : filteredProjects.length === 0 ? (
+                <TableRow><TableCell colSpan={5} className="text-center py-20 text-muted-foreground font-bold italic">{lang === 'ar' ? 'لا توجد مشاريع نشطة حالياً' : 'No active projects found'}</TableCell></TableRow>
+              ) : (
+                filteredProjects.map((project: any) => (
+                  <TableRow key={project.id} className="hover:bg-muted/10 transition-colors group">
+                    <TableCell className="text-start">
+                      <div className="flex flex-col">
+                        <span className="font-black text-slate-800">{project.name}</span>
+                        <span className="text-[10px] text-muted-foreground font-mono">{project.id.substring(0,8)}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-start">
+                      <Badge variant="outline" className="bg-white font-bold">{txTypes?.find(t => t.id === project.transactionTypeId)?.name || '...'}</Badge>
+                    </TableCell>
+                    <TableCell className="text-start">
+                      <Badge className={cn(
+                        "font-black px-3",
+                        project.status === 'active' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-slate-500/10 text-slate-600'
+                      )}>
+                        {project.status === 'active' ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'مكتمل' : 'Completed')}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-end font-mono font-black text-primary">
+                      {project.budget?.toLocaleString()} د.ك
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Button variant="ghost" size="icon" className="rounded-xl group-hover:bg-primary group-hover:text-white transition-all">
+                        <ArrowRight className={cn("h-5 w-5", dir === 'rtl' && "rotate-180")} />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 }
