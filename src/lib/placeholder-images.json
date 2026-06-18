@@ -1,3 +1,28 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "hero-construction",
+      "description": "Modern construction site with engineering equipment",
+      "imageUrl": "https://picsum.photos/seed/nova1/1200/600",
+      "imageHint": "construction site"
+    },
+    {
+      "id": "architectural-plan",
+      "description": "Architectural blueprints and engineering tools",
+      "imageUrl": "https://picsum.photos/seed/nova2/800/600",
+      "imageHint": "architectural plan"
+    },
+    {
+      "id": "office-meeting",
+      "description": "Executive team meeting in a modern office",
+      "imageUrl": "https://picsum.photos/seed/nova3/800/600",
+      "imageHint": "business meeting"
+    },
+    {
+      "id": "warehouse-logistics",
+      "description": "Organized warehouse with logistics operations",
+      "imageUrl": "https://picsum.photos/seed/nova4/800/600",
+      "imageHint": "warehouse storage"
+    }
+  ]
 }
