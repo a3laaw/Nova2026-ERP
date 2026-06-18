@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -17,7 +18,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<{ message: string; link?: string } | null>(null);
+  const [error, setError] = useState<{ message: string; link?: string; linkText?: string } | null>(null);
   const router = useRouter();
   const auth = useAuth();
   const db = useFirestore();
@@ -36,6 +37,8 @@ export default function RegisterPage() {
 
       // 2. Create Company
       const companyId = `comp_${Date.now()}`;
+      
+      // المحاولة الأولى للكتابة في Firestore
       await setDoc(doc(db, 'companies', companyId), {
         name: companyName,
         createdAt: serverTimestamp(),
@@ -58,19 +61,24 @@ export default function RegisterPage() {
       document.cookie = `session=true; path=/; max-age=${60 * 60 * 24 * 7}`;
       router.push('/dashboard');
     } catch (err: any) {
-      console.error(err);
+      console.error("Registration Error:", err);
+      
       if (err.code === 'auth/configuration-not-found') {
         setError({
           message: 'يرجى تفعيل خيار (Email/Password) في قسم Authentication داخل لوحة تحكم Firebase.',
-          link: 'https://console.firebase.google.com/project/_/authentication/providers'
+          link: 'https://console.firebase.google.com/project/_/authentication/providers',
+          linkText: 'تفعيل خيار تسجيل الدخول'
         });
-      } else if (err.code === 'permission-denied') {
+      } else if (err.code === 'permission-denied' || err.message?.includes("offline")) {
         setError({
-          message: 'فشل الوصول لقاعدة البيانات. يرجى التأكد من إنشاء Firestore Database وتفعيل قواعد الأمان (Rules).',
-          link: 'https://console.firebase.google.com/project/_/firestore'
+          message: 'فشل الوصول لقاعدة البيانات. يرجى التأكد من إنشاء Firestore Database في لوحة التحكم وتفعيل وضع الاختبار (Test Mode).',
+          link: 'https://console.firebase.google.com/project/_/firestore',
+          linkText: 'إنشاء Firestore Database'
         });
       } else {
-        setError({ message: err.message || 'حدث خطأ غير متوقع أثناء التسجيل.' });
+        setError({ 
+          message: err.message || 'حدث خطأ غير متوقع. تأكد من اتصال الإنترنت وإعدادات Firebase.' 
+        });
       }
     } finally {
       setLoading(false);
@@ -102,9 +110,9 @@ export default function RegisterPage() {
                       href={error.link} 
                       target="_blank" 
                       rel="noopener noreferrer" 
-                      className="flex items-center gap-1 font-bold underline hover:text-primary"
+                      className="flex items-center gap-1 font-bold underline hover:text-primary mt-2"
                     >
-                      اذهب للوحة تحكم Firebase <ExternalLink className="h-3 w-3" />
+                      {error.linkText || 'اذهب للرابط'} <ExternalLink className="h-3 w-3" />
                     </a>
                   )}
                 </AlertDescription>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
@@ -16,6 +17,7 @@ interface AuthContextType {
   globalUser: GlobalUserData | null;
   loading: boolean;
   logout: () => Promise<void>;
+  error: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,19 +28,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [globalUser, setGlobalUser] = useState<GlobalUserData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!auth || !db) return;
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setLoading(true);
       setUser(user);
+      
       if (user) {
-        const docRef = doc(db, 'global_users', user.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setGlobalUser(docSnap.data() as GlobalUserData);
-        } else {
-          setGlobalUser(null);
+        try {
+          const docRef = doc(db, 'global_users', user.uid);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            setGlobalUser(docSnap.data() as GlobalUserData);
+          } else {
+            setGlobalUser(null);
+          }
+        } catch (err: any) {
+          console.error("Firestore Error in AuthContext:", err);
+          if (err.message?.includes("offline")) {
+            setError("قاعدة البيانات غير متصلة. يرجى التأكد من إنشاء Firestore Database في لوحة تحكم Firebase وتفعيل Test Mode.");
+          }
         }
       } else {
         setGlobalUser(null);
@@ -52,13 +64,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     if (auth) {
       await signOut(auth);
-      // Clean up session storage/cookies if any
       document.cookie = 'session=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, globalUser, loading, logout }}>
+    <AuthContext.Provider value={{ user, globalUser, loading, logout, error }}>
       {children}
     </AuthContext.Provider>
   );
