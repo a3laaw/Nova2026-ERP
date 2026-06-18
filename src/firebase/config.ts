@@ -2,8 +2,8 @@
 
 /**
  * إعدادات Firebase.
- * اذهب إلى Firebase Console -> Project Settings -> Your Apps -> Config
- * وانسخ القيم وضعها هنا بدلاً من "YOUR_..."
+ * انسخ القيم من Firebase Console (Project Settings > Your Apps > SDK Setup and Configuration > Config)
+ * وضعها هنا مباشرة بين علامات التنصيص.
  */
 export const firebaseConfig = {
   apiKey: "YOUR_API_KEY",

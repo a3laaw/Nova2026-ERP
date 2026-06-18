@@ -1,20 +1,20 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth } from 'firebase/auth';
-import { getFirestore, Firestore } from 'firebase/firestore';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 import { firebaseConfig } from './config';
 import { FirebaseProvider } from './provider';
 
 export function FirebaseClientProvider({ children }: { children: React.ReactNode }) {
   const services = useMemo(() => {
-    // التحقق مما إذا كانت الإعدادات قد تم ملؤها أم لا تزال تحتوي على القيم الافتراضية
-    const isConfigReady = firebaseConfig.apiKey && 
-                         firebaseConfig.apiKey !== "" && 
-                         !firebaseConfig.apiKey.includes("YOUR_");
+    // التحقق مما إذا كانت الإعدادات قد تم تعبئتها بالفعل
+    const isConfigMissing = !firebaseConfig.apiKey || 
+                           firebaseConfig.apiKey === "YOUR_API_KEY" || 
+                           firebaseConfig.apiKey === "";
 
-    if (!isConfigReady) {
+    if (isConfigMissing) {
       return { app: null, auth: null, db: null };
     }
 
@@ -31,7 +31,7 @@ export function FirebaseClientProvider({ children }: { children: React.ReactNode
 
   const { app, auth, db } = services;
 
-  // واجهة إرشادية للمستخدم في حال عدم اكتمال الإعدادات
+  // واجهة إرشادية في حال عدم اكتمال الإعدادات
   if (!app || !auth || !db) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-6 text-center" dir="rtl">
@@ -41,14 +41,11 @@ export function FirebaseClientProvider({ children }: { children: React.ReactNode
           </div>
           <h1 className="text-2xl font-black font-headline tracking-tight text-secondary-foreground">إعدادات Firebase مفقودة</h1>
           <p className="text-muted-foreground leading-relaxed">
-            يرجى نسخ إعدادات مشروعك من لوحة تحكم Firebase ولصقها في الملف التالي للبدء:
+            يرجى فتح ملف <code className="bg-muted px-1 rounded font-mono text-xs">src/firebase/config.ts</code> ولصق المفاتيح التي نسختها من Firebase Console.
           </p>
-          <div className="bg-muted p-4 rounded-xl text-left font-mono text-xs overflow-x-auto" dir="ltr">
-            src/firebase/config.ts
-          </div>
-          <div className="pt-4">
-            <p className="text-xs text-muted-foreground mb-4">تجد هذه الإعدادات في: Project Settings {'>'} Your Apps {'>'} Config</p>
-            <div className="animate-pulse bg-primary/5 h-2 w-full rounded-full" />
+          <div className="pt-4 border-t">
+            <p className="text-xs text-muted-foreground mb-4 font-bold">تجد المفاتيح في Firebase Console تحت Project Settings.</p>
+            <div className="animate-pulse bg-primary/10 h-2 w-full rounded-full" />
           </div>
         </div>
       </div>
