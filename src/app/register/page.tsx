@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -12,6 +11,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sparkles, Loader2, CheckCircle2, ArrowRight } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -31,26 +32,38 @@ export default function RegisterPage() {
     if (!db) return;
 
     setLoading(true);
-    try {
-      await addDoc(collection(db, 'company_requests'), {
-        ...formData,
-        status: 'pending',
-        createdAt: serverTimestamp(),
+    const requestsRef = collection(db, 'company_requests');
+    const requestData = {
+      ...formData,
+      status: 'pending',
+      createdAt: serverTimestamp(),
+    };
+
+    addDoc(requestsRef, requestData)
+      .then(() => {
+        setIsSubmitted(true);
+        toast({
+          title: "تم إرسال الطلب بنجاح",
+          description: "سيتواصل معك فريقنا قريباً بعد مراجعة البيانات.",
+        });
+      })
+      .catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: 'company_requests',
+          operation: 'create',
+          requestResourceData: requestData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        
+        toast({
+          variant: "destructive",
+          title: "خطأ في الإرسال",
+          description: "تعذر إرسال طلبك حالياً، يرجى المحاولة لاحقاً.",
+        });
+      })
+      .finally(() => {
+        setLoading(false);
       });
-      setIsSubmitted(true);
-      toast({
-        title: "تم إرسال الطلب بنجاح",
-        description: "سيتواصل معك فريقنا قريباً بعد مراجعة البيانات.",
-      });
-    } catch (err: any) {
-      toast({
-        variant: "destructive",
-        title: "خطأ في الإرسال",
-        description: "تعذر إرسال طلبك حالياً، يرجى المحاولة لاحقاً.",
-      });
-    } finally {
-      setLoading(false);
-    }
   };
 
   if (isSubmitted) {

@@ -1,26 +1,42 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // السماح للمستخدم بإنشاء وقراءة ملفه العالمي
+    
+    // وظيفة للتحقق مما إذا كان المستخدم هو المطور
+    function isDeveloper() {
+      return request.auth != null && 
+             get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.isDeveloper == true;
+    }
+
+    // قواعد المستخدمين العالميين
     match /global_users/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read: if request.auth != null && (request.auth.uid == uid || isDeveloper());
+      allow write: if request.auth != null && request.auth.uid == uid;
     }
     
-    // السماح بإنشاء شركة جديدة لأي مستخدم مسجل، والقراءة للمنتمين لها
+    // قواعد طلبات الانضمام - السماح للعامة بالإنشاء وللمطور بالإدارة
+    match /company_requests/{requestId} {
+      allow create: if true; 
+      allow read, update, delete: if isDeveloper();
+    }
+    
+    // قواعد الشركات
     match /companies/{companyId} {
-      allow create: if request.auth != null;
-      allow read: if request.auth != null && 
-        get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.companyId == companyId;
+      // المطور فقط يمكنه إنشاء الشركة (عند التفعيل)
+      allow create: if isDeveloper();
       
-      // قواعد المستخدمين داخل الشركة
-      match /users/{uid} {
-        allow read, write: if request.auth != null && request.auth.uid == uid;
-      }
+      // القراءة للمنتمين للشركة أو المطور
+      allow read: if request.auth != null && (
+        get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.companyId == companyId ||
+        isDeveloper()
+      );
       
-      // قواعد الأقسام الأخرى (المشاريع، المحاسبة، إلخ)
+      // قواعد البيانات الداخلية للشركة
       match /{allPaths=**} {
-        allow read, write: if request.auth != null && 
-          get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.companyId == companyId;
+        allow read, write: if request.auth != null && (
+          get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.companyId == companyId ||
+          isDeveloper()
+        );
       }
     }
   }
