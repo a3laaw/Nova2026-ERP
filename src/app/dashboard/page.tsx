@@ -1,4 +1,3 @@
-
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -21,11 +20,8 @@ import {
 import { 
   Bar, 
   BarChart, 
-  ResponsiveContainer, 
   XAxis, 
   YAxis, 
-  Tooltip,
-  Cell,
   CartesianGrid
 } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
@@ -88,21 +84,21 @@ const stats = [
 
 export default function DashboardPage() {
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" dir="rtl">
       {/* Welcome Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black font-headline">Executive Overview</h1>
-          <p className="text-muted-foreground mt-1">Operational intelligence for Nova Builders Kuwait</p>
+          <h1 className="text-3xl font-black font-headline text-right">نظرة عامة تنفيذية</h1>
+          <p className="text-muted-foreground mt-1 text-right">ذكاء العمليات لشركة نوفا للمقاولات - الكويت</p>
         </div>
         <div className="flex items-center gap-3">
           <Button variant="outline" className="hidden sm:flex">
-            <FileText className="mr-2 h-4 w-4" />
-            Export Monthly Report
+            <FileText className="ml-2 h-4 w-4" />
+            تصدير التقرير الشهري
           </Button>
           <Button className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 rounded-xl px-6">
-            <Plus className="mr-2 h-4 w-4" />
-            Quick Action
+            <Plus className="ml-2 h-4 w-4" />
+            إجراء سريع
           </Button>
         </div>
       </div>
@@ -120,11 +116,11 @@ export default function DashboardPage() {
                   "flex items-center text-xs font-bold px-2 py-1 rounded-full",
                   stat.trend === "up" ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"
                 )}>
-                  {stat.trend === "up" ? <ArrowUpRight className="mr-1 h-3 w-3" /> : null}
+                  {stat.trend === "up" ? <ArrowUpRight className="ml-1 h-3 w-3" /> : null}
                   {stat.change}
                 </div>
               </div>
-              <div className="mt-4">
+              <div className="mt-4 text-right">
                 <p className="text-sm font-medium text-muted-foreground uppercase tracking-widest">{stat.title}</p>
                 <h3 className="text-3xl font-black font-headline mt-1 tracking-tight">{stat.value}</h3>
               </div>
@@ -138,18 +134,18 @@ export default function DashboardPage() {
         {/* Revenue Chart */}
         <Card className="lg:col-span-2 border-0 shadow-lg rounded-2xl bg-white overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between px-8 py-6 border-b border-muted">
-            <div>
-              <CardTitle className="text-xl font-bold font-headline">Financial Performance</CardTitle>
-              <CardDescription>Revenue vs Expenses analysis (6 months)</CardDescription>
+            <div className="text-right">
+              <CardTitle className="text-xl font-bold font-headline">الأداء المالي</CardTitle>
+              <CardDescription>تحليل الإيرادات مقابل المصاريف (6 أشهر)</CardDescription>
             </div>
             <div className="flex gap-4">
               <div className="flex items-center gap-1.5 text-xs font-bold">
                 <div className="h-3 w-3 rounded-full bg-primary" />
-                Revenue
+                الإيرادات
               </div>
               <div className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground">
                 <div className="h-3 w-3 rounded-full bg-secondary-foreground" />
-                Expenses
+                المصاريف
               </div>
             </div>
           </CardHeader>
@@ -183,24 +179,24 @@ export default function DashboardPage() {
 
         {/* Recent Activity */}
         <Card className="border-0 shadow-lg rounded-2xl bg-white overflow-hidden">
-          <CardHeader className="px-8 py-6 border-b border-muted">
-            <CardTitle className="text-xl font-bold font-headline">Pipeline Activity</CardTitle>
-            <CardDescription>Real-time operational events</CardDescription>
+          <CardHeader className="px-8 py-6 border-b border-muted text-right">
+            <CardTitle className="text-xl font-bold font-headline">نشاط العمليات</CardTitle>
+            <CardDescription>أحداث تشغيلية في الوقت الفعلي</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y divide-muted">
               {[
-                { type: "visit", title: "Site Visit Logged", detail: "Al-Zour Refinery - Phase 2", time: "12m ago", icon: HardHat, color: "text-blue-500" },
-                { type: "hr", title: "Payroll Batch Generated", detail: "July 2024 (142 employees)", time: "2h ago", icon: UserCircle, color: "text-purple-500" },
-                { type: "purchasing", title: "RFQ Comparative Analysis", detail: "Steel reinforcement bids", time: "4h ago", icon: ShoppingCart, color: "text-primary" },
-                { type: "accounting", title: "Journal Entry Posted", detail: "Contract #AX202 - Installment 1", time: "5h ago", icon: FileText, color: "text-green-500" },
-                { type: "project", title: "Milestone Completed", detail: "Structural foundation - Project 4", time: "1d ago", icon: CheckCircle2, color: "text-emerald-500" },
+                { title: "تسجيل زيارة ميدانية", detail: "مصفاة الزور - المرحلة الثانية", time: "منذ 12 دقيقة", icon: HardHat, color: "text-blue-500" },
+                { title: "إنشاء دفعة الرواتب", detail: "يوليو 2024 (142 موظف)", time: "منذ ساعتين", icon: UserCircle, color: "text-purple-500" },
+                { title: "تحليل عروض الأسعار", detail: "مناقصة حديد التسليح", time: "منذ 4 ساعات", icon: ShoppingCart, color: "text-primary" },
+                { title: "ترحيل قيد محاسبي", detail: "عقد #AX202 - القسط الأول", time: "منذ 5 ساعات", icon: FileText, color: "text-green-500" },
+                { title: "إنجاز مرحلة مشروع", detail: "الأساسات الهيكلية - مشروع 4", time: "منذ يوم", icon: CheckCircle2, color: "text-emerald-500" },
               ].map((activity, i) => (
-                <div key={i} className="flex items-center gap-4 p-6 hover:bg-muted/50 transition-colors">
+                <div key={i} className="flex items-center gap-4 p-6 hover:bg-muted/50 transition-colors flex-row-reverse">
                   <div className={cn("flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center bg-muted", activity.color)}>
                     <activity.icon className="h-5 w-5" />
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 text-right">
                     <p className="text-sm font-bold truncate">{activity.title}</p>
                     <p className="text-xs text-muted-foreground truncate">{activity.detail}</p>
                   </div>
@@ -211,7 +207,7 @@ export default function DashboardPage() {
               ))}
             </div>
             <div className="p-4 bg-muted/20">
-              <Button variant="ghost" className="w-full text-xs font-bold text-primary">View Comprehensive Audit Log</Button>
+              <Button variant="ghost" className="w-full text-xs font-bold text-primary">عرض سجل التدقيق الشامل</Button>
             </div>
           </CardContent>
         </Card>
@@ -220,35 +216,35 @@ export default function DashboardPage() {
       {/* Quick Action Tiles */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card className="border-0 shadow-md bg-gradient-to-br from-primary/10 to-primary/5 rounded-2xl">
-          <CardContent className="p-6 flex items-center gap-4">
+          <CardContent className="p-6 flex items-center gap-4 flex-row-reverse">
             <div className="h-12 w-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-primary">
               <Plus className="h-6 w-6" />
             </div>
-            <div>
-              <h4 className="font-bold font-headline">New Site Visit</h4>
-              <p className="text-xs text-muted-foreground">Log site progress & WBS updates</p>
+            <div className="text-right">
+              <h4 className="font-bold font-headline">زيارة موقع جديدة</h4>
+              <p className="text-xs text-muted-foreground">تسجيل التقدم وتحديثات WBS</p>
             </div>
           </CardContent>
         </Card>
         <Card className="border-0 shadow-md bg-gradient-to-br from-blue-500/10 to-blue-500/5 rounded-2xl">
-          <CardContent className="p-6 flex items-center gap-4">
+          <CardContent className="p-6 flex items-center gap-4 flex-row-reverse">
             <div className="h-12 w-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-blue-500">
               <Users className="h-6 w-6" />
             </div>
-            <div>
-              <h4 className="font-bold font-headline">Register Client</h4>
-              <p className="text-xs text-muted-foreground">Convert lead to transaction pipeline</p>
+            <div className="text-right">
+              <h4 className="font-bold font-headline">تسجيل عميل جديد</h4>
+              <p className="text-xs text-muted-foreground">تحويل الفرصة إلى مسار التعاقد</p>
             </div>
           </CardContent>
         </Card>
         <Card className="border-0 shadow-md bg-gradient-to-br from-purple-500/10 to-purple-500/5 rounded-2xl">
-          <CardContent className="p-6 flex items-center gap-4">
+          <CardContent className="p-6 flex items-center gap-4 flex-row-reverse">
             <div className="h-12 w-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-purple-500">
               <TrendingUp className="h-6 w-6" />
             </div>
-            <div>
-              <h4 className="font-bold font-headline">AI Financial Advisory</h4>
-              <p className="text-xs text-muted-foreground">Generate cash flow projections</p>
+            <div className="text-right">
+              <h4 className="font-bold font-headline">استشارة مالية AI</h4>
+              <p className="text-xs text-muted-foreground">توليد توقعات التدفق النقدي</p>
             </div>
           </CardContent>
         </Card>
