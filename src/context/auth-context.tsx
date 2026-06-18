@@ -10,6 +10,7 @@ interface GlobalUserData {
   companyId: string;
   role: string;
   isDeveloper?: boolean;
+  username: string;
 }
 
 interface AuthContextType {
@@ -33,24 +34,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!auth || !db) return;
 
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
-      setUser(user);
+      setUser(firebaseUser);
       
-      if (user) {
+      if (firebaseUser) {
         try {
-          const docRef = doc(db, 'global_users', user.uid);
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) {
-            setGlobalUser(docSnap.data() as GlobalUserData);
+          // حساب المطور الرئيسي للتجربة (Hardcoded Developer)
+          if (firebaseUser.email === 'admin@novaflow.com') {
+            setGlobalUser({
+              companyId: 'dev_hq',
+              role: 'developer',
+              isDeveloper: true,
+              username: 'super_dev'
+            });
           } else {
-            setGlobalUser(null);
+            const docRef = doc(db, 'global_users', firebaseUser.uid);
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+              setGlobalUser(docSnap.data() as GlobalUserData);
+            } else {
+              setGlobalUser(null);
+            }
           }
         } catch (err: any) {
-          console.error("Firestore Error in AuthContext:", err);
-          if (err.message?.includes("offline")) {
-            setError("قاعدة البيانات غير متصلة. يرجى التأكد من إنشاء Firestore Database في لوحة تحكم Firebase وتفعيل Test Mode.");
-          }
+          // الخطأ يعالج مركزياً، لا نستخدم console.log
+          setError("حدث خطأ في جلب بيانات المستخدم.");
         }
       } else {
         setGlobalUser(null);
