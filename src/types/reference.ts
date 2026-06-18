@@ -1,6 +1,7 @@
+
 /**
- * @fileOverview تعريف واجهات البيانات المرجعية لنظام Nova ERP.
- * يضمن هذا الملف توحيد هيكل البيانات عبر كافة موديولات النظام.
+ * @fileOverview تعريف واجهات البيانات المرجعية والتشغيلية لنظام Nova ERP.
+ * تم تحديثه ليشمل الربط بين المسارات الفنية والعقود المالية.
  */
 
 export type ControlType = 'TimeBased' | 'Numeric' | 'Hybrid';
@@ -13,6 +14,8 @@ export interface BaseReference {
   updatedAt?: any;
   companyId: string;
 }
+
+// --- المرجعيات الأساسية ---
 
 export interface Department extends BaseReference {
   code: string;
@@ -120,4 +123,37 @@ export interface TechnicalStage extends BaseReference {
   sortGroup?: string;
   order: number;
   isActive: boolean;
+}
+
+// --- الكيانات التشغيلية والربط المالي ---
+
+export interface ContractMilestone {
+  id: string;
+  title: string;
+  amount: number;
+  percentage: number;
+  status: 'pending' | 'due' | 'paid';
+  linkedStageId?: string; // ربط بمرحلة محددة
+  linkedMilestoneKey?: string; // ربط بمفتاح مرحلة (مثلاً M1)
+}
+
+export interface Contract extends BaseReference {
+  projectId: string;
+  title: string;
+  totalAmount: number;
+  currency: string;
+  status: 'draft' | 'active' | 'completed' | 'terminated';
+  milestones: ContractMilestone[];
+}
+
+export interface StageInstance extends BaseReference {
+  projectId: string;
+  stageId: string; // المرجع للقالب المرجعي
+  name: string;
+  code: string;
+  status: 'pending' | 'in-progress' | 'completed' | 'skipped';
+  billableTrigger: boolean;
+  milestoneKey: string;
+  completedAt?: any;
+  completedBy?: string;
 }

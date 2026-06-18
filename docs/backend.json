@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "GlobalUser": {
@@ -24,33 +25,45 @@
       },
       "required": ["name", "status"]
     },
-    "Department": {
-      "title": "Department",
-      "description": "الأقسام الإدارية والفنية.",
+    "Contract": {
+      "title": "Project Contract",
+      "description": "بيانات العقد المالي المرتبط بمشروع.",
       "type": "object",
       "properties": {
-        "code": { "type": "string" },
-        "name": { "type": "string" },
-        "nameEn": { "type": "string" },
-        "description": { "type": "string" },
-        "isActive": { "type": "boolean" },
-        "order": { "type": "number" },
-        "companyId": { "type": "string" }
+        "projectId": { "type": "string" },
+        "title": { "type": "string" },
+        "totalAmount": { "type": "number" },
+        "currency": { "type": "string" },
+        "status": { "type": "string", "enum": ["draft", "active", "completed", "terminated"] },
+        "milestones": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "title": { "type": "string" },
+              "amount": { "type": "number" },
+              "percentage": { "type": "number" },
+              "status": { "type": "string", "enum": ["pending", "due", "paid"] },
+              "linkedStageId": { "type": "string" },
+              "linkedMilestoneKey": { "type": "string" }
+            }
+          }
+        }
       }
     },
-    "Job": {
-      "title": "Job Title",
-      "description": "المسميات الوظيفية التابعة للأقسام.",
+    "StageInstance": {
+      "title": "Stage Execution Instance",
+      "description": "نسخة تشغيلية من المرحلة الفنية مرتبطة بمشروع فعلي.",
       "type": "object",
       "properties": {
-        "code": { "type": "string" },
-        "name": { "type": "string" },
-        "nameEn": { "type": "string" },
-        "departmentId": { "type": "string" },
-        "departmentCode": { "type": "string" },
-        "isActive": { "type": "boolean" },
-        "order": { "type": "number" },
-        "companyId": { "type": "string" }
+        "projectId": { "type": "string" },
+        "stageId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "in-progress", "completed", "skipped"] },
+        "billableTrigger": { "type": "boolean" },
+        "milestoneKey": { "type": "string" },
+        "completedAt": { "type": "string", "format": "date-time" },
+        "completedBy": { "type": "string" }
       }
     }
   },
@@ -60,7 +73,7 @@
   "firestore": {
     "/global_users/{uid}": { "schema": "#/entities/GlobalUser", "description": "تخزين المسار الأساسي للمستخدم" },
     "/companies/{companyId}": { "schema": "#/entities/Company", "description": "بيانات الشركة" },
-    "/companies/{companyId}/departments/{id}": { "schema": "#/entities/Department", "description": "الأقسام الإدارية" },
-    "/companies/{companyId}/departments/{id}/jobs/{jobId}": { "schema": "#/entities/Job", "description": "المسميات الوظيفية" }
+    "/companies/{companyId}/projects/{projectId}/contracts/{contractId}": { "schema": "#/entities/Contract", "description": "عقود المشاريع" },
+    "/companies/{companyId}/projects/{projectId}/stages/{instanceId}": { "schema": "#/entities/StageInstance", "description": "تنفيذ مراحل المشروع" }
   }
 }

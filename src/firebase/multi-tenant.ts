@@ -1,3 +1,4 @@
+
 'use client';
 
 import { getTenantPath } from '@/lib/utils';
@@ -19,7 +20,7 @@ export const paths = {
   governorates: (companyId: string) => getTenantPath(companyId, 'governorates'),
   areas: (companyId: string, govId: string) => getTenantPath(companyId, 'governorates', govId, 'areas'),
 
-  // المسارات الفنية (Technical Path Engine)
+  // المسارات الفنية (Technical Path Engine - Templates)
   serviceTypes: (companyId: string) => getTenantPath(companyId, 'serviceTypes'),
   transactionTypes: (companyId: string) => getTenantPath(companyId, 'transactionTypes'),
   subServices: (companyId: string, txId: string) => 
@@ -27,7 +28,12 @@ export const paths = {
   technicalStages: (companyId: string, txId: string, subId: string) => 
     getTenantPath(companyId, 'transactionTypes', txId, 'subServices', subId, 'technicalStages'),
 
-  // الموديولات التشغيلية
+  // الموديولات التشغيلية (Live Execution)
   projects: (companyId: string) => getTenantPath(companyId, 'projects'),
+  projectStages: (companyId: string, projectId: string) => 
+    getTenantPath(companyId, 'projects', projectId, 'stages'),
+  projectContracts: (companyId: string, projectId: string) => 
+    getTenantPath(companyId, 'projects', projectId, 'contracts'),
+  
   leads: (companyId: string) => getTenantPath(companyId, 'leads'),
 };
