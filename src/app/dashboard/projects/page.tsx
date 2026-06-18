@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { HardHat, Sparkles, TrendingUp, DollarSign, Calendar, RefreshCw } from "lucide-react";
 import { generateCashFlowProjection } from "@/ai/flows/cash-flow-projection-flow";
 import { toast } from "@/hooks/use-toast";
+import { useLanguage } from '@/context/language-context';
 
 const initialMilestones = [
   { id: "m1", description: "إتمام حفر وتجهيز الأساسات الهيكلية", dueDate: "2024-08-15", expectedRevenue: 45000 },
@@ -27,6 +28,7 @@ const historicalData = [
 ];
 
 export default function ProjectsPage() {
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [projectionResult, setProjectionResult] = useState<any>(null);
 
@@ -57,40 +59,40 @@ export default function ProjectsPage() {
   };
 
   return (
-    <div className="space-y-8" dir="rtl">
+    <div className="space-y-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="text-right">
-          <h1 className="text-3xl font-black font-headline">جداول تقدم المشاريع والتدفقات النقدية</h1>
-          <p className="text-muted-foreground mt-1">ربط معالم WBS ومخططات جدول الكميات (BOQ) بالسيولة المتاحة</p>
+        <div className="text-start">
+          <h1 className="text-3xl font-black font-headline">{t('projects')}</h1>
+          <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80">ربط معالم WBS ومخططات جدول الكميات (BOQ) بالسيولة المتاحة</p>
         </div>
-        <Button onClick={handleGenerateForecast} disabled={loading} className="bg-primary text-white font-bold rounded-xl px-6 py-5">
-          {loading ? <RefreshCw className="ml-2 h-4 w-4 animate-spin" /> : <Sparkles className="ml-2 h-4 w-4" />}
-          توليد التوقعات المالية بالذكاء الاصطناعي
+        <Button onClick={handleGenerateForecast} disabled={loading} className="bg-primary text-white font-bold rounded-xl px-6 py-5 shadow-lg shadow-primary/20">
+          {loading ? <RefreshCw className="me-2 h-4 w-4 animate-spin" /> : <Sparkles className="me-2 h-4 w-4" />}
+          توليد التوقعات المالية (AI)
         </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="border-0 shadow-md rounded-2xl bg-white lg:col-span-2">
+        <Card className="border-0 shadow-md rounded-[2rem] bg-white lg:col-span-2 overflow-hidden ring-1 ring-black/5">
           <CardHeader className="p-6 border-b">
-            <CardTitle className="text-lg font-bold flex items-center gap-2 flex-row-reverse"><HardHat className="text-primary h-5 w-5" /> المعالم الهندسية القادمة (WBS)</CardTitle>
+            <CardTitle className="text-lg font-bold flex items-center gap-2"><HardHat className="text-primary h-5 w-5" /> المعالم الهندسية القادمة (WBS)</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-right">المعرف</TableHead>
-                  <TableHead className="text-right">الوصف الهندسي للمرحلة</TableHead>
-                  <TableHead className="text-right">تاريخ الاستحقاق</TableHead>
-                  <TableHead className="text-left">العائد المتوقع</TableHead>
+                  <TableHead className="text-start">المعرف</TableHead>
+                  <TableHead className="text-start">الوصف الهندسي</TableHead>
+                  <TableHead className="text-start">الاستحقاق</TableHead>
+                  <TableHead className="text-end">العائد المتوقع</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {initialMilestones.map((m) => (
                   <TableRow key={m.id}>
-                    <TableCell className="font-mono text-xs">{m.id}</TableCell>
-                    <TableCell className="font-bold text-xs">{m.description}</TableCell>
-                    <TableCell className="text-muted-foreground text-xs"><Calendar className="inline ml-1 h-3 w-3" />{m.dueDate}</TableCell>
-                    <TableCell className="font-mono text-left text-emerald-600 font-bold text-xs">{m.expectedRevenue.toLocaleString()} د.ك</TableCell>
+                    <TableCell className="font-mono text-xs text-start">{m.id}</TableCell>
+                    <TableCell className="font-bold text-xs text-start">{m.description}</TableCell>
+                    <TableCell className="text-muted-foreground text-xs text-start"><Calendar className="inline me-1 h-3 w-3" />{m.dueDate}</TableCell>
+                    <TableCell className="font-mono text-end text-emerald-600 font-bold text-xs">{m.expectedRevenue.toLocaleString()} د.ك</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -98,15 +100,15 @@ export default function ProjectsPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md rounded-2xl bg-white">
+        <Card className="border-0 shadow-md rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/5">
           <CardHeader className="p-6 border-b">
-            <CardTitle className="text-lg font-bold flex items-center gap-2 flex-row-reverse"><DollarSign className="text-blue-500 h-5 w-5" /> دفعات العقود المجدولة</CardTitle>
+            <CardTitle className="text-lg font-bold flex items-center gap-2"><DollarSign className="text-blue-500 h-5 w-5" /> دفعات العقود</CardTitle>
           </CardHeader>
           <CardContent className="p-6">
             <div className="space-y-4">
               {initialSchedules.map((s, idx) => (
-                <div key={idx} className="flex justify-between items-center p-3 rounded-xl bg-muted/40 border flex-row-reverse">
-                  <div className="text-right">
+                <div key={idx} className="flex justify-between items-center p-4 rounded-2xl bg-muted/40 border">
+                  <div className="text-start">
                     <p className="text-xs font-bold text-secondary-foreground">{s.contractId}</p>
                     <p className="text-[10px] text-muted-foreground">{s.paymentDate}</p>
                   </div>
@@ -119,18 +121,18 @@ export default function ProjectsPage() {
       </div>
 
       {projectionResult && (
-        <Card className="border-0 shadow-2xl rounded-3xl bg-white overflow-hidden animate-in fade-in duration-500">
-          <CardHeader className="bg-primary/5 p-8 border-b text-right">
-            <CardTitle className="font-headline font-bold text-xl flex items-center gap-2 flex-row-reverse">
+        <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden animate-in fade-in duration-500">
+          <CardHeader className="bg-primary/5 p-8 border-b text-start">
+            <CardTitle className="font-headline font-bold text-xl flex items-center gap-2">
               <TrendingUp className="text-primary h-6 w-6" />
-              التحليل التنبئي للسيولة النقدية والمستند على المخططات الزرقاء
+              التحليل التنبئي للسيولة النقدية
             </CardTitle>
             <CardDescription>محاكاة حركة المال والتدفقات النقدية المتوقعة للأشهر القادمة</CardDescription>
           </CardHeader>
-          <CardContent className="p-8 space-y-6 text-right">
+          <CardContent className="p-8 space-y-6 text-start">
             {projectionResult.summary && (
-              <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 text-sm leading-relaxed">
-                <strong>التوجيه الاستراتيجي للذكاء الاصطناعي:</strong> {projectionResult.summary}
+              <div className="p-5 rounded-2xl bg-primary/5 border border-primary/20 text-sm leading-relaxed font-bold">
+                <strong>التوجيه الاستراتيجي (AI):</strong> {projectionResult.summary}
               </div>
             )}
 
@@ -138,23 +140,23 @@ export default function ProjectsPage() {
               <Table>
                 <TableHeader className="bg-muted/50">
                   <TableRow>
-                    <TableHead className="text-right">الفترة الزمنية</TableHead>
-                    <TableHead className="text-left">التدفقات الداخلة المقدرة</TableHead>
-                    <TableHead className="text-left">التدفقات الخارجة المقدرة</TableHead>
-                    <TableHead className="text-left">صافي التدفق</TableHead>
-                    <TableHead className="text-left">الرصيد التراكمي للشركة</TableHead>
+                    <TableHead className="text-start">الفترة</TableHead>
+                    <TableHead className="text-end">التدفق الداخل</TableHead>
+                    <TableHead className="text-end">التدفق الخارج</TableHead>
+                    <TableHead className="text-end">صافي التدفق</TableHead>
+                    <TableHead className="text-end">الرصيد التراكمي</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {projectionResult.projectionPeriods?.map((p: any, index: number) => (
                     <TableRow key={index}>
-                      <TableCell className="font-bold text-xs">{p.periodName}</TableCell>
-                      <TableCell className="font-mono text-left text-emerald-600 font-bold text-xs">+{p.projectedInflows?.toLocaleString()} د.ك</TableCell>
-                      <TableCell className="font-mono text-left text-destructive font-medium text-xs">-{p.projectedOutflows?.toLocaleString()} د.ك</TableCell>
-                      <TableCell className={`font-mono text-left font-bold text-xs ${p.netCashFlow >= 0 ? 'text-emerald-700' : 'text-destructive'}`}>
+                      <TableCell className="font-bold text-xs text-start">{p.periodName}</TableCell>
+                      <TableCell className="font-mono text-end text-emerald-600 font-bold text-xs">+{p.projectedInflows?.toLocaleString()} د.ك</TableCell>
+                      <TableCell className="font-mono text-end text-destructive font-medium text-xs">-{p.projectedOutflows?.toLocaleString()} د.ك</TableCell>
+                      <TableCell className={`font-mono text-end font-bold text-xs ${p.netCashFlow >= 0 ? 'text-emerald-700' : 'text-destructive'}`}>
                         {p.netCashFlow?.toLocaleString()} د.ك
                       </TableCell>
-                      <TableCell className="font-mono text-left bg-muted/20 font-bold text-xs text-primary">{p.cumulativeCashFlow?.toLocaleString()} د.ك</TableCell>
+                      <TableCell className="font-mono text-end bg-muted/20 font-bold text-xs text-primary">{p.cumulativeCashFlow?.toLocaleString()} د.ك</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

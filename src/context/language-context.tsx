@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
@@ -28,6 +27,16 @@ const translations: Record<Language, Record<string, string>> = {
     workspace: 'مساحة العمل',
     switchLang: 'English',
     logout: 'تسجيل الخروج',
+    profile: 'الملف الشخصي',
+    billing: 'الفواتير والاشتراكات',
+    saved: 'تم الحفظ',
+    error: 'خطأ',
+    deleted: 'تم الحذف',
+    entryAdded: 'تمت إضافة السجل بنجاح.',
+    entryRemoved: 'تم إزالة السجل من قاعدة البيانات.',
+    saveFailed: 'فشل الحفظ في السحاب.',
+    deleteFailed: 'تعذر الحذف حالياً.',
+    confirmDelete: 'هل أنت متأكد من حذف هذا السجل المرجعي؟',
     // Reference Data Specific
     orgRef: 'الهيكل التنظيمي',
     geoRef: 'البيانات الجغرافية',
@@ -58,6 +67,16 @@ const translations: Record<Language, Record<string, string>> = {
     workspace: 'Workspace',
     switchLang: 'العربية',
     logout: 'Logout',
+    profile: 'Profile',
+    billing: 'Billing',
+    saved: 'Saved',
+    error: 'Error',
+    deleted: 'Deleted',
+    entryAdded: 'Entry added successfully.',
+    entryRemoved: 'Entry removed from database.',
+    saveFailed: 'Cloud save failed.',
+    deleteFailed: 'Deletion failed at the moment.',
+    confirmDelete: 'Are you sure you want to delete this reference entry?',
     // Reference Data Specific
     orgRef: 'Organizational',
     geoRef: 'Geographical',
@@ -82,7 +101,8 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const savedLang = localStorage.getItem('lang') as Language;
-    if (savedLang) setLangState(savedLang);
+    if (savedLang) setLang(savedLang);
+    else setLang('ar');
   }, []);
 
   const setLang = (newLang: Language) => {

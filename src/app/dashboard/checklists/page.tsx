@@ -20,10 +20,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 export default function ReferenceHubPage() {
   const { globalUser } = useAuthContext();
-  const { t } = useLanguage();
+  const { t, lang, dir } = useLanguage();
   const db = useFirestore();
   const [activeTab, setActiveTab] = useState("technical");
 
@@ -86,19 +87,19 @@ export default function ReferenceHubPage() {
 
       if (ref) {
         await addDoc(ref, data);
-        toast({ title: "تم الحفظ", description: "تمت إضافة السجل بنجاح." });
+        toast({ title: t('saved'), description: t('entryAdded') });
         setNewItemName("");
         setExtraField("");
       }
     } catch (e) {
-      toast({ variant: "destructive", title: "خطأ", description: "فشل الحفظ في السحاب." });
+      toast({ variant: "destructive", title: t('error'), description: t('saveFailed') });
     } finally {
       setIsAdding(false);
     }
   };
 
   const handleDelete = async (type: string, id: string) => {
-    if (!companyId || !db || !confirm("هل أنت متأكد من حذف هذا السجل المرجعي؟")) return;
+    if (!companyId || !db || !confirm(t('confirmDelete'))) return;
     try {
       let path = "";
       switch (type) {
@@ -111,17 +112,17 @@ export default function ReferenceHubPage() {
         case 'area': path = paths.areas(companyId, selectedGov.id); break;
       }
       await deleteDoc(doc(db, path, id));
-      toast({ title: "تم الحذف", description: "تم إزالة السجل من قاعدة البيانات." });
+      toast({ title: t('deleted'), description: t('entryRemoved') });
     } catch (e) {
-      toast({ variant: "destructive", title: "خطأ", description: "تعذر الحذف." });
+      toast({ variant: "destructive", title: t('error'), description: t('deleteFailed') });
     }
   };
 
   return (
-    <div className="space-y-8" dir="rtl">
+    <div className="space-y-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="text-right">
-          <h1 className="text-4xl font-black font-headline flex items-center gap-3 flex-row-reverse">
+        <div className="text-start">
+          <h1 className="text-4xl font-black font-headline flex items-center gap-3">
             <Database className="h-10 w-10 text-primary" />
             {t('checklists')}
           </h1>
@@ -131,25 +132,23 @@ export default function ReferenceHubPage() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid grid-cols-3 w-full max-w-3xl mx-auto h-16 bg-muted/30 rounded-3xl p-2 shadow-inner">
-          <TabsTrigger value="technical" className="rounded-2xl font-black gap-2 flex-row-reverse transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg"><Workflow className="h-5 w-5" /> {t('techRef')}</TabsTrigger>
-          <TabsTrigger value="org" className="rounded-2xl font-black gap-2 flex-row-reverse transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg"><Building2 className="h-5 w-5" /> {t('orgRef')}</TabsTrigger>
-          <TabsTrigger value="geo" className="rounded-2xl font-black gap-2 flex-row-reverse transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg"><MapPin className="h-5 w-5" /> {t('geoRef')}</TabsTrigger>
+          <TabsTrigger value="technical" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg"><Workflow className="h-5 w-5" /> {t('techRef')}</TabsTrigger>
+          <TabsTrigger value="org" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg"><Building2 className="h-5 w-5" /> {t('orgRef')}</TabsTrigger>
+          <TabsTrigger value="geo" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg"><MapPin className="h-5 w-5" /> {t('geoRef')}</TabsTrigger>
         </TabsList>
 
-        {/* --- Technical Path Tab --- */}
         <TabsContent value="technical" className="mt-8 space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Column 1: Transaction Types */}
             <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
               <CardHeader className="bg-slate-50 border-b p-6 flex flex-row items-center justify-between">
-                <CardTitle className="text-sm font-black flex items-center gap-2 flex-row-reverse"><Layers className="h-4 w-4 text-primary" /> {t('txTypes')}</CardTitle>
+                <CardTitle className="text-sm font-black flex items-center gap-2"><Layers className="h-4 w-4 text-primary" /> {t('txTypes')}</CardTitle>
                 <Dialog>
                   <DialogTrigger asChild><Button size="icon" variant="ghost" className="h-10 w-10 rounded-xl text-primary bg-primary/5 hover:bg-primary/10"><Plus className="h-5 w-5" /></Button></DialogTrigger>
-                  <DialogContent className="rounded-3xl border-0 shadow-2xl" dir="rtl">
-                    <DialogHeader><DialogTitle className="text-right font-headline font-black text-2xl">إضافة مسار فني جديد</DialogTitle></DialogHeader>
+                  <DialogContent className="rounded-3xl border-0 shadow-2xl">
+                    <DialogHeader><DialogTitle className="text-start font-headline font-black text-2xl">إضافة مسار فني جديد</DialogTitle></DialogHeader>
                     <div className="py-6 space-y-4">
-                      <Label className="text-right block">اسم المسار (مثال: تصميم بلدية)</Label>
-                      <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="أدخل اسم المسار هنا..." className="h-14 rounded-2xl border-2 focus:border-primary/50 text-right" />
+                      <Label className="text-start block">اسم المسار (مثال: تصميم بلدية)</Label>
+                      <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="أدخل اسم المسار هنا..." className="h-14 rounded-2xl border-2 focus:border-primary/50 text-start" />
                     </div>
                     <DialogFooter><Button onClick={() => handleAdd('tx')} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">{isAdding ? <Loader2 className="animate-spin" /> : "حفظ المسار الفني"}</Button></DialogFooter>
                   </DialogContent>
@@ -161,15 +160,18 @@ export default function ReferenceHubPage() {
                     <div 
                       key={tx.id} 
                       onClick={() => { setSelectedTxType(tx); setSelectedSubService(null); }}
-                      className={`p-5 border-b flex items-center justify-between cursor-pointer transition-all group ${selectedTxType?.id === tx.id ? 'bg-primary/5 border-r-8 border-r-primary' : 'hover:bg-muted/30'}`}
+                      className={cn(
+                        "p-5 border-b flex items-center justify-between cursor-pointer transition-all group",
+                        selectedTxType?.id === tx.id ? 'bg-primary/5 border-s-8 border-s-primary' : 'hover:bg-muted/30'
+                      )}
                     >
-                      <div className="flex flex-col">
+                      <div className="flex flex-col text-start">
                         <span className="text-sm font-black text-slate-800">{tx.name}</span>
                         <span className="text-[10px] text-muted-foreground font-mono">ID: {tx.id.substring(0,8)}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDelete('tx', tx.id); }} className="opacity-0 group-hover:opacity-100 h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>
-                        <ChevronRight className={`h-5 w-5 transition-transform ${selectedTxType?.id === tx.id ? 'rotate-90 text-primary' : 'text-muted-foreground'}`} />
+                        <ChevronRight className={cn("h-5 w-5 transition-transform", selectedTxType?.id === tx.id ? (lang === 'ar' ? 'rotate-180 text-primary' : 'rotate-90 text-primary') : 'text-muted-foreground')} />
                       </div>
                     </div>
                   ))
@@ -177,35 +179,37 @@ export default function ReferenceHubPage() {
               </CardContent>
             </Card>
 
-            {/* Column 2: Sub Services */}
-            <Card className={`border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 transition-opacity ${!selectedTxType ? 'opacity-30 pointer-events-none' : ''}`}>
+            <Card className={cn("border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 transition-opacity", !selectedTxType && 'opacity-30 pointer-events-none')}>
               <CardHeader className="bg-slate-50 border-b p-6 flex flex-row items-center justify-between">
-                <CardTitle className="text-sm font-black flex items-center gap-2 flex-row-reverse"><Settings2 className="h-4 w-4 text-primary" /> {t('subSrvs')}</CardTitle>
+                <CardTitle className="text-sm font-black flex items-center gap-2"><Settings2 className="h-4 w-4 text-primary" /> {t('subSrvs')}</CardTitle>
                 <Dialog>
                   <DialogTrigger asChild><Button size="icon" variant="ghost" className="h-10 w-10 rounded-xl text-primary bg-primary/5 hover:bg-primary/10"><Plus className="h-5 w-5" /></Button></DialogTrigger>
-                  <DialogContent className="rounded-3xl border-0 shadow-2xl" dir="rtl">
-                    <DialogHeader><DialogTitle className="text-right font-headline font-black text-2xl">إضافة خدمة لـ {selectedTxType?.name}</DialogTitle></DialogHeader>
+                  <DialogContent className="rounded-3xl border-0 shadow-2xl">
+                    <DialogHeader><DialogTitle className="text-start font-headline font-black text-2xl">إضافة خدمة لـ {selectedTxType?.name}</DialogTitle></DialogHeader>
                     <div className="py-6 space-y-4">
-                      <Label className="text-right block">اسم الخدمة الفرعية</Label>
-                      <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="مثال: مخططات إنشائية..." className="h-14 rounded-2xl border-2 focus:border-primary/50 text-right" />
+                      <Label className="text-start block">اسم الخدمة الفرعية</Label>
+                      <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="مثال: مخططات إنشائية..." className="h-14 rounded-2xl border-2 focus:border-primary/50 text-start" />
                     </div>
                     <DialogFooter><Button onClick={() => handleAdd('sub')} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">{isAdding ? <Loader2 className="animate-spin" /> : "إضافة الخدمة"}</Button></DialogFooter>
                   </DialogContent>
                 </Dialog>
               </CardHeader>
               <CardContent className="p-0 max-h-[600px] overflow-y-auto">
-                {!selectedTxType ? <div className="p-20 text-center text-xs text-muted-foreground font-bold">يرجى اختيار مسار فني لعرض خدماته</div> : (
+                {!selectedTxType ? <div className="p-20 text-center text-xs text-muted-foreground font-bold italic">يرجى اختيار مسار فني لعرض خدماته</div> : (
                   subLoading ? <div className="p-12 text-center"><Loader2 className="animate-spin mx-auto h-8 w-8 text-primary/50" /></div> : (
                     subServices?.map(sub => (
                       <div 
                         key={sub.id} 
                         onClick={() => setSelectedSubService(sub)}
-                        className={`p-5 border-b flex items-center justify-between cursor-pointer transition-all group ${selectedSubService?.id === sub.id ? 'bg-primary/5 border-r-8 border-r-primary' : 'hover:bg-muted/30'}`}
+                        className={cn(
+                          "p-5 border-b flex items-center justify-between cursor-pointer transition-all group",
+                          selectedSubService?.id === sub.id ? 'bg-primary/5 border-s-8 border-s-primary' : 'hover:bg-muted/30'
+                        )}
                       >
-                        <span className="text-sm font-black text-slate-800">{sub.name}</span>
+                        <span className="text-sm font-black text-slate-800 text-start">{sub.name}</span>
                         <div className="flex items-center gap-2">
                            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDelete('sub', sub.id); }} className="opacity-0 group-hover:opacity-100 h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>
-                           <ChevronRight className={`h-5 w-5 transition-transform ${selectedSubService?.id === sub.id ? 'rotate-90 text-primary' : 'text-muted-foreground'}`} />
+                           <ChevronRight className={cn("h-5 w-5 transition-transform", selectedSubService?.id === sub.id ? (lang === 'ar' ? 'rotate-180 text-primary' : 'rotate-90 text-primary') : 'text-muted-foreground')} />
                         </div>
                       </div>
                     ))
@@ -214,15 +218,14 @@ export default function ReferenceHubPage() {
               </CardContent>
             </Card>
 
-            {/* Column 3: Technical Stages (WBS) */}
-            <Card className={`border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 transition-opacity ${!selectedSubService ? 'opacity-30 pointer-events-none' : ''}`}>
+            <Card className={cn("border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 transition-opacity", !selectedSubService && 'opacity-30 pointer-events-none')}>
               <CardHeader className="bg-slate-50 border-b p-6 flex flex-row items-center justify-between">
-                <CardTitle className="text-sm font-black flex items-center gap-2 flex-row-reverse"><ShieldCheck className="h-4 w-4 text-primary" /> {t('stages')}</CardTitle>
+                <CardTitle className="text-sm font-black flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> {t('stages')}</CardTitle>
                 <Dialog>
                   <DialogTrigger asChild><Button size="icon" variant="ghost" className="h-10 w-10 rounded-xl text-primary bg-primary/5 hover:bg-primary/10"><Plus className="h-5 w-5" /></Button></DialogTrigger>
-                  <DialogContent className="rounded-3xl border-0 shadow-2xl" dir="rtl">
-                    <DialogHeader><DialogTitle className="text-right font-headline font-black text-2xl">إضافة مرحلة عمل WBS</DialogTitle></DialogHeader>
-                    <div className="py-6 space-y-4 text-right">
+                  <DialogContent className="rounded-3xl border-0 shadow-2xl">
+                    <DialogHeader><DialogTitle className="text-start font-headline font-black text-2xl">إضافة مرحلة عمل WBS</DialogTitle></DialogHeader>
+                    <div className="py-6 space-y-4 text-start">
                       <div className="space-y-2">
                         <Label>اسم المرحلة (WBS Item)</Label>
                         <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="مثال: إعداد المسودة الأولى..." className="h-14 rounded-2xl border-2 focus:border-primary/50" />
@@ -249,8 +252,8 @@ export default function ReferenceHubPage() {
                     stages?.length === 0 ? <p className="text-center text-xs text-muted-foreground py-12 font-bold bg-muted/20 rounded-3xl border-2 border-dashed">لا توجد مراحل معرفة بعد لهذه الخدمة</p> : (
                       stages?.map((stage, idx) => (
                         <div key={stage.id} className="p-4 bg-muted/30 rounded-[1.5rem] border-2 border-transparent hover:border-primary/20 transition-all flex items-center gap-4 group">
-                          <span className="h-8 w-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-black shadow-lg">{idx + 1}</span>
-                          <div className="flex-1">
+                          <span className="h-8 w-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-black shadow-lg shrink-0">{idx + 1}</span>
+                          <div className="flex-1 text-start">
                             <p className="text-sm font-black text-slate-800">{stage.name}</p>
                             <div className="flex gap-2 mt-1">
                                 <Badge variant="secondary" className="text-[9px] px-2 py-0.5 rounded-lg font-bold bg-white text-primary border-primary/20">{stage.controlType}</Badge>
@@ -268,20 +271,18 @@ export default function ReferenceHubPage() {
           </div>
         </TabsContent>
 
-        {/* --- Organizational Tab --- */}
         <TabsContent value="org" className="mt-8 space-y-6">
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-             {/* Departments */}
              <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
                 <CardHeader className="bg-slate-50 border-b p-6 flex flex-row items-center justify-between">
-                  <CardTitle className="text-sm font-black flex items-center gap-2 flex-row-reverse"><Building2 className="h-4 w-4 text-primary" /> الأقسام الإدارية</CardTitle>
+                  <CardTitle className="text-sm font-black flex items-center gap-2"><Building2 className="h-4 w-4 text-primary" /> الأقسام الإدارية</CardTitle>
                   <Dialog>
                     <DialogTrigger asChild><Button size="icon" variant="ghost" className="h-10 w-10 rounded-xl text-primary bg-primary/5 hover:bg-primary/10"><Plus className="h-5 w-5" /></Button></DialogTrigger>
-                    <DialogContent className="rounded-3xl border-0 shadow-2xl" dir="rtl">
-                      <DialogHeader><DialogTitle className="text-right font-headline font-black text-2xl">إضافة قسم جديد</DialogTitle></DialogHeader>
+                    <DialogContent className="rounded-3xl border-0 shadow-2xl">
+                      <DialogHeader><DialogTitle className="text-start font-headline font-black text-2xl">إضافة قسم جديد</DialogTitle></DialogHeader>
                       <div className="py-6 space-y-4">
-                        <Label className="text-right block">اسم القسم (مثال: القسم المعماري)</Label>
-                        <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="أدخل اسم القسم..." className="h-14 rounded-2xl border-2 focus:border-primary/50 text-right" />
+                        <Label className="text-start block">اسم القسم (مثال: القسم المعماري)</Label>
+                        <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="أدخل اسم القسم..." className="h-14 rounded-2xl border-2 focus:border-primary/50 text-start" />
                       </div>
                       <DialogFooter><Button onClick={() => handleAdd('dept')} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">{isAdding ? <Loader2 className="animate-spin" /> : "حفظ القسم"}</Button></DialogFooter>
                     </DialogContent>
@@ -293,27 +294,29 @@ export default function ReferenceHubPage() {
                       <div 
                         key={dept.id} 
                         onClick={() => setSelectedDept(dept)}
-                        className={`p-5 border-b flex items-center justify-between cursor-pointer transition-all ${selectedDept?.id === dept.id ? 'bg-primary/5 border-r-8 border-r-primary' : 'hover:bg-muted/30'}`}
+                        className={cn(
+                          "p-5 border-b flex items-center justify-between cursor-pointer transition-all",
+                          selectedDept?.id === dept.id ? 'bg-primary/5 border-s-8 border-s-primary' : 'hover:bg-muted/30'
+                        )}
                       >
-                        <span className="text-sm font-black">{dept.name}</span>
-                        <ChevronRight className={`h-5 w-5 ${selectedDept?.id === dept.id ? 'text-primary' : 'text-muted-foreground'}`} />
+                        <span className="text-sm font-black text-start">{dept.name}</span>
+                        <ChevronRight className={cn("h-5 w-5", selectedDept?.id === dept.id ? 'text-primary' : 'text-muted-foreground', lang === 'ar' && 'rotate-180')} />
                       </div>
                     ))
                   )}
                 </CardContent>
              </Card>
 
-             {/* Jobs */}
-             <Card className={`border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 transition-opacity ${!selectedDept ? 'opacity-30 pointer-events-none' : ''}`}>
+             <Card className={cn("border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 transition-opacity", !selectedDept && 'opacity-30 pointer-events-none')}>
                 <CardHeader className="bg-slate-50 border-b p-6 flex flex-row items-center justify-between">
-                  <CardTitle className="text-sm font-black flex items-center gap-2 flex-row-reverse"><Briefcase className="h-4 w-4 text-primary" /> المسميات الوظيفية لـ {selectedDept?.name}</CardTitle>
+                  <CardTitle className="text-sm font-black flex items-center gap-2"><Briefcase className="h-4 w-4 text-primary" /> المسميات الوظيفية لـ {selectedDept?.name}</CardTitle>
                   <Dialog>
                     <DialogTrigger asChild><Button size="icon" variant="ghost" className="h-10 w-10 rounded-xl text-primary bg-primary/5 hover:bg-primary/10"><Plus className="h-5 w-5" /></Button></DialogTrigger>
-                    <DialogContent className="rounded-3xl border-0 shadow-2xl" dir="rtl">
-                      <DialogHeader><DialogTitle className="text-right font-headline font-black text-2xl">إضافة وظيفة جديدة</DialogTitle></DialogHeader>
+                    <DialogContent className="rounded-3xl border-0 shadow-2xl">
+                      <DialogHeader><DialogTitle className="text-start font-headline font-black text-2xl">إضافة وظيفة جديدة</DialogTitle></DialogHeader>
                       <div className="py-6 space-y-4">
-                        <Label className="text-right block">المسمى الوظيفي</Label>
-                        <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="مثال: مهندس موقع..." className="h-14 rounded-2xl border-2 focus:border-primary/50 text-right" />
+                        <Label className="text-start block">المسمى الوظيفي</Label>
+                        <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="مثال: مهندس موقع..." className="h-14 rounded-2xl border-2 focus:border-primary/50 text-start" />
                       </div>
                       <DialogFooter><Button onClick={() => handleAdd('job')} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">{isAdding ? <Loader2 className="animate-spin" /> : "حفظ الوظيفة"}</Button></DialogFooter>
                     </DialogContent>
@@ -324,7 +327,7 @@ export default function ReferenceHubPage() {
                     jobsLoading ? <div className="p-12 text-center"><Loader2 className="animate-spin mx-auto h-8 w-8 text-primary/50" /></div> : (
                       jobs?.map(job => (
                         <div key={job.id} className="p-5 border-b flex items-center justify-between group hover:bg-muted/30 transition-all">
-                          <span className="text-sm font-bold text-slate-700">{job.name}</span>
+                          <span className="text-sm font-bold text-slate-700 text-start">{job.name}</span>
                           <Button variant="ghost" size="icon" onClick={() => handleDelete('job', job.id)} className="opacity-0 group-hover:opacity-100 text-destructive"><Trash2 className="h-4 w-4" /></Button>
                         </div>
                       ))
@@ -335,20 +338,18 @@ export default function ReferenceHubPage() {
            </div>
         </TabsContent>
 
-        {/* --- Geographical Tab --- */}
         <TabsContent value="geo" className="mt-8 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-             {/* Governorates */}
              <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
                 <CardHeader className="bg-slate-50 border-b p-6 flex flex-row items-center justify-between">
-                  <CardTitle className="text-sm font-black flex items-center gap-2 flex-row-reverse"><Map className="h-4 w-4 text-primary" /> المحافظات</CardTitle>
+                  <CardTitle className="text-sm font-black flex items-center gap-2"><Map className="h-4 w-4 text-primary" /> المحافظات</CardTitle>
                   <Dialog>
                     <DialogTrigger asChild><Button size="icon" variant="ghost" className="h-10 w-10 rounded-xl text-primary bg-primary/5 hover:bg-primary/10"><Plus className="h-5 w-5" /></Button></DialogTrigger>
-                    <DialogContent className="rounded-3xl border-0 shadow-2xl" dir="rtl">
-                      <DialogHeader><DialogTitle className="text-right font-headline font-black text-2xl">إضافة محافظة</DialogTitle></DialogHeader>
+                    <DialogContent className="rounded-3xl border-0 shadow-2xl">
+                      <DialogHeader><DialogTitle className="text-start font-headline font-black text-2xl">إضافة محافظة</DialogTitle></DialogHeader>
                       <div className="py-6 space-y-4">
-                        <Label className="text-right block">اسم المحافظة</Label>
-                        <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="مثال: العاصمة..." className="h-14 rounded-2xl border-2 focus:border-primary/50 text-right" />
+                        <Label className="text-start block">اسم المحافظة</Label>
+                        <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="مثال: العاصمة..." className="h-14 rounded-2xl border-2 focus:border-primary/50 text-start" />
                       </div>
                       <DialogFooter><Button onClick={() => handleAdd('gov')} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">{isAdding ? <Loader2 className="animate-spin" /> : "حفظ المحافظة"}</Button></DialogFooter>
                     </DialogContent>
@@ -360,27 +361,29 @@ export default function ReferenceHubPage() {
                       <div 
                         key={gov.id} 
                         onClick={() => setSelectedGov(gov)}
-                        className={`p-5 border-b flex items-center justify-between cursor-pointer transition-all ${selectedGov?.id === gov.id ? 'bg-primary/5 border-r-8 border-r-primary' : 'hover:bg-muted/30'}`}
+                        className={cn(
+                          "p-5 border-b flex items-center justify-between cursor-pointer transition-all",
+                          selectedGov?.id === gov.id ? 'bg-primary/5 border-s-8 border-s-primary' : 'hover:bg-muted/30'
+                        )}
                       >
-                        <span className="text-sm font-black">{gov.name}</span>
-                        <ChevronRight className={`h-5 w-5 ${selectedGov?.id === gov.id ? 'text-primary' : 'text-muted-foreground'}`} />
+                        <span className="text-sm font-black text-start">{gov.name}</span>
+                        <ChevronRight className={cn("h-5 w-5", selectedGov?.id === gov.id ? 'text-primary' : 'text-muted-foreground', lang === 'ar' && 'rotate-180')} />
                       </div>
                     ))
                   )}
                 </CardContent>
              </Card>
 
-             {/* Areas */}
-             <Card className={`border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 transition-opacity ${!selectedGov ? 'opacity-30 pointer-events-none' : ''}`}>
+             <Card className={cn("border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 transition-opacity", !selectedGov && 'opacity-30 pointer-events-none')}>
                 <CardHeader className="bg-slate-50 border-b p-6 flex flex-row items-center justify-between">
-                  <CardTitle className="text-sm font-black flex items-center gap-2 flex-row-reverse"><MapPin className="h-4 w-4 text-primary" /> المناطق التابعة لـ {selectedGov?.name}</CardTitle>
+                  <CardTitle className="text-sm font-black flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" /> المناطق التابعة لـ {selectedGov?.name}</CardTitle>
                   <Dialog>
                     <DialogTrigger asChild><Button size="icon" variant="ghost" className="h-10 w-10 rounded-xl text-primary bg-primary/5 hover:bg-primary/10"><Plus className="h-5 w-5" /></Button></DialogTrigger>
-                    <DialogContent className="rounded-3xl border-0 shadow-2xl" dir="rtl">
-                      <DialogHeader><DialogTitle className="text-right font-headline font-black text-2xl">إضافة منطقة جديدة</DialogTitle></DialogHeader>
+                    <DialogContent className="rounded-3xl border-0 shadow-2xl">
+                      <DialogHeader><DialogTitle className="text-start font-headline font-black text-2xl">إضافة منطقة جديدة</DialogTitle></DialogHeader>
                       <div className="py-6 space-y-4">
-                        <Label className="text-right block">اسم المنطقة</Label>
-                        <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="مثال: الخالدية..." className="h-14 rounded-2xl border-2 focus:border-primary/50 text-right" />
+                        <Label className="text-start block">اسم المنطقة</Label>
+                        <Input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="مثال: الخالدية..." className="h-14 rounded-2xl border-2 focus:border-primary/50 text-start" />
                       </div>
                       <DialogFooter><Button onClick={() => handleAdd('area')} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">{isAdding ? <Loader2 className="animate-spin" /> : "حفظ المنطقة"}</Button></DialogFooter>
                     </DialogContent>
@@ -391,7 +394,7 @@ export default function ReferenceHubPage() {
                     areasLoading ? <div className="p-12 text-center"><Loader2 className="animate-spin mx-auto h-8 w-8 text-primary/50" /></div> : (
                       areas?.map(area => (
                         <div key={area.id} className="p-5 border-b flex items-center justify-between group hover:bg-muted/30 transition-all">
-                          <span className="text-sm font-bold text-slate-700">{area.name}</span>
+                          <span className="text-sm font-bold text-slate-700 text-start">{area.name}</span>
                           <Button variant="ghost" size="icon" onClick={() => handleDelete('area', area.id)} className="opacity-0 group-hover:opacity-100 text-destructive"><Trash2 className="h-4 w-4" /></Button>
                         </div>
                       ))
