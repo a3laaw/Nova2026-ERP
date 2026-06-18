@@ -28,7 +28,7 @@ import {
   Cell,
   CartesianGrid
 } from "recharts"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { cn } from "@/lib/utils"
 
 const data = [
@@ -39,6 +39,17 @@ const data = [
   { name: "May", revenue: 5900, expenses: 3500 },
   { name: "Jun", revenue: 7200, expenses: 4100 },
 ]
+
+const chartConfig = {
+  revenue: {
+    label: "Revenue",
+    color: "hsl(var(--primary))",
+  },
+  expenses: {
+    label: "Expenses",
+    color: "hsl(var(--secondary-foreground))",
+  },
+} satisfies ChartConfig
 
 const stats = [
   {
@@ -131,7 +142,7 @@ export default function DashboardPage() {
               <CardTitle className="text-xl font-bold font-headline">Financial Performance</CardTitle>
               <CardDescription>Revenue vs Expenses analysis (6 months)</CardDescription>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-4">
               <div className="flex items-center gap-1.5 text-xs font-bold">
                 <div className="h-3 w-3 rounded-full bg-primary" />
                 Revenue
@@ -144,7 +155,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="p-8">
             <div className="h-[300px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
+              <ChartContainer config={chartConfig}>
                 <BarChart data={data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--muted))" />
                   <XAxis 
@@ -158,14 +169,14 @@ export default function DashboardPage() {
                     tickLine={false} 
                     tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12, fontWeight: 600 }}
                   />
-                  <Tooltip 
+                  <ChartTooltip 
                     cursor={{ fill: "hsl(var(--muted))", opacity: 0.4 }}
                     content={<ChartTooltipContent hideLabel />}
                   />
-                  <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} barSize={24} />
-                  <Bar dataKey="expenses" fill="hsl(var(--secondary-foreground))" radius={[6, 6, 0, 0]} barSize={24} />
+                  <Bar dataKey="revenue" fill="var(--color-revenue)" radius={[6, 6, 0, 0]} barSize={24} />
+                  <Bar dataKey="expenses" fill="var(--color-expenses)" radius={[6, 6, 0, 0]} barSize={24} />
                 </BarChart>
-              </ResponsiveContainer>
+              </ChartContainer>
             </div>
           </CardContent>
         </Card>
