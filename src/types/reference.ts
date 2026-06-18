@@ -60,14 +60,33 @@ export interface ServiceType extends BaseReference {
 }
 
 export interface TransactionType extends BaseReference {
+  code: string;
   name: string;
+  nameEn: string;
   serviceTypeId: string;
+  serviceTypeCode?: string;
   departmentIds: string[];
+  isActive: boolean;
+  order: number;
 }
 
 export interface SubService extends BaseReference {
+  code: string;
   name: string;
-  parentId: string;
+  nameEn: string;
+  description: string;
+  transactionTypeId: string;
+  transactionTypeCode: string;
+  departmentIds: string[];
+  departmentCodes?: string[];
+  outputType?: 'Drawing' | 'Report' | 'Permit' | 'Physical' | 'Other';
+  isCore: boolean;
+  isBillable: boolean;
+  requiresTechnicalStages: boolean;
+  allowParallelExecution: boolean;
+  clientVisible: boolean;
+  order: number;
+  isActive: boolean;
 }
 
 export interface TechnicalStage extends BaseReference {

@@ -10,6 +10,7 @@ import { useLanguage } from '@/context/language-context';
 import DepartmentsPage from './departments/page';
 import GeoPage from './geo/page';
 import ServiceTypesPage from './service-types/page';
+import TechnicalPathsPage from './technical-paths/page';
 
 export default function ReferenceHubPage() {
   const { t, lang, dir } = useLanguage();
@@ -54,9 +55,8 @@ export default function ReferenceHubPage() {
           <ServiceTypesPage />
         </TabsContent>
 
-        <TabsContent value="technical" className="mt-8 text-center py-20 bg-white rounded-[3rem] shadow-xl">
-           <Workflow className="h-20 w-20 mx-auto text-muted-foreground/20 mb-4" />
-           <p className="font-bold text-muted-foreground italic">{isRtl ? 'قيد التطوير - المسارات الفنية' : 'Under Development - Technical Paths'}</p>
+        <TabsContent value="technical" className="mt-8">
+           <TechnicalPathsPage />
         </TabsContent>
 
         <TabsContent value="geo" className="mt-8">
