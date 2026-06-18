@@ -4,6 +4,8 @@
  */
 
 export type ControlType = 'TimeBased' | 'Numeric' | 'Hybrid';
+export type StageType = 'Internal' | 'ClientReview' | 'Permit' | 'Execution' | 'Financial' | 'Closing';
+export type TrackingType = 'Manual' | 'AutoByDeliverable' | 'ExternalSystem';
 
 export interface BaseReference {
   id?: string;
@@ -90,13 +92,32 @@ export interface SubService extends BaseReference {
 }
 
 export interface TechnicalStage extends BaseReference {
+  code: string;
   name: string;
-  order: number;
+  nameEn: string;
+  description: string;
+  transactionTypeId: string;
+  subServiceId: string;
+  stageType: StageType;
   controlType: ControlType;
   controlValue: {
     time?: string;
     numeric?: number;
   };
-  nextStageIds: string[];
+  trackingType: TrackingType;
+  expectedDurationDays: number;
+  maxOccurrences: number;
   isEditable: boolean;
+  isRequired: boolean;
+  allowParallel: boolean;
+  nextStageIds: string[];
+  blockedByStageIds: string[];
+  defaultAssigneeDepartmentIds: string[];
+  defaultAssigneeJobIds: string[];
+  billableTrigger: boolean;
+  milestoneKey: string;
+  clientVisible: boolean;
+  sortGroup?: string;
+  order: number;
+  isActive: boolean;
 }

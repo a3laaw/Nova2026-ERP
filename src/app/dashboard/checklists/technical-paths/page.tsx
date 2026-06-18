@@ -24,6 +24,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { TransactionType, SubService, ServiceType, Department } from '@/types/reference';
+import { TechnicalStagesManager } from './technical-stages-manager';
 
 export default function TechnicalPathsPage() {
   const { globalUser } = useAuthContext();
@@ -33,6 +34,8 @@ export default function TechnicalPathsPage() {
   const isRtl = lang === 'ar';
 
   const [selectedTx, setSelectedTx] = useState<TransactionType | null>(null);
+  const [selectedSub, setSelectedSub] = useState<SubService | null>(null);
+  const [viewMode, setViewMode] = useState<'main' | 'stages'>('main');
   const [searchTerm, setSearchTerm] = useState("");
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   
@@ -60,14 +63,9 @@ export default function TechnicalPathsPage() {
     companyId && db ? query(collection(db, paths.serviceTypes(companyId)), orderBy('order')) : null
   , [db, companyId]);
 
-  const departmentsQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.departments(companyId)), orderBy('order')) : null
-  , [db, companyId]);
-
   const { data: transactionTypes, loading: txLoading } = useCollection<TransactionType>(txQuery);
   const { data: subServices, loading: subLoading } = useCollection<SubService>(subQuery);
   const { data: serviceTypes } = useCollection<ServiceType>(serviceTypesQuery);
-  const { data: departments } = useCollection<Department>(departmentsQuery);
 
   const filteredTx = transactionTypes?.filter(tx => 
     tx.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -124,6 +122,16 @@ export default function TechnicalPathsPage() {
     } catch (e) {}
   };
 
+  if (viewMode === 'stages' && selectedTx && selectedSub) {
+    return (
+      <TechnicalStagesManager 
+        transactionType={selectedTx} 
+        subService={selectedSub} 
+        onBack={() => { setViewMode('main'); setSelectedSub(null); }} 
+      />
+    );
+  }
+
   return (
     <div className="space-y-8" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-start">
@@ -170,7 +178,7 @@ export default function TechnicalPathsPage() {
                 <Select value={txForm.serviceTypeId} onValueChange={val => setTxForm({...txForm, serviceTypeId: val})}>
                   <SelectTrigger className="h-14 rounded-2xl border-2"><SelectValue placeholder={t('search')} /></SelectTrigger>
                   <SelectContent>
-                    {serviceTypes?.map(st => <SelectItem key={item.id} value={st.id!}>{isRtl ? st.name : st.nameEn}</SelectItem>)}
+                    {serviceTypes?.map(st => <SelectItem key={st.id} value={st.id!}>{isRtl ? st.name : st.nameEn}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -249,7 +257,6 @@ export default function TechnicalPathsPage() {
                   {isRtl ? 'الخدمات الفرعية' : 'Sub-Services'}
                   {selectedTx && <Badge variant="secondary" className="ms-3 bg-primary/10 text-primary font-black">{isRtl ? selectedTx.name : selectedTx.nameEn}</Badge>}
                 </CardTitle>
-                <CardDescription className="mt-1">{isRtl ? 'تفاصيل مراحل العمل والخدمات التفصيلية' : 'Work stages and detailed service breakdowns'}</CardDescription>
               </div>
               
               <Dialog>
@@ -260,78 +267,24 @@ export default function TechnicalPathsPage() {
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="rounded-3xl border-0 shadow-2xl max-w-4xl" dir={dir}>
-                  <DialogHeader>
-                    <DialogTitle className="text-start font-headline font-black text-2xl">{isRtl ? 'إضافة خدمة فرعية' : 'New Sub-Service'}</DialogTitle>
-                  </DialogHeader>
+                  <DialogHeader><DialogTitle className="text-start font-black text-2xl">{isRtl ? 'إضافة خدمة فرعية' : 'New Sub-Service'}</DialogTitle></DialogHeader>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-6 text-start">
                     <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label>{isRtl ? 'كود الخدمة' : 'Sub-Service Code'}</Label>
-                        <Input value={subForm.code} onChange={e => setSubForm({...subForm, code: e.target.value})} placeholder="ARCH-DWG" className="h-14 rounded-2xl border-2" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>{t('name')} (Ar)</Label>
-                        <Input value={subForm.name} onChange={e => setSubForm({...subForm, name: e.target.value})} placeholder="مخططات معمارية" className="h-14 rounded-2xl border-2" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>{t('name')} (En)</Label>
-                        <Input value={subForm.nameEn} onChange={e => setSubForm({...subForm, nameEn: e.target.value})} placeholder="Architectural Plans" className="h-14 rounded-2xl border-2 text-start" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>{isRtl ? 'الوصف' : 'Description'}</Label>
-                        <Textarea value={subForm.description} onChange={e => setSubForm({...subForm, description: e.target.value})} className="rounded-2xl border-2 min-h-[100px]" />
-                      </div>
+                      <div className="space-y-2"><Label>Code</Label><Input value={subForm.code} onChange={e => setSubForm({...subForm, code: e.target.value})} className="h-14 rounded-2xl border-2" /></div>
+                      <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={subForm.name} onChange={e => setSubForm({...subForm, name: e.target.value})} className="h-14 rounded-2xl border-2" /></div>
+                      <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={subForm.nameEn} onChange={e => setSubForm({...subForm, nameEn: e.target.value})} className="h-14 rounded-2xl border-2 text-start" /></div>
                     </div>
-
-                    <div className="space-y-6 bg-slate-50 p-6 rounded-[2rem] border-2 border-dashed">
-                      <h4 className="font-black text-sm uppercase tracking-widest text-slate-400">{isRtl ? 'خصائص المسار' : 'Operational Logic'}</h4>
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="flex items-center justify-between p-3 bg-white rounded-xl border">
-                          <Label className="text-xs font-bold">{isRtl ? 'خدمة أساسية' : 'Core Service'}</Label>
-                          <Switch checked={subForm.isCore} onCheckedChange={val => setSubForm({...subForm, isCore: val})} />
-                        </div>
-                        <div className="flex items-center justify-between p-3 bg-white rounded-xl border">
-                          <Label className="text-xs font-bold">{isRtl ? 'قابلة للفوترة' : 'Billable'}</Label>
-                          <Switch checked={subForm.isBillable} onCheckedChange={val => setSubForm({...subForm, isBillable: val})} />
-                        </div>
-                        <div className="flex items-center justify-between p-3 bg-white rounded-xl border">
-                          <Label className="text-xs font-bold">{isRtl ? 'تتطلب مراحل فنية' : 'Req. Stages'}</Label>
-                          <Switch checked={subForm.requiresTechnicalStages} onCheckedChange={val => setSubForm({...subForm, requiresTechnicalStages: val})} />
-                        </div>
-                        <div className="flex items-center justify-between p-3 bg-white rounded-xl border">
-                          <Label className="text-xs font-bold">{isRtl ? 'تنفيذ متوازي' : 'Parallel'}</Label>
-                          <Switch checked={subForm.allowParallelExecution} onCheckedChange={val => setSubForm({...subForm, allowParallelExecution: val})} />
-                        </div>
-                        <div className="flex items-center justify-between p-3 bg-white rounded-xl border">
-                          <Label className="text-xs font-bold">{isRtl ? 'مرئية للعميل' : 'Client Visible'}</Label>
-                          <Switch checked={subForm.clientVisible} onCheckedChange={val => setSubForm({...subForm, clientVisible: val})} />
-                        </div>
-                        <div className="flex items-center justify-between p-3 bg-white rounded-xl border">
-                          <Label className="text-xs font-bold">{t('active')}</Label>
-                          <Switch checked={subForm.isActive} onCheckedChange={val => setSubForm({...subForm, isActive: val})} />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>{isRtl ? 'نوع المخرج' : 'Output Type'}</Label>
-                        <Select value={subForm.outputType} onValueChange={val => setSubForm({...subForm, outputType: val as any})}>
-                          <SelectTrigger className="h-12 rounded-xl bg-white"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Drawing">{isRtl ? 'مخطط هندسي' : 'Drawing'}</SelectItem>
-                            <SelectItem value="Report">{isRtl ? 'تقرير' : 'Report'}</SelectItem>
-                            <SelectItem value="Permit">{isRtl ? 'ترخيص / رخصة' : 'Permit'}</SelectItem>
-                            <SelectItem value="Physical">{isRtl ? 'عمل إنشائي' : 'Physical Work'}</SelectItem>
-                          </SelectContent>
-                        </Select>
+                    <div className="space-y-4 bg-slate-50 p-6 rounded-[2rem] border-2 border-dashed">
+                      <div className="grid grid-cols-2 gap-3">
+                         {['isBillable', 'requiresTechnicalStages', 'clientVisible', 'isActive'].map(key => (
+                           <div key={key} className="flex items-center justify-between p-3 bg-white rounded-xl border text-xs font-bold">
+                             <span>{key}</span><Switch checked={(subForm as any)[key]} onCheckedChange={val => setSubForm({...subForm, [key]: val})} />
+                           </div>
+                         ))}
                       </div>
                     </div>
                   </div>
-                  <DialogFooter>
-                    <Button onClick={handleSaveSub} disabled={loadingAction === 'sub'} className="w-full h-14 rounded-2xl font-black bg-primary">
-                      {loadingAction === 'sub' ? <Loader2 className="animate-spin" /> : t('save')}
-                    </Button>
-                  </DialogFooter>
+                  <DialogFooter><Button onClick={handleSaveSub} disabled={loadingAction === 'sub'} className="w-full h-14 rounded-2xl font-black bg-primary">{loadingAction === 'sub' ? <Loader2 className="animate-spin" /> : t('save')}</Button></DialogFooter>
                 </DialogContent>
               </Dialog>
             </CardHeader>
@@ -350,9 +303,7 @@ export default function TechnicalPathsPage() {
                       {subServices?.map(sub => (
                         <div key={sub.id} className="p-6 rounded-[2rem] border-2 bg-white hover:shadow-2xl hover:border-primary/30 transition-all group flex items-center justify-between text-start">
                           <div className="flex items-center gap-6">
-                            <div className="h-12 w-12 rounded-2xl bg-slate-50 flex items-center justify-center border font-black text-primary">
-                              {sub.order}
-                            </div>
+                            <div className="h-12 w-12 rounded-2xl bg-slate-50 flex items-center justify-center border font-black text-primary">{sub.order}</div>
                             <div className="flex flex-col">
                               <div className="flex items-center gap-2">
                                 <span className="text-lg font-black text-slate-800">{isRtl ? sub.name : sub.nameEn}</span>
@@ -360,21 +311,19 @@ export default function TechnicalPathsPage() {
                               </div>
                               <div className="flex items-center gap-3 mt-1">
                                 {sub.isBillable && <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 text-[9px]"><DollarSign className="h-2 w-2 me-1" /> {isRtl ? 'مفوترة' : 'Billable'}</Badge>}
-                                {sub.requiresTechnicalStages && <Badge className="bg-blue-50 text-blue-600 border-blue-100 text-[9px]"><Layers className="h-2 w-2 me-1" /> WBS</Badge>}
-                                {sub.clientVisible && <Badge className="bg-purple-50 text-purple-600 border-purple-100 text-[9px]"><Eye className="h-2 w-2 me-1" /> {isRtl ? 'عميل' : 'Client'}</Badge>}
-                                {!sub.isActive && <Badge variant="destructive" className="text-[9px]"><Ban className="h-2 w-2 me-1" /> {isRtl ? 'معطلة' : 'Disabled'}</Badge>}
+                                {sub.requiresTechnicalStages && <Badge className="bg-blue-50 text-blue-600 border-blue-100 text-[9px]"><Layers className="h-2 w-2 me-1" /> WBS Template</Badge>}
                               </div>
                             </div>
                           </div>
                           
                           <div className="flex items-center gap-3">
-                             <Button variant="outline" size="sm" className="rounded-xl font-bold gap-2 text-primary border-primary/20 hover:bg-primary/5">
+                             <Button onClick={() => { setSelectedSub(sub); setViewMode('stages'); }} variant="outline" size="sm" className="rounded-xl font-black gap-2 text-primary border-primary/20 hover:bg-primary/5 h-11 px-4">
                                 <Settings2 className="h-4 w-4" />
-                                {isRtl ? 'مراحل المسار' : 'Technical Stages'}
+                                {isRtl ? 'المراحل الفنية' : 'Work Stages'}
                              </Button>
                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Button variant="ghost" size="icon" onClick={() => setSubForm(sub)} className="h-10 w-10 text-blue-600 hover:bg-blue-50"><Edit3 className="h-5 w-5" /></Button>
-                                <Button variant="ghost" size="icon" onClick={() => pathService?.deleteSubService(selectedTx.id!, sub.id!)} className="h-10 w-10 text-destructive hover:bg-destructive/5"><Trash2 className="h-5 w-5" /></Button>
+                                <Button variant="ghost" size="icon" onClick={() => setSubForm(sub)} className="h-10 w-10 text-blue-600 bg-blue-50 rounded-xl"><Edit3 className="h-5 w-5" /></Button>
+                                <Button variant="ghost" size="icon" onClick={() => pathService?.deleteSubService(selectedTx.id!, sub.id!)} className="h-10 w-10 text-destructive bg-destructive/5 rounded-xl"><Trash2 className="h-5 w-5" /></Button>
                              </div>
                           </div>
                         </div>
