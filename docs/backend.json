@@ -26,11 +26,16 @@
     },
     "Department": {
       "title": "Department",
-      "description": "الأقسام الإدارية والفنية (معماري، إنشائي، إلخ).",
+      "description": "الأقسام الإدارية والفنية.",
       "type": "object",
       "properties": {
+        "code": { "type": "string" },
         "name": { "type": "string" },
-        "order": { "type": "number" }
+        "nameEn": { "type": "string" },
+        "description": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "order": { "type": "number" },
+        "companyId": { "type": "string" }
       }
     },
     "Job": {
@@ -38,65 +43,14 @@
       "description": "المسميات الوظيفية التابعة للأقسام.",
       "type": "object",
       "properties": {
+        "code": { "type": "string" },
         "name": { "type": "string" },
-        "departmentId": { "type": "string" }
-      }
-    },
-    "Governorate": {
-      "title": "Governorate",
-      "description": "المحافظات الإدارية.",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string" }
-      }
-    },
-    "Area": {
-      "title": "Area",
-      "description": "المناطق التابعة للمحافظات.",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string" },
-        "governorateId": { "type": "string" }
-      }
-    },
-    "ServiceType": {
-      "title": "Service Category",
-      "description": "أنشطة الأعمال الكبرى (استشارات، مقاولات).",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string" }
-      }
-    },
-    "TransactionType": {
-      "title": "Transaction Type",
-      "description": "أنواع المعاملات والمسارات الفنية (تصميم بلدية، عقد ترميم).",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string" },
-        "serviceTypeId": { "type": "string" },
-        "departmentIds": { "type": "array", "items": { "type": "string" } }
-      }
-    },
-    "SubService": {
-      "title": "Sub Service",
-      "description": "الخدمات التفصيلية التابعة لنوع المعاملة.",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string" },
-        "parentId": { "type": "string" }
-      }
-    },
-    "TechnicalStage": {
-      "title": "Technical Stage",
-      "description": "مراحل العمل التفصيلية للمسار الفني (WBS).",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string" },
+        "nameEn": { "type": "string" },
+        "departmentId": { "type": "string" },
+        "departmentCode": { "type": "string" },
+        "isActive": { "type": "boolean" },
         "order": { "type": "number" },
-        "controlType": { "type": "string", "enum": ["TimeBased", "Numeric", "Hybrid"] },
-        "controlValue": { "type": "object" },
-        "nextStageIds": { "type": "array", "items": { "type": "string" } },
-        "isEditable": { "type": "boolean" }
+        "companyId": { "type": "string" }
       }
     }
   },
@@ -106,13 +60,7 @@
   "firestore": {
     "/global_users/{uid}": { "schema": "#/entities/GlobalUser", "description": "تخزين المسار الأساسي للمستخدم" },
     "/companies/{companyId}": { "schema": "#/entities/Company", "description": "بيانات الشركة" },
-    "/companies/{companyId}/departments/{id}": { "schema": "#/entities/Department", "description": "الأقسام" },
-    "/companies/{companyId}/departments/{id}/jobs/{jobId}": { "schema": "#/entities/Job", "description": "المسميات الوظيفية" },
-    "/companies/{companyId}/governorates/{id}": { "schema": "#/entities/Governorate", "description": "المحافظات" },
-    "/companies/{companyId}/governorates/{id}/areas/{areaId}": { "schema": "#/entities/Area", "description": "المناطق" },
-    "/companies/{companyId}/serviceTypes/{id}": { "schema": "#/entities/ServiceType", "description": "أنشطة الأعمال" },
-    "/companies/{companyId}/transactionTypes/{id}": { "schema": "#/entities/TransactionType", "description": "أنواع المسارات الفنية" },
-    "/companies/{companyId}/transactionTypes/{txId}/subServices/{subId}": { "schema": "#/entities/SubService", "description": "الخدمات الفرعية" },
-    "/companies/{companyId}/transactionTypes/{txId}/subServices/{subId}/technicalStages/{stageId}": { "schema": "#/entities/TechnicalStage", "description": "مراحل المسار الفني" }
+    "/companies/{companyId}/departments/{id}": { "schema": "#/entities/Department", "description": "الأقسام الإدارية" },
+    "/companies/{companyId}/departments/{id}/jobs/{jobId}": { "schema": "#/entities/Job", "description": "المسميات الوظيفية" }
   }
 }

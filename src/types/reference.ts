@@ -9,16 +9,27 @@ export interface BaseReference {
   id?: string;
   createdAt?: any;
   updatedAt?: any;
+  companyId: string;
 }
 
 export interface Department extends BaseReference {
+  code: string;
   name: string;
+  nameEn: string;
+  description: string;
+  activityTypes: string[];
+  isActive: boolean;
   order: number;
 }
 
 export interface Job extends BaseReference {
+  code: string;
   name: string;
+  nameEn: string;
   departmentId: string;
+  departmentCode: string;
+  isActive: boolean;
+  order: number;
 }
 
 export interface Governorate extends BaseReference {
@@ -37,12 +48,12 @@ export interface ServiceType extends BaseReference {
 export interface TransactionType extends BaseReference {
   name: string;
   serviceTypeId: string;
-  departmentIds: string[]; // الأقسام المشاركة في هذا المسار
+  departmentIds: string[];
 }
 
 export interface SubService extends BaseReference {
   name: string;
-  parentId: string; // معرف TransactionType
+  parentId: string;
 }
 
 export interface TechnicalStage extends BaseReference {
