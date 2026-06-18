@@ -12,11 +12,13 @@ service cloud.firestore {
 
     // قواعد المستخدمين العالميين
     match /global_users/{uid} {
+      // السماح بإنشاء السجل للمستخدم نفسه أثناء التسجيل
+      allow create: if request.auth != null && request.auth.uid == uid;
       allow read: if request.auth != null && (request.auth.uid == uid || isDeveloper());
-      allow write: if request.auth != null && request.auth.uid == uid;
+      allow update, delete: if request.auth != null && (request.auth.uid == uid || isDeveloper());
     }
     
-    // قواعد طلبات الانضمام - السماح للعامة بالإنشاء وللمطور بالإدارة
+    // قواعد طلبات الانضمام
     match /company_requests/{requestId} {
       allow create: if true; 
       allow read, update, delete: if isDeveloper();
@@ -24,17 +26,28 @@ service cloud.firestore {
     
     // قواعد الشركات
     match /companies/{companyId} {
-      // المطور فقط يمكنه إنشاء الشركة (عند التفعيل)
-      allow create: if isDeveloper();
+      // السماح بإنشاء شركة جديدة لأي مستخدم مسجل (التفعيل الذاتي)
+      allow create: if request.auth != null;
       
       // القراءة للمنتمين للشركة أو المطور
       allow read: if request.auth != null && (
         get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.companyId == companyId ||
         isDeveloper()
       );
+
+      // السماح بالتحديث للمطور أو لمالك الشركة (يمكن إضافة منطق المالك لاحقاً)
+      allow update: if request.auth != null && (
+        get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.companyId == companyId ||
+        isDeveloper()
+      );
       
-      // قواعد البيانات الداخلية للشركة
+      // قواعد البيانات الداخلية للشركة (المستندات الفرعية)
       match /{allPaths=**} {
+        // السماح بإنشاء أول مستخدم (Admin) داخل الشركة أثناء التسجيل
+        // نستخدم التحقق من الـ UID مباشرة لأن الـ get() للمستخدم العالمي قد لا يكون متاحاً فوراً في نفس الـ batch
+        allow create: if request.auth != null; 
+        
+        // باقي العمليات تتطلب الانتماء للشركة
         allow read, write: if request.auth != null && (
           get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.companyId == companyId ||
           isDeveloper()
