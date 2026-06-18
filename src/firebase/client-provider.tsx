@@ -11,7 +11,7 @@ export function FirebaseClientProvider({ children }: { children: React.ReactNode
   const services = useMemo(() => {
     // التحقق مما إذا كانت الإعدادات قد تم تعبئتها بالفعل
     const isConfigMissing = !firebaseConfig.apiKey || 
-                           firebaseConfig.apiKey === "YOUR_API_KEY" || 
+                           firebaseConfig.apiKey.includes("YOUR_") || 
                            firebaseConfig.apiKey === "";
 
     if (isConfigMissing) {
@@ -39,9 +39,9 @@ export function FirebaseClientProvider({ children }: { children: React.ReactNode
           <div className="w-20 h-20 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto text-primary">
             <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>
           </div>
-          <h1 className="text-2xl font-black font-headline tracking-tight text-secondary-foreground">إعدادات Firebase مفقودة</h1>
+          <h1 className="text-2xl font-black font-headline tracking-tight text-secondary-foreground">إعدادات Firebase غير مكتملة</h1>
           <p className="text-muted-foreground leading-relaxed">
-            يرجى فتح ملف <code className="bg-muted px-1 rounded font-mono text-xs">src/firebase/config.ts</code> ولصق المفاتيح التي نسختها من Firebase Console.
+            يرجى التأكد من وضع المفاتيح الصحيحة في ملف <code className="bg-muted px-1 rounded font-mono text-xs">src/firebase/config.ts</code>.
           </p>
           <div className="pt-4 border-t">
             <p className="text-xs text-muted-foreground mb-4 font-bold">تجد المفاتيح في Firebase Console تحت Project Settings.</p>
