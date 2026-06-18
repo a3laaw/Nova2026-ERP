@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "GlobalUser": {
@@ -32,6 +31,18 @@
         "email": { "type": "string" },
         "joinedAt": { "type": "string", "format": "date-time" }
       }
+    },
+    "Lead": {
+      "title": "CRM Lead",
+      "description": "بيانات العميل المحتمل أو الفرصة البيعية.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "company": { "type": "string" },
+        "status": { "type": "string", "enum": ["new", "contacted", "qualified", "closed"] },
+        "value": { "type": "number" },
+        "email": { "type": "string", "format": "email" }
+      }
     }
   },
   "auth": {
@@ -49,6 +60,10 @@
     "/companies/{companyId}/users/{uid}": {
       "schema": "#/entities/UserProfile",
       "description": "بيانات المستخدم داخل بيئة الشركة"
+    },
+    "/companies/{companyId}/leads/{leadId}": {
+      "schema": "#/entities/Lead",
+      "description": "إدارة العملاء والفرص داخل الشركة"
     }
   }
 }
