@@ -156,7 +156,7 @@ export default function NewLeaveRequestPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-        {/* Left Column: Airline Style Calendar */}
+        {/* Left Column: Calendar */}
         <div className="lg:col-span-5 space-y-8">
            <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
               <CardHeader className="bg-slate-50/50 border-b p-8 flex justify-between items-center">
@@ -291,3 +291,4 @@ export default function NewLeaveRequestPage() {
     </div>
   );
 }
+
