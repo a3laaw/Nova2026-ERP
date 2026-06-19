@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { SmartDateInput } from '@/components/ui/smart-date-input';
 
 export default function DeveloperDashboard() {
   const { t, lang } = useLanguage();
@@ -236,10 +237,9 @@ export default function DeveloperDashboard() {
                               </div>
                               <div className="space-y-2">
                                 <Label>تاريخ انتهاء الفترة التجريبية</Label>
-                                <Input 
-                                  type="date" 
+                                <SmartDateInput 
                                   value={editingCompany?.trialEndsAt?.split('T')[0] || ''} 
-                                  onChange={e => setEditingCompany({...editingCompany, trialEndsAt: e.target.value})} 
+                                  onChange={v => setEditingCompany({...editingCompany, trialEndsAt: v})} 
                                 />
                               </div>
                             </div>

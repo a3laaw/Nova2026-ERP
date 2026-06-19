@@ -24,6 +24,7 @@ import { WorkHoursSettings, DayOfWeek, DailySchedule, PublicHoliday } from '@/ty
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { SmartDateInput } from '@/components/ui/smart-date-input';
 
 const DAYS: DayOfWeek[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -199,7 +200,6 @@ export function WorkHoursManager() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         
-        {/* الدوام العام */}
         <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
           <CardHeader className="bg-primary/5 border-b p-8 text-start">
              <div className="flex items-center gap-3">
@@ -242,7 +242,6 @@ export function WorkHoursManager() {
           </CardContent>
         </Card>
 
-        {/* القسم المعماري */}
         <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
           <CardHeader className="bg-blue-50/50 border-b p-8 text-start">
              <div className="flex items-center gap-3">
@@ -256,19 +255,19 @@ export function WorkHoursManager() {
           <CardContent className="p-8 space-y-6 text-start">
              <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
-                   <Label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('morningStart')}</Label>
+                   <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{t('morningStart')}</Label>
                    <Input type="time" value={settings?.architectural.morningStartTime} onChange={e => updateSchedule('architectural', 'morningStartTime', e.target.value)} className="h-12 rounded-xl border-2" />
                 </div>
                 <div className="space-y-2">
-                   <Label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('morningEnd')}</Label>
+                   <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{t('morningEnd')}</Label>
                    <Input type="time" value={settings?.architectural.morningEndTime} onChange={e => updateSchedule('architectural', 'morningEndTime', e.target.value)} className="h-12 rounded-xl border-2" />
                 </div>
                 <div className="space-y-2">
-                   <Label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('eveningStart')}</Label>
+                   <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{t('eveningStart')}</Label>
                    <Input type="time" value={settings?.architectural.eveningStartTime} onChange={e => updateSchedule('architectural', 'eveningStartTime', e.target.value)} className="h-12 rounded-xl border-2" />
                 </div>
                 <div className="space-y-2">
-                   <Label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('eveningEnd')}</Label>
+                   <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{t('eveningEnd')}</Label>
                    <Input type="time" value={settings?.architectural.eveningEndTime} onChange={e => updateSchedule('architectural', 'eveningEndTime', e.target.value)} className="h-12 rounded-xl border-2" />
                 </div>
              </div>
@@ -285,7 +284,6 @@ export function WorkHoursManager() {
           </CardContent>
         </Card>
 
-        {/* العطلات */}
         <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 lg:col-span-2">
           <CardHeader className="bg-amber-50/50 border-b p-8 text-start flex flex-row items-center justify-between">
              <div className="flex items-center gap-3">
@@ -355,12 +353,9 @@ export function WorkHoursManager() {
                         onChange={e => setManualHoliday({...manualHoliday, name: e.target.value})}
                         className="h-11 rounded-xl bg-white"
                       />
-                      <Input 
-                        type="date" 
+                      <SmartDateInput 
                         value={manualHoliday.date} 
-                        onChange={e => setManualHoliday({...manualHoliday, date: e.target.value})}
-                        className="h-11 rounded-xl bg-white"
-                        disabled={!!editingDate}
+                        onChange={v => setManualHoliday({...manualHoliday, date: v})}
                       />
                       <Button onClick={addOrUpdateHoliday} className="w-full h-12 rounded-xl gap-2 font-black shadow-md">
                         {editingDate ? <Save className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
@@ -412,7 +407,6 @@ export function WorkHoursManager() {
           </CardContent>
         </Card>
 
-        {/* باقي الكروت (نصف الدوام، رمضان) تظل كما هي دون تغيير في المنطق */}
         <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 lg:col-span-2">
           <CardHeader className="bg-blue-50/50 border-b p-8 text-start">
              <div className="flex items-center gap-3">
@@ -460,7 +454,6 @@ export function WorkHoursManager() {
           </CardContent>
         </Card>
 
-        {/* رمضان */}
         <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden lg:col-span-2 ring-1 ring-black/5">
           <CardHeader className="bg-purple-50/50 border-b p-8 text-start">
              <div className="flex items-center justify-between">
@@ -487,11 +480,11 @@ export function WorkHoursManager() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                    <div className="space-y-3">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('periodStart')}</Label>
-                      <Input type="date" value={settings.ramadan.startDate} onChange={e => setSettings({...settings, ramadan: { ...settings.ramadan, startDate: e.target.value }})} className="h-14 rounded-2xl bg-slate-50 border-slate-100 text-slate-900 text-lg font-black" />
+                      <SmartDateInput value={settings.ramadan.startDate} onChange={v => setSettings({...settings, ramadan: { ...settings.ramadan, startDate: v }})} />
                    </div>
                    <div className="space-y-3">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('periodEnd')}</Label>
-                      <Input type="date" value={settings.ramadan.endDate} onChange={e => setSettings({...settings, ramadan: { ...settings.ramadan, endDate: e.target.value }})} className="h-14 rounded-2xl bg-slate-50 border-slate-100 text-slate-900 text-lg font-black" />
+                      <SmartDateInput value={settings.ramadan.endDate} onChange={v => setSettings({...settings, ramadan: { ...settings.ramadan, endDate: v }})} />
                    </div>
                 </div>
 

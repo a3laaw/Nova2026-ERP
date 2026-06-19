@@ -24,7 +24,7 @@ import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
+import { SmartDateInput } from '@/components/ui/smart-date-input';
 
 export default function EmployeeDetailsPage() {
   const params = useParams();
@@ -126,7 +126,7 @@ export default function EmployeeDetailsPage() {
                 <div className="p-8 space-y-6 text-start">
                    <div className="space-y-2">
                       <Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{isRtl ? 'تاريخ الإنهاء' : 'Effective Date'}</Label>
-                      <Input type="date" value={termForm.date} onChange={e => setTermForm({...termForm, date: e.target.value})} className="h-12 rounded-xl border-2" />
+                      <SmartDateInput value={termForm.date} onChange={v => setTermForm({...termForm, date: v})} />
                    </div>
                    <div className="space-y-2">
                       <Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{isRtl ? 'سبب إنهاء الخدمة' : 'Reason'}</Label>

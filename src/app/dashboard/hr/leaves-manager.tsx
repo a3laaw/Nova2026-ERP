@@ -20,13 +20,13 @@ import { WorkHoursService } from '@/services/work-hours-service';
 import { LeaveRequest, LeaveType } from '@/types/hr';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { paths } from '@/firebase/multi-tenant';
+import { SmartDateInput } from '@/components/ui/smart-date-input';
 
 export function LeavesManager() {
   const { globalUser, user } = useAuthContext();
@@ -55,7 +55,6 @@ export function LeavesManager() {
   [db, companyId]);
   const { data: leaves, loading } = useCollection<LeaveRequest>(leavesQuery);
 
-  // حساب أيام العمل الفعلية فورياً عند تغيير التواريخ
   useEffect(() => {
     async function updateDays() {
       if (form.startDate && form.endDate && db && companyId) {
@@ -160,11 +159,11 @@ export function LeavesManager() {
                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                      <Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{isRtl ? 'بداية الإجازة' : 'Start Date'}</Label>
-                     <Input type="date" value={form.startDate} onChange={e => setForm({...form, startDate: e.target.value})} className="h-12 rounded-xl border-2" />
+                     <SmartDateInput value={form.startDate} onChange={v => setForm({...form, startDate: v})} />
                   </div>
                   <div className="space-y-2">
                      <Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{isRtl ? 'نهاية الإجازة' : 'End Date'}</Label>
-                     <Input type="date" value={form.endDate} onChange={e => setForm({...form, endDate: e.target.value})} className="h-12 rounded-xl border-2" />
+                     <SmartDateInput value={form.endDate} onChange={v => setForm({...form, endDate: v})} />
                   </div>
                </div>
 

@@ -17,25 +17,21 @@ import { useLanguage } from '@/context/language-context';
 interface SmartDateInputProps {
   value: string; // Expected format: YYYY-MM-DD
   onChange: (value: string) => void;
-  label?: string;
   className?: string;
 }
 
 export function SmartDateInput({ value, onChange, className }: SmartDateInputProps) {
-  const { lang, dir } = useLanguage();
+  const { lang } = useLanguage();
   const isRtl = lang === 'ar';
   
-  // Internal state for segments
   const [day, setDay] = React.useState('');
   const [month, setMonth] = React.useState('');
   const [year, setYear] = React.useState('');
 
-  // Refs for auto-focus
   const dayRef = React.useRef<HTMLInputElement>(null);
   const monthRef = React.useRef<HTMLInputElement>(null);
   const yearRef = React.useRef<HTMLInputElement>(null);
 
-  // Sync internal state when external value changes
   React.useEffect(() => {
     if (value && value.length === 10) {
       const [vYear, vMonth, vDay] = value.split('-');
@@ -87,64 +83,49 @@ export function SmartDateInput({ value, onChange, className }: SmartDateInputPro
   };
 
   return (
-    <div className={cn("relative group", className)} dir="ltr">
-      <div className="flex items-center h-11 w-full rounded-xl border-2 border-slate-100 bg-slate-50/50 px-3 py-1 focus-within:border-primary/40 focus-within:bg-white focus-within:ring-4 focus-within:ring-primary/5 transition-all shadow-sm">
+    <div className={cn("relative", className)} dir="ltr">
+      <div className="flex items-center h-12 w-full rounded-2xl border-2 border-slate-200 bg-white px-4 py-1 focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/5 transition-all shadow-sm">
         
-        {/* Day Segment */}
-        <div className="flex flex-col items-center flex-1">
+        <div className="flex items-center gap-1 flex-1">
           <input
             ref={dayRef}
             type="text"
-            placeholder="DD"
+            placeholder="dd"
             value={day}
             onChange={handleDayChange}
-            className="w-full bg-transparent text-center font-mono font-black text-slate-800 placeholder:text-slate-300 outline-none text-sm"
+            className="w-6 bg-transparent text-center font-mono font-bold text-slate-700 placeholder:text-slate-300 outline-none"
           />
-          <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter -mt-0.5">Day</span>
-        </div>
-
-        <span className="text-slate-300 font-bold px-1 mb-2">/</span>
-
-        {/* Month Segment */}
-        <div className="flex flex-col items-center flex-1">
+          <span className="text-slate-300">--</span>
           <input
             ref={monthRef}
             type="text"
-            placeholder="MM"
+            placeholder="mm"
             value={month}
             onChange={handleMonthChange}
-            className="w-full bg-transparent text-center font-mono font-black text-slate-800 placeholder:text-slate-300 outline-none text-sm"
+            className="w-6 bg-transparent text-center font-mono font-bold text-slate-700 placeholder:text-slate-300 outline-none"
           />
-          <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter -mt-0.5">Month</span>
-        </div>
-
-        <span className="text-slate-300 font-bold px-1 mb-2">/</span>
-
-        {/* Year Segment */}
-        <div className="flex flex-col items-center flex-[1.5]">
+          <span className="text-slate-300">--</span>
           <input
             ref={yearRef}
             type="text"
-            placeholder="YYYY"
+            placeholder="yyyy"
             value={year}
             onChange={handleYearChange}
-            className="w-full bg-transparent text-center font-mono font-black text-slate-800 placeholder:text-slate-300 outline-none text-sm"
+            className="w-10 bg-transparent text-center font-mono font-bold text-slate-700 placeholder:text-slate-300 outline-none"
           />
-          <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter -mt-0.5">Year</span>
         </div>
 
-        {/* Calendar Trigger */}
         <Popover>
           <PopoverTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 rounded-lg hover:bg-white hover:shadow-md transition-all text-slate-400 hover:text-primary shrink-0 ms-1"
+              className="h-8 w-8 text-slate-400 hover:text-primary shrink-0"
             >
               <CalendarIcon className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0 rounded-2xl border-0 shadow-2xl" align="end">
+          <PopoverContent className="w-auto p-0 rounded-3xl border-0 shadow-2xl" align="end">
             <Calendar
               mode="single"
               selected={value ? new Date(value) : undefined}
