@@ -107,7 +107,15 @@ const translations: Record<Language, Record<string, string>> = {
     startTime: 'بداية الدوام',
     endTime: 'نهاية الدوام',
     workHoursDesc: 'إدارة الدوام العام، القسم المعماري، وعطلات نهاية الأسبوع.',
-    backToSettings: 'العودة للإعدادات'
+    backToSettings: 'العودة للإعدادات',
+    // Days
+    Sunday: 'الأحد',
+    Monday: 'الاثنين',
+    Tuesday: 'الثلاثاء',
+    Wednesday: 'الأربعاء',
+    Thursday: 'الخميس',
+    Friday: 'الجمعة',
+    Saturday: 'السبت'
   },
   en: {
     dashboard: 'Dashboard',
@@ -204,7 +212,15 @@ const translations: Record<Language, Record<string, string>> = {
     startTime: 'Start Time',
     endTime: 'End Time',
     workHoursDesc: 'Manage default shifts, architectural hours, and weekends.',
-    backToSettings: 'Back to Settings'
+    backToSettings: 'Back to Settings',
+    // Days
+    Sunday: 'Sunday',
+    Monday: 'Monday',
+    Tuesday: 'Tuesday',
+    Wednesday: 'Wednesday',
+    Thursday: 'Thursday',
+    Friday: 'Friday',
+    Saturday: 'Saturday'
   }
 };
 

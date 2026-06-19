@@ -218,7 +218,7 @@ export function WorkHoursManager() {
                             : "bg-white text-slate-400 border-slate-100 hover:border-amber-200"
                         )}
                       >
-                         {day}
+                         {t(day)}
                       </div>
                    ))}
                 </div>
@@ -236,7 +236,7 @@ export function WorkHoursManager() {
                         onValueChange={val => setSettings({...settings!, halfDay: { ...settings!.halfDay, day: val as DayOfWeek }})}
                       >
                          <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="..." /></SelectTrigger>
-                         <SelectContent>{DAYS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+                         <SelectContent>{DAYS.map(d => <SelectItem key={d} value={d}>{t(d)}</SelectItem>)}</SelectContent>
                       </Select>
                    </div>
                    <div className="space-y-2">
