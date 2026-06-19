@@ -18,7 +18,8 @@ import {
   Database,
   UserCog,
   ChevronRight,
-  Clock
+  Clock,
+  ShieldCheck
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
@@ -59,6 +60,7 @@ export function DashboardSidebar() {
     { title: t('inventory'), icon: Warehouse, url: "/dashboard/inventory" },
     { title: t('reports'), icon: BarChart3, url: "/dashboard/reports" },
     { title: t('ai'), icon: Sparkles, url: "/dashboard/ai" },
+    { title: t('checklists'), icon: Database, url: "/dashboard/checklists" },
   ]
 
   const settingsItem = {
@@ -67,7 +69,7 @@ export function DashboardSidebar() {
     url: "/dashboard/settings",
     items: [
       { title: t('companyIdentity'), url: "/dashboard/settings/company", icon: Building2 },
-      { title: t('checklists'), url: "/dashboard/settings/checklists", icon: Database },
+      { title: t('rolesRef'), url: "/dashboard/settings/roles", icon: ShieldCheck },
       { title: t('workHours'), url: "/dashboard/settings/work-hours", icon: Clock },
       { title: t('profile'), url: "/dashboard/settings/profile", icon: UserCog },
     ]
