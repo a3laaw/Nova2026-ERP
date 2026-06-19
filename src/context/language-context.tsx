@@ -113,6 +113,7 @@ const translations: Record<Language, Record<string, string>> = {
     ramadanMode: 'نظام الدوام في رمضان',
     periodStart: 'بداية الفترة',
     periodEnd: 'نهاية الفترة',
+    addKuwaitHolidays: 'إضافة عطلات الكويت 2026',
     // Days
     Sunday: 'الأحد',
     Monday: 'الاثنين',
@@ -223,6 +224,7 @@ const translations: Record<Language, Record<string, string>> = {
     ramadanMode: 'Ramadan Work Mode',
     periodStart: 'Period Start',
     periodEnd: 'Period End',
+    addKuwaitHolidays: 'Add Kuwait Holidays 2026',
     // Days
     Sunday: 'Sunday',
     Monday: 'Monday',

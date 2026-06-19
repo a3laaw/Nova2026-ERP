@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -28,20 +27,20 @@ import { format } from 'date-fns';
 
 const DAYS: DayOfWeek[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-const SUGGESTED_KUWAIT_HOLIDAYS: PublicHoliday[] = [
-  { date: '2025-01-01', name: 'رأس السنة الميلادية', nameEn: 'New Year\'s Day' },
-  { date: '2025-01-27', name: 'ذكرى الإسراء والمعراج', nameEn: 'Isra and Mi\'raj' },
-  { date: '2025-02-25', name: 'العيد الوطني', nameEn: 'National Day' },
-  { date: '2025-02-26', name: 'عيد التحرير', nameEn: 'Liberation Day' },
-  { date: '2025-03-30', name: 'عيد الفطر السعيد', nameEn: 'Eid Al-Fitr' },
-  { date: '2025-03-31', name: 'عيد الفطر - اليوم الثاني', nameEn: 'Eid Al-Fitr Holiday' },
-  { date: '2025-04-01', name: 'عيد الفطر - اليوم الثالث', nameEn: 'Eid Al-Fitr Holiday' },
-  { date: '2025-06-05', name: 'وقفة عرفات', nameEn: 'Arafat Day' },
-  { date: '2025-06-06', name: 'عيد الأضحى المبارك', nameEn: 'Eid Al-Adha' },
-  { date: '2025-06-07', name: 'عيد الأضحى - اليوم الثاني', nameEn: 'Eid Al-Adha Holiday' },
-  { date: '2025-06-08', name: 'عيد الأضحى - اليوم الثالث', nameEn: 'Eid Al-Adha Holiday' },
-  { date: '2025-06-26', name: 'رأس السنة الهجرية', nameEn: 'Islamic New Year' },
-  { date: '2025-09-04', name: 'ذكرى المولد النبوي الشريف', nameEn: 'Prophet\'s Birthday' },
+const SUGGESTED_KUWAIT_HOLIDAYS_2026: PublicHoliday[] = [
+  { date: '2026-01-01', name: 'رأس السنة الميلادية', nameEn: 'New Year\'s Day' },
+  { date: '2026-01-16', name: 'ذكرى الإسراء والمعراج', nameEn: 'Isra and Mi\'raj' },
+  { date: '2026-02-25', name: 'العيد الوطني', nameEn: 'National Day' },
+  { date: '2026-02-26', name: 'يوم التحرير', nameEn: 'Liberation Day' },
+  { date: '2026-03-20', name: 'عيد الفطر السعيد', nameEn: 'Eid Al-Fitr' },
+  { date: '2026-03-21', name: 'عيد الفطر - اليوم الثاني', nameEn: 'Eid Al-Fitr Holiday' },
+  { date: '2026-03-22', name: 'عيد الفطر - اليوم الثالث', nameEn: 'Eid Al-Fitr Holiday' },
+  { date: '2026-05-26', name: 'يوم وقفة عرفات', nameEn: 'Arafat Day' },
+  { date: '2026-05-27', name: 'عيد الأضحى المبارك', nameEn: 'Eid Al-Adha' },
+  { date: '2026-05-28', name: 'عيد الأضحى - اليوم الثاني', nameEn: 'Eid Al-Adha Holiday' },
+  { date: '2026-05-29', name: 'عيد الأضحى - اليوم الثالث', nameEn: 'Eid Al-Adha Holiday' },
+  { date: '2026-06-16', name: 'رأس السنة الهجرية', nameEn: 'Islamic New Year' },
+  { date: '2026-08-26', name: 'ذكرى المولد النبوي الشريف', nameEn: 'Prophet\'s Birthday' },
 ];
 
 export function WorkHoursManager() {
@@ -52,7 +51,6 @@ export function WorkHoursManager() {
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<WorkHoursSettings | null>(null);
 
-  // حالة العطلة اليدوية وتتبع التعديل
   const [manualHoliday, setManualHoliday] = useState({ name: '', date: format(new Date(), 'yyyy-MM-dd') });
   const [editingDate, setEditingDate] = useState<string | null>(null);
 
@@ -101,12 +99,10 @@ export function WorkHoursManager() {
       let updatedHolidays = [...prev.publicHolidays];
       
       if (editingDate) {
-        // تحديث عطلة موجودة
         updatedHolidays = updatedHolidays.map(h => 
           h.date === editingDate ? { ...manualHoliday, nameEn: manualHoliday.name } : h
         );
       } else {
-        // إضافة عطلة جديدة (مع التحقق من التكرار)
         const exists = updatedHolidays.some(h => h.date === manualHoliday.date);
         if (exists) {
           toast({ variant: "destructive", title: lang === 'ar' ? "التاريخ موجود مسبقاً" : "Date already exists" });
@@ -121,7 +117,6 @@ export function WorkHoursManager() {
       };
     });
 
-    // إعادة تعيين النموذج
     setManualHoliday({ name: '', date: format(new Date(), 'yyyy-MM-dd') });
     setEditingDate(null);
     toast({ title: t('saved') });
@@ -139,7 +134,7 @@ export function WorkHoursManager() {
 
   const addSuggestedHolidays = () => {
     const existingDates = new Set(settings?.publicHolidays.map(h => h.date) || []);
-    const toAdd = SUGGESTED_KUWAIT_HOLIDAYS.filter(h => !existingDates.has(h.date));
+    const toAdd = SUGGESTED_KUWAIT_HOLIDAYS_2026.filter(h => !existingDates.has(h.date));
     
     if (toAdd.length === 0) {
       toast({ title: lang === 'ar' ? "تمت إضافة العطلات مسبقاً" : "Already added" });
@@ -150,7 +145,7 @@ export function WorkHoursManager() {
       ...prev!,
       publicHolidays: [...(prev?.publicHolidays || []), ...toAdd].sort((a, b) => a.date.localeCompare(b.date))
     }));
-    toast({ title: lang === 'ar' ? "تمت إضافة العطلات الرسمية" : "Suggested holidays added" });
+    toast({ title: lang === 'ar' ? "تمت إضافة عطلات 2026" : "2026 holidays added" });
   };
 
   const removePublicHoliday = (date: string) => {
@@ -297,7 +292,7 @@ export function WorkHoursManager() {
                 <div className="p-3 bg-white rounded-2xl shadow-sm text-amber-600"><Calendar className="h-6 w-6" /></div>
                 <div>
                    <CardTitle className="text-xl font-black">{t('holidays')}</CardTitle>
-                   <CardDescription className="font-bold">{lang === 'ar' ? 'العطلات الأسبوعية والرسمية لعام 2025' : 'Weekly and 2025 public holidays'}</CardDescription>
+                   <CardDescription className="font-bold">{lang === 'ar' ? 'العطلات الأسبوعية والرسمية لعام 2026' : 'Weekly and 2026 public holidays'}</CardDescription>
                 </div>
              </div>
              <Button 
@@ -306,7 +301,7 @@ export function WorkHoursManager() {
                 className="rounded-xl border-amber-200 text-amber-700 bg-white hover:bg-amber-50 gap-2 font-bold shadow-sm"
              >
                 <Flag className="h-4 w-4" />
-                {lang === 'ar' ? 'إضافة عطلات الكويت 2025' : 'Add Kuwait Holidays 2025'}
+                {t('addKuwaitHolidays')}
              </Button>
           </CardHeader>
           <CardContent className="p-8 space-y-12 text-start">
@@ -340,7 +335,6 @@ export function WorkHoursManager() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                   {/* فورم الإضافة / التعديل اليدوي */}
                    <div className={cn(
                      "p-6 rounded-3xl border-2 border-dashed transition-all space-y-4",
                      editingDate ? "bg-primary/5 border-primary/30" : "bg-slate-50/30 border-slate-200"
@@ -366,7 +360,7 @@ export function WorkHoursManager() {
                         value={manualHoliday.date} 
                         onChange={e => setManualHoliday({...manualHoliday, date: e.target.value})}
                         className="h-11 rounded-xl bg-white"
-                        disabled={!!editingDate} // لا يسمح بتغيير التاريخ عند التعديل لضمان المزامنة
+                        disabled={!!editingDate}
                       />
                       <Button onClick={addOrUpdateHoliday} className="w-full h-12 rounded-xl gap-2 font-black shadow-md">
                         {editingDate ? <Save className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
@@ -379,7 +373,7 @@ export function WorkHoursManager() {
                       <div className="col-span-full py-12 flex flex-col items-center justify-center text-muted-foreground bg-slate-50/50 rounded-3xl border-2 border-dashed">
                         <Info className="h-8 w-8 mb-2 opacity-20" />
                         <p className="text-xs font-bold italic">{lang === 'ar' ? 'لا توجد عطلات رسمية محددة بعد.' : 'No specific holidays defined.'}</p>
-                        <p className="text-[9px] mt-1">{lang === 'ar' ? 'استخدم الزر في الأعلى لإضافة عطلات الكويت الرسمية.' : 'Use the button above to add Kuwait public holidays.'}</p>
+                        <p className="text-[9px] mt-1">{lang === 'ar' ? 'استخدم الزر في الأعلى لإضافة عطلات الكويت الرسمية لعام 2026.' : 'Use the button above to add 2026 Kuwait public holidays.'}</p>
                       </div>
                     ) : (
                       settings?.publicHolidays?.sort((a,b) => a.date.localeCompare(b.date)).map((ph) => (
@@ -418,7 +412,7 @@ export function WorkHoursManager() {
           </CardContent>
         </Card>
 
-        {/* نصف الدوام */}
+        {/* باقي الكروت (نصف الدوام، رمضان) تظل كما هي دون تغيير في المنطق */}
         <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 lg:col-span-2">
           <CardHeader className="bg-blue-50/50 border-b p-8 text-start">
              <div className="flex items-center gap-3">
@@ -490,7 +484,6 @@ export function WorkHoursManager() {
           
           {settings?.ramadan.enabled && (
              <CardContent className="p-10 space-y-10 text-start animate-in fade-in zoom-in-95 duration-500">
-                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                    <div className="space-y-3">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('periodStart')}</Label>
@@ -562,7 +555,6 @@ export function WorkHoursManager() {
              </CardContent>
           )}
         </Card>
-
       </div>
     </div>
   );
