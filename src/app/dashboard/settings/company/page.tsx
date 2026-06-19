@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { 
   Building2, Image as ImageIcon, FileText, 
   Calendar as CalendarIcon, ArrowRight, Loader2,
@@ -109,44 +110,44 @@ export default function CompanyProfilePage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2 text-start">
                   <Label className="font-black">{t('name')}</Label>
-                  <Input 
+                  <input 
                     value={formData.name} 
                     onChange={e => setFormData({...formData, name: e.target.value})} 
-                    className="h-12 rounded-xl bg-slate-50/50" 
+                    className="h-12 w-full rounded-xl bg-slate-50/50 border border-input px-3" 
                   />
                 </div>
                 <div className="space-y-2 text-start">
                   <Label className="font-black">{t('commercialRegistry')}</Label>
-                  <Input 
+                  <input 
                     value={formData.commercialRegistry} 
                     onChange={e => setFormData({...formData, commercialRegistry: e.target.value})} 
-                    className="h-12 rounded-xl bg-slate-50/50" 
+                    className="h-12 w-full rounded-xl bg-slate-50/50 border border-input px-3" 
                   />
                 </div>
                 <div className="space-y-2 text-start">
                   <Label className="font-black">{t('licenseExpiry')}</Label>
-                  <Input 
+                  <input 
                     type="date"
                     value={formData.licenseExpiryDate} 
                     onChange={e => setFormData({...formData, licenseExpiryDate: e.target.value})} 
-                    className="h-12 rounded-xl bg-slate-50/50 text-start" 
+                    className="h-12 w-full rounded-xl bg-slate-50/50 border border-input px-3 text-start" 
                   />
                 </div>
                 <div className="space-y-2 text-start">
                   <Label className="font-black">{t('laborExpiry')}</Label>
-                  <Input 
+                  <input 
                     type="date"
                     value={formData.laborAuthorityExpiryDate} 
                     onChange={e => setFormData({...formData, laborAuthorityExpiryDate: e.target.value})} 
-                    className="h-12 rounded-xl bg-slate-50/50 text-start" 
+                    className="h-12 w-full rounded-xl bg-slate-50/50 border border-input px-3 text-start" 
                   />
                 </div>
                 <div className="md:col-span-2 space-y-2 text-start">
                   <Label className="font-black">{t('address')}</Label>
-                  <Input 
+                  <input 
                     value={formData.address} 
                     onChange={e => setFormData({...formData, address: e.target.value})} 
-                    className="h-12 rounded-xl bg-slate-50/50" 
+                    className="h-12 w-full rounded-xl bg-slate-50/50 border border-input px-3" 
                     placeholder={isRtl ? "شارع فهد السالم، برج..." : "Fahad Al-Salem St, Tower..."}
                   />
                 </div>
@@ -165,10 +166,10 @@ export default function CompanyProfilePage() {
             <CardContent className="p-8 space-y-6">
                <div className="space-y-2 text-start">
                   <Label className="font-black">{t('logo')} (URL)</Label>
-                  <Input 
+                  <input 
                     value={formData.logoUrl} 
                     onChange={e => setFormData({...formData, logoUrl: e.target.value})} 
-                    className="h-12 rounded-xl bg-slate-50/50 text-start" 
+                    className="h-12 w-full rounded-xl bg-slate-50/50 border border-input px-3 text-start" 
                     dir="ltr"
                     placeholder="https://..."
                   />
@@ -176,18 +177,18 @@ export default function CompanyProfilePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2 text-start">
                     <Label className="font-black">{t('header')}</Label>
-                    <Input 
+                    <input 
                       value={formData.headerText} 
                       onChange={e => setFormData({...formData, headerText: e.target.value})} 
-                      className="h-12 rounded-xl bg-slate-50/50" 
+                      className="h-12 w-full rounded-xl bg-slate-50/50 border border-input px-3" 
                     />
                   </div>
                   <div className="space-y-2 text-start">
                     <Label className="font-black">{t('footer')}</Label>
-                    <Input 
+                    <input 
                       value={formData.footerText} 
                       onChange={e => setFormData({...formData, footerText: e.target.value})} 
-                      className="h-12 rounded-xl bg-slate-50/50" 
+                      className="h-12 w-full rounded-xl bg-slate-50/50 border border-input px-3" 
                     />
                   </div>
                 </div>
@@ -195,7 +196,7 @@ export default function CompanyProfilePage() {
           </Card>
         </div>
 
-        {/* الجانب الأيمن: معاينة وأزرار - تحديث للألوان الفاتحة */}
+        {/* الجانب الأيمن: معاينة وأزرار */}
         <div className="space-y-8">
            <Card className="border-2 border-primary/10 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden p-8 text-center space-y-6">
               <div className="w-24 h-24 bg-slate-100 rounded-3xl mx-auto flex items-center justify-center border-2 border-dashed border-slate-200 overflow-hidden">
