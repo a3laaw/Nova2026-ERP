@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { 
   Plus, Loader2, Trash2, Edit3, 
   Workflow, ArrowRight, Clock,
-  ListChecks, ShieldCheck, CheckCircle2
+  ListChecks, ShieldCheck, CheckCircle2,
+  AlertCircle
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,10 +47,27 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
   const technicalPathService = useMemo(() => db && companyId ? new TechnicalPathService(db, companyId) : null, [db, companyId]);
   
   const stagesQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.technicalStages(companyId, activityType.id!, mainService.id!, subService.id!)), orderBy('name')) : null
+    companyId && db ? query(collection(db, paths.technicalStages(companyId, activityType.id!, mainService.id!, subService.id!))) : null
   , [db, companyId, activityType, mainService, subService]);
 
   const { data: stages, loading } = useCollection<TechnicalStage>(stagesQuery);
+
+  // منطق الفلترة الذكي لمنع التعارض المنطقي والربط العكسي
+  const availableNextStages = useMemo(() => {
+    if (!form || !stages) return [];
+    
+    return stages.filter(s => {
+      // 1. منع الربط مع النفس
+      if (s.id === form.id) return false;
+
+      // 2. منع الربط العكسي المباشر:
+      // إذا كانت هذه المرحلة (s) تشير بالفعل إلى المرحلة الحالية (form.id) كمرحلة تالية لها
+      // فلا يجوز للمرحلة الحالية أن تشير إليها، منعاً للحلقة المفرغة.
+      const isAlreadyAPredecessor = s.nextStageIds?.includes(form.id!);
+      
+      return !isAlreadyAPredecessor;
+    });
+  }, [form, stages]);
 
   const handleSave = () => {
     if (!technicalPathService || !form || !form.name) return;
@@ -197,7 +215,7 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
                 </DialogFooter>
               </div>
 
-              {/* Right Side: Next Stages Multi-Select */}
+              {/* Right Side: Next Stages Multi-Select with Protection Logic */}
               <div className="lg:col-span-2 bg-slate-50 border-s border-slate-200 p-8 flex flex-col">
                 <div className="mb-6">
                   <h4 className="font-black text-lg flex items-center gap-2">
@@ -205,18 +223,25 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
                     {isRtl ? 'المراحل التالية' : 'Next Stages'}
                   </h4>
                   <p className="text-xs text-muted-foreground font-bold mt-1">
-                    {isRtl ? 'حدد المراحل التي تلي هذه المرحلة في المسار' : 'Define the sequence of work'}
+                    {isRtl ? 'حدد التسلسل المنطقي للعمل' : 'Define the logical sequence'}
                   </p>
                 </div>
 
                 <ScrollArea className="flex-1 pr-4">
                   <div className="space-y-3">
-                    {stages?.filter(s => s.id !== form.id).length === 0 ? (
-                      <div className="py-10 text-center italic text-muted-foreground text-xs">
-                        {isRtl ? 'لا توجد مراحل أخرى للربط' : 'No other stages to link'}
+                    {availableNextStages.length === 0 ? (
+                      <div className="py-10 text-center space-y-4">
+                        <div className="h-12 w-12 bg-muted rounded-full flex items-center justify-center mx-auto">
+                          <AlertCircle className="text-muted-foreground h-6 w-6" />
+                        </div>
+                        <p className="text-[10px] text-muted-foreground font-bold leading-relaxed px-4">
+                          {isRtl 
+                            ? 'لا توجد مراحل متاحة للربط. (المراحل التي تسبق هذه المرحلة أو تشير لنفسها تم استبعادها تلقائياً لضمان سلامة التدفق).' 
+                            : 'No stages available. (Predecessors and self-references are hidden to ensure workflow integrity).'}
+                        </p>
                       </div>
                     ) : (
-                      stages?.filter(s => s.id !== form.id).map((s) => (
+                      availableNextStages.map((s) => (
                         <div 
                           key={s.id} 
                           onClick={() => toggleNextStage(s.id!)}
@@ -238,7 +263,7 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
                             </Label>
                             {form.nextStageIds?.includes(s.id!) && (
                               <span className="text-[10px] font-black text-primary animate-in fade-in">
-                                {isRtl ? 'مرحلة مرتبطة' : 'Linked Stage'}
+                                {isRtl ? 'مرحلة تالية' : 'Next Stage'}
                               </span>
                             )}
                           </div>
