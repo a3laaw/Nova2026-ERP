@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -13,18 +14,25 @@ import {
   Clock, Calendar, MoonStar, 
   Loader2, Save, Sun, HardHat,
   Coffee, Utensils, Sparkles, Trash2,
-  CalendarCheck
+  CalendarCheck, Plus, Flag
 } from "lucide-react";
 import { useFirestore } from '@/firebase';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { WorkHoursService } from '@/services/work-hours-service';
 import { WorkHoursSettings, DayOfWeek, DailySchedule, PublicHoliday } from '@/types/work-hours';
-import { fetchPublicHolidays } from '@/ai/flows/fetch-holidays-flow';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
 
 const DAYS: DayOfWeek[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+// قائمة العطلات الرسمية المتوقعة في الكويت
+const SUGGESTED_KUWAIT_HOLIDAYS: PublicHoliday[] = [
+  { date: `${new Date().getFullYear()}-01-01`, name: 'رأس السنة الميلادية', nameEn: 'New Year' },
+  { date: `${new Date().getFullYear()}-02-25`, name: 'العيد الوطني', nameEn: 'National Day' },
+  { date: `${new Date().getFullYear()}-02-26`, name: 'عيد التحرير', nameEn: 'Liberation Day' },
+];
 
 export function WorkHoursManager() {
   const { globalUser, user } = useAuthContext();
@@ -32,8 +40,10 @@ export function WorkHoursManager() {
   const db = useFirestore();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [fetchingAI, setFetchingAI] = useState(false);
   const [settings, setSettings] = useState<WorkHoursSettings | null>(null);
+
+  // حالة لإضافة عطلة يدوية
+  const [manualHoliday, setManualHoliday] = useState({ name: '', date: format(new Date(), 'yyyy-MM-dd') });
 
   const service = useMemo(() => 
     db && globalUser?.companyId ? new WorkHoursService(db, globalUser.companyId) : null, 
@@ -71,30 +81,34 @@ export function WorkHoursManager() {
     }
   };
 
-  const handleFetchHolidays = async () => {
-    setFetchingAI(true);
-    try {
-      const year = new Date().getFullYear();
-      const response = await fetchPublicHolidays({ country: 'الكويت', year });
-      if (response && response.holidays) {
-        const existingDates = new Set(settings?.publicHolidays?.map(h => h.date) || []);
-        const newHolidays = response.holidays.filter(h => !existingDates.has(h.date));
-        
-        setSettings(prev => ({
-          ...prev!,
-          publicHolidays: [...(prev?.publicHolidays || []), ...newHolidays]
-        }));
-        
-        toast({
-          title: lang === 'ar' ? "تم العثور على عطلات" : "Holidays Found",
-          description: lang === 'ar' ? `تمت إضافة ${newHolidays.length} عطلة جديدة.` : `Added ${newHolidays.length} new holidays.`,
-        });
-      }
-    } catch (error) {
-      toast({ variant: "destructive", title: t('error'), description: "AI Search failed" });
-    } finally {
-      setFetchingAI(false);
+  const addManualHoliday = () => {
+    if (!manualHoliday.name || !manualHoliday.date) return;
+    const exists = settings?.publicHolidays.some(h => h.date === manualHoliday.date);
+    if (exists) {
+      toast({ variant: "destructive", title: lang === 'ar' ? "التاريخ موجود مسبقاً" : "Date already exists" });
+      return;
     }
+    setSettings(prev => ({
+      ...prev!,
+      publicHolidays: [...(prev?.publicHolidays || []), { ...manualHoliday, nameEn: manualHoliday.name }]
+    }));
+    setManualHoliday({ name: '', date: format(new Date(), 'yyyy-MM-dd') });
+  };
+
+  const addSuggestedHolidays = () => {
+    const existingDates = new Set(settings?.publicHolidays.map(h => h.date) || []);
+    const toAdd = SUGGESTED_KUWAIT_HOLIDAYS.filter(h => !existingDates.has(h.date));
+    
+    if (toAdd.length === 0) {
+      toast({ title: lang === 'ar' ? "تمت إضافة العطلات مسبقاً" : "Already added" });
+      return;
+    }
+
+    setSettings(prev => ({
+      ...prev!,
+      publicHolidays: [...(prev?.publicHolidays || []), ...toAdd]
+    }));
+    toast({ title: lang === 'ar' ? "تمت إضافة العطلات الرسمية" : "Suggested holidays added" });
   };
 
   const removePublicHoliday = (date: string) => {
@@ -147,6 +161,7 @@ export function WorkHoursManager() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         
+        {/* General working hours card omitted for brevity but preserved in full logic */}
         <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
           <CardHeader className="bg-primary/5 border-b p-8 text-start">
              <div className="flex items-center gap-3">
@@ -189,6 +204,7 @@ export function WorkHoursManager() {
           </CardContent>
         </Card>
 
+        {/* Architectural working hours card omitted for brevity but preserved in full logic */}
         <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
           <CardHeader className="bg-blue-50/50 border-b p-8 text-start">
              <div className="flex items-center gap-3">
@@ -243,12 +259,11 @@ export function WorkHoursManager() {
              </div>
              <Button 
                 variant="outline" 
-                onClick={handleFetchHolidays}
-                disabled={fetchingAI}
+                onClick={addSuggestedHolidays}
                 className="rounded-xl border-amber-200 text-amber-700 bg-white hover:bg-amber-50 gap-2 font-bold"
              >
-                {fetchingAI ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                {lang === 'ar' ? 'بحث ذكي عن العطلات الرسمية' : 'Smart Fetch Public Holidays'}
+                <Flag className="h-4 w-4" />
+                {lang === 'ar' ? 'إضافة عطلات الكويت الرسمية' : 'Add Kuwait Public Holidays'}
              </Button>
           </CardHeader>
           <CardContent className="p-8 space-y-12 text-start">
@@ -273,17 +288,41 @@ export function WorkHoursManager() {
                 </div>
              </div>
 
-             <div className="space-y-4 pt-8 border-t">
-                <h4 className="font-black text-sm border-s-4 border-emerald-400 ps-3 flex items-center gap-2">
-                  <CalendarCheck className="h-4 w-4" /> 
-                  {lang === 'ar' ? 'العطلات الرسمية المحددة' : 'Specific Public Holidays'}
-                </h4>
+             <div className="space-y-6 pt-8 border-t">
+                <div className="flex justify-between items-center">
+                  <h4 className="font-black text-sm border-s-4 border-emerald-400 ps-3 flex items-center gap-2">
+                    <CalendarCheck className="h-4 w-4" /> 
+                    {lang === 'ar' ? 'العطلات الرسمية المحددة' : 'Specific Public Holidays'}
+                  </h4>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                   {/* فورم الإضافة اليدوية */}
+                   <div className="p-4 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 space-y-3">
+                      <Input 
+                        placeholder={lang === 'ar' ? 'اسم العطلة' : 'Holiday Name'} 
+                        value={manualHoliday.name} 
+                        onChange={e => setManualHoliday({...manualHoliday, name: e.target.value})}
+                        className="h-10 rounded-xl"
+                      />
+                      <Input 
+                        type="date" 
+                        value={manualHoliday.date} 
+                        onChange={e => setManualHoliday({...manualHoliday, date: e.target.value})}
+                        className="h-10 rounded-xl"
+                      />
+                      <Button onClick={addManualHoliday} className="w-full h-10 rounded-xl gap-2 font-bold">
+                        <Plus className="h-4 w-4" /> {lang === 'ar' ? 'إضافة يدوية' : 'Add Manual'}
+                      </Button>
+                   </div>
+
                   {settings?.publicHolidays?.length === 0 ? (
-                    <p className="text-xs text-muted-foreground italic col-span-full">{lang === 'ar' ? 'لا توجد عطلات رسمية محددة. جرب البحث الذكي أعلاه.' : 'No public holidays defined. Try smart fetch above.'}</p>
+                    <div className="md:col-span-2 flex items-center justify-center italic text-muted-foreground text-xs">
+                      {lang === 'ar' ? 'لا توجد عطلات محددة.' : 'No holidays defined.'}
+                    </div>
                   ) : (
                     settings?.publicHolidays?.map((ph) => (
-                      <div key={ph.date} className="p-4 rounded-2xl bg-slate-50 border-2 border-slate-100 flex items-center justify-between group">
+                      <div key={ph.date} className="p-4 rounded-2xl bg-slate-50 border-2 border-slate-100 flex items-center justify-between group h-fit">
                         <div className="text-start">
                           <p className="font-black text-sm text-slate-800">{lang === 'ar' ? ph.name : ph.nameEn}</p>
                           <p className="text-[10px] font-mono text-slate-400">{ph.date}</p>
@@ -304,7 +343,7 @@ export function WorkHoursManager() {
           </CardContent>
         </Card>
 
-        {/* Half-Day Policy */}
+        {/* Half-Day and Ramadan Sections remain with full logic as per previous turns */}
         <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 lg:col-span-2">
           <CardHeader className="bg-blue-50/50 border-b p-8 text-start">
              <div className="flex items-center gap-3">
@@ -352,7 +391,6 @@ export function WorkHoursManager() {
           </CardContent>
         </Card>
 
-        {/* Ramadan Schedule */}
         <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden lg:col-span-2 ring-1 ring-black/5">
           <CardHeader className="bg-purple-50/50 border-b p-8 text-start">
              <div className="flex items-center justify-between">
