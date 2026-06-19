@@ -72,12 +72,23 @@ service cloud.firestore {
       // الموظفين
       match /users/{uid} {
         allow read: if belongsToCompany(companyId);
-        // السماح للمستخدم بإنشاء سجله الخاص في الشركة (ضروري للتسجيل)
         allow create: if isAuthenticated() && request.auth.uid == uid;
         allow update, delete: if isAdmin(companyId);
       }
 
-      // المرجعيات
+      // الهيكل التنظيمي (Departments & Jobs)
+      match /departments/{allPaths=**} {
+        allow read: if belongsToCompany(companyId);
+        allow write: if isAdmin(companyId);
+      }
+
+      // البيانات الجغرافية (Governorates & Areas)
+      match /governorates/{allPaths=**} {
+        allow read: if belongsToCompany(companyId);
+        allow write: if isAdmin(companyId);
+      }
+
+      // المرجعيات الفنية
       match /activityTypes/{allPaths=**} {
         allow read: if belongsToCompany(companyId);
         allow write: if isAdmin(companyId);
