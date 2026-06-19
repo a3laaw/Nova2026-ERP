@@ -11,11 +11,13 @@ export const paths = {
   globalUser: (uid: string) => `global_users/${uid}`,
   company: (companyId: string) => `companies/${companyId}`,
   
-  // الهيكل التنظيمي
+  // الهيكل التنظيمي والصلاحيات
   departments: (companyId: string) => 
     getTenantPath(companyId, 'departments'),
   jobs: (companyId: string, deptId: string) => 
     `${getTenantPath(companyId, 'departments')}/${deptId}/jobs`,
+  roles: (companyId: string) =>
+    getTenantPath(companyId, 'roles'),
 
   // البيانات الجغرافية
   governorates: (companyId: string) => 

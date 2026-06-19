@@ -46,76 +46,41 @@ service cloud.firestore {
       allow write: if isDeveloper() || (isAuthenticated() && request.auth.uid == uid);
     }
     
-    // 2. طلبات الانضمام
-    match /company_requests/{requestId} {
-      allow create: if true; 
-      allow read, write: if isDeveloper();
-    }
-    
-    // 3. هيكل الشركات والبيانات الموزعة (Multi-tenant)
+    // 2. هيكل الشركات والبيانات الموزعة (Multi-tenant)
     match /companies/{companyId} {
-      // قراءة بيانات الشركة الأساسية
       allow read: if belongsToCompany(companyId);
-      // تحديث بيانات الشركة للمدير أو المطور
       allow update: if isAdmin(companyId);
-      // الإنشاء محصور في منطق التسجيل والمطور
       allow create: if isAuthenticated();
 
-      // --- الإعدادات (Settings) ---
-      match /settings/{settingId} {
+      // الإعدادات (Settings & Roles)
+      match /settings/{allPaths=**} {
         allow read: if belongsToCompany(companyId);
         allow write: if isAdmin(companyId);
       }
 
-      // --- المرجعيات والقواعد (Reference Data) ---
-      
-      // الأقسام والوظائف
-      match /departments/{allPaths=**} {
+      match /roles/{roleId} {
         allow read: if belongsToCompany(companyId);
         allow write: if isAdmin(companyId);
       }
-      
-      // الجغرافيا (المحافظات والمناطق)
-      match /governorates/{allPaths=**} {
+
+      // الموظفين
+      match /users/{uid} {
         allow read: if belongsToCompany(companyId);
         allow write: if isAdmin(companyId);
       }
-      
-      // الهيكل المرجعي الفني الجديد (Activity Types -> Services -> Sub-Services -> Technical Stages)
+
+      // المرجعيات
       match /activityTypes/{allPaths=**} {
         allow read: if belongsToCompany(companyId);
         allow write: if isAdmin(companyId);
       }
 
-      // --- البيانات التشغيلية (Operational Data) ---
-      
-      // المشاريع والعقود والمراحل التنفيذية
-      match /projects/{projectId} {
-        allow read, write: if belongsToCompany(companyId);
-        
-        // مراحل المشروع (Instances)
-        match /stageInstances/{instanceId} {
-          allow read, write: if belongsToCompany(companyId);
-        }
-        
-        // العقود (Contracts)
-        match /contracts/{contractId} {
-          allow read: if belongsToCompany(companyId);
-          allow write: if isAdmin(companyId);
-        }
-      }
-
-      // العملاء المحتملين (CRM)
-      match /leads/{leadId} {
-        allow read, write: if belongsToCompany(companyId);
-      }
-
-      // المعاملات المالية (Transactions) والجدول الزمني (Timeline)
-      match /transactions/{txId} {
+      // العمليات
+      match /projects/{allPaths=**} {
         allow read, write: if belongsToCompany(companyId);
       }
       
-      match /timelineEvents/{eventId} {
+      match /leads/{allPaths=**} {
         allow read, write: if belongsToCompany(companyId);
       }
     }

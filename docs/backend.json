@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "GlobalUser": {
@@ -21,34 +20,30 @@
       "properties": {
         "displayName": { "type": "string" },
         "email": { "type": "string", "format": "email" },
-        "role": { "type": "string", "enum": ["admin", "user"] },
+        "roleId": { "type": "string", "description": "Reference to Roles collection" },
+        "roleCode": { "type": "string" },
         "departmentId": { "type": "string" },
         "jobTitleId": { "type": "string" },
         "joinedAt": { "type": "string", "format": "date-time" },
         "isActive": { "type": "boolean" }
       },
-      "required": ["displayName", "email", "role"]
+      "required": ["displayName", "email"]
     },
-    "Company": {
-      "title": "Company Profile",
-      "description": "بيانات الشركة الأساسية وقيود الاشتراك.",
+    "Role": {
+      "title": "Access Role",
+      "description": "تعريف دور وظيفي مع قائمة صلاحياته.",
       "type": "object",
       "properties": {
+        "code": { "type": "string" },
         "name": { "type": "string" },
-        "status": { "type": "string", "enum": ["active", "suspended", "pending"] },
-        "trialEndsAt": { "type": "string", "format": "date-time" },
-        "maxUsers": { "type": "number" },
-        "logoUrl": { "type": "string", "description": "Base64 encoded logo image" },
-        "headerImageUrl": { "type": "string", "description": "Base64 encoded header image" },
-        "footerImageUrl": { "type": "string", "description": "Base64 encoded footer image" },
-        "headerText": { "type": "string" },
-        "footerText": { "type": "string" },
-        "licenseExpiryDate": { "type": "string", "format": "date" },
-        "laborAuthorityExpiryDate": { "type": "string", "format": "date" },
-        "address": { "type": "string" },
-        "commercialRegistry": { "type": "string" }
+        "description": { "type": "string" },
+        "permissions": { "type": "array", "items": { "type": "string" } },
+        "isSystemRole": { "type": "boolean" },
+        "isActive": { "type": "boolean" },
+        "order": { "type": "number" },
+        "companyId": { "type": "string" }
       },
-      "required": ["name", "status"]
+      "required": ["code", "name", "permissions"]
     }
   },
   "auth": {
@@ -57,6 +52,7 @@
   "firestore": {
     "/global_users/{uid}": { "schema": "#/entities/GlobalUser", "description": "تخزين المسار الأساسي للمستخدم" },
     "/companies/{companyId}": { "schema": "#/entities/Company", "description": "بيانات الشركة" },
-    "/companies/{companyId}/users/{uid}": { "schema": "#/entities/TenantUser", "description": "بيانات موظفي الشركة" }
+    "/companies/{companyId}/users/{uid}": { "schema": "#/entities/TenantUser", "description": "بيانات موظفي الشركة" },
+    "/companies/{companyId}/roles/{roleId}": { "schema": "#/entities/Role", "description": "أدوار وصلاحيات المنشأة" }
   }
 }
