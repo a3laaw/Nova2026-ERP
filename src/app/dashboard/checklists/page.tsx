@@ -43,7 +43,7 @@ export default function ReferenceHubPage() {
               <MapPin className="h-5 w-5" /> {t('geoRef')}
             </TabsTrigger>
             <TabsTrigger value="setup" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-lg flex items-center justify-center px-6">
-              <Settings2 className="h-5 w-5" /> {isRtl ? 'تهيئة النظام' : 'System Setup'}
+              <Settings2 className="h-5 w-5" /> {t('systemSetup')}
             </TabsTrigger>
           </TabsList>
         </div>

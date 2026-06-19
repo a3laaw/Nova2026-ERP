@@ -48,7 +48,26 @@ const translations: Record<Language, Record<string, string>> = {
     project: 'المشروع',
     govs: 'المحافظة',
     value: 'القيمة',
-    summary: 'الملخص'
+    summary: 'الملخص',
+    // Reference Hub Keys
+    orgRef: 'الهيكل التنظيمي',
+    techRef: 'المسارات الفنية',
+    geoRef: 'البيانات الجغرافية',
+    systemSetup: 'تهيئة النظام',
+    newDept: 'قسم جديد',
+    newGov: 'محافظة جديدة',
+    newArea: 'منطقة جديدة',
+    newActivity: 'نشاط أعمال جديد',
+    newService: 'خدمة جديدة',
+    newPath: 'مسار جديد',
+    addStage: 'إضافة مرحلة',
+    editStage: 'تعديل مرحلة',
+    nextStages: 'المراحل التالية',
+    technicalLink: 'الارتباط الفني',
+    operationalPath: 'المسار التشغيلي',
+    totalStages: 'إجمالي المراحل',
+    expectedValue: 'القيمة المتوقعة',
+    addLead: 'إضافة عميل محتمل'
   },
   en: {
     dashboard: 'Dashboard',
@@ -86,7 +105,26 @@ const translations: Record<Language, Record<string, string>> = {
     project: 'Project',
     govs: 'Governorate',
     value: 'Value',
-    summary: 'Summary'
+    summary: 'Summary',
+    // Reference Hub Keys
+    orgRef: 'Organization',
+    techRef: 'Technical Paths',
+    geoRef: 'Geography',
+    systemSetup: 'System Setup',
+    newDept: 'New Dept',
+    newGov: 'New Gov',
+    newArea: 'New Area',
+    newActivity: 'New Activity',
+    newService: 'New Service',
+    newPath: 'New Path',
+    addStage: 'Add Stage',
+    editStage: 'Edit Stage',
+    nextStages: 'Next Stages',
+    technicalLink: 'Technical Link',
+    operationalPath: 'Operational Path',
+    totalStages: 'Total Stages',
+    expectedValue: 'Expected Value',
+    addLead: 'Add Lead'
   }
 };
 
