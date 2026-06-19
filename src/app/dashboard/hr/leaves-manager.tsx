@@ -115,7 +115,7 @@ export function LeavesManager() {
               <Plus className="me-2 h-4 w-4" /> {isRtl ? 'طلب إجازة' : 'Request Leave'}
             </Button>
           </DialogTrigger>
-          <DialogContent className="rounded-[2rem] max-w-lg p-0 overflow-hidden border-0 shadow-2xl" dir={dir}>
+          <DialogContent className="rounded-[2.5rem] max-w-lg p-0 overflow-hidden border-0 shadow-2xl" dir={dir}>
             <div className="bg-primary/5 p-8 border-b">
                <DialogHeader>
                   <DialogTitle className="text-start font-black text-2xl flex items-center gap-2">
