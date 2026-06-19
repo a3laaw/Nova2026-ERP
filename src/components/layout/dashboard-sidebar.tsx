@@ -29,7 +29,8 @@ import {
   Package,
   Layers,
   FileSearch,
-  BookOpen
+  BookOpen,
+  TrendingUp
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
