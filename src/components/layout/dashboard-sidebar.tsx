@@ -20,7 +20,9 @@ import {
   ChevronRight,
   Clock,
   ShieldCheck,
-  Scale
+  Scale,
+  Calendar,
+  FileSpreadsheet
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
@@ -53,7 +55,6 @@ export function DashboardSidebar() {
   const { t, lang } = useLanguage()
   const { canAccess, isAdmin } = usePermissions()
 
-  // تعريف المنيو مع مفاتيح الصلاحيات
   const menuItems = [
     { title: t('dashboard'), icon: LayoutDashboard, url: "/dashboard", module: 'dashboard' },
     { title: t('crm'), icon: Users, url: "/dashboard/crm", module: 'crm' },
@@ -65,7 +66,13 @@ export function DashboardSidebar() {
       url: "/dashboard/hr", 
       module: 'hr',
       subItems: [
-        { title: t('gratuity'), url: "/dashboard/hr/gratuity", icon: Scale }
+        { title: t('employees'), url: "/dashboard/hr/employees", icon: Users },
+        { title: t('leaves'), url: "/dashboard/hr/leaves", icon: Calendar },
+        { title: t('permissions'), url: "/dashboard/hr/permissions", icon: Clock },
+        { title: t('attendance'), url: "/dashboard/hr/attendance/import", icon: FileSpreadsheet },
+        { title: t('payroll'), url: "/dashboard/hr/payroll", icon: Calculator },
+        { title: t('gratuity'), url: "/dashboard/hr/gratuity", icon: Scale },
+        { title: t('hrReports'), url: "/dashboard/hr/reports", icon: BarChart3 },
       ]
     },
     { title: t('procurement'), icon: ShoppingCart, url: "/dashboard/procurement", module: 'procurement' },
@@ -114,7 +121,7 @@ export function DashboardSidebar() {
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   {item.subItems ? (
-                    <Collapsible asChild className="group/collapsible">
+                    <Collapsible asChild className="group/collapsible" defaultOpen={pathname.startsWith(item.url)}>
                       <div>
                         <CollapsibleTrigger asChild>
                           <SidebarMenuButton
@@ -133,14 +140,14 @@ export function DashboardSidebar() {
                           <SidebarMenuSub className="ms-6 mt-1 border-s-2 border-slate-100">
                             <SidebarMenuSubItem>
                               <SidebarMenuSubButton asChild isActive={pathname === item.url}>
-                                <Link href={item.url} className="text-xs font-bold">{t('overview') || 'Overview'}</Link>
+                                <Link href={item.url} className="text-xs font-bold">{lang === 'ar' ? 'نظرة عامة' : 'Overview'}</Link>
                               </SidebarMenuSubButton>
                             </SidebarMenuSubItem>
                             {item.subItems.map(sub => (
                               <SidebarMenuSubItem key={sub.url}>
                                 <SidebarMenuSubButton asChild isActive={pathname === sub.url}>
                                   <Link href={sub.url} className="text-xs flex items-center gap-2">
-                                    <sub.icon className="h-3 w-3" />
+                                    <sub.icon className="h-3.5 w-3.5 opacity-70" />
                                     <span>{sub.title}</span>
                                   </Link>
                                 </SidebarMenuSubButton>
