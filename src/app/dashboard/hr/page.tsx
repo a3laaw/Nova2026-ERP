@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   UserCircle, FileText, ShieldAlert, Sparkles, 
@@ -63,14 +62,14 @@ export default function HRDashboard() {
                 onClick={() => router.push('/dashboard/hr/employees')}
                 className="border-0 shadow-lg hover:shadow-2xl transition-all cursor-pointer rounded-[2.5rem] bg-white group overflow-hidden"
               >
-                 <CardHeader className="p-8 pb-4">
+                 <CardHeader className="p-8 pb-4 text-start">
                     <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                        <Users className="h-7 w-7" />
                     </div>
                     <CardTitle className="text-xl font-black">{isRtl ? 'سجل الموظفين' : 'Employees List'}</CardTitle>
                     <CardDescription className="font-bold">إدارة الملفات، الرواتب، وسجل التدقيق.</CardDescription>
                  </CardHeader>
-                 <CardContent className="p-8 pt-0">
+                 <CardContent className="p-8 pt-0 text-start">
                     <div className="flex items-center gap-2 text-primary font-black text-xs">
                        {isRtl ? 'عرض كافة الموظفين' : 'View All Employees'}
                        <ArrowUpRight className="h-4 w-4" />
@@ -78,11 +77,28 @@ export default function HRDashboard() {
                  </CardContent>
               </Card>
 
-              {/* المزيد من الكروت السريعة لاحقاً */}
+              <Card 
+                onClick={() => setActiveTab('leaves')}
+                className="border-0 shadow-lg hover:shadow-2xl transition-all cursor-pointer rounded-[2.5rem] bg-white group overflow-hidden"
+              >
+                 <CardHeader className="p-8 pb-4 text-start">
+                    <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                       <Calendar className="h-7 w-7" />
+                    </div>
+                    <CardTitle className="text-xl font-black">{isRtl ? 'طلبات الإجازات' : 'Leave Tracking'}</CardTitle>
+                    <CardDescription className="font-bold">متابعة الغيابات وأرصدة الإجازات السنوية.</CardDescription>
+                 </CardHeader>
+                 <CardContent className="p-8 pt-0 text-start">
+                    <div className="flex items-center gap-2 text-blue-600 font-black text-xs">
+                       {isRtl ? 'إدارة الإجازات' : 'Manage Leaves'}
+                       <ArrowUpRight className="h-4 w-4" />
+                    </div>
+                 </CardContent>
+              </Card>
            </div>
         </TabsContent>
 
-        <TabsContent value="leaves">
+        <TabsContent value="leaves" className="animate-in fade-in duration-500">
           <LeavesManager />
         </TabsContent>
 
@@ -93,7 +109,7 @@ export default function HRDashboard() {
                 <CardTitle className="text-lg font-black">{t('docAnalysis')}</CardTitle>
                 <CardDescription className="font-bold">{isRtl ? 'تحليل عقود العمل والهويات آلياً' : 'Automated analysis for contracts and IDs'}</CardDescription>
               </CardHeader>
-              <CardContent className="p-8 space-y-6">
+              <CardContent className="p-8 space-y-6 text-start">
                 <div className="border-4 border-dashed border-muted rounded-[2rem] p-12 text-center bg-muted/10 hover:bg-muted/20 transition-all cursor-pointer group">
                   <UploadCloud className="h-16 w-16 text-muted-foreground mx-auto group-hover:scale-110 transition-transform mb-4" />
                   <p className="text-base font-black text-slate-700">{t('uploadDoc')}</p>

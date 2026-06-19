@@ -2,7 +2,7 @@ import { BaseReference } from './reference';
 
 export type EmployeeStatus = 'active' | 'on-leave' | 'terminated';
 export type LeaveStatus = 'pending' | 'approved' | 'rejected' | 'on-leave' | 'returned';
-export type LeaveType = 'Annual' | 'Sick' | 'Emergency' | 'Unpaid';
+export type LeaveType = 'annual' | 'sick' | 'emergency' | 'unpaid';
 export type PermissionType = 'late_arrival' | 'early_departure';
 export type AttendanceStatus = 'present' | 'absent' | 'weekend' | 'holiday';
 export type PayrollStatus = 'draft' | 'reviewed' | 'approved' | 'paid';
@@ -11,7 +11,7 @@ export type PaymentMethod = 'cash' | 'transfer' | 'check' | 'payroll';
 export interface Employee extends BaseReference {
   employeeNumber: string;
   fullName: string;
-  nameEn: string; // الاسم بالإنجليزية (إلزامي الآن)
+  nameEn: string;
   civilId: string;
   mobile: string;
   email?: string;
@@ -21,7 +21,7 @@ export interface Employee extends BaseReference {
   jobId: string;
   jobTitle?: string;
   roleCode?: string;
-  hireDate: string; // YYYY-MM-DD
+  hireDate: string;
   contractType?: string;
   status: EmployeeStatus;
   paymentMethod: PaymentMethod;
@@ -30,15 +30,35 @@ export interface Employee extends BaseReference {
   transportAllowance?: number;
   otherAllowances?: number;
   bankName?: string;
-  bankAccountNumber?: string;
   iban?: string;
   contractExpiry?: string;
   residencyExpiry?: string;
-  annualLeaveUsed?: number;
-  carriedLeaveDays?: number;
-  terminationDate?: string;
-  terminationReason?: string;
+  annualLeaveBalance: number; // رصيد الإجازات السنوية
+  sickLeaveBalance: number;   // رصيد الإجازات المرضية
   isActive: boolean;
+}
+
+export interface LeaveRequest extends BaseReference {
+  userId: string;
+  userName: string;
+  employeeId?: string; // ID الوثيقة في Firestore
+  type: LeaveType;
+  startDate: string;
+  endDate: string;
+  days: number;        // إجمالي الأيام التقويمية
+  workingDays: number; // أيام العمل الفعلية (بعد استبعاد العطلات)
+  reason: string;
+  status: LeaveStatus;
+  approvedBy?: string;
+  approvedAt?: any;
+  comment?: string;
+  sickLeaveTiers?: {
+    fullPay: number;
+    threeQuarterPay: number;
+    halfPay: number;
+    quarterPay: number;
+    noPay: number;
+  };
 }
 
 export interface EmployeeAuditLog extends BaseReference {
@@ -48,33 +68,7 @@ export interface EmployeeAuditLog extends BaseReference {
   field: string;
   oldValue: any;
   newValue: any;
-  action: 'update' | 'terminate' | 'activate';
-}
-
-export interface LeaveRequest extends BaseReference {
-  employeeId: string;
-  employeeName: string;
-  leaveType: LeaveType;
-  startDate: any;
-  endDate: any;
-  days: number;
-  workingDays: number;
-  notes?: string;
-  status: LeaveStatus;
-  adminComment?: string;
-  approvedBy?: string;
-  approvedAt?: any;
-}
-
-export interface PermissionRequest extends BaseReference {
-  employeeId: string;
-  employeeName: string;
-  type: PermissionType;
-  date: any;
-  durationHours: number;
-  reason: string;
-  status: 'pending' | 'approved' | 'rejected';
-  adminComment?: string;
+  action: 'update' | 'terminate' | 'activate' | 'leave_deduction';
 }
 
 export interface AttendanceRecord extends BaseReference {
@@ -83,30 +77,5 @@ export interface AttendanceRecord extends BaseReference {
   date: any;
   checkIn?: string;
   checkOut?: string;
-  minutesLate?: number;
-  minutesEarlyLeave?: number;
   status: AttendanceStatus;
-  source?: 'excel' | 'manual';
-}
-
-export interface PayrollRecord extends BaseReference {
-  employeeId: string;
-  employeeName: string;
-  year: number;
-  month: number;
-  earnings: {
-    basicSalary: number;
-    housingAllowance?: number;
-    transportAllowance?: number;
-    otherAllowances?: number;
-  };
-  deductions?: {
-    absence?: number;
-    late?: number;
-    penalties?: number;
-    advances?: number;
-    other?: number;
-  };
-  netSalary: number;
-  status: PayrollStatus;
 }
