@@ -61,6 +61,12 @@ service cloud.firestore {
       // الإنشاء محصور في منطق التسجيل والمطور
       allow create: if isAuthenticated();
 
+      // --- الإعدادات (Settings) ---
+      match /settings/{settingId} {
+        allow read: if belongsToCompany(companyId);
+        allow write: if isAdmin(companyId);
+      }
+
       // --- المرجعيات والقواعد (Reference Data) ---
       
       // الأقسام والوظائف
