@@ -8,7 +8,7 @@ import {
   UserCircle, FileText, ShieldAlert, Sparkles, 
   UploadCloud, Loader2, Users, Search, 
   Calendar, UserPlus, ArrowUpRight, Clock,
-  FileSpreadsheet
+  FileSpreadsheet, Calculator
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useRouter } from 'next/navigation';
@@ -43,6 +43,13 @@ export default function HRDashboard() {
              {isRtl ? 'استيراد البصمة' : 'Import Attendance'}
            </Button>
            <Button 
+             onClick={() => router.push('/dashboard/hr/payroll')}
+             className="bg-emerald-600 text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-emerald-100 hover:scale-[1.02] transition-transform"
+           >
+             <Calculator className="me-2 h-6 w-6" />
+             {isRtl ? 'الرواتب' : 'Payroll'}
+           </Button>
+           <Button 
              onClick={() => router.push('/dashboard/hr/employees/new')}
              className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform"
            >
@@ -71,7 +78,7 @@ export default function HRDashboard() {
         </div>
 
         <TabsContent value="overview" className="space-y-8 animate-in fade-in duration-500">
-           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
               <Card 
                 onClick={() => router.push('/dashboard/hr/employees')}
                 className="border-0 shadow-lg hover:shadow-2xl transition-all cursor-pointer rounded-[2.5rem] bg-white group overflow-hidden"
@@ -124,6 +131,25 @@ export default function HRDashboard() {
                  <CardContent className="p-8 pt-0 text-start">
                     <div className="flex items-center gap-2 text-emerald-600 font-black text-xs">
                        {isRtl ? 'رفع ملفات CSV' : 'Upload CSV Files'}
+                       <ArrowUpRight className="h-4 w-4" />
+                    </div>
+                 </CardContent>
+              </Card>
+
+              <Card 
+                onClick={() => router.push('/dashboard/hr/payroll')}
+                className="border-0 shadow-lg hover:shadow-2xl transition-all cursor-pointer rounded-[2.5rem] bg-white group overflow-hidden"
+              >
+                 <CardHeader className="p-8 pb-4 text-start">
+                    <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                       <Calculator className="h-7 w-7" />
+                    </div>
+                    <CardTitle className="text-xl font-black">{isRtl ? 'كشوف الرواتب' : 'Payroll Center'}</CardTitle>
+                    <CardDescription className="font-bold">حساب الرواتب والخصومات الميدانية.</CardDescription>
+                 </CardHeader>
+                 <CardContent className="p-8 pt-0 text-start">
+                    <div className="flex items-center gap-2 text-amber-600 font-black text-xs">
+                       {isRtl ? 'إدارة الرواتب' : 'Manage Payroll'}
                        <ArrowUpRight className="h-4 w-4" />
                     </div>
                  </CardContent>
