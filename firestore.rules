@@ -2,6 +2,8 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
+    // --- الدوال المساعدة (Helper Functions) ---
+    
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -32,60 +34,93 @@ service cloud.firestore {
       );
     }
 
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // --- السجلات العالمية ---
+    
     match /global_users/{uid} {
       allow read: if isAuthenticated() && (request.auth.uid == uid || isDeveloper());
       allow write: if isDeveloper() || (isAuthenticated() && request.auth.uid == uid);
     }
+    
+    match /company_requests/{reqId} {
+       allow create: if true;
+       allow read, write: if isDeveloper();
+    }
+
+    // --- سجلات المنشأة (Multi-tenant) ---
     
     match /companies/{companyId} {
       allow read: if belongsToCompany(companyId);
       allow update: if isAdmin(companyId);
       allow create: if isAuthenticated();
 
+      // الموظفين وسجلات التدقيق
       match /employees/{employeeId} {
         allow read: if belongsToCompany(companyId);
         allow write: if isAdmin(companyId);
         
         match /auditLogs/{logId} {
           allow read: if belongsToCompany(companyId);
+          allow create: if isAdmin(companyId);
+          allow update, delete: if false; // حماية السجل من التعديل أو الحذف (Immutable)
+        }
+      }
+
+      // طلبات الإجازات (Leave Requests)
+      match /leaveRequests/{leaveId} {
+        allow read: if belongsToCompany(companyId) && (isAdmin(companyId) || isOwner(resource.data.userId));
+        allow create: if belongsToCompany(companyId) && (isAdmin(companyId) || isOwner(request.resource.data.userId));
+        allow update: if belongsToCompany(companyId) && (
+          isAdmin(companyId) || 
+          (isOwner(resource.data.userId) && resource.data.status == 'pending')
+        );
+        allow delete: if isAdmin(companyId);
+      }
+
+      // طلبات الاستئذان (Permission Requests)
+      match /permissionRequests/{requestId} {
+        allow read: if belongsToCompany(companyId) && (isAdmin(companyId) || isOwner(resource.data.userId));
+        allow create: if belongsToCompany(companyId) && (isAdmin(companyId) || isOwner(request.resource.data.userId));
+        allow update: if belongsToCompany(companyId) && (
+          isAdmin(companyId) || 
+          (isOwner(resource.data.userId) && resource.data.status == 'pending')
+        );
+        allow delete: if isAdmin(companyId);
+      }
+
+      // سجلات الحضور (Attendance)
+      match /attendance/{attId} {
+        allow read: if belongsToCompany(companyId) && (isAdmin(companyId) || isOwner(resource.data.employeeId));
+        allow write: if isAdmin(companyId);
+      }
+
+      // الرواتب (Payroll)
+      match /payroll/{batchId} {
+        allow read: if belongsToCompany(companyId) && isAdmin(companyId);
+        allow write: if isAdmin(companyId);
+
+        match /records/{recordId} {
+          allow read: if belongsToCompany(companyId) && (isAdmin(companyId) || isOwner(resource.data.employeeId));
           allow write: if isAdmin(companyId);
         }
       }
 
-      match /leaveRequests/{leaveId} {
-        allow read: if belongsToCompany(companyId);
-        allow create: if belongsToCompany(companyId);
-        allow update: if isAdmin(companyId) || (
-          isAuthenticated() && 
-          resource.data.userId == request.auth.uid && 
-          resource.data.status == 'pending'
-        );
-        allow delete: if isAdmin(companyId);
-      }
-
-      match /permissionRequests/{requestId} {
-        allow read: if belongsToCompany(companyId);
-        allow create: if belongsToCompany(companyId);
-        allow update: if isAdmin(companyId) || (
-          isAuthenticated() && 
-          resource.data.userId == request.auth.uid && 
-          resource.data.status == 'pending'
-        );
-        allow delete: if isAdmin(companyId);
-      }
-
-      match /leads/{leadId} {
-        allow read, write: if belongsToCompany(companyId);
-      }
-
-      match /roles/{roleId} { allow read: if belongsToCompany(companyId); allow write: if isAdmin(companyId); }
+      // المسارات الفنية والخدمات
+      match /activityTypes/{allPaths=**} { allow read: if belongsToCompany(companyId); allow write: if isAdmin(companyId); }
       match /departments/{allPaths=**} { allow read: if belongsToCompany(companyId); allow write: if isAdmin(companyId); }
       match /governorates/{allPaths=**} { allow read: if belongsToCompany(companyId); allow write: if isAdmin(companyId); }
-      match /activityTypes/{allPaths=**} { allow read: if belongsToCompany(companyId); allow write: if isAdmin(companyId); }
+      match /roles/{roleId} { allow read: if belongsToCompany(companyId); allow write: if isAdmin(companyId); }
+      
+      // المشاريع والعملاء
+      match /leads/{leadId} { allow read, write: if belongsToCompany(companyId); }
       match /projects/{allPaths=**} { allow read, write: if belongsToCompany(companyId); }
-      match /attendance/{allPaths=**} { allow read, write: if belongsToCompany(companyId); }
-      match /payroll/{allPaths=**} { allow read, write: if isAdmin(companyId); }
+      
+      // الإعدادات العامة
       match /settings/{allPaths=**} { allow read: if belongsToCompany(companyId); allow write: if isAdmin(companyId); }
+      match /holidays/{allPaths=**} { allow read: if belongsToCompany(companyId); allow write: if isAdmin(companyId); }
     }
   }
 }
