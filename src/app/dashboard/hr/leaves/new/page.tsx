@@ -15,7 +15,8 @@ import {
   Clock,
   ArrowRight,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  AlertTriangle
 } from "lucide-react";
 import { useFirestore } from '@/firebase';
 import { useAuthContext } from '@/context/auth-context';
@@ -31,10 +32,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "@/components/ui/calendar";
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { SmartDateInput } from '@/components/ui/smart-date-input';
 import { ar } from 'date-fns/locale';
 import { format, parseISO, isValid, startOfDay } from 'date-fns';
 import { DateRange } from "react-day-picker";
+import { SmartDateInput } from '@/components/ui/smart-date-input';
 
 export default function NewLeaveRequestPage() {
   const { globalUser, user } = useAuthContext();
@@ -63,7 +64,7 @@ export default function NewLeaveRequestPage() {
 
   const currentBalance = 24; 
 
-  // حساب أيام العمل الفعلي
+  // حساب أيام العمل الفعلية عند تغيير التواريخ
   useEffect(() => {
     async function calculateMetrics() {
       if (form.startDate && form.endDate && db && companyId) {
@@ -106,7 +107,10 @@ export default function NewLeaveRequestPage() {
     try {
       const from = form.startDate ? parseISO(form.startDate) : undefined;
       const to = form.endDate ? parseISO(form.endDate) : undefined;
-      return { from, to };
+      if (from && isValid(from)) {
+        return { from, to: (to && isValid(to)) ? to : undefined };
+      }
+      return undefined;
     } catch {
       return undefined;
     }
@@ -156,12 +160,12 @@ export default function NewLeaveRequestPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-        {/* Left Column: Calendar */}
+        {/* Left Column: Interactive Calendar */}
         <div className="lg:col-span-5 space-y-8">
            <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
               <CardHeader className="bg-slate-50/50 border-b p-8 flex justify-between items-center">
                  <CardTitle className="text-lg font-black flex items-center gap-2 text-slate-800"><CalendarIcon className="h-5 w-5 text-primary" /> {isRtl ? 'اختيار النطاق الزمني' : 'Range Selection'}</CardTitle>
-                 <Badge className="bg-primary/10 text-primary border-0 rounded-lg px-3 py-1 font-black">{totalCalendarDays} {isRtl ? 'يوم' : 'Days'}</Badge>
+                 <Badge className="bg-primary text-white border-0 rounded-lg px-3 py-1 font-black">{totalCalendarDays} {isRtl ? 'يوم' : 'Days'}</Badge>
               </CardHeader>
               <CardContent className="p-8">
                  <Calendar
@@ -219,7 +223,7 @@ export default function NewLeaveRequestPage() {
 
            {/* Remaining Balance Tracker */}
            <Card className="border-0 shadow-xl rounded-[3rem] bg-slate-900 text-white overflow-hidden">
-              <CardContent className="p-8 space-y-6">
+              <CardContent className="p-8 space-y-6 text-start">
                  <div className="flex items-center gap-3 border-b border-white/10 pb-4">
                     <Activity className="h-5 w-5 text-primary" />
                     <h3 className="text-lg font-black">{isRtl ? 'تحديث الرصيد التقديري' : 'Estimated Balance Update'}</h3>
@@ -267,28 +271,60 @@ export default function NewLeaveRequestPage() {
 
            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
               <CardContent className="p-10 space-y-8">
-                 <div className="flex items-center gap-3 text-slate-800 text-start"><Plane className="h-6 w-6 text-primary" /><h3 className="text-xl font-black">{isRtl ? 'ملاحظات إضافية' : 'Additional Notes'}</h3></div>
+                 <div className="flex items-center gap-3 text-slate-800 text-start">
+                    <Plane className="h-6 w-6 text-primary" />
+                    <h3 className="text-xl font-black">{isRtl ? 'ملاحظات إضافية' : 'Additional Notes'}</h3>
+                 </div>
                  <div className="flex flex-wrap gap-4">
-                    {[{ id: 'travel', label: isRtl ? 'سفر' : 'Travel', icon: Plane, color: 'text-blue-500' }, { id: 'family', label: isRtl ? 'عائلية' : 'Family', icon: Users, color: 'text-purple-500' }, { id: 'rest', label: isRtl ? 'راحة' : 'Rest', icon: Activity, color: 'text-emerald-500' }].map(item => (
-                      <button key={item.id} type="button" onClick={() => setForm({...form, quickReason: item.label})}
-                        className={cn("px-6 py-4 rounded-2xl border-2 font-black transition-all flex items-center gap-3", form.quickReason === item.label ? "bg-primary text-white border-primary shadow-lg scale-105" : "bg-slate-50 text-slate-500 border-transparent hover:border-primary/20 hover:bg-white")}>
-                         <item.icon className={cn("h-5 w-5", form.quickReason === item.label ? "text-white" : item.color)} /> {item.label}
+                    {[
+                      { id: 'travel', label: isRtl ? 'سفر' : 'Travel', icon: Plane, color: 'text-blue-500' }, 
+                      { id: 'family', label: isRtl ? 'عائلية' : 'Family', icon: Users, color: 'text-purple-500' }, 
+                      { id: 'rest', label: isRtl ? 'راحة' : 'Rest', icon: Activity, color: 'text-emerald-500' }
+                    ].map(item => (
+                      <button 
+                        key={item.id} 
+                        type="button" 
+                        onClick={() => setForm({...form, quickReason: item.label})}
+                        className={cn(
+                          "px-6 py-4 rounded-2xl border-2 font-black transition-all flex items-center gap-3", 
+                          form.quickReason === item.label 
+                            ? "bg-primary text-white border-primary shadow-lg scale-105" 
+                            : "bg-slate-50 text-slate-500 border-transparent hover:border-primary/20 hover:bg-white"
+                        )}
+                      >
+                         <item.icon className={cn("h-5 w-5", form.quickReason === item.label ? "text-white" : item.color)} /> 
+                         {item.label}
                       </button>
                     ))}
                  </div>
-                 <Textarea value={form.reason} onChange={e => setForm({...form, reason: e.target.value})} placeholder={isRtl ? 'تفاصيل إضافية للإدارة...' : 'Details for management...'} className="min-h-[140px] rounded-[2rem] border-2 bg-slate-50/30 p-8 text-lg focus:bg-white transition-all resize-none shadow-inner border-slate-100" />
+                 <Textarea 
+                    value={form.reason} 
+                    onChange={e => setForm({...form, reason: e.target.value})} 
+                    placeholder={isRtl ? 'تفاصيل إضافية للإدارة...' : 'Details for management...'} 
+                    className="min-h-[140px] rounded-[2rem] border-2 bg-slate-50/30 p-8 text-lg focus:bg-white transition-all resize-none shadow-inner border-slate-100" 
+                 />
               </CardContent>
            </Card>
 
            <div className="flex flex-col sm:flex-row gap-6 pt-4">
-              <Button onClick={handleSubmit} disabled={isSubmitting || !form.startDate || !form.endDate} className="flex-[2] h-20 rounded-[2.5rem] bg-primary text-white font-black text-2xl shadow-2xl shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all gap-4 border-b-8 border-orange-700">
-                 {isSubmitting ? <Clock className="h-8 w-8 animate-spin" /> : <Send className="h-8 w-8" />} {isRtl ? 'إرسال الطلب للمدير' : 'Submit to Manager'}
+              <Button 
+                onClick={handleSubmit} 
+                disabled={isSubmitting || !form.startDate || !form.endDate} 
+                className="flex-[2] h-20 rounded-[2.5rem] bg-primary text-white font-black text-2xl shadow-2xl shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all gap-4 border-b-8 border-orange-700"
+              >
+                 {isSubmitting ? <Clock className="h-8 w-8 animate-spin" /> : <Send className="h-8 w-8" />} 
+                 {isRtl ? 'إرسال الطلب للمدير' : 'Submit to Manager'}
               </Button>
-              <Button variant="outline" onClick={() => router.push('/dashboard/hr')} className="flex-1 h-20 rounded-[2.5rem] border-2 border-slate-200 font-black text-xl hover:bg-white transition-all bg-slate-50">{isRtl ? 'إلغاء' : 'Cancel'}</Button>
+              <Button 
+                variant="outline" 
+                onClick={() => router.push('/dashboard/hr')} 
+                className="flex-1 h-20 rounded-[2.5rem] border-2 border-slate-200 font-black text-xl hover:bg-white transition-all bg-slate-50"
+              >
+                {isRtl ? 'إلغاء' : 'Cancel'}
+              </Button>
            </div>
         </div>
       </div>
     </div>
   );
 }
-
