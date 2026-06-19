@@ -22,6 +22,7 @@ export default function DashboardLayout({
   const { company, loading: companyLoading } = useCompanyContext();
   const { lang, setLang, t, dir } = useLanguage();
   const router = useRouter();
+  const isRtl = lang === 'ar';
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -68,7 +69,7 @@ export default function DashboardLayout({
         <DashboardSidebar />
         <SidebarInset className="flex flex-col bg-transparent">
           <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-white/80 backdrop-blur-md px-8">
-            <SidebarTrigger className={cn("transition-transform", lang === 'ar' ? 'rotate-0' : 'rotate-180')} />
+            <SidebarTrigger className={cn("transition-transform", isRtl ? "rotate-0" : "rotate-180")} />
             <div className="flex-1">
               <h2 className={cn("text-xs font-black text-slate-400 uppercase tracking-widest text-start")}>
                 {company?.name || t('workspace')} / <span className="text-black">{t('dashboard')}</span>
