@@ -9,7 +9,7 @@ import {
   UserCircle, FileText, ShieldAlert, Sparkles, 
   UploadCloud, Loader2, Users, Search, 
   UserCog, ShieldCheck, Mail, Calendar,
-  ArrowRight, MoreHorizontal, CalendarDays
+  MoreHorizontal
 } from "lucide-react";
 import { analyzeEmployeeDoc } from "@/ai/flows/analyzeEmployeeDoc";
 import { toast } from "@/hooks/use-toast";
@@ -123,7 +123,7 @@ export default function HRPage() {
               <Users className="h-4 w-4" /> {t('team')}
             </TabsTrigger>
             <TabsTrigger value="leaves" className="rounded-xl font-black gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md transition-all px-6">
-              <CalendarDays className="h-4 w-4" /> {isRtl ? 'الإجازات' : 'Leaves'}
+              <Calendar className="h-4 w-4" /> {isRtl ? 'الإجازات' : 'Leaves'}
             </TabsTrigger>
             <TabsTrigger value="compliance" className="rounded-xl font-black gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md transition-all px-6">
               <ShieldAlert className="h-4 w-4" /> {t('operationalCompliance')}
@@ -240,7 +240,7 @@ export default function HRPage() {
                   className="w-full bg-primary text-white font-black py-8 rounded-2xl shadow-xl shadow-primary/20 text-lg hover:scale-[1.02] transition-transform"
                 >
                   {analyzing ? (
-                    <><Loader2 className="me-3 h-6 w-6 animate-spin" /> {t('search')}</>
+                    <><Loader2 className="me-3 h-6 w-6 animate-spin" /> {isRtl ? 'جاري التحليل...' : 'Analyzing...'}</>
                   ) : (
                     <><Sparkles className="me-3 h-6 w-6" /> {t('analyzeNow')}</>
                   )}
@@ -278,7 +278,7 @@ export default function HRPage() {
                     </div>
 
                     <div className="p-8 rounded-[2rem] border-2 bg-amber-50/50 space-y-4 shadow-inner">
-                      <div className={cn("flex items-center gap-3 font-black text-lg text-amber-800", dir === 'rtl' ? 'flex-row-reverse' : 'flex-row')}>
+                      <div className={cn("flex items-center gap-3 font-black text-lg text-amber-800")}>
                         <ShieldAlert className="h-6 w-6" />
                         <h6>{t('complianceNotes')}</h6>
                       </div>
@@ -290,7 +290,7 @@ export default function HRPage() {
                 ) : (
                   <div className="text-center py-32 text-muted-foreground space-y-6">
                     <FileText className="h-20 w-20 mx-auto opacity-20" />
-                    <p className="text-lg font-bold italic">{t('search')}</p>
+                    <p className="text-lg font-bold italic">{isRtl ? 'بانتظار رفع وتحليل مستند...' : 'Waiting for document upload...'}</p>
                   </div>
                 )}
               </CardContent>
@@ -301,10 +301,10 @@ export default function HRPage() {
 
       {/* Role Assignment Dialog */}
       <Dialog open={!!editingUser} onOpenChange={() => setEditingUser(null)}>
-        <DialogContent className="rounded-[2.5rem] max-w-md p-0 overflow-hidden border-0 shadow-2xl">
+        <DialogContent className="rounded-[2.5rem] max-w-md p-0 overflow-hidden border-0 shadow-2xl" dir={dir}>
           <DialogHeader className="bg-primary/5 p-8 border-b text-start">
              <DialogTitle className="font-black font-headline text-2xl text-slate-800">{t('changeRole')}</DialogTitle>
-             <p className="text-xs font-bold text-muted-foreground mt-1">{isRtl ? 'تعيين دور وظيفي من القائمة المرجعية للموظف:' : 'Assign a role from reference hub to:'} <span className="text-primary">{editingUser?.displayName}</span></p>
+             <p className="text-xs font-bold text-muted-foreground mt-1">{isRtl ? 'تعيين دور وظيفي للموظف:' : 'Assign a role to:'} <span className="text-primary">{editingUser?.displayName}</span></p>
           </DialogHeader>
           <div className="p-8 space-y-6">
              <div className="space-y-3">
@@ -317,7 +317,7 @@ export default function HRPage() {
                     {roles?.map(role => (
                       <SelectItem key={role.id} value={role.id!}>
                          <div className="flex flex-col text-start py-1">
-                            <span className="font-black text-sm">{role.name}</span>
+                            <span className="font-black text-sm">{isRtl ? role.name : role.nameEn}</span>
                             <span className="text-[9px] text-muted-foreground font-mono uppercase">{role.code}</span>
                          </div>
                       </SelectItem>
@@ -329,7 +329,7 @@ export default function HRPage() {
              <div className="p-4 rounded-2xl bg-blue-50 border-2 border-blue-100 flex items-start gap-3">
                 <ShieldCheck className="h-5 w-5 text-blue-600 mt-0.5" />
                 <p className="text-[10px] font-bold text-blue-800 leading-relaxed text-start">
-                   {isRtl ? 'تنبيه: سيتم تحديث كافة صلاحيات الوصول لهذا الموظف فوراً بناءً على تعريف الدور المختار.' : 'Note: All access permissions will be updated immediately based on the selected role definition.'}
+                   {isRtl ? 'تنبيه: سيتم تحديث كافة صلاحيات الوصول لهذا الموظف فوراً بناءً على تعريف الدور المختار.' : 'Note: All access permissions will be updated immediately based on the selected role.'}
                 </p>
              </div>
           </div>

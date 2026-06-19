@@ -20,7 +20,7 @@ export default function DashboardLayout({
 }) {
   const { user, loading: authLoading, logout } = useAuthContext();
   const { company, loading: companyLoading } = useCompanyContext();
-  const { lang, setLang, t } = useLanguage();
+  const { lang, setLang, t, dir } = useLanguage();
   const router = useRouter();
 
   useEffect(() => {
@@ -39,22 +39,22 @@ export default function DashboardLayout({
 
   if (company?.status === 'suspended') {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-background p-6" dir="rtl">
+      <div className="h-screen w-screen flex items-center justify-center bg-background p-6" dir={dir}>
         <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl p-10 text-center border-t-8 border-destructive">
           <div className="w-20 h-20 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mx-auto mb-6">
             <ShieldAlert className="h-12 w-12" />
           </div>
-          <h1 className="text-2xl font-black font-headline mb-4">تم إيقاف حساب المنشأة</h1>
+          <h1 className="text-2xl font-black font-headline mb-4">{isRtl ? 'تم إيقاف حساب المنشأة' : 'Company Account Suspended'}</h1>
           <p className="text-muted-foreground mb-8 leading-relaxed">
-            عذراً، تم إيقاف الوصول لشركة <span className="font-bold text-foreground">{company.name}</span> لعدم تجديد الاشتراك أو مخالفة الشروط.
+            {isRtl ? 'عذراً، تم إيقاف الوصول لشركة' : 'Sorry, access for'} <span className="font-bold text-foreground">{company.name}</span> {isRtl ? 'لعدم تجديد الاشتراك أو مخالفة الشروط.' : 'has been suspended.'}
             <br />
-            <span className="text-xs mt-2 block font-bold text-destructive">تنبيه: سيتم حذف كافة البيانات تلقائياً بعد 3 أشهر من تاريخ الإيقاف.</span>
+            <span className="text-xs mt-2 block font-bold text-destructive">{isRtl ? 'تنبيه: سيتم حذف كافة البيانات تلقائياً بعد 3 أشهر من تاريخ الإيقاف.' : 'Note: All data will be deleted in 3 months.'}</span>
           </p>
           <div className="space-y-4">
-            <Button className="w-full bg-primary py-6 text-lg font-bold rounded-2xl text-white">تجديد الاشتراك الآن</Button>
+            <Button className="w-full bg-primary py-6 text-lg font-bold rounded-2xl text-white">{isRtl ? 'تجديد الاشتراك الآن' : 'Renew Subscription'}</Button>
             <Button variant="ghost" onClick={logout} className="w-full flex items-center justify-center gap-2">
               <LogOut className="h-4 w-4" />
-              تسجيل الخروج
+              {t('logout')}
             </Button>
           </div>
         </div>
@@ -64,13 +64,13 @@ export default function DashboardLayout({
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-background overflow-x-hidden">
+      <div className="flex min-h-screen w-full bg-background overflow-x-hidden" dir={dir}>
         <DashboardSidebar />
         <SidebarInset className="flex flex-col bg-transparent">
           <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-white/80 backdrop-blur-md px-8">
-            <SidebarTrigger className={lang === 'ar' ? 'ml-0' : '-mr-1'} />
+            <SidebarTrigger className={cn("transition-transform", lang === 'ar' ? 'rotate-0' : 'rotate-180')} />
             <div className="flex-1">
-              <h2 className={cn("text-xs font-black text-slate-400 uppercase tracking-widest", lang === 'ar' ? 'text-right' : 'text-left')}>
+              <h2 className={cn("text-xs font-black text-slate-400 uppercase tracking-widest text-start")}>
                 {company?.name || t('workspace')} / <span className="text-black">{t('dashboard')}</span>
               </h2>
             </div>

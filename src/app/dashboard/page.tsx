@@ -12,7 +12,6 @@ import {
   HardHat,
   UserCircle,
   ShoppingCart,
-  CheckCircle2,
   FileText
 } from "lucide-react"
 import { 
@@ -26,6 +25,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } f
 import { cn } from "@/lib/utils"
 import { useAuthContext } from "@/context/auth-context"
 import { useCompanyContext } from "@/context/company-context"
+import { useLanguage } from "@/context/language-context"
 
 const data = [
   { name: "Jan", revenue: 4500, expenses: 2400 },
@@ -50,36 +50,38 @@ const chartConfig = {
 export default function DashboardPage() {
   const { user } = useAuthContext();
   const { company } = useCompanyContext();
+  const { t, dir, lang } = useLanguage();
+  const isRtl = lang === 'ar';
 
   const stats = [
     {
-      title: "إيرادات المشاريع",
-      value: "1.2M د.ك",
+      title: isRtl ? "إيرادات المشاريع" : "Project Revenue",
+      value: "1.2M KWD",
       change: "+12.5%",
       trend: "up",
       icon: DollarSign,
       color: "bg-primary/10 text-primary",
     },
     {
-      title: "المشاريع النشطة",
+      title: isRtl ? "المشاريع النشطة" : "Active Projects",
       value: "24",
-      change: "+2 جديد",
+      change: isRtl ? "+2 جديد" : "+2 new",
       trend: "up",
       icon: Briefcase,
       color: "bg-blue-500/10 text-blue-500",
     },
     {
-      title: "القوى العاملة",
+      title: isRtl ? "القوى العاملة" : "Workforce",
       value: "142",
-      change: "98% في الموقع",
+      change: isRtl ? "98% في الموقع" : "98% on-site",
       trend: "neutral",
       icon: Users,
       color: "bg-purple-500/10 text-purple-500",
     },
     {
-      title: "معدل الإنجاز",
+      title: isRtl ? "معدل الإنجاز" : "Completion Rate",
       value: "84%",
-      change: "+5% سنوي",
+      change: isRtl ? "+5% سنوي" : "+5% yearly",
       trend: "up",
       icon: TrendingUp,
       color: "bg-green-500/10 text-green-500",
@@ -87,21 +89,21 @@ export default function DashboardPage() {
   ]
 
   return (
-    <div className="space-y-8" dir="rtl">
+    <div className="space-y-8" dir={dir}>
       {/* Welcome Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black font-headline text-right">مرحباً بك، {user?.email?.split('@')[0]}</h1>
-          <p className="text-muted-foreground mt-1 text-right">نظرة عامة على عمليات شركة {company?.name || 'تحميل...'}</p>
+        <div className="text-start">
+          <h1 className="text-3xl font-black font-headline">{isRtl ? 'مرحباً بك،' : 'Welcome back,'} {user?.email?.split('@')[0]}</h1>
+          <p className="text-muted-foreground mt-1">{isRtl ? `نظرة عامة على عمليات شركة ${company?.name || '...'}` : `Overview of ${company?.name || '...'} operations`}</p>
         </div>
         <div className="flex items-center gap-3">
           <Button variant="outline" className="hidden sm:flex rounded-xl">
-            <FileText className="ml-2 h-4 w-4" />
-            تصدير تقرير {company?.name}
+            <FileText className="me-2 h-4 w-4" />
+            {isRtl ? `تصدير تقرير ${company?.name || ''}` : `Export Report`}
           </Button>
           <Button className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 rounded-xl px-6">
-            <Plus className="ml-2 h-4 w-4" />
-            إجراء سريع
+            <Plus className="me-2 h-4 w-4" />
+            {isRtl ? 'إجراء سريع' : 'Quick Action'}
           </Button>
         </div>
       </div>
@@ -119,11 +121,11 @@ export default function DashboardPage() {
                   "flex items-center text-xs font-bold px-2 py-1 rounded-full",
                   stat.trend === "up" ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"
                 )}>
-                  {stat.trend === "up" ? <ArrowUpRight className="ml-1 h-3 w-3" /> : null}
+                  {stat.trend === "up" ? <ArrowUpRight className="me-1 h-3 w-3" /> : null}
                   {stat.change}
                 </div>
               </div>
-              <div className="mt-4 text-right">
+              <div className="mt-4 text-start">
                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{stat.title}</p>
                 <h3 className="text-3xl font-black font-headline mt-1 tracking-tight">{stat.value}</h3>
               </div>
@@ -137,9 +139,9 @@ export default function DashboardPage() {
         {/* Revenue Chart */}
         <Card className="lg:col-span-2 border-0 shadow-lg rounded-2xl bg-white overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between px-8 py-6 border-b border-muted">
-            <div className="text-right">
-              <CardTitle className="text-xl font-bold font-headline">الأداء المالي للشركة</CardTitle>
-              <CardDescription>تحليل الإيرادات مقابل المصاريف (6 أشهر)</CardDescription>
+            <div className="text-start">
+              <CardTitle className="text-xl font-bold font-headline">{isRtl ? 'الأداء المالي للشركة' : 'Financial Performance'}</CardTitle>
+              <CardDescription>{isRtl ? 'تحليل الإيرادات مقابل المصاريف (6 أشهر)' : 'Revenue vs Expenses Analysis (6 months)'}</CardDescription>
             </div>
           </CardHeader>
           <CardContent className="p-8">
@@ -172,23 +174,23 @@ export default function DashboardPage() {
 
         {/* Recent Activity */}
         <Card className="border-0 shadow-lg rounded-2xl bg-white overflow-hidden">
-          <CardHeader className="px-8 py-6 border-b border-muted text-right">
-            <CardTitle className="text-xl font-bold font-headline">نشاط العمليات</CardTitle>
-            <CardDescription>أحداث تشغيلية في الوقت الفعلي</CardDescription>
+          <CardHeader className="px-8 py-6 border-b border-muted text-start">
+            <CardTitle className="text-xl font-bold font-headline">{isRtl ? 'نشاط العمليات' : 'Operational Activity'}</CardTitle>
+            <CardDescription>{isRtl ? 'أحداث تشغيلية في الوقت الفعلي' : 'Real-time operational events'}</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y divide-muted">
               {[
-                { title: "تسجيل زيارة ميدانية", detail: "مصفاة الزور - المرحلة الثانية", time: "منذ 12 دقيقة", icon: HardHat, color: "text-blue-500" },
-                { title: "إنشاء دفعة الرواتب", detail: "يوليو 2024 (142 موظف)", time: "منذ ساعتين", icon: UserCircle, color: "text-purple-500" },
-                { title: "تحليل عروض الأسعار", detail: "مناقصة حديد التسليح", time: "منذ 4 ساعات", icon: ShoppingCart, color: "text-primary" },
-                { title: "ترحيل قيد محاسبي", detail: "عقد #AX202 - القسط الأول", time: "منذ 5 ساعات", icon: FileText, color: "text-green-500" },
+                { title: isRtl ? "تسجيل زيارة ميدانية" : "Field Visit Recorded", detail: isRtl ? "مصفاة الزور - المرحلة الثانية" : "Al-Zour Refinery - Phase 2", time: isRtl ? "منذ 12 دقيقة" : "12m ago", icon: HardHat, color: "text-blue-500" },
+                { title: isRtl ? "إنشاء دفعة الرواتب" : "Payroll Batch Created", detail: isRtl ? "يوليو 2024 (142 موظف)" : "July 2024 (142 Emps)", time: isRtl ? "منذ ساعتين" : "2h ago", icon: UserCircle, color: "text-purple-500" },
+                { title: isRtl ? "تحليل عروض الأسعار" : "Quote Analysis", detail: isRtl ? "مناقصة حديد التسليح" : "Steel Rebar Tender", time: isRtl ? "منذ 4 ساعات" : "4h ago", icon: ShoppingCart, color: "text-primary" },
+                { title: isRtl ? "ترحيل قيد محاسبي" : "Journal Posted", detail: isRtl ? "عقد #AX202 - القسط الأول" : "Contract #AX202 - P1", time: isRtl ? "منذ 5 ساعات" : "5h ago", icon: FileText, color: "text-green-500" },
               ].map((activity, i) => (
-                <div key={i} className="flex items-center gap-4 p-6 hover:bg-muted/50 transition-colors flex-row-reverse">
+                <div key={i} className="flex items-center gap-4 p-6 hover:bg-muted/50 transition-colors">
                   <div className={cn("flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center bg-muted", activity.color)}>
                     <activity.icon className="h-5 w-5" />
                   </div>
-                  <div className="flex-1 min-w-0 text-right">
+                  <div className="flex-1 min-w-0 text-start">
                     <p className="text-sm font-bold truncate">{activity.title}</p>
                     <p className="text-xs text-muted-foreground truncate">{activity.detail}</p>
                   </div>
@@ -199,7 +201,9 @@ export default function DashboardPage() {
               ))}
             </div>
             <div className="p-4 bg-muted/20">
-              <Button variant="ghost" className="w-full text-xs font-bold text-primary">عرض سجل التدقيق الشامل</Button>
+              <Button variant="ghost" className="w-full text-xs font-bold text-primary">
+                {isRtl ? 'عرض سجل التدقيق الشامل' : 'View Full Audit Trail'}
+              </Button>
             </div>
           </CardContent>
         </Card>
