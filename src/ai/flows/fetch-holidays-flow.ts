@@ -1,6 +1,8 @@
 'use server';
 /**
  * @fileOverview محرك البحث الذكي عن العطلات الرسمية.
+ * 
+ * - fetchPublicHolidays - دالة لجلب العطلات الرسمية لدولة معينة.
  */
 
 import { ai } from '@/ai/genkit';
@@ -21,10 +23,8 @@ const FetchHolidaysOutputSchema = z.object({
   holidays: z.array(HolidaySchema),
 });
 
-export async function fetchPublicHolidays(input: z.infer<typeof FetchHolidaysInputSchema>) {
-  const { output } = await fetchHolidaysPrompt(input);
-  return output!;
-}
+export type FetchHolidaysInput = z.infer<typeof FetchHolidaysInputSchema>;
+export type FetchHolidaysOutput = z.infer<typeof FetchHolidaysOutputSchema>;
 
 const fetchHolidaysPrompt = ai.definePrompt({
   name: 'fetchHolidaysPrompt',
@@ -36,11 +36,30 @@ const fetchHolidaysPrompt = ai.definePrompt({
   Find all official public holidays for {{{country}}} in the year {{year}}.
   
   RULES:
-  1. Return the output in a structured JSON format.
-  2. Include major national and religious holidays.
+  1. Return the output strictly in the requested JSON format.
+  2. Include major national and religious holidays (e.g., Eid Al-Fitr, National Day).
   3. Format dates strictly as YYYY-MM-DD.
   4. Ensure names are professional and correctly spelled in both Arabic and English.
   
   COUNTRY: "{{{country}}}"
   YEAR: {{year}}`,
 });
+
+const fetchHolidaysFlow = ai.defineFlow(
+  {
+    name: 'fetchHolidaysFlow',
+    inputSchema: FetchHolidaysInputSchema,
+    outputSchema: FetchHolidaysOutputSchema,
+  },
+  async (input) => {
+    const { output } = await fetchHolidaysPrompt(input);
+    if (!output) {
+      throw new Error('Failed to generate holidays list');
+    }
+    return output;
+  }
+);
+
+export async function fetchPublicHolidays(input: FetchHolidaysInput): Promise<FetchHolidaysOutput> {
+  return fetchHolidaysFlow(input);
+}
