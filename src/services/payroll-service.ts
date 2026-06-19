@@ -10,12 +10,14 @@ import {
   where,
   getDocs,
   writeBatch,
-  getDoc
+  getDoc,
+  updateDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { Employee, AttendanceRecord, LeaveRequest, PermissionRequest } from '@/types/hr';
-import { PayrollBatch, PayrollRecord } from '@/types/payroll';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO } from 'date-fns';
+import { PayrollBatch, PayrollRecord, PayrollStatus } from '@/types/payroll';
+import { format, eachDayOfInterval, parseISO } from 'date-fns';
+import { AccountingIntegrationService } from './accounting-integration-service';
 
 export class PayrollService {
   constructor(private db: Firestore, private companyId: string) {}
@@ -29,7 +31,6 @@ export class PayrollService {
     const lastDay = new Date(year, month, 0).getDate();
     const end = `${year}-${monthStr}-${lastDay}`;
 
-    // 1. جلب البيانات المطلوبة
     const employeesSnap = await getDocs(query(collection(this.db, paths.employees(this.companyId)), where('status', '==', 'active')));
     const attendanceSnap = await getDocs(query(collection(this.db, paths.attendance(this.companyId)), where('date', '>=', start), where('date', '<=', end)));
     const leavesSnap = await getDocs(query(collection(this.db, paths.leaveRequests(this.companyId)), where('status', 'in', ['approved', 'on-leave', 'returned'])));
@@ -48,11 +49,9 @@ export class PayrollService {
       const empPerms = permissions.filter(p => p.userId === emp.id);
 
       let deductions = 0;
-      let lateMinutesTotal = 0;
       let unjustifiedAbsenceDays = 0;
       let justifiedAbsenceDays = 0;
 
-      // حساب الأيام المنطقية
       const days = eachDayOfInterval({ start: parseISO(start), end: parseISO(end) });
 
       for (const day of days) {
@@ -66,15 +65,11 @@ export class PayrollService {
         }
 
         if (!record || record.status === 'absent') {
-          // غياب غير مبرر
           unjustifiedAbsenceDays++;
           deductions += (emp.basicSalary / 30);
         } else if (record.status === 'late') {
-          // فحص هل يوجد استئذان معتمد لهذا اليوم
           const hasPerm = empPerms.some(p => p.date === dateStr && p.type === 'late_arrival');
           if (!hasPerm) {
-            lateMinutesTotal += record.minutesLate;
-            // احتساب خصم تأخير بسيط للمثال: (الراتب / 30 / 8 ساعات / 60 دقيقة) * الدقائق
             const minuteRate = (emp.basicSalary / 30 / 8 / 60);
             deductions += (minuteRate * record.minutesLate);
           }
@@ -95,7 +90,6 @@ export class PayrollService {
         netSalary: Math.round((emp.basicSalary + totalAllowances - deductions) * 1000) / 1000,
         unjustifiedAbsenceDays,
         justifiedAbsenceDays,
-        lateMinutes: lateMinutesTotal,
         status: 'draft'
       });
     }
@@ -103,9 +97,6 @@ export class PayrollService {
     return payrollDrafts;
   }
 
-  /**
-   * حفظ دفعة الرواتب
-   */
   async saveBatch(month: number, year: number, records: Partial<PayrollRecord>[], userId: string) {
     const batch = writeBatch(this.db);
     const batchRef = doc(collection(this.db, paths.payroll(this.companyId)));
@@ -113,6 +104,7 @@ export class PayrollService {
     const summary = {
       totalEmployees: records.length,
       totalBasicSalary: records.reduce((acc, r) => acc + (r.basicSalary || 0), 0),
+      totalAllowances: records.reduce((acc, r) => acc + (r.allowances || 0), 0),
       totalDeductions: records.reduce((acc, r) => acc + (r.deductions || 0), 0),
       totalNetSalary: records.reduce((acc, r) => acc + (r.netSalary || 0), 0),
     };
@@ -131,9 +123,9 @@ export class PayrollService {
 
     batch.set(batchRef, batchData);
 
-    const recordsColl = collection(this.db, `${paths.payroll(this.companyId)}/${batchRef.id}/records`);
+    const recordsCollPath = `${paths.payroll(this.companyId)}/${batchRef.id}/records`;
     records.forEach(rec => {
-      const recRef = doc(recordsColl);
+      const recRef = doc(collection(this.db, recordsCollPath));
       batch.set(recRef, {
         ...rec,
         batchId: batchRef.id,
@@ -144,5 +136,36 @@ export class PayrollService {
 
     await batch.commit();
     return batchRef.id;
+  }
+
+  async updateBatchStatus(batchId: string, status: PayrollStatus, userId: string) {
+    const batchRef = doc(this.db, paths.payroll(this.companyId), batchId);
+    const updates: any = {
+      status,
+      updatedAt: serverTimestamp(),
+      updatedBy: userId
+    };
+
+    if (status === 'reviewed') { updates.reviewedBy = userId; updates.reviewedAt = serverTimestamp(); }
+    if (status === 'approved') { updates.approvedBy = userId; updates.approvedAt = serverTimestamp(); }
+    if (status === 'paid') { 
+      updates.paidBy = userId; 
+      updates.paidAt = serverTimestamp();
+      
+      // تنفيذ الربط المحاسبي (Accounting Hook)
+      const batchSnap = await getDoc(batchRef);
+      const recordsSnap = await getDocs(collection(this.db, `${paths.payroll(this.companyId)}/${batchId}/records`));
+      
+      if (batchSnap.exists()) {
+        const payload = AccountingIntegrationService.generatePayrollJournalPayload(
+          { id: batchId, ...batchSnap.data() } as PayrollBatch,
+          recordsSnap.docs.map(d => ({ id: d.id, ...d.data() } as PayrollRecord))
+        );
+        console.log('INTEGRATION: Accounting Journal Payload Generated', payload);
+        // هنا يمكن استدعاء AccountingService.createJournalEntry(payload)
+      }
+    }
+
+    await updateDoc(batchRef, updates);
   }
 }

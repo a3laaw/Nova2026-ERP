@@ -8,10 +8,18 @@ export interface PayrollBatch extends BaseReference {
   status: PayrollStatus;
   totalEmployees: number;
   totalBasicSalary: number;
+  totalAllowances: number;
   totalDeductions: number;
   totalNetSalary: number;
   generatedBy: string;
   generatedAt: any;
+  reviewedBy?: string;
+  reviewedAt?: any;
+  approvedBy?: string;
+  approvedAt?: any;
+  paidBy?: string;
+  paidAt?: any;
+  accountingJournalId?: string; // مرجع للقيد المحاسبي المولد
 }
 
 export interface PayrollRecord extends BaseReference {
@@ -29,6 +37,6 @@ export interface PayrollRecord extends BaseReference {
   lateMinutes: number;
   unjustifiedAbsenceDays: number;
   justifiedAbsenceDays: number;
-  status: 'draft' | 'approved';
+  status: 'draft' | 'approved' | 'paid';
   notes?: string;
 }
