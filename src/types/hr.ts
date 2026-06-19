@@ -4,7 +4,7 @@ export type EmployeeStatus = 'active' | 'on-leave' | 'terminated';
 export type LeaveStatus = 'pending' | 'approved' | 'rejected' | 'on-leave' | 'returned';
 export type LeaveType = 'annual' | 'sick' | 'emergency' | 'unpaid';
 export type PermissionType = 'late_arrival' | 'early_departure';
-export type AttendanceStatus = 'present' | 'absent' | 'weekend' | 'holiday';
+export type AttendanceStatus = 'present' | 'absent' | 'weekend' | 'holiday' | 'late' | 'early_leave';
 export type PayrollStatus = 'draft' | 'reviewed' | 'approved' | 'paid';
 export type PaymentMethod = 'cash' | 'transfer' | 'check' | 'payroll';
 
@@ -90,8 +90,14 @@ export interface EmployeeAuditLog extends BaseReference {
 export interface AttendanceRecord extends BaseReference {
   employeeId: string;
   employeeName: string;
-  date: any;
-  checkIn?: string;
-  checkOut?: string;
+  employeeNumber: string;
+  date: string; // YYYY-MM-DD
+  checkIn?: string; // HH:mm
+  checkOut?: string; // HH:mm
   status: AttendanceStatus;
+  minutesLate: number;
+  minutesEarlyLeave: number;
+  isHoliday: boolean;
+  isWeekend: boolean;
+  note?: string;
 }

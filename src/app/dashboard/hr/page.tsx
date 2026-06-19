@@ -7,7 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   UserCircle, FileText, ShieldAlert, Sparkles, 
   UploadCloud, Loader2, Users, Search, 
-  Calendar, UserPlus, ArrowUpRight, Clock
+  Calendar, UserPlus, ArrowUpRight, Clock,
+  FileSpreadsheet
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useRouter } from 'next/navigation';
@@ -32,13 +33,23 @@ export default function HRDashboard() {
           </p>
         </div>
         
-        <Button 
-          onClick={() => router.push('/dashboard/hr/employees/new')}
-          className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform"
-        >
-          <UserPlus className="me-2 h-6 w-6" />
-          {isRtl ? 'توظيف جديد' : 'New Hire'}
-        </Button>
+        <div className="flex gap-4">
+           <Button 
+             variant="outline"
+             onClick={() => router.push('/dashboard/hr/attendance/import')}
+             className="border-2 rounded-2xl px-6 py-7 text-lg font-bold gap-2 hover:bg-slate-50 transition-all"
+           >
+             <FileSpreadsheet className="h-6 w-6 text-emerald-600" />
+             {isRtl ? 'استيراد البصمة' : 'Import Attendance'}
+           </Button>
+           <Button 
+             onClick={() => router.push('/dashboard/hr/employees/new')}
+             className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform"
+           >
+             <UserPlus className="me-2 h-6 w-6" />
+             {isRtl ? 'توظيف جديد' : 'New Hire'}
+           </Button>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -100,19 +111,19 @@ export default function HRDashboard() {
               </Card>
 
               <Card 
-                onClick={() => router.push('/dashboard/hr/permissions')}
+                onClick={() => router.push('/dashboard/hr/attendance/import')}
                 className="border-0 shadow-lg hover:shadow-2xl transition-all cursor-pointer rounded-[2.5rem] bg-white group overflow-hidden"
               >
                  <CardHeader className="p-8 pb-4 text-start">
-                    <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                       <Clock className="h-7 w-7" />
+                    <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                       <FileSpreadsheet className="h-7 w-7" />
                     </div>
-                    <CardTitle className="text-xl font-black">{isRtl ? 'الاستئذانات' : 'Permissions'}</CardTitle>
-                    <CardDescription className="font-bold">متابعة التأخير والانصراف المبكر المعتمد.</CardDescription>
+                    <CardTitle className="text-xl font-black">{isRtl ? 'استيراد الحضور' : 'Attendance Import'}</CardTitle>
+                    <CardDescription className="font-bold">رفع ملفات البصمة وحساب التأخير آلياً.</CardDescription>
                  </CardHeader>
                  <CardContent className="p-8 pt-0 text-start">
-                    <div className="flex items-center gap-2 text-amber-600 font-black text-xs">
-                       {isRtl ? 'إدارة الاستئذانات' : 'Manage Permissions'}
+                    <div className="flex items-center gap-2 text-emerald-600 font-black text-xs">
+                       {isRtl ? 'رفع ملفات CSV' : 'Upload CSV Files'}
                        <ArrowUpRight className="h-4 w-4" />
                     </div>
                  </CardContent>
