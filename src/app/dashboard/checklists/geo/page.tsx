@@ -6,18 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   MapPin, MapPinned, Plus, Loader2, Trash2, Edit3, 
-  ChevronRight, Search, CheckCircle2, XCircle
+  ChevronRight
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
 import { LocationService } from '@/services/location-service';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Governorate, Area } from '@/types/reference';
@@ -30,7 +29,6 @@ export default function GeoPage() {
   const isRtl = lang === 'ar';
 
   const [selectedGov, setSelectedGov] = useState<Governorate | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   
   const [govForm, setGovForm] = useState<Partial<Governorate>>({ name: '', nameEn: '', isActive: true, order: 0 });
@@ -84,8 +82,8 @@ export default function GeoPage() {
           <DialogContent className="rounded-3xl" dir={dir}>
              <DialogHeader><DialogTitle className="text-start font-black">{isRtl ? 'محافظة جديدة' : 'New Gov'}</DialogTitle></DialogHeader>
              <div className="grid grid-cols-1 gap-4 py-4 text-start">
-               <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={govForm.name} onChange={e => setGovForm({...govForm, name: e.target.value})} /></div>
-               <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={govForm.nameEn} onChange={e => setGovForm({...govForm, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
+               <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={govForm.name || ''} onChange={e => setGovForm({...govForm, name: e.target.value})} /></div>
+               <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={govForm.nameEn || ''} onChange={e => setGovForm({...govForm, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
                <div className="space-y-2"><Label>{isRtl ? 'الترتيب' : 'Order'}</Label><Input type="number" value={govForm.order || ''} onChange={e => setGovForm({...govForm, order: Number(e.target.value)})} /></div>
              </div>
              <DialogFooter><Button onClick={handleSaveGov} disabled={loadingAction === 'gov'} className="w-full h-12 rounded-xl font-bold">{loadingAction === 'gov' ? <Loader2 className="animate-spin" /> : t('save')}</Button></DialogFooter>
@@ -94,7 +92,7 @@ export default function GeoPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-4">
+        <div className="lg:col-span-4 text-start">
           <Card className="border-0 shadow-lg rounded-3xl overflow-hidden bg-white">
             <CardContent className="p-0 max-h-[500px] overflow-y-auto">
               {govsLoading ? <div className="p-20 text-center"><Loader2 className="animate-spin mx-auto text-primary/30" /></div> : (
@@ -109,8 +107,8 @@ export default function GeoPage() {
           </Card>
         </div>
 
-        <div className={cn("lg:col-span-8", !selectedGov && 'opacity-40')}>
-          <Card className="border-0 shadow-lg rounded-3xl overflow-hidden bg-white">
+        <div className={cn("lg:col-span-8 text-start", !selectedGov && 'opacity-40')}>
+          <Card className="border-0 shadow-lg rounded-3xl overflow-hidden bg-white text-start">
             <CardHeader className="bg-slate-50/50 border-b p-6 flex flex-row items-center justify-between">
               <div className="text-start">
                 <CardTitle className="text-lg font-black flex items-center gap-2"><MapPin className="h-5 w-5 text-primary" /> {isRtl ? 'المناطق' : 'Areas'}</CardTitle>
@@ -124,8 +122,8 @@ export default function GeoPage() {
                   <DialogContent className="rounded-3xl" dir={dir}>
                     <DialogHeader><DialogTitle className="text-start font-black">{isRtl ? 'منطقة جديدة' : 'New Area'}</DialogTitle></DialogHeader>
                     <div className="grid grid-cols-1 gap-4 py-4 text-start">
-                      <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={areaForm.name} onChange={e => setAreaForm({...areaForm, name: e.target.value})} /></div>
-                      <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={areaForm.nameEn} onChange={e => setAreaForm({...areaForm, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
+                      <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={areaForm.name || ''} onChange={e => setAreaForm({...areaForm, name: e.target.value})} /></div>
+                      <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={areaForm.nameEn || ''} onChange={e => setAreaForm({...areaForm, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
                     </div>
                     <DialogFooter><Button onClick={handleSaveArea} disabled={loadingAction === 'area'} className="w-full h-12 rounded-xl">{loadingAction === 'area' ? <Loader2 className="animate-spin" /> : t('save')}</Button></DialogFooter>
                   </DialogContent>
@@ -137,7 +135,7 @@ export default function GeoPage() {
                 areasLoading ? <div className="py-10 text-center"><Loader2 className="animate-spin mx-auto text-primary/30" /></div> : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {areas?.map(area => (
-                      <div key={area.id} className="p-4 rounded-2xl border-2 bg-slate-50/50 hover:bg-white hover:shadow-md transition-all flex items-center justify-between group">
+                      <div key={area.id} className="p-4 rounded-2xl border-2 bg-slate-50/50 hover:bg-white hover:shadow-md transition-all flex items-center justify-between group text-start">
                         <span className="text-sm font-black">{isRtl ? area.name : area.nameEn}</span>
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100">
                           <Button variant="ghost" size="icon" onClick={() => setAreaForm(area)} className="h-8 w-8 text-blue-600"><Edit3 className="h-4 w-4" /></Button>

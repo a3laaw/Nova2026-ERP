@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   Plus, Loader2, Trash2, Edit3, 
-  Workflow, ArrowRight, Clock, Layers,
-  ChevronUp, ChevronDown, ListChecks, ShieldCheck
+  Workflow, ArrowRight, Clock,
+  ListChecks, ShieldCheck
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,7 +19,7 @@ import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
 import { TechnicalPathService } from '@/services/technical-path-service';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { TechnicalStage, SubService, ActivityType, Service } from '@/types/reference';
@@ -82,11 +82,11 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
               <Workflow className="h-6 w-6 text-primary" /> {isRtl ? 'هندسة مراحل العمل' : 'WBS Engineering'}
             </h1>
             <div className="flex items-center gap-2 mt-1">
-              <Badge variant="outline" className="text-[10px] font-bold border-primary/20">{activityType.name}</Badge>
+              <Badge variant="outline" className="text-[10px] font-bold border-primary/20">{isRtl ? activityType.name : activityType.nameEn}</Badge>
               <ArrowRight className={cn("h-3 w-3 opacity-30", !isRtl && 'rotate-180')} />
-              <Badge variant="outline" className="text-[10px] font-bold border-blue-200">{mainService.name}</Badge>
+              <Badge variant="outline" className="text-[10px] font-bold border-blue-200">{isRtl ? mainService.name : mainService.nameEn}</Badge>
               <ArrowRight className={cn("h-3 w-3 opacity-30", !isRtl && 'rotate-180')} />
-              <Badge variant="secondary" className="bg-emerald-50 text-emerald-600 text-[10px] font-black">{subService.name}</Badge>
+              <Badge variant="secondary" className="bg-emerald-50 text-emerald-600 text-[10px] font-black">{isRtl ? subService.name : subService.nameEn}</Badge>
             </div>
           </div>
         </div>
@@ -107,11 +107,10 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
         <div className="grid grid-cols-1 gap-4">
           {stages?.length === 0 ? (
              <div className="py-20 text-center bg-white rounded-3xl border-2 border-dashed border-muted">
-                <ListChecks className="h-12 w-12 mx-auto text-muted-foreground opacity-20 mb-4" />
                 <p className="font-bold text-muted-foreground italic">لا توجد مراحل معرفة لهذا المسار بعد.</p>
              </div>
           ) : stages?.map((stage) => (
-            <Card key={stage.id} className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden group hover:ring-2 hover:ring-primary/10 transition-all">
+            <Card key={stage.id} className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden group hover:ring-2 hover:ring-primary/10 transition-all text-start">
               <div className="flex items-center p-6 justify-between">
                 <div className="text-start flex items-center gap-6">
                   <div className="h-12 w-12 rounded-2xl bg-slate-50 border flex items-center justify-center font-black text-primary text-xl">
@@ -119,7 +118,7 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
                   </div>
                   <div>
                     <div className="flex items-center gap-3">
-                      <h3 className="font-black text-slate-800 text-lg">{stage.name}</h3>
+                      <h3 className="font-black text-slate-800 text-lg">{isRtl ? stage.name : stage.nameEn}</h3>
                       <Badge variant="outline" className="text-[9px] font-mono font-bold opacity-60">{stage.code}</Badge>
                       {stage.isRequired && <Badge className="bg-amber-100 text-amber-700 text-[8px] font-black">إلزامية</Badge>}
                     </div>
@@ -140,7 +139,6 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
         </div>
       )}
 
-      {/* Stage Editor Dialog */}
       {form && (
         <Dialog open onOpenChange={() => setForm(null)}>
           <DialogContent className="rounded-[2.5rem] max-w-2xl" dir={dir}>
@@ -148,26 +146,26 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
               <ShieldCheck className="text-primary h-6 w-6" /> {form.id ? 'تعديل مرحلة فنية' : 'تعريف مرحلة فنية جديدة'}
             </DialogTitle></DialogHeader>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-6 text-start">
-              <div className="space-y-2"><Label>كود المرحلة (Code)</Label><Input value={form.code} onChange={e => setForm({...form, code: e.target.value})} placeholder="FOUNDATION_STEP" /></div>
+              <div className="space-y-2"><Label>كود المرحلة (Code)</Label><Input value={form.code || ''} onChange={e => setForm({...form, code: e.target.value})} placeholder="FOUNDATION_STEP" /></div>
               <div className="space-y-2"><Label>الترتيب</Label><Input type="number" value={form.order || ''} onChange={e => setForm({...form, order: Number(e.target.value)})} /></div>
-              <div className="space-y-2"><Label>اسم المرحلة (Ar)</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} /></div>
-              <div className="space-y-2"><Label>Stage Name (En)</Label><Input value={form.nameEn} onChange={e => setForm({...form, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
+              <div className="space-y-2"><Label>اسم المرحلة (Ar)</Label><Input value={form.name || ''} onChange={e => setForm({...form, name: e.target.value})} /></div>
+              <div className="space-y-2"><Label>Stage Name (En)</Label><Input value={form.nameEn || ''} onChange={e => setForm({...form, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
               
               <div className="md:col-span-2 space-y-4 p-6 bg-slate-50 rounded-3xl border">
                  <div className="flex items-center justify-between">
                     <div className="space-y-0.5"><Label className="text-base">تحكم زمني</Label><p className="text-xs text-muted-foreground font-bold">تحديد عدد أيام مستهدف للإنجاز</p></div>
-                    <Switch checked={form.isTimed} onCheckedChange={val => setForm({...form, isTimed: val})} />
+                    <Switch checked={form.isTimed || false} onCheckedChange={val => setForm({...form, isTimed: val})} />
                  </div>
                  {form.isTimed && <div className="pt-2 animate-in slide-in-from-top-2"><Label>الأيام المستهدفة</Label><Input type="number" value={form.timeTargetDays || ''} onChange={e => setForm({...form, timeTargetDays: Number(e.target.value)})} /></div>}
                  
                  <div className="flex items-center justify-between border-t pt-4">
                     <div className="space-y-0.5"><Label className="text-base">تحكم عددي</Label><p className="text-xs text-muted-foreground font-bold">تحديد كمية مستهدفة (أمتار، قطع، إلخ)</p></div>
-                    <Switch checked={form.isNumeric} onCheckedChange={val => setForm({...form, isNumeric: val})} />
+                    <Switch checked={form.isNumeric || false} onCheckedChange={val => setForm({...form, isNumeric: val})} />
                  </div>
                  {form.isNumeric && <div className="pt-2 animate-in slide-in-from-top-2"><Label>الكمية المستهدفة</Label><Input type="number" value={form.numericTarget || ''} onChange={e => setForm({...form, numericTarget: Number(e.target.value)})} /></div>}
               </div>
 
-              <div className="md:col-span-2 space-y-2"><Label>الوصف الفني للمرحلة</Label><Textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} className="rounded-2xl h-24" /></div>
+              <div className="md:col-span-2 space-y-2"><Label>الوصف الفني للمرحلة</Label><Textarea value={form.description || ''} onChange={e => setForm({...form, description: e.target.value})} className="rounded-2xl h-24" /></div>
             </div>
             <DialogFooter><Button onClick={handleSave} disabled={loadingAction === 'save'} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">{loadingAction === 'save' ? <Loader2 className="animate-spin" /> : t('save')}</Button></DialogFooter>
           </DialogContent>

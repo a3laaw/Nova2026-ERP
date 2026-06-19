@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   Building2, Plus, Loader2, Trash2, Edit3, 
-  ChevronRight, Briefcase, Search, CheckCircle2, XCircle
+  ChevronRight, Briefcase, Search
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,7 +18,7 @@ import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
 import { DepartmentService } from '@/services/department-service';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Department, Job } from '@/types/reference';
@@ -129,12 +129,12 @@ export default function DepartmentsPage() {
           <DialogContent className="rounded-3xl max-w-2xl" dir={dir}>
             <DialogHeader><DialogTitle className="text-start font-black text-2xl">{deptForm.id ? (isRtl ? 'تعديل قسم' : 'Edit Dept') : t('newDept')}</DialogTitle></DialogHeader>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-6 text-start">
-              <div className="space-y-2"><Label>{isRtl ? 'كود القسم' : 'Dept Code'}</Label><Input value={deptForm.code} onChange={e => setDeptForm({...deptForm, code: e.target.value})} placeholder="ARCH" /></div>
+              <div className="space-y-2"><Label>{isRtl ? 'كود القسم' : 'Dept Code'}</Label><Input value={deptForm.code || ''} onChange={e => setDeptForm({...deptForm, code: e.target.value})} placeholder="ARCH" /></div>
               <div className="space-y-2"><Label>{isRtl ? 'الترتيب' : 'Order'}</Label><Input type="number" value={deptForm.order || ''} onChange={e => setDeptForm({...deptForm, order: Number(e.target.value)})} /></div>
-              <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={deptForm.name} onChange={e => setDeptForm({...deptForm, name: e.target.value})} /></div>
-              <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={deptForm.nameEn} onChange={e => setDeptForm({...deptForm, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
-              <div className="md:col-span-2 space-y-2"><Label>{isRtl ? 'الوصف' : 'Description'}</Label><Textarea value={deptForm.description} onChange={e => setDeptForm({...deptForm, description: e.target.value})} /></div>
-              <div className="flex items-center gap-4"><Label>{t('active')}</Label><Switch checked={deptForm.isActive} onCheckedChange={val => setDeptForm({...deptForm, isActive: val})} /></div>
+              <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={deptForm.name || ''} onChange={e => setDeptForm({...deptForm, name: e.target.value})} /></div>
+              <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={deptForm.nameEn || ''} onChange={e => setDeptForm({...deptForm, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
+              <div className="md:col-span-2 space-y-2"><Label>{isRtl ? 'الوصف' : 'Description'}</Label><Textarea value={deptForm.description || ''} onChange={e => setDeptForm({...deptForm, description: e.target.value})} /></div>
+              <div className="flex items-center gap-4"><Label>{t('active')}</Label><Switch checked={deptForm.isActive || false} onCheckedChange={val => setDeptForm({...deptForm, isActive: val})} /></div>
             </div>
             <DialogFooter><Button onClick={handleSaveDept} disabled={loadingAction === 'dept'} className="w-full h-12 rounded-xl font-bold">{loadingAction === 'dept' ? <Loader2 className="animate-spin" /> : t('save')}</Button></DialogFooter>
           </DialogContent>
@@ -142,7 +142,7 @@ export default function DepartmentsPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-5">
+        <div className="lg:col-span-5 text-start">
           <Card className="border-0 shadow-lg rounded-3xl overflow-hidden bg-white">
             <CardHeader className="bg-slate-50/50 border-b p-4">
               <div className="relative">
@@ -169,7 +169,7 @@ export default function DepartmentsPage() {
         </div>
 
         <div className={cn("lg:col-span-7 transition-opacity", !selectedDept && 'opacity-40')}>
-          <Card className="border-0 shadow-lg rounded-3xl overflow-hidden bg-white">
+          <Card className="border-0 shadow-lg rounded-3xl overflow-hidden bg-white text-start">
             <CardHeader className="bg-slate-50/50 border-b p-6 flex flex-row items-center justify-between">
               <div className="text-start">
                 <CardTitle className="text-lg font-black flex items-center gap-2"><Briefcase className="h-5 w-5 text-primary" /> {isRtl ? 'الوظائف' : 'Job Titles'}</CardTitle>
@@ -183,9 +183,9 @@ export default function DepartmentsPage() {
                   <DialogContent className="rounded-3xl" dir={dir}>
                     <DialogHeader><DialogTitle className="text-start font-black">{isRtl ? 'إضافة وظيفة جديدة' : 'Add New Job'}</DialogTitle></DialogHeader>
                     <div className="grid grid-cols-1 gap-4 py-4 text-start">
-                      <div className="space-y-2"><Label>Code</Label><Input value={jobForm.code} onChange={e => setJobForm({...jobForm, code: e.target.value})} placeholder="S-ARCH" /></div>
-                      <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={jobForm.name} onChange={e => setJobForm({...jobForm, name: e.target.value})} /></div>
-                      <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={jobForm.nameEn} onChange={e => setJobForm({...jobForm, nameEn: e.target.value})} /></div>
+                      <div className="space-y-2"><Label>Code</Label><Input value={jobForm.code || ''} onChange={e => setJobForm({...jobForm, code: e.target.value})} placeholder="S-ARCH" /></div>
+                      <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={jobForm.name || ''} onChange={e => setJobForm({...jobForm, name: e.target.value})} /></div>
+                      <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={jobForm.nameEn || ''} onChange={e => setJobForm({...jobForm, nameEn: e.target.value})} /></div>
                     </div>
                     <DialogFooter><Button onClick={handleSaveJob} disabled={loadingAction === 'job'} className="w-full h-12 rounded-xl">{loadingAction === 'job' ? <Loader2 className="animate-spin" /> : t('save')}</Button></DialogFooter>
                   </DialogContent>
@@ -197,7 +197,7 @@ export default function DepartmentsPage() {
                 jobsLoading ? <div className="py-10 text-center"><Loader2 className="animate-spin mx-auto text-primary/30" /></div> : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {jobs?.map(job => (
-                      <div key={job.id} className="p-4 rounded-2xl border-2 bg-slate-50/50 hover:bg-white hover:shadow-md transition-all flex items-center justify-between group">
+                      <div key={job.id} className="p-4 rounded-2xl border-2 bg-slate-50/50 hover:bg-white hover:shadow-md transition-all flex items-center justify-between group text-start">
                         <div className="text-start">
                           <p className="text-sm font-black">{isRtl ? job.name : job.nameEn}</p>
                           <Badge variant="secondary" className="text-[8px] font-mono mt-1">{job.code}</Badge>
