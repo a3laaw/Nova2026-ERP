@@ -1,14 +1,16 @@
+
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
   MapPin, MapPinned, Plus, Loader2, Trash2, Edit3, 
-  ChevronRight
+  ChevronRight, Zap
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
@@ -19,6 +21,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Governorate, Area } from '@/types/reference';
+import { translateText } from '@/ai/flows/translate-flow';
 
 export default function GeoPage() {
   const { globalUser } = useAuthContext();
@@ -33,23 +36,50 @@ export default function GeoPage() {
   const [govForm, setGovForm] = useState<Partial<Governorate>>({ name: '', nameEn: '' });
   const [areaForm, setAreaForm] = useState<Partial<Area>>({ name: '', nameEn: '' });
 
-  const locationService = useMemo(() => db && companyId ? new LocationService(db, companyId) : null, [db, companyId]);
+  const [autoTranslate, setAutoTranslate] = useState(true);
+  const [isTranslating, setIsTranslating] = useState(false);
 
-  const govsQuery = useMemo(() => companyId && db ? query(collection(db, paths.governorates(companyId)), orderBy('name')) : null, [db, companyId]);
-  const areasQuery = useMemo(() => companyId && db && selectedGov?.id ? query(collection(db, paths.areas(companyId, selectedGov.id)), orderBy('name')) : null, [db, companyId, selectedGov]);
+  const locationService = useMemo(() => db && companyId ? new LocationService(db, companyId) : null, [db, companyId]);
+  const govsQuery = useMemo(() => companyId && db ? query(collection(db, paths.governorates(companyId))) : null, [db, companyId]);
+  const areasQuery = useMemo(() => companyId && db && selectedGov?.id ? query(collection(db, paths.areas(companyId, selectedGov.id))) : null, [db, companyId, selectedGov]);
 
   const { data: governorates, loading: govsLoading } = useCollection<Governorate>(govsQuery);
   const { data: areas, loading: areasLoading } = useCollection<Area>(areasQuery);
 
+  // Auto-translate for Govs
+  useEffect(() => {
+    if (!autoTranslate || !govForm?.name || govForm.id) return;
+    const timer = setTimeout(async () => {
+      if (govForm.name!.length > 2) {
+        setIsTranslating(true);
+        const res = await translateText({ text: govForm.name!, targetLang: 'en' });
+        setGovForm(prev => prev ? { ...prev, nameEn: res.translatedText } : null);
+        setIsTranslating(false);
+      }
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [govForm?.name, autoTranslate]);
+
+  // Auto-translate for Areas
+  useEffect(() => {
+    if (!autoTranslate || !areaForm?.name || areaForm.id) return;
+    const timer = setTimeout(async () => {
+      if (areaForm.name!.length > 2) {
+        setIsTranslating(true);
+        const res = await translateText({ text: areaForm.name!, targetLang: 'en' });
+        setAreaForm(prev => prev ? { ...prev, nameEn: res.translatedText } : null);
+        setIsTranslating(false);
+      }
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [areaForm?.name, autoTranslate]);
+
   const handleSaveGov = () => {
     if (!locationService || !govForm.name) return;
     setLoadingAction('gov');
-    const data = { ...govForm, order: 0, isActive: true };
-    if (govForm.id) {
-      locationService.updateGovernorate(govForm.id, data);
-    } else {
-      locationService.addGovernorate(data as any);
-    }
+    const data = { ...govForm, order: 0, isActive: true, name: govForm.name || '', nameEn: govForm.nameEn || '' };
+    if (govForm.id) locationService.updateGovernorate(govForm.id, data);
+    else locationService.addGovernorate(data as any);
     toast({ title: t('saved') });
     setGovForm({ name: '', nameEn: '' });
     setLoadingAction(null);
@@ -58,16 +88,21 @@ export default function GeoPage() {
   const handleSaveArea = () => {
     if (!locationService || !selectedGov?.id || !areaForm.name) return;
     setLoadingAction('area');
-    const data = { ...areaForm, order: 0, isActive: true };
-    if (areaForm.id) {
-      locationService.updateArea(selectedGov.id, areaForm.id, data);
-    } else {
-      locationService.addArea(selectedGov.id, data as any);
-    }
+    const data = { ...areaForm, order: 0, isActive: true, name: areaForm.name || '', nameEn: areaForm.nameEn || '' };
+    if (areaForm.id) locationService.updateArea(selectedGov.id, areaForm.id, data);
+    else locationService.addArea(selectedGov.id, data as any);
     toast({ title: t('saved') });
     setAreaForm({ name: '', nameEn: '' });
     setLoadingAction(null);
   };
+
+  const RenderAutoTranslateToggle = () => (
+    <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-full ring-1 ring-black/5">
+      <Zap className={cn("h-3 w-3", autoTranslate ? "text-primary" : "text-slate-400")} />
+      <span className="text-[10px] font-black text-slate-600">{isRtl ? 'ترجمة تلقائية' : 'Auto-Translate'}</span>
+      <Switch checked={autoTranslate} onCheckedChange={setAutoTranslate} className="scale-75" />
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -82,13 +117,20 @@ export default function GeoPage() {
               <Plus className="me-2 h-4 w-4" /> {t('newGov')}
             </Button>
           </DialogTrigger>
-          <DialogContent className="rounded-3xl" dir={dir}>
-             <DialogHeader><DialogTitle className="text-start font-black">{isRtl ? 'محافظة جديدة' : 'New Gov'}</DialogTitle></DialogHeader>
-             <div className="grid grid-cols-1 gap-4 py-4 text-start">
+          <DialogContent className="rounded-[2.5rem] p-8" dir={dir}>
+             <DialogHeader className="flex flex-row items-center justify-between mb-4">
+               <DialogTitle className="text-start font-black text-xl">{govForm.id ? t('edit') : t('newGov')}</DialogTitle>
+               {!govForm.id && <RenderAutoTranslateToggle />}
+             </DialogHeader>
+             <div className="grid grid-cols-2 gap-4 py-4 text-start">
                <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={govForm.name || ''} onChange={e => setGovForm({...govForm, name: e.target.value})} placeholder="..." /></div>
-               <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={govForm.nameEn || ''} onChange={e => setGovForm({...govForm, nameEn: e.target.value})} className="text-start" dir="ltr" placeholder="..." /></div>
+               <div className="space-y-2 relative">
+                 <Label>{t('name')} (En)</Label>
+                 <Input value={govForm.nameEn || ''} onChange={e => setGovForm({...govForm, nameEn: e.target.value})} className="text-start" dir="ltr" placeholder="..." />
+                 {isTranslating && <div className="absolute right-3 top-9"><Loader2 className="h-4 w-4 animate-spin text-primary/40" /></div>}
+               </div>
              </div>
-             <DialogFooter><Button onClick={handleSaveGov} disabled={loadingAction === 'gov'} className="w-full h-12 rounded-xl font-bold">{loadingAction === 'gov' ? <Loader2 className="animate-spin" /> : t('save')}</Button></DialogFooter>
+             <DialogFooter className="mt-6"><Button onClick={handleSaveGov} disabled={loadingAction === 'gov'} className="w-full h-12 rounded-xl font-bold">{loadingAction === 'gov' ? <Loader2 className="animate-spin" /> : t('save')}</Button></DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
@@ -112,32 +154,39 @@ export default function GeoPage() {
         <div className={cn("lg:col-span-8 text-start", !selectedGov && 'opacity-40')}>
           <Card className="border-0 shadow-lg rounded-3xl overflow-hidden bg-white text-start">
             <CardHeader className="bg-slate-50/50 border-b p-6 flex flex-row items-center justify-between">
-              <div className="text-start">
+              <div>
                 <CardTitle className="text-lg font-black flex items-center gap-2"><MapPin className="h-5 w-5 text-primary" /> {isRtl ? 'المناطق' : 'Areas'}</CardTitle>
-                <CardDescription>{selectedGov ? (isRtl ? `محافظة: ${selectedGov.name}` : `Gov: ${selectedGov.nameEn}`) : (isRtl ? 'اختر محافظة' : 'Select a gov')}</CardDescription>
+                <CardDescription>{selectedGov ? (isRtl ? `محافظة: ${selectedGov.name}` : `Gov: ${selectedGov.nameEn}`) : t('search')}</CardDescription>
               </div>
               {selectedGov && (
                 <Dialog>
                   <DialogTrigger asChild>
-                    <Button variant="secondary" size="sm" className="rounded-xl h-10 px-4"><Plus className="me-2 h-4 w-4" /> {isRtl ? 'إضافة منطقة' : 'Add Area'}</Button>
+                    <Button variant="secondary" size="sm" className="rounded-xl h-10 px-4"><Plus className="me-2 h-4 w-4" /> {isRtl ? 'منطقة' : 'Add Area'}</Button>
                   </DialogTrigger>
-                  <DialogContent className="rounded-3xl" dir={dir}>
-                    <DialogHeader><DialogTitle className="text-start font-black">{isRtl ? 'منطقة جديدة' : 'New Area'}</DialogTitle></DialogHeader>
-                    <div className="grid grid-cols-1 gap-4 py-4 text-start">
+                  <DialogContent className="rounded-[2.5rem] p-8" dir={dir}>
+                    <DialogHeader className="flex flex-row items-center justify-between mb-4">
+                      <DialogTitle className="text-start font-black">{isRtl ? 'إضافة منطقة' : 'Add Area'}</DialogTitle>
+                      <RenderAutoTranslateToggle />
+                    </DialogHeader>
+                    <div className="grid grid-cols-2 gap-4 py-4 text-start">
                       <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={areaForm.name || ''} onChange={e => setAreaForm({...areaForm, name: e.target.value})} placeholder="..." /></div>
-                      <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={areaForm.nameEn || ''} onChange={e => setAreaForm({...areaForm, nameEn: e.target.value})} className="text-start" dir="ltr" placeholder="..." /></div>
+                      <div className="space-y-2 relative">
+                        <Label>{t('name')} (En)</Label>
+                        <Input value={areaForm.nameEn || ''} onChange={e => setAreaForm({...areaForm, nameEn: e.target.value})} className="text-start" dir="ltr" placeholder="..." />
+                        {isTranslating && <div className="absolute right-3 top-9"><Loader2 className="h-4 w-4 animate-spin text-primary/40" /></div>}
+                      </div>
                     </div>
-                    <DialogFooter><Button onClick={handleSaveArea} disabled={loadingAction === 'area'} className="w-full h-12 rounded-xl">{loadingAction === 'area' ? <Loader2 className="animate-spin" /> : t('save')}</Button></DialogFooter>
+                    <DialogFooter className="mt-6"><Button onClick={handleSaveArea} disabled={loadingAction === 'area'} className="w-full h-12 rounded-xl font-bold">{loadingAction === 'area' ? <Loader2 className="animate-spin" /> : t('save')}</Button></DialogFooter>
                   </DialogContent>
                 </Dialog>
               )}
             </CardHeader>
             <CardContent className="p-6">
-              {!selectedGov ? <div className="py-20 text-center italic text-muted-foreground">{isRtl ? 'يرجى اختيار محافظة' : 'Please select a governorate'}</div> : (
+              {!selectedGov ? <div className="py-20 text-center italic text-muted-foreground">يرجى اختيار محافظة</div> : (
                 areasLoading ? <div className="py-10 text-center"><Loader2 className="animate-spin mx-auto text-primary/30" /></div> : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {areas?.map(area => (
-                      <div key={area.id} className="p-4 rounded-2xl border-2 bg-slate-50/50 hover:bg-white hover:shadow-md transition-all flex items-center justify-between group text-start">
+                      <div key={area.id} className="p-4 rounded-2xl border-2 bg-slate-50/50 hover:bg-white transition-all flex items-center justify-between group">
                         <span className="text-sm font-black">{isRtl ? area.name : area.nameEn}</span>
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100">
                           <Button variant="ghost" size="icon" onClick={() => setAreaForm(area)} className="h-8 w-8 text-blue-600"><Edit3 className="h-4 w-4" /></Button>
@@ -155,3 +204,4 @@ export default function GeoPage() {
     </div>
   );
 }
+
