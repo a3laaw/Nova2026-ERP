@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -29,24 +30,24 @@ export class LeaveService {
   async submitRequest(data: Omit<LeaveRequest, 'id' | 'createdAt' | 'updatedAt' | 'companyId' | 'status'>) {
     const path = paths.leaveRequests(this.companyId);
     
-    // 1. التحقق من التداخل
+    // 1. منع التداخل (Overlap Detection)
     const overlapQuery = query(
       collection(this.db, path),
       where('userId', '==', data.userId),
-      where('status', 'in', ['pending', 'approved', 'on-leave']),
-      where('startDate', '<=', data.endDate)
+      where('status', 'in', ['pending', 'approved', 'on-leave'])
     );
     
     const overlapSnap = await getDocs(overlapQuery);
-    const hasOverlap = overlapSnap.docs.some(doc => {
-      const d = doc.data();
-      return data.startDate <= d.endDate;
+    const hasOverlap = overlapSnap.docs.some(docSnap => {
+      const d = docSnap.data();
+      return (data.startDate <= d.endDate && data.endDate >= d.startDate);
     });
 
     if (hasOverlap) {
-      throw new Error('OVERLAP: يوجد إجازة أخرى مسجلة في نفس الفترة.');
+      throw new Error('OVERLAP: يوجد طلب إجازة آخر متداخل مع هذه الفترة.');
     }
 
+    // 2. إعداد البيانات
     const docData = {
       ...data,
       status: 'pending',
@@ -67,7 +68,7 @@ export class LeaveService {
     }
   }
 
-  async updateRequestStatus(leaveId: string, status: 'approved' | 'rejected', adminId: string, comment?: string) {
+  async updateRequestStatus(leaveId: string, status: LeaveRequest['status'], adminId: string, comment?: string) {
     ensureActionPermission(this.permissions, 'hr:edit');
 
     const leaveRef = doc(this.db, paths.leaveRequests(this.companyId), leaveId);
@@ -75,20 +76,17 @@ export class LeaveService {
     if (!leaveSnap.exists()) throw new Error('Request not found');
     
     const leaveData = leaveSnap.data() as LeaveRequest;
-    const batch = writeBatch(this.db);
-
-    // إذا تمت الموافقة، نقوم بتحديث رصيد الموظف (افتراضياً)
-    // ملاحظة: في النسخة الكاملة يتم الربط مع الـ Employee document
-    batch.update(leaveRef, {
-      status,
-      approvedBy: adminId,
-      approvedAt: serverTimestamp(),
-      comment: comment || '',
-      updatedAt: serverTimestamp()
-    });
 
     try {
-      await batch.commit();
+      await updateDoc(leaveRef, {
+        status,
+        approvedBy: adminId,
+        approvedAt: serverTimestamp(),
+        comment: comment || '',
+        updatedAt: serverTimestamp()
+      });
+
+      // إذا عادت الإجازة، يمكن تحديث حالة الموظف هنا في النسخة الكاملة
     } catch (err) {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: leaveRef.path,
