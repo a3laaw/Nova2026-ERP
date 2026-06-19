@@ -3,7 +3,6 @@
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { 
   Workflow, Plus, Loader2, Trash2, Edit3, 
   ChevronRight, LayoutGrid, Boxes, Layers
@@ -246,7 +245,7 @@ export default function TechnicalPathsPage() {
             <DialogFooter><Button onClick={handleSaveSub} disabled={loadingAction === 'sub'} className="w-full h-12 rounded-xl font-bold">{loadingAction === 'sub' ? <Loader2 className="animate-spin" /> : t('save')}</Button></DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
+      )}
     </div>
   );
 }

@@ -3,7 +3,6 @@
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { 
   Building2, Plus, Loader2, Trash2, Edit3, 
   ChevronRight, Briefcase, Search
@@ -35,7 +34,7 @@ export default function DepartmentsPage() {
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   
   const [deptForm, setDeptForm] = useState<Partial<Department>>({
-    name: '', nameEn: '', description: '', isActive: true, order: 0, activityTypes: []
+    name: '', nameEn: '', description: '', isActive: true, order: 0
   });
   const [jobForm, setJobForm] = useState<Partial<Job>>({
     name: '', nameEn: '', isActive: true, order: 0
@@ -67,10 +66,10 @@ export default function DepartmentsPage() {
       } else {
         await deptService.addDepartment({ ...deptForm, code: '' } as any);
       }
-      toast({ title: t('saved'), description: t('entryAdded') });
-      setDeptForm({ name: '', nameEn: '', description: '', isActive: true, order: 0, activityTypes: [] });
+      toast({ title: t('saved') });
+      setDeptForm({ name: '', nameEn: '', description: '', isActive: true, order: 0 });
     } catch (e) {
-      toast({ variant: "destructive", title: t('error'), description: t('saveFailed') });
+      toast({ variant: "destructive", title: t('error') });
     } finally {
       setLoadingAction(null);
     }
@@ -80,16 +79,16 @@ export default function DepartmentsPage() {
     if (!deptService || !selectedDept?.id || !jobForm.name) return;
     setLoadingAction('job');
     try {
-      const data = { ...jobForm, departmentCode: '' } as any;
+      const data = { ...jobForm } as any;
       if (jobForm.id) {
         await deptService.updateJob(selectedDept.id, jobForm.id, data);
       } else {
         await deptService.addJob(selectedDept.id, { ...data, code: '' });
       }
-      toast({ title: t('saved'), description: t('entryAdded') });
+      toast({ title: t('saved') });
       setJobForm({ name: '', nameEn: '', isActive: true, order: 0 });
     } catch (e) {
-      toast({ variant: "destructive", title: t('error'), description: t('saveFailed') });
+      toast({ variant: "destructive", title: t('error') });
     } finally {
       setLoadingAction(null);
     }
@@ -121,7 +120,7 @@ export default function DepartmentsPage() {
         </h2>
         <Dialog>
           <DialogTrigger asChild>
-            <Button onClick={() => setDeptForm({ name: '', nameEn: '', description: '', isActive: true, order: (departments?.length || 0) + 1, activityTypes: [] })} className="rounded-xl">
+            <Button onClick={() => setDeptForm({ name: '', nameEn: '', description: '', isActive: true, order: (departments?.length || 0) + 1 })} className="rounded-xl">
               <Plus className="me-2 h-4 w-4" /> {t('newDept')}
             </Button>
           </DialogTrigger>
