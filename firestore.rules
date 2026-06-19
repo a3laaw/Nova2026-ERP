@@ -62,7 +62,6 @@ service cloud.firestore {
       allow create: if isAuthenticated();
 
       // --- المرجعيات والقواعد (Reference Data) ---
-      // القراءة متاحة للجميع في الشركة، الكتابة للمدير فقط
       
       // الأقسام والوظائف
       match /departments/{allPaths=**} {
@@ -76,34 +75,27 @@ service cloud.firestore {
         allow write: if isAdmin(companyId);
       }
       
-      // تصنيفات الأنشطة
-      match /serviceTypes/{allPaths=**} {
-        allow read: if belongsToCompany(companyId);
-        allow write: if isAdmin(companyId);
-      }
-      
-      // المسارات الفنية والخدمات والمراحل (Technical Path Engine)
-      match /transactionTypes/{allPaths=**} {
+      // الهيكل المرجعي الفني الجديد (Activity Types -> Services -> Sub-Services -> Technical Stages)
+      match /activityTypes/{allPaths=**} {
         allow read: if belongsToCompany(companyId);
         allow write: if isAdmin(companyId);
       }
 
       // --- البيانات التشغيلية (Operational Data) ---
-      // القراءة والكتابة متاحة لأعضاء الشركة حسب المهام
       
       // المشاريع والعقود والمراحل التنفيذية
       match /projects/{projectId} {
         allow read, write: if belongsToCompany(companyId);
         
         // مراحل المشروع (Instances)
-        match /stages/{instanceId} {
+        match /stageInstances/{instanceId} {
           allow read, write: if belongsToCompany(companyId);
         }
         
         // العقود (Contracts)
         match /contracts/{contractId} {
           allow read: if belongsToCompany(companyId);
-          allow write: if isAdmin(companyId); // العقود غالباً للمديرين
+          allow write: if isAdmin(companyId);
         }
       }
 

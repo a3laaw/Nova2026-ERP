@@ -3,12 +3,11 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  Database, Building2, MapPin, Workflow, LayoutGrid, Settings2
+  Database, Building2, MapPin, Workflow, Settings2
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import DepartmentsPage from './departments/page';
 import GeoPage from './geo/page';
-import ServiceTypesPage from './service-types/page';
 import TechnicalPathsPage from './technical-paths/page';
 import { SeedTool } from './seed-tool';
 
@@ -33,12 +32,9 @@ export default function ReferenceHubPage() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" dir={dir}>
         <div className="overflow-x-auto pb-4 scrollbar-hide">
-          <TabsList className="flex w-fit min-w-full md:min-w-0 md:grid md:grid-cols-5 h-16 bg-muted/30 rounded-3xl p-2 shadow-inner gap-2">
+          <TabsList className="flex w-fit min-w-full md:min-w-0 md:grid md:grid-cols-4 h-16 bg-muted/30 rounded-3xl p-2 shadow-inner gap-2">
             <TabsTrigger value="org" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg flex items-center justify-center px-6">
               <Building2 className="h-5 w-5" /> {t('orgRef')}
-            </TabsTrigger>
-            <TabsTrigger value="services" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg flex items-center justify-center px-6">
-              <LayoutGrid className="h-5 w-5" /> {isRtl ? 'أنشطة الأعمال' : 'Service Types'}
             </TabsTrigger>
             <TabsTrigger value="technical" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg flex items-center justify-center px-6">
               <Workflow className="h-5 w-5" /> {t('techRef')}
@@ -54,10 +50,6 @@ export default function ReferenceHubPage() {
 
         <TabsContent value="org" className="mt-8">
           <DepartmentsPage />
-        </TabsContent>
-
-        <TabsContent value="services" className="mt-8">
-          <ServiceTypesPage />
         </TabsContent>
 
         <TabsContent value="technical" className="mt-8">
