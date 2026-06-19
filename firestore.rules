@@ -73,7 +73,7 @@ service cloud.firestore {
       // د) المشاريع والعمليات الإنشائية
       match /projects/{projectId} {
         allow read: if belongsToCompany(companyId);
-        allow write: if belongsToCompany(companyId); // الإنفاذ الدقيق للصلاحيات يتم في الـ Service
+        allow write: if belongsToCompany(companyId);
         
         match /stageInstances/{instanceId} {
           allow read, write: if belongsToCompany(companyId);
@@ -83,8 +83,18 @@ service cloud.firestore {
         }
       }
 
-      // هـ) الموارد البشرية (إجازات، رواتب، امتثال)
-      match /leaves/{leaveId} {
+      // هـ) الموارد البشرية (موظفون، إجازات، رواتب، حضور، امتثال)
+      match /employees/{employeeId} {
+        allow read: if belongsToCompany(companyId);
+        allow write: if isAdmin(companyId);
+        
+        match /auditLogs/{logId} {
+          allow read: if belongsToCompany(companyId);
+          allow write: if isAdmin(companyId);
+        }
+      }
+
+      match /leaveRequests/{leaveId} {
         allow read: if belongsToCompany(companyId);
         allow create: if belongsToCompany(companyId);
         allow update: if isAdmin(companyId) || (
@@ -94,22 +104,21 @@ service cloud.firestore {
         );
         allow delete: if isAdmin(companyId);
       }
-      
-      match /payroll/{allPaths=**} {
-        allow read, write: if isAdmin(companyId); // الرواتب حساسة جداً
-      }
 
-      // و) المشتريات والمخازن (CRM, Quotes, GRN, etc)
+      match /permissionRequests/{allPaths=**} { allow read, write: if belongsToCompany(companyId); }
+      match /attendance/{allPaths=**} { allow read, write: if belongsToCompany(companyId); }
+      match /payroll/{allPaths=**} { allow read, write: if isAdmin(companyId); }
+      match /holidays/{allPaths=**} { allow read: if belongsToCompany(companyId); allow write: if isAdmin(companyId); }
+
+      // و) المشتريات والمخازن
       match /leads/{leadId} { allow read, write: if belongsToCompany(companyId); }
       match /quotations/{allPaths=**} { allow read, write: if belongsToCompany(companyId); }
       match /purchaseRequests/{allPaths=**} { allow read, write: if belongsToCompany(companyId); }
-      match /grns/{allPaths=**} { allow read, write: if belongsToCompany(companyId); }
-      match /inventory/{allPaths=**} { allow read, write: if belongsToCompany(companyId); }
-
-      // ز) المحاسبة والمالية (Journal, COA, Vouchers)
+      
+      // ز) المحاسبة والمالية
       match /accounting/{allPaths=**} {
         allow read: if belongsToCompany(companyId);
-        allow write: if belongsToCompany(companyId); // المحاسبون والمدراء
+        allow write: if belongsToCompany(companyId);
       }
 
       // ح) التنبيهات والإعدادات

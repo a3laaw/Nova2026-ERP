@@ -27,8 +27,8 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
         setLoading(false);
       },
       async (serverError) => {
-        // محاولة جلب المسار بشكل آمن إذا كان المرجع عبارة عن CollectionReference
-        const safePath = (query as any).path || 'collection_query';
+        // استخراج المسار بشكل أفضل للرسائل التنبيهية
+        const safePath = (query as any)._query?.path?.toString() || (query as any).path || 'collection_query';
         
         const permissionError = new FirestorePermissionError({
           path: safePath,
