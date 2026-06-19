@@ -20,7 +20,7 @@ export interface Employee extends BaseReference {
   jobId?: string;
   jobTitle?: string;
   roleCode?: string;
-  hireDate: any;
+  hireDate: string; // YYYY-MM-DD
   contractType?: string;
   status: EmployeeStatus;
   basicSalary: number;
@@ -30,13 +30,23 @@ export interface Employee extends BaseReference {
   bankName?: string;
   bankAccountNumber?: string;
   iban?: string;
-  contractExpiry?: any;
-  residencyExpiry?: any;
+  contractExpiry?: string;
+  residencyExpiry?: string;
   annualLeaveUsed?: number;
   carriedLeaveDays?: number;
-  terminationDate?: any;
+  terminationDate?: string;
   terminationReason?: string;
   isActive: boolean;
+}
+
+export interface EmployeeAuditLog extends BaseReference {
+  employeeId: string;
+  changedBy: string;
+  changedByName: string;
+  field: string;
+  oldValue: any;
+  newValue: any;
+  action: 'update' | 'terminate' | 'activate';
 }
 
 export interface LeaveRequest extends BaseReference {
@@ -97,9 +107,4 @@ export interface PayrollRecord extends BaseReference {
   };
   netSalary: number;
   status: PayrollStatus;
-}
-
-export interface Holiday extends BaseReference {
-  name: string;
-  date: any;
 }

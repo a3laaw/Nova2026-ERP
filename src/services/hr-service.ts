@@ -6,14 +6,14 @@ import {
   doc, 
   addDoc, 
   updateDoc, 
-  deleteDoc, 
   serverTimestamp,
   query,
   where,
-  getDocs
+  getDocs,
+  getDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
-import { Employee } from '@/types/hr';
+import { Employee, EmployeeAuditLog } from '@/types/hr';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { ensureActionPermission } from '@/lib/permissions';
@@ -47,22 +47,88 @@ export class HRService {
     }
   }
 
-  async updateEmployee(id: string, data: Partial<Employee>) {
+  async updateEmployee(id: string, newData: Partial<Employee>, currentUser: { uid: string, name: string }) {
     ensureActionPermission(this.permissions, 'hr:edit');
     const path = paths.employees(this.companyId);
+    const empRef = doc(this.db, path, id);
+
     try {
-      await updateDoc(doc(this.db, path, id), {
-        ...data,
-        updatedAt: serverTimestamp(),
-      });
+      const oldSnap = await getDoc(empRef);
+      if (!oldSnap.exists()) throw new Error('Employee not found');
+      const oldData = oldSnap.data() as Employee;
+
+      // الحقول التي نريد مراقبتها في سجل التدقيق
+      const criticalFields: (keyof Employee)[] = ['basicSalary', 'jobTitle', 'departmentName', 'status', 'contractExpiry'];
+      
+      const updates: any = { ...newData, updatedAt: serverTimestamp() };
+      
+      await updateDoc(empRef, updates);
+
+      // تسجيل التدقيق آلياً
+      for (const field of criticalFields) {
+        if (newData[field] !== undefined && newData[field] !== oldData[field]) {
+          this.addAuditLog(id, {
+            action: 'update',
+            field: field as string,
+            oldValue: oldData[field] || 'None',
+            newValue: newData[field],
+            changedBy: currentUser.uid,
+            changedByName: currentUser.name
+          });
+        }
+      }
     } catch (err) {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: `${path}/${id}`,
         operation: 'update',
-        requestResourceData: data
+        requestResourceData: newData
       }));
       throw err;
     }
+  }
+
+  async terminateEmployee(id: string, reason: string, date: string, currentUser: { uid: string, name: string }) {
+    ensureActionPermission(this.permissions, 'hr:edit');
+    const path = paths.employees(this.companyId);
+    const empRef = doc(this.db, path, id);
+
+    const updateData = {
+      status: 'terminated' as const,
+      isActive: false,
+      terminationReason: reason,
+      terminationDate: date,
+      updatedAt: serverTimestamp()
+    };
+
+    try {
+      await updateDoc(empRef, updateData);
+      await this.addAuditLog(id, {
+        action: 'terminate',
+        field: 'status',
+        oldValue: 'active',
+        newValue: 'terminated',
+        changedBy: currentUser.uid,
+        changedByName: currentUser.name
+      });
+    } catch (err) {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: `${path}/${id}`,
+        operation: 'update'
+      }));
+      throw err;
+    }
+  }
+
+  private async addAuditLog(employeeId: string, log: Omit<EmployeeAuditLog, 'id' | 'createdAt' | 'updatedAt' | 'companyId' | 'employeeId'>) {
+    const logPath = `${paths.employees(this.companyId)}/${employeeId}/auditLogs`;
+    const logData = {
+      ...log,
+      employeeId,
+      companyId: this.companyId,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+    await addDoc(collection(this.db, logPath), logData);
   }
 
   async getEmployeeByNumber(empNumber: string) {
