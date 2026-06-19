@@ -1,17 +1,18 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
-  Settings2, Building2, UserCog, BellRing, Database, ArrowLeft, ShieldCheck, Clock
+  Settings2, Building2, UserCog, Database, ArrowLeft, ShieldCheck, Clock
 } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/context/language-context';
+import { usePermissions } from '@/hooks/use-permissions';
 import { cn } from '@/lib/utils';
 
 export default function SettingsHubPage() {
   const { t, lang, dir } = useLanguage();
+  const { isAdmin, check } = usePermissions();
   const router = useRouter();
   const isRtl = lang === 'ar';
 
@@ -23,7 +24,8 @@ export default function SettingsHubPage() {
       icon: Building2,
       color: 'text-emerald-600',
       bg: 'bg-emerald-50',
-      path: '/dashboard/settings/company'
+      path: '/dashboard/settings/company',
+      visible: isAdmin
     },
     {
       id: 'checklists',
@@ -32,7 +34,8 @@ export default function SettingsHubPage() {
       icon: Database,
       color: 'text-primary',
       bg: 'bg-primary/10',
-      path: '/dashboard/settings/checklists'
+      path: '/dashboard/settings/checklists',
+      visible: check('ref:view')
     },
     {
       id: 'roles',
@@ -41,7 +44,8 @@ export default function SettingsHubPage() {
       icon: ShieldCheck,
       color: 'text-indigo-600',
       bg: 'bg-indigo-50',
-      path: '/dashboard/settings/roles'
+      path: '/dashboard/settings/roles',
+      visible: isAdmin
     },
     {
       id: 'work-hours',
@@ -50,7 +54,8 @@ export default function SettingsHubPage() {
       icon: Clock,
       color: 'text-amber-600',
       bg: 'bg-amber-50',
-      path: '/dashboard/settings/work-hours'
+      path: '/dashboard/settings/work-hours',
+      visible: check('ref:view')
     },
     {
       id: 'profile',
@@ -59,9 +64,10 @@ export default function SettingsHubPage() {
       icon: UserCog,
       color: 'text-blue-600',
       bg: 'bg-blue-50',
-      path: '/dashboard/settings/profile'
+      path: '/dashboard/settings/profile',
+      visible: true
     }
-  ];
+  ].filter(card => card.visible);
 
   return (
     <div className="space-y-8" dir={dir}>

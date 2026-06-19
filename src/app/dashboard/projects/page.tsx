@@ -14,6 +14,7 @@ import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
+import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -26,6 +27,7 @@ import { cn } from '@/lib/utils';
 export default function ProjectsPage() {
   const { globalUser } = useAuthContext();
   const { t, lang, dir } = useLanguage();
+  const { check } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const companyId = globalUser?.companyId;
@@ -89,63 +91,66 @@ export default function ProjectsPage() {
           </p>
         </div>
 
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform">
-              <Plus className="me-2 h-6 w-6" />
-              {t('newProject')}
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="rounded-[2.5rem] border-0 shadow-2xl max-w-2xl p-0 overflow-hidden" dir={dir}>
-            <div className="bg-primary/5 p-8 border-b">
-              <DialogTitle className="text-start font-headline font-black text-2xl">{t('newProject')}</DialogTitle>
-              <DialogDescription className="text-start mt-1 font-bold">{isRtl ? 'تعريف مشروع جديد وربطه بمسار فني ذكي.' : 'Define new project and link it to a smart technical path.'}</DialogDescription>
-            </div>
-            
-            <div className="p-8 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2 text-start">
-                  <Label className="font-black">{t('name')}</Label>
-                  <Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder={isRtl ? 'اسم المشروع...' : 'Project Name'} className="h-12 rounded-xl" />
-                </div>
-                <div className="space-y-2 text-start">
-                  <Label className="font-black">{t('budget')} (KWD)</Label>
-                  <Input type="number" value={form.budget} onChange={e => setForm({...form, budget: e.target.value})} placeholder="0.000" className="h-12 rounded-xl" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2 text-start">
-                  <Label className="text-xs font-black opacity-50 flex items-center gap-1"><LayoutGrid className="h-3 w-3" /> {isRtl ? 'النشاط' : 'Activity'}</Label>
-                  <Select value={form.activityTypeId} onValueChange={val => setForm({...form, activityTypeId: val, serviceId: '', subServiceId: ''})}>
-                    <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="..." /></SelectTrigger>
-                    <SelectContent>{activities?.map(a => <SelectItem key={a.id} value={a.id!}>{isRtl ? a.name : a.nameEn}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2 text-start">
-                  <Label className="text-xs font-black opacity-50 flex items-center gap-1"><Boxes className="h-3 w-3" /> {isRtl ? 'الخدمة' : 'Service'}</Label>
-                  <Select value={form.serviceId} onValueChange={val => setForm({...form, serviceId: val, subServiceId: ''})} disabled={!form.activityTypeId}>
-                    <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="..." /></SelectTrigger>
-                    <SelectContent>{services?.map(s => <SelectItem key={s.id} value={s.id!}>{isRtl ? s.name : s.nameEn}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2 text-start">
-                  <Label className="text-xs font-black opacity-50 flex items-center gap-1"><Layers className="h-3 w-3" /> {isRtl ? 'المسار' : 'Sub-Service'}</Label>
-                  <Select value={form.subServiceId} onValueChange={val => setForm({...form, subServiceId: val})} disabled={!form.serviceId}>
-                    <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="..." /></SelectTrigger>
-                    <SelectContent>{subServices?.map(sub => <SelectItem key={sub.id} value={sub.id!}>{isRtl ? sub.name : sub.nameEn}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-
-            <DialogFooter className="p-8 bg-slate-50 border-t">
-              <Button onClick={handleCreate} disabled={isAdding || !form.subServiceId} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">
-                {isAdding ? <Loader2 className="animate-spin" /> : t('startProject')}
+        {/* زر الإضافة محمي بصلاحية projects:create */}
+        {check('projects:create') && (
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform">
+                <Plus className="me-2 h-6 w-6" />
+                {t('newProject')}
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent className="rounded-[2.5rem] border-0 shadow-2xl max-w-2xl p-0 overflow-hidden" dir={dir}>
+              <div className="bg-primary/5 p-8 border-b">
+                <DialogTitle className="text-start font-headline font-black text-2xl">{t('newProject')}</DialogTitle>
+                <DialogDescription className="text-start mt-1 font-bold">{isRtl ? 'تعريف مشروع جديد وربطه بمسار فني ذكي.' : 'Define new project and link it to a smart technical path.'}</DialogDescription>
+              </div>
+              
+              <div className="p-8 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2 text-start">
+                    <Label className="font-black">{t('name')}</Label>
+                    <Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder={isRtl ? 'اسم المشروع...' : 'Project Name'} className="h-12 rounded-xl" />
+                  </div>
+                  <div className="space-y-2 text-start">
+                    <Label className="font-black">{t('budget')} (KWD)</Label>
+                    <Input type="number" value={form.budget} onChange={e => setForm({...form, budget: e.target.value})} placeholder="0.000" className="h-12 rounded-xl" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2 text-start">
+                    <Label className="text-xs font-black opacity-50 flex items-center gap-1"><LayoutGrid className="h-3 w-3" /> {isRtl ? 'النشاط' : 'Activity'}</Label>
+                    <Select value={form.activityTypeId} onValueChange={val => setForm({...form, activityTypeId: val, serviceId: '', subServiceId: ''})}>
+                      <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="..." /></SelectTrigger>
+                      <SelectContent>{activities?.map(a => <SelectItem key={a.id} value={a.id!}>{isRtl ? a.name : a.nameEn}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 text-start">
+                    <Label className="text-xs font-black opacity-50 flex items-center gap-1"><Boxes className="h-3 w-3" /> {isRtl ? 'الخدمة' : 'Service'}</Label>
+                    <Select value={form.serviceId} onValueChange={val => setForm({...form, serviceId: val, subServiceId: ''})} disabled={!form.activityTypeId}>
+                      <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="..." /></SelectTrigger>
+                      <SelectContent>{services?.map(s => <SelectItem key={s.id} value={s.id!}>{isRtl ? s.name : s.nameEn}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 text-start">
+                    <Label className="text-xs font-black opacity-50 flex items-center gap-1"><Layers className="h-3 w-3" /> {isRtl ? 'المسار' : 'Sub-Service'}</Label>
+                    <Select value={form.subServiceId} onValueChange={val => setForm({...form, subServiceId: val})} disabled={!form.serviceId}>
+                      <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="..." /></SelectTrigger>
+                      <SelectContent>{subServices?.map(sub => <SelectItem key={sub.id} value={sub.id!}>{isRtl ? sub.name : sub.nameEn}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              <DialogFooter className="p-8 bg-slate-50 border-t">
+                <Button onClick={handleCreate} disabled={isAdding || !form.subServiceId} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">
+                  {isAdding ? <Loader2 className="animate-spin" /> : t('startProject')}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -187,7 +192,7 @@ export default function ProjectsPage() {
         <CardContent className="p-0 overflow-x-auto">
           <Table>
             <TableHeader className="bg-muted/30">
-              <TableRow className="hover:bg-transparent">
+              <TableRow>
                 <TableHead className="text-start font-black py-6 ps-8">{t('project')}</TableHead>
                 <TableHead className="text-start font-black">{isRtl ? 'المسار الفني' : 'Technical Path'}</TableHead>
                 <TableHead className="text-start font-black">{t('status')}</TableHead>

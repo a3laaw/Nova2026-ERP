@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -24,6 +23,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
+import { usePermissions } from "@/hooks/use-permissions"
 import {
   Sidebar,
   SidebarContent,
@@ -49,32 +49,39 @@ import {
 export function DashboardSidebar() {
   const pathname = usePathname()
   const { state } = useSidebar()
-  const { t, lang, dir } = useLanguage()
+  const { t, lang } = useLanguage()
+  const { canAccess, isAdmin } = usePermissions()
 
+  // تعريف المنيو مع مفاتيح الصلاحيات
   const menuItems = [
-    { title: t('dashboard'), icon: LayoutDashboard, url: "/dashboard" },
-    { title: t('crm'), icon: Users, url: "/dashboard/crm" },
-    { title: t('projects'), icon: HardHat, url: "/dashboard/projects" },
-    { title: t('accounting'), icon: Calculator, url: "/dashboard/accounting" },
-    { title: t('hr'), icon: UserCircle, url: "/dashboard/hr" },
-    { title: t('procurement'), icon: ShoppingCart, url: "/dashboard/procurement" },
-    { title: t('inventory'), icon: Warehouse, url: "/dashboard/inventory" },
-    { title: t('reports'), icon: BarChart3, url: "/dashboard/reports" },
-    { title: t('ai'), icon: Sparkles, url: "/dashboard/ai" },
-  ]
+    { title: t('dashboard'), icon: LayoutDashboard, url: "/dashboard", module: 'dashboard' },
+    { title: t('crm'), icon: Users, url: "/dashboard/crm", module: 'crm' },
+    { title: t('projects'), icon: HardHat, url: "/dashboard/projects", module: 'projects' },
+    { title: t('accounting'), icon: Calculator, url: "/dashboard/accounting", module: 'accounting' },
+    { title: t('hr'), icon: UserCircle, url: "/dashboard/hr", module: 'hr' },
+    { title: t('procurement'), icon: ShoppingCart, url: "/dashboard/procurement", module: 'procurement' },
+    { title: t('inventory'), icon: Warehouse, url: "/dashboard/inventory", module: 'inventory' },
+    { title: t('reports'), icon: BarChart3, url: "/dashboard/reports", module: 'reports' },
+    { title: t('ai'), icon: Sparkles, url: "/dashboard/ai", module: 'dashboard' },
+  ].filter(item => canAccess(item.module));
 
-  const settingsItem = {
-    title: t('settings'),
-    icon: Settings,
-    url: "/dashboard/settings",
-    items: [
-      { title: t('companyIdentity'), url: "/dashboard/settings/company", icon: Building2 },
-      { title: t('checklists'), url: "/dashboard/settings/checklists", icon: Database },
-      { title: t('rolesRef'), url: "/dashboard/settings/roles", icon: ShieldCheck },
-      { title: t('workHours'), url: "/dashboard/settings/work-hours", icon: Clock },
-      { title: t('profile'), url: "/dashboard/settings/profile", icon: UserCog },
-    ]
-  }
+  const settingsItems = [
+    { title: t('companyIdentity'), url: "/dashboard/settings/company", icon: Building2, permission: 'admin' },
+    { title: t('checklists'), url: "/dashboard/settings/checklists", icon: Database, permission: 'ref:view' },
+    { title: t('rolesRef'), url: "/dashboard/settings/roles", icon: ShieldCheck, permission: 'admin' },
+    { title: t('workHours'), url: "/dashboard/settings/work-hours", icon: Clock, permission: 'ref:view' },
+    { title: t('profile'), url: "/dashboard/settings/profile", icon: UserCog, permission: 'public' },
+  ].filter(item => {
+    if (item.permission === 'public') return true;
+    if (item.permission === 'admin') return isAdmin;
+    const { check } = usePermissions(); // لمحاكاة المنطق داخل الفلتر
+    // نستخدم الـ canAccess الممررة من الـ hook بالأعلى
+    if (item.permission.includes(':view')) {
+        const mod = item.permission.split(':')[0];
+        return canAccess(mod);
+    }
+    return isAdmin;
+  });
 
   return (
     <Sidebar collapsible="icon" className="border-e bg-white shadow-sm" side={lang === 'ar' ? 'right' : 'left'}>
@@ -124,70 +131,71 @@ export function DashboardSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-black/40 font-bold px-6 py-2 text-start">
-            {lang === 'ar' ? 'النظام' : 'System'}
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu className="px-4">
-              <Collapsible
-                key={settingsItem.title}
-                asChild
-                defaultOpen={pathname.startsWith("/dashboard/settings")}
-                className="group/collapsible"
-              >
-                <SidebarMenuItem>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton 
-                      tooltip={settingsItem.title}
-                      className={cn(
-                        "transition-all duration-200 rounded-xl py-6 px-4",
-                        pathname.startsWith("/dashboard/settings") 
-                          ? "bg-slate-100 text-black font-black" 
-                          : "text-slate-600 hover:bg-slate-50"
-                      )}
-                    >
-                      <settingsItem.icon className="h-5 w-5 text-slate-400 group-hover:text-black" />
-                      <span className="flex-1 text-start">{settingsItem.title}</span>
-                      <ChevronRight className={cn(
-                        "ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90",
-                        lang === 'ar' && "rotate-180"
-                      )} />
-                    </SidebarMenuButton>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarMenuSub className="mx-0 border-s-2 border-slate-100 ms-6 mt-1 space-y-1">
-                      {settingsItem.items.map((subItem) => (
-                        <SidebarMenuSubItem key={subItem.title}>
-                          <SidebarMenuSubButton 
-                            asChild 
-                            isActive={pathname === subItem.url}
-                            className={cn(
-                              "rounded-lg h-10 px-4 transition-all",
-                              pathname === subItem.url 
-                                ? "text-primary font-bold bg-primary/5" 
-                                : "text-slate-500 hover:text-black hover:bg-slate-50"
-                            )}
-                          >
-                            <Link href={subItem.url} className="flex items-center gap-3">
-                              <subItem.icon className="h-3.5 w-3.5" />
-                              <span className="text-xs">{subItem.title}</span>
-                            </Link>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      ))}
-                    </SidebarMenuSub>
-                  </CollapsibleContent>
-                </SidebarMenuItem>
-              </Collapsible>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {settingsItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-black/40 font-bold px-6 py-2 text-start">
+              {lang === 'ar' ? 'النظام' : 'System'}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="px-4">
+                <Collapsible
+                  asChild
+                  defaultOpen={pathname.startsWith("/dashboard/settings")}
+                  className="group/collapsible"
+                >
+                  <SidebarMenuItem>
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuButton 
+                        tooltip={t('settings')}
+                        className={cn(
+                          "transition-all duration-200 rounded-xl py-6 px-4",
+                          pathname.startsWith("/dashboard/settings") 
+                            ? "bg-slate-100 text-black font-black" 
+                            : "text-slate-600 hover:bg-slate-50"
+                        )}
+                      >
+                        <Settings className="h-5 w-5 text-slate-400 group-hover:text-black" />
+                        <span className="flex-1 text-start">{t('settings')}</span>
+                        <ChevronRight className={cn(
+                          "ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90",
+                          lang === 'ar' && "rotate-180"
+                        )} />
+                      </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <SidebarMenuSub className="mx-0 border-s-2 border-slate-100 ms-6 mt-1 space-y-1">
+                        {settingsItems.map((subItem) => (
+                          <SidebarMenuSubItem key={subItem.title}>
+                            <SidebarMenuSubButton 
+                              asChild 
+                              isActive={pathname === subItem.url}
+                              className={cn(
+                                "rounded-lg h-10 px-4 transition-all",
+                                pathname === subItem.url 
+                                  ? "text-primary font-bold bg-primary/5" 
+                                  : "text-slate-500 hover:text-black hover:bg-slate-50"
+                              )}
+                            >
+                              <Link href={subItem.url} className="flex items-center gap-3">
+                                <subItem.icon className="h-3.5 w-3.5" />
+                                <span className="text-xs">{subItem.title}</span>
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    </CollapsibleContent>
+                  </SidebarMenuItem>
+                </Collapsible>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
       
       <SidebarFooter className="border-t p-6 text-center">
         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-          NovaFlow v1.4.7
+          NovaFlow v1.6.0
         </p>
       </SidebarFooter>
     </Sidebar>
