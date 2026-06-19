@@ -12,6 +12,7 @@ export interface RoleData {
 
 export interface UserContextData {
   isDeveloper?: boolean;
+  globalRole?: string; // الدور العالمي المخزن في global_users
   roleData?: RoleData | null;
 }
 
@@ -20,12 +21,20 @@ export interface UserContextData {
  */
 export function hasPermission(user: UserContextData | null, code: PermissionCode): boolean {
   if (!user) return false;
+  
+  // 1. صلاحيات المطور (وصول مطلق)
   if (user.isDeveloper) return true;
+  
+  // 2. معالجة حالة المدير العالمي (للتهيئة الأولية للنظام)
+  // إذا كان المستخدم مسجلاً كـ admin في السجل العالمي، يمنح صلاحية النجمة تلقائياً
+  if (user.globalRole === 'admin' || user.globalRole === 'Admin') return true;
+
+  // 3. التحقق من مصفوفة الصلاحيات المرتبطة بالدور
   if (!user.roleData?.permissions) return false;
 
   const perms = user.roleData.permissions;
   
-  // إذا كان يملك صلاحية النجمة (كل شيء)
+  // إذا كان يملك صلاحية النجمة في دوره (مدير محلي)
   if (perms.includes('*')) return true;
   
   return perms.includes(code);

@@ -72,6 +72,14 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
       }
       toast({ title: t('saved') });
       onClose();
+    } catch (e: any) {
+       toast({ 
+         variant: "destructive", 
+         title: t('error'), 
+         description: e.message.includes('UNAUTHORIZED') 
+           ? (isRtl ? 'لا تملك صلاحية تعديل الأدوار.' : 'Unauthorized to edit roles.') 
+           : t('saveFailed') 
+       });
     } finally {
       setLoading(false);
     }
