@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -11,12 +10,11 @@ import {
   query,
   where,
   getDocs,
-  getDoc,
-  writeBatch
+  getDoc
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { LeaveRequest, Employee } from '@/types/hr';
+import { LeaveRequest } from '@/types/hr';
 import { ensureActionPermission } from '@/lib/permissions';
 import { paths } from '@/firebase/multi-tenant';
 
@@ -30,7 +28,7 @@ export class LeaveService {
   async submitRequest(data: Omit<LeaveRequest, 'id' | 'createdAt' | 'updatedAt' | 'companyId' | 'status'>) {
     const path = paths.leaveRequests(this.companyId);
     
-    // 1. منع التداخل (Overlap Detection)
+    // فحص التداخل (قراءة - تتطلب await)
     const overlapQuery = query(
       collection(this.db, path),
       where('userId', '==', data.userId),
@@ -47,7 +45,6 @@ export class LeaveService {
       throw new Error('OVERLAP: يوجد طلب إجازة آخر متداخل مع هذه الفترة.');
     }
 
-    // 2. إعداد البيانات
     const docData = {
       ...data,
       status: 'pending',
@@ -56,43 +53,33 @@ export class LeaveService {
       updatedAt: serverTimestamp()
     };
 
-    try {
-      return await addDoc(collection(this.db, path), docData);
-    } catch (err) {
+    // كتابة - غير محظورة
+    addDoc(collection(this.db, path), docData).catch(async (err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path,
         operation: 'create',
         requestResourceData: docData
       }));
-      throw err;
-    }
+    });
   }
 
   async updateRequestStatus(leaveId: string, status: LeaveRequest['status'], adminId: string, comment?: string) {
     ensureActionPermission(this.permissions, 'hr:edit');
-
     const leaveRef = doc(this.db, paths.leaveRequests(this.companyId), leaveId);
-    const leaveSnap = await getDoc(leaveRef);
-    if (!leaveSnap.exists()) throw new Error('Request not found');
-    
-    const leaveData = leaveSnap.data() as LeaveRequest;
 
-    try {
-      await updateDoc(leaveRef, {
-        status,
-        approvedBy: adminId,
-        approvedAt: serverTimestamp(),
-        comment: comment || '',
-        updatedAt: serverTimestamp()
-      });
+    const updateData = {
+      status,
+      approvedBy: adminId,
+      approvedAt: serverTimestamp(),
+      comment: comment || '',
+      updatedAt: serverTimestamp()
+    };
 
-      // إذا عادت الإجازة، يمكن تحديث حالة الموظف هنا في النسخة الكاملة
-    } catch (err) {
+    updateDoc(leaveRef, updateData).catch(async (err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: leaveRef.path,
         operation: 'update'
       }));
-      throw err;
-    }
+    });
   }
 }

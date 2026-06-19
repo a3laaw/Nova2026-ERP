@@ -35,16 +35,14 @@ export class HRService {
       updatedAt: serverTimestamp(),
     };
 
-    try {
-      return await addDoc(collection(this.db, path), docData);
-    } catch (err) {
+    // تنفيذ غير محظور (Non-blocking)
+    addDoc(collection(this.db, path), docData).catch(async (err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path,
         operation: 'create',
         requestResourceData: docData
       }));
-      throw err;
-    }
+    });
   }
 
   async updateEmployee(id: string, newData: Partial<Employee>, currentUser: { uid: string, name: string }) {
@@ -57,14 +55,18 @@ export class HRService {
       if (!oldSnap.exists()) throw new Error('Employee not found');
       const oldData = oldSnap.data() as Employee;
 
-      // الحقول التي نريد مراقبتها في سجل التدقيق
       const criticalFields: (keyof Employee)[] = ['basicSalary', 'jobTitle', 'departmentName', 'status', 'contractExpiry'];
-      
       const updates: any = { ...newData, updatedAt: serverTimestamp() };
       
-      await updateDoc(empRef, updates);
+      // تحديث غير محظور
+      updateDoc(empRef, updates).catch(async (err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: empRef.path,
+          operation: 'update',
+          requestResourceData: updates
+        }));
+      });
 
-      // تسجيل التدقيق آلياً
       for (const field of criticalFields) {
         if (newData[field] !== undefined && newData[field] !== oldData[field]) {
           this.addAuditLog(id, {
@@ -78,11 +80,6 @@ export class HRService {
         }
       }
     } catch (err) {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: `${path}/${id}`,
-        operation: 'update',
-        requestResourceData: newData
-      }));
       throw err;
     }
   }
@@ -100,26 +97,24 @@ export class HRService {
       updatedAt: serverTimestamp()
     };
 
-    try {
-      await updateDoc(empRef, updateData);
-      await this.addAuditLog(id, {
-        action: 'terminate',
-        field: 'status',
-        oldValue: 'active',
-        newValue: 'terminated',
-        changedBy: currentUser.uid,
-        changedByName: currentUser.name
-      });
-    } catch (err) {
+    updateDoc(empRef, updateData).catch(async (err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: `${path}/${id}`,
+        path: empRef.path,
         operation: 'update'
       }));
-      throw err;
-    }
+    });
+
+    this.addAuditLog(id, {
+      action: 'terminate',
+      field: 'status',
+      oldValue: 'active',
+      newValue: 'terminated',
+      changedBy: currentUser.uid,
+      changedByName: currentUser.name
+    });
   }
 
-  private async addAuditLog(employeeId: string, log: Omit<EmployeeAuditLog, 'id' | 'createdAt' | 'updatedAt' | 'companyId' | 'employeeId'>) {
+  private addAuditLog(employeeId: string, log: Omit<EmployeeAuditLog, 'id' | 'createdAt' | 'updatedAt' | 'companyId' | 'employeeId'>) {
     const logPath = `${paths.employees(this.companyId)}/${employeeId}/auditLogs`;
     const logData = {
       ...log,
@@ -128,7 +123,7 @@ export class HRService {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
-    await addDoc(collection(this.db, logPath), logData);
+    addDoc(collection(this.db, logPath), logData);
   }
 
   async getEmployeeByNumber(empNumber: string) {

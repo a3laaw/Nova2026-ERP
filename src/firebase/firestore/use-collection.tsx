@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { onSnapshot, Query, DocumentData, CollectionReference } from 'firebase/firestore';
+import { onSnapshot, Query, DocumentData } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
@@ -26,9 +26,9 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
         setData(items);
         setLoading(false);
       },
-      async (serverError) => {
-        // استخراج المسار بشكل أفضل للرسائل التنبيهية
-        const safePath = (query as any)._query?.path?.toString() || (query as any).path || 'collection_query';
+      (serverError) => {
+        // تجنب الوصول للخصائص الخاصة لمنع أخطاء التأكيد الداخلي
+        const safePath = 'collection_query';
         
         const permissionError = new FirestorePermissionError({
           path: safePath,

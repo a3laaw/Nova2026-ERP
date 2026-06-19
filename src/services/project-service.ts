@@ -4,7 +4,7 @@ import {
   Firestore, 
   collection, 
   doc, 
-  addDoc, 
+  setDoc,
   getDocs, 
   serverTimestamp,
   writeBatch,
@@ -25,10 +25,12 @@ export class ProjectService {
   ) {}
 
   async createProject(projectData: Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'companyId'>) {
-    // Phase 3 Guard
     ensureActionPermission(this.permissions, 'projects:create');
 
-    const projectRef = collection(this.db, paths.projects(this.companyId));
+    // توليد المرجع مسبقاً للحصول على ID دون انتظار الكتابة
+    const projectRef = doc(collection(this.db, paths.projects(this.companyId)));
+    const projectId = projectRef.id;
+
     const fullProjectData = {
       ...projectData,
       companyId: this.companyId,
@@ -36,65 +38,66 @@ export class ProjectService {
       updatedAt: serverTimestamp(),
     };
 
-    try {
-      const projectDoc = await addDoc(projectRef, fullProjectData);
-      const projectId = projectDoc.id;
-
-      const stagesPath = paths.technicalStages(
-        this.companyId, 
-        projectData.activityTypeId, 
-        projectData.serviceId, 
-        projectData.subServiceId
-      );
-      const stagesSnap = await getDocs(collection(this.db, stagesPath));
-      
-      if (!stagesSnap.empty) {
-        const batch = writeBatch(this.db);
-        const instancesRef = collection(this.db, paths.stageInstances(this.companyId, projectId));
-
-        stagesSnap.docs.forEach(stageDoc => {
-          const stage = stageDoc.data() as TechnicalStage;
-          const instanceRef = doc(instancesRef);
-          
-          const instanceData: Omit<StageInstance, 'id'> = {
-            projectId,
-            templateStageId: stageDoc.id,
-            name: stage.name,
-            nameEn: stage.nameEn,
-            description: stage.description,
-            status: 'pending',
-            isNumeric: stage.isNumeric,
-            numericTarget: stage.numericTarget,
-            numericValue: 0,
-            isTimed: stage.isTimed,
-            timeTargetDays: stage.timeTargetDays,
-            nextStageIds: stage.nextStageIds || [],
-            companyId: this.companyId,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp()
-          };
-
-          batch.set(instanceRef, instanceData);
-        });
-
-        await batch.commit();
-      }
-
-      return projectId;
-    } catch (err: any) {
+    // كتابة - غير محظورة
+    setDoc(projectRef, fullProjectData).catch((err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({ 
-        path: `projects_creation_flow`, 
-        operation: 'create' 
+        path: projectRef.path, 
+        operation: 'create',
+        requestResourceData: fullProjectData
       }));
-      throw err;
+    });
+
+    // استنساخ المراحل الفنية (قراءة - تتطلب await)
+    const stagesPath = paths.technicalStages(
+      this.companyId, 
+      projectData.activityTypeId, 
+      projectData.serviceId, 
+      projectData.subServiceId
+    );
+    const stagesSnap = await getDocs(collection(this.db, stagesPath));
+    
+    if (!stagesSnap.empty) {
+      const batch = writeBatch(this.db);
+      const instancesRef = collection(this.db, paths.stageInstances(this.companyId, projectId));
+
+      stagesSnap.docs.forEach(stageDoc => {
+        const stage = stageDoc.data() as TechnicalStage;
+        const instanceRef = doc(instancesRef);
+        
+        batch.set(instanceRef, {
+          projectId,
+          templateStageId: stageDoc.id,
+          name: stage.name,
+          nameEn: stage.nameEn,
+          description: stage.description,
+          status: 'pending',
+          isNumeric: stage.isNumeric,
+          numericTarget: stage.numericTarget,
+          numericValue: 0,
+          isTimed: stage.isTimed,
+          timeTargetDays: stage.timeTargetDays,
+          nextStageIds: stage.nextStageIds || [],
+          companyId: this.companyId,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+      });
+
+      batch.commit().catch((err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ 
+          path: `batch_stages_${projectId}`, 
+          operation: 'write' 
+        }));
+      });
     }
+
+    return projectId;
   }
 
   completeStage(projectId: string, stageId: string, userId: string) {
-    // Phase 3 Guard
     ensureActionPermission(this.permissions, 'projects:edit');
-
     const stageRef = doc(this.db, paths.stageInstances(this.companyId, projectId), stageId);
+    
     updateDoc(stageRef, { 
       status: 'completed', 
       completedAt: serverTimestamp(),

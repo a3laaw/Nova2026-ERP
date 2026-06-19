@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, User, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { useAuth, useFirestore } from '@/firebase';
 import { Role } from '@/types/roles';
 
@@ -18,7 +18,7 @@ interface GlobalUserData {
 interface AuthContextType {
   user: User | null;
   globalUser: GlobalUserData | null;
-  roleData: Role | null; // إضافة بيانات الدور المباشرة
+  roleData: Role | null;
   loading: boolean;
   logout: () => Promise<void>;
   error: string | null;
@@ -35,68 +35,79 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // 1. مراقبة حالة المصادقة (Auth State)
   useEffect(() => {
-    if (!auth || !db) return;
-
-    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-      setLoading(true);
+    if (!auth) return;
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
-      
-      if (firebaseUser) {
-        try {
-          if (firebaseUser.email === 'admin@novaflow.com') {
-            const devData: GlobalUserData = {
-              companyId: 'dev_hq',
-              role: 'developer',
-              isDeveloper: true,
-              username: 'super_dev'
-            };
-            setGlobalUser(devData);
-            setRoleData({ permissions: ['*'] } as any);
-            setLoading(false);
-          } else {
-            // جلب بيانات المستخدم العالمي
-            const docRef = doc(db, 'global_users', firebaseUser.uid);
-            const unsubscribeGlobalUser = onSnapshot(docRef, (snap) => {
-              if (snap.exists()) {
-                const gData = snap.data() as GlobalUserData;
-                setGlobalUser(gData);
-
-                // إذا وجدنا RoleId، نقوم بجلب بيانات الصلاحيات فوراً
-                if (gData.companyId && gData.roleId) {
-                  const roleRef = doc(db, 'companies', gData.companyId, 'roles', gData.roleId);
-                  onSnapshot(roleRef, (roleSnap) => {
-                    if (roleSnap.exists()) {
-                      setRoleData(roleSnap.data() as Role);
-                    }
-                    setLoading(false);
-                  });
-                } else {
-                  setRoleData(null);
-                  setLoading(false);
-                }
-              } else {
-                setGlobalUser(null);
-                setRoleData(null);
-                setLoading(false);
-              }
-            });
-
-            return () => unsubscribeGlobalUser();
-          }
-        } catch (err: any) {
-          setError("حدث خطأ في جلب بيانات المستخدم.");
-          setLoading(false);
-        }
-      } else {
+      if (!firebaseUser) {
         setGlobalUser(null);
         setRoleData(null);
         setLoading(false);
       }
     });
+    return () => unsubscribe();
+  }, [auth]);
 
-    return () => unsubscribeAuth();
-  }, [auth, db]);
+  // 2. مراقبة بيانات المستخدم العالمي (Global User Data)
+  useEffect(() => {
+    if (!db || !user) return;
+
+    if (user.email === 'admin@novaflow.com') {
+      setGlobalUser({
+        companyId: 'dev_hq',
+        role: 'developer',
+        isDeveloper: true,
+        username: 'super_dev'
+      });
+      setRoleData({ permissions: ['*'] } as any);
+      setLoading(false);
+      return;
+    }
+
+    const docRef = doc(db, 'global_users', user.uid);
+    const unsubscribe = onSnapshot(docRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data() as GlobalUserData;
+        setGlobalUser(data);
+        // إذا لم يكن هناك دور محدد، نتوقف عن التحميل هنا
+        if (!data.roleId) setLoading(false);
+      } else {
+        setGlobalUser(null);
+        setLoading(false);
+      }
+    }, (err) => {
+      console.error("Global user snapshot error:", err);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [db, user]);
+
+  // 3. مراقبة بيانات الدور (Role Data) - تنفذ فقط عند توفر roleId
+  useEffect(() => {
+    if (!db || !globalUser?.companyId || !globalUser?.roleId) {
+      setRoleData(null);
+      // إذا كنا في حالة مستخدم مسجل ولكن بدون صلاحيات دور، ننهي التحميل
+      if (globalUser && !globalUser.roleId) setLoading(false);
+      return;
+    }
+
+    const roleRef = doc(db, 'companies', globalUser.companyId, 'roles', globalUser.roleId);
+    const unsubscribe = onSnapshot(roleRef, (snap) => {
+      if (snap.exists()) {
+        setRoleData(snap.data() as Role);
+      } else {
+        setRoleData(null);
+      }
+      setLoading(false);
+    }, (err) => {
+      console.error("Role snapshot error:", err);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [db, globalUser?.companyId, globalUser?.roleId]);
 
   const logout = async () => {
     if (auth) {
