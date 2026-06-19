@@ -8,16 +8,19 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { 
   Clock, Calendar, MoonStar, 
   Loader2, Save, Sun, HardHat,
-  Coffee, Utensils, ArrowRight
+  Coffee, Utensils, Sparkles, Trash2,
+  CalendarCheck
 } from "lucide-react";
 import { useFirestore } from '@/firebase';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { WorkHoursService } from '@/services/work-hours-service';
-import { WorkHoursSettings, DayOfWeek, DailySchedule } from '@/types/work-hours';
+import { WorkHoursSettings, DayOfWeek, DailySchedule, PublicHoliday } from '@/types/work-hours';
+import { fetchPublicHolidays } from '@/ai/flows/fetch-holidays-flow';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -29,6 +32,7 @@ export function WorkHoursManager() {
   const db = useFirestore();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [fetchingAI, setFetchingAI] = useState(false);
   const [settings, setSettings] = useState<WorkHoursSettings | null>(null);
 
   const service = useMemo(() => 
@@ -40,7 +44,11 @@ export function WorkHoursManager() {
       if (!service) return;
       try {
         const data = await service.getSettings();
-        setSettings(data || { ...service.getDefaultSettings(), companyId: globalUser!.companyId } as WorkHoursSettings);
+        setSettings(data || { 
+          ...service.getDefaultSettings(), 
+          companyId: globalUser!.companyId,
+          publicHolidays: [] 
+        } as WorkHoursSettings);
       } catch (e) {
         toast({ variant: "destructive", title: t('error'), description: "Error loading settings" });
       } finally {
@@ -63,6 +71,40 @@ export function WorkHoursManager() {
     }
   };
 
+  const handleFetchHolidays = async () => {
+    setFetchingAI(true);
+    try {
+      const year = new Date().getFullYear();
+      const response = await fetchPublicHolidays({ country: 'الكويت', year });
+      if (response && response.holidays) {
+        const existingDates = new Set(settings?.publicHolidays?.map(h => h.date) || []);
+        const newHolidays = response.holidays.filter(h => !existingDates.has(h.date));
+        
+        setSettings(prev => ({
+          ...prev!,
+          publicHolidays: [...(prev?.publicHolidays || []), ...newHolidays]
+        }));
+        
+        toast({
+          title: lang === 'ar' ? "تم العثور على عطلات" : "Holidays Found",
+          description: lang === 'ar' ? `تمت إضافة ${newHolidays.length} عطلة جديدة.` : `Added ${newHolidays.length} new holidays.`,
+        });
+      }
+    } catch (error) {
+      toast({ variant: "destructive", title: t('error'), description: "AI Search failed" });
+    } finally {
+      setFetchingAI(false);
+    }
+  };
+
+  const removePublicHoliday = (date: string) => {
+    if (!settings) return;
+    setSettings({
+      ...settings,
+      publicHolidays: settings.publicHolidays.filter(h => h.date !== date)
+    });
+  };
+
   const updateSchedule = (scope: 'general' | 'architectural', field: keyof DailySchedule, value: any) => {
     if (!settings) return;
     setSettings({
@@ -83,7 +125,6 @@ export function WorkHoursManager() {
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20" dir={dir}>
       
-      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start">
            <h1 className="text-3xl font-black font-headline flex items-center gap-3">
@@ -106,7 +147,6 @@ export function WorkHoursManager() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         
-        {/* General Working Hours */}
         <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
           <CardHeader className="bg-primary/5 border-b p-8 text-start">
              <div className="flex items-center gap-3">
@@ -149,7 +189,6 @@ export function WorkHoursManager() {
           </CardContent>
         </Card>
 
-        {/* Architectural Working Hours */}
         <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
           <CardHeader className="bg-blue-50/50 border-b p-8 text-start">
              <div className="flex items-center gap-3">
@@ -192,21 +231,30 @@ export function WorkHoursManager() {
           </CardContent>
         </Card>
 
-        {/* Holidays & Half-Day */}
+        {/* Holidays Section */}
         <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 lg:col-span-2">
-          <CardHeader className="bg-amber-50/50 border-b p-8 text-start">
+          <CardHeader className="bg-amber-50/50 border-b p-8 text-start flex flex-row items-center justify-between">
              <div className="flex items-center gap-3">
                 <div className="p-3 bg-white rounded-2xl shadow-sm text-amber-600"><Calendar className="h-6 w-6" /></div>
                 <div>
-                   <CardTitle className="text-xl font-black">{t('holidays')} & {t('halfDay')}</CardTitle>
-                   <CardDescription className="font-bold">{lang === 'ar' ? 'تحديد أيام الإغلاق التام وأيام العمل القصيرة.' : 'Define full closure days and shorter working days.'}</CardDescription>
+                   <CardTitle className="text-xl font-black">{t('holidays')}</CardTitle>
+                   <CardDescription className="font-bold">{lang === 'ar' ? 'العطلات الأسبوعية والرسمية' : 'Weekly and public holidays'}</CardDescription>
                 </div>
              </div>
+             <Button 
+                variant="outline" 
+                onClick={handleFetchHolidays}
+                disabled={fetchingAI}
+                className="rounded-xl border-amber-200 text-amber-700 bg-white hover:bg-amber-50 gap-2 font-bold"
+             >
+                {fetchingAI ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                {lang === 'ar' ? 'بحث ذكي عن العطلات الرسمية' : 'Smart Fetch Public Holidays'}
+             </Button>
           </CardHeader>
-          <CardContent className="p-8 grid grid-cols-1 md:grid-cols-2 gap-12 text-start">
+          <CardContent className="p-8 space-y-12 text-start">
              
              <div className="space-y-4">
-                <h4 className="font-black text-sm border-s-4 border-amber-400 ps-3">{t('holidays')}</h4>
+                <h4 className="font-black text-sm border-s-4 border-amber-400 ps-3">{t('holidays')} (Weekly)</h4>
                 <div className="flex flex-wrap gap-3">
                    {DAYS.map(day => (
                       <div 
@@ -223,11 +271,52 @@ export function WorkHoursManager() {
                       </div>
                    ))}
                 </div>
-                <p className="text-[10px] text-muted-foreground font-bold">{lang === 'ar' ? '* الأيام المحددة سيتم إغلاق الحجوزات فيها تماماً.' : '* Selected days will be completely closed for bookings.'}</p>
              </div>
 
-             <div className="space-y-6 border-r md:ps-12 border-slate-100">
-                <h4 className="font-black text-sm border-s-4 border-blue-400 ps-3">{t('halfDay')}</h4>
+             <div className="space-y-4 pt-8 border-t">
+                <h4 className="font-black text-sm border-s-4 border-emerald-400 ps-3 flex items-center gap-2">
+                  <CalendarCheck className="h-4 w-4" /> 
+                  {lang === 'ar' ? 'العطلات الرسمية المحددة' : 'Specific Public Holidays'}
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {settings?.publicHolidays?.length === 0 ? (
+                    <p className="text-xs text-muted-foreground italic col-span-full">{lang === 'ar' ? 'لا توجد عطلات رسمية محددة. جرب البحث الذكي أعلاه.' : 'No public holidays defined. Try smart fetch above.'}</p>
+                  ) : (
+                    settings?.publicHolidays?.map((ph) => (
+                      <div key={ph.date} className="p-4 rounded-2xl bg-slate-50 border-2 border-slate-100 flex items-center justify-between group">
+                        <div className="text-start">
+                          <p className="font-black text-sm text-slate-800">{lang === 'ar' ? ph.name : ph.nameEn}</p>
+                          <p className="text-[10px] font-mono text-slate-400">{ph.date}</p>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => removePublicHoliday(ph.date)}
+                          className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))
+                  )}
+                </div>
+             </div>
+          </CardContent>
+        </Card>
+
+        {/* Half-Day Policy */}
+        <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 lg:col-span-2">
+          <CardHeader className="bg-blue-50/50 border-b p-8 text-start">
+             <div className="flex items-center gap-3">
+                <div className="p-3 bg-white rounded-2xl shadow-sm text-blue-600"><Calendar className="h-6 w-6" /></div>
+                <div>
+                   <CardTitle className="text-xl font-black">{t('halfDay')}</CardTitle>
+                   <CardDescription className="font-bold">{lang === 'ar' ? 'نظام العمل في أيام الدوام القصيرة.' : 'Working policy for short days.'}</CardDescription>
+                </div>
+             </div>
+          </CardHeader>
+          <CardContent className="p-8 grid grid-cols-1 md:grid-cols-2 gap-12 text-start">
+             <div className="space-y-6">
                 <div className="grid grid-cols-1 gap-6">
                    <div className="space-y-2">
                       <Label className="text-xs font-black">{lang === 'ar' ? 'يوم نصف الدوام' : 'Half-Day of week'}</Label>
@@ -263,7 +352,7 @@ export function WorkHoursManager() {
           </CardContent>
         </Card>
 
-        {/* Ramadan Schedule (Light Theme) */}
+        {/* Ramadan Schedule */}
         <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden lg:col-span-2 ring-1 ring-black/5">
           <CardHeader className="bg-purple-50/50 border-b p-8 text-start">
              <div className="flex items-center justify-between">
@@ -288,7 +377,6 @@ export function WorkHoursManager() {
           {settings?.ramadan.enabled && (
              <CardContent className="p-10 space-y-10 text-start animate-in fade-in zoom-in-95 duration-500">
                 
-                {/* Period Dates */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                    <div className="space-y-3">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('periodStart')}</Label>
@@ -302,7 +390,6 @@ export function WorkHoursManager() {
 
                 <div className="h-[1px] bg-slate-100 w-full" />
 
-                {/* Shift Mode Selector */}
                 <div className="space-y-4">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('ramadanMode')}</Label>
                   <Tabs 
@@ -317,9 +404,7 @@ export function WorkHoursManager() {
                   </Tabs>
                 </div>
 
-                {/* Times Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                   {/* Morning Shift (Always Visible) */}
                    <div className="space-y-6">
                       <div className="flex items-center gap-3 text-purple-600">
                          <Coffee className="h-5 w-5" />
@@ -331,7 +416,6 @@ export function WorkHoursManager() {
                       </div>
                    </div>
 
-                   {/* Evening Shift (Conditional) */}
                    <div className={cn("space-y-6 transition-all duration-500", settings.ramadan.mode === 'single' ? 'opacity-20 pointer-events-none grayscale' : 'opacity-100')}>
                       <div className="flex items-center gap-3 text-purple-600">
                          <Utensils className="h-5 w-5" />
@@ -344,7 +428,6 @@ export function WorkHoursManager() {
                    </div>
                 </div>
 
-                {/* Parameters */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-10 border-t border-slate-100">
                    <div className="space-y-3">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('slotDuration')}</Label>

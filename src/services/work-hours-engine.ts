@@ -1,6 +1,5 @@
 /**
  * @fileOverview محرك حساب مواعيد العمل (Work Hours Engine).
- * يحتوي على المنطق البرمجي لتوليد الخانات الزمنية بناءً على القواعد المرجعية.
  */
 
 import { format, parse, addMinutes, startOfDay } from 'date-fns';
@@ -59,11 +58,16 @@ export function isWithinRamadan(date: Date, config: WorkHoursSettings['ramadan']
 }
 
 /**
- * التحقق من العطلة الأسبوعية
+ * التحقق من العطلة (أسبوعية أو رسمية محددة بتاريخ)
  */
-export function isHoliday(date: Date, holidays: DayOfWeek[]): boolean {
+export function isHoliday(date: Date, settings: WorkHoursSettings): boolean {
+  // 1. فحص العطلة الأسبوعية
   const dayName = format(date, 'EEEE') as DayOfWeek;
-  return holidays.includes(dayName);
+  if (settings.holidays.includes(dayName)) return true;
+
+  // 2. فحص العطلات الرسمية المحددة بتاريخ
+  const dateStr = format(date, 'yyyy-MM-dd');
+  return settings.publicHolidays?.some(ph => ph.date === dateStr) || false;
 }
 
 /**
@@ -81,10 +85,8 @@ export function buildDaySlots(
   settings: WorkHoursSettings, 
   scope: 'general' | 'architectural'
 ): TimeSlotsResult {
-  const dayName = format(date, 'EEEE') as DayOfWeek;
-  
-  // 1. فحص العطلة
-  if (settings.holidays.includes(dayName)) {
+  // 1. فحص العطلة (أسبوعية أو رسمية)
+  if (isHoliday(date, settings)) {
     return {
       morningSlots: [],
       eveningSlots: [],
@@ -111,7 +113,6 @@ export function buildDaySlots(
       settings.ramadan.bufferMinutes
     );
     
-    // توليد الفترة الثانية فقط إذا كان الوضع "فترتين"
     if (settings.ramadan.mode === 'double') {
       eveningSlots = generateTimeSlots(
         settings.ramadan.eveningStartTime,
@@ -166,7 +167,6 @@ export function buildDaySlots(
       }
     }
   } else {
-    // 5. دوام كامل عادي
     morningSlots = generateTimeSlots(
       schedule.morningStartTime!,
       schedule.morningEndTime!,

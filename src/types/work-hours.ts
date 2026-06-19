@@ -21,7 +21,7 @@ export interface HalfDayRule {
 
 export interface RamadanSchedule {
   enabled: boolean;
-  mode: 'single' | 'double'; // جديد: تحديد عدد الفترات
+  mode: 'single' | 'double';
   startDate: string; // YYYY-MM-DD
   endDate: string;
   morningStartTime: string;
@@ -32,10 +32,17 @@ export interface RamadanSchedule {
   bufferMinutes: number;
 }
 
+export interface PublicHoliday {
+  date: string; // YYYY-MM-DD
+  name: string;
+  nameEn: string;
+}
+
 export interface WorkHoursSettings {
   general: DailySchedule;
   architectural: DailySchedule;
   holidays: DayOfWeek[];
+  publicHolidays: PublicHoliday[]; // جديد: العطلات الرسمية المحددة بتاريخ
   halfDay: HalfDayRule;
   ramadan: RamadanSchedule;
   companyId: string;

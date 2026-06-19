@@ -12,6 +12,7 @@ import {
   serverTimestamp 
 } from 'firebase/firestore';
 import { WorkHoursSettings } from '@/types/work-hours';
+import { format } from 'date-fns';
 
 export const WORK_HOURS_DOC_ID = 'work_hours';
 
@@ -62,6 +63,7 @@ export class WorkHoursService {
         bufferMinutes: 0
       },
       holidays: ["Friday"],
+      publicHolidays: [],
       halfDay: {
         day: "Thursday",
         mode: "morning_only",
@@ -81,11 +83,4 @@ export class WorkHoursService {
       }
     };
   }
-}
-
-function format(date: Date, fmt: string): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
 }
