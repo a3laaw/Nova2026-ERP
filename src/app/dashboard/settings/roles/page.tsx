@@ -14,6 +14,7 @@ import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
+import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { RoleService } from '@/services/role-service';
 import { cn } from '@/lib/utils';
@@ -23,6 +24,7 @@ import { RoleMatrixForm } from './role-matrix-form';
 export default function RolesManagerPage() {
   const { globalUser } = useAuthContext();
   const { t, lang, dir } = useLanguage();
+  const { permissions } = usePermissions();
   const db = useFirestore();
   const companyId = globalUser?.companyId;
   const isRtl = lang === 'ar';
@@ -32,7 +34,10 @@ export default function RolesManagerPage() {
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [seeding, setSeeding] = useState(false);
 
-  const roleService = useMemo(() => db && companyId ? new RoleService(db, companyId) : null, [db, companyId]);
+  const roleService = useMemo(() => 
+    db && companyId ? new RoleService(db, companyId, permissions) : null, 
+  [db, companyId, permissions]);
+
   const rolesQuery = useMemo(() => companyId && db ? query(collection(db, paths.roles(companyId)), orderBy('order')) : null, [db, companyId]);
   const { data: roles, loading } = useCollection<Role>(rolesQuery);
 
@@ -67,7 +72,6 @@ export default function RolesManagerPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
-        {/* اليمين: قائمة الأدوار الحالية (كما في التصميم) */}
         <div className="lg:col-span-3 space-y-6">
           <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
              <CardHeader className="bg-slate-50/50 border-b p-6 text-start">
@@ -106,7 +110,7 @@ export default function RolesManagerPage() {
                                </span>
                                <Badge variant="outline" className="h-4 px-1.5 text-[8px] border-slate-200 text-slate-400 font-bold">
                                   {role.permissions.includes('*') ? 'Admin' : `${role.permissions.length} perms`}
-                               </Badge>
+                                </Badge>
                             </div>
                          </div>
                          <div className={cn(
@@ -138,7 +142,6 @@ export default function RolesManagerPage() {
           )}
         </div>
 
-        {/* اليسار: مصفوفة الصلاحيات (الجدول المطور) */}
         <div className="lg:col-span-9">
            {selectedRole || isAddingNew ? (
              <RoleMatrixForm 

@@ -13,6 +13,7 @@ import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
+import { usePermissions } from '@/hooks/use-permissions';
 import { LeaveService } from '@/services/leave-service';
 import { LeaveRequest, LeaveType } from '@/types/hr';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
@@ -27,6 +28,7 @@ import { cn } from '@/lib/utils';
 export function LeavesManager() {
   const { globalUser, user } = useAuthContext();
   const { t, lang, dir } = useLanguage();
+  const { permissions } = usePermissions();
   const db = useFirestore();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
@@ -40,7 +42,10 @@ export function LeavesManager() {
     reason: ''
   });
 
-  const leaveService = useMemo(() => db && companyId ? new LeaveService(db, companyId) : null, [db, companyId]);
+  const leaveService = useMemo(() => 
+    db && companyId ? new LeaveService(db, companyId, permissions) : null, 
+  [db, companyId, permissions]);
+
   const leavesQuery = useMemo(() => companyId && db ? query(collection(db, 'companies', companyId, 'leaves'), orderBy('createdAt', 'desc')) : null, [db, companyId]);
   const { data: leaves, loading } = useCollection<LeaveRequest>(leavesQuery);
 
@@ -66,8 +71,12 @@ export function LeavesManager() {
       toast({ title: t('saved'), description: isRtl ? 'تم تقديم طلب الإجازة.' : 'Leave request submitted.' });
       setIsFormOpen(false);
       setForm({ type: 'annual', startDate: '', endDate: '', reason: '' });
-    } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
+    } catch (e: any) {
+      toast({ 
+        variant: "destructive", 
+        title: t('error'),
+        description: e.message.includes('UNAUTHORIZED') ? (isRtl ? 'لا تملك صلاحية تقديم الإجازات.' : 'Unauthorized to submit leaves.') : t('saveFailed')
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -78,8 +87,12 @@ export function LeavesManager() {
     try {
       await leaveService.updateRequestStatus(leaveId, status, user.uid);
       toast({ title: t('saved') });
-    } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
+    } catch (e: any) {
+      toast({ 
+        variant: "destructive", 
+        title: t('error'),
+        description: e.message.includes('UNAUTHORIZED') ? (isRtl ? 'لا تملك صلاحية اعتماد الإجازات.' : 'Unauthorized to approve leaves.') : t('saveFailed')
+      });
     }
   };
 
