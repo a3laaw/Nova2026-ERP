@@ -15,7 +15,7 @@ import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
 import { RoleService } from '@/services/role-service';
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Role } from '@/types/roles';
@@ -150,6 +150,9 @@ export default function RolesManagerPage({ isSubComponent = false }: RolesManage
 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="rounded-[2.5rem] max-w-4xl p-0 overflow-hidden border-0 shadow-2xl">
+          <DialogHeader className="hidden">
+             <DialogTitle>Role Management</DialogTitle>
+          </DialogHeader>
           <RoleForm 
             role={editingRole} 
             onClose={() => setIsFormOpen(false)} 

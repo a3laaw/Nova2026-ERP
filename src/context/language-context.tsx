@@ -132,6 +132,15 @@ const translations: Record<Language, Record<string, string>> = {
     periodStart: 'بداية الفترة',
     periodEnd: 'نهاية الفترة',
     addKuwaitHolidays: 'إضافة عطلات الكويت 2026',
+    // Profile
+    personalInfo: 'المعلومات الشخصية',
+    accountSecurity: 'أمن الحساب',
+    username: 'اسم المستخدم',
+    displayName: 'الاسم الظاهر',
+    currentRole: 'الدور الحالي',
+    changePassword: 'تغيير كلمة المرور',
+    passwordDesc: 'تأكد من اختيار كلمة مرور قوية لحماية حسابك.',
+    lastLogin: 'آخر تسجيل دخول',
     // Days
     Sunday: 'الأحد',
     Monday: 'الاثنين',
@@ -261,6 +270,15 @@ const translations: Record<Language, Record<string, string>> = {
     periodStart: 'Period Start',
     periodEnd: 'Period End',
     addKuwaitHolidays: 'Add Kuwait Holidays 2026',
+    // Profile
+    personalInfo: 'Personal Information',
+    accountSecurity: 'Account Security',
+    username: 'Username',
+    displayName: 'Display Name',
+    currentRole: 'Current Role',
+    changePassword: 'Change Password',
+    passwordDesc: 'Ensure your account uses a long, random password to stay secure.',
+    lastLogin: 'Last Login',
     // Days
     Sunday: 'Sunday',
     Monday: 'Monday',
