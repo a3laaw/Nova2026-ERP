@@ -207,7 +207,7 @@ export function DashboardSidebar() {
                               </SidebarMenuSubButton>
                             </SidebarMenuSubItem>
                             {item.subItems.map(sub => (
-                              <SidebarMenuSubItem key={sub.url}>
+                              <SidebarMenuSubItem key={sub.title}>
                                 <SidebarMenuSubButton asChild isActive={pathname === sub.url}>
                                   <Link href={sub.url} className="text-xs flex items-center gap-2">
                                     <sub.icon className="h-3.5 w-3.5 opacity-70" />
