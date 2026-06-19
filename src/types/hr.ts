@@ -6,6 +6,7 @@ export type LeaveType = 'Annual' | 'Sick' | 'Emergency' | 'Unpaid';
 export type PermissionType = 'late_arrival' | 'early_departure';
 export type AttendanceStatus = 'present' | 'absent' | 'weekend' | 'holiday';
 export type PayrollStatus = 'draft' | 'reviewed' | 'approved' | 'paid';
+export type PaymentMethod = 'cash' | 'transfer' | 'check' | 'payroll';
 
 export interface Employee extends BaseReference {
   employeeNumber: string;
@@ -23,6 +24,7 @@ export interface Employee extends BaseReference {
   hireDate: string; // YYYY-MM-DD
   contractType?: string;
   status: EmployeeStatus;
+  paymentMethod?: PaymentMethod;
   basicSalary: number;
   housingAllowance?: number;
   transportAllowance?: number;

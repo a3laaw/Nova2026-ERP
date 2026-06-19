@@ -9,7 +9,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { User, Briefcase, DollarSign, Loader2, Save, Phone, Mail, CreditCard, ShieldCheck } from "lucide-react";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
+import { 
+  User, 
+  Briefcase, 
+  DollarSign, 
+  Loader2, 
+  Save, 
+  Phone, 
+  Mail, 
+  CreditCard, 
+  ShieldCheck,
+  Wallet
+} from "lucide-react";
 import { Employee } from '@/types/hr';
 import { SmartDateInput } from '@/components/ui/smart-date-input';
 import { useLanguage } from '@/context/language-context';
@@ -24,6 +42,7 @@ const employeeSchema = z.object({
   hireDate: z.string().min(1, "Required"),
   jobTitle: z.string().min(1, "Required"),
   departmentName: z.string().min(1, "Required"),
+  paymentMethod: z.enum(['cash', 'transfer', 'check', 'payroll']),
   basicSalary: z.coerce.number().min(0),
   housingAllowance: z.coerce.number().min(0).optional(),
   transportAllowance: z.coerce.number().min(0).optional(),
@@ -55,6 +74,7 @@ export function EmployeeForm({ initialData, onSubmit, loading }: Props) {
       hireDate: new Date().toISOString().split('T')[0],
       jobTitle: '',
       departmentName: '',
+      paymentMethod: 'cash',
       basicSalary: 0,
       housingAllowance: 0,
       transportAllowance: 0,
@@ -64,6 +84,9 @@ export function EmployeeForm({ initialData, onSubmit, loading }: Props) {
       isActive: true
     }
   });
+
+  const paymentMethod = form.watch('paymentMethod');
+  const showBankFields = paymentMethod === 'payroll';
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8" dir={dir}>
@@ -163,6 +186,27 @@ export function EmployeeForm({ initialData, onSubmit, loading }: Props) {
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="space-y-2 text-start lg:col-span-2">
+                <Label className="font-black text-xs text-slate-500 uppercase tracking-widest">{isRtl ? 'طريقة الصرف' : 'Payment Method'}</Label>
+                <div className="relative">
+                  <Wallet className="absolute start-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300 z-10" />
+                  <Select 
+                    value={paymentMethod} 
+                    onValueChange={(v) => form.setValue('paymentMethod', v as any)}
+                  >
+                    <SelectTrigger className="h-14 rounded-xl ps-11">
+                      <SelectValue placeholder={isRtl ? "اختر طريقة الصرف" : "Select Method"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">{isRtl ? 'نقدي' : 'Cash'}</SelectItem>
+                      <SelectItem value="transfer">{isRtl ? 'تحويل بنكي' : 'Bank Transfer'}</SelectItem>
+                      <SelectItem value="check">{isRtl ? 'شيك' : 'Check'}</SelectItem>
+                      <SelectItem value="payroll">{isRtl ? 'كشف رواتب' : 'Payroll List'}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2 text-start lg:col-span-2">
                 <Label className="font-black text-xs text-slate-500 uppercase tracking-widest">{isRtl ? 'الراتب الأساسي (د.ك)' : 'Basic Salary (KWD)'}</Label>
                 <div className="relative">
                   <span className="absolute start-4 top-1/2 -translate-y-1/2 font-black text-emerald-600">KD</span>
@@ -170,18 +214,22 @@ export function EmployeeForm({ initialData, onSubmit, loading }: Props) {
                 </div>
               </div>
 
-              <div className="space-y-2 text-start lg:col-span-2">
-                <Label className="font-black text-xs text-slate-500 uppercase tracking-widest">{isRtl ? 'اسم البنك' : 'Bank Name'}</Label>
-                <Input {...form.register('bankName')} className="h-14 rounded-xl" placeholder={isRtl ? 'بنك الكويت الوطني' : 'NBK'} />
-              </div>
+              {showBankFields && (
+                <div className="grid grid-cols-1 md:grid-cols-4 lg:col-span-4 gap-6 animate-in fade-in slide-in-from-top-4 duration-300">
+                  <div className="space-y-2 text-start md:col-span-2">
+                    <Label className="font-black text-xs text-slate-500 uppercase tracking-widest">{isRtl ? 'اسم البنك' : 'Bank Name'}</Label>
+                    <Input {...form.register('bankName')} className="h-14 rounded-xl" placeholder={isRtl ? 'بنك الكويت الوطني' : 'NBK'} />
+                  </div>
 
-              <div className="space-y-2 text-start lg:col-span-4">
-                <Label className="font-black text-xs text-slate-500 uppercase tracking-widest">{isRtl ? 'رقم الحساب الدولي (IBAN)' : 'IBAN Number'}</Label>
-                <div className="relative">
-                  <CreditCard className="absolute start-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
-                  <Input {...form.register('iban')} className="h-14 rounded-xl ps-11 font-mono text-start uppercase tracking-wider" dir="ltr" placeholder="KWXXXXXXXXXXXXXXXXXXXXXX" />
+                  <div className="space-y-2 text-start md:col-span-2">
+                    <Label className="font-black text-xs text-slate-500 uppercase tracking-widest">{isRtl ? 'رقم الحساب الدولي (IBAN)' : 'IBAN Number'}</Label>
+                    <div className="relative">
+                      <CreditCard className="absolute start-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+                      <Input {...form.register('iban')} className="h-14 rounded-xl ps-11 font-mono text-start uppercase tracking-wider" dir="ltr" placeholder="KWXXXXXXXXXXXXXXXXXXXXXX" />
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 
