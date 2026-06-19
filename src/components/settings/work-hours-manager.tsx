@@ -263,19 +263,19 @@ export function WorkHoursManager() {
           </CardContent>
         </Card>
 
-        {/* Ramadan Schedule (Enhanced for Custom Shifts & Modern UI) */}
-        <Card className="border-0 shadow-lg rounded-[2.5rem] bg-indigo-950 text-white overflow-hidden lg:col-span-2">
-          <CardHeader className="bg-white/5 border-b p-8 text-start">
+        {/* Ramadan Schedule (Light Theme) */}
+        <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden lg:col-span-2 ring-1 ring-black/5">
+          <CardHeader className="bg-purple-50/50 border-b p-8 text-start">
              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                   <div className="p-3 bg-white/10 rounded-2xl shadow-sm text-indigo-200"><MoonStar className="h-6 w-6" /></div>
+                   <div className="p-3 bg-white rounded-2xl shadow-sm text-purple-600"><MoonStar className="h-6 w-6" /></div>
                    <div>
                       <CardTitle className="text-xl font-black">{t('ramadanSchedule')}</CardTitle>
-                      <CardDescription className="font-bold text-indigo-200/60">{t('ramadanPeriod')}</CardDescription>
+                      <CardDescription className="font-bold text-slate-500">{t('ramadanPeriod')}</CardDescription>
                    </div>
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="text-xs font-black uppercase opacity-60">{t('enabled')}</span>
+                  <span className="text-xs font-black uppercase text-slate-400">{t('enabled')}</span>
                   <Switch 
                     checked={settings?.ramadan.enabled} 
                     onCheckedChange={val => setSettings({...settings!, ramadan: { ...settings!.ramadan, enabled: val }})} 
@@ -291,28 +291,28 @@ export function WorkHoursManager() {
                 {/* Period Dates */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                    <div className="space-y-3">
-                      <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">{t('periodStart')}</Label>
-                      <Input type="date" value={settings.ramadan.startDate} onChange={e => setSettings({...settings, ramadan: { ...settings.ramadan, startDate: e.target.value }})} className="h-14 rounded-2xl bg-white/5 border-white/10 text-white text-lg font-black" />
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('periodStart')}</Label>
+                      <Input type="date" value={settings.ramadan.startDate} onChange={e => setSettings({...settings, ramadan: { ...settings.ramadan, startDate: e.target.value }})} className="h-14 rounded-2xl bg-slate-50 border-slate-100 text-slate-900 text-lg font-black" />
                    </div>
                    <div className="space-y-3">
-                      <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">{t('periodEnd')}</Label>
-                      <Input type="date" value={settings.ramadan.endDate} onChange={e => setSettings({...settings, ramadan: { ...settings.ramadan, endDate: e.target.value }})} className="h-14 rounded-2xl bg-white/5 border-white/10 text-white text-lg font-black" />
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('periodEnd')}</Label>
+                      <Input type="date" value={settings.ramadan.endDate} onChange={e => setSettings({...settings, ramadan: { ...settings.ramadan, endDate: e.target.value }})} className="h-14 rounded-2xl bg-slate-50 border-slate-100 text-slate-900 text-lg font-black" />
                    </div>
                 </div>
 
-                <div className="h-[1px] bg-white/5 w-full" />
+                <div className="h-[1px] bg-slate-100 w-full" />
 
                 {/* Shift Mode Selector */}
                 <div className="space-y-4">
-                  <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">{t('ramadanMode')}</Label>
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('ramadanMode')}</Label>
                   <Tabs 
                     value={settings.ramadan.mode} 
                     onValueChange={(val: any) => setSettings({...settings, ramadan: { ...settings.ramadan, mode: val }})}
                     className="w-full md:w-[400px]"
                   >
-                    <TabsList className="grid w-full grid-cols-2 bg-white/5 p-1 rounded-2xl h-14 border border-white/10">
-                      <TabsTrigger value="single" className="rounded-xl font-black data-[state=active]:bg-white data-[state=active]:text-indigo-950 transition-all">{t('singleShift')}</TabsTrigger>
-                      <TabsTrigger value="double" className="rounded-xl font-black data-[state=active]:bg-white data-[state=active]:text-indigo-950 transition-all">{t('doubleShift')}</TabsTrigger>
+                    <TabsList className="grid w-full grid-cols-2 bg-slate-100/50 p-1 rounded-2xl h-14 border border-slate-200">
+                      <TabsTrigger value="single" className="rounded-xl font-black data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all">{t('singleShift')}</TabsTrigger>
+                      <TabsTrigger value="double" className="rounded-xl font-black data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all">{t('doubleShift')}</TabsTrigger>
                     </TabsList>
                   </Tabs>
                 </div>
@@ -321,44 +321,44 @@ export function WorkHoursManager() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                    {/* Morning Shift (Always Visible) */}
                    <div className="space-y-6">
-                      <div className="flex items-center gap-3 text-indigo-200">
+                      <div className="flex items-center gap-3 text-purple-600">
                          <Coffee className="h-5 w-5" />
                          <span className="font-black text-sm uppercase tracking-widest">{t('morningStart')} / {t('morningEnd')}</span>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
-                         <Input type="time" value={settings.ramadan.morningStartTime} onChange={e => setSettings({...settings, ramadan: { ...settings.ramadan, morningStartTime: e.target.value }})} className="h-14 rounded-2xl bg-white/10 border-white/10 text-white text-lg font-black text-center" />
-                         <Input type="time" value={settings.ramadan.morningEndTime} onChange={e => setSettings({...settings, ramadan: { ...settings.ramadan, morningEndTime: e.target.value }})} className="h-14 rounded-2xl bg-white/10 border-white/10 text-white text-lg font-black text-center" />
+                         <Input type="time" value={settings.ramadan.morningStartTime} onChange={e => setSettings({...settings, ramadan: { ...settings.ramadan, morningStartTime: e.target.value }})} className="h-14 rounded-2xl bg-slate-50 border-slate-100 text-slate-900 text-lg font-black text-center" />
+                         <Input type="time" value={settings.ramadan.morningEndTime} onChange={e => setSettings({...settings, ramadan: { ...settings.ramadan, morningEndTime: e.target.value }})} className="h-14 rounded-2xl bg-slate-50 border-slate-100 text-slate-900 text-lg font-black text-center" />
                       </div>
                    </div>
 
                    {/* Evening Shift (Conditional) */}
                    <div className={cn("space-y-6 transition-all duration-500", settings.ramadan.mode === 'single' ? 'opacity-20 pointer-events-none grayscale' : 'opacity-100')}>
-                      <div className="flex items-center gap-3 text-indigo-200">
+                      <div className="flex items-center gap-3 text-purple-600">
                          <Utensils className="h-5 w-5" />
                          <span className="font-black text-sm uppercase tracking-widest">{t('eveningStart')} / {t('eveningEnd')}</span>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
-                         <Input type="time" value={settings.ramadan.eveningStartTime} onChange={e => setSettings({...settings, ramadan: { ...settings.ramadan, eveningStartTime: e.target.value }})} className="h-14 rounded-2xl bg-white/10 border-white/10 text-white text-lg font-black text-center" />
-                         <Input type="time" value={settings.ramadan.eveningEndTime} onChange={e => setSettings({...settings, ramadan: { ...settings.ramadan, eveningEndTime: e.target.value }})} className="h-14 rounded-2xl bg-white/10 border-white/10 text-white text-lg font-black text-center" />
+                         <Input type="time" value={settings.ramadan.eveningStartTime} onChange={e => setSettings({...settings, ramadan: { ...settings.ramadan, eveningStartTime: e.target.value }})} className="h-14 rounded-2xl bg-slate-50 border-slate-100 text-slate-900 text-lg font-black text-center" />
+                         <Input type="time" value={settings.ramadan.eveningEndTime} onChange={e => setSettings({...settings, ramadan: { ...settings.ramadan, eveningEndTime: e.target.value }})} className="h-14 rounded-2xl bg-slate-50 border-slate-100 text-slate-900 text-lg font-black text-center" />
                       </div>
                    </div>
                 </div>
 
                 {/* Parameters */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-10 border-t border-white/5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-10 border-t border-slate-100">
                    <div className="space-y-3">
-                      <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">{t('slotDuration')}</Label>
-                      <Input type="number" value={settings.ramadan.slotDurationMinutes} onChange={e => setSettings({...settings, ramadan: { ...settings.ramadan, slotDurationMinutes: Number(e.target.value) }})} className="h-14 rounded-2xl bg-white/5 border-white/10 text-white text-xl font-black" />
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('slotDuration')}</Label>
+                      <Input type="number" value={settings.ramadan.slotDurationMinutes} onChange={e => setSettings({...settings, ramadan: { ...settings.ramadan, slotDurationMinutes: Number(e.target.value) }})} className="h-14 rounded-2xl bg-slate-50 border-slate-100 text-slate-900 text-xl font-black" />
                    </div>
                    <div className="space-y-3">
-                      <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">{t('bufferTime')}</Label>
-                      <Input type="number" value={settings.ramadan.bufferMinutes} onChange={e => setSettings({...settings, ramadan: { ...settings.ramadan, bufferMinutes: Number(e.target.value) }})} className="h-14 rounded-2xl bg-white/5 border-white/10 text-white text-xl font-black" />
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('bufferTime')}</Label>
+                      <Input type="number" value={settings.ramadan.bufferMinutes} onChange={e => setSettings({...settings, ramadan: { ...settings.ramadan, bufferMinutes: Number(e.target.value) }})} className="h-14 rounded-2xl bg-slate-50 border-slate-100 text-slate-900 text-xl font-black" />
                    </div>
                 </div>
 
-                <div className="flex items-center gap-4 p-6 bg-white/5 rounded-[2rem] border border-white/10">
-                   <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                   <p className="text-[11px] font-bold text-indigo-100 leading-relaxed">
+                <div className="flex items-center gap-4 p-6 bg-purple-50 rounded-[2rem] border border-purple-100">
+                   <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                   <p className="text-[11px] font-bold text-purple-800 leading-relaxed">
                      {lang === 'ar' ? 'ملاحظة: تفعيل نظام رمضان يلغي كافة جداول العمل العادية للقسمين العام والمعماري خلال الفترة المحددة أعلاه.' : 'Note: Activating Ramadan schedule overrides all regular working hours for both general and architectural depts during the specified dates.'}
                    </p>
                 </div>
