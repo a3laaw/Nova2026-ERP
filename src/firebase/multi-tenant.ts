@@ -25,29 +25,39 @@ export const paths = {
   areas: (companyId: string, govId: string) => 
     `${getTenantPath(companyId, 'governorates')}/${govId}/areas`,
 
-  // الهيكل المرجعي الفني الرباعي (ActivityType -> Service -> SubService -> TechnicalStage)
+  // الموارد البشرية (HR)
+  employees: (companyId: string) => 
+    getTenantPath(companyId, 'employees'),
+  employeeAuditLogs: (companyId: string, empId: string) => 
+    `${getTenantPath(companyId, 'employees')}/${empId}/auditLogs`,
+  leaveRequests: (companyId: string) => 
+    getTenantPath(companyId, 'leaveRequests'),
+  permissionRequests: (companyId: string) => 
+    getTenantPath(companyId, 'permissionRequests'),
+  attendance: (companyId: string) => 
+    getTenantPath(companyId, 'attendance'),
+  payroll: (companyId: string) => 
+    getTenantPath(companyId, 'payroll'),
+  holidays: (companyId: string) => 
+    getTenantPath(companyId, 'holidays'),
+
+  // الهيكل المرجعي الفني الرباعي
   activityTypes: (companyId: string) => 
     getTenantPath(companyId, 'activityTypes'),
-  
   services: (companyId: string, activityTypeId: string) => 
     `${getTenantPath(companyId, 'activityTypes')}/${activityTypeId}/services`,
-  
   subServices: (companyId: string, activityTypeId: string, serviceId: string) => 
     `${getTenantPath(companyId, 'activityTypes')}/${activityTypeId}/services/${serviceId}/subServices`,
-  
   technicalStages: (companyId: string, activityTypeId: string, serviceId: string, subId: string) => 
     `${getTenantPath(companyId, 'activityTypes')}/${activityTypeId}/services/${serviceId}/subServices/${subId}/technicalStages`,
 
   // الموديولات التشغيلية
   projects: (companyId: string) => 
     getTenantPath(companyId, 'projects'),
-  
   stageInstances: (companyId: string, projectId: string) => 
     `${getTenantPath(companyId, 'projects')}/${projectId}/stageInstances`,
-  
   projectContracts: (companyId: string, projectId: string) => 
     `${getTenantPath(companyId, 'projects')}/${projectId}/contracts`,
-  
   leads: (companyId: string) => 
     getTenantPath(companyId, 'leads'),
 };

@@ -1,62 +1,38 @@
 {
   "entities": {
-    "GlobalUser": {
-      "title": "Global User Mapping",
-      "description": "يربط المعرف الفريد للمستخدم بالشركة التي ينتمي إليها ويحدد دوره العالمي.",
+    "Employee": {
+      "title": "Employee Record",
+      "description": "بيانات الموظف الشاملة لأغراض الموارد البشرية والرواتب.",
       "type": "object",
       "properties": {
-        "companyId": { "type": "string" },
-        "role": { "type": "string", "enum": ["admin", "user", "developer"] },
-        "isDeveloper": { "type": "boolean" },
-        "username": { "type": "string" },
-        "email": { "type": "string", "format": "email" }
+        "employeeNumber": { "type": "string" },
+        "fullName": { "type": "string" },
+        "civilId": { "type": "string" },
+        "basicSalary": { "type": "number" },
+        "status": { "type": "string", "enum": ["active", "on-leave", "terminated"] },
+        "companyId": { "type": "string" }
       },
-      "required": ["companyId", "role", "username"]
+      "required": ["employeeNumber", "fullName", "civilId", "basicSalary"]
     },
-    "TenantUser": {
-      "title": "Company Employee",
-      "description": "بيانات الموظف التفصيلية داخل نطاق الشركة (Tenant).",
+    "AttendanceRecord": {
+      "title": "Attendance",
+      "description": "سجلات الحضور والانصراف اليومية.",
       "type": "object",
       "properties": {
-        "displayName": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
-        "roleId": { "type": "string" },
-        "roleCode": { "type": "string" },
-        "departmentId": { "type": "string" },
-        "jobTitleId": { "type": "string" },
-        "joinedAt": { "type": "string", "format": "date-time" },
-        "isActive": { "type": "boolean" },
-        "leaveBalance": { "type": "number", "default": 30 }
-      },
-      "required": ["displayName", "email"]
-    },
-    "LeaveRequest": {
-      "title": "Leave Request",
-      "description": "طلب إجازة مقدم من الموظف.",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string" },
-        "userName": { "type": "string" },
-        "type": { "type": "string", "enum": ["annual", "sick", "emergency", "unpaid"] },
-        "startDate": { "type": "string", "format": "date" },
-        "endDate": { "type": "string", "format": "date" },
-        "days": { "type": "number" },
-        "reason": { "type": "string" },
-        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
-        "comment": { "type": "string" },
-        "approvedBy": { "type": "string" }
-      },
-      "required": ["userId", "type", "startDate", "endDate"]
+        "employeeId": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "checkIn": { "type": "string" },
+        "status": { "type": "string", "enum": ["present", "absent", "weekend", "holiday"] }
+      }
     }
   },
   "auth": {
     "providers": ["password"]
   },
   "firestore": {
-    "/global_users/{uid}": { "schema": "#/entities/GlobalUser", "description": "تخزين المسار الأساسي للمستخدم" },
-    "/companies/{companyId}": { "schema": "#/entities/Company", "description": "بيانات الشركة" },
-    "/companies/{companyId}/users/{uid}": { "schema": "#/entities/TenantUser", "description": "بيانات موظفي الشركة" },
-    "/companies/{companyId}/roles/{roleId}": { "schema": "#/entities/Role", "description": "أدوار وصلاحيات المنشأة" },
-    "/companies/{companyId}/leaves/{leaveId}": { "schema": "#/entities/LeaveRequest", "description": "طلبات الإجازات" }
+    "/companies/{companyId}/employees/{empId}": { "schema": "#/entities/Employee", "description": "سجلات الموظفين" },
+    "/companies/{companyId}/attendance/{attId}": { "schema": "#/entities/AttendanceRecord", "description": "سجلات الحضور" },
+    "/companies/{companyId}/payroll/{payId}": { "description": "سجلات الرواتب الشهرية" },
+    "/companies/{companyId}/leaveRequests/{leaveId}": { "description": "طلبات الإجازات المطورة" }
   }
 }

@@ -1,18 +1,105 @@
 import { BaseReference } from './reference';
 
-export type LeaveType = 'annual' | 'sick' | 'emergency' | 'unpaid';
-export type LeaveStatus = 'pending' | 'approved' | 'rejected';
+export type EmployeeStatus = 'active' | 'on-leave' | 'terminated';
+export type LeaveStatus = 'pending' | 'approved' | 'rejected' | 'on-leave' | 'returned';
+export type LeaveType = 'Annual' | 'Sick' | 'Emergency' | 'Unpaid';
+export type PermissionType = 'late_arrival' | 'early_departure';
+export type AttendanceStatus = 'present' | 'absent' | 'weekend' | 'holiday';
+export type PayrollStatus = 'draft' | 'reviewed' | 'approved' | 'paid';
+
+export interface Employee extends BaseReference {
+  employeeNumber: string;
+  fullName: string;
+  nameEn?: string;
+  civilId: string;
+  mobile: string;
+  email?: string;
+  nationality?: string;
+  departmentId?: string;
+  departmentName?: string;
+  jobId?: string;
+  jobTitle?: string;
+  roleCode?: string;
+  hireDate: any;
+  contractType?: string;
+  status: EmployeeStatus;
+  basicSalary: number;
+  housingAllowance?: number;
+  transportAllowance?: number;
+  otherAllowances?: number;
+  bankName?: string;
+  bankAccountNumber?: string;
+  iban?: string;
+  contractExpiry?: any;
+  residencyExpiry?: any;
+  annualLeaveUsed?: number;
+  carriedLeaveDays?: number;
+  terminationDate?: any;
+  terminationReason?: string;
+  isActive: boolean;
+}
 
 export interface LeaveRequest extends BaseReference {
-  userId: string;
-  userName: string;
-  type: LeaveType;
-  startDate: string;
-  endDate: string;
+  employeeId: string;
+  employeeName: string;
+  leaveType: LeaveType;
+  startDate: any;
+  endDate: any;
   days: number;
-  reason: string;
+  workingDays: number;
+  notes?: string;
   status: LeaveStatus;
-  comment?: string;
+  adminComment?: string;
   approvedBy?: string;
   approvedAt?: any;
+}
+
+export interface PermissionRequest extends BaseReference {
+  employeeId: string;
+  employeeName: string;
+  type: PermissionType;
+  date: any;
+  durationHours: number;
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+  adminComment?: string;
+}
+
+export interface AttendanceRecord extends BaseReference {
+  employeeId: string;
+  employeeName: string;
+  date: any;
+  checkIn?: string;
+  checkOut?: string;
+  minutesLate?: number;
+  minutesEarlyLeave?: number;
+  status: AttendanceStatus;
+  source?: 'excel' | 'manual';
+}
+
+export interface PayrollRecord extends BaseReference {
+  employeeId: string;
+  employeeName: string;
+  year: number;
+  month: number;
+  earnings: {
+    basicSalary: number;
+    housingAllowance?: number;
+    transportAllowance?: number;
+    otherAllowances?: number;
+  };
+  deductions?: {
+    absence?: number;
+    late?: number;
+    penalties?: number;
+    advances?: number;
+    other?: number;
+  };
+  netSalary: number;
+  status: PayrollStatus;
+}
+
+export interface Holiday extends BaseReference {
+  name: string;
+  date: any;
 }
