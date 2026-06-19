@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   CalendarDays, Plus, Loader2, CheckCircle2, 
-  XCircle, Clock, Calendar as CalendarIcon,
-  AlertCircle, Info, Calculator, ArrowRight
+  XCircle, ArrowRight
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -15,36 +15,20 @@ import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { LeaveService } from '@/services/leave-service';
-import { WorkingDaysService } from '@/services/working-days-service';
-import { WorkHoursService } from '@/services/work-hours-service';
-import { LeaveRequest, LeaveType } from '@/types/hr';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { LeaveRequest } from '@/types/hr';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { paths } from '@/firebase/multi-tenant';
-import { SmartDateInput } from '@/components/ui/smart-date-input';
 
 export function LeavesManager() {
   const { globalUser, user } = useAuthContext();
   const { t, lang, dir } = useLanguage();
   const { permissions } = usePermissions();
   const db = useFirestore();
+  const router = useRouter();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [workingDays, setWorkingDays] = useState(0);
-  const [form, setForm] = useState({
-    type: 'annual' as LeaveType,
-    startDate: '',
-    endDate: '',
-    reason: ''
-  });
 
   const leaveService = useMemo(() => 
     db && companyId ? new LeaveService(db, companyId, permissions) : null, 
@@ -54,53 +38,6 @@ export function LeavesManager() {
     companyId && db ? query(collection(db, paths.leaveRequests(companyId)), orderBy('createdAt', 'desc')) : null, 
   [db, companyId]);
   const { data: leaves, loading } = useCollection<LeaveRequest>(leavesQuery);
-
-  useEffect(() => {
-    async function updateDays() {
-      if (form.startDate && form.endDate && db && companyId) {
-        const whService = new WorkHoursService(db, companyId);
-        const settings = await whService.getSettings();
-        if (settings) {
-          const wdService = new WorkingDaysService(settings);
-          const days = wdService.calculateWorkingDays(form.startDate, form.endDate);
-          setWorkingDays(days);
-        }
-      }
-    }
-    updateDays();
-  }, [form.startDate, form.endDate, db, companyId]);
-
-  const handleSubmit = async () => {
-    if (!leaveService || !user || !form.startDate || !form.endDate) return;
-    setIsSubmitting(true);
-    try {
-      const diffTime = Math.abs(new Date(form.endDate).getTime() - new Date(form.startDate).getTime());
-      const totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-
-      await leaveService.submitRequest({
-        userId: user.uid,
-        userName: user.displayName || user.email || 'User',
-        type: form.type,
-        startDate: form.startDate,
-        endDate: form.endDate,
-        days: totalDays,
-        workingDays: workingDays,
-        reason: form.reason
-      });
-
-      toast({ title: t('saved'), description: isRtl ? 'تم تقديم طلب الإجازة.' : 'Leave request submitted.' });
-      setIsFormOpen(false);
-      setForm({ type: 'annual', startDate: '', endDate: '', reason: '' });
-    } catch (e: any) {
-      toast({ 
-        variant: "destructive", 
-        title: t('error'),
-        description: e.message.includes('OVERLAP') ? e.message : t('saveFailed')
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const handleAction = async (leaveId: string, status: 'approved' | 'rejected') => {
     if (!leaveService || !user) return;
@@ -125,73 +62,15 @@ export function LeavesManager() {
            </p>
         </div>
 
-        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-          <DialogTrigger asChild>
-            <Button className="rounded-xl font-bold bg-primary text-white shadow-lg shadow-primary/20 h-12 px-6">
-              <Plus className="me-2 h-4 w-4" /> {isRtl ? 'تقديم إجازة' : 'Apply for Leave'}
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="rounded-[2.5rem] max-w-lg p-0 overflow-hidden border-0 shadow-2xl" dir={dir}>
-            <div className="bg-primary/5 p-8 border-b">
-               <DialogHeader>
-                  <DialogTitle className="text-start font-black text-2xl flex items-center gap-2">
-                    <CalendarIcon className="h-6 w-6 text-primary" />
-                    {isRtl ? 'طلب إجازة جديد' : 'Submit Leave Request'}
-                  </DialogTitle>
-               </DialogHeader>
-            </div>
-            <div className="p-8 space-y-6 text-start">
-               <div className="space-y-2">
-                  <Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{isRtl ? 'نوع الإجازة' : 'Leave Type'}</Label>
-                  <Select value={form.type} onValueChange={(v: LeaveType) => setForm({...form, type: v})}>
-                    <SelectTrigger className="h-12 rounded-xl border-2">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                       <SelectItem value="annual">{isRtl ? 'سنوية (خصم من الرصيد)' : 'Annual'}</SelectItem>
-                       <SelectItem value="sick">{isRtl ? 'مرضية (شرائح الراتب)' : 'Sick'}</SelectItem>
-                       <SelectItem value="emergency">{isRtl ? 'اضطرارية' : 'Emergency'}</SelectItem>
-                       <SelectItem value="unpaid">{isRtl ? 'بدون راتب' : 'Unpaid'}</SelectItem>
-                    </SelectContent>
-                  </Select>
-               </div>
-
-               <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                     <Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{isRtl ? 'بداية الإجازة' : 'Start Date'}</Label>
-                     <SmartDateInput value={form.startDate} onChange={v => setForm({...form, startDate: v})} />
-                  </div>
-                  <div className="space-y-2">
-                     <Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{isRtl ? 'نهاية الإجازة' : 'End Date'}</Label>
-                     <SmartDateInput value={form.endDate} onChange={v => setForm({...form, endDate: v})} />
-                  </div>
-               </div>
-
-               {workingDays > 0 && (
-                 <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 flex items-center justify-between animate-in zoom-in-95">
-                    <div className="flex items-center gap-2 text-emerald-700">
-                       <Calculator className="h-4 w-4" />
-                       <span className="text-xs font-black uppercase tracking-tight">{isRtl ? 'أيام العمل المحتسبة' : 'Working Days'}</span>
-                    </div>
-                    <span className="text-xl font-black text-emerald-600">{workingDays}</span>
-                 </div>
-               )}
-
-               <div className="space-y-2">
-                  <Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{isRtl ? 'ملاحظات / سبب الإجازة' : 'Notes / Reason'}</Label>
-                  <Textarea value={form.reason} onChange={e => setForm({...form, reason: e.target.value})} className="rounded-xl border-2 min-h-[100px]" placeholder="..." />
-               </div>
-            </div>
-            <DialogFooter className="p-8 bg-slate-50 border-t">
-               <Button onClick={handleSubmit} disabled={isSubmitting || !form.startDate || !form.endDate} className="w-full h-14 rounded-xl font-black text-lg bg-primary shadow-lg shadow-primary/20">
-                  {isSubmitting ? <Loader2 className="animate-spin" /> : (isRtl ? 'إرسال للاعتماد' : 'Submit Request')}
-               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <Button 
+          onClick={() => router.push('/dashboard/hr/leaves/new')}
+          className="rounded-xl font-bold bg-primary text-white shadow-lg shadow-primary/20 h-12 px-6 hover:scale-[1.02] transition-transform"
+        >
+          <Plus className="me-2 h-4 w-4" /> {isRtl ? 'تقديم إجازة' : 'Apply for Leave'}
+        </Button>
       </div>
 
-      <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
+      <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5" dir={dir}>
          <CardContent className="p-0 overflow-x-auto">
             <Table>
                <TableHeader className="bg-muted/30">
@@ -245,7 +124,7 @@ export function LeavesManager() {
                                <div className="flex justify-end gap-2">
                                   <Button onClick={() => handleAction(leave.id!, 'approved')} size="sm" variant="ghost" className="h-10 w-10 p-0 rounded-xl text-emerald-600 hover:bg-emerald-50 border border-emerald-100"><CheckCircle2 className="h-5 w-5" /></Button>
                                   <Button onClick={() => handleAction(leave.id!, 'rejected')} size="sm" variant="ghost" className="h-10 w-10 p-0 rounded-xl text-destructive hover:bg-destructive/5 border border-rose-100"><XCircle className="h-5 w-5" /></Button>
-                               </div>
+                                </div>
                             ) : null}
                          </TableCell>
                       </TableRow>
