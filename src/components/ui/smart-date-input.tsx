@@ -88,7 +88,7 @@ export function SmartDateInput({ value, onChange, className }: SmartDateInputPro
 
   return (
     <div className={cn("relative group", className)} dir="ltr">
-      <div className="flex items-center h-14 w-full rounded-[1.2rem] border-2 border-slate-100 bg-slate-50/50 px-4 py-2 focus-within:border-primary/40 focus-within:bg-white focus-within:ring-4 focus-within:ring-primary/5 transition-all shadow-sm">
+      <div className="flex items-center h-11 w-full rounded-xl border-2 border-slate-100 bg-slate-50/50 px-3 py-1 focus-within:border-primary/40 focus-within:bg-white focus-within:ring-4 focus-within:ring-primary/5 transition-all shadow-sm">
         
         {/* Day Segment */}
         <div className="flex flex-col items-center flex-1">
@@ -98,12 +98,12 @@ export function SmartDateInput({ value, onChange, className }: SmartDateInputPro
             placeholder="DD"
             value={day}
             onChange={handleDayChange}
-            className="w-full bg-transparent text-center font-mono font-black text-slate-800 placeholder:text-slate-300 outline-none text-base"
+            className="w-full bg-transparent text-center font-mono font-black text-slate-800 placeholder:text-slate-300 outline-none text-sm"
           />
-          <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Day</span>
+          <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter -mt-0.5">Day</span>
         </div>
 
-        <span className="text-slate-300 font-bold px-1 mb-3">/</span>
+        <span className="text-slate-300 font-bold px-1 mb-2">/</span>
 
         {/* Month Segment */}
         <div className="flex flex-col items-center flex-1">
@@ -113,12 +113,12 @@ export function SmartDateInput({ value, onChange, className }: SmartDateInputPro
             placeholder="MM"
             value={month}
             onChange={handleMonthChange}
-            className="w-full bg-transparent text-center font-mono font-black text-slate-800 placeholder:text-slate-300 outline-none text-base"
+            className="w-full bg-transparent text-center font-mono font-black text-slate-800 placeholder:text-slate-300 outline-none text-sm"
           />
-          <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Month</span>
+          <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter -mt-0.5">Month</span>
         </div>
 
-        <span className="text-slate-300 font-bold px-1 mb-3">/</span>
+        <span className="text-slate-300 font-bold px-1 mb-2">/</span>
 
         {/* Year Segment */}
         <div className="flex flex-col items-center flex-[1.5]">
@@ -128,9 +128,9 @@ export function SmartDateInput({ value, onChange, className }: SmartDateInputPro
             placeholder="YYYY"
             value={year}
             onChange={handleYearChange}
-            className="w-full bg-transparent text-center font-mono font-black text-slate-800 placeholder:text-slate-300 outline-none text-base"
+            className="w-full bg-transparent text-center font-mono font-black text-slate-800 placeholder:text-slate-300 outline-none text-sm"
           />
-          <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Year</span>
+          <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter -mt-0.5">Year</span>
         </div>
 
         {/* Calendar Trigger */}
@@ -139,12 +139,12 @@ export function SmartDateInput({ value, onChange, className }: SmartDateInputPro
             <Button
               variant="ghost"
               size="icon"
-              className="h-10 w-10 rounded-xl hover:bg-white hover:shadow-md transition-all text-slate-400 hover:text-primary shrink-0 ms-2"
+              className="h-8 w-8 rounded-lg hover:bg-white hover:shadow-md transition-all text-slate-400 hover:text-primary shrink-0 ms-1"
             >
-              <CalendarIcon className="h-5 w-5" />
+              <CalendarIcon className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0 rounded-3xl border-0 shadow-2xl" align="end">
+          <PopoverContent className="w-auto p-0 rounded-2xl border-0 shadow-2xl" align="end">
             <Calendar
               mode="single"
               selected={value ? new Date(value) : undefined}

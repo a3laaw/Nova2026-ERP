@@ -101,63 +101,63 @@ export default function CompanyProfilePage() {
 
   if (companyLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
-  const AssetManager = ({ label, imgField, textField, height = "h-32", showTextTab = false }: { label: string, imgField: string, textField?: string, height?: string, showTextTab?: boolean }) => {
+  const AssetManager = ({ label, imgField, textField, height = "h-28", showTextTab = false }: { label: string, imgField: string, textField?: string, height?: string, showTextTab?: boolean }) => {
     const currentImage = formData[imgField];
     const currentText = textField ? formData[textField] : '';
 
     return (
-      <div className="space-y-4">
-        <Label className="font-black text-xs uppercase tracking-widest text-slate-500">{label}</Label>
+      <div className="space-y-3">
+        <Label className="font-black text-[10px] uppercase tracking-widest text-slate-400">{label}</Label>
         <Tabs defaultValue="upload" className="w-full">
-          <TabsList className={cn("grid w-full rounded-xl bg-slate-100 p-1", showTextTab ? "grid-cols-3" : "grid-cols-2")}>
-            <TabsTrigger value="upload" className="rounded-lg text-[10px] font-bold gap-2">
+          <TabsList className={cn("grid w-full rounded-lg bg-slate-100 p-0.5 h-8", showTextTab ? "grid-cols-3" : "grid-cols-2")}>
+            <TabsTrigger value="upload" className="rounded-md text-[9px] font-bold gap-1.5 h-7">
               <UploadCloud className="h-3 w-3" /> {isRtl ? 'رفع صورة' : 'Upload'}
             </TabsTrigger>
-            <TabsTrigger value="url" className="rounded-lg text-[10px] font-bold gap-2">
+            <TabsTrigger value="url" className="rounded-md text-[9px] font-bold gap-1.5 h-7">
               <LinkIcon className="h-3 w-3" /> {isRtl ? 'رابط' : 'URL'}
             </TabsTrigger>
             {showTextTab && (
-              <TabsTrigger value="text" className="rounded-lg text-[10px] font-bold gap-2">
+              <TabsTrigger value="text" className="rounded-md text-[9px] font-bold gap-1.5 h-7">
                 <Type className="h-3 w-3" /> {isRtl ? 'نص' : 'Text'}
               </TabsTrigger>
             )}
           </TabsList>
           
-          <TabsContent value="upload" className="mt-4">
+          <TabsContent value="upload" className="mt-2">
             <div className={cn(
-              "relative rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 overflow-hidden group transition-all hover:border-primary/30",
+              "relative rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 overflow-hidden group transition-all hover:border-primary/30",
               height
             )}>
               {currentImage && currentImage.startsWith('data:') ? (
                 <>
                   <img src={currentImage} alt={label} className="w-full h-full object-contain p-2" />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Button variant="destructive" size="sm" onClick={() => setFormData({...formData, [imgField]: ''})}>
-                      <X className="h-4 w-4 me-1" /> {isRtl ? 'حذف' : 'Remove'}
+                    <Button variant="destructive" size="sm" className="h-7 text-[10px]" onClick={() => setFormData({...formData, [imgField]: ''})}>
+                      <X className="h-3 w-3 me-1" /> {isRtl ? 'حذف' : 'Remove'}
                     </Button>
                   </div>
                 </>
               ) : (
                 <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer">
-                  <UploadCloud className="h-8 w-8 text-slate-400 mb-2" />
-                  <span className="text-[10px] font-black text-slate-500">{isRtl ? 'اضغط للرفع' : 'Click to Upload'}</span>
+                  <UploadCloud className="h-6 w-6 text-slate-300 mb-1" />
+                  <span className="text-[9px] font-black text-slate-400">{isRtl ? 'اضغط للرفع' : 'Click to Upload'}</span>
                   <input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, imgField)} />
                 </label>
               )}
             </div>
           </TabsContent>
 
-          <TabsContent value="url" className="mt-4">
+          <TabsContent value="url" className="mt-2">
             <div className="space-y-2">
               <Input 
                 value={(!currentImage || currentImage.startsWith('data:')) ? '' : currentImage}
                 onChange={(e) => setFormData({...formData, [imgField]: e.target.value})}
                 placeholder="https://example.com/image.png"
-                className="h-10 rounded-xl text-[10px] font-mono"
+                className="h-8 rounded-lg text-[9px] font-mono"
                 dir="ltr"
               />
               {currentImage && !currentImage.startsWith('data:') && (
-                 <div className={cn("rounded-xl border bg-slate-50 overflow-hidden flex items-center justify-center", height)}>
+                 <div className={cn("rounded-lg border bg-slate-50 overflow-hidden flex items-center justify-center", height)}>
                     <img src={currentImage} alt="Preview" className="max-h-full max-w-full object-contain p-2" />
                  </div>
               )}
@@ -165,12 +165,12 @@ export default function CompanyProfilePage() {
           </TabsContent>
 
           {showTextTab && textField && (
-            <TabsContent value="text" className="mt-4">
+            <TabsContent value="text" className="mt-2">
               <Textarea 
                 value={currentText}
                 onChange={(e) => setFormData({...formData, [textField]: e.target.value, [imgField]: ''})}
                 placeholder={isRtl ? "اكتب النص هنا..." : "Type text here..."}
-                className="min-h-[100px] rounded-xl text-sm p-4 bg-slate-50/50"
+                className="min-h-[80px] rounded-lg text-xs p-3 bg-slate-50/50"
               />
             </TabsContent>
           )}
@@ -203,34 +203,34 @@ export default function CompanyProfilePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 space-y-8">
-          <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
-            <CardHeader className="bg-slate-50/50 border-b p-8 text-start">
-              <CardTitle className="text-xl font-black font-headline flex items-center gap-2 text-slate-800">
-                <FileText className="h-6 w-6 text-primary" />
+          <Card className="border-0 shadow-xl rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/5">
+            <CardHeader className="bg-slate-50/50 border-b p-6 text-start">
+              <CardTitle className="text-lg font-black font-headline flex items-center gap-2 text-slate-800">
+                <FileText className="h-5 w-5 text-primary" />
                 {t('companyProfile')}
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-8 space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <CardContent className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2 text-start">
-                  <Label className="font-black text-slate-700">{t('name')}</Label>
+                  <Label className="font-black text-xs text-slate-600">{t('name')}</Label>
                   <Input 
                     value={formData.name} 
                     onChange={e => setFormData({...formData, name: e.target.value})} 
-                    className="h-14 rounded-[1.2rem] bg-slate-50/50 border-slate-200 focus:bg-white" 
+                    className="h-11 rounded-xl bg-slate-50/50 border-slate-100 focus:bg-white" 
                   />
                 </div>
                 <div className="space-y-2 text-start">
-                  <Label className="font-black text-slate-700">{t('commercialRegistry')}</Label>
+                  <Label className="font-black text-xs text-slate-600">{t('commercialRegistry')}</Label>
                   <Input 
                     value={formData.commercialRegistry} 
                     onChange={e => setFormData({...formData, commercialRegistry: e.target.value})} 
-                    className="h-14 rounded-[1.2rem] bg-slate-50/50 border-slate-200 focus:bg-white" 
+                    className="h-11 rounded-xl bg-slate-50/50 border-slate-100 focus:bg-white" 
                   />
                 </div>
                 
                 <div className="space-y-2 text-start">
-                  <Label className="font-black text-slate-700">{t('licenseExpiry')}</Label>
+                  <Label className="font-black text-xs text-slate-600">{t('licenseExpiry')}</Label>
                   <SmartDateInput 
                     value={formData.licenseExpiryDate}
                     onChange={(val) => setFormData({...formData, licenseExpiryDate: val})}
@@ -238,7 +238,7 @@ export default function CompanyProfilePage() {
                 </div>
 
                 <div className="space-y-2 text-start">
-                  <Label className="font-black text-slate-700">{t('laborExpiry')}</Label>
+                  <Label className="font-black text-xs text-slate-600">{t('laborExpiry')}</Label>
                   <SmartDateInput 
                     value={formData.laborAuthorityExpiryDate}
                     onChange={(val) => setFormData({...formData, laborAuthorityExpiryDate: val})}
@@ -246,9 +246,9 @@ export default function CompanyProfilePage() {
                 </div>
               </div>
 
-              <div className="pt-8 border-t border-slate-100">
-                <h3 className="font-black text-sm mb-8 text-primary uppercase tracking-widest">{isRtl ? 'المظهر والهوية البصرية' : 'Branding & Assets'}</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="pt-6 border-t border-slate-50">
+                <h3 className="font-black text-[10px] mb-6 text-primary uppercase tracking-widest">{isRtl ? 'المظهر والهوية البصرية' : 'Branding & Assets'}</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                    <AssetManager label={t('logo')} imgField="logoUrl" />
                    <AssetManager label={isRtl ? "الهيدر (الرأس)" : "Header"} imgField="headerImageUrl" textField="headerText" showTextTab />
                    <AssetManager label={isRtl ? "الفوتر (التذييل)" : "Footer"} imgField="footerImageUrl" textField="footerText" showTextTab />
@@ -259,51 +259,51 @@ export default function CompanyProfilePage() {
         </div>
 
         <div className="lg:col-span-4 space-y-6">
-           <Card className="border-2 border-primary/10 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden flex flex-col min-h-[600px] ring-1 ring-black/5 animate-in fade-in slide-in-from-right-4 duration-500">
-              <div className="h-28 bg-slate-50 border-b relative flex items-center justify-center overflow-hidden shadow-inner p-4">
+           <Card className="border-2 border-primary/5 shadow-2xl rounded-[2rem] bg-white overflow-hidden flex flex-col min-h-[500px] ring-1 ring-black/5 animate-in fade-in slide-in-from-right-4 duration-500">
+              <div className="h-24 bg-slate-50/50 border-b relative flex items-center justify-center overflow-hidden shadow-inner p-3">
                 {formData.headerImageUrl ? (
                    <img src={formData.headerImageUrl} className="w-full h-full object-contain" alt="Header" />
                 ) : formData.headerText ? (
-                   <p className="text-[10px] font-bold text-slate-700 text-center leading-relaxed break-words">{formData.headerText}</p>
+                   <p className="text-[9px] font-bold text-slate-600 text-center leading-tight break-words">{formData.headerText}</p>
                 ) : (
-                   <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{isRtl ? 'معاينة الهيدر' : 'Header Preview'}</span>
+                   <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">{isRtl ? 'معاينة الهيدر' : 'Header Preview'}</span>
                 )}
               </div>
 
-              <div className="flex-1 p-10 text-center flex flex-col justify-center space-y-8">
-                <div className="w-28 h-28 bg-white rounded-3xl mx-auto flex items-center justify-center border-2 border-dashed border-slate-200 overflow-hidden shadow-xl ring-4 ring-slate-50 transition-all hover:scale-105">
+              <div className="flex-1 p-8 text-center flex flex-col justify-center space-y-6">
+                <div className="w-24 h-24 bg-white rounded-[2rem] mx-auto flex items-center justify-center border-2 border-dashed border-slate-100 overflow-hidden shadow-lg ring-4 ring-slate-50/50 transition-all hover:scale-105">
                   {formData.logoUrl ? (
                     <img src={formData.logoUrl} alt="Logo" className="w-full h-full object-contain p-2" />
                   ) : (
-                    <ImageIcon className="h-10 w-10 text-slate-200" />
+                    <ImageIcon className="h-8 w-8 text-slate-200" />
                   )}
                 </div>
-                <div className="space-y-2">
-                  <h3 className="text-2xl font-black font-headline text-slate-900 tracking-tight">{formData.name || t('name')}</h3>
-                  <Badge variant="secondary" className="bg-emerald-50 text-emerald-600 text-xs font-black uppercase tracking-wider py-1 px-4 rounded-full mt-2">
+                <div className="space-y-1">
+                  <h3 className="text-xl font-black font-headline text-slate-900 tracking-tight">{formData.name || t('name')}</h3>
+                  <Badge variant="secondary" className="bg-emerald-50 text-emerald-600 text-[9px] font-black uppercase tracking-wider py-0.5 px-3 rounded-full mt-1">
                     {t('active')}
                   </Badge>
                 </div>
                 
-                <div className="space-y-4 pt-8 border-t border-slate-50 text-start">
-                   <div className="flex justify-between items-center text-[10px] font-black">
+                <div className="space-y-3 pt-6 border-t border-slate-50 text-start">
+                   <div className="flex justify-between items-center text-[9px] font-black">
                      <span className="text-slate-400 uppercase tracking-tighter">{t('commercialRegistry')}</span>
                      <span className="font-mono text-slate-800">{formData.commercialRegistry || '---'}</span>
                    </div>
-                   <div className="flex justify-between items-center text-[10px] font-black">
+                   <div className="flex justify-between items-center text-[9px] font-black">
                      <span className="text-slate-400 uppercase tracking-tighter">{t('licenseExpiry')}</span>
                      <span className="text-primary">{formData.licenseExpiryDate || '---'}</span>
                    </div>
                 </div>
               </div>
 
-              <div className="h-20 bg-slate-50 border-t relative flex items-center justify-center overflow-hidden shadow-inner p-4">
+              <div className="h-16 bg-slate-50/50 border-t relative flex items-center justify-center overflow-hidden shadow-inner p-3">
                 {formData.footerImageUrl ? (
                    <img src={formData.footerImageUrl} className="w-full h-full object-contain" alt="Footer" />
                 ) : formData.footerText ? (
-                   <p className="text-[9px] font-bold text-slate-500 text-center leading-tight break-words">{formData.footerText}</p>
+                   <p className="text-[8px] font-bold text-slate-500 text-center leading-tight break-words">{formData.footerText}</p>
                 ) : (
-                   <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{isRtl ? 'معاينة الفوتر' : 'Footer Preview'}</span>
+                   <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">{isRtl ? 'معاينة الفوتر' : 'Footer Preview'}</span>
                 )}
               </div>
            </Card>
@@ -312,14 +312,14 @@ export default function CompanyProfilePage() {
               <Button 
                 onClick={handleSave} 
                 disabled={saving}
-                className="w-full h-16 rounded-[2rem] font-black text-lg bg-primary shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                className="w-full h-14 rounded-2xl font-black text-base bg-primary shadow-xl shadow-primary/20 hover:scale-[1.01] active:scale-[0.99] transition-all"
               >
-                {saving ? <Loader2 className="animate-spin" /> : <CheckCircle2 className="me-2 h-6 w-6" />}
+                {saving ? <Loader2 className="animate-spin" /> : <CheckCircle2 className="me-2 h-5 w-5" />}
                 {t('saveChanges')}
               </Button>
-              <div className="p-6 rounded-[2rem] bg-amber-50 border border-amber-100 flex items-start gap-4 shadow-sm">
-                 <ShieldCheck className="h-6 w-6 text-amber-600 shrink-0 mt-0.5" />
-                 <p className="text-[10px] font-bold text-amber-800 leading-relaxed text-start">
+              <div className="p-4 rounded-2xl bg-amber-50/50 border border-amber-100 flex items-start gap-3 shadow-sm">
+                 <ShieldCheck className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                 <p className="text-[9px] font-bold text-amber-800 leading-relaxed text-start">
                    {isRtl ? "ملاحظة: الصور أو النصوص المرفوعة ستظهر تلقائياً في ترويسة وتذييل كافة التقارير الرسمية الصادرة من النظام." : "Note: Images or text will automatically appear in the headers and footers of all official reports."}
                  </p>
               </div>
