@@ -13,7 +13,9 @@ import {
   ShieldCheck,
   Send,
   Clock,
-  ArrowRight
+  ArrowRight,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { useFirestore } from '@/firebase';
 import { useAuthContext } from '@/context/auth-context';
@@ -61,7 +63,7 @@ export default function NewLeaveRequestPage() {
 
   const currentBalance = 24; 
 
-  // حساب أيام العمل
+  // حساب أيام العمل الفعلي
   useEffect(() => {
     async function calculateMetrics() {
       if (form.startDate && form.endDate && db && companyId) {
@@ -154,7 +156,7 @@ export default function NewLeaveRequestPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-        {/* Left Column: Interactive Calendar (The Heart of selection) */}
+        {/* Left Column: Interactive Calendar */}
         <div className="lg:col-span-5 space-y-8">
            <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
               <CardHeader className="bg-slate-50/50 border-b p-8 flex justify-between items-center">
@@ -173,33 +175,33 @@ export default function NewLeaveRequestPage() {
                     classNames={{
                         months: "flex flex-col",
                         month: "space-y-6",
-                        caption: "flex justify-center pt-2 relative items-center mb-8 px-10",
+                        caption: "flex justify-center pt-2 relative items-center mb-8",
                         caption_label: "text-xl font-black text-slate-800",
-                        nav: "space-x-1 flex items-center absolute inset-x-0 top-2 justify-between px-2",
+                        nav: "flex items-center absolute inset-x-0 top-0 justify-between px-2 h-12",
                         nav_button: cn(
-                          "h-10 w-10 bg-slate-100 hover:bg-primary hover:text-white rounded-2xl transition-all p-0 flex items-center justify-center border-0 shadow-sm"
+                          "h-10 w-10 bg-slate-100 hover:bg-primary hover:text-white rounded-2xl transition-all p-0 flex items-center justify-center border-0 shadow-sm z-10"
                         ),
-                        nav_button_previous: "order-first",
-                        nav_button_next: "order-last",
+                        nav_button_previous: "absolute left-0",
+                        nav_button_next: "absolute right-0",
                         table: "w-full border-collapse space-y-1",
                         head_row: "flex justify-between mb-4",
                         head_cell: "text-slate-400 w-12 font-black text-[10px] uppercase",
                         row: "flex w-full mt-2 justify-between",
                         cell: cn(
                           "relative p-0 text-center text-sm focus-within:relative focus-within:z-20 h-12 w-12 transition-all",
-                          "[&:has([aria-selected])]:bg-primary/10", // تلوين المسار بخلفية خفيفة
-                          "[&:has([aria-selected].day-range-end)]:rounded-e-3xl",
-                          "[&:has([aria-selected].day-range-start)]:rounded-s-3xl",
-                          "first:[&:has([aria-selected])]:rounded-s-3xl",
-                          "last:[&:has([aria-selected])]:rounded-e-3xl"
+                          "[&:has([aria-selected])]:bg-primary/10 first:[&:has([aria-selected])]:rounded-s-3xl last:[&:has([aria-selected])]:rounded-e-3xl"
                         ),
                         day: cn("h-12 w-12 p-0 font-bold rounded-3xl hover:bg-slate-100 transition-all"),
-                        day_range_start: "day-range-start rounded-3xl bg-primary text-white hover:bg-primary hover:text-white shadow-xl shadow-primary/30 z-30",
-                        day_range_end: "day-range-end rounded-3xl bg-primary text-white hover:bg-primary hover:text-white shadow-xl shadow-primary/30 z-30",
-                        day_range_middle: "aria-selected:bg-primary/10 aria-selected:text-primary rounded-none z-10",
+                        day_range_start: "day-range-start !rounded-3xl bg-primary text-white hover:bg-primary hover:text-white shadow-xl shadow-primary/30 z-30",
+                        day_range_end: "day-range-end !rounded-3xl bg-primary text-white hover:bg-primary hover:text-white shadow-xl shadow-primary/30 z-30",
+                        day_range_middle: "aria-selected:bg-primary/10 aria-selected:text-primary !rounded-none z-10",
                         day_selected: "bg-primary text-white focus:bg-primary focus:text-white",
                         day_today: "bg-slate-100 text-primary border-2 border-primary/20",
                         day_outside: "text-slate-300 opacity-50",
+                    }}
+                    components={{
+                      IconLeft: () => <ChevronLeft className={cn("h-5 w-5", isRtl && "rotate-180")} />,
+                      IconRight: () => <ChevronRight className={cn("h-5 w-5", isRtl && "rotate-180")} />
                     }}
                  />
               </CardContent>
