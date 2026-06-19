@@ -54,7 +54,7 @@ export default function RolesManagerPage({ isSubComponent = false }: RolesManage
 
   const filteredRoles = roles?.filter(r => 
     r.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    r.code.toLowerCase().includes(searchTerm.toLowerCase())
+    r.nameEn.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
 
   return (
@@ -108,10 +108,10 @@ export default function RolesManagerPage({ isSubComponent = false }: RolesManage
               <CardHeader className="p-8 pb-4 flex flex-row justify-between items-start">
                 <div className="text-start">
                   <div className="flex items-center gap-2 mb-2">
-                     <Badge variant="outline" className="font-mono text-[10px] text-slate-400">{role.code}</Badge>
+                     <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? role.nameEn : role.name}</span>
                      {role.isSystemRole && <Badge className="bg-blue-50 text-blue-600 border-0 text-[8px] font-black uppercase">System</Badge>}
                   </div>
-                  <CardTitle className="text-2xl font-black font-headline">{role.name}</CardTitle>
+                  <CardTitle className="text-2xl font-black font-headline">{isRtl ? role.name : role.nameEn}</CardTitle>
                 </div>
                 <Button variant="ghost" size="icon" onClick={() => { setEditingRole(role); setIsFormOpen(true); }} className="rounded-xl opacity-0 group-hover:opacity-100 transition-opacity">
                    <Edit3 className="h-5 w-5 text-blue-600" />
@@ -123,7 +123,7 @@ export default function RolesManagerPage({ isSubComponent = false }: RolesManage
                 </p>
                 <div className="flex flex-wrap gap-1.5 min-h-[60px] content-start">
                    {role.permissions[0] === '*' ? (
-                     <Badge className="bg-emerald-500 text-white font-black px-3 py-1">صلاحيات كاملة (FULL ACCESS)</Badge>
+                     <Badge className="bg-emerald-500 text-white font-black px-3 py-1 text-[10px]">صلاحيات كاملة (FULL ACCESS)</Badge>
                    ) : (
                      role.permissions.slice(0, 4).map(p => (
                        <Badge key={p} variant="secondary" className="bg-slate-100 text-slate-500 text-[9px] font-bold">{p}</Badge>

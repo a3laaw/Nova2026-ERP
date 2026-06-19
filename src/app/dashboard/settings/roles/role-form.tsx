@@ -32,7 +32,7 @@ export function RoleForm({ role, onClose, roleService }: Props) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<Partial<Role>>(
     role || { 
-      code: '', name: '', description: '', permissions: [], 
+      name: '', nameEn: '', description: '', permissions: [], 
       isActive: true, isSystemRole: false, order: 10 
     }
   );
@@ -46,13 +46,15 @@ export function RoleForm({ role, onClose, roleService }: Props) {
   };
 
   const handleSave = async () => {
-    if (!formData.name || !formData.code) return;
+    if (!formData.name || !formData.nameEn) return;
     setLoading(true);
     try {
       if (role?.id) {
         await roleService.updateRole(role.id, formData);
       } else {
-        await roleService.addRole(formData as any);
+        // توليد كود داخلي بسيط بناءً على الاسم الإنجليزي إذا كان جديداً
+        const internalCode = formData.nameEn.toUpperCase().replace(/\s+/g, '_');
+        await roleService.addRole({ ...formData, code: internalCode } as any);
       }
       onClose();
     } finally {
@@ -78,25 +80,25 @@ export function RoleForm({ role, onClose, roleService }: Props) {
       </div>
 
       <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-12">
-        {/* الحقول الأساسية */}
         <div className="lg:col-span-4 p-8 space-y-6 border-e overflow-y-auto">
           <div className="space-y-4 text-start">
              <div className="space-y-2">
-                <Label className="font-black text-xs uppercase tracking-widest text-slate-400">{isRtl ? 'كود الدور (Code)' : 'Role Code'}</Label>
-                <Input 
-                  value={formData.code} 
-                  onChange={e => setFormData({...formData, code: e.target.value})}
-                  placeholder="EX: ENGINEER"
-                  className="h-12 rounded-xl font-mono text-sm"
-                  disabled={!!role?.isSystemRole}
-                />
-             </div>
-             <div className="space-y-2">
-                <Label className="font-black text-xs uppercase tracking-widest text-slate-400">{isRtl ? 'اسم الدور' : 'Role Name'}</Label>
+                <Label className="font-black text-xs uppercase tracking-widest text-slate-400">{isRtl ? 'اسم الدور (عربي)' : 'Role Name (Arabic)'}</Label>
                 <Input 
                   value={formData.name} 
                   onChange={e => setFormData({...formData, name: e.target.value})}
                   className="h-12 rounded-xl font-bold"
+                  placeholder="مثال: مهندس موقع"
+                />
+             </div>
+             <div className="space-y-2">
+                <Label className="font-black text-xs uppercase tracking-widest text-slate-400">{isRtl ? 'اسم الدور (English)' : 'Role Name (English)'}</Label>
+                <Input 
+                  value={formData.nameEn} 
+                  onChange={e => setFormData({...formData, nameEn: e.target.value})}
+                  className="h-12 rounded-xl font-bold text-start"
+                  dir="ltr"
+                  placeholder="Example: Site Engineer"
                 />
              </div>
              <div className="space-y-2">
@@ -120,7 +122,6 @@ export function RoleForm({ role, onClose, roleService }: Props) {
           </div>
         </div>
 
-        {/* مصفوفة الصلاحيات */}
         <div className="lg:col-span-8 bg-slate-50/30 overflow-hidden flex flex-col">
           <div className="p-6 border-b bg-white/50 backdrop-blur-sm flex justify-between items-center">
              <h3 className="font-black text-lg flex items-center gap-2">

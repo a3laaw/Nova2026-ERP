@@ -11,7 +11,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
@@ -34,7 +33,7 @@ export default function ServiceTypesPage() {
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   
   const [form, setForm] = useState<Partial<ServiceType>>({
-    code: '', name: '', nameEn: '', description: '', moduleScope: 'technical', isActive: true, order: 0, color: '#f57c00'
+    name: '', nameEn: '', description: '', moduleScope: 'technical', isActive: true, order: 0, color: '#f57c00'
   });
 
   const service = useMemo(() => db && companyId ? new ServiceTypeService(db, companyId) : null, [db, companyId]);
@@ -42,18 +41,24 @@ export default function ServiceTypesPage() {
   const { data: serviceTypes, loading } = useCollection<ServiceType>(serviceQuery);
 
   const handleSave = async () => {
-    if (!service || !form.name || !form.code) return;
+    if (!service || !form.name || !form.nameEn) return;
     setLoadingAction('save');
     try {
       if (form.id) { await service.updateServiceType(form.id, form); }
-      else { await service.addServiceType(form as any); }
+      else { 
+        const internalCode = (form.nameEn || 'ST').toUpperCase().replace(/\s+/g, '_');
+        await service.addServiceType({ ...form, code: internalCode } as any); 
+      }
       toast({ title: t('saved') });
-      setForm({ code: '', name: '', nameEn: '', description: '', moduleScope: 'technical', isActive: true, order: 0, color: '#f57c00' });
+      setForm({ name: '', nameEn: '', description: '', moduleScope: 'technical', isActive: true, order: 0, color: '#f57c00' });
     } catch (e) { toast({ variant: "destructive", title: t('error') }); }
     finally { setLoadingAction(null); }
   };
 
-  const filteredData = serviceTypes?.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.code.toLowerCase().includes(searchTerm.toLowerCase())) || [];
+  const filteredData = serviceTypes?.filter(s => 
+    s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    s.nameEn.toLowerCase().includes(searchTerm.toLowerCase())
+  ) || [];
 
   return (
     <div className="space-y-6">
@@ -64,18 +69,17 @@ export default function ServiceTypesPage() {
         </h2>
         <Dialog>
           <DialogTrigger asChild>
-            <Button onClick={() => setForm({ code: '', name: '', nameEn: '', description: '', moduleScope: 'technical', isActive: true, order: (serviceTypes?.length || 0) + 1, color: '#f57c00' })} className="rounded-xl">
+            <Button onClick={() => setForm({ name: '', nameEn: '', description: '', moduleScope: 'technical', isActive: true, order: (serviceTypes?.length || 0) + 1, color: '#f57c00' })} className="rounded-xl">
               <Plus className="me-2 h-4 w-4" /> {isRtl ? 'نشاط جديد' : 'New Activity'}
             </Button>
           </DialogTrigger>
           <DialogContent className="rounded-3xl max-w-2xl" dir={dir}>
             <DialogHeader><DialogTitle className="text-start font-black text-2xl">{form.id ? (isRtl ? 'تعديل نشاط' : 'Edit') : (isRtl ? 'إضافة نشاط' : 'Add')}</DialogTitle></DialogHeader>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-6 text-start">
-              <div className="space-y-2"><Label>Code</Label><Input value={form.code} onChange={e => setForm({...form, code: e.target.value})} /></div>
               <div className="space-y-2"><Label>{isRtl ? 'الترتيب' : 'Order'}</Label><Input type="number" value={form.order || ''} onChange={e => setForm({...form, order: Number(e.target.value)})} /></div>
-              <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} /></div>
-              <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={form.nameEn} onChange={e => setForm({...form, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
               <div className="space-y-2"><Label>{isRtl ? 'اللون' : 'Color'}</Label><Input type="color" value={form.color} onChange={e => setForm({...form, color: e.target.value})} className="h-10 w-full p-1 cursor-pointer" /></div>
+              <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="مثال: هندسة معمارية" /></div>
+              <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={form.nameEn} onChange={e => setForm({...form, nameEn: e.target.value})} className="text-start" dir="ltr" placeholder="Example: Architectural Engineering" /></div>
               <div className="md:col-span-2 space-y-2"><Label>{isRtl ? 'الوصف' : 'Description'}</Label><Textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} /></div>
             </div>
             <DialogFooter><Button onClick={handleSave} disabled={loadingAction === 'save'} className="w-full h-12 rounded-xl font-bold">{loadingAction === 'save' ? <Loader2 className="animate-spin" /> : t('save')}</Button></DialogFooter>
@@ -95,7 +99,7 @@ export default function ServiceTypesPage() {
               <div className="h-2 w-full" style={{ backgroundColor: item.color || '#f57c00' }} />
               <CardContent className="p-6">
                 <div className="flex justify-between items-start mb-4">
-                  <Badge variant="outline" className="font-mono text-[9px]">{item.code}</Badge>
+                  <span className="text-[10px] font-black uppercase text-slate-400 tracking-tighter">{item.nameEn}</span>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button variant="ghost" size="icon" onClick={() => setForm(item)} className="h-8 w-8 text-blue-600"><Edit3 className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" onClick={() => service?.deleteServiceType(item.id!)} className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>

@@ -5,8 +5,9 @@
 import { BaseReference } from './reference';
 
 export interface Role extends BaseReference {
-  code: string;
+  code?: string; // اختياري للمنطق الداخلي فقط
   name: string;
+  nameEn: string; // إضافة الاسم الإنجليزي
   description?: string;
   permissions: string[];
   isSystemRole: boolean;
