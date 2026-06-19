@@ -15,7 +15,8 @@ import {
   AlertTriangle,
   ArrowRight,
   Briefcase,
-  FileText
+  FileText,
+  CheckCircle2
 } from "lucide-react";
 import { useFirestore } from '@/firebase';
 import { useAuthContext } from '@/context/auth-context';
@@ -60,7 +61,6 @@ export default function NewLeaveRequestPage() {
 
   const currentBalance = 24; 
 
-  // حساب أيام العمل الفعلية عند تغيير التواريخ برمجياً
   useEffect(() => {
     async function calculateMetrics() {
       if (form.startDate && form.endDate && db && companyId) {
@@ -117,8 +117,7 @@ export default function NewLeaveRequestPage() {
   return (
     <div className="space-y-10 max-w-5xl mx-auto pb-20 animate-in fade-in duration-700" dir={dir}>
       
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-8 border-slate-200">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-8 border-slate-200/60">
         <div className="text-start space-y-2">
            <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-primary/5 px-4 py-1.5 rounded-full w-fit">
               <ShieldCheck className="h-3 w-3" /> {isRtl ? 'بوابة الخدمة الذاتية' : 'Self-Service Portal'}
@@ -126,11 +125,11 @@ export default function NewLeaveRequestPage() {
            <h1 className="text-4xl font-black font-headline text-slate-900">{isRtl ? 'طلب إجازة جديد' : 'New Leave Request'}</h1>
         </div>
         <div className="flex gap-4">
-          <div className="bg-white p-6 rounded-3xl shadow-xl ring-1 ring-black/5 flex items-center gap-4 min-w-[200px]">
+          <div className="bg-white p-5 rounded-3xl shadow-xl ring-1 ring-black/5 flex items-center gap-4 min-w-[200px]">
             <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary"><CalendarDays className="h-5 w-5" /></div>
             <div className="text-start">
                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'الرصيد المتاح' : 'Available'}</p>
-                <h4 className="text-xl font-black text-slate-900">{currentBalance} <span className="text-[10px] text-muted-foreground">{isRtl ? 'يوم' : 'Days'}</span></h4>
+                <h4 className="text-xl font-black text-slate-900">{currentBalance} <span className="text-[10px] text-muted-foreground font-bold">{isRtl ? 'يوم' : 'Days'}</span></h4>
             </div>
           </div>
         </div>
@@ -138,41 +137,46 @@ export default function NewLeaveRequestPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 items-start">
         
-        {/* Left Column: Summary Metrics */}
+        {/* Left Column: Light Summary Card */}
         <div className="lg:col-span-1 space-y-6">
-           <Card className="border-0 shadow-xl rounded-[2.5rem] bg-slate-900 text-white overflow-hidden">
-              <CardHeader className="bg-white/5 border-b border-white/10 p-8 text-start">
-                 <CardTitle className="text-lg font-black flex items-center gap-3">
+           <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
+              <CardHeader className="bg-slate-50/50 border-b p-8 text-start">
+                 <CardTitle className="text-lg font-black flex items-center gap-3 text-slate-800">
                     <Activity className="h-5 w-5 text-primary" />
                     {isRtl ? 'ملخص الاحتساب' : 'Leave Summary'}
                  </CardTitle>
               </CardHeader>
-              <CardContent className="p-8 space-y-6 text-start">
-                 <div className="space-y-4">
+              <CardContent className="p-8 space-y-8 text-start">
+                 <div className="space-y-5">
                     <div className="flex justify-between items-center">
-                       <span className="text-xs font-bold text-slate-400">{isRtl ? 'إجمالي الأيام:' : 'Total Days:'}</span>
-                       <span className="text-lg font-black text-white">{totalCalendarDays}</span>
+                       <span className="text-xs font-bold text-slate-500 uppercase tracking-tight">{isRtl ? 'إجمالي الأيام:' : 'Total Days:'}</span>
+                       <span className="text-xl font-black text-slate-900">{totalCalendarDays}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                       <span className="text-xs font-bold text-slate-400">{isRtl ? 'أيام العمل المخصومة:' : 'Work Days:'}</span>
-                       <span className="text-lg font-black text-emerald-400">{workingDays}</span>
+                       <span className="text-xs font-bold text-slate-500 uppercase tracking-tight">{isRtl ? 'أيام العمل المخصومة:' : 'Work Days:'}</span>
+                       <Badge className="bg-emerald-50 text-emerald-600 font-black text-lg border-0 shadow-sm px-4 py-1">
+                          {workingDays}
+                       </Badge>
                     </div>
-                    <div className="h-[1px] bg-white/10 w-full" />
-                    <div className="flex justify-between items-center pt-2">
-                       <span className="text-xs font-bold text-slate-400">{isRtl ? 'الرصيد المتبقي المتوقع:' : 'Expected Remainder:'}</span>
-                       <span className="text-2xl font-black text-primary">{currentBalance - workingDays}</span>
+                    <div className="h-[1px] bg-slate-100 w-full" />
+                    <div className="flex justify-between items-end pt-2">
+                       <div className="text-start">
+                          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block">{isRtl ? 'الرصيد المتبقي المتوقع' : 'Expected Remainder'}</span>
+                          <span className="text-3xl font-black font-headline text-primary mt-1 block">{currentBalance - workingDays}</span>
+                       </div>
+                       <CheckCircle2 className="h-8 w-8 text-emerald-500 opacity-20" />
                     </div>
                  </div>
                  
-                 <div className="mt-6 p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
-                    <div className="flex items-center gap-2 text-amber-400">
+                 <div className="mt-6 p-5 rounded-3xl bg-amber-50/50 border-2 border-amber-100/50 space-y-3">
+                    <div className="flex items-center gap-2 text-amber-600">
                        <AlertTriangle className="h-4 w-4" />
-                       <span className="text-[10px] font-black uppercase">{isRtl ? 'تنبيهات هامة' : 'Important'}</span>
+                       <span className="text-[10px] font-black uppercase tracking-widest">{isRtl ? 'تنبيهات هامة' : 'Important'}</span>
                     </div>
-                    <p className="text-[10px] text-slate-300 leading-relaxed font-bold">
+                    <p className="text-[10px] text-slate-600 leading-relaxed font-bold">
                        {isRtl ? '• يتم استبعاد أيام العطل الأسبوعية والرسمية من الخصم.' : '• Weekends and holidays are excluded from deduction.'}
                     </p>
-                    <p className="text-[10px] text-slate-300 leading-relaxed font-bold">
+                    <p className="text-[10px] text-slate-600 leading-relaxed font-bold">
                        {isRtl ? '• يجب تقديم الطلب قبل 7 أيام عمل على الأقل.' : '• Must apply at least 7 work days in advance.'}
                     </p>
                  </div>
@@ -180,19 +184,18 @@ export default function NewLeaveRequestPage() {
            </Card>
         </div>
 
-        {/* Right Column: Form */}
+        {/* Right Column: Main Form */}
         <div className="lg:col-span-2 space-y-8">
            <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
-              <div className="h-2 bg-primary w-full" />
+              <div className="h-2 bg-primary/20 w-full" />
               <CardContent className="p-10 space-y-10">
                  
-                 {/* Leave Type Selection */}
                  <div className="space-y-4 text-start">
                     <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                        <Briefcase className="h-3 w-3" /> {isRtl ? 'تصنيف الإجازة' : 'Leave Type'}
                     </Label>
                     <Select value={form.type} onValueChange={(v: LeaveType) => setForm({...form, type: v})}>
-                        <SelectTrigger className="h-16 rounded-2xl border-2 text-lg font-black bg-slate-50/30 focus:bg-white transition-all">
+                        <SelectTrigger className="h-16 rounded-2xl border-2 text-lg font-black bg-slate-50/30 focus:bg-white transition-all border-slate-100">
                            <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="rounded-2xl border-2 shadow-2xl">
@@ -203,8 +206,7 @@ export default function NewLeaveRequestPage() {
                     </Select>
                  </div>
 
-                 {/* Date Range Inputs */}
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t">
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-slate-50">
                     <div className="space-y-3 text-start">
                        <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                           <ArrowRight className={cn("h-3 w-3 text-primary", isRtl && "rotate-180")} />
@@ -221,10 +223,11 @@ export default function NewLeaveRequestPage() {
                     </div>
                  </div>
 
-                 {/* Reasons & Notes */}
-                 <div className="space-y-6 pt-6 border-t">
+                 <div className="space-y-6 pt-6 border-t border-slate-50">
                     <div className="flex items-center gap-3 text-slate-800 text-start">
-                       <FileText className="h-6 w-6 text-primary" />
+                       <div className="h-10 w-10 bg-primary/5 rounded-xl flex items-center justify-center text-primary">
+                          <FileText className="h-5 w-5" />
+                       </div>
                        <h3 className="text-xl font-black">{isRtl ? 'ملاحظات إضافية' : 'Additional Notes'}</h3>
                     </div>
                     
@@ -255,7 +258,7 @@ export default function NewLeaveRequestPage() {
                        value={form.reason} 
                        onChange={e => setForm({...form, reason: e.target.value})} 
                        placeholder={isRtl ? 'تفاصيل إضافية للإدارة...' : 'Details for management...'} 
-                       className="min-h-[140px] rounded-[2rem] border-2 bg-slate-50/30 p-8 text-lg focus:bg-white transition-all resize-none shadow-inner border-slate-100" 
+                       className="min-h-[140px] rounded-[2rem] border-2 bg-slate-50/30 p-8 text-lg focus:bg-white transition-all resize-none shadow-inner border-slate-100 focus:border-primary/30" 
                     />
                  </div>
               </CardContent>
@@ -273,7 +276,7 @@ export default function NewLeaveRequestPage() {
               <Button 
                 variant="outline" 
                 onClick={() => router.push('/dashboard/hr')} 
-                className="flex-1 h-20 rounded-[2.5rem] border-2 border-slate-200 font-black text-xl hover:bg-white transition-all bg-slate-50"
+                className="flex-1 h-20 rounded-[2.5rem] border-2 border-slate-200 font-black text-xl hover:bg-white transition-all bg-white text-slate-600 shadow-sm"
               >
                 {isRtl ? 'إلغاء' : 'Cancel'}
               </Button>
