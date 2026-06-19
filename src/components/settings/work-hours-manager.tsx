@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { 
   Clock, Calendar, MoonStar, 
-  Loader2, Save, Sun, HardHat
+  Loader2, Save, Sun, HardHat,
+  Coffee, Utensils
 } from "lucide-react";
 import { useFirestore } from '@/firebase';
 import { useAuthContext } from '@/context/auth-context';
@@ -95,7 +96,7 @@ export function WorkHoursManager() {
         <Button 
           onClick={handleSave} 
           disabled={saving}
-          className="bg-primary text-white font-black px-8 py-6 rounded-2xl text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all"
+          className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all"
         >
           {saving ? <Loader2 className="animate-spin me-2" /> : <Save className="me-2 h-5 w-5" />}
           {t('saveAllRules')}
@@ -203,7 +204,6 @@ export function WorkHoursManager() {
           </CardHeader>
           <CardContent className="p-8 grid grid-cols-1 md:grid-cols-2 gap-12 text-start">
              
-             {/* Weekly Holidays */}
              <div className="space-y-4">
                 <h4 className="font-black text-sm border-s-4 border-amber-400 ps-3">{t('holidays')}</h4>
                 <div className="flex flex-wrap gap-3">
@@ -225,7 +225,6 @@ export function WorkHoursManager() {
                 <p className="text-[10px] text-muted-foreground font-bold">{lang === 'ar' ? '* الأيام المحددة سيتم إغلاق الحجوزات فيها تماماً.' : '* Selected days will be completely closed for bookings.'}</p>
              </div>
 
-             {/* Half-Day Logic */}
              <div className="space-y-6 border-r md:ps-12 border-slate-100">
                 <h4 className="font-black text-sm border-s-4 border-blue-400 ps-3">{t('halfDay')}</h4>
                 <div className="grid grid-cols-1 gap-6">
@@ -263,7 +262,7 @@ export function WorkHoursManager() {
           </CardContent>
         </Card>
 
-        {/* Ramadan Schedule */}
+        {/* Ramadan Schedule (Enhanced for 2 Periods) */}
         <Card className="border-0 shadow-lg rounded-[2.5rem] bg-indigo-900 text-white overflow-hidden lg:col-span-2">
           <CardHeader className="bg-white/5 border-b p-8 text-start">
              <div className="flex items-center justify-between">
@@ -271,7 +270,7 @@ export function WorkHoursManager() {
                    <div className="p-3 bg-white/10 rounded-2xl shadow-sm text-indigo-200"><MoonStar className="h-6 w-6" /></div>
                    <div>
                       <CardTitle className="text-xl font-black">{t('ramadanSchedule')}</CardTitle>
-                      <CardDescription className="font-bold text-indigo-200/60">{lang === 'ar' ? 'تفعيل مواعيد استثنائية خلال الشهر الفضيل.' : 'Activate special working hours during the holy month.'}</CardDescription>
+                      <CardDescription className="font-bold text-indigo-200/60">{lang === 'ar' ? 'تفعيل مواعيد استثنائية (فترتين) خلال الشهر الفضيل.' : 'Activate special working hours (2 periods) during the holy month.'}</CardDescription>
                    </div>
                 </div>
                 <Switch 
@@ -283,7 +282,7 @@ export function WorkHoursManager() {
           </CardHeader>
           {settings?.ramadan.enabled && (
              <CardContent className="p-8 space-y-8 text-start animate-in fade-in zoom-in-95">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-b border-white/5 pb-8">
                    <div className="space-y-2">
                       <Label className="text-xs font-black opacity-70">{t('startDate')}</Label>
                       <Input type="date" value={settings.ramadan.startDate} onChange={e => setSettings({...settings, ramadan: { ...settings.ramadan, startDate: e.target.value }})} className="h-12 rounded-xl bg-white/10 border-white/10 text-white" />
@@ -292,15 +291,34 @@ export function WorkHoursManager() {
                       <Label className="text-xs font-black opacity-70">{t('endDate')}</Label>
                       <Input type="date" value={settings.ramadan.endDate} onChange={e => setSettings({...settings, ramadan: { ...settings.ramadan, endDate: e.target.value }})} className="h-12 rounded-xl bg-white/10 border-white/10 text-white" />
                    </div>
-                   <div className="space-y-2">
-                      <Label className="text-xs font-black opacity-70">{t('startTime')}</Label>
-                      <Input type="time" value={settings.ramadan.startTime} onChange={e => setSettings({...settings, ramadan: { ...settings.ramadan, startTime: e.target.value }})} className="h-12 rounded-xl bg-white/10 border-white/10 text-white" />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                   {/* Morning Period */}
+                   <div className="space-y-4">
+                      <div className="flex items-center gap-2 text-indigo-200">
+                         <Coffee className="h-4 w-4" />
+                         <span className="font-black text-sm uppercase tracking-widest">{t('morningStart')} / {t('morningEnd')}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                         <Input type="time" value={settings.ramadan.morningStartTime} onChange={e => setSettings({...settings, ramadan: { ...settings.ramadan, morningStartTime: e.target.value }})} className="h-12 rounded-xl bg-white/10 border-white/10 text-white" />
+                         <Input type="time" value={settings.ramadan.morningEndTime} onChange={e => setSettings({...settings, ramadan: { ...settings.ramadan, morningEndTime: e.target.value }})} className="h-12 rounded-xl bg-white/10 border-white/10 text-white" />
+                      </div>
                    </div>
-                   <div className="space-y-2">
-                      <Label className="text-xs font-black opacity-70">{t('endTime')}</Label>
-                      <Input type="time" value={settings.ramadan.endTime} onChange={e => setSettings({...settings, ramadan: { ...settings.ramadan, endTime: e.target.value }})} className="h-12 rounded-xl bg-white/10 border-white/10 text-white" />
+
+                   {/* Evening Period */}
+                   <div className="space-y-4">
+                      <div className="flex items-center gap-2 text-indigo-200">
+                         <Utensils className="h-4 w-4" />
+                         <span className="font-black text-sm uppercase tracking-widest">{t('eveningStart')} / {t('eveningEnd')}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                         <Input type="time" value={settings.ramadan.eveningStartTime} onChange={e => setSettings({...settings, ramadan: { ...settings.ramadan, eveningStartTime: e.target.value }})} className="h-12 rounded-xl bg-white/10 border-white/10 text-white" />
+                         <Input type="time" value={settings.ramadan.eveningEndTime} onChange={e => setSettings({...settings, ramadan: { ...settings.ramadan, eveningEndTime: e.target.value }})} className="h-12 rounded-xl bg-white/10 border-white/10 text-white" />
+                      </div>
                    </div>
                 </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-white/10">
                    <div className="space-y-2">
                       <Label className="text-xs font-black opacity-70">{t('slotDuration')}</Label>

@@ -23,8 +23,10 @@ export interface RamadanSchedule {
   enabled: boolean;
   startDate: string; // YYYY-MM-DD
   endDate: string;
-  startTime: string;
-  endTime: string;
+  morningStartTime: string;
+  morningEndTime: string;
+  eveningStartTime: string;
+  eveningEndTime: string;
   slotDurationMinutes: number;
   bufferMinutes: number;
 }

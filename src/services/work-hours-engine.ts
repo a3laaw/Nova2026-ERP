@@ -3,7 +3,7 @@
  * يحتوي على المنطق البرمجي لتوليد الخانات الزمنية بناءً على القواعد المرجعية.
  */
 
-import { format, parse, addMinutes, isWithinInterval, startOfDay, isSameDay } from 'date-fns';
+import { format, parse, addMinutes, startOfDay } from 'date-fns';
 import { 
   WorkHoursSettings, 
   DailySchedule, 
@@ -20,19 +20,23 @@ export function generateTimeSlots(
   duration: number, 
   buffer: number
 ): string[] {
+  if (!startTime || !endTime || startTime === endTime) return [];
+  
   const slots: string[] = [];
-  let current = parse(startTime, 'HH:mm', new Date());
-  const end = parse(endTime, 'HH:mm', new Date());
+  try {
+    let current = parse(startTime, 'HH:mm', new Date());
+    const end = parse(endTime, 'HH:mm', new Date());
 
-  // ضمان عدم الدخول في حلقة لانهائية إذا كانت البيانات خاطئة
-  if (duration <= 0) return [];
+    if (duration <= 0) return [];
 
-  while (current < end) {
-    slots.push(format(current, 'HH:mm'));
-    current = addMinutes(current, duration + buffer);
-    
-    // تأكد أن الموعد التالي لا يتجاوز وقت النهاية
-    if (addMinutes(current, 0) > end) break;
+    while (current < end) {
+      slots.push(format(current, 'HH:mm'));
+      current = addMinutes(current, duration + buffer);
+      
+      if (addMinutes(current, 0) > end) break;
+    }
+  } catch (e) {
+    return [];
   }
 
   return slots;
@@ -42,13 +46,16 @@ export function generateTimeSlots(
  * التحقق مما إذا كان التاريخ يقع ضمن فترة رمضان
  */
 export function isWithinRamadan(date: Date, config: WorkHoursSettings['ramadan']): boolean {
-  if (!config.enabled) return false;
+  if (!config.enabled || !config.startDate || !config.endDate) return false;
   
-  const target = startOfDay(date);
-  const start = startOfDay(new Date(config.startDate));
-  const end = startOfDay(new Date(config.endDate));
-
-  return target >= start && target <= end;
+  try {
+    const target = startOfDay(date);
+    const start = startOfDay(new Date(config.startDate));
+    const end = startOfDay(new Date(config.endDate));
+    return target >= start && target <= end;
+  } catch (e) {
+    return false;
+  }
 }
 
 /**
@@ -92,30 +99,38 @@ export function buildDaySlots(
   const inRamadan = isWithinRamadan(date, settings.ramadan);
   const inHalfDay = isHalfDay(date, settings.halfDay);
   
-  // 2. تحديد المواعيد الخام (Default)
-  let schedule: Partial<DailySchedule> = { ...settings[scope] };
   let morningSlots: string[] = [];
   let eveningSlots: string[] = [];
 
-  // 3. تطبيق منطق رمضان (أولوية قصوى)
+  // 2. تطبيق منطق رمضان (أولوية قصوى)
   if (inRamadan) {
     morningSlots = generateTimeSlots(
-      settings.ramadan.startTime,
-      settings.ramadan.endTime,
+      settings.ramadan.morningStartTime,
+      settings.ramadan.morningEndTime,
+      settings.ramadan.slotDurationMinutes,
+      settings.ramadan.bufferMinutes
+    );
+    
+    eveningSlots = generateTimeSlots(
+      settings.ramadan.eveningStartTime,
+      settings.ramadan.eveningEndTime,
       settings.ramadan.slotDurationMinutes,
       settings.ramadan.bufferMinutes
     );
     
     return {
       morningSlots,
-      eveningSlots: [],
-      hasWorkHours: morningSlots.length > 0,
+      eveningSlots,
+      hasWorkHours: morningSlots.length > 0 || eveningSlots.length > 0,
       isHoliday: false,
       isHalfDay: false,
       isRamadan: true,
       slotDurationMinutes: settings.ramadan.slotDurationMinutes
     };
   }
+
+  // 3. تحديد المواعيد الخام (Default)
+  let schedule: Partial<DailySchedule> = { ...settings[scope] };
 
   // 4. تطبيق منطق نصف الدوام
   if (inHalfDay) {
@@ -128,10 +143,8 @@ export function buildDaySlots(
       );
       eveningSlots = [];
     } else {
-      // Custom end time - قد يقص الصباح أو المساء
       const customEnd = settings.halfDay.endTime;
       
-      // توليد الصباح (مع مراعاة القص)
       const mEnd = customEnd < schedule.morningEndTime! ? customEnd : schedule.morningEndTime!;
       morningSlots = generateTimeSlots(
         schedule.morningStartTime!,
@@ -140,7 +153,6 @@ export function buildDaySlots(
         schedule.bufferMinutes!
       );
 
-      // توليد المساء (إذا كان الوقت المخصص يتجاوز بداية المساء)
       if (customEnd > schedule.eveningStartTime!) {
         eveningSlots = generateTimeSlots(
           schedule.eveningStartTime!,

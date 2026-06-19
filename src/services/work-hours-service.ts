@@ -71,8 +71,10 @@ export class WorkHoursService {
         enabled: false,
         startDate: format(new Date(), 'yyyy-MM-dd'),
         endDate: format(new Date(), 'yyyy-MM-dd'),
-        startTime: "09:00",
-        endTime: "15:00",
+        morningStartTime: "09:00",
+        morningEndTime: "14:00",
+        eveningStartTime: "20:00",
+        eveningEndTime: "23:00",
         slotDurationMinutes: 30,
         bufferMinutes: 0
       }
@@ -81,7 +83,6 @@ export class WorkHoursService {
 }
 
 function format(date: Date, fmt: string): string {
-  // دالة مساعدة بسيطة للتنسيق داخل الخدمة إذا لزم الأمر
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
