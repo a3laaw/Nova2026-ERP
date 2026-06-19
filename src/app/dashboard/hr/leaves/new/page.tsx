@@ -9,7 +9,7 @@ import {
   CalendarDays, 
   Clock, Calendar as CalendarIcon,
   AlertCircle, ArrowRight,
-  Plane, Users, Activity, UploadCloud, ChevronLeft,
+  Plane, Users, Activity,
   ShieldCheck,
   Send,
 } from "lucide-react";
@@ -29,7 +29,7 @@ import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { SmartDateInput } from '@/components/ui/smart-date-input';
 import { ar } from 'date-fns/locale';
-import { format, parseISO, isValid } from 'date-fns';
+import { format, parseISO, isValid, startOfDay } from 'date-fns';
 import { DateRange } from "react-day-picker";
 
 export default function NewLeaveRequestPage() {
@@ -95,27 +95,27 @@ export default function NewLeaveRequestPage() {
     calculateMetrics();
   }, [form.startDate, form.endDate, db, companyId]);
 
-  // التعامل مع اختيار التقويم (Range)
+  // التعامل مع اختيار التقويم (Range) بشكل ذري
   const handleCalendarSelect = (range: DateRange | undefined) => {
-    if (range?.from) {
-      const startStr = format(range.from, 'yyyy-MM-dd');
-      setForm(prev => ({ ...prev, startDate: startStr }));
-    } else {
-      setForm(prev => ({ ...prev, startDate: '' }));
-    }
-
-    if (range?.to) {
-      const endStr = format(range.to, 'yyyy-MM-dd');
-      setForm(prev => ({ ...prev, endDate: endStr }));
-    } else {
-      setForm(prev => ({ ...prev, endDate: '' }));
-    }
+    setForm(prev => ({
+      ...prev,
+      startDate: range?.from ? format(range.from, 'yyyy-MM-dd') : '',
+      endDate: range?.to ? format(range.to, 'yyyy-MM-dd') : ''
+    }));
   };
 
   const selectedRange: DateRange | undefined = useMemo(() => {
-    const from = form.startDate ? parseISO(form.startDate) : undefined;
-    const to = form.endDate ? parseISO(form.endDate) : undefined;
-    return { from, to };
+    try {
+      const from = form.startDate ? parseISO(form.startDate) : undefined;
+      const to = form.endDate ? parseISO(form.endDate) : undefined;
+      
+      return { 
+        from: from && isValid(from) ? from : undefined, 
+        to: to && isValid(to) ? to : undefined 
+      };
+    } catch {
+      return undefined;
+    }
   }, [form.startDate, form.endDate]);
 
   const handleSubmit = async () => {
@@ -195,7 +195,7 @@ export default function NewLeaveRequestPage() {
                     onSelect={handleCalendarSelect}
                     locale={isRtl ? ar : undefined}
                     className="rounded-3xl border-0 p-0"
-                    disabled={{ before: new Date() }}
+                    disabled={{ before: startOfDay(new Date()) }}
                     numberOfMonths={1}
                     classNames={{
                         months: "flex flex-col",
@@ -208,7 +208,8 @@ export default function NewLeaveRequestPage() {
                         head_cell: "text-slate-400 rounded-md w-12 font-black text-xs uppercase",
                         row: "flex w-full mt-2 justify-between",
                         cell: cn(
-                          "relative p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([aria-selected])]:bg-primary/5",
+                          "relative p-0 text-center text-sm focus-within:relative focus-within:z-20",
+                          "[&:has([aria-selected])]:bg-primary/5 [&:has([aria-selected].day-range-end)]:rounded-e-2xl [&:has([aria-selected].day-range-start)]:rounded-s-2xl",
                           "h-12 w-12"
                         ),
                         day: cn(
@@ -216,6 +217,7 @@ export default function NewLeaveRequestPage() {
                         ),
                         day_range_start: "day-range-start rounded-2xl bg-primary text-white hover:bg-primary hover:text-white",
                         day_range_end: "day-range-end rounded-2xl bg-primary text-white hover:bg-primary hover:text-white",
+                        day_range_middle: "aria-selected:bg-primary/10 aria-selected:text-primary rounded-none",
                         day_selected: "bg-primary text-white hover:bg-primary hover:text-white focus:bg-primary focus:text-white",
                         day_today: "bg-slate-100 text-primary",
                         day_outside: "text-slate-300 opacity-50",
@@ -250,7 +252,7 @@ export default function NewLeaveRequestPage() {
                     <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
                        <div 
                          className="h-full bg-primary transition-all duration-1000" 
-                         style={{ width: `${((currentBalance - workingDays) / 30) * 100}%` }}
+                         style={{ width: `${Math.max(0, ((currentBalance - workingDays) / 30) * 100)}%` }}
                        />
                     </div>
                     <p className="text-[10px] font-bold text-slate-500 italic">
