@@ -111,12 +111,15 @@ export function buildDaySlots(
       settings.ramadan.bufferMinutes
     );
     
-    eveningSlots = generateTimeSlots(
-      settings.ramadan.eveningStartTime,
-      settings.ramadan.eveningEndTime,
-      settings.ramadan.slotDurationMinutes,
-      settings.ramadan.bufferMinutes
-    );
+    // توليد الفترة الثانية فقط إذا كان الوضع "فترتين"
+    if (settings.ramadan.mode === 'double') {
+      eveningSlots = generateTimeSlots(
+        settings.ramadan.eveningStartTime,
+        settings.ramadan.eveningEndTime,
+        settings.ramadan.slotDurationMinutes,
+        settings.ramadan.bufferMinutes
+      );
+    }
     
     return {
       morningSlots,

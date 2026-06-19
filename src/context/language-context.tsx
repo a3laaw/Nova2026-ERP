@@ -108,6 +108,11 @@ const translations: Record<Language, Record<string, string>> = {
     endTime: 'نهاية الدوام',
     workHoursDesc: 'إدارة الدوام العام، القسم المعماري، وعطلات نهاية الأسبوع.',
     backToSettings: 'العودة للإعدادات',
+    singleShift: 'فترة عمل واحدة',
+    doubleShift: 'فترتي عمل',
+    ramadanMode: 'نظام الدوام في رمضان',
+    periodStart: 'بداية الفترة',
+    periodEnd: 'نهاية الفترة',
     // Days
     Sunday: 'الأحد',
     Monday: 'الاثنين',
@@ -213,6 +218,11 @@ const translations: Record<Language, Record<string, string>> = {
     endTime: 'End Time',
     workHoursDesc: 'Manage default shifts, architectural hours, and weekends.',
     backToSettings: 'Back to Settings',
+    singleShift: 'Single Shift',
+    doubleShift: 'Double Shift',
+    ramadanMode: 'Ramadan Work Mode',
+    periodStart: 'Period Start',
+    periodEnd: 'Period End',
     // Days
     Sunday: 'Sunday',
     Monday: 'Monday',

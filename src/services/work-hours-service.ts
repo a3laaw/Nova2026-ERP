@@ -69,6 +69,7 @@ export class WorkHoursService {
       },
       ramadan: {
         enabled: false,
+        mode: "double",
         startDate: format(new Date(), 'yyyy-MM-dd'),
         endDate: format(new Date(), 'yyyy-MM-dd'),
         morningStartTime: "09:00",

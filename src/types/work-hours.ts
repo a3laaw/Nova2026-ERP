@@ -21,6 +21,7 @@ export interface HalfDayRule {
 
 export interface RamadanSchedule {
   enabled: boolean;
+  mode: 'single' | 'double'; // جديد: تحديد عدد الفترات
   startDate: string; // YYYY-MM-DD
   endDate: string;
   morningStartTime: string;
