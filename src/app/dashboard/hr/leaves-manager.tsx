@@ -126,7 +126,7 @@ export function LeavesManager() {
             </div>
             <div className="p-8 space-y-6 text-start">
                <div className="space-y-2">
-                  <Label className="font-black text-xs uppercase text-slate-400">{isRtl ? 'نوع الإجازة' : 'Leave Type'}</Label>
+                  <Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{isRtl ? 'نوع الإجازة' : 'Leave Type'}</Label>
                   <Select value={form.type} onValueChange={(v: LeaveType) => setForm({...form, type: v})}>
                     <SelectTrigger className="h-12 rounded-xl border-2">
                       <SelectValue />
@@ -142,17 +142,17 @@ export function LeavesManager() {
 
                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                     <Label className="font-black text-xs uppercase text-slate-400">{isRtl ? 'من تاريخ' : 'From'}</Label>
+                     <Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{isRtl ? 'من تاريخ' : 'From'}</Label>
                      <Input type="date" value={form.startDate} onChange={e => setForm({...form, startDate: e.target.value})} className="h-12 rounded-xl border-2" />
                   </div>
                   <div className="space-y-2">
-                     <Label className="font-black text-xs uppercase text-slate-400">{isRtl ? 'إلى تاريخ' : 'To'}</Label>
+                     <Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{isRtl ? 'إلى تاريخ' : 'To'}</Label>
                      <Input type="date" value={form.endDate} onChange={e => setForm({...form, endDate: e.target.value})} className="h-12 rounded-xl border-2" />
                   </div>
                </div>
 
                <div className="space-y-2">
-                  <Label className="font-black text-xs uppercase text-slate-400">{isRtl ? 'السبب / ملاحظات' : 'Reason / Notes'}</Label>
+                  <Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{isRtl ? 'السبب / ملاحظات' : 'Reason / Notes'}</Label>
                   <Textarea value={form.reason} onChange={e => setForm({...form, reason: e.target.value})} className="rounded-xl border-2 min-h-[100px]" placeholder="..." />
                </div>
             </div>
