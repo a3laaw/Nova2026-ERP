@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -196,28 +195,30 @@ export default function CompanyProfilePage() {
           </Card>
         </div>
 
-        {/* الجانب الأيمن: معاينة وأزرار */}
+        {/* الجانب الأيمن: معاينة وأزرار - تحديث للألوان الفاتحة */}
         <div className="space-y-8">
-           <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-slate-900 text-white overflow-hidden p-8 text-center space-y-6">
-              <div className="w-24 h-24 bg-white/10 rounded-3xl mx-auto flex items-center justify-center border border-white/10 overflow-hidden">
+           <Card className="border-2 border-primary/10 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden p-8 text-center space-y-6">
+              <div className="w-24 h-24 bg-slate-100 rounded-3xl mx-auto flex items-center justify-center border-2 border-dashed border-slate-200 overflow-hidden">
                 {formData.logoUrl ? (
                   <img src={formData.logoUrl} alt="Logo" className="w-full h-full object-contain p-2" />
                 ) : (
-                  <ImageIcon className="h-10 w-10 text-white/20" />
+                  <ImageIcon className="h-10 w-10 text-slate-300" />
                 )}
               </div>
               <div className="text-center">
-                <h3 className="text-2xl font-black font-headline">{formData.name || t('name')}</h3>
-                <p className="text-emerald-400 text-xs font-bold uppercase tracking-widest mt-2">{t('active')}</p>
+                <h3 className="text-2xl font-black font-headline text-slate-900">{formData.name || t('name')}</h3>
+                <Badge variant="secondary" className="bg-emerald-50 text-emerald-600 text-xs font-black uppercase mt-2">
+                  {t('active')}
+                </Badge>
               </div>
-              <div className="pt-6 border-t border-white/5 space-y-4">
+              <div className="pt-6 border-t border-slate-100 space-y-4">
                  <div className="flex justify-between items-center text-xs">
-                   <span className="text-slate-400 font-bold">{t('commercialRegistry')}</span>
-                   <span className="font-mono">{formData.commercialRegistry || '---'}</span>
+                   <span className="text-slate-500 font-bold">{t('commercialRegistry')}</span>
+                   <span className="font-mono font-black text-slate-700">{formData.commercialRegistry || '---'}</span>
                  </div>
                  <div className="flex justify-between items-center text-xs">
-                   <span className="text-slate-400 font-bold">{t('licenseExpiry')}</span>
-                   <span className={cn("font-black", !formData.licenseExpiryDate && "text-slate-600")}>
+                   <span className="text-slate-500 font-bold">{t('licenseExpiry')}</span>
+                   <span className={cn("font-black", formData.licenseExpiryDate ? "text-primary" : "text-slate-400")}>
                      {formData.licenseExpiryDate || '---'}
                    </span>
                  </div>
@@ -235,7 +236,7 @@ export default function CompanyProfilePage() {
               </Button>
               <div className="p-6 rounded-3xl bg-amber-50 border border-amber-200 flex items-start gap-4">
                  <ShieldCheck className="h-6 w-6 text-amber-600 shrink-0" />
-                 <p className="text-xs font-bold text-amber-800 leading-relaxed">
+                 <p className="text-xs font-bold text-amber-800 leading-relaxed text-start">
                    {isRtl ? "تنبيه: سيتم استخدام هذه البيانات في كافة التقارير الرسمية والمستندات المولدة آلياً من النظام." : "Warning: This data will be used in all official reports and generated documents."}
                  </p>
               </div>
