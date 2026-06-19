@@ -38,17 +38,6 @@ export const AVAILABLE_PERMISSIONS: PermissionGroup[] = [
     ]
   },
   {
-    id: 'contracts',
-    label: 'العقود والاتفاقيات',
-    labelEn: 'Contracts',
-    permissions: [
-      { code: 'create_quotation', label: 'إنشاء عرض سعر', labelEn: 'Create Quotation' },
-      { code: 'approve_quotation', label: 'اعتماد عرض سعر', labelEn: 'Approve Quotation' },
-      { code: 'create_contract', label: 'إنشاء مسودة عقد', labelEn: 'Create Contract' },
-      { code: 'activate_contract', label: 'تفعيل العقد والبدء', labelEn: 'Activate Contract' },
-    ]
-  },
-  {
     id: 'execution',
     label: 'المشاريع والزيارات',
     labelEn: 'Projects & Visits',
@@ -61,15 +50,25 @@ export const AVAILABLE_PERMISSIONS: PermissionGroup[] = [
   },
   {
     id: 'procurement',
-    label: 'المشتريات والمخازن',
-    labelEn: 'Procurement & Inventory',
+    label: 'المشتريات',
+    labelEn: 'Procurement',
     permissions: [
       { code: 'create_purchase_request', label: 'إنشاء طلب شراء', labelEn: 'Create Purchase Request' },
       { code: 'approve_purchase_request', label: 'اعتماد طلب شراء', labelEn: 'Approve Purchase Request' },
       { code: 'create_rfq', label: 'إنشاء طلب تسعير (RFQ)', labelEn: 'Create RFQ' },
       { code: 'create_purchase_order', label: 'إصدار أمر شراء (PO)', labelEn: 'Create Purchase Order' },
+    ]
+  },
+  {
+    id: 'inventory',
+    label: 'المخازن والعهد',
+    labelEn: 'Inventory & Assets',
+    permissions: [
+      { code: 'view_inventory', label: 'عرض المخزون', labelEn: 'View Inventory' },
       { code: 'create_grn', label: 'إثبات استلام مواد (GRN)', labelEn: 'Create GRN' },
       { code: 'approve_grn', label: 'اعتماد سند الاستلام', labelEn: 'Approve GRN' },
+      { code: 'transfer_stock', label: 'تحويل مواد بين المواقع', labelEn: 'Transfer Stock' },
+      { code: 'issue_asset', label: 'صرف عهدة لموظف', labelEn: 'Issue Asset' },
     ]
   },
   {
@@ -80,10 +79,9 @@ export const AVAILABLE_PERMISSIONS: PermissionGroup[] = [
       { code: 'view_employees', label: 'عرض سجل الموظفين', labelEn: 'View Employees' },
       { code: 'create_employee', label: 'إضافة موظف', labelEn: 'Create Employee' },
       { code: 'edit_employee', label: 'تعديل بيانات موظف', labelEn: 'Edit Employee' },
+      { code: 'manage_attendance', label: 'إدارة الحضور والانصراف', labelEn: 'Manage Attendance' },
       { code: 'approve_leave', label: 'اعتماد الإجازات', labelEn: 'Approve Leave' },
-      { code: 'approve_permission', label: 'اعتماد الاستئذانات', labelEn: 'Approve Permission' },
       { code: 'generate_payroll', label: 'إعداد كشوف الرواتب', labelEn: 'Generate Payroll' },
-      { code: 'approve_payroll', label: 'اعتماد صرف الرواتب', labelEn: 'Approve Payroll' },
     ]
   },
   {
@@ -95,8 +93,7 @@ export const AVAILABLE_PERMISSIONS: PermissionGroup[] = [
       { code: 'manage_chart_of_accounts', label: 'إدارة شجرة الحسابات', labelEn: 'Manage COA' },
       { code: 'create_journal_entry', label: 'إنشاء قيد محاسبي', labelEn: 'Create Journal Entry' },
       { code: 'post_journal_entry', label: 'ترحيل القيود لدفتر الأستاذ', labelEn: 'Post Journal Entry' },
-      { code: 'create_cash_receipt', label: 'إصدار سند قبض', labelEn: 'Create Cash Receipt' },
-      { code: 'create_payment_voucher', label: 'إصدار سند صرف', labelEn: 'Create Payment Voucher' },
+      { code: 'view_financial_reports', label: 'عرض التقارير المالية', labelEn: 'Financial Reports' },
     ]
   }
 ];
