@@ -1,15 +1,14 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
   Workflow, Plus, Loader2, Trash2, Edit3, 
-  ChevronRight, LayoutGrid, Boxes, Layers, Zap
+  ChevronRight, LayoutGrid, Boxes, Layers
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
@@ -21,7 +20,6 @@ import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { ActivityType, Service, SubService } from '@/types/reference';
 import { TechnicalStagesManager } from './technical-stages-manager';
-import { translateText } from '@/ai/flows/translate-flow';
 
 export default function TechnicalPathsPage() {
   const { globalUser } = useAuthContext();
@@ -35,14 +33,9 @@ export default function TechnicalPathsPage() {
   const [selectedSub, setSelectedSub] = useState<SubService | null>(null);
   const [viewMode, setViewMode] = useState<'main' | 'stages'>('main');
   
-  const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [activityForm, setActivityForm] = useState<Partial<ActivityType> | null>(null);
   const [serviceForm, setServiceForm] = useState<Partial<Service> | null>(null);
   const [subForm, setSubForm] = useState<Partial<SubService> | null>(null);
-
-  const [autoTranslate, setAutoTranslate] = useState(true);
-  const [isTranslating, setIsTranslating] = useState(false);
-  const lastEditedField = useRef<'name' | 'nameEn' | null>(null);
 
   const pathService = useMemo(() => db && companyId ? new TechnicalPathService(db, companyId) : null, [db, companyId]);
 
@@ -53,38 +46,6 @@ export default function TechnicalPathsPage() {
   const { data: activities, loading: activitiesLoading } = useCollection<ActivityType>(activitiesQuery);
   const { data: services, loading: servicesLoading } = useCollection<Service>(servicesQuery);
   const { data: subServices, loading: subLoading } = useCollection<SubService>(subServicesQuery);
-
-  // منطق الترجمة الشامل (ثنائي الاتجاه)
-  const handleAutoTranslate = async (currentForm: any, setForm: any, field: 'name' | 'nameEn') => {
-    if (!autoTranslate || !currentForm?.[field] || currentForm.id || lastEditedField.current !== field) return;
-    const targetLang = field === 'name' ? 'en' : 'ar';
-    const targetField = field === 'name' ? 'nameEn' : 'name';
-
-    const timer = setTimeout(async () => {
-      if (currentForm[field]!.length > 2) {
-        setIsTranslating(true);
-        const res = await translateText({ text: currentForm[field]!, targetLang });
-        setForm((prev: any) => prev ? { ...prev, [targetField]: res.translatedText } : null);
-        setIsTranslating(false);
-      }
-    }, 1000);
-    return timer;
-  };
-
-  useEffect(() => {
-    const timer = handleAutoTranslate(activityForm, setActivityForm, lastEditedField.current || 'name');
-    return () => timer.then(t => clearTimeout(t));
-  }, [activityForm?.name, activityForm?.nameEn, autoTranslate]);
-
-  useEffect(() => {
-    const timer = handleAutoTranslate(serviceForm, setServiceForm, lastEditedField.current || 'name');
-    return () => timer.then(t => clearTimeout(t));
-  }, [serviceForm?.name, serviceForm?.nameEn, autoTranslate]);
-
-  useEffect(() => {
-    const timer = handleAutoTranslate(subForm, setSubForm, lastEditedField.current || 'name');
-    return () => timer.then(t => clearTimeout(t));
-  }, [subForm?.name, subForm?.nameEn, autoTranslate]);
 
   const handleSaveActivity = () => {
     if (!pathService || !activityForm?.name) return;
@@ -116,14 +77,6 @@ export default function TechnicalPathsPage() {
   if (viewMode === 'stages' && selectedActivity && selectedService && selectedSub) {
     return <TechnicalStagesManager activityType={selectedActivity} service={selectedService} subService={selectedSub} onBack={() => setViewMode('main')} />;
   }
-
-  const RenderAutoTranslateToggle = () => (
-    <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-full ring-1 ring-black/5">
-      <Zap className={cn("h-3 w-3", autoTranslate ? "text-primary" : "text-slate-400")} />
-      <span className="text-[10px] font-black text-slate-600">{isRtl ? 'ترجمة تلقائية' : 'Auto-Translate'}</span>
-      <Switch checked={autoTranslate} onCheckedChange={setAutoTranslate} className="scale-75" />
-    </div>
-  );
 
   return (
     <div className="space-y-6">
@@ -193,10 +146,10 @@ export default function TechnicalPathsPage() {
       {activityForm && (
         <Dialog open onOpenChange={() => setActivityForm(null)}>
           <DialogContent className="rounded-[2rem] max-w-lg p-8" dir={dir}>
-            <DialogHeader className="flex flex-row items-center justify-between mb-4"><DialogTitle className="text-start font-black text-xl">{activityForm.id ? t('edit') : t('newActivity')}</DialogTitle>{!activityForm.id && <RenderAutoTranslateToggle />}</DialogHeader>
+            <DialogHeader><DialogTitle className="text-start font-black text-xl">{activityForm.id ? t('edit') : t('newActivity')}</DialogTitle></DialogHeader>
             <div className="grid grid-cols-2 gap-4 text-start">
-              <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={activityForm.name || ''} onChange={e => { lastEditedField.current='name'; setActivityForm({...activityForm, name: e.target.value}); }} /></div>
-              <div className="space-y-2 relative"><Label>{t('name')} (En)</Label><Input value={activityForm.nameEn || ''} onChange={e => { lastEditedField.current='nameEn'; setActivityForm({...activityForm, nameEn: e.target.value}); }} className="text-start" dir="ltr" />{isTranslating && <div className="absolute right-3 top-9"><Loader2 className="h-4 w-4 animate-spin text-primary/40" /></div>}</div>
+              <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={activityForm.name || ''} onChange={e => setActivityForm({...activityForm, name: e.target.value})} /></div>
+              <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={activityForm.nameEn || ''} onChange={e => setActivityForm({...activityForm, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
             </div>
             <DialogFooter className="mt-8"><Button onClick={handleSaveActivity} className="w-full h-12 rounded-xl font-bold">{t('save')}</Button></DialogFooter>
           </DialogContent>
@@ -206,10 +159,10 @@ export default function TechnicalPathsPage() {
       {serviceForm && (
         <Dialog open onOpenChange={() => setServiceForm(null)}>
           <DialogContent className="rounded-[2rem] max-w-lg p-8" dir={dir}>
-            <DialogHeader className="flex flex-row items-center justify-between mb-4"><DialogTitle className="text-start font-black text-xl">{serviceForm.id ? t('edit') : t('newService')}</DialogTitle>{!serviceForm.id && <RenderAutoTranslateToggle />}</DialogHeader>
+            <DialogHeader><DialogTitle className="text-start font-black text-xl">{serviceForm.id ? t('edit') : t('newService')}</DialogTitle></DialogHeader>
             <div className="grid grid-cols-2 gap-4 text-start">
-              <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={serviceForm.name || ''} onChange={e => { lastEditedField.current='name'; setServiceForm({...serviceForm, name: e.target.value}); }} /></div>
-              <div className="space-y-2 relative"><Label>{t('name')} (En)</Label><Input value={serviceForm.nameEn || ''} onChange={e => { lastEditedField.current='nameEn'; setServiceForm({...serviceForm, nameEn: e.target.value}); }} className="text-start" dir="ltr" />{isTranslating && <div className="absolute right-3 top-9"><Loader2 className="h-4 w-4 animate-spin text-primary/40" /></div>}</div>
+              <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={serviceForm.name || ''} onChange={e => setServiceForm({...serviceForm, name: e.target.value})} /></div>
+              <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={serviceForm.nameEn || ''} onChange={e => setServiceForm({...serviceForm, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
             </div>
             <DialogFooter className="mt-8"><Button onClick={handleSaveService} className="w-full h-12 rounded-xl font-bold">{t('save')}</Button></DialogFooter>
           </DialogContent>
@@ -219,10 +172,10 @@ export default function TechnicalPathsPage() {
       {subForm && (
         <Dialog open onOpenChange={() => setSubForm(null)}>
           <DialogContent className="rounded-[2rem] max-w-lg p-8" dir={dir}>
-            <DialogHeader className="flex flex-row items-center justify-between mb-4"><DialogTitle className="text-start font-black text-xl">{subForm.id ? t('edit') : t('newPath')}</DialogTitle>{!subForm.id && <RenderAutoTranslateToggle />}</DialogHeader>
+            <DialogHeader><DialogTitle className="text-start font-black text-xl">{subForm.id ? t('edit') : t('newPath')}</DialogTitle></DialogHeader>
             <div className="grid grid-cols-2 gap-4 text-start">
-              <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={subForm.name || ''} onChange={e => { lastEditedField.current='name'; setSubForm({...subForm, name: e.target.value}); }} /></div>
-              <div className="space-y-2 relative"><Label>{t('name')} (En)</Label><Input value={subForm.nameEn || ''} onChange={e => { lastEditedField.current='nameEn'; setSubForm({...subForm, nameEn: e.target.value}); }} className="text-start" dir="ltr" />{isTranslating && <div className="absolute right-3 top-9"><Loader2 className="h-4 w-4 animate-spin text-primary/40" /></div>}</div>
+              <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={subForm.name || ''} onChange={e => setSubForm({...subForm, name: e.target.value})} /></div>
+              <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={subForm.nameEn || ''} onChange={e => setSubForm({...subForm, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
             </div>
             <DialogFooter className="mt-8"><Button onClick={handleSaveSub} className="w-full h-12 rounded-xl font-bold">{t('save')}</Button></DialogFooter>
           </DialogContent>

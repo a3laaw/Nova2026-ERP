@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,9 +8,7 @@ import {
   Plus, Loader2, Trash2, Edit3, 
   Workflow, ArrowRight, Clock,
   ListChecks, ShieldCheck,
-  AlertCircle,
-  GripVertical,
-  Zap
+  GripVertical
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,7 +26,6 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { TechnicalStage, SubService, ActivityType, Service } from '@/types/reference';
-import { translateText } from '@/ai/flows/translate-flow';
 
 interface Props {
   activityType: ActivityType;
@@ -46,43 +43,10 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
 
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [form, setForm] = useState<Partial<TechnicalStage> | null>(null);
-  const [autoTranslate, setAutoTranslate] = useState(true);
-  const [isTranslating, setIsTranslating] = useState(false);
-  
-  // نستخدم Ref لتتبع الحقل الذي يتم تعديله يدوياً لمنع تكرار الترجمة
-  const lastEditedField = useRef<'name' | 'nameEn' | null>(null);
 
   const technicalPathService = useMemo(() => db && companyId ? new TechnicalPathService(db, companyId) : null, [db, companyId]);
   const stagesQuery = useMemo(() => companyId && db ? query(collection(db, paths.technicalStages(companyId, activityType.id!, mainService.id!, subService.id!))) : null, [db, companyId, activityType, mainService, subService]);
   const { data: stages, loading } = useCollection<TechnicalStage>(stagesQuery);
-
-  // ترجمة من العربي إلى الإنجليزي
-  useEffect(() => {
-    if (!autoTranslate || !form?.name || form.id || lastEditedField.current !== 'name') return;
-    const timer = setTimeout(async () => {
-      if (form.name!.length > 2) {
-        setIsTranslating(true);
-        const res = await translateText({ text: form.name!, targetLang: 'en' });
-        setForm(prev => prev ? { ...prev, nameEn: res.translatedText } : null);
-        setIsTranslating(false);
-      }
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [form?.name, autoTranslate]);
-
-  // ترجمة من الإنجليزي إلى العربي
-  useEffect(() => {
-    if (!autoTranslate || !form?.nameEn || form.id || lastEditedField.current !== 'nameEn') return;
-    const timer = setTimeout(async () => {
-      if (form.nameEn!.length > 2) {
-        setIsTranslating(true);
-        const res = await translateText({ text: form.nameEn!, targetLang: 'ar' });
-        setForm(prev => prev ? { ...prev, name: res.translatedText } : null);
-        setIsTranslating(false);
-      }
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [form?.nameEn, autoTranslate]);
 
   const handleSave = () => {
     if (!technicalPathService || !form || !form.name) return;
@@ -175,29 +139,21 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
           <DialogContent className="rounded-[2rem] max-w-4xl overflow-hidden p-0 border-0 shadow-2xl" dir={dir}>
             <div className="grid grid-cols-1 lg:grid-cols-5 h-full max-h-[85vh]">
               <div className="lg:col-span-3 p-8 space-y-6 overflow-y-auto bg-white">
-                <DialogHeader className="flex flex-row items-center justify-between">
+                <DialogHeader>
                   <DialogTitle className="text-start font-black text-xl flex items-center gap-2 text-slate-800">
                     <ShieldCheck className="text-primary h-6 w-6" /> {form.id ? t('editStage') : t('addStage')}
                   </DialogTitle>
-                  {!form.id && (
-                    <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-full ring-1 ring-black/5">
-                       <Zap className={cn("h-3 w-3 transition-colors", autoTranslate ? "text-primary" : "text-slate-400")} />
-                       <span className="text-[10px] font-black text-slate-600">{isRtl ? 'ترجمة تلقائية' : 'Auto-Translate'}</span>
-                       <Switch checked={autoTranslate} onCheckedChange={setAutoTranslate} className="scale-75" />
-                    </div>
-                  )}
                 </DialogHeader>
                 
                 <div className="space-y-5 py-2 text-start">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label className="text-xs font-bold text-slate-500">{t('name')} (Ar)</Label>
-                      <Input value={form.name || ''} onChange={e => { lastEditedField.current = 'name'; setForm({...form, name: e.target.value}); }} className="h-11 rounded-xl bg-slate-50/50" placeholder="مثال: تصميم معماري" />
+                      <Input value={form.name || ''} onChange={e => setForm({...form, name: e.target.value})} className="h-11 rounded-xl bg-slate-50/50" />
                     </div>
-                    <div className="space-y-1.5 relative">
+                    <div className="space-y-1.5">
                       <Label className="text-xs font-bold text-slate-500">{t('name')} (En)</Label>
-                      <Input value={form.nameEn || ''} onChange={e => { lastEditedField.current = 'nameEn'; setForm({...form, nameEn: e.target.value}); }} className="h-11 rounded-xl bg-slate-50/50 text-start" dir="ltr" placeholder="e.g. Architectural Design" />
-                      {isTranslating && <div className="absolute right-3 top-9"><Loader2 className="h-4 w-4 animate-spin text-primary/40" /></div>}
+                      <Input value={form.nameEn || ''} onChange={e => setForm({...form, nameEn: e.target.value})} className="h-11 rounded-xl bg-slate-50/50 text-start" dir="ltr" />
                     </div>
                   </div>
                   

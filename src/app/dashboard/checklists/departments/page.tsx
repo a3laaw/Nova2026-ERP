@@ -1,16 +1,15 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useState, useMemo } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
   Building2, Plus, Loader2, Trash2, Edit3, 
-  ChevronRight, Briefcase, Search, Zap
+  ChevronRight, Briefcase, Search
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
@@ -21,7 +20,6 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Department, Job } from '@/types/reference';
-import { translateText } from '@/ai/flows/translate-flow';
 
 export default function DepartmentsPage() {
   const { globalUser } = useAuthContext();
@@ -37,61 +35,12 @@ export default function DepartmentsPage() {
   const [deptForm, setDeptForm] = useState<Partial<Department>>({ name: '', nameEn: '', description: '' });
   const [jobForm, setJobForm] = useState<Partial<Job>>({ name: '', nameEn: '' });
 
-  const [autoTranslate, setAutoTranslate] = useState(true);
-  const [isTranslating, setIsTranslating] = useState(false);
-  const lastEditedField = useRef<'name' | 'nameEn' | null>(null);
-
   const deptService = useMemo(() => db && companyId ? new DepartmentService(db, companyId) : null, [db, companyId]);
   const deptsQuery = useMemo(() => companyId && db ? query(collection(db, paths.departments(companyId))) : null, [db, companyId]);
   const jobsQuery = useMemo(() => companyId && db && selectedDept?.id ? query(collection(db, paths.jobs(companyId, selectedDept.id))) : null, [db, companyId, selectedDept]);
 
   const { data: departments, loading: deptsLoading } = useCollection<Department>(deptsQuery);
   const { data: jobs, loading: jobsLoading } = useCollection<Job>(jobsQuery);
-
-  // منطق الترجمة الموحد والمستقر
-  useEffect(() => {
-    const field = lastEditedField.current;
-    if (!autoTranslate || !field || deptForm.id) return;
-    
-    const value = field === 'name' ? deptForm.name : deptForm.nameEn;
-    if (!value || value.length < 3) return;
-
-    const timer = setTimeout(async () => {
-      setIsTranslating(true);
-      const targetLang = field === 'name' ? 'en' : 'ar';
-      const targetField = field === 'name' ? 'nameEn' : 'name';
-      
-      const res = await translateText({ text: value, targetLang });
-      if (res.translatedText) {
-        setDeptForm(prev => ({ ...prev, [targetField]: res.translatedText }));
-      }
-      setIsTranslating(false);
-    }, 800);
-
-    return () => clearTimeout(timer);
-  }, [deptForm.name, deptForm.nameEn, autoTranslate]);
-
-  useEffect(() => {
-    const field = lastEditedField.current;
-    if (!autoTranslate || !field || jobForm.id) return;
-    
-    const value = field === 'name' ? jobForm.name : jobForm.nameEn;
-    if (!value || value.length < 3) return;
-
-    const timer = setTimeout(async () => {
-      setIsTranslating(true);
-      const targetLang = field === 'name' ? 'en' : 'ar';
-      const targetField = field === 'name' ? 'nameEn' : 'name';
-      
-      const res = await translateText({ text: value, targetLang });
-      if (res.translatedText) {
-        setJobForm(prev => ({ ...prev, [targetField]: res.translatedText }));
-      }
-      setIsTranslating(false);
-    }, 800);
-
-    return () => clearTimeout(timer);
-  }, [jobForm.name, jobForm.nameEn, autoTranslate]);
 
   const handleSaveDept = () => {
     if (!deptService || !deptForm.name) return;
@@ -114,24 +63,16 @@ export default function DepartmentsPage() {
     setLoadingAction(null);
   };
 
-  const RenderAutoTranslateToggle = () => (
-    <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-full ring-1 ring-black/5">
-      <Zap className={cn("h-3 w-3", autoTranslate ? "text-primary" : "text-slate-400")} />
-      <span className="text-[10px] font-black text-slate-600">{isRtl ? 'ترجمة تلقائية' : 'Auto-Translate'}</span>
-      <Switch checked={autoTranslate} onCheckedChange={setAutoTranslate} className="scale-75" />
-    </div>
-  );
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-black font-headline flex items-center gap-3 text-start"><Building2 className="h-6 w-6 text-primary" /> {isRtl ? 'الهيكل التنظيمي' : 'Organizational Structure'}</h2>
         <Dialog><DialogTrigger asChild><Button onClick={() => setDeptForm({ name: '', nameEn: '', description: '' })} className="rounded-xl"><Plus className="me-2 h-4 w-4" /> {t('newDept')}</Button></DialogTrigger>
           <DialogContent className="rounded-[2.5rem] max-w-2xl p-8" dir={dir}>
-            <DialogHeader className="flex flex-row items-center justify-between mb-4"><DialogTitle className="text-start font-black text-2xl">{deptForm.id ? t('edit') : t('newDept')}</DialogTitle>{!deptForm.id && <RenderAutoTranslateToggle />}</DialogHeader>
+            <DialogHeader><DialogTitle className="text-start font-black text-2xl">{deptForm.id ? t('edit') : t('newDept')}</DialogTitle></DialogHeader>
             <div className="grid grid-cols-2 gap-6 py-4 text-start">
-              <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={deptForm.name || ''} onChange={e => { lastEditedField.current='name'; setDeptForm(prev => ({...prev, name: e.target.value})); }} /></div>
-              <div className="space-y-2 relative"><Label>{t('name')} (En)</Label><Input value={deptForm.nameEn || ''} onChange={e => { lastEditedField.current='nameEn'; setDeptForm(prev => ({...prev, nameEn: e.target.value})); }} className="text-start" dir="ltr" />{isTranslating && <div className="absolute right-3 top-9"><Loader2 className="h-4 w-4 animate-spin text-primary/40" /></div>}</div>
+              <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={deptForm.name || ''} onChange={e => setDeptForm({...deptForm, name: e.target.value})} /></div>
+              <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={deptForm.nameEn || ''} onChange={e => setDeptForm({...deptForm, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
               <div className="col-span-2 space-y-2"><Label>{isRtl ? 'الوصف' : 'Description'}</Label><Textarea value={deptForm.description || ''} onChange={e => setDeptForm({...deptForm, description: e.target.value})} /></div>
             </div>
             <DialogFooter className="mt-6"><Button onClick={handleSaveDept} disabled={loadingAction === 'dept'} className="w-full h-12 rounded-xl font-bold bg-primary text-white">{loadingAction === 'dept' ? <Loader2 className="animate-spin" /> : t('save')}</Button></DialogFooter>
@@ -161,10 +102,10 @@ export default function DepartmentsPage() {
             <CardHeader className="bg-slate-50/50 border-b p-6 flex flex-row items-center justify-between"><div><CardTitle className="text-lg font-black flex items-center gap-2"><Briefcase className="h-5 w-5 text-primary" /> {isRtl ? 'الوظائف' : 'Job Titles'}</CardTitle></div>{selectedDept && (
               <Dialog><DialogTrigger asChild><Button variant="secondary" size="sm" className="rounded-xl h-10 px-4"><Plus className="me-2 h-4 w-4" /> {isRtl ? 'وظيفة' : 'Add Job'}</Button></DialogTrigger>
                 <DialogContent className="rounded-[2.5rem] p-8" dir={dir}>
-                  <DialogHeader className="flex flex-row items-center justify-between mb-4"><DialogTitle className="text-start font-black">{isRtl ? 'إضافة وظيفة' : 'Add Job'}</DialogTitle><RenderAutoTranslateToggle /></DialogHeader>
+                  <DialogHeader><DialogTitle className="text-start font-black">{isRtl ? 'إضافة وظيفة' : 'Add Job'}</DialogTitle></DialogHeader>
                   <div className="grid grid-cols-2 gap-4 py-4 text-start">
-                    <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={jobForm.name || ''} onChange={e => { lastEditedField.current='name'; setJobForm(prev => ({...prev, name: e.target.value})); }} /></div>
-                    <div className="space-y-2 relative"><Label>{t('name')} (En)</Label><Input value={jobForm.nameEn || ''} onChange={e => { lastEditedField.current='nameEn'; setJobForm(prev => ({...prev, nameEn: e.target.value})); }} className="text-start" dir="ltr" />{isTranslating && <div className="absolute right-3 top-9"><Loader2 className="h-4 w-4 animate-spin text-primary/40" /></div>}</div>
+                    <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={jobForm.name || ''} onChange={e => setJobForm({...jobForm, name: e.target.value})} /></div>
+                    <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={jobForm.nameEn || ''} onChange={e => setJobForm({...jobForm, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
                   </div>
                   <DialogFooter className="mt-6"><Button onClick={handleSaveJob} disabled={loadingAction === 'job'} className="w-full h-12 rounded-xl font-bold bg-primary text-white">{t('save')}</Button></DialogFooter>
                 </DialogContent>
