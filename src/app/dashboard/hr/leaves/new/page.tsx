@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,13 +9,11 @@ import { Badge } from "@/components/ui/badge";
 import { 
   CalendarDays, 
   Calendar as CalendarIcon,
-  AlertCircle,
   Plane, Users, Activity,
   ShieldCheck,
   Send,
-  ChevronLeft,
-  ChevronRight,
-  Clock
+  Clock,
+  ArrowRight
 } from "lucide-react";
 import { useFirestore } from '@/firebase';
 import { useAuthContext } from '@/context/auth-context';
@@ -32,7 +31,7 @@ import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { SmartDateInput } from '@/components/ui/smart-date-input';
 import { ar } from 'date-fns/locale';
-import { format, parseISO, isValid, startOfDay, addDays } from 'date-fns';
+import { format, parseISO, isValid, startOfDay } from 'date-fns';
 import { DateRange } from "react-day-picker";
 
 export default function NewLeaveRequestPage() {
@@ -55,14 +54,6 @@ export default function NewLeaveRequestPage() {
     reason: '',
     quickReason: ''
   });
-
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  // توليد قائمة الأيام للشريط الأفقي
-  const carouselDays = useMemo(() => {
-    const start = startOfDay(new Date());
-    return Array.from({ length: 30 }).map((_, i) => addDays(start, i));
-  }, []);
 
   const leaveService = useMemo(() => 
     db && companyId ? new LeaveService(db, companyId, permissions) : null, 
@@ -109,20 +100,6 @@ export default function NewLeaveRequestPage() {
     }));
   };
 
-  const handleCarouselClick = (date: Date) => {
-    const dateStr = format(date, 'yyyy-MM-dd');
-    if (!form.startDate || (form.startDate && form.endDate)) {
-      setForm({ ...form, startDate: dateStr, endDate: '' });
-    } else {
-      const start = parseISO(form.startDate);
-      if (date < start) {
-        setForm({ ...form, startDate: dateStr, endDate: '' });
-      } else {
-        setForm({ ...form, endDate: dateStr });
-      }
-    }
-  };
-
   const selectedRange: DateRange | undefined = useMemo(() => {
     try {
       const from = form.startDate ? parseISO(form.startDate) : undefined;
@@ -156,13 +133,6 @@ export default function NewLeaveRequestPage() {
     }
   };
 
-  const scrollCarousel = (direction: 'left' | 'right') => {
-    if (scrollRef.current) {
-      const amount = 200;
-      scrollRef.current.scrollBy({ left: direction === 'left' ? -amount : amount, behavior: 'smooth' });
-    }
-  };
-
   return (
     <div className="space-y-10 max-w-7xl mx-auto pb-20 animate-in fade-in duration-700" dir={dir}>
       
@@ -183,34 +153,8 @@ export default function NewLeaveRequestPage() {
         </div>
       </div>
 
-      {/* Horizontal Carousel */}
-      <div className="relative group">
-        <div className="absolute inset-y-0 start-0 flex items-center z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button variant="secondary" size="icon" onClick={() => scrollCarousel(isRtl ? 'right' : 'left')} className="rounded-full shadow-lg bg-white/90 backdrop-blur"><ChevronLeft className={cn("h-5 w-5", isRtl && "rotate-180")} /></Button>
-        </div>
-        <div className="absolute inset-y-0 end-0 flex items-center z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button variant="secondary" size="icon" onClick={() => scrollCarousel(isRtl ? 'left' : 'right')} className="rounded-full shadow-lg bg-white/90 backdrop-blur"><ChevronRight className={cn("h-5 w-5", isRtl && "rotate-180")} /></Button>
-        </div>
-        <div ref={scrollRef} className="flex gap-4 overflow-x-auto scrollbar-hide py-4 px-2" style={{ scrollSnapType: 'x mandatory' }}>
-          {carouselDays.map((date) => {
-            const isStart = form.startDate === format(date, 'yyyy-MM-dd');
-            const isEnd = form.endDate === format(date, 'yyyy-MM-dd');
-            const inRange = form.startDate && form.endDate && date > parseISO(form.startDate) && date < parseISO(form.endDate);
-            return (
-              <div key={date.toISOString()} onClick={() => handleCarouselClick(date)}
-                className={cn("flex-shrink-0 w-24 h-32 rounded-[2rem] border-2 transition-all cursor-pointer flex flex-col items-center justify-center space-y-2",
-                  isStart || isEnd ? "bg-primary border-primary text-white shadow-xl scale-105" : inRange ? "bg-primary/10 border-primary/20 text-primary" : "bg-white border-slate-100 hover:border-primary/20 text-slate-400"
-                )} style={{ scrollSnapAlign: 'start' }}>
-                <span className="text-[10px] font-black uppercase tracking-tighter opacity-80">{format(date, 'EEEE', { locale: isRtl ? ar : undefined })}</span>
-                <span className="text-2xl font-black font-headline">{format(date, 'd')}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-        {/* Left Column: Interactive Calendar */}
+        {/* Left Column: Interactive Calendar (The Heart of selection) */}
         <div className="lg:col-span-5 space-y-8">
            <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
               <CardHeader className="bg-slate-50/50 border-b p-8 flex justify-between items-center">
@@ -229,26 +173,30 @@ export default function NewLeaveRequestPage() {
                     classNames={{
                         months: "flex flex-col",
                         month: "space-y-6",
-                        caption: "flex justify-center pt-2 relative items-center mb-8",
+                        caption: "flex justify-center pt-2 relative items-center mb-8 px-10",
                         caption_label: "text-xl font-black text-slate-800",
-                        nav: "space-x-1 flex items-center absolute top-2 right-4",
-                        nav_button: "h-9 w-9 bg-slate-100 hover:bg-primary hover:text-white rounded-xl transition-all p-0 flex items-center justify-center border-0 shadow-sm",
-                        nav_button_previous: "absolute -left-20",
-                        nav_button_next: "absolute -right-4",
+                        nav: "space-x-1 flex items-center absolute inset-x-0 top-2 justify-between px-2",
+                        nav_button: cn(
+                          "h-10 w-10 bg-slate-100 hover:bg-primary hover:text-white rounded-2xl transition-all p-0 flex items-center justify-center border-0 shadow-sm"
+                        ),
+                        nav_button_previous: "order-first",
+                        nav_button_next: "order-last",
                         table: "w-full border-collapse space-y-1",
                         head_row: "flex justify-between mb-4",
                         head_cell: "text-slate-400 w-12 font-black text-[10px] uppercase",
                         row: "flex w-full mt-2 justify-between",
                         cell: cn(
-                          "relative p-0 text-center text-sm focus-within:relative focus-within:z-20 h-12 w-12",
-                          "[&:has([aria-selected])]:bg-primary/5", 
+                          "relative p-0 text-center text-sm focus-within:relative focus-within:z-20 h-12 w-12 transition-all",
+                          "[&:has([aria-selected])]:bg-primary/10", // تلوين المسار بخلفية خفيفة
                           "[&:has([aria-selected].day-range-end)]:rounded-e-3xl",
-                          "[&:has([aria-selected].day-range-start)]:rounded-s-3xl"
+                          "[&:has([aria-selected].day-range-start)]:rounded-s-3xl",
+                          "first:[&:has([aria-selected])]:rounded-s-3xl",
+                          "last:[&:has([aria-selected])]:rounded-e-3xl"
                         ),
                         day: cn("h-12 w-12 p-0 font-bold rounded-3xl hover:bg-slate-100 transition-all"),
-                        day_range_start: "day-range-start rounded-3xl bg-primary text-white hover:bg-primary hover:text-white shadow-xl shadow-primary/30",
-                        day_range_end: "day-range-end rounded-3xl bg-primary text-white hover:bg-primary hover:text-white shadow-xl shadow-primary/30",
-                        day_range_middle: "aria-selected:bg-primary/10 aria-selected:text-primary rounded-none",
+                        day_range_start: "day-range-start rounded-3xl bg-primary text-white hover:bg-primary hover:text-white shadow-xl shadow-primary/30 z-30",
+                        day_range_end: "day-range-end rounded-3xl bg-primary text-white hover:bg-primary hover:text-white shadow-xl shadow-primary/30 z-30",
+                        day_range_middle: "aria-selected:bg-primary/10 aria-selected:text-primary rounded-none z-10",
                         day_selected: "bg-primary text-white focus:bg-primary focus:text-white",
                         day_today: "bg-slate-100 text-primary border-2 border-primary/20",
                         day_outside: "text-slate-300 opacity-50",
