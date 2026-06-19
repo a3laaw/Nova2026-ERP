@@ -1,10 +1,10 @@
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
-  Settings2, ClipboardList, Building2, ShieldCheck, 
-  UserCog, BellRing, Database, ChevronLeft, ArrowLeft
+  Settings2, Building2, UserCog, BellRing, Database, ArrowLeft
 } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/context/language-context';
@@ -16,6 +16,15 @@ export default function SettingsHubPage() {
   const isRtl = lang === 'ar';
 
   const settingsCards = [
+    {
+      id: 'company',
+      title: t('companyIdentity'),
+      description: t('manageCompanyData'),
+      icon: Building2,
+      color: 'text-emerald-600',
+      bg: 'bg-emerald-50',
+      path: '/dashboard/settings/company'
+    },
     {
       id: 'checklists',
       title: t('checklists'),
@@ -33,15 +42,6 @@ export default function SettingsHubPage() {
       color: 'text-blue-600',
       bg: 'bg-blue-50',
       path: '/dashboard/settings/profile'
-    },
-    {
-      id: 'notifications',
-      title: isRtl ? 'التنبيهات' : 'Notifications',
-      description: isRtl ? 'ضبط إشعارات النظام والبريد الإلكتروني' : 'Configure system and email notifications',
-      icon: BellRing,
-      color: 'text-purple-600',
-      bg: 'bg-purple-50',
-      path: '/dashboard/settings/notifications'
     }
   ];
 

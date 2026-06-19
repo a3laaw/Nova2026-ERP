@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
@@ -30,7 +31,7 @@ const translations: Record<Language, Record<string, string>> = {
     profile: 'الملف الشخصي',
     billing: 'الفواتير والاشتراكات',
     save: 'حفظ',
-    saved: 'تم الحفظ',
+    saved: 'تم الحفظ بنجاح',
     error: 'خطأ',
     edit: 'تعديل',
     deleted: 'تم الحذف',
@@ -68,7 +69,20 @@ const translations: Record<Language, Record<string, string>> = {
     operationalPath: 'المسار التشغيلي',
     totalStages: 'إجمالي المراحل',
     expectedValue: 'القيمة المتوقعة',
-    addLead: 'إضافة عميل محتمل'
+    addLead: 'إضافة عميل محتمل',
+    companyIdentity: 'هوية المنشأة',
+    companyProfile: 'بيانات الشركة',
+    logo: 'شعار الشركة',
+    header: 'رأس الصفحة (Header)',
+    footer: 'تذييل الصفحة (Footer)',
+    licenseExpiry: 'انتهاء الترخيص التجاري',
+    laborExpiry: 'انتهاء اعتماد الشؤون',
+    address: 'العنوان الرسمي',
+    commercialRegistry: 'رقم السجل التجاري',
+    phone: 'رقم الهاتف',
+    email: 'البريد الرسمي',
+    saveChanges: 'حفظ التغييرات',
+    manageCompanyData: 'إدارة الهوية والوثائق الرسمية للمنشأة'
   },
   en: {
     dashboard: 'Dashboard',
@@ -88,7 +102,7 @@ const translations: Record<Language, Record<string, string>> = {
     profile: 'Profile',
     billing: 'Billing',
     save: 'Save',
-    saved: 'Saved',
+    saved: 'Saved successfully',
     error: 'Error',
     edit: 'Edit',
     deleted: 'Deleted',
@@ -126,7 +140,20 @@ const translations: Record<Language, Record<string, string>> = {
     operationalPath: 'Operational Path',
     totalStages: 'Total Stages',
     expectedValue: 'Expected Value',
-    addLead: 'Add Lead'
+    addLead: 'Add Lead',
+    companyIdentity: 'Company Identity',
+    companyProfile: 'Company Profile',
+    logo: 'Company Logo',
+    header: 'Header Text',
+    footer: 'Footer Text',
+    licenseExpiry: 'License Expiry',
+    laborExpiry: 'Labor Authority Expiry',
+    address: 'Official Address',
+    commercialRegistry: 'Commercial Registry',
+    phone: 'Phone',
+    email: 'Official Email',
+    saveChanges: 'Save Changes',
+    manageCompanyData: 'Manage official identity and documents'
   }
 };
 

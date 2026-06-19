@@ -21,7 +21,14 @@
         "name": { "type": "string" },
         "status": { "type": "string", "enum": ["active", "suspended", "pending"] },
         "trialEndsAt": { "type": "string", "format": "date-time" },
-        "maxUsers": { "type": "number" }
+        "maxUsers": { "type": "number" },
+        "logoUrl": { "type": "string" },
+        "headerText": { "type": "string" },
+        "footerText": { "type": "string" },
+        "licenseExpiryDate": { "type": "string", "format": "date" },
+        "laborAuthorityExpiryDate": { "type": "string", "format": "date" },
+        "address": { "type": "string" },
+        "commercialRegistry": { "type": "string" }
       },
       "required": ["name", "status"]
     },
