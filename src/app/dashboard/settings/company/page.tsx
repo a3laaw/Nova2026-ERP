@@ -66,11 +66,12 @@ export default function CompanyProfilePage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 500 * 1024) {
+    // زيادة الحد الأقصى إلى 1 ميجابايت (1024 * 1024 بايت)
+    if (file.size > 1024 * 1024) {
       toast({
         variant: "destructive",
         title: isRtl ? "حجم الملف كبير جداً" : "File too large",
-        description: isRtl ? "يرجى رفع صورة أقل من 500 كيلوبايت لضمان الأداء." : "Please upload an image smaller than 500KB."
+        description: isRtl ? "يرجى رفع صورة أقل من 1 ميجابايت لضمان الأداء." : "Please upload an image smaller than 1MB."
       });
       return;
     }
@@ -140,7 +141,7 @@ export default function CompanyProfilePage() {
               ) : (
                 <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer">
                   <UploadCloud className="h-6 w-6 text-slate-300 mb-1" />
-                  <span className="text-[9px] font-black text-slate-400">{isRtl ? 'اضغط للرفع' : 'Click to Upload'}</span>
+                  <span className="text-[9px] font-black text-slate-400">{isRtl ? 'اضغط للرفع (1MB كحد أقصى)' : 'Click to Upload (Max 1MB)'}</span>
                   <input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, imgField)} />
                 </label>
               )}
@@ -149,11 +150,11 @@ export default function CompanyProfilePage() {
 
           <TabsContent value="url" className="mt-2">
             <div className="space-y-2">
-              <Input 
+              <input 
                 value={(!currentImage || currentImage.startsWith('data:')) ? '' : currentImage}
                 onChange={(e) => setFormData({...formData, [imgField]: e.target.value})}
                 placeholder="https://example.com/image.png"
-                className="h-8 rounded-lg text-[9px] font-mono"
+                className="flex h-8 w-full rounded-lg border border-input bg-background px-3 py-1 text-[9px] font-mono ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 dir="ltr"
               />
               {currentImage && !currentImage.startsWith('data:') && (
