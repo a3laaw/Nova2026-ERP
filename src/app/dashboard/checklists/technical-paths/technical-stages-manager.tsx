@@ -52,20 +52,46 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
 
   const { data: stages, loading } = useCollection<TechnicalStage>(stagesQuery);
 
-  // منطق الفلترة الذكي لمنع التعارض المنطقي والربط العكسي
+  /**
+   * دالة ذكية لإيجاد كافة "الأسلاف" (Ancestors) لمرحلة معينة بشكل تراجعي.
+   * تساعد في منع خلق حلقات مفرغة (A -> B -> C -> A)
+   */
+  const getAncestors = (targetId: string, allStages: TechnicalStage[]) => {
+    const ancestors = new Set<string>();
+    const stack = [targetId];
+    
+    while (stack.length > 0) {
+      const currentId = stack.pop()!;
+      // البحث عن كل المراحل التي تضع currentId كمرحلة تالية لها
+      const parents = allStages.filter(s => s.nextStageIds?.includes(currentId));
+      
+      parents.forEach(p => {
+        if (p.id && !ancestors.has(p.id)) {
+          ancestors.add(p.id);
+          stack.push(p.id); // الصعود للأعلى في الشجرة
+        }
+      });
+    }
+    return ancestors;
+  };
+
   const availableNextStages = useMemo(() => {
     if (!form || !stages) return [];
+    
+    // إذا كانت مرحلة جديدة، يمكنها الإشارة لأي مرحلة موجودة
+    if (!form.id) return stages;
+
+    // للمراحل الموجودة، نحسب كافة الأسلاف لمنع الحلقات المفرغة
+    const ancestors = getAncestors(form.id, stages);
     
     return stages.filter(s => {
       // 1. منع الربط مع النفس
       if (s.id === form.id) return false;
 
-      // 2. منع الربط العكسي المباشر:
-      // إذا كانت هذه المرحلة (s) تشير بالفعل إلى المرحلة الحالية (form.id) كمرحلة تالية لها
-      // فلا يجوز للمرحلة الحالية أن تشير إليها، منعاً للحلقة المفرغة.
-      const isAlreadyAPredecessor = s.nextStageIds?.includes(form.id!);
+      // 2. منع الربط مع أي مرحلة تسبق هذه المرحلة (مباشرة أو غير مباشرة)
+      const isAncestor = ancestors.has(s.id!);
       
-      return !isAlreadyAPredecessor;
+      return !isAncestor;
     });
   }, [form, stages]);
 
@@ -215,7 +241,7 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
                 </DialogFooter>
               </div>
 
-              {/* Right Side: Next Stages Multi-Select with Protection Logic */}
+              {/* Right Side: Next Stages Multi-Select with Advanced Protection Logic */}
               <div className="lg:col-span-2 bg-slate-50 border-s border-slate-200 p-8 flex flex-col">
                 <div className="mb-6">
                   <h4 className="font-black text-lg flex items-center gap-2">
@@ -236,8 +262,8 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
                         </div>
                         <p className="text-[10px] text-muted-foreground font-bold leading-relaxed px-4">
                           {isRtl 
-                            ? 'لا توجد مراحل متاحة للربط. (المراحل التي تسبق هذه المرحلة أو تشير لنفسها تم استبعادها تلقائياً لضمان سلامة التدفق).' 
-                            : 'No stages available. (Predecessors and self-references are hidden to ensure workflow integrity).'}
+                            ? 'لا توجد مراحل متاحة للربط. تم استبعاد المراحل التي تسبق هذه المرحلة (مباشرة أو غير مباشرة) لضمان عدم وجود حلقات مفرغة.' 
+                            : 'No stages available. Ancestors and self-references are hidden to prevent circular dependencies.'}
                         </p>
                       </div>
                     ) : (
