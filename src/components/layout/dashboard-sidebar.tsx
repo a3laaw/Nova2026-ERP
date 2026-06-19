@@ -45,7 +45,6 @@ export function DashboardSidebar() {
     { title: t('hr'), icon: UserCircle, url: "/dashboard/hr" },
     { title: t('procurement'), icon: ShoppingCart, url: "/dashboard/procurement" },
     { title: t('inventory'), icon: Warehouse, url: "/dashboard/inventory" },
-    { title: t('checklists'), icon: ClipboardList, url: "/dashboard/checklists" },
     { title: t('reports'), icon: BarChart3, url: "/dashboard/reports" },
     { title: t('ai'), icon: Sparkles, url: "/dashboard/ai" },
   ]
@@ -100,9 +99,22 @@ export function DashboardSidebar() {
       <SidebarFooter className="border-t p-6">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip={t('settings')} className="text-slate-600 hover:bg-slate-50 py-6 px-4 rounded-xl">
+            <SidebarMenuButton 
+              asChild 
+              isActive={pathname.startsWith("/dashboard/settings")}
+              tooltip={t('settings')} 
+              className={cn(
+                "transition-all duration-200 rounded-xl group py-6 px-4",
+                pathname.startsWith("/dashboard/settings")
+                  ? "bg-primary/10 text-primary font-black shadow-sm"
+                  : "text-slate-600 hover:bg-slate-50"
+              )}
+            >
               <Link href="/dashboard/settings" className={cn("flex items-center gap-4")}>
-                <Settings className="h-5 w-5 text-slate-400" />
+                <Settings className={cn(
+                  "h-5 w-5 transition-colors",
+                  pathname.startsWith("/dashboard/settings") ? "text-primary" : "text-slate-400 group-hover:text-black"
+                )} />
                 <span className="text-start">{t('settings')}</span>
               </Link>
             </SidebarMenuButton>
