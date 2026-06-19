@@ -15,6 +15,7 @@ import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
+import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { ProjectService } from '@/services/project-service';
 import { Project, StageInstance } from '@/types/project';
@@ -26,12 +27,15 @@ export default function ProjectExecutionPage() {
   const projectId = params.projectId as string;
   const { globalUser, user } = useAuthContext();
   const { t, lang, dir } = useLanguage();
+  const { permissions, check } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
 
   const companyId = globalUser?.companyId;
-  const projectService = useMemo(() => db && companyId ? new ProjectService(db, companyId) : null, [db, companyId]);
+  const projectService = useMemo(() => 
+    db && companyId ? new ProjectService(db, companyId, permissions) : null, 
+  [db, companyId, permissions]);
 
   const projectRef = useMemo(() => companyId && db ? doc(db, paths.projects(companyId), projectId) : null, [db, companyId, projectId]);
   const instancesQuery = useMemo(() => companyId && db ? query(collection(db, paths.stageInstances(companyId, projectId)), orderBy('createdAt')) : null, [db, companyId, projectId]);
@@ -49,8 +53,16 @@ export default function ProjectExecutionPage() {
 
   const handleCompleteStage = (instanceId: string) => {
     if (!projectService || !user?.uid) return;
-    projectService.completeStage(projectId, instanceId, user.uid);
-    toast({ title: t('saved'), description: isRtl ? 'تم إنجاز المرحلة بنجاح.' : 'Stage completed successfully.' });
+    try {
+      projectService.completeStage(projectId, instanceId, user.uid);
+      toast({ title: t('saved') });
+    } catch (e: any) {
+       toast({ 
+         variant: "destructive", 
+         title: t('error'), 
+         description: e.message.includes('UNAUTHORIZED') ? (isRtl ? 'لا تملك صلاحية إكمال المراحل.' : 'Unauthorized to complete stages.') : t('saveFailed') 
+       });
+    }
   };
 
   if (projectLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
@@ -58,7 +70,6 @@ export default function ProjectExecutionPage() {
 
   return (
     <div className="space-y-8" dir={dir}>
-      {/* Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div className="flex items-center gap-4">
           <Button variant="ghost" onClick={() => router.push('/dashboard/projects')} className="h-12 w-12 p-0 rounded-2xl bg-white shadow-sm border hover:bg-slate-50">
@@ -84,7 +95,6 @@ export default function ProjectExecutionPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left: Progress & Stages */}
         <div className="lg:col-span-2 space-y-6">
           <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
             <CardHeader className="p-8 pb-0">
@@ -123,11 +133,12 @@ export default function ProjectExecutionPage() {
                        </div>
                     </div>
                     <div className="flex items-center gap-4">
-                       {instance.status !== 'completed' ? (
+                       {instance.status !== 'completed' && check('projects:edit') && (
                          <Button onClick={() => handleCompleteStage(instance.id!)} className="rounded-xl font-bold bg-white text-primary border-2 border-primary/10 hover:bg-primary hover:text-white transition-all shadow-sm">
                             {isRtl ? 'إكمال المرحلة' : 'Complete'}
                          </Button>
-                       ) : (
+                       )}
+                       {instance.status === 'completed' && (
                          <div className="text-end">
                             <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">{isRtl ? 'تم الإنجاز' : 'Completed'}</p>
                             <p className="text-[10px] text-muted-foreground font-bold">{instance.completedAt?.toDate().toLocaleDateString()}</p>
@@ -141,7 +152,6 @@ export default function ProjectExecutionPage() {
           </Card>
         </div>
 
-        {/* Right: Project Details & Context */}
         <div className="space-y-6">
            <Card className="border-0 shadow-lg rounded-[2.5rem] bg-slate-900 text-white overflow-hidden">
               <CardHeader className="bg-white/5 border-b border-white/5 p-8">

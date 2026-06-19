@@ -27,7 +27,7 @@ import { cn } from '@/lib/utils';
 export default function ProjectsPage() {
   const { globalUser } = useAuthContext();
   const { t, lang, dir } = useLanguage();
-  const { check } = usePermissions();
+  const { check, permissions } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const companyId = globalUser?.companyId;
@@ -39,14 +39,14 @@ export default function ProjectsPage() {
     name: '', budget: '', activityTypeId: '', serviceId: '', subServiceId: '' 
   });
 
-  const projectService = useMemo(() => db && companyId ? new ProjectService(db, companyId) : null, [db, companyId]);
+  const projectService = useMemo(() => 
+    db && companyId ? new ProjectService(db, companyId, permissions) : null, 
+  [db, companyId, permissions]);
 
-  // استعلامات المرجعيات
   const actQuery = useMemo(() => companyId && db ? query(collection(db, paths.activityTypes(companyId)), orderBy('name')) : null, [db, companyId]);
   const srvQuery = useMemo(() => companyId && db && form.activityTypeId ? query(collection(db, paths.services(companyId, form.activityTypeId)), orderBy('name')) : null, [db, companyId, form.activityTypeId]);
   const subQuery = useMemo(() => companyId && db && form.activityTypeId && form.serviceId ? query(collection(db, paths.subServices(companyId, form.activityTypeId, form.serviceId)), orderBy('name')) : null, [db, companyId, form.activityTypeId, form.serviceId]);
   
-  // استعلام المشاريع
   const projectsQuery = useMemo(() => companyId && db ? query(collection(db, paths.projects(companyId)), orderBy('createdAt', 'desc')) : null, [db, companyId]);
 
   const { data: activities } = useCollection(actQuery);
@@ -66,12 +66,16 @@ export default function ProjectsPage() {
         subServiceId: form.subServiceId,
         status: 'active'
       });
-      toast({ title: t('saved'), description: isRtl ? 'تم إنشاء المشروع وتجهيز مراحل العمل.' : 'Project created and stages instantiated.' });
+      toast({ title: t('saved') });
       setForm({ name: '', budget: '', activityTypeId: '', serviceId: '', subServiceId: '' });
       setIsAdding(false);
       router.push(`/dashboard/projects/${projectId}`);
-    } catch (e) {
-      toast({ variant: "destructive", title: t('error'), description: t('saveFailed') });
+    } catch (e: any) {
+      toast({ 
+        variant: "destructive", 
+        title: t('error'), 
+        description: e.message.includes('UNAUTHORIZED') ? (isRtl ? 'عذراً، لا تملك صلاحية إنشاء مشاريع.' : 'Unauthorized to create projects.') : t('saveFailed') 
+      });
       setIsAdding(false);
     }
   };
@@ -91,7 +95,6 @@ export default function ProjectsPage() {
           </p>
         </div>
 
-        {/* زر الإضافة محمي بصلاحية projects:create */}
         {check('projects:create') && (
           <Dialog>
             <DialogTrigger asChild>

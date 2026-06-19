@@ -51,3 +51,14 @@ export function hasAllPermissions(user: UserContextData | null, codes: Permissio
 export function canAccessModule(user: UserContextData | null, moduleKey: string): boolean {
   return hasPermission(user, `${moduleKey}:view`);
 }
+
+/**
+ * دالة الإنفاذ (Enforcement): ترمي خطأ إذا لم تتوفر الصلاحية
+ */
+export function ensureActionPermission(permissions: string[], requiredCode: PermissionCode) {
+  if (permissions.includes('*')) return true;
+  if (!permissions.includes(requiredCode)) {
+    throw new Error(`UNAUTHORIZED_ACTION: Missing required permission [${requiredCode}]`);
+  }
+  return true;
+}

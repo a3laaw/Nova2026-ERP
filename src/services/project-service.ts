@@ -8,7 +8,6 @@ import {
   getDocs, 
   serverTimestamp,
   writeBatch,
-  query,
   updateDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
@@ -16,11 +15,19 @@ import { Project, StageInstance } from '@/types/project';
 import { TechnicalStage } from '@/types/reference';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { ensureActionPermission } from '@/lib/permissions';
 
 export class ProjectService {
-  constructor(private db: Firestore, private companyId: string) {}
+  constructor(
+    private db: Firestore, 
+    private companyId: string,
+    private permissions: string[] = []
+  ) {}
 
   async createProject(projectData: Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'companyId'>) {
+    // Phase 3 Guard
+    ensureActionPermission(this.permissions, 'projects:create');
+
     const projectRef = collection(this.db, paths.projects(this.companyId));
     const fullProjectData = {
       ...projectData,
@@ -30,11 +37,9 @@ export class ProjectService {
     };
 
     try {
-      // 1. إنشاء وثيقة المشروع
       const projectDoc = await addDoc(projectRef, fullProjectData);
       const projectId = projectDoc.id;
 
-      // 2. جلب المراحل الفنية (القوالب) للمسار المختار
       const stagesPath = paths.technicalStages(
         this.companyId, 
         projectData.activityTypeId, 
@@ -79,23 +84,16 @@ export class ProjectService {
     } catch (err: any) {
       errorEmitter.emit('permission-error', new FirestorePermissionError({ 
         path: `projects_creation_flow`, 
-        operation: 'write' 
+        operation: 'create' 
       }));
       throw err;
     }
   }
 
-  updateProjectStatus(projectId: string, status: Project['status']) {
-    const projectRef = doc(this.db, paths.projects(this.companyId), projectId);
-    updateDoc(projectRef, { status, updatedAt: serverTimestamp() }).catch(() => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ 
-        path: projectRef.path, 
-        operation: 'update' 
-      }));
-    });
-  }
-
   completeStage(projectId: string, stageId: string, userId: string) {
+    // Phase 3 Guard
+    ensureActionPermission(this.permissions, 'projects:edit');
+
     const stageRef = doc(this.db, paths.stageInstances(this.companyId, projectId), stageId);
     updateDoc(stageRef, { 
       status: 'completed', 
