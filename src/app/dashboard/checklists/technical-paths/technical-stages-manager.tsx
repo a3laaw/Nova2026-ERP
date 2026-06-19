@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -44,29 +44,35 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
   const technicalPathService = useMemo(() => db && companyId ? new TechnicalPathService(db, companyId) : null, [db, companyId]);
   
   const stagesQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.technicalStages(companyId, activityType.id!, mainService.id!, subService.id!)), orderBy('order')) : null
+    companyId && db ? query(collection(db, paths.technicalStages(companyId, activityType.id!, mainService.id!, subService.id!)), orderBy('name')) : null
   , [db, companyId, activityType, mainService, subService]);
 
   const { data: stages, loading } = useCollection<TechnicalStage>(stagesQuery);
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!technicalPathService || !form || !form.name) return;
     setLoadingAction('save');
-    try {
-      if (form.id) { 
-        await technicalPathService.updateTechnicalStage(activityType.id!, mainService.id!, subService.id!, form.id, form); 
-      } else { 
-        await technicalPathService.addTechnicalStage(activityType.id!, mainService.id!, subService.id!, { ...form, code: '' } as any); 
-      }
-      toast({ title: t('saved') });
-      setForm(null);
-    } catch (e) { toast({ variant: "destructive", title: t('error') }); }
-    finally { setLoadingAction(null); }
+    const data = { 
+      ...form, 
+      order: 0, 
+      isActive: true, 
+      isRequired: true, 
+      isEditable: true,
+      nextStageIds: []
+    };
+    if (form.id) { 
+      technicalPathService.updateTechnicalStage(activityType.id!, mainService.id!, subService.id!, form.id, data); 
+    } else { 
+      technicalPathService.addTechnicalStage(activityType.id!, mainService.id!, subService.id!, data); 
+    }
+    toast({ title: t('saved') });
+    setForm(null);
+    setLoadingAction(null);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = (id: string) => {
     if (!technicalPathService || !confirm(t('confirmDelete'))) return;
-    await technicalPathService.deleteTechnicalStage(activityType.id!, mainService.id!, subService.id!, id);
+    technicalPathService.deleteTechnicalStage(activityType.id!, mainService.id!, subService.id!, id);
     toast({ title: t('deleted') });
   };
 
@@ -81,7 +87,7 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
             <h1 className="text-2xl font-black font-headline flex items-center gap-2">
               <Workflow className="h-6 w-6 text-primary" /> {isRtl ? 'هندسة مراحل العمل' : 'WBS Engineering'}
             </h1>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
               <Badge variant="outline" className="text-[10px] font-bold border-primary/20">{isRtl ? activityType.name : activityType.nameEn}</Badge>
               <ArrowRight className={cn("h-3 w-3 opacity-30", !isRtl && 'rotate-180')} />
               <Badge variant="outline" className="text-[10px] font-bold border-blue-200">{isRtl ? mainService.name : mainService.nameEn}</Badge>
@@ -94,8 +100,7 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
         <Button 
           onClick={() => setForm({ 
             name: '', nameEn: '', description: '', 
-            order: (stages?.length || 0) + 1, isActive: true, 
-            isRequired: true, isEditable: true, isNumeric: false, isTimed: false 
+            isNumeric: false, isTimed: false 
           })}
           className="rounded-xl shadow-lg shadow-primary/20 font-bold"
         >
@@ -113,13 +118,9 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
             <Card key={stage.id} className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden group hover:ring-2 hover:ring-primary/10 transition-all text-start">
               <div className="flex items-center p-6 justify-between">
                 <div className="text-start flex items-center gap-6">
-                  <div className="h-12 w-12 rounded-2xl bg-slate-50 border flex items-center justify-center font-black text-primary text-xl">
-                    {stage.order}
-                  </div>
                   <div>
                     <div className="flex items-center gap-3">
                       <h3 className="font-black text-slate-800 text-lg">{isRtl ? stage.name : stage.nameEn}</h3>
-                      {stage.isRequired && <Badge className="bg-amber-100 text-amber-700 text-[8px] font-black">إلزامية</Badge>}
                     </div>
                     <p className="text-xs text-muted-foreground font-bold mt-1 line-clamp-1">{stage.description || 'لا يوجد وصف...'}</p>
                     <div className="flex gap-4 mt-2">
@@ -145,25 +146,24 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
               <ShieldCheck className="text-primary h-6 w-6" /> {form.id ? 'تعديل مرحلة فنية' : 'تعريف مرحلة فنية جديدة'}
             </DialogTitle></DialogHeader>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-6 text-start">
-              <div className="space-y-2"><Label>الترتيب</Label><Input type="number" value={form.order || ''} onChange={e => setForm({...form, order: Number(e.target.value)})} /></div>
-              <div className="space-y-2"><Label>اسم المرحلة (Ar)</Label><Input value={form.name || ''} onChange={e => setForm({...form, name: e.target.value})} /></div>
-              <div className="space-y-2"><Label>Stage Name (En)</Label><Input value={form.nameEn || ''} onChange={e => setForm({...form, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
+              <div className="space-y-2"><Label>اسم المرحلة (Ar)</Label><Input value={form.name || ''} onChange={e => setForm({...form, name: e.target.value})} placeholder="..." /></div>
+              <div className="space-y-2"><Label>Stage Name (En)</Label><Input value={form.nameEn || ''} onChange={e => setForm({...form, nameEn: e.target.value})} className="text-start" dir="ltr" placeholder="..." /></div>
               
               <div className="md:col-span-2 space-y-4 p-6 bg-slate-50 rounded-3xl border">
                  <div className="flex items-center justify-between">
                     <div className="space-y-0.5"><Label className="text-base">تحكم زمني</Label><p className="text-xs text-muted-foreground font-bold">تحديد عدد أيام مستهدف للإنجاز</p></div>
                     <Switch checked={form.isTimed || false} onCheckedChange={val => setForm({...form, isTimed: val})} />
                  </div>
-                 {form.isTimed && <div className="pt-2 animate-in slide-in-from-top-2"><Label>الأيام المستهدفة</Label><Input type="number" value={form.timeTargetDays || ''} onChange={e => setForm({...form, timeTargetDays: Number(e.target.value)})} /></div>}
+                 {form.isTimed && <div className="pt-2 animate-in slide-in-from-top-2"><Label>الأيام المستهدفة</Label><Input type="number" value={form.timeTargetDays || ''} onChange={e => setForm({...form, timeTargetDays: Number(e.target.value)})} placeholder="10" /></div>}
                  
                  <div className="flex items-center justify-between border-t pt-4">
                     <div className="space-y-0.5"><Label className="text-base">تحكم عددي</Label><p className="text-xs text-muted-foreground font-bold">تحديد كمية مستهدفة (أمتار، قطع، إلخ)</p></div>
                     <Switch checked={form.isNumeric || false} onCheckedChange={val => setForm({...form, isNumeric: val})} />
                  </div>
-                 {form.isNumeric && <div className="pt-2 animate-in slide-in-from-top-2"><Label>الكمية المستهدفة</Label><Input type="number" value={form.numericTarget || ''} onChange={e => setForm({...form, numericTarget: Number(e.target.value)})} /></div>}
+                 {form.isNumeric && <div className="pt-2 animate-in slide-in-from-top-2"><Label>الكمية المستهدفة</Label><Input type="number" value={form.numericTarget || ''} onChange={e => setForm({...form, numericTarget: Number(e.target.value)})} placeholder="100" /></div>}
               </div>
 
-              <div className="md:col-span-2 space-y-2"><Label>الوصف الفني للمرحلة</Label><Textarea value={form.description || ''} onChange={e => setForm({...form, description: e.target.value})} className="rounded-2xl h-24" /></div>
+              <div className="md:col-span-2 space-y-2"><Label>الوصف الفني للمرحلة</Label><Textarea value={form.description || ''} onChange={e => setForm({...form, description: e.target.value})} className="rounded-2xl h-24" placeholder="..." /></div>
             </div>
             <DialogFooter><Button onClick={handleSave} disabled={loadingAction === 'save'} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">{loadingAction === 'save' ? <Loader2 className="animate-spin" /> : t('save')}</Button></DialogFooter>
           </DialogContent>

@@ -3,7 +3,6 @@
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { 
   MapPin, MapPinned, Plus, Loader2, Trash2, Edit3, 
   ChevronRight
@@ -31,60 +30,63 @@ export default function GeoPage() {
   const [selectedGov, setSelectedGov] = useState<Governorate | null>(null);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   
-  const [govForm, setGovForm] = useState<Partial<Governorate>>({ name: '', nameEn: '', isActive: true, order: 0 });
-  const [areaForm, setAreaForm] = useState<Partial<Area>>({ name: '', nameEn: '', isActive: true, order: 0 });
+  const [govForm, setGovForm] = useState<Partial<Governorate>>({ name: '', nameEn: '' });
+  const [areaForm, setAreaForm] = useState<Partial<Area>>({ name: '', nameEn: '' });
 
   const locationService = useMemo(() => db && companyId ? new LocationService(db, companyId) : null, [db, companyId]);
 
-  const govsQuery = useMemo(() => companyId && db ? query(collection(db, paths.governorates(companyId)), orderBy('order')) : null, [db, companyId]);
-  const areasQuery = useMemo(() => companyId && db && selectedGov?.id ? query(collection(db, paths.areas(companyId, selectedGov.id)), orderBy('order')) : null, [db, companyId, selectedGov]);
+  const govsQuery = useMemo(() => companyId && db ? query(collection(db, paths.governorates(companyId)), orderBy('name')) : null, [db, companyId]);
+  const areasQuery = useMemo(() => companyId && db && selectedGov?.id ? query(collection(db, paths.areas(companyId, selectedGov.id)), orderBy('name')) : null, [db, companyId, selectedGov]);
 
   const { data: governorates, loading: govsLoading } = useCollection<Governorate>(govsQuery);
   const { data: areas, loading: areasLoading } = useCollection<Area>(areasQuery);
 
-  const handleSaveGov = async () => {
+  const handleSaveGov = () => {
     if (!locationService || !govForm.name) return;
     setLoadingAction('gov');
-    try {
-      if (govForm.id) { await locationService.updateGovernorate(govForm.id, govForm); }
-      else { await locationService.addGovernorate(govForm as any); }
-      toast({ title: t('saved') });
-      setGovForm({ name: '', nameEn: '', isActive: true, order: 0 });
-    } catch (e) { toast({ variant: "destructive", title: t('error') }); }
-    finally { setLoadingAction(null); }
+    const data = { ...govForm, order: 0, isActive: true };
+    if (govForm.id) {
+      locationService.updateGovernorate(govForm.id, data);
+    } else {
+      locationService.addGovernorate(data as any);
+    }
+    toast({ title: t('saved') });
+    setGovForm({ name: '', nameEn: '' });
+    setLoadingAction(null);
   };
 
-  const handleSaveArea = async () => {
+  const handleSaveArea = () => {
     if (!locationService || !selectedGov?.id || !areaForm.name) return;
     setLoadingAction('area');
-    try {
-      if (areaForm.id) { await locationService.updateArea(selectedGov.id, areaForm.id, areaForm); }
-      else { await locationService.addArea(selectedGov.id, areaForm as any); }
-      toast({ title: t('saved') });
-      setAreaForm({ name: '', nameEn: '', isActive: true, order: 0 });
-    } catch (e) { toast({ variant: "destructive", title: t('error') }); }
-    finally { setLoadingAction(null); }
+    const data = { ...areaForm, order: 0, isActive: true };
+    if (areaForm.id) {
+      locationService.updateArea(selectedGov.id, areaForm.id, data);
+    } else {
+      locationService.addArea(selectedGov.id, data as any);
+    }
+    toast({ title: t('saved') });
+    setAreaForm({ name: '', nameEn: '' });
+    setLoadingAction(null);
   };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-black font-headline flex items-center gap-3">
+        <h2 className="text-2xl font-black font-headline flex items-center gap-3 text-start">
           <MapPinned className="h-6 w-6 text-primary" />
           {isRtl ? 'البيانات الجغرافية' : 'Geographic Data'}
         </h2>
         <Dialog>
           <DialogTrigger asChild>
-            <Button onClick={() => setGovForm({ name: '', nameEn: '', isActive: true, order: (governorates?.length || 0) + 1 })} className="rounded-xl">
+            <Button onClick={() => setGovForm({ name: '', nameEn: '' })} className="rounded-xl">
               <Plus className="me-2 h-4 w-4" /> {t('newGov')}
             </Button>
           </DialogTrigger>
           <DialogContent className="rounded-3xl" dir={dir}>
              <DialogHeader><DialogTitle className="text-start font-black">{isRtl ? 'محافظة جديدة' : 'New Gov'}</DialogTitle></DialogHeader>
              <div className="grid grid-cols-1 gap-4 py-4 text-start">
-               <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={govForm.name || ''} onChange={e => setGovForm({...govForm, name: e.target.value})} /></div>
-               <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={govForm.nameEn || ''} onChange={e => setGovForm({...govForm, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
-               <div className="space-y-2"><Label>{isRtl ? 'الترتيب' : 'Order'}</Label><Input type="number" value={govForm.order || ''} onChange={e => setGovForm({...govForm, order: Number(e.target.value)})} /></div>
+               <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={govForm.name || ''} onChange={e => setGovForm({...govForm, name: e.target.value})} placeholder="..." /></div>
+               <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={govForm.nameEn || ''} onChange={e => setGovForm({...govForm, nameEn: e.target.value})} className="text-start" dir="ltr" placeholder="..." /></div>
              </div>
              <DialogFooter><Button onClick={handleSaveGov} disabled={loadingAction === 'gov'} className="w-full h-12 rounded-xl font-bold">{loadingAction === 'gov' ? <Loader2 className="animate-spin" /> : t('save')}</Button></DialogFooter>
           </DialogContent>
@@ -122,8 +124,8 @@ export default function GeoPage() {
                   <DialogContent className="rounded-3xl" dir={dir}>
                     <DialogHeader><DialogTitle className="text-start font-black">{isRtl ? 'منطقة جديدة' : 'New Area'}</DialogTitle></DialogHeader>
                     <div className="grid grid-cols-1 gap-4 py-4 text-start">
-                      <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={areaForm.name || ''} onChange={e => setAreaForm({...areaForm, name: e.target.value})} /></div>
-                      <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={areaForm.nameEn || ''} onChange={e => setAreaForm({...areaForm, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
+                      <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={areaForm.name || ''} onChange={e => setAreaForm({...areaForm, name: e.target.value})} placeholder="..." /></div>
+                      <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={areaForm.nameEn || ''} onChange={e => setAreaForm({...areaForm, nameEn: e.target.value})} className="text-start" dir="ltr" placeholder="..." /></div>
                     </div>
                     <DialogFooter><Button onClick={handleSaveArea} disabled={loadingAction === 'area'} className="w-full h-12 rounded-xl">{loadingAction === 'area' ? <Loader2 className="animate-spin" /> : t('save')}</Button></DialogFooter>
                   </DialogContent>
@@ -139,7 +141,7 @@ export default function GeoPage() {
                         <span className="text-sm font-black">{isRtl ? area.name : area.nameEn}</span>
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100">
                           <Button variant="ghost" size="icon" onClick={() => setAreaForm(area)} className="h-8 w-8 text-blue-600"><Edit3 className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" onClick={() => locationService?.deleteArea(selectedGov.id!, area.id!)} className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => locationService?.deleteGovernorate(area.id!)} className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>
                         </div>
                       </div>
                     ))}
