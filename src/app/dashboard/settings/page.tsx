@@ -4,7 +4,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
-  Settings2, Building2, UserCog, BellRing, Database, ArrowLeft
+  Settings2, Building2, UserCog, BellRing, Database, ArrowLeft, ShieldCheck, Clock
 } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/context/language-context';
@@ -33,6 +33,24 @@ export default function SettingsHubPage() {
       color: 'text-primary',
       bg: 'bg-primary/10',
       path: '/dashboard/settings/checklists'
+    },
+    {
+      id: 'roles',
+      title: t('rolesRef'),
+      description: isRtl ? 'إدارة الأدوار وصلاحيات الوصول للموظفين' : 'Manage roles and access permissions for employees',
+      icon: ShieldCheck,
+      color: 'text-indigo-600',
+      bg: 'bg-indigo-50',
+      path: '/dashboard/settings/roles'
+    },
+    {
+      id: 'work-hours',
+      title: t('workHours'),
+      description: t('workHoursDesc'),
+      icon: Clock,
+      color: 'text-amber-600',
+      bg: 'bg-amber-50',
+      path: '/dashboard/settings/work-hours'
     },
     {
       id: 'profile',

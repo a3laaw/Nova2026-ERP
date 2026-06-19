@@ -61,7 +61,6 @@ export function DashboardSidebar() {
     { title: t('inventory'), icon: Warehouse, url: "/dashboard/inventory" },
     { title: t('reports'), icon: BarChart3, url: "/dashboard/reports" },
     { title: t('ai'), icon: Sparkles, url: "/dashboard/ai" },
-    { title: t('checklists'), icon: Database, url: "/dashboard/checklists" },
   ]
 
   const settingsItem = {
@@ -70,6 +69,7 @@ export function DashboardSidebar() {
     url: "/dashboard/settings",
     items: [
       { title: t('companyIdentity'), url: "/dashboard/settings/company", icon: Building2 },
+      { title: t('checklists'), url: "/dashboard/settings/checklists", icon: Database },
       { title: t('rolesRef'), url: "/dashboard/settings/roles", icon: ShieldCheck },
       { title: t('workHours'), url: "/dashboard/settings/work-hours", icon: Clock },
       { title: t('profile'), url: "/dashboard/settings/profile", icon: UserCog },
@@ -187,7 +187,7 @@ export function DashboardSidebar() {
       
       <SidebarFooter className="border-t p-6 text-center">
         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-          NovaFlow v1.4.1
+          NovaFlow v1.4.7
         </p>
       </SidebarFooter>
     </Sidebar>
