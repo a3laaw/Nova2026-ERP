@@ -21,6 +21,7 @@ import { useLanguage } from '@/context/language-context';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
+import { SmartDateInput } from '@/components/ui/smart-date-input';
 
 export default function CompanyProfilePage() {
   const { globalUser } = useAuthContext();
@@ -216,7 +217,7 @@ export default function CompanyProfilePage() {
                   <Input 
                     value={formData.name} 
                     onChange={e => setFormData({...formData, name: e.target.value})} 
-                    className="h-12 rounded-xl bg-slate-50/50 border-slate-200 focus:bg-white" 
+                    className="h-14 rounded-[1.2rem] bg-slate-50/50 border-slate-200 focus:bg-white" 
                   />
                 </div>
                 <div className="space-y-2 text-start">
@@ -224,25 +225,23 @@ export default function CompanyProfilePage() {
                   <Input 
                     value={formData.commercialRegistry} 
                     onChange={e => setFormData({...formData, commercialRegistry: e.target.value})} 
-                    className="h-12 rounded-xl bg-slate-50/50 border-slate-200 focus:bg-white" 
+                    className="h-14 rounded-[1.2rem] bg-slate-50/50 border-slate-200 focus:bg-white" 
                   />
                 </div>
+                
                 <div className="space-y-2 text-start">
                   <Label className="font-black text-slate-700">{t('licenseExpiry')}</Label>
-                  <Input 
-                    type="date"
-                    value={formData.licenseExpiryDate} 
-                    onChange={e => setFormData({...formData, licenseExpiryDate: e.target.value})} 
-                    className="h-12 rounded-xl bg-slate-50/50 border-slate-200 focus:bg-white text-start" 
+                  <SmartDateInput 
+                    value={formData.licenseExpiryDate}
+                    onChange={(val) => setFormData({...formData, licenseExpiryDate: val})}
                   />
                 </div>
+
                 <div className="space-y-2 text-start">
                   <Label className="font-black text-slate-700">{t('laborExpiry')}</Label>
-                  <Input 
-                    type="date"
-                    value={formData.laborAuthorityExpiryDate} 
-                    onChange={e => setFormData({...formData, laborAuthorityExpiryDate: e.target.value})} 
-                    className="h-12 rounded-xl bg-slate-50/50 border-slate-200 focus:bg-white text-start" 
+                  <SmartDateInput 
+                    value={formData.laborAuthorityExpiryDate}
+                    onChange={(val) => setFormData({...formData, laborAuthorityExpiryDate: val})}
                   />
                 </div>
               </div>
