@@ -15,7 +15,8 @@ import {
   Clock,
   ChevronLeft,
   ChevronRight,
-  AlertTriangle
+  AlertTriangle,
+  ArrowRight
 } from "lucide-react";
 import { useFirestore } from '@/firebase';
 import { useAuthContext } from '@/context/auth-context';
@@ -63,7 +64,7 @@ export default function NewLeaveRequestPage() {
 
   const currentBalance = 24; 
 
-  // حساب أيام العمل الفعلية
+  // حساب أيام العمل الفعلية عند تغيير التواريخ
   useEffect(() => {
     async function calculateMetrics() {
       if (form.startDate && form.endDate && db && companyId) {
@@ -94,6 +95,7 @@ export default function NewLeaveRequestPage() {
     calculateMetrics();
   }, [form.startDate, form.endDate, db, companyId]);
 
+  // تحديث الحقول عند الاختيار من التقويم
   const handleDateSelect = (range: DateRange | undefined) => {
     setForm(prev => ({
       ...prev,
@@ -102,6 +104,7 @@ export default function NewLeaveRequestPage() {
     }));
   };
 
+  // تحويل حالة النموذج لنطاق يفهمه التقويم (للتلوين)
   const selectedRange: DateRange | undefined = useMemo(() => {
     try {
       const from = form.startDate ? parseISO(form.startDate) : undefined;
@@ -158,7 +161,7 @@ export default function NewLeaveRequestPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-        {/* Left Column: Fixed Grid Calendar */}
+        {/* Left Column: Fixed Grid Calendar with Airline Style Range */}
         <div className="lg:col-span-5 space-y-8">
            <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
               <CardHeader className="bg-slate-50/50 border-b p-8 flex justify-between items-center">
@@ -188,14 +191,15 @@ export default function NewLeaveRequestPage() {
                         table: "w-full border-collapse",
                         head_row: "grid grid-cols-7 mb-4", // إجبار الهيدر على Grid
                         head_cell: "text-slate-400 font-black text-[10px] uppercase text-center w-full",
-                        row: "grid grid-cols-7 mt-3 w-full", // إجبار الصفوف على Grid لمنع التراكم العمودي
+                        row: "grid grid-cols-7 mt-1 w-full", // إجبار الصفوف على Grid لمنع التراكم العمودي
                         cell: cn(
                           "relative p-0 text-center text-sm h-12 w-full flex items-center justify-center transition-all",
+                          "[&:has([aria-selected].day-range-end)]:rounded-r-full [&:has([aria-selected].day-range-start)]:rounded-l-full",
                           "[&:has([aria-selected])]:bg-primary/10"
                         ),
                         day: cn("h-10 w-10 p-0 font-bold rounded-2xl hover:bg-slate-100 transition-all cursor-pointer flex items-center justify-center"),
-                        day_range_start: "!rounded-2xl bg-primary !text-white shadow-xl shadow-primary/30 z-30 font-black",
-                        day_range_end: "!rounded-2xl bg-primary !text-white shadow-xl shadow-primary/30 z-30 font-black",
+                        day_range_start: "!rounded-full bg-primary !text-white shadow-xl shadow-primary/30 z-30 font-black",
+                        day_range_end: "!rounded-full bg-primary !text-white shadow-xl shadow-primary/30 z-30 font-black",
                         day_range_middle: "aria-selected:bg-primary/10 aria-selected:!text-primary !rounded-none z-10",
                         day_selected: "bg-primary text-white focus:bg-primary focus:text-white",
                         day_today: "bg-slate-100 text-primary border-2 border-primary/20",
@@ -236,7 +240,7 @@ export default function NewLeaveRequestPage() {
            </Card>
         </div>
 
-        {/* Right Column: Form */}
+        {/* Right Column: Form with Smart Inputs */}
         <div className="lg:col-span-7 space-y-8 animate-in slide-in-from-bottom-6 duration-500">
            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
               <div className="h-2 bg-primary w-full" />
