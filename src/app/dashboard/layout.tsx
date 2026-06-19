@@ -91,7 +91,7 @@ export default function DashboardLayout({
               <UserNav />
             </div>
           </header>
-          <main className="flex-1 p-8 lg:p-12 animate-in fade-in duration-500">
+          <main className="flex-1 p-8 lg:p-12 animate-in fade-in duration-500" dir={dir}>
             {children}
           </main>
         </SidebarInset>

@@ -115,7 +115,7 @@ export default function HRPage() {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" dir={dir}>
         <div className="overflow-x-auto pb-2 scrollbar-hide">
           <TabsList className="flex w-fit md:grid md:w-[600px] grid-cols-3 h-14 bg-muted/30 rounded-2xl p-1 mb-8 shadow-inner gap-1">
             <TabsTrigger value="team" className="rounded-xl font-black gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md transition-all px-6">
@@ -148,7 +148,7 @@ export default function HRPage() {
 
           <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
              <CardContent className="p-0 overflow-x-auto">
-               <Table>
+               <Table dir={dir}>
                  <TableHeader className="bg-muted/30">
                    <TableRow className="hover:bg-transparent">
                      <TableHead className="text-start font-black py-6 ps-8">{t('employeeName')}</TableHead>
