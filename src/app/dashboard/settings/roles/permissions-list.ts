@@ -1,99 +1,104 @@
-import { PermissionGroup } from "@/types/roles";
+/**
+ * @fileOverview تعريف هيكل المصفوفة للصلاحيات.
+ * يتم تقسيم الصلاحيات إلى وحدات (Modules) وإجراءات (Actions).
+ */
 
-export const AVAILABLE_PERMISSIONS: PermissionGroup[] = [
+export interface PermissionModule {
+  id: string;
+  label: string;
+  labelEn: string;
+  actions: {
+    view: string;
+    create: string;
+    edit: string;
+    delete: string;
+    advanced: string;
+  };
+}
+
+export const MATRIX_MODULES = [
   {
-    id: 'reference',
-    label: 'المرجعيات والقواعد',
-    labelEn: 'Reference & Config',
-    permissions: [
-      { code: 'manage_reference_data', label: 'إدارة الدستور المرجعي', labelEn: 'Manage Reference Constitution' },
-      { code: 'manage_activity_types', label: 'إدارة أنشطة الأعمال', labelEn: 'Manage Activity Types' },
-      { code: 'manage_services', label: 'إدارة الخدمات', labelEn: 'Manage Services' },
-      { code: 'manage_subservices', label: 'إدارة الخدمات الفرعية', labelEn: 'Manage Sub-Services' },
-      { code: 'manage_technical_stages', label: 'هندسة المراحل الفنية', labelEn: 'Manage Tech Stages' },
-    ]
+    id: 'dashboard',
+    label: 'لوحة المعلومات',
+    labelEn: 'Dashboard',
+    actions: {
+      view: 'dashboard:view',
+      create: '', // غير متاح للوحة المعلومات
+      edit: '',
+      delete: '',
+      advanced: 'dashboard:export'
+    }
+  },
+  {
+    id: 'projects',
+    label: 'إدارة المشاريع',
+    labelEn: 'Projects',
+    actions: {
+      view: 'projects:view',
+      create: 'projects:create',
+      edit: 'projects:edit',
+      delete: 'projects:delete',
+      advanced: 'projects:archive'
+    }
   },
   {
     id: 'crm',
-    label: 'العملاء والمعاملات',
-    labelEn: 'CRM & Leads',
-    permissions: [
-      { code: 'view_clients', label: 'عرض العملاء', labelEn: 'View Clients' },
-      { code: 'create_client', label: 'إضافة عميل جديد', labelEn: 'Create Client' },
-      { code: 'edit_client', label: 'تعديل بيانات عميل', labelEn: 'Edit Client' },
-      { code: 'delete_client', label: 'حذف عميل', labelEn: 'Delete Client' },
-      { code: 'open_transaction', label: 'فتح معاملة جديدة', labelEn: 'Open Transaction' },
-    ]
-  },
-  {
-    id: 'technical_paths',
-    label: 'المسارات الفنية',
-    labelEn: 'Technical Paths',
-    permissions: [
-      { code: 'view_stage_instances', label: 'متابعة مراحل التنفيذ', labelEn: 'View Stage Instances' },
-      { code: 'start_stage', label: 'بدء تنفيذ مرحلة', labelEn: 'Start Stage' },
-      { code: 'update_stage_progress', label: 'تحديث نسبة الإنجاز', labelEn: 'Update Progress' },
-      { code: 'complete_stage', label: 'اعتماد إنجاز مرحلة', labelEn: 'Complete Stage' },
-      { code: 'reopen_stage', label: 'إعادة فتح مرحلة مغلقة', labelEn: 'Reopen Stage' },
-    ]
-  },
-  {
-    id: 'execution',
-    label: 'المشاريع والزيارات',
-    labelEn: 'Projects & Visits',
-    permissions: [
-      { code: 'create_project', label: 'بدء مشروع جديد', labelEn: 'Create Project' },
-      { code: 'edit_project', label: 'تعديل بيانات مشروع', labelEn: 'Edit Project' },
-      { code: 'create_field_visit', label: 'تسجيل زيارة ميدانية', labelEn: 'Create Field Visit' },
-      { code: 'edit_field_visit', label: 'تعديل تقرير زيارة', labelEn: 'Edit Field Visit' },
-    ]
-  },
-  {
-    id: 'procurement',
-    label: 'المشتريات',
-    labelEn: 'Procurement',
-    permissions: [
-      { code: 'create_purchase_request', label: 'إنشاء طلب شراء', labelEn: 'Create Purchase Request' },
-      { code: 'approve_purchase_request', label: 'اعتماد طلب شراء', labelEn: 'Approve Purchase Request' },
-      { code: 'create_rfq', label: 'إنشاء طلب تسعير (RFQ)', labelEn: 'Create RFQ' },
-      { code: 'create_purchase_order', label: 'إصدار أمر شراء (PO)', labelEn: 'Create Purchase Order' },
-    ]
-  },
-  {
-    id: 'inventory',
-    label: 'المخازن والعهد',
-    labelEn: 'Inventory & Assets',
-    permissions: [
-      { code: 'view_inventory', label: 'عرض المخزون', labelEn: 'View Inventory' },
-      { code: 'create_grn', label: 'إثبات استلام مواد (GRN)', labelEn: 'Create GRN' },
-      { code: 'approve_grn', label: 'اعتماد سند الاستلام', labelEn: 'Approve GRN' },
-      { code: 'transfer_stock', label: 'تحويل مواد بين المواقع', labelEn: 'Transfer Stock' },
-      { code: 'issue_asset', label: 'صرف عهدة لموظف', labelEn: 'Issue Asset' },
-    ]
+    label: 'إدارة العملاء (CRM)',
+    labelEn: 'CRM',
+    actions: {
+      view: 'crm:view',
+      create: 'crm:create',
+      edit: 'crm:edit',
+      delete: 'crm:delete',
+      advanced: 'crm:export'
+    }
   },
   {
     id: 'hr',
     label: 'الموارد البشرية',
     labelEn: 'Human Resources',
-    permissions: [
-      { code: 'view_employees', label: 'عرض سجل الموظفين', labelEn: 'View Employees' },
-      { code: 'create_employee', label: 'إضافة موظف', labelEn: 'Create Employee' },
-      { code: 'edit_employee', label: 'تعديل بيانات موظف', labelEn: 'Edit Employee' },
-      { code: 'manage_attendance', label: 'إدارة الحضور والانصراف', labelEn: 'Manage Attendance' },
-      { code: 'approve_leave', label: 'اعتماد الإجازات', labelEn: 'Approve Leave' },
-      { code: 'generate_payroll', label: 'إعداد كشوف الرواتب', labelEn: 'Generate Payroll' },
-    ]
+    actions: {
+      view: 'hr:view',
+      create: 'hr:create',
+      edit: 'hr:edit',
+      delete: 'hr:delete',
+      advanced: 'hr:payroll'
+    }
   },
   {
     id: 'accounting',
     label: 'المحاسبة والمالية',
     labelEn: 'Accounting',
-    permissions: [
-      { code: 'view_chart_of_accounts', label: 'عرض دليل الحسابات', labelEn: 'View COA' },
-      { code: 'manage_chart_of_accounts', label: 'إدارة شجرة الحسابات', labelEn: 'Manage COA' },
-      { code: 'create_journal_entry', label: 'إنشاء قيد محاسبي', labelEn: 'Create Journal Entry' },
-      { code: 'post_journal_entry', label: 'ترحيل القيود لدفتر الأستاذ', labelEn: 'Post Journal Entry' },
-      { code: 'view_financial_reports', label: 'عرض التقارير المالية', labelEn: 'Financial Reports' },
-    ]
+    actions: {
+      view: 'accounting:view',
+      create: 'accounting:create',
+      edit: 'accounting:edit',
+      delete: 'accounting:delete',
+      advanced: 'accounting:close_period'
+    }
+  },
+  {
+    id: 'inventory',
+    label: 'المخزون والعهد',
+    labelEn: 'Inventory',
+    actions: {
+      view: 'inventory:view',
+      create: 'inventory:create',
+      edit: 'inventory:edit',
+      delete: 'inventory:delete',
+      advanced: 'inventory:audit'
+    }
+  },
+  {
+    id: 'reference',
+    label: 'تعريف المراحل والمرجعيات',
+    labelEn: 'Ref & Stages',
+    actions: {
+      view: 'ref:view',
+      create: 'ref:create',
+      edit: 'ref:edit',
+      delete: 'ref:delete',
+      advanced: 'ref:seed'
+    }
   }
 ];
