@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { doc, onSnapshot, DocumentReference, DocumentData } from 'firebase/firestore';
+import { onSnapshot, DocumentReference, DocumentData } from 'firebase/firestore';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 export function useDoc<T = DocumentData>(docRef: DocumentReference<T> | null) {
   const [data, setData] = useState<T | null>(null);
@@ -17,12 +19,17 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<T> | null) {
     const unsubscribe = onSnapshot(
       docRef,
       (snapshot) => {
-        setData(snapshot.exists() ? (snapshot.data() as T) : null);
+        setData(snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as T) : null);
         setLoading(false);
       },
-      (err) => {
-        console.error('Error fetching document:', err);
-        setError(err);
+      async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'get',
+        } satisfies SecurityRuleContext);
+
+        errorEmitter.emit('permission-error', permissionError);
+        setError(permissionError);
         setLoading(false);
       }
     );

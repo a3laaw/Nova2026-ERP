@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { onSnapshot, Query, DocumentData, QuerySnapshot } from 'firebase/firestore';
+import { onSnapshot, Query, DocumentData } from 'firebase/firestore';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 export function useCollection<T = DocumentData>(query: Query<T> | null) {
   const [data, setData] = useState<T[]>([]);
@@ -24,9 +26,15 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
         setData(items);
         setLoading(false);
       },
-      (err) => {
-        console.error('Error fetching collection:', err);
-        setError(err);
+      async (serverError) => {
+        // إنشاء خطأ سياقي غني عند فشل القواعد الأمنية
+        const permissionError = new FirestorePermissionError({
+          path: (query as any)._query?.path?.segments?.join('/') || 'unknown_collection',
+          operation: 'list',
+        } satisfies SecurityRuleContext);
+
+        errorEmitter.emit('permission-error', permissionError);
+        setError(permissionError);
         setLoading(false);
       }
     );

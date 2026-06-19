@@ -4,7 +4,6 @@ import {
   Firestore, 
   collection, 
   doc, 
-  setDoc, 
   addDoc, 
   updateDoc, 
   deleteDoc, 
@@ -17,18 +16,26 @@ import {
 import { paths } from '@/firebase/multi-tenant';
 import { Role } from '@/types/roles';
 import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 export class RoleService {
   constructor(private db: Firestore, private companyId: string) {}
 
   async getRoles() {
     const q = query(collection(this.db, paths.roles(this.companyId)), orderBy('order'));
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() } as Role));
+    try {
+      const snap = await getDocs(q);
+      return snap.docs.map(d => ({ id: d.id, ...d.data() } as Role));
+    } catch (e) {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: paths.roles(this.companyId),
+        operation: 'list'
+      }));
+      return [];
+    }
   }
 
-  async addRole(data: Omit<Role, 'id' | 'createdAt' | 'updatedAt' | 'companyId'>) {
+  addRole(data: Omit<Role, 'id' | 'createdAt' | 'updatedAt' | 'companyId'>) {
     const path = paths.roles(this.companyId);
     const docData = {
       ...data,
@@ -36,50 +43,55 @@ export class RoleService {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
-    try {
-      return await addDoc(collection(this.db, path), docData);
-    } catch (e) {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path, operation: 'create', requestResourceData: docData }));
-    }
+    
+    addDoc(collection(this.db, path), docData).catch(async () => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ 
+        path, 
+        operation: 'create', 
+        requestResourceData: docData 
+      } satisfies SecurityRuleContext));
+    });
   }
 
-  async updateRole(id: string, data: Partial<Role>) {
+  updateRole(id: string, data: Partial<Role>) {
     const path = paths.roles(this.companyId);
-    try {
-      await updateDoc(doc(this.db, path, id), { ...data, updatedAt: serverTimestamp() });
-    } catch (e) {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `${path}/${id}`, operation: 'update', requestResourceData: data }));
-    }
+    const docRef = doc(this.db, path, id);
+    
+    updateDoc(docRef, { ...data, updatedAt: serverTimestamp() }).catch(async () => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ 
+        path: docRef.path, 
+        operation: 'update', 
+        requestResourceData: data 
+      } satisfies SecurityRuleContext));
+    });
   }
 
-  async deleteRole(id: string) {
+  deleteRole(id: string) {
     const path = paths.roles(this.companyId);
-    try {
-      await deleteDoc(doc(this.db, path, id));
-    } catch (e) {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `${path}/${id}`, operation: 'delete' }));
-    }
+    const docRef = doc(this.db, path, id);
+    
+    deleteDoc(docRef).catch(async () => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ 
+        path: docRef.path, 
+        operation: 'delete' 
+      } satisfies SecurityRuleContext));
+    });
   }
 
-  /**
-   * ربط مستخدم بدور محدد
-   */
   async assignRoleToUser(userId: string, role: { id: string, code: string }) {
     const userRef = doc(this.db, 'companies', this.companyId, 'users', userId);
-    try {
-      await updateDoc(userRef, {
-        roleId: role.id,
-        roleCode: role.code,
-        updatedAt: serverTimestamp()
-      });
-    } catch (e) {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: userRef.path, operation: 'update' }));
-    }
+    updateDoc(userRef, {
+      roleId: role.id,
+      roleCode: role.code,
+      updatedAt: serverTimestamp()
+    }).catch(async () => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ 
+        path: userRef.path, 
+        operation: 'update' 
+      }));
+    });
   }
 
-  /**
-   * ضخ الأدوار الأساسية للنظام
-   */
   async seedInitialRoles() {
     const batch = writeBatch(this.db);
     const rolesRef = collection(this.db, paths.roles(this.companyId));
@@ -104,6 +116,11 @@ export class RoleService {
       });
     });
 
-    await batch.commit();
+    batch.commit().catch(async () => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: 'roles_batch_seed',
+        operation: 'write'
+      }));
+    });
   }
 }

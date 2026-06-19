@@ -9,6 +9,11 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // التحقق من وجود مستخدم عالمي
+    function globalUserExists() {
+      return exists(/databases/$(database)/documents/global_users/$(request.auth.uid));
+    }
+
     // جلب بيانات المستخدم العالمي
     function getGlobalUser() {
       return get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
@@ -17,24 +22,24 @@ service cloud.firestore {
     // التحقق مما إذا كان المستخدم مطوراً للنظام (Global Developer)
     function isDeveloper() {
       return isAuthenticated() && (
-        getGlobalUser().isDeveloper == true ||
-        request.auth.token.email == 'admin@novaflow.com'
+        request.auth.token.email == 'admin@novaflow.com' ||
+        (globalUserExists() && getGlobalUser().isDeveloper == true)
       );
     }
 
     // التحقق من الانتماء للشركة (Tenant Isolation)
     function belongsToCompany(companyId) {
       return isAuthenticated() && (
-        getGlobalUser().companyId == companyId ||
-        isDeveloper()
+        isDeveloper() ||
+        (globalUserExists() && getGlobalUser().companyId == companyId)
       );
     }
 
     // التحقق من دور المدير (Admin) داخل الشركة
     function isAdmin(companyId) {
       return isAuthenticated() && (
-        (getGlobalUser().companyId == companyId && getGlobalUser().role == 'admin') ||
-        isDeveloper()
+        isDeveloper() ||
+        (globalUserExists() && getGlobalUser().companyId == companyId && getGlobalUser().role == 'admin')
       );
     }
 
@@ -43,7 +48,7 @@ service cloud.firestore {
     // 1. حسابات المستخدمين العالميين
     match /global_users/{uid} {
       allow read: if isAuthenticated() && (request.auth.uid == uid || isDeveloper());
-      allow write: if isDeveloper() || (isAuthenticated() && request.auth.uid == uid);
+      allow write: if isAuthenticated() && (request.auth.uid == uid || isDeveloper());
     }
     
     // 2. هيكل الشركات والبيانات الموزعة (Multi-tenant)
@@ -51,6 +56,7 @@ service cloud.firestore {
       allow read: if belongsToCompany(companyId);
       allow update: if isAdmin(companyId);
       allow create: if isAuthenticated();
+      allow list: if isDeveloper();
 
       // الإعدادات (Settings & Roles)
       match /settings/{allPaths=**} {
@@ -66,7 +72,9 @@ service cloud.firestore {
       // الموظفين
       match /users/{uid} {
         allow read: if belongsToCompany(companyId);
-        allow write: if isAdmin(companyId);
+        // السماح للمستخدم بإنشاء سجله الخاص في الشركة (ضروري للتسجيل)
+        allow create: if isAuthenticated() && request.auth.uid == uid;
+        allow update, delete: if isAdmin(companyId);
       }
 
       // المرجعيات
@@ -83,6 +91,12 @@ service cloud.firestore {
       match /leads/{allPaths=**} {
         allow read, write: if belongsToCompany(companyId);
       }
+    }
+
+    // 3. طلبات الانضمام
+    match /company_requests/{requestId} {
+      allow create: if isAuthenticated();
+      allow read, write: if isDeveloper();
     }
   }
 }
