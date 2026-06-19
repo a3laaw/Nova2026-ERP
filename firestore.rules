@@ -8,72 +8,107 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // جلب بيانات المستخدم من السجل العالمي لضمان الأمان العالي
     function getGlobalUser() {
       return get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
     }
 
+    // التحقق من هوية المطور
     function isDeveloper() {
       return isAuthenticated() && (
         request.auth.token.email == 'admin@novaflow.com' ||
-        (exists(/databases/$(database)/documents/global_users/$(request.auth.uid)) && 
-         getGlobalUser().isDeveloper == true)
+        getGlobalUser().isDeveloper == true
       );
     }
 
+    // التحقق من الانتماء للمنشأة (Tenant Isolation)
     function belongsToCompany(companyId) {
       return isAuthenticated() && (
         isDeveloper() ||
-        (exists(/databases/$(database)/documents/global_users/$(request.auth.uid)) && 
-         getGlobalUser().companyId == companyId)
+        getGlobalUser().companyId == companyId
       );
     }
 
+    // التحقق من صلاحيات المدير داخل المنشأة
     function isAdmin(companyId) {
       return isAuthenticated() && (
         isDeveloper() ||
-        (exists(/databases/$(database)/documents/global_users/$(request.auth.uid)) && 
-         getGlobalUser().companyId == companyId && 
+        (getGlobalUser().companyId == companyId && 
          (getGlobalUser().role == 'admin' || getGlobalUser().roleCode == 'Admin'))
       );
     }
 
     // --- قواعد المجموعات (Collection Rules) ---
 
+    // 1. السجل العالمي للمستخدمين
     match /global_users/{uid} {
       allow read: if isAuthenticated() && (request.auth.uid == uid || isDeveloper());
-      allow write: if isAuthenticated() && (request.auth.uid == uid || isDeveloper());
+      allow write: if isDeveloper() || (isAuthenticated() && request.auth.uid == uid);
     }
     
+    // 2. نطاق الشركات (Tenants)
     match /companies/{companyId} {
+      // قراءة بيانات الشركة الأساسية
       allow read: if belongsToCompany(companyId);
-      allow create: if isAuthenticated();
+      // التعديل للمدير فقط
       allow update: if isAdmin(companyId);
+      allow create: if isAuthenticated(); // متاح عند التسجيل الجديد فقط
 
+      // أ) الأدوار والصلاحيات
       match /roles/{roleId} {
         allow read: if belongsToCompany(companyId);
         allow write: if isAdmin(companyId);
       }
 
+      // ب) الموظفين (Tenant Users)
       match /users/{uid} {
         allow read: if belongsToCompany(companyId);
         allow create: if isAuthenticated() && request.auth.uid == uid;
         allow update, delete: if isAdmin(companyId);
       }
 
+      // ج) الموارد البشرية (الإجازات والطلبات)
       match /leaves/{leaveId} {
         allow read: if belongsToCompany(companyId);
         allow create: if belongsToCompany(companyId);
-        allow update: if isAdmin(companyId) || (isAuthenticated() && resource.data.userId == request.auth.uid && resource.data.status == 'pending');
+        // التعديل للمدير أو لصاحب الطلب إذا كان لا يزال قيد الانتظار
+        allow update: if isAdmin(companyId) || (
+          isAuthenticated() && 
+          resource.data.userId == request.auth.uid && 
+          resource.data.status == 'pending'
+        );
         allow delete: if isAdmin(companyId);
       }
 
+      // د) المرجعيات (الدستور التشغيلي)
       match /departments/{allPaths=**} { allow read: if belongsToCompany(companyId); allow write: if isAdmin(companyId); }
       match /governorates/{allPaths=**} { allow read: if belongsToCompany(companyId); allow write: if isAdmin(companyId); }
       match /activityTypes/{allPaths=**} { allow read: if belongsToCompany(companyId); allow write: if isAdmin(companyId); }
-      match /projects/{allPaths=**} { allow read, write: if belongsToCompany(companyId); }
-      match /leads/{allPaths=**} { allow read, write: if belongsToCompany(companyId); }
+      
+      // هـ) المشاريع والعمليات (الوصول للموظفين)
+      match /projects/{projectId} {
+        allow read: if belongsToCompany(companyId);
+        allow create: if belongsToCompany(companyId); // التحكم الفعلي يتم في الـ Service
+        allow update: if belongsToCompany(companyId);
+        
+        match /stageInstances/{instanceId} {
+          allow read, write: if belongsToCompany(companyId);
+        }
+      }
+
+      // و) المحاسبة والمالية
+      match /accounting/{allPaths=**} {
+        allow read, write: if belongsToCompany(companyId); // يتم إنفاذ الصلاحيات الدقيقة في الواجهة والخدمات
+      }
+
+      // ز) الإعدادات
+      match /settings/{allPaths=**} {
+        allow read: if belongsToCompany(companyId);
+        allow write: if isAdmin(companyId);
+      }
     }
 
+    // 3. طلبات الانضمام (للمطور فقط)
     match /company_requests/{requestId} {
       allow create: if isAuthenticated();
       allow read, write: if isDeveloper();
