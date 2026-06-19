@@ -11,20 +11,20 @@ export type PaymentMethod = 'cash' | 'transfer' | 'check' | 'payroll';
 export interface Employee extends BaseReference {
   employeeNumber: string;
   fullName: string;
-  nameEn?: string;
+  nameEn: string; // الاسم بالإنجليزية (إلزامي الآن)
   civilId: string;
   mobile: string;
   email?: string;
   nationality?: string;
-  departmentId?: string;
+  departmentId: string;
   departmentName?: string;
-  jobId?: string;
+  jobId: string;
   jobTitle?: string;
   roleCode?: string;
   hireDate: string; // YYYY-MM-DD
   contractType?: string;
   status: EmployeeStatus;
-  paymentMethod?: PaymentMethod;
+  paymentMethod: PaymentMethod;
   basicSalary: number;
   housingAllowance?: number;
   transportAllowance?: number;
