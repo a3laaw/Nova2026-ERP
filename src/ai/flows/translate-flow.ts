@@ -39,7 +39,13 @@ const translateFlow = ai.defineFlow(
   },
   async (input) => {
     if (!input.text.trim()) return { translatedText: '' };
-    const { output } = await translatePrompt(input);
-    return output!;
+    try {
+      const { output } = await translatePrompt(input);
+      // في حال نجاح الترجمة نرجع النص المترجم، وفي حال فشلها نرجع النص الأصلي كخيار آمن
+      return output || { translatedText: input.text };
+    } catch (error) {
+      // معالجة الخطأ 503 أو أي خطأ شبكة بإرجاع النص الأصلي لمنع تعطل الواجهة
+      return { translatedText: input.text };
+    }
   }
 );

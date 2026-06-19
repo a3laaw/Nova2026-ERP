@@ -61,11 +61,10 @@ const analyzeEmployeeDocFlow = ai.defineFlow(
   async (input) => {
     const {output} = await ai.generate({
       prompt: analyzeEmployeeDocPrompt(input),
-      // Use a multi-modal model capable of processing images/documents for extraction.
-      // 'googleai/gemini-2.5-flash-image' or 'googleai/gemini-pro-vision' are good choices.
-      model: 'googleai/gemini-2.5-flash-image',
+      // استخدام نموذج 1.5 المستقر بدلاً من 2.5
+      model: 'googleai/gemini-1.5-flash',
       config: {
-        responseModalities: ['TEXT'], // We expect structured text (JSON) output
+        responseModalities: ['TEXT'],
       },
     });
 
