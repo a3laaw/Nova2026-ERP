@@ -4,42 +4,40 @@ service cloud.firestore {
     
     // --- وظائف المساعدة الأساسية (Helpers) ---
 
-    // التحقق من تسجيل الدخول
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // التحقق من وجود مستخدم عالمي
-    function globalUserExists() {
-      return exists(/databases/$(database)/documents/global_users/$(request.auth.uid));
-    }
-
-    // جلب بيانات المستخدم العالمي
+    // التحقق من وجود المستخدم في قاعدة البيانات العالمية
     function getGlobalUser() {
       return get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
     }
 
-    // التحقق مما إذا كان المستخدم مطوراً للنظام (Global Developer)
+    // التحقق مما إذا كان المستخدم مطوراً للنظام
     function isDeveloper() {
       return isAuthenticated() && (
         request.auth.token.email == 'admin@novaflow.com' ||
-        (globalUserExists() && getGlobalUser().isDeveloper == true)
+        (exists(/databases/$(database)/documents/global_users/$(request.auth.uid)) && 
+         getGlobalUser().isDeveloper == true)
       );
     }
 
-    // التحقق من الانتماء للشركة (Tenant Isolation)
+    // التحقق من الانتماء للشركة (عزل البيانات)
     function belongsToCompany(companyId) {
       return isAuthenticated() && (
         isDeveloper() ||
-        (globalUserExists() && getGlobalUser().companyId == companyId)
+        (exists(/databases/$(database)/documents/global_users/$(request.auth.uid)) && 
+         getGlobalUser().companyId == companyId)
       );
     }
 
-    // التحقق من دور المدير (Admin) داخل الشركة
+    // التحقق من دور المدير (Admin)
     function isAdmin(companyId) {
       return isAuthenticated() && (
         isDeveloper() ||
-        (globalUserExists() && getGlobalUser().companyId == companyId && getGlobalUser().role == 'admin')
+        (exists(/databases/$(database)/documents/global_users/$(request.auth.uid)) && 
+         getGlobalUser().companyId == companyId && 
+         getGlobalUser().role == 'admin')
       );
     }
 
@@ -54,16 +52,10 @@ service cloud.firestore {
     // 2. هيكل الشركات والبيانات الموزعة (Multi-tenant)
     match /companies/{companyId} {
       allow read: if belongsToCompany(companyId);
-      allow update: if isAdmin(companyId);
       allow create: if isAuthenticated();
-      allow list: if isDeveloper();
+      allow update: if isAdmin(companyId);
 
-      // الإعدادات (Settings & Roles)
-      match /settings/{allPaths=**} {
-        allow read: if belongsToCompany(companyId);
-        allow write: if isAdmin(companyId);
-      }
-
+      // الأدوار والصلاحيات
       match /roles/{roleId} {
         allow read: if belongsToCompany(companyId);
         allow write: if isAdmin(companyId);
@@ -76,25 +68,23 @@ service cloud.firestore {
         allow update, delete: if isAdmin(companyId);
       }
 
-      // الهيكل التنظيمي (Departments & Jobs)
+      // المراجع (أقسام، محافظات، مسارات فنية)
       match /departments/{allPaths=**} {
         allow read: if belongsToCompany(companyId);
         allow write: if isAdmin(companyId);
       }
 
-      // البيانات الجغرافية (Governorates & Areas)
       match /governorates/{allPaths=**} {
         allow read: if belongsToCompany(companyId);
         allow write: if isAdmin(companyId);
       }
 
-      // المرجعيات الفنية
       match /activityTypes/{allPaths=**} {
         allow read: if belongsToCompany(companyId);
         allow write: if isAdmin(companyId);
       }
 
-      // العمليات
+      // العمليات التشغيلية
       match /projects/{allPaths=**} {
         allow read, write: if belongsToCompany(companyId);
       }

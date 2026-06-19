@@ -65,7 +65,7 @@ export default function ReferenceHubPage() {
         </TabsContent>
 
         <TabsContent value="roles" className="mt-8">
-           <RolesManagerPage />
+           <RolesManagerPage isSubComponent={true} />
         </TabsContent>
 
         <TabsContent value="setup" className="mt-8 max-w-4xl mx-auto">

@@ -1,13 +1,12 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
-  ShieldCheck, Plus, Loader2, Trash2, Edit3, 
-  Search, ShieldAlert, CheckCircle2, MoreHorizontal,
-  Wand2, DatabaseZap
+  ShieldCheck, Plus, Loader2, Edit3, 
+  Search, Wand2
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useFirestore, useCollection } from '@/firebase';
@@ -16,13 +15,17 @@ import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
 import { RoleService } from '@/services/role-service';
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Role } from '@/types/roles';
 import { RoleForm } from './role-form';
 
-export default function RolesManagerPage() {
+interface RolesManagerPageProps {
+  isSubComponent?: boolean;
+}
+
+export default function RolesManagerPage({ isSubComponent = false }: RolesManagerPageProps) {
   const { globalUser } = useAuthContext();
   const { t, lang, dir } = useLanguage();
   const db = useFirestore();
@@ -43,7 +46,7 @@ export default function RolesManagerPage() {
     setSeeding(true);
     try {
       await roleService.seedInitialRoles();
-      toast({ title: isRtl ? "تم ضخ الأدوار" : "Roles Seeded" });
+      toast({ title: isRtl ? "تم ضخ الأدوار بنجاح" : "Roles Seeded Successfully" });
     } finally {
       setSeeding(false);
     }
@@ -55,40 +58,44 @@ export default function RolesManagerPage() {
   ) || [];
 
   return (
-    <div className="space-y-8" dir={dir}>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="text-start">
-          <h1 className="text-4xl font-black font-headline flex items-center gap-3">
-            <ShieldCheck className="h-10 w-10 text-primary" />
-            {isRtl ? 'الأدوار والصلاحيات' : 'Roles & Permissions'}
-          </h1>
-          <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-            {isRtl ? 'إدارة هياكل الوصول وتوزيع المسؤوليات داخل المنشأة' : 'Manage access structures and responsibilities'}
-          </p>
+    <div className={cn("space-y-8", isSubComponent ? "p-0" : "p-0")} dir={dir}>
+      {!isSubComponent && (
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="text-start">
+            <h1 className="text-4xl font-black font-headline flex items-center gap-3">
+              <ShieldCheck className="h-10 w-10 text-primary" />
+              {isRtl ? 'الأدوار والصلاحيات' : 'Roles & Permissions'}
+            </h1>
+            <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
+              {isRtl ? 'إدارة هياكل الوصول وتوزيع المسؤوليات داخل المنشأة' : 'Manage access structures and responsibilities'}
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="relative max-w-md w-full">
+          <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+          <Input 
+            placeholder={isRtl ? 'بحث في الأدوار...' : 'Search roles...'} 
+            className="ps-12 rounded-2xl h-14 bg-white text-start border-2 border-slate-100 shadow-sm" 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex gap-3 w-full md:w-auto">
            {!roles?.length && !loading && (
-             <Button onClick={handleRunSeed} disabled={seeding} variant="outline" className="rounded-xl border-dashed border-primary/40 text-primary hover:bg-primary/5">
+             <Button onClick={handleRunSeed} disabled={seeding} variant="outline" className="flex-1 md:flex-none rounded-xl border-dashed border-primary/40 text-primary hover:bg-primary/5 h-14 font-bold">
                 {seeding ? <Loader2 className="animate-spin me-2" /> : <Wand2 className="me-2 h-4 w-4" />}
                 {isRtl ? 'ضخ الأدوار الأساسية' : 'Seed Basic Roles'}
              </Button>
            )}
-           <Button onClick={() => { setEditingRole(null); setIsFormOpen(true); }} className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform">
+           <Button onClick={() => { setEditingRole(null); setIsFormOpen(true); }} className="flex-1 md:flex-none bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform h-14">
              <Plus className="me-2 h-6 w-6" />
              {isRtl ? 'دور جديد' : 'New Role'}
            </Button>
         </div>
-      </div>
-
-      <div className="relative max-w-md">
-        <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-        <Input 
-          placeholder={isRtl ? 'بحث في الأدوار...' : 'Search roles...'} 
-          className="ps-12 rounded-2xl h-14 bg-white text-start border-2 border-slate-100" 
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
       </div>
 
       {loading ? (
@@ -112,18 +119,18 @@ export default function RolesManagerPage() {
               </CardHeader>
               <CardContent className="p-8 pt-0 space-y-6 text-start">
                 <p className="text-muted-foreground text-xs font-bold leading-relaxed line-clamp-2 h-8">
-                  {role.description || '...'}
+                  {role.description || 'لا يوجد وصف متاح لهذا الدور...'}
                 </p>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-1.5 min-h-[60px] content-start">
                    {role.permissions[0] === '*' ? (
                      <Badge className="bg-emerald-500 text-white font-black px-3 py-1">صلاحيات كاملة (FULL ACCESS)</Badge>
                    ) : (
-                     role.permissions.slice(0, 3).map(p => (
+                     role.permissions.slice(0, 4).map(p => (
                        <Badge key={p} variant="secondary" className="bg-slate-100 text-slate-500 text-[9px] font-bold">{p}</Badge>
                      ))
                    )}
-                   {role.permissions.length > 3 && role.permissions[0] !== '*' && (
-                     <Badge variant="outline" className="text-[9px] font-bold text-slate-300">+{role.permissions.length - 3}</Badge>
+                   {role.permissions.length > 4 && role.permissions[0] !== '*' && (
+                     <Badge variant="outline" className="text-[9px] font-bold text-slate-300">+{role.permissions.length - 4}</Badge>
                    )}
                 </div>
                 <div className="pt-6 border-t flex justify-between items-center">
@@ -131,7 +138,7 @@ export default function RolesManagerPage() {
                       <div className={cn("h-2 w-2 rounded-full", role.isActive ? "bg-emerald-500 shadow-lg shadow-emerald-200" : "bg-slate-300")} />
                       <span className="text-[10px] font-black uppercase text-slate-400">{role.isActive ? (isRtl ? 'نشط' : 'Active') : (isRtl ? 'معطل' : 'Disabled')}</span>
                    </div>
-                   <Button variant="ghost" size="sm" onClick={() => roleService?.deleteRole(role.id!)} disabled={role.isSystemRole} className="text-destructive hover:bg-destructive/5 font-black text-xs">
+                   <Button variant="ghost" size="sm" onClick={() => { if(confirm(t('confirmDelete'))) roleService?.deleteRole(role.id!); }} disabled={role.isSystemRole} className="text-destructive hover:bg-destructive/5 font-black text-xs h-8 px-3 rounded-lg">
                      {isRtl ? 'حذف الدور' : 'Delete'}
                    </Button>
                 </div>
@@ -141,7 +148,6 @@ export default function RolesManagerPage() {
         </div>
       )}
 
-      {/* نموذج الإضافة/التعديل */}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="rounded-[2.5rem] max-w-4xl p-0 overflow-hidden border-0 shadow-2xl">
           <RoleForm 
