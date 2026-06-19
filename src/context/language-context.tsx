@@ -150,7 +150,19 @@ const translations: Record<Language, Record<string, string>> = {
     Wednesday: 'الأربعاء',
     Thursday: 'الخميس',
     Friday: 'الجمعة',
-    Saturday: 'السبت'
+    Saturday: 'السبت',
+    leads: 'الفرص البيعية',
+    clients: 'قاعدة العملاء',
+    projectExecution: 'تنفيذ المشاريع',
+    projectReports: 'تقارير فنية',
+    journalEntries: 'قيود اليومية',
+    chartOfAccounts: 'دليل الحسابات',
+    supplierQuotes: 'عروض الأسعار',
+    purchaseOrders: 'أوامر الشراء',
+    warehouses: 'إدارة المخازن',
+    fieldAssets: 'العهد الميدانية',
+    operationalReports: 'تقارير العمليات',
+    financialReports: 'تقارير مالية'
   },
   en: {
     dashboard: 'Dashboard',
@@ -290,7 +302,19 @@ const translations: Record<Language, Record<string, string>> = {
     Wednesday: 'Wednesday',
     Thursday: 'Thursday',
     Friday: 'Friday',
-    Saturday: 'Saturday'
+    Saturday: 'Saturday',
+    leads: 'Sales Leads',
+    clients: 'Clients Database',
+    projectExecution: 'Execution',
+    projectReports: 'Engineering Reports',
+    journalEntries: 'Journal Entries',
+    chartOfAccounts: 'COA',
+    supplierQuotes: 'Quotes',
+    purchaseOrders: 'LPO',
+    warehouses: 'Warehouse',
+    fieldAssets: 'Field Assets',
+    operationalReports: 'Ops Reports',
+    financialReports: 'Fin Reports'
   }
 };
 

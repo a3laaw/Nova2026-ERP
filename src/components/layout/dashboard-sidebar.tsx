@@ -22,7 +22,14 @@ import {
   ShieldCheck,
   Scale,
   Calendar,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Briefcase,
+  FileText,
+  DollarSign,
+  Package,
+  Layers,
+  FileSearch,
+  BookOpen
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
@@ -57,9 +64,37 @@ export function DashboardSidebar() {
 
   const menuItems = [
     { title: t('dashboard'), icon: LayoutDashboard, url: "/dashboard", module: 'dashboard' },
-    { title: t('crm'), icon: Users, url: "/dashboard/crm", module: 'crm' },
-    { title: t('projects'), icon: HardHat, url: "/dashboard/projects", module: 'projects' },
-    { title: t('accounting'), icon: Calculator, url: "/dashboard/accounting", module: 'accounting' },
+    { 
+      title: t('crm'), 
+      icon: Users, 
+      url: "/dashboard/crm", 
+      module: 'crm',
+      subItems: [
+        { title: t('leads'), url: "/dashboard/crm", icon: Users },
+        { title: t('clients'), url: "/dashboard/crm?tab=clients", icon: UserCircle },
+      ]
+    },
+    { 
+      title: t('projects'), 
+      icon: HardHat, 
+      url: "/dashboard/projects", 
+      module: 'projects',
+      subItems: [
+        { title: t('projectExecution'), url: "/dashboard/projects", icon: Layers },
+        { title: t('projectReports'), url: "/dashboard/reports", icon: FileText },
+      ]
+    },
+    { 
+      title: t('accounting'), 
+      icon: Calculator, 
+      url: "/dashboard/accounting", 
+      module: 'accounting',
+      subItems: [
+        { title: t('smartReconciliation'), url: "/dashboard/accounting", icon: Sparkles },
+        { title: t('journalEntries'), url: "/dashboard/ai", icon: FileText },
+        { title: t('chartOfAccounts'), url: "/dashboard/accounting", icon: BookOpen },
+      ]
+    },
     { 
       title: t('hr'), 
       icon: UserCircle, 
@@ -75,9 +110,36 @@ export function DashboardSidebar() {
         { title: t('hrReports'), url: "/dashboard/hr/reports", icon: BarChart3 },
       ]
     },
-    { title: t('procurement'), icon: ShoppingCart, url: "/dashboard/procurement", module: 'procurement' },
-    { title: t('inventory'), icon: Warehouse, url: "/dashboard/inventory", module: 'inventory' },
-    { title: t('reports'), icon: BarChart3, url: "/dashboard/reports", module: 'reports' },
+    { 
+      title: t('procurement'), 
+      icon: ShoppingCart, 
+      url: "/dashboard/procurement", 
+      module: 'procurement',
+      subItems: [
+        { title: t('supplierQuotes'), url: "/dashboard/ai", icon: FileSearch },
+        { title: t('purchaseOrders'), url: "/dashboard/procurement", icon: Package },
+      ]
+    },
+    { 
+      title: t('inventory'), 
+      icon: Warehouse, 
+      url: "/dashboard/inventory", 
+      module: 'inventory',
+      subItems: [
+        { title: t('warehouses'), url: "/dashboard/inventory", icon: Warehouse },
+        { title: t('fieldAssets'), url: "/dashboard/inventory", icon: HardHat },
+      ]
+    },
+    { 
+      title: t('reports'), 
+      icon: BarChart3, 
+      url: "/dashboard/reports", 
+      module: 'reports',
+      subItems: [
+        { title: t('operationalReports'), url: "/dashboard/reports", icon: TrendingUp },
+        { title: t('financialReports'), url: "/dashboard/hr/reports/payroll", icon: DollarSign },
+      ]
+    },
     { title: t('ai'), icon: Sparkles, url: "/dashboard/ai", module: 'dashboard' },
   ].filter(item => canAccess(item.module));
 
@@ -248,7 +310,7 @@ export function DashboardSidebar() {
       
       <SidebarFooter className="border-t p-6 text-center">
         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-          NovaFlow v1.8.0
+          NovaFlow v1.9.0
         </p>
       </SidebarFooter>
     </Sidebar>
