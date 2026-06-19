@@ -48,7 +48,6 @@ export default function DepartmentsPage() {
   const { data: departments, loading: deptsLoading } = useCollection<Department>(deptsQuery);
   const { data: jobs, loading: jobsLoading } = useCollection<Job>(jobsQuery);
 
-  // ميزة الترجمة ثنائية الاتجاه
   const handleTranslate = async (currentForm: any, setForm: any, field: 'name' | 'nameEn') => {
     if (!autoTranslate || !currentForm?.[field] || currentForm.id || lastEditedField.current !== field) return;
     const targetLang = field === 'name' ? 'en' : 'ar';
@@ -58,7 +57,9 @@ export default function DepartmentsPage() {
       if (currentForm[field]!.length > 2) {
         setIsTranslating(true);
         const res = await translateText({ text: currentForm[field]!, targetLang });
-        setForm((prev: any) => prev ? { ...prev, [targetField]: res.translatedText } : null);
+        if (res.translatedText) {
+          setForm((prev: any) => prev ? { ...prev, [targetField]: res.translatedText } : null);
+        }
         setIsTranslating(false);
       }
     }, 1000);

@@ -48,9 +48,13 @@ const translateFlow = ai.defineFlow(
     if (!input.text.trim()) return { translatedText: '' };
     try {
       const { output } = await translatePrompt(input);
-      return output || { translatedText: input.text };
+      // التحقق من أن النص المترجم مختلف فعلاً عن الأصلي لمنع التكرار
+      if (output && output.translatedText.toLowerCase() !== input.text.toLowerCase()) {
+        return output;
+      }
+      return { translatedText: '' }; // نرجع فارغ بدلاً من النص الأصلي لعدم تضليل المستخدم
     } catch (error) {
-      return { translatedText: input.text };
+      return { translatedText: '' };
     }
   }
 );
