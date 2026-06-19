@@ -156,7 +156,7 @@ export default function NewLeaveRequestPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-        {/* Left Column: Interactive Calendar */}
+        {/* Left Column: Airline Style Calendar */}
         <div className="lg:col-span-5 space-y-8">
            <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
               <CardHeader className="bg-slate-50/50 border-b p-8 flex justify-between items-center">
@@ -174,34 +174,34 @@ export default function NewLeaveRequestPage() {
                     numberOfMonths={1}
                     classNames={{
                         months: "flex flex-col",
-                        month: "space-y-6",
+                        month: "space-y-8",
                         caption: "flex justify-center pt-2 relative items-center mb-8",
-                        caption_label: "text-xl font-black text-slate-800",
-                        nav: "flex items-center absolute inset-x-0 top-0 justify-between px-2 h-12",
+                        caption_label: "text-xl font-black text-slate-900",
+                        nav: "flex items-center absolute inset-x-0 top-0 justify-between px-2 h-14",
                         nav_button: cn(
-                          "h-10 w-10 bg-slate-100 hover:bg-primary hover:text-white rounded-2xl transition-all p-0 flex items-center justify-center border-0 shadow-sm z-10"
+                          "h-12 w-12 bg-slate-50 hover:bg-primary hover:text-white rounded-2xl transition-all p-0 flex items-center justify-center border-2 border-slate-100 shadow-sm z-50 cursor-pointer active:scale-95"
                         ),
                         nav_button_previous: "absolute left-0",
                         nav_button_next: "absolute right-0",
                         table: "w-full border-collapse space-y-1",
                         head_row: "flex justify-between mb-4",
-                        head_cell: "text-slate-400 w-12 font-black text-[10px] uppercase",
-                        row: "flex w-full mt-2 justify-between",
+                        head_cell: "text-slate-400 w-12 font-black text-[10px] uppercase text-center",
+                        row: "flex w-full mt-3 justify-between",
                         cell: cn(
                           "relative p-0 text-center text-sm focus-within:relative focus-within:z-20 h-12 w-12 transition-all",
                           "[&:has([aria-selected])]:bg-primary/10 first:[&:has([aria-selected])]:rounded-s-3xl last:[&:has([aria-selected])]:rounded-e-3xl"
                         ),
-                        day: cn("h-12 w-12 p-0 font-bold rounded-3xl hover:bg-slate-100 transition-all"),
-                        day_range_start: "day-range-start !rounded-3xl bg-primary text-white hover:bg-primary hover:text-white shadow-xl shadow-primary/30 z-30",
-                        day_range_end: "day-range-end !rounded-3xl bg-primary text-white hover:bg-primary hover:text-white shadow-xl shadow-primary/30 z-30",
-                        day_range_middle: "aria-selected:bg-primary/10 aria-selected:text-primary !rounded-none z-10",
+                        day: cn("h-12 w-12 p-0 font-bold rounded-3xl hover:bg-slate-100 transition-all cursor-pointer flex items-center justify-center"),
+                        day_range_start: "day-range-start !rounded-3xl bg-primary !text-white hover:bg-primary hover:text-white shadow-xl shadow-primary/30 z-30 font-black",
+                        day_range_end: "day-range-end !rounded-3xl bg-primary !text-white hover:bg-primary hover:text-white shadow-xl shadow-primary/30 z-30 font-black",
+                        day_range_middle: "aria-selected:bg-primary/10 aria-selected:!text-primary !rounded-none z-10",
                         day_selected: "bg-primary text-white focus:bg-primary focus:text-white",
                         day_today: "bg-slate-100 text-primary border-2 border-primary/20",
                         day_outside: "text-slate-300 opacity-50",
                     }}
                     components={{
-                      IconLeft: () => <ChevronLeft className={cn("h-5 w-5", isRtl && "rotate-180")} />,
-                      IconRight: () => <ChevronRight className={cn("h-5 w-5", isRtl && "rotate-180")} />
+                      IconLeft: () => <ChevronLeft className={cn("h-6 w-6", isRtl && "rotate-180")} />,
+                      IconRight: () => <ChevronRight className={cn("h-6 w-6", isRtl && "rotate-180")} />
                     }}
                  />
               </CardContent>
@@ -235,7 +235,7 @@ export default function NewLeaveRequestPage() {
            </Card>
         </div>
 
-        {/* Right Column: Form */}
+        {/* Right Column: Main Form */}
         <div className="lg:col-span-7 space-y-8 animate-in slide-in-from-bottom-6 duration-500">
            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
               <div className="h-2 bg-primary w-full" />
@@ -267,7 +267,7 @@ export default function NewLeaveRequestPage() {
 
            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
               <CardContent className="p-10 space-y-8">
-                 <div className="flex items-center gap-3 text-slate-800"><Plane className="h-6 w-6 text-primary" /><h3 className="text-xl font-black">{isRtl ? 'ملاحظات إضافية' : 'Additional Notes'}</h3></div>
+                 <div className="flex items-center gap-3 text-slate-800 text-start"><Plane className="h-6 w-6 text-primary" /><h3 className="text-xl font-black">{isRtl ? 'ملاحظات إضافية' : 'Additional Notes'}</h3></div>
                  <div className="flex flex-wrap gap-4">
                     {[{ id: 'travel', label: isRtl ? 'سفر' : 'Travel', icon: Plane, color: 'text-blue-500' }, { id: 'family', label: isRtl ? 'عائلية' : 'Family', icon: Users, color: 'text-purple-500' }, { id: 'rest', label: isRtl ? 'راحة' : 'Rest', icon: Activity, color: 'text-emerald-500' }].map(item => (
                       <button key={item.id} type="button" onClick={() => setForm({...form, quickReason: item.label})}
