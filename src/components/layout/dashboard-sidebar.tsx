@@ -17,7 +17,8 @@ import {
   Building2,
   Database,
   UserCog,
-  ChevronRight
+  ChevronRight,
+  Clock
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
@@ -67,6 +68,7 @@ export function DashboardSidebar() {
     items: [
       { title: t('companyIdentity'), url: "/dashboard/settings/company", icon: Building2 },
       { title: t('checklists'), url: "/dashboard/settings/checklists", icon: Database },
+      { title: 'مواعيد العمل الرسمية', url: "/dashboard/settings/work-hours", icon: Clock },
       { title: t('profile'), url: "/dashboard/settings/profile", icon: UserCog },
     ]
   }
