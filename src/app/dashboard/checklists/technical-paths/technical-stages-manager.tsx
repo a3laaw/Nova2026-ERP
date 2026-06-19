@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,9 @@ import {
   Workflow, ArrowRight, Clock,
   ListChecks, ShieldCheck,
   AlertCircle,
-  GripVertical
+  GripVertical,
+  Languages,
+  Zap
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,6 +29,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { TechnicalStage, SubService, ActivityType, Service } from '@/types/reference';
+import { translateText } from '@/ai/flows/translate-flow';
 
 interface Props {
   activityType: ActivityType;
@@ -44,6 +47,8 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
 
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [form, setForm] = useState<Partial<TechnicalStage> | null>(null);
+  const [autoTranslate, setAutoTranslate] = useState(true);
+  const [isTranslating, setIsTranslating] = useState(false);
 
   const technicalPathService = useMemo(() => db && companyId ? new TechnicalPathService(db, companyId) : null, [db, companyId]);
   
@@ -52,6 +57,27 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
   , [db, companyId, activityType, mainService, subService]);
 
   const { data: stages, loading } = useCollection<TechnicalStage>(stagesQuery);
+
+  // منطق الترجمة التلقائية مع Debounce
+  useEffect(() => {
+    if (!autoTranslate || !form?.name || form.id) return; // لا نترجم عند التعديل أو إذا كانت الخاصية معطلة
+
+    const delayDebounceFn = setTimeout(async () => {
+      if (form.name && form.name.length > 2) {
+        setIsTranslating(true);
+        try {
+          const result = await translateText({ text: form.name, targetLang: 'en' });
+          setForm(prev => prev ? { ...prev, nameEn: result.translatedText } : null);
+        } catch (error) {
+          console.error("Translation error:", error);
+        } finally {
+          setIsTranslating(false);
+        }
+      }
+    }, 800); // ننتظر 800ms بعد توقف المستخدم عن الكتابة
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [form?.name, autoTranslate]);
 
   const getAncestors = (targetId: string, allStages: TechnicalStage[]) => {
     const ancestors = new Set<string>();
@@ -79,7 +105,16 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
   const handleSave = () => {
     if (!technicalPathService || !form || !form.name) return;
     setLoadingAction('save');
-    const data = { ...form, isActive: true, isRequired: true, isEditable: true, nextStageIds: form.nextStageIds || [] };
+    const data = { 
+      ...form, 
+      isActive: true, 
+      isRequired: true, 
+      isEditable: true, 
+      nextStageIds: form.nextStageIds || [],
+      name: form.name || '',
+      nameEn: form.nameEn || '',
+      description: form.description || ''
+    };
     if (form.id) { 
       technicalPathService.updateTechnicalStage(activityType.id!, mainService.id!, subService.id!, form.id, data); 
     } else { 
@@ -176,11 +211,18 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
             <div className="grid grid-cols-1 lg:grid-cols-5 h-full max-h-[85vh]">
               {/* Left Side: Form Details */}
               <div className="lg:col-span-3 p-8 space-y-6 overflow-y-auto bg-white">
-                <DialogHeader>
+                <DialogHeader className="flex flex-row items-center justify-between">
                   <DialogTitle className="text-start font-black text-xl flex items-center gap-2 text-slate-800">
                     <ShieldCheck className="text-primary h-6 w-6" /> 
                     {form.id ? (isRtl ? 'تعديل المرحلة الفنية' : 'Edit Technical Stage') : (isRtl ? 'تعريف مرحلة عمل' : 'New Work Stage')}
                   </DialogTitle>
+                  {!form.id && (
+                    <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-full ring-1 ring-black/5">
+                       <Zap className={cn("h-3 w-3 transition-colors", autoTranslate ? "text-primary" : "text-slate-400")} />
+                       <span className="text-[10px] font-black text-slate-600">{isRtl ? 'ترجمة تلقائية' : 'Auto-Translate'}</span>
+                       <Switch checked={autoTranslate} onCheckedChange={setAutoTranslate} className="scale-75" />
+                    </div>
+                  )}
                 </DialogHeader>
                 
                 <div className="space-y-5 py-2 text-start">
@@ -189,9 +231,10 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
                       <Label className="text-xs font-bold text-slate-500">{t('name')} (Ar)</Label>
                       <Input value={form.name || ''} onChange={e => setForm({...form, name: e.target.value})} className="h-11 rounded-xl bg-slate-50/50 border-slate-200 focus:bg-white transition-all" placeholder="مثال: تصميم معماري" />
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="space-y-1.5 relative">
                       <Label className="text-xs font-bold text-slate-500">{t('name')} (En)</Label>
                       <Input value={form.nameEn || ''} onChange={e => setForm({...form, nameEn: e.target.value})} className="h-11 rounded-xl bg-slate-50/50 border-slate-200 focus:bg-white transition-all text-start" dir="ltr" placeholder="e.g. Architectural Design" />
+                      {isTranslating && <div className="absolute right-3 top-9"><Loader2 className="h-4 w-4 animate-spin text-primary/40" /></div>}
                     </div>
                   </div>
                   
