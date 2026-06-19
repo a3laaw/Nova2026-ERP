@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -186,7 +187,7 @@ export function DashboardSidebar() {
       
       <SidebarFooter className="border-t p-6 text-center">
         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-          NovaFlow v1.4
+          NovaFlow v1.4.1
         </p>
       </SidebarFooter>
     </Sidebar>
