@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -5,73 +6,113 @@ import {
   collection, 
   doc, 
   addDoc, 
-  setDoc, 
   updateDoc, 
   deleteDoc, 
-  serverTimestamp 
+  serverTimestamp,
+  query,
+  where,
+  orderBy,
+  getDocs
 } from 'firebase/firestore';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+import { paths } from '@/firebase/multi-tenant';
+import { ActivityType, Service, SubService, TechnicalStage } from '@/types/reference';
 
 /**
- * خدمة إدارة البيانات المرجعية.
- * توفر عمليات CRUD موحدة مع دعم كامل لعزل الشركات (Multi-tenancy).
+ * خدمة إدارة القوائم المرجعية والمسارات الفنية.
  */
 export class ReferenceService {
   constructor(private db: Firestore, private companyId: string) {}
 
-  /**
-   * إضافة سجل مرجعي جديد
-   */
-  async add(path: string, data: any) {
-    const colRef = collection(this.db, path);
-    try {
-      return await addDoc(colRef, {
-        ...data,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-    } catch (err: any) {
-      this.handleError(path, 'create', data);
-      throw err;
-    }
-  }
-
-  /**
-   * تحديث سجل مرجعي موجود
-   */
-  async update(path: string, id: string, data: any) {
-    const docRef = doc(this.db, path, id);
-    try {
-      await updateDoc(docRef, {
-        ...data,
-        updatedAt: serverTimestamp(),
-      });
-    } catch (err: any) {
-      this.handleError(`${path}/${id}`, 'update', data);
-      throw err;
-    }
-  }
-
-  /**
-   * حذف سجل مرجعي
-   */
-  async delete(path: string, id: string) {
-    const docRef = doc(this.db, path, id);
-    try {
-      await deleteDoc(docRef);
-    } catch (err: any) {
-      this.handleError(`${path}/${id}`, 'delete');
-      throw err;
-    }
-  }
-
-  private handleError(path: string, operation: any, data?: any) {
-    const permissionError = new FirestorePermissionError({
-      path,
-      operation,
-      requestResourceData: data,
+  // --- 1. ActivityTypes ---
+  async addActivityType(data: Omit<ActivityType, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>) {
+    const path = paths.activityTypes(this.companyId);
+    return addDoc(collection(this.db, path), {
+      ...data,
+      companyId: this.companyId,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
     });
-    errorEmitter.emit('permission-error', permissionError);
+  }
+
+  async updateActivityType(id: string, data: Partial<ActivityType>) {
+    const path = paths.activityTypes(this.companyId);
+    return updateDoc(doc(this.db, path, id), {
+      ...data,
+      updatedAt: serverTimestamp()
+    });
+  }
+
+  // --- 2. Services ---
+  async addService(activityTypeId: string, data: Omit<Service, 'id' | 'companyId' | 'activityTypeId'>) {
+    const path = paths.services(this.companyId, activityTypeId);
+    return addDoc(collection(this.db, path), {
+      ...data,
+      activityTypeId,
+      companyId: this.companyId,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+  }
+
+  async updateService(activityTypeId: string, serviceId: string, data: Partial<Service>) {
+    const path = paths.services(this.companyId, activityTypeId);
+    return updateDoc(doc(this.db, path, serviceId), {
+      ...data,
+      updatedAt: serverTimestamp()
+    });
+  }
+
+  // --- 3. SubServices ---
+  async addSubService(activityTypeId: string, serviceId: string, data: Omit<SubService, 'id' | 'companyId' | 'activityTypeId' | 'serviceId'>) {
+    const path = paths.subServices(this.companyId, activityTypeId, serviceId);
+    return addDoc(collection(this.db, path), {
+      ...data,
+      activityTypeId,
+      serviceId,
+      companyId: this.companyId,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+  }
+
+  // --- 4. TechnicalStages ---
+  async addTechnicalStage(
+    activityTypeId: string, 
+    serviceId: string, 
+    subServiceId: string, 
+    data: Omit<TechnicalStage, 'id' | 'companyId' | 'activityTypeId' | 'serviceId' | 'subServiceId' | 'createdAt' | 'updatedAt'>
+  ) {
+    // التحقق من nextStageIds لضمان عدم وجود إشارة للذات (Validation)
+    // ملاحظة: التحقق النهائي يتم عادة في الواجهة قبل الاستدعاء
+    
+    const path = paths.technicalStages(this.companyId, activityTypeId, serviceId, subServiceId);
+    return addDoc(collection(this.db, path), {
+      ...data,
+      activityTypeId,
+      serviceId,
+      subServiceId,
+      companyId: this.companyId,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+  }
+
+  async updateTechnicalStage(
+    activityTypeId: string, 
+    serviceId: string, 
+    subServiceId: string, 
+    stageId: string, 
+    data: Partial<TechnicalStage>
+  ) {
+    const path = paths.technicalStages(this.companyId, activityTypeId, serviceId, subServiceId);
+    return updateDoc(doc(this.db, path, stageId), {
+      ...data,
+      updatedAt: serverTimestamp()
+    });
+  }
+
+  // --- Common Helpers ---
+  async deleteItem(fullPath: string, id: string) {
+    return deleteDoc(doc(this.db, fullPath, id));
   }
 }
