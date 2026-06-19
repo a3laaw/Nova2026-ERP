@@ -28,21 +28,23 @@ export class LeaveService {
   async submitRequest(data: Omit<LeaveRequest, 'id' | 'createdAt' | 'updatedAt' | 'companyId' | 'status'>) {
     const path = paths.leaveRequests(this.companyId);
     
-    // فحص التداخل (قراءة - تتطلب await)
+    // فحص التداخل (تبسيط الاستعلام لتجنب الفهارس المركبة)
     const overlapQuery = query(
       collection(this.db, path),
-      where('userId', '==', data.userId),
-      where('status', 'in', ['pending', 'approved', 'on-leave'])
+      where('userId', '==', data.userId)
     );
     
     const overlapSnap = await getDocs(overlapQuery);
     const hasOverlap = overlapSnap.docs.some(docSnap => {
       const d = docSnap.data();
+      // استبعاد الطلبات المرفوضة
+      if (d.status === 'rejected') return false;
+      // منطق التداخل الزمني
       return (data.startDate <= d.endDate && data.endDate >= d.startDate);
     });
 
     if (hasOverlap) {
-      throw new Error('OVERLAP: يوجد طلب إجازة آخر متداخل مع هذه الفترة.');
+      throw new Error('OVERLAP: يوجد طلب إجازة آخر (قيد الانتظار أو معتمد) متداخل مع هذه الفترة.');
     }
 
     const docData = {

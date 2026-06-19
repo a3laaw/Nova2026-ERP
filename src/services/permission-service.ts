@@ -32,14 +32,16 @@ export class PermissionService {
       throw new Error('LIMIT_EXCEEDED: مدة الاستئذان الواحد لا يمكن أن تتجاوز 3 ساعات.');
     }
 
+    // فحص الرصيد الشهري
     const currentMonthQuota = await this.getMonthlyUsedHours(data.userId, data.date);
     if (currentMonthQuota + data.durationHours > 12) {
-      throw new Error(`QUOTA_EXCEEDED: لقد تجاوزت الحد الشهري المسموح به (12 ساعة).`);
+      throw new Error(`QUOTA_EXCEEDED: لقد تجاوزت الحد الشهري المسموح به (12 ساعة). رصيدك المستخدم حالياً: ${currentMonthQuota} ساعة.`);
     }
 
+    // فحص التداخل مع الإجازات
     const hasLeave = await this.hasLeaveOnDate(data.userId, data.date);
     if (hasLeave) {
-      throw new Error('LEAVE_OVERLAP: لا يمكن تقديم استئذان في يوم مسجل فيه إجازة.');
+      throw new Error('LEAVE_OVERLAP: لا يمكن تقديم استئذان في يوم مسجل فيه إجازة معتمدة.');
     }
 
     const docData = {
@@ -60,34 +62,52 @@ export class PermissionService {
     });
   }
 
+  /**
+   * حساب الساعات المستخدمة في شهر معين للمستخدم
+   * تم تبسيط الاستعلام لتجنب الحاجة لفهرس مركب (Composite Index)
+   */
   async getMonthlyUsedHours(userId: string, dateStr: string): Promise<number> {
-    const date = parseISO(dateStr);
-    const start = format(startOfMonth(date), 'yyyy-MM-dd');
-    const end = format(endOfMonth(date), 'yyyy-MM-dd');
+    const targetDate = parseISO(dateStr);
+    const start = format(startOfMonth(targetDate), 'yyyy-MM-dd');
+    const end = format(endOfMonth(targetDate), 'yyyy-MM-dd');
 
+    // جلب كافة طلبات المستخدم (استعلام بسيط لا يحتاج فهرس مركب)
     const q = query(
       collection(this.db, paths.permissionRequests(this.companyId)),
-      where('userId', '==', userId),
-      where('date', '>=', start),
-      where('date', '<=', end),
-      where('status', 'in', ['pending', 'approved'])
+      where('userId', '==', userId)
     );
 
     const snap = await getDocs(q);
-    return snap.docs.reduce((sum, doc) => sum + (doc.data().durationHours || 0), 0);
+    
+    // الفلترة البرمجية لتجنب أخطاء الفهارس
+    return snap.docs
+      .map(d => d.data() as PermissionRequest)
+      .filter(req => 
+        req.date >= start && 
+        req.date <= end && 
+        ['pending', 'approved'].includes(req.status)
+      )
+      .reduce((sum, req) => sum + (req.durationHours || 0), 0);
   }
 
+  /**
+   * التحقق من وجود إجازة في تاريخ معين
+   */
   async hasLeaveOnDate(userId: string, dateStr: string): Promise<boolean> {
     const q = query(
       collection(this.db, paths.leaveRequests(this.companyId)),
-      where('userId', '==', userId),
-      where('status', 'in', ['approved', 'on-leave']),
-      where('startDate', '<=', dateStr),
-      where('endDate', '>=', dateStr)
+      where('userId', '==', userId)
     );
 
     const snap = await getDocs(q);
-    return !snap.empty;
+    
+    // الفلترة البرمجية لتجنب الحاجة لفهرس مركب على (userId + status + dates)
+    return snap.docs.some(docSnap => {
+      const d = docSnap.data();
+      const isApproved = ['approved', 'on-leave'].includes(d.status);
+      const isWithinDate = dateStr >= d.startDate && dateStr <= d.endDate;
+      return isApproved && isWithinDate;
+    });
   }
 
   async updateRequestStatus(requestId: string, status: PermissionRequest['status'], adminId: string, comment?: string) {
