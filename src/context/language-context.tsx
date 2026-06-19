@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
@@ -82,7 +81,8 @@ const translations: Record<Language, Record<string, string>> = {
     phone: 'رقم الهاتف',
     email: 'البريد الرسمي',
     saveChanges: 'حفظ التغييرات',
-    manageCompanyData: 'إدارة الهوية والوثائق الرسمية للمنشأة'
+    manageCompanyData: 'إدارة الهوية والوثائق الرسمية للمنشأة',
+    writeText: 'كتابة نص'
   },
   en: {
     dashboard: 'Dashboard',
@@ -144,8 +144,8 @@ const translations: Record<Language, Record<string, string>> = {
     companyIdentity: 'Company Identity',
     companyProfile: 'Company Profile',
     logo: 'Company Logo',
-    header: 'Header Text',
-    footer: 'Footer Text',
+    header: 'Header',
+    footer: 'Footer',
     licenseExpiry: 'License Expiry',
     laborExpiry: 'Labor Authority Expiry',
     address: 'Official Address',
@@ -153,7 +153,8 @@ const translations: Record<Language, Record<string, string>> = {
     phone: 'Phone',
     email: 'Official Email',
     saveChanges: 'Save Changes',
-    manageCompanyData: 'Manage official identity and documents'
+    manageCompanyData: 'Manage official identity and documents',
+    writeText: 'Write Text'
   }
 };
 
