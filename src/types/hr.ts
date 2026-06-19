@@ -33,20 +33,20 @@ export interface Employee extends BaseReference {
   iban?: string;
   contractExpiry?: string;
   residencyExpiry?: string;
-  annualLeaveBalance: number; // رصيد الإجازات السنوية
-  sickLeaveBalance: number;   // رصيد الإجازات المرضية
+  annualLeaveBalance: number;
+  sickLeaveBalance: number;
   isActive: boolean;
 }
 
 export interface LeaveRequest extends BaseReference {
   userId: string;
   userName: string;
-  employeeId?: string; // ID الوثيقة في Firestore
+  employeeId?: string;
   type: LeaveType;
   startDate: string;
   endDate: string;
-  days: number;        // إجمالي الأيام التقويمية
-  workingDays: number; // أيام العمل الفعلية (بعد استبعاد العطلات)
+  days: number;
+  workingDays: number;
   reason: string;
   status: LeaveStatus;
   approvedBy?: string;
@@ -59,6 +59,22 @@ export interface LeaveRequest extends BaseReference {
     quarterPay: number;
     noPay: number;
   };
+}
+
+export interface PermissionRequest extends BaseReference {
+  userId: string;
+  userName: string;
+  employeeId?: string;
+  type: 'late_arrival' | 'early_departure';
+  date: string; // YYYY-MM-DD
+  startTime: string; // HH:mm
+  endTime: string; // HH:mm
+  durationHours: number;
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+  approvedBy?: string;
+  approvedAt?: any;
+  comment?: string;
 }
 
 export interface EmployeeAuditLog extends BaseReference {

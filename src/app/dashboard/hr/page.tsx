@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   UserCircle, FileText, ShieldAlert, Sparkles, 
   UploadCloud, Loader2, Users, Search, 
-  Calendar, UserPlus, ArrowUpRight
+  Calendar, UserPlus, ArrowUpRight, Clock
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useRouter } from 'next/navigation';
@@ -43,12 +43,15 @@ export default function HRDashboard() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="overflow-x-auto pb-2 scrollbar-hide">
-          <TabsList className="flex w-fit md:grid md:w-[600px] grid-cols-3 h-14 bg-muted/30 rounded-2xl p-1 mb-8 shadow-inner gap-1">
+          <TabsList className="flex w-fit md:grid md:w-[800px] grid-cols-4 h-14 bg-muted/30 rounded-2xl p-1 mb-8 shadow-inner gap-1">
             <TabsTrigger value="overview" className="rounded-xl font-black gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md transition-all px-6">
               <Sparkles className="h-4 w-4" /> {isRtl ? 'نظرة عامة' : 'Overview'}
             </TabsTrigger>
             <TabsTrigger value="leaves" className="rounded-xl font-black gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md transition-all px-6">
               <Calendar className="h-4 w-4" /> {isRtl ? 'الإجازات' : 'Leaves'}
+            </TabsTrigger>
+            <TabsTrigger value="permissions" className="rounded-xl font-black gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md transition-all px-6">
+              <Clock className="h-4 w-4" /> {isRtl ? 'الاستئذانات' : 'Permissions'}
             </TabsTrigger>
             <TabsTrigger value="compliance" className="rounded-xl font-black gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md transition-all px-6">
               <ShieldAlert className="h-4 w-4" /> {isRtl ? 'الامتثال' : 'Compliance'}
@@ -95,11 +98,38 @@ export default function HRDashboard() {
                     </div>
                  </CardContent>
               </Card>
+
+              <Card 
+                onClick={() => router.push('/dashboard/hr/permissions')}
+                className="border-0 shadow-lg hover:shadow-2xl transition-all cursor-pointer rounded-[2.5rem] bg-white group overflow-hidden"
+              >
+                 <CardHeader className="p-8 pb-4 text-start">
+                    <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                       <Clock className="h-7 w-7" />
+                    </div>
+                    <CardTitle className="text-xl font-black">{isRtl ? 'الاستئذانات' : 'Permissions'}</CardTitle>
+                    <CardDescription className="font-bold">متابعة التأخير والانصراف المبكر المعتمد.</CardDescription>
+                 </CardHeader>
+                 <CardContent className="p-8 pt-0 text-start">
+                    <div className="flex items-center gap-2 text-amber-600 font-black text-xs">
+                       {isRtl ? 'إدارة الاستئذانات' : 'Manage Permissions'}
+                       <ArrowUpRight className="h-4 w-4" />
+                    </div>
+                 </CardContent>
+              </Card>
            </div>
         </TabsContent>
 
         <TabsContent value="leaves" className="animate-in fade-in duration-500">
           <LeavesManager />
+        </TabsContent>
+
+        <TabsContent value="permissions" className="animate-in fade-in duration-500">
+          <div className="py-10 text-center">
+             <Button onClick={() => router.push('/dashboard/hr/permissions')} variant="outline" className="rounded-xl font-bold">
+                انتقل لسجل الاستئذانات الكامل <ArrowUpRight className="ms-2 h-4 w-4" />
+             </Button>
+          </div>
         </TabsContent>
 
         <TabsContent value="compliance">
