@@ -57,6 +57,13 @@ export class TechnicalPathService {
     });
   }
 
+  deleteService(actId: string, srvId: string) {
+    const path = paths.services(this.companyId, actId);
+    deleteDoc(doc(this.db, path, srvId)).catch(async () => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `${path}/${srvId}`, operation: 'delete' }));
+    });
+  }
+
   // --- 3. Sub Services ---
   addSubService(actId: string, srvId: string, data: any) {
     const path = paths.subServices(this.companyId, actId, srvId);
@@ -70,6 +77,13 @@ export class TechnicalPathService {
     const path = paths.subServices(this.companyId, actId, srvId);
     updateDoc(doc(this.db, path, subId), { ...data, updatedAt: serverTimestamp() }).catch(async () => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `${path}/${subId}`, operation: 'update', requestResourceData: data }));
+    });
+  }
+
+  deleteSubService(actId: string, srvId: string, subId: string) {
+    const path = paths.subServices(this.companyId, actId, srvId);
+    deleteDoc(doc(this.db, path, subId)).catch(async () => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `${path}/${subId}`, operation: 'delete' }));
     });
   }
 
