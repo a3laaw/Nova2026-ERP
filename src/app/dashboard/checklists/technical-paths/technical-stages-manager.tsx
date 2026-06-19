@@ -50,13 +50,13 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
   const { data: stages, loading } = useCollection<TechnicalStage>(stagesQuery);
 
   const handleSave = async () => {
-    if (!technicalPathService || !form || !form.name || !form.code) return;
+    if (!technicalPathService || !form || !form.name) return;
     setLoadingAction('save');
     try {
       if (form.id) { 
         await technicalPathService.updateTechnicalStage(activityType.id!, mainService.id!, subService.id!, form.id, form); 
       } else { 
-        await technicalPathService.addTechnicalStage(activityType.id!, mainService.id!, subService.id!, form as any); 
+        await technicalPathService.addTechnicalStage(activityType.id!, mainService.id!, subService.id!, { ...form, code: '' } as any); 
       }
       toast({ title: t('saved') });
       setForm(null);
@@ -93,7 +93,7 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
 
         <Button 
           onClick={() => setForm({ 
-            code: '', name: '', nameEn: '', description: '', 
+            name: '', nameEn: '', description: '', 
             order: (stages?.length || 0) + 1, isActive: true, 
             isRequired: true, isEditable: true, isNumeric: false, isTimed: false 
           })}
@@ -119,7 +119,6 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
                   <div>
                     <div className="flex items-center gap-3">
                       <h3 className="font-black text-slate-800 text-lg">{isRtl ? stage.name : stage.nameEn}</h3>
-                      <Badge variant="outline" className="text-[9px] font-mono font-bold opacity-60">{stage.code}</Badge>
                       {stage.isRequired && <Badge className="bg-amber-100 text-amber-700 text-[8px] font-black">إلزامية</Badge>}
                     </div>
                     <p className="text-xs text-muted-foreground font-bold mt-1 line-clamp-1">{stage.description || 'لا يوجد وصف...'}</p>
@@ -146,7 +145,6 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
               <ShieldCheck className="text-primary h-6 w-6" /> {form.id ? 'تعديل مرحلة فنية' : 'تعريف مرحلة فنية جديدة'}
             </DialogTitle></DialogHeader>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-6 text-start">
-              <div className="space-y-2"><Label>كود المرحلة (Code)</Label><Input value={form.code || ''} onChange={e => setForm({...form, code: e.target.value})} placeholder="FOUNDATION_STEP" /></div>
               <div className="space-y-2"><Label>الترتيب</Label><Input type="number" value={form.order || ''} onChange={e => setForm({...form, order: Number(e.target.value)})} /></div>
               <div className="space-y-2"><Label>اسم المرحلة (Ar)</Label><Input value={form.name || ''} onChange={e => setForm({...form, name: e.target.value})} /></div>
               <div className="space-y-2"><Label>Stage Name (En)</Label><Input value={form.nameEn || ''} onChange={e => setForm({...form, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>

@@ -54,7 +54,7 @@ export default function TechnicalPathsPage() {
     setLoadingAction('act');
     try {
       if (activityForm.id) await pathService.updateActivityType(activityForm.id, activityForm);
-      else await pathService.addActivityType(activityForm as any);
+      else await pathService.addActivityType({ ...activityForm, code: '' } as any);
       toast({ title: t('saved') });
       setActivityForm(null);
     } catch (e) { toast({ variant: "destructive", title: t('error') }); }
@@ -66,7 +66,7 @@ export default function TechnicalPathsPage() {
     setLoadingAction('srv');
     try {
       if (serviceForm.id) await pathService.updateService(selectedActivity.id, serviceForm.id, serviceForm);
-      else await pathService.addService(selectedActivity.id, serviceForm);
+      else await pathService.addService(selectedActivity.id, { ...serviceForm, code: '' });
       toast({ title: t('saved') });
       setServiceForm(null);
     } catch (e) { toast({ variant: "destructive", title: t('error') }); }
@@ -78,7 +78,7 @@ export default function TechnicalPathsPage() {
     setLoadingAction('sub');
     try {
       if (subForm.id) await pathService.updateSubService(selectedActivity.id, selectedService.id, subForm.id, subForm);
-      else await pathService.addSubService(selectedActivity.id, selectedService.id, subForm);
+      else await pathService.addSubService(selectedActivity.id, selectedService.id, { ...subForm, code: '' });
       toast({ title: t('saved') });
       setSubForm(null);
     } catch (e) { toast({ variant: "destructive", title: t('error') }); }
@@ -129,7 +129,7 @@ export default function TechnicalPathsPage() {
           {isRtl ? 'هندسة المسارات الفنية' : 'Technical Path Engineering'}
         </h2>
         <Button 
-          onClick={() => setActivityForm({ code: '', name: '', nameEn: '', isActive: true, order: (activities?.length || 0) + 1 })}
+          onClick={() => setActivityForm({ name: '', nameEn: '', isActive: true, order: (activities?.length || 0) + 1 })}
           className="rounded-xl shadow-lg shadow-primary/20"
         >
           <Plus className="me-2 h-4 w-4" /> {isRtl ? 'نشاط أعمال جديد' : 'New Activity'}
@@ -159,7 +159,7 @@ export default function TechnicalPathsPage() {
           <Card className="border-0 shadow-lg rounded-3xl overflow-hidden bg-white ring-1 ring-black/5">
             <CardHeader className="bg-slate-50 border-b p-4 flex flex-row items-center justify-between">
               <CardTitle className="text-sm font-black flex items-center gap-2"><Boxes className="h-4 w-4 text-blue-500" /> {isRtl ? 'الخدمات' : 'Services'}</CardTitle>
-              {selectedActivity && <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setServiceForm({ name: '', nameEn: '', code: '', isActive: true, order: (services?.length || 0) + 1 })}><Plus className="h-4 w-4" /></Button>}
+              {selectedActivity && <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setServiceForm({ name: '', nameEn: '', isActive: true, order: (services?.length || 0) + 1 })}><Plus className="h-4 w-4" /></Button>}
             </CardHeader>
             <CardContent className="p-0 max-h-[500px] overflow-y-auto text-start">
               {!selectedActivity ? <div className="p-10 text-center text-[10px] italic">اختر نشاطاً</div> : servicesLoading ? <div className="p-10 text-center"><Loader2 className="animate-spin mx-auto" /></div> : services?.map(srv => (
@@ -183,7 +183,7 @@ export default function TechnicalPathsPage() {
                 <CardTitle className="text-sm font-black flex items-center gap-2"><Layers className="h-4 w-4 text-emerald-500" /> {isRtl ? 'المسارات التفصيلية' : 'Sub-Services'}</CardTitle>
                 <CardDescription className="text-[10px]">{isRtl ? selectedService?.name : selectedService?.nameEn || '...'}</CardDescription>
               </div>
-              {selectedService && <Button variant="secondary" size="sm" className="h-8 rounded-lg" onClick={() => setSubForm({ name: '', nameEn: '', code: '', isActive: true, order: (subServices?.length || 0) + 1 })}><Plus className="h-3 w-3 me-1" /> إضافة مسار</Button>}
+              {selectedService && <Button variant="secondary" size="sm" className="h-8 rounded-lg" onClick={() => setSubForm({ name: '', nameEn: '', isActive: true, order: (subServices?.length || 0) + 1 })}><Plus className="h-3 w-3 me-1" /> إضافة مسار</Button>}
             </CardHeader>
             <CardContent className="p-4 text-start">
               {!selectedService ? <div className="p-20 text-center text-xs text-muted-foreground">يرجى اختيار خدمة للعرض</div> : subLoading ? <div className="p-10 text-center"><Loader2 className="animate-spin mx-auto" /></div> : (
@@ -192,7 +192,6 @@ export default function TechnicalPathsPage() {
                     <div key={sub.id} className="p-4 rounded-2xl border-2 bg-white flex items-center justify-between group hover:border-primary/30 transition-all shadow-sm">
                       <div className="text-start">
                         <p className="text-sm font-black text-slate-800">{isRtl ? sub.name : sub.nameEn}</p>
-                        <Badge variant="outline" className="text-[8px] font-mono mt-1 opacity-70">{sub.code}</Badge>
                       </div>
                       <div className="flex items-center gap-2">
                         <Button onClick={() => { setSelectedSub(sub); setViewMode('stages'); }} variant="outline" size="sm" className="h-8 rounded-lg text-[10px] font-black border-primary/20 text-primary hover:bg-primary/5">إدارة المراحل</Button>
@@ -215,7 +214,6 @@ export default function TechnicalPathsPage() {
           <DialogContent className="rounded-3xl max-w-lg" dir={dir}>
             <DialogHeader><DialogTitle className="text-start font-black text-xl">{activityForm.id ? 'تعديل نشاط' : 'تعريف نشاط أعمال'}</DialogTitle></DialogHeader>
             <div className="grid gap-6 py-6 text-start">
-              <div className="space-y-2"><Label>Code (مثال: CONSULTING)</Label><Input value={activityForm.code || ''} onChange={e => setActivityForm({...activityForm, code: e.target.value})} /></div>
               <div className="space-y-2"><Label>الاسم (بالعربي)</Label><Input value={activityForm.name || ''} onChange={e => setActivityForm({...activityForm, name: e.target.value})} /></div>
               <div className="space-y-2"><Label>Name (English)</Label><Input value={activityForm.nameEn || ''} onChange={e => setActivityForm({...activityForm, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
             </div>
@@ -229,7 +227,6 @@ export default function TechnicalPathsPage() {
           <DialogContent className="rounded-3xl max-w-lg" dir={dir}>
             <DialogHeader><DialogTitle className="text-start font-black text-xl">{serviceForm.id ? 'تعديل خدمة' : 'خدمة جديدة'}</DialogTitle></DialogHeader>
             <div className="grid gap-6 py-6 text-start">
-              <div className="space-y-2"><Label>Code (مثال: DESIGN)</Label><Input value={serviceForm.code || ''} onChange={e => setServiceForm({...serviceForm, code: e.target.value})} /></div>
               <div className="space-y-2"><Label>الاسم (بالعربي)</Label><Input value={serviceForm.name || ''} onChange={e => setServiceForm({...serviceForm, name: e.target.value})} /></div>
               <div className="space-y-2"><Label>Name (English)</Label><Input value={serviceForm.nameEn || ''} onChange={e => setServiceForm({...serviceForm, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
             </div>
@@ -243,14 +240,13 @@ export default function TechnicalPathsPage() {
           <DialogContent className="rounded-3xl max-w-lg" dir={dir}>
             <DialogHeader><DialogTitle className="text-start font-black text-xl">{subForm.id ? 'تعديل مسار' : 'مسار تفصيلي جديد'}</DialogTitle></DialogHeader>
             <div className="grid gap-6 py-6 text-start">
-              <div className="space-y-2"><Label>Code (مثال: MUN-PERMIT)</Label><Input value={subForm.code || ''} onChange={e => setSubForm({...subForm, code: e.target.value})} /></div>
               <div className="space-y-2"><Label>الاسم (بالعربي)</Label><Input value={subForm.name || ''} onChange={e => setSubForm({...subForm, name: e.target.value})} /></div>
               <div className="space-y-2"><Label>Name (English)</Label><Input value={subForm.nameEn || ''} onChange={e => setSubForm({...subForm, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
             </div>
             <DialogFooter><Button onClick={handleSaveSub} disabled={loadingAction === 'sub'} className="w-full h-12 rounded-xl font-bold">{loadingAction === 'sub' ? <Loader2 className="animate-spin" /> : t('save')}</Button></DialogFooter>
           </DialogContent>
         </Dialog>
-      )}
+      </div>
     </div>
   );
 }

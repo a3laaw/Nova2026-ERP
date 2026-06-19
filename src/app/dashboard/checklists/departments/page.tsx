@@ -35,10 +35,10 @@ export default function DepartmentsPage() {
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   
   const [deptForm, setDeptForm] = useState<Partial<Department>>({
-    code: '', name: '', nameEn: '', description: '', isActive: true, order: 0, activityTypes: []
+    name: '', nameEn: '', description: '', isActive: true, order: 0, activityTypes: []
   });
   const [jobForm, setJobForm] = useState<Partial<Job>>({
-    code: '', name: '', nameEn: '', isActive: true, order: 0
+    name: '', nameEn: '', isActive: true, order: 0
   });
 
   const deptService = useMemo(() => db && companyId ? new DepartmentService(db, companyId) : null, [db, companyId]);
@@ -55,21 +55,20 @@ export default function DepartmentsPage() {
   const { data: jobs, loading: jobsLoading } = useCollection<Job>(jobsQuery);
 
   const filteredDepts = departments?.filter(d => 
-    d.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    d.code.toLowerCase().includes(searchTerm.toLowerCase())
+    d.name.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
 
   const handleSaveDept = async () => {
-    if (!deptService || !deptForm.name || !deptForm.code) return;
+    if (!deptService || !deptForm.name) return;
     setLoadingAction('dept');
     try {
       if (deptForm.id) {
         await deptService.updateDepartment(deptForm.id, deptForm);
       } else {
-        await deptService.addDepartment(deptForm as any);
+        await deptService.addDepartment({ ...deptForm, code: '' } as any);
       }
       toast({ title: t('saved'), description: t('entryAdded') });
-      setDeptForm({ code: '', name: '', nameEn: '', description: '', isActive: true, order: 0, activityTypes: [] });
+      setDeptForm({ name: '', nameEn: '', description: '', isActive: true, order: 0, activityTypes: [] });
     } catch (e) {
       toast({ variant: "destructive", title: t('error'), description: t('saveFailed') });
     } finally {
@@ -78,17 +77,17 @@ export default function DepartmentsPage() {
   };
 
   const handleSaveJob = async () => {
-    if (!deptService || !selectedDept?.id || !jobForm.name || !jobForm.code) return;
+    if (!deptService || !selectedDept?.id || !jobForm.name) return;
     setLoadingAction('job');
     try {
-      const data = { ...jobForm, departmentCode: selectedDept.code } as any;
+      const data = { ...jobForm, departmentCode: '' } as any;
       if (jobForm.id) {
         await deptService.updateJob(selectedDept.id, jobForm.id, data);
       } else {
-        await deptService.addJob(selectedDept.id, data);
+        await deptService.addJob(selectedDept.id, { ...data, code: '' });
       }
       toast({ title: t('saved'), description: t('entryAdded') });
-      setJobForm({ code: '', name: '', nameEn: '', isActive: true, order: 0 });
+      setJobForm({ name: '', nameEn: '', isActive: true, order: 0 });
     } catch (e) {
       toast({ variant: "destructive", title: t('error'), description: t('saveFailed') });
     } finally {
@@ -122,19 +121,18 @@ export default function DepartmentsPage() {
         </h2>
         <Dialog>
           <DialogTrigger asChild>
-            <Button onClick={() => setDeptForm({ code: '', name: '', nameEn: '', description: '', isActive: true, order: (departments?.length || 0) + 1, activityTypes: [] })} className="rounded-xl">
+            <Button onClick={() => setDeptForm({ name: '', nameEn: '', description: '', isActive: true, order: (departments?.length || 0) + 1, activityTypes: [] })} className="rounded-xl">
               <Plus className="me-2 h-4 w-4" /> {t('newDept')}
             </Button>
           </DialogTrigger>
           <DialogContent className="rounded-3xl max-w-2xl" dir={dir}>
             <DialogHeader><DialogTitle className="text-start font-black text-2xl">{deptForm.id ? (isRtl ? 'تعديل قسم' : 'Edit Dept') : t('newDept')}</DialogTitle></DialogHeader>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-6 text-start">
-              <div className="space-y-2"><Label>{isRtl ? 'كود القسم' : 'Dept Code'}</Label><Input value={deptForm.code || ''} onChange={e => setDeptForm({...deptForm, code: e.target.value})} placeholder="ARCH" /></div>
               <div className="space-y-2"><Label>{isRtl ? 'الترتيب' : 'Order'}</Label><Input type="number" value={deptForm.order || ''} onChange={e => setDeptForm({...deptForm, order: Number(e.target.value)})} /></div>
               <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={deptForm.name || ''} onChange={e => setDeptForm({...deptForm, name: e.target.value})} /></div>
               <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={deptForm.nameEn || ''} onChange={e => setDeptForm({...deptForm, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
-              <div className="md:col-span-2 space-y-2"><Label>{isRtl ? 'الوصف' : 'Description'}</Label><Textarea value={deptForm.description || ''} onChange={e => setDeptForm({...deptForm, description: e.target.value})} /></div>
               <div className="flex items-center gap-4"><Label>{t('active')}</Label><Switch checked={deptForm.isActive || false} onCheckedChange={val => setDeptForm({...deptForm, isActive: val})} /></div>
+              <div className="md:col-span-2 space-y-2"><Label>{isRtl ? 'الوصف' : 'Description'}</Label><Textarea value={deptForm.description || ''} onChange={e => setDeptForm({...deptForm, description: e.target.value})} /></div>
             </div>
             <DialogFooter><Button onClick={handleSaveDept} disabled={loadingAction === 'dept'} className="w-full h-12 rounded-xl font-bold">{loadingAction === 'dept' ? <Loader2 className="animate-spin" /> : t('save')}</Button></DialogFooter>
           </DialogContent>
@@ -155,7 +153,7 @@ export default function DepartmentsPage() {
                 filteredDepts.map(dept => (
                   <div key={dept.id} onClick={() => setSelectedDept(dept)} className={cn("p-5 border-b flex items-center justify-between cursor-pointer transition-all group", selectedDept?.id === dept.id ? 'bg-primary/5 border-s-4 border-s-primary' : 'hover:bg-muted/30')}>
                     <div className="text-start">
-                      <div className="flex items-center gap-2"><Badge variant="outline" className="font-mono text-[9px]">{dept.code}</Badge><span className="text-sm font-black">{isRtl ? dept.name : dept.nameEn}</span></div>
+                      <span className="text-sm font-black">{isRtl ? dept.name : dept.nameEn}</span>
                     </div>
                     <div className="flex items-center gap-2">
                        <Button variant="ghost" size="icon" onClick={e => { e.stopPropagation(); setDeptForm(dept); }} className="h-8 w-8 text-blue-600 opacity-0 group-hover:opacity-100"><Edit3 className="h-4 w-4" /></Button>
@@ -183,7 +181,6 @@ export default function DepartmentsPage() {
                   <DialogContent className="rounded-3xl" dir={dir}>
                     <DialogHeader><DialogTitle className="text-start font-black">{isRtl ? 'إضافة وظيفة جديدة' : 'Add New Job'}</DialogTitle></DialogHeader>
                     <div className="grid grid-cols-1 gap-4 py-4 text-start">
-                      <div className="space-y-2"><Label>Code</Label><Input value={jobForm.code || ''} onChange={e => setJobForm({...jobForm, code: e.target.value})} placeholder="S-ARCH" /></div>
                       <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={jobForm.name || ''} onChange={e => setJobForm({...jobForm, name: e.target.value})} /></div>
                       <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={jobForm.nameEn || ''} onChange={e => setJobForm({...jobForm, nameEn: e.target.value})} /></div>
                     </div>
@@ -200,7 +197,6 @@ export default function DepartmentsPage() {
                       <div key={job.id} className="p-4 rounded-2xl border-2 bg-slate-50/50 hover:bg-white hover:shadow-md transition-all flex items-center justify-between group text-start">
                         <div className="text-start">
                           <p className="text-sm font-black">{isRtl ? job.name : job.nameEn}</p>
-                          <Badge variant="secondary" className="text-[8px] font-mono mt-1">{job.code}</Badge>
                         </div>
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100">
                           <Button variant="ghost" size="icon" onClick={() => setJobForm(job)} className="h-8 w-8 text-blue-600"><Edit3 className="h-4 w-4" /></Button>
