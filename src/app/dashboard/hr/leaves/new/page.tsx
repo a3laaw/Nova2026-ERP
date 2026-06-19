@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,8 @@ import {
   Plane, Users, Activity,
   ShieldCheck,
   Send,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { useFirestore } from '@/firebase';
 import { useAuthContext } from '@/context/auth-context';
@@ -29,7 +31,7 @@ import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { SmartDateInput } from '@/components/ui/smart-date-input';
 import { ar } from 'date-fns/locale';
-import { format, parseISO, isValid, startOfDay } from 'date-fns';
+import { format, parseISO, isValid, startOfDay, addDays, eachDayOfInterval, isSameDay } from 'date-fns';
 import { DateRange } from "react-day-picker";
 
 export default function NewLeaveRequestPage() {
@@ -53,13 +55,21 @@ export default function NewLeaveRequestPage() {
     quickReason: ''
   });
 
+  // توليد قائمة الأيام للشريط الأفقي (30 يوم من اليوم)
+  const carouselDays = useMemo(() => {
+    const start = startOfDay(new Date());
+    return Array.from({ length: 30 }).map((_, i) => addDays(start, i));
+  }, []);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+
   const leaveService = useMemo(() => 
     db && companyId ? new LeaveService(db, companyId, permissions) : null, 
   [db, companyId, permissions]);
 
   const currentBalance = 24; 
 
-  // محرك الحساب الآلي والتزامن
+  // حساب أيام العمل والأثر المالي
   useEffect(() => {
     async function calculateMetrics() {
       if (form.startDate && form.endDate && db && companyId) {
@@ -95,8 +105,8 @@ export default function NewLeaveRequestPage() {
     calculateMetrics();
   }, [form.startDate, form.endDate, db, companyId]);
 
-  // التعامل مع اختيار التقويم (Range) بشكل ذري
-  const handleCalendarSelect = (range: DateRange | undefined) => {
+  // تحديث التواريخ من التقويم أو الشريط الأفقي
+  const handleDateSelect = (range: DateRange | undefined) => {
     setForm(prev => ({
       ...prev,
       startDate: range?.from ? format(range.from, 'yyyy-MM-dd') : '',
@@ -104,11 +114,24 @@ export default function NewLeaveRequestPage() {
     }));
   };
 
+  const handleCarouselClick = (date: Date) => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    if (!form.startDate || (form.startDate && form.endDate)) {
+      setForm({ ...form, startDate: dateStr, endDate: '' });
+    } else {
+      const start = parseISO(form.startDate);
+      if (date < start) {
+        setForm({ ...form, startDate: dateStr, endDate: '' });
+      } else {
+        setForm({ ...form, endDate: dateStr });
+      }
+    }
+  };
+
   const selectedRange: DateRange | undefined = useMemo(() => {
     try {
       const from = form.startDate ? parseISO(form.startDate) : undefined;
       const to = form.endDate ? parseISO(form.endDate) : undefined;
-      
       return { 
         from: from && isValid(from) ? from : undefined, 
         to: to && isValid(to) ? to : undefined 
@@ -146,6 +169,16 @@ export default function NewLeaveRequestPage() {
     }
   };
 
+  const scrollCarousel = (direction: 'left' | 'right') => {
+    if (scrollRef.current) {
+      const scrollAmount = 200;
+      scrollRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
+
   return (
     <div className="space-y-10 max-w-7xl mx-auto pb-20 animate-in fade-in duration-700" dir={dir}>
       
@@ -157,7 +190,7 @@ export default function NewLeaveRequestPage() {
               {isRtl ? 'بوابة الموظف الذكية' : 'Smart Employee Portal'}
            </div>
            <h1 className="text-4xl font-black font-headline text-slate-900">{isRtl ? 'طلب إجازة جديد' : 'New Leave Request'}</h1>
-           <p className="text-muted-foreground font-bold text-sm">{isRtl ? 'قم بتحديد نوع وفترة الإجازة لمراجعة التأثير على رصيدك المتاح.' : 'Set your leave type and period to review the impact on your balance.'}</p>
+           <p className="text-muted-foreground font-bold text-sm">{isRtl ? 'اختر فترة الإجازة وسيقوم النظام بحساب الاستحقاق آلياً.' : 'Select dates to automatically calculate eligibility.'}</p>
         </div>
         <div className="bg-white p-6 rounded-[2rem] shadow-xl ring-1 ring-black/5 flex items-center gap-6 min-w-[240px]">
            <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
@@ -170,21 +203,69 @@ export default function NewLeaveRequestPage() {
         </div>
       </div>
 
+      {/* Horizontal Date Carousel */}
+      <div className="relative group">
+        <div className="absolute inset-y-0 start-0 flex items-center z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button variant="secondary" size="icon" onClick={() => scrollCarousel(isRtl ? 'right' : 'left')} className="rounded-full shadow-lg bg-white/90 backdrop-blur">
+            <ChevronLeft className={cn("h-5 w-5", isRtl && "rotate-180")} />
+          </Button>
+        </div>
+        <div className="absolute inset-y-0 end-0 flex items-center z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button variant="secondary" size="icon" onClick={() => scrollCarousel(isRtl ? 'left' : 'right')} className="rounded-full shadow-lg bg-white/90 backdrop-blur">
+            <ChevronRight className={cn("h-5 w-5", isRtl && "rotate-180")} />
+          </Button>
+        </div>
+        
+        <div 
+          ref={scrollRef}
+          className="flex gap-4 overflow-x-auto scrollbar-hide py-4 px-2"
+          style={{ scrollSnapType: 'x mandatory' }}
+        >
+          {carouselDays.map((date) => {
+            const isStart = form.startDate === format(date, 'yyyy-MM-dd');
+            const isEnd = form.endDate === format(date, 'yyyy-MM-dd');
+            const inRange = form.startDate && form.endDate && date > parseISO(form.startDate) && date < parseISO(form.endDate);
+            
+            return (
+              <div 
+                key={date.toISOString()}
+                onClick={() => handleCarouselClick(date)}
+                className={cn(
+                  "flex-shrink-0 w-24 h-32 rounded-[2rem] border-2 transition-all cursor-pointer flex flex-col items-center justify-center space-y-2 select-none",
+                  isStart || isEnd 
+                    ? "bg-primary border-primary text-white shadow-xl shadow-primary/30 scale-105" 
+                    : inRange 
+                    ? "bg-primary/10 border-primary/20 text-primary"
+                    : "bg-white border-slate-100 hover:border-primary/20 text-slate-400"
+                )}
+                style={{ scrollSnapAlign: 'start' }}
+              >
+                <span className="text-[10px] font-black uppercase tracking-tighter opacity-80">
+                  {format(date, 'EEEE', { locale: isRtl ? ar : undefined })}
+                </span>
+                <span className="text-2xl font-black font-headline">
+                  {format(date, 'd')}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
-        {/* Left Column: Interactive Visuals */}
+        {/* Left Column: Calendar & Summary */}
         <div className="lg:col-span-5 space-y-8">
            
-           {/* Visual Range Calendar */}
-           <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5 animate-in slide-in-from-right-4 duration-500">
+           <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
               <CardHeader className="bg-slate-50/50 border-b p-8">
                  <div className="flex justify-between items-center">
-                    <CardTitle className="text-lg font-black flex items-center gap-2">
+                    <CardTitle className="text-lg font-black flex items-center gap-2 text-slate-800">
                        <CalendarIcon className="h-5 w-5 text-primary" />
-                       {isRtl ? 'معاينة الفترة' : 'Period Preview'}
+                       {isRtl ? 'اختيار النطاق الزمني' : 'Date Range Picker'}
                     </CardTitle>
                     <Badge variant="secondary" className="rounded-lg font-black px-3 py-1 bg-primary/10 text-primary border-0">
-                       {totalCalendarDays} {isRtl ? 'أيام' : 'Days'}
+                       {totalCalendarDays} {isRtl ? 'أيام إجمالية' : 'Total Days'}
                     </Badge>
                  </div>
               </CardHeader>
@@ -192,7 +273,7 @@ export default function NewLeaveRequestPage() {
                  <Calendar
                     mode="range"
                     selected={selectedRange}
-                    onSelect={handleCalendarSelect}
+                    onSelect={handleDateSelect}
                     locale={isRtl ? ar : undefined}
                     className="rounded-3xl border-0 p-0"
                     disabled={{ before: startOfDay(new Date()) }}
@@ -200,63 +281,64 @@ export default function NewLeaveRequestPage() {
                     classNames={{
                         months: "flex flex-col",
                         month: "space-y-6",
-                        caption: "flex justify-center pt-2 relative items-center mb-4",
+                        caption: "flex justify-center pt-2 relative items-center mb-6",
                         caption_label: "text-lg font-black text-slate-800",
                         nav: "space-x-1 flex items-center",
                         table: "w-full border-collapse space-y-1",
                         head_row: "flex justify-between mb-4",
-                        head_cell: "text-slate-400 rounded-md w-12 font-black text-xs uppercase",
+                        head_cell: "text-slate-400 rounded-md w-12 font-black text-[10px] uppercase",
                         row: "flex w-full mt-2 justify-between",
                         cell: cn(
-                          "relative p-0 text-center text-sm focus-within:relative focus-within:z-20",
-                          "[&:has([aria-selected])]:bg-primary/5 [&:has([aria-selected].day-range-end)]:rounded-e-2xl [&:has([aria-selected].day-range-start)]:rounded-s-2xl",
-                          "h-12 w-12"
+                          "relative p-0 text-center text-sm focus-within:relative focus-within:z-20 h-12 w-12",
+                          "[&:has([aria-selected])]:bg-primary/5",
+                          "[&:has([aria-selected].day-range-end)]:rounded-e-2xl",
+                          "[&:has([aria-selected].day-range-start)]:rounded-s-2xl"
                         ),
                         day: cn(
-                          "h-12 w-12 p-0 font-bold aria-selected:opacity-100 rounded-2xl hover:bg-slate-100 transition-all"
+                          "h-12 w-12 p-0 font-bold rounded-2xl hover:bg-slate-100 transition-all"
                         ),
-                        day_range_start: "day-range-start rounded-2xl bg-primary text-white hover:bg-primary hover:text-white",
-                        day_range_end: "day-range-end rounded-2xl bg-primary text-white hover:bg-primary hover:text-white",
+                        day_range_start: "day-range-start rounded-2xl bg-primary text-white hover:bg-primary hover:text-white shadow-lg shadow-primary/20",
+                        day_range_end: "day-range-end rounded-2xl bg-primary text-white hover:bg-primary hover:text-white shadow-lg shadow-primary/20",
                         day_range_middle: "aria-selected:bg-primary/10 aria-selected:text-primary rounded-none",
                         day_selected: "bg-primary text-white hover:bg-primary hover:text-white focus:bg-primary focus:text-white",
-                        day_today: "bg-slate-100 text-primary",
+                        day_today: "bg-slate-100 text-primary border-2 border-primary/20",
                         day_outside: "text-slate-300 opacity-50",
-                        day_disabled: "text-slate-200 opacity-50 line-through",
+                        day_disabled: "text-slate-200 opacity-50 line-through cursor-not-allowed",
                     }}
                  />
               </CardContent>
               <div className="p-8 pt-0 grid grid-cols-2 gap-4">
-                 <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-100 text-center">
-                    <p className="text-[10px] font-black text-emerald-600 uppercase mb-1">{isRtl ? 'أيام العمل' : 'Work Days'}</p>
-                    <p className="text-2xl font-black text-emerald-700">{workingDays}</p>
+                 <div className="p-5 rounded-3xl bg-emerald-50 border border-emerald-100 text-center">
+                    <p className="text-[10px] font-black text-emerald-600 uppercase mb-1 tracking-widest">{isRtl ? 'أيام العمل' : 'Work Days'}</p>
+                    <p className="text-3xl font-black text-emerald-700">{workingDays}</p>
                  </div>
-                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
-                    <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{isRtl ? 'عطلات' : 'Off Days'}</p>
-                    <p className="text-2xl font-black text-slate-600">{totalCalendarDays - workingDays}</p>
+                 <div className="p-5 rounded-3xl bg-slate-50 border border-slate-100 text-center">
+                    <p className="text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">{isRtl ? 'أيام العطلة' : 'Off Days'}</p>
+                    <p className="text-3xl font-black text-slate-600">{totalCalendarDays - workingDays}</p>
                  </div>
               </div>
            </Card>
 
            {/* Metrics & Impact */}
-           <Card className="border-0 shadow-xl rounded-[2.5rem] bg-slate-900 text-white overflow-hidden ring-1 ring-white/5">
+           <Card className="border-0 shadow-xl rounded-[3rem] bg-slate-900 text-white overflow-hidden ring-1 ring-white/5">
               <CardContent className="p-8 space-y-6">
                  <div className="flex items-center gap-3 border-b border-white/10 pb-4">
                     <Activity className="h-5 w-5 text-primary" />
-                    <h3 className="text-lg font-black">{isRtl ? 'الأثر المالي والزمني' : 'Financial Impact'}</h3>
+                    <h3 className="text-lg font-black">{isRtl ? 'الأثر المتوقع على الرصيد' : 'Expected Balance Impact'}</h3>
                  </div>
-                 <div className="space-y-4">
+                 <div className="space-y-5">
                     <div className="flex justify-between items-center">
-                       <span className="text-sm font-bold text-slate-400">{isRtl ? 'الرصيد بعد الخصم:' : 'Balance After:'}</span>
-                       <span className="text-xl font-black text-emerald-400">{currentBalance - workingDays} {isRtl ? 'يوم' : 'Days'}</span>
+                       <span className="text-sm font-bold text-slate-400">{isRtl ? 'الرصيد المتبقي المتوقع:' : 'Remaining Balance:'}</span>
+                       <span className="text-2xl font-black text-emerald-400">{currentBalance - workingDays} {isRtl ? 'يوم' : 'Days'}</span>
                     </div>
-                    <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                    <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden shadow-inner">
                        <div 
-                         className="h-full bg-primary transition-all duration-1000" 
+                         className="h-full bg-gradient-to-r from-primary to-orange-400 transition-all duration-1000 ease-out" 
                          style={{ width: `${Math.max(0, ((currentBalance - workingDays) / 30) * 100)}%` }}
                        />
                     </div>
-                    <p className="text-[10px] font-bold text-slate-500 italic">
-                       * {isRtl ? 'يتم تحديث الرصيد نهائياً بعد اعتماد الطلب من HR.' : 'Balance updates after final HR approval.'}
+                    <p className="text-[10px] font-bold text-slate-500 italic leading-relaxed">
+                       * {isRtl ? 'ملاحظة: هذا الحساب تقديري، سيتم تحديث الرصيد نهائياً فور اعتماد الطلب.' : 'Note: Calculations are estimates until official approval.'}
                     </p>
                  </div>
               </CardContent>
@@ -267,51 +349,49 @@ export default function NewLeaveRequestPage() {
         {/* Right Column: Form Fields */}
         <div className="lg:col-span-7 space-y-8 animate-in slide-in-from-left-4 duration-500">
            
-           {/* Section 1: Type & Period */}
            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
-              <div className="h-2 w-full bg-primary" />
-              <CardContent className="p-10 space-y-8">
+              <div className="h-3 bg-gradient-to-r from-primary to-orange-400 w-full" />
+              <CardContent className="p-10 space-y-10">
                  <div className="space-y-6 text-start">
-                    <Label className="text-xs font-black text-slate-500 uppercase tracking-widest">{isRtl ? 'نوع الإجازة المطلوبة' : 'Leave Category'}</Label>
+                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'تصنيف الإجازة' : 'Leave Category'}</Label>
                     <Select value={form.type} onValueChange={(v: LeaveType) => setForm({...form, type: v})}>
-                        <SelectTrigger className="h-16 rounded-2xl border-2 text-lg font-black bg-slate-50/50 focus:bg-white transition-all">
+                        <SelectTrigger className="h-16 rounded-2xl border-2 text-lg font-black bg-slate-50/30 focus:bg-white transition-all shadow-sm">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="annual">{isRtl ? 'إجازة سنوية (خصم من الرصيد)' : 'Annual Leave'}</SelectItem>
-                          <SelectItem value="sick">{isRtl ? 'إجازة مرضية' : 'Sick Leave'}</SelectItem>
-                          <SelectItem value="emergency">{isRtl ? 'إجازة اضطرارية' : 'Emergency Leave'}</SelectItem>
-                          <SelectItem value="unpaid">{isRtl ? 'إجازة بدون راتب' : 'Unpaid Leave'}</SelectItem>
+                        <SelectContent className="rounded-2xl border-2 shadow-2xl">
+                          <SelectItem value="annual" className="py-4 font-bold">{isRtl ? 'إجازة سنوية (خصم من الرصيد)' : 'Annual Leave'}</SelectItem>
+                          <SelectItem value="sick" className="py-4 font-bold">{isRtl ? 'إجازة مرضية (طبية)' : 'Sick Leave'}</SelectItem>
+                          <SelectItem value="emergency" className="py-4 font-bold">{isRtl ? 'إجازة اضطرارية' : 'Emergency Leave'}</SelectItem>
+                          <SelectItem value="unpaid" className="py-4 font-bold">{isRtl ? 'إجازة بدون راتب' : 'Unpaid Leave'}</SelectItem>
                         </SelectContent>
                     </Select>
                  </div>
 
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t border-slate-100">
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-slate-50">
                     <div className="space-y-3 text-start">
-                       <Label className="text-xs font-black text-slate-500 uppercase tracking-widest">{isRtl ? 'تاريخ البدء' : 'Effective Start'}</Label>
+                       <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'تاريخ المغادرة' : 'Start Date'}</Label>
                        <SmartDateInput value={form.startDate} onChange={v => setForm({...form, startDate: v})} />
                     </div>
                     <div className="space-y-3 text-start">
-                       <Label className="text-xs font-black text-slate-500 uppercase tracking-widest">{isRtl ? 'تاريخ الانتهاء' : 'Effective End'}</Label>
+                       <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'تاريخ العودة' : 'End Date'}</Label>
                        <SmartDateInput value={form.endDate} onChange={v => setForm({...form, endDate: v})} />
                     </div>
                  </div>
               </CardContent>
            </Card>
 
-           {/* Section 2: Quick Reason */}
-           <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5">
+           <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
               <CardContent className="p-10 space-y-8">
                  <div className="flex items-center gap-3 text-slate-800">
                     <Plane className="h-6 w-6 text-primary" />
-                    <h3 className="text-xl font-black">{isRtl ? 'سبب الإجازة' : 'Reason for Leave'}</h3>
+                    <h3 className="text-xl font-black">{isRtl ? 'دواعي الإجازة' : 'Reason for Leave'}</h3>
                  </div>
                  
                  <div className="flex flex-wrap gap-4">
                     {[
-                      { id: 'travel', label: isRtl ? 'سفر خارجي' : 'International Travel', icon: Plane },
-                      { id: 'family', label: isRtl ? 'ظروف أسرية' : 'Family Matters', icon: Users },
-                      { id: 'rest', label: isRtl ? 'راحة ومرض' : 'Rest & Recover', icon: Activity },
+                      { id: 'travel', label: isRtl ? 'سفر وسياحة' : 'Travel', icon: Plane, color: 'text-blue-500' },
+                      { id: 'family', label: isRtl ? 'ظروف عائلية' : 'Family', icon: Users, color: 'text-purple-500' },
+                      { id: 'rest', label: isRtl ? 'استراحة ومرض' : 'Rest', icon: Activity, color: 'text-emerald-500' },
                     ].map(item => (
                       <button
                         key={item.id}
@@ -321,10 +401,10 @@ export default function NewLeaveRequestPage() {
                           "px-6 py-4 rounded-2xl border-2 font-black transition-all flex items-center gap-3",
                           form.quickReason === item.label 
                             ? "bg-primary text-white border-primary shadow-lg shadow-primary/20 scale-105" 
-                            : "bg-slate-50 text-slate-400 border-transparent hover:border-primary/20 hover:bg-white"
+                            : "bg-slate-50 text-slate-500 border-transparent hover:border-primary/20 hover:bg-white"
                         )}
                       >
-                         <item.icon className="h-5 w-5" />
+                         <item.icon className={cn("h-5 w-5", form.quickReason === item.label ? "text-white" : item.color)} />
                          {item.label}
                       </button>
                     ))}
@@ -333,21 +413,22 @@ export default function NewLeaveRequestPage() {
                  <Textarea 
                    value={form.reason}
                    onChange={e => setForm({...form, reason: e.target.value})}
-                   placeholder={isRtl ? 'هل تود إضافة المزيد من التفاصيل؟' : 'Would you like to add more details?'}
-                   className="min-h-[140px] rounded-[2rem] border-2 bg-slate-50/50 p-8 text-lg focus:bg-white transition-all resize-none shadow-inner"
+                   placeholder={isRtl ? 'هل تود إضافة المزيد من التفاصيل للإدارة؟' : 'Add more details for management...'}
+                   className="min-h-[140px] rounded-[2rem] border-2 bg-slate-50/30 p-8 text-lg focus:bg-white transition-all resize-none shadow-inner border-slate-100"
                  />
               </CardContent>
            </Card>
 
-           {/* Section 3: Compliance Alerts */}
-           <div className="bg-amber-50/80 backdrop-blur-sm border-2 border-amber-200 rounded-[2rem] p-8 flex items-start gap-4 text-amber-900">
-              <AlertCircle className="h-6 w-6 shrink-0 mt-1" />
+           <div className="bg-amber-50/60 backdrop-blur-sm border-2 border-amber-200/50 rounded-[2rem] p-8 flex items-start gap-5 text-amber-900">
+              <div className="h-10 w-10 rounded-xl bg-amber-200/50 flex items-center justify-center shrink-0">
+                <AlertCircle className="h-6 w-6 text-amber-600" />
+              </div>
               <div className="text-start">
-                 <h5 className="font-black text-sm mb-1">{isRtl ? 'تذكير بالسياسة الداخلية' : 'Policy Reminder'}</h5>
+                 <h5 className="font-black text-sm mb-1 uppercase tracking-tight">{isRtl ? 'سياسة الشركة للموارد البشرية' : 'HR Policy Notice'}</h5>
                  <p className="text-xs font-bold leading-relaxed opacity-80">
                    {isRtl 
-                     ? 'يتم صرف الإجازة السنوية بعد موافقة المدير المباشر واعتماد قسم الموارد البشرية. تأكد من تقديم الطلب قبل أسبوعين على الأقل من موعد المغادرة المخطط له.' 
-                     : 'Annual leave is granted after line manager and HR approval. Ensure submission at least 14 days before your planned departure.'}
+                     ? 'يجب تقديم طلبات الإجازة السنوية قبل 14 يوماً من الموعد المحدد. سيتم إشعار مديرك المباشر تلقائياً فور الإرسال.' 
+                     : 'Annual leave must be submitted 14 days in advance. Your manager will be notified automatically.'}
                  </p>
               </div>
            </div>
@@ -357,15 +438,15 @@ export default function NewLeaveRequestPage() {
               <Button 
                 onClick={handleSubmit}
                 disabled={isSubmitting || !form.startDate || !form.endDate}
-                className="flex-[2] h-20 rounded-[2.5rem] bg-primary text-white font-black text-2xl shadow-2xl shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all gap-4"
+                className="flex-[2] h-20 rounded-[2.5rem] bg-primary text-white font-black text-2xl shadow-2xl shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all gap-4 border-b-8 border-orange-700"
               >
                  {isSubmitting ? <Clock className="h-8 w-8 animate-spin" /> : <Send className="h-8 w-8" />}
-                 {isRtl ? 'إرسال طلب الإجازة' : 'Submit Leave Request'}
+                 {isRtl ? 'إرسال الطلب الآن' : 'Send Request Now'}
               </Button>
               <Button 
                 variant="outline"
                 onClick={() => router.push('/dashboard/hr')}
-                className="flex-1 h-20 rounded-[2.5rem] border-2 border-slate-200 font-black text-xl hover:bg-slate-50 hover:border-slate-300 transition-all"
+                className="flex-1 h-20 rounded-[2.5rem] border-2 border-slate-200 font-black text-xl hover:bg-white hover:border-slate-300 transition-all bg-slate-50"
               >
                  {isRtl ? 'إلغاء' : 'Cancel'}
               </Button>
@@ -377,3 +458,4 @@ export default function NewLeaveRequestPage() {
     </div>
   );
 }
+
