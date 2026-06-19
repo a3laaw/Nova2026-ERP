@@ -9,19 +9,19 @@ import { cn } from '@/lib/utils';
 
 export default function WorkHoursSettingsPage() {
   const router = useRouter();
-  const { lang, dir } = useLanguage();
+  const { lang, dir, t } = useLanguage();
   const isRtl = lang === 'ar';
 
   return (
-    <div className="container mx-auto max-w-6xl">
+    <div className="container mx-auto max-w-6xl" dir={dir}>
       <div className="mb-6">
         <Button 
           variant="ghost" 
           onClick={() => router.push('/dashboard/settings')}
           className="rounded-xl h-10 gap-2 bg-white shadow-sm border border-slate-100 hover:bg-slate-50"
         >
-          <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
-          العودة للإعدادات
+          <ArrowRight className={cn("h-4 w-4", !isRtl && 'rotate-180')} />
+          {t('backToSettings')}
         </Button>
       </div>
       <WorkHoursManager />

@@ -5,17 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import { 
-  Clock, Calendar, Coffee, MoonStar, 
-  Loader2, Save, AlertCircle, Info,
-  Sun, Sunset, HardHat
+  Clock, Calendar, MoonStar, 
+  Loader2, Save, Sun, HardHat
 } from "lucide-react";
 import { useFirestore } from '@/firebase';
 import { useAuthContext } from '@/context/auth-context';
+import { useLanguage } from '@/context/language-context';
 import { WorkHoursService } from '@/services/work-hours-service';
 import { WorkHoursSettings, DayOfWeek, DailySchedule } from '@/types/work-hours';
 import { toast } from '@/hooks/use-toast';
@@ -25,6 +23,7 @@ const DAYS: DayOfWeek[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday
 
 export function WorkHoursManager() {
   const { globalUser, user } = useAuthContext();
+  const { t, dir, lang } = useLanguage();
   const db = useFirestore();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -39,24 +38,24 @@ export function WorkHoursManager() {
       if (!service) return;
       try {
         const data = await service.getSettings();
-        setSettings(data || { ...service.getDefaultSettings(), companyId: globalUser!.companyId });
+        setSettings(data || { ...service.getDefaultSettings(), companyId: globalUser!.companyId } as WorkHoursSettings);
       } catch (e) {
-        toast({ variant: "destructive", title: "Error loading settings" });
+        toast({ variant: "destructive", title: t('error'), description: "Error loading settings" });
       } finally {
         setLoading(false);
       }
     }
     load();
-  }, [service, globalUser]);
+  }, [service, globalUser, t]);
 
   const handleSave = async () => {
     if (!service || !settings || !user) return;
     setSaving(true);
     try {
       await service.saveSettings(settings, user.uid);
-      toast({ title: "تم الحفظ بنجاح", description: "تم تحديث قواعد مواعيد العمل الرسمية." });
+      toast({ title: t('saved'), description: t('entryAdded') });
     } catch (e) {
-      toast({ variant: "destructive", title: "فشل الحفظ", description: "يرجى المحاولة لاحقاً." });
+      toast({ variant: "destructive", title: t('error'), description: t('saveFailed') });
     } finally {
       setSaving(false);
     }
@@ -80,17 +79,17 @@ export function WorkHoursManager() {
   if (loading) return <div className="py-20 text-center"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary" /></div>;
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-20" dir="rtl">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-20" dir={dir}>
       
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start">
            <h1 className="text-3xl font-black font-headline flex items-center gap-3">
              <Clock className="h-8 w-8 text-primary" />
-             مواعيد العمل الرسمية
+             {t('workHours')}
            </h1>
-           <p className="text-muted-foreground font-bold text-sm mt-1 opacity-80">
-             إدارة الدوام العام، القسم المعماري، وعطلات نهاية الأسبوع.
+           <p className="text-muted-foreground font-bold text-sm mt-1 opacity-80 italic">
+             {t('workHoursDesc')}
            </p>
         </div>
         <Button 
@@ -99,7 +98,7 @@ export function WorkHoursManager() {
           className="bg-primary text-white font-black px-8 py-6 rounded-2xl text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all"
         >
           {saving ? <Loader2 className="animate-spin me-2" /> : <Save className="me-2 h-5 w-5" />}
-          حفظ كافة القواعد
+          {t('saveAllRules')}
         </Button>
       </div>
 
@@ -111,37 +110,37 @@ export function WorkHoursManager() {
              <div className="flex items-center gap-3">
                 <div className="p-3 bg-white rounded-2xl shadow-sm text-primary"><Sun className="h-6 w-6" /></div>
                 <div>
-                   <CardTitle className="text-xl font-black">الدوام العام</CardTitle>
-                   <CardDescription className="font-bold">قواعد العمل الافتراضية لكافة الأقسام.</CardDescription>
+                   <CardTitle className="text-xl font-black">{t('generalWorkingHours')}</CardTitle>
+                   <CardDescription className="font-bold">{lang === 'ar' ? 'قواعد العمل الافتراضية لكافة الأقسام.' : 'Default rules for all departments.'}</CardDescription>
                 </div>
              </div>
           </CardHeader>
           <CardContent className="p-8 space-y-6 text-start">
              <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
-                   <Label className="text-xs font-black uppercase text-muted-foreground">بداية الصباح</Label>
+                   <Label className="text-xs font-black uppercase text-muted-foreground">{t('morningStart')}</Label>
                    <Input type="time" value={settings?.general.morningStartTime} onChange={e => updateSchedule('general', 'morningStartTime', e.target.value)} className="h-12 rounded-xl border-2" />
                 </div>
                 <div className="space-y-2">
-                   <Label className="text-xs font-black uppercase text-muted-foreground">نهاية الصباح</Label>
+                   <Label className="text-xs font-black uppercase text-muted-foreground">{t('morningEnd')}</Label>
                    <Input type="time" value={settings?.general.morningEndTime} onChange={e => updateSchedule('general', 'morningEndTime', e.target.value)} className="h-12 rounded-xl border-2" />
                 </div>
                 <div className="space-y-2">
-                   <Label className="text-xs font-black uppercase text-muted-foreground">بداية المساء</Label>
+                   <Label className="text-xs font-black uppercase text-muted-foreground">{t('eveningStart')}</Label>
                    <Input type="time" value={settings?.general.eveningStartTime} onChange={e => updateSchedule('general', 'eveningStartTime', e.target.value)} className="h-12 rounded-xl border-2" />
                 </div>
                 <div className="space-y-2">
-                   <Label className="text-xs font-black uppercase text-muted-foreground">نهاية المساء</Label>
+                   <Label className="text-xs font-black uppercase text-muted-foreground">{t('eveningEnd')}</Label>
                    <Input type="time" value={settings?.general.eveningEndTime} onChange={e => updateSchedule('general', 'eveningEndTime', e.target.value)} className="h-12 rounded-xl border-2" />
                 </div>
              </div>
              <div className="grid grid-cols-2 gap-6 pt-4 border-t">
                 <div className="space-y-2">
-                   <Label className="text-xs font-black text-muted-foreground">مدة الموعد (دقيقة)</Label>
+                   <Label className="text-xs font-black text-muted-foreground">{t('slotDuration')}</Label>
                    <Input type="number" value={settings?.general.slotDurationMinutes} onChange={e => updateSchedule('general', 'slotDurationMinutes', Number(e.target.value))} className="h-12 rounded-xl border-2" />
                 </div>
                 <div className="space-y-2">
-                   <Label className="text-xs font-black text-muted-foreground">الفاصل/Buffer (دقيقة)</Label>
+                   <Label className="text-xs font-black text-muted-foreground">{t('bufferTime')}</Label>
                    <Input type="number" value={settings?.general.bufferMinutes} onChange={e => updateSchedule('general', 'bufferMinutes', Number(e.target.value))} className="h-12 rounded-xl border-2" />
                 </div>
              </div>
@@ -154,37 +153,37 @@ export function WorkHoursManager() {
              <div className="flex items-center gap-3">
                 <div className="p-3 bg-white rounded-2xl shadow-sm text-blue-600"><HardHat className="h-6 w-6" /></div>
                 <div>
-                   <CardTitle className="text-xl font-black">القسم المعماري</CardTitle>
-                   <CardDescription className="font-bold">قواعد خاصة بالمهندسين المعماريين والمصممين.</CardDescription>
+                   <CardTitle className="text-xl font-black">{t('architecturalWorkingHours')}</CardTitle>
+                   <CardDescription className="font-bold">{lang === 'ar' ? 'قواعد خاصة بالمهندسين المعماريين والمصممين.' : 'Special rules for architects and designers.'}</CardDescription>
                 </div>
              </div>
           </CardHeader>
           <CardContent className="p-8 space-y-6 text-start">
              <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
-                   <Label className="text-xs font-black text-muted-foreground">بداية الصباح</Label>
+                   <Label className="text-xs font-black text-muted-foreground">{t('morningStart')}</Label>
                    <Input type="time" value={settings?.architectural.morningStartTime} onChange={e => updateSchedule('architectural', 'morningStartTime', e.target.value)} className="h-12 rounded-xl border-2" />
                 </div>
                 <div className="space-y-2">
-                   <Label className="text-xs font-black text-muted-foreground">نهاية الصباح</Label>
+                   <Label className="text-xs font-black text-muted-foreground">{t('morningEnd')}</Label>
                    <Input type="time" value={settings?.architectural.morningEndTime} onChange={e => updateSchedule('architectural', 'morningEndTime', e.target.value)} className="h-12 rounded-xl border-2" />
                 </div>
                 <div className="space-y-2">
-                   <Label className="text-xs font-black text-muted-foreground">بداية المساء</Label>
+                   <Label className="text-xs font-black text-muted-foreground">{t('eveningStart')}</Label>
                    <Input type="time" value={settings?.architectural.eveningStartTime} onChange={e => updateSchedule('architectural', 'eveningStartTime', e.target.value)} className="h-12 rounded-xl border-2" />
                 </div>
                 <div className="space-y-2">
-                   <Label className="text-xs font-black text-muted-foreground">نهاية المساء</Label>
+                   <Label className="text-xs font-black text-muted-foreground">{t('eveningEnd')}</Label>
                    <Input type="time" value={settings?.architectural.eveningEndTime} onChange={e => updateSchedule('architectural', 'eveningEndTime', e.target.value)} className="h-12 rounded-xl border-2" />
                 </div>
              </div>
              <div className="grid grid-cols-2 gap-6 pt-4 border-t">
                 <div className="space-y-2">
-                   <Label className="text-xs font-black text-muted-foreground">مدة الموعد (دقيقة)</Label>
+                   <Label className="text-xs font-black text-muted-foreground">{t('slotDuration')}</Label>
                    <Input type="number" value={settings?.architectural.slotDurationMinutes} onChange={e => updateSchedule('architectural', 'slotDurationMinutes', Number(e.target.value))} className="h-12 rounded-xl border-2" />
                 </div>
                 <div className="space-y-2">
-                   <Label className="text-xs font-black text-muted-foreground">الفاصل/Buffer (دقيقة)</Label>
+                   <Label className="text-xs font-black text-muted-foreground">{t('bufferTime')}</Label>
                    <Input type="number" value={settings?.architectural.bufferMinutes} onChange={e => updateSchedule('architectural', 'bufferMinutes', Number(e.target.value))} className="h-12 rounded-xl border-2" />
                 </div>
              </div>
@@ -197,8 +196,8 @@ export function WorkHoursManager() {
              <div className="flex items-center gap-3">
                 <div className="p-3 bg-white rounded-2xl shadow-sm text-amber-600"><Calendar className="h-6 w-6" /></div>
                 <div>
-                   <CardTitle className="text-xl font-black">العطلات ونظام نصف الدوام</CardTitle>
-                   <CardDescription className="font-bold">تحديد أيام الإغلاق التام وأيام العمل القصيرة.</CardDescription>
+                   <CardTitle className="text-xl font-black">{t('holidays')} & {t('halfDay')}</CardTitle>
+                   <CardDescription className="font-bold">{lang === 'ar' ? 'تحديد أيام الإغلاق التام وأيام العمل القصيرة.' : 'Define full closure days and shorter working days.'}</CardDescription>
                 </div>
              </div>
           </CardHeader>
@@ -206,7 +205,7 @@ export function WorkHoursManager() {
              
              {/* Weekly Holidays */}
              <div className="space-y-4">
-                <h4 className="font-black text-sm border-s-4 border-amber-400 ps-3">العطلات الأسبوعية</h4>
+                <h4 className="font-black text-sm border-s-4 border-amber-400 ps-3">{t('holidays')}</h4>
                 <div className="flex flex-wrap gap-3">
                    {DAYS.map(day => (
                       <div 
@@ -223,39 +222,39 @@ export function WorkHoursManager() {
                       </div>
                    ))}
                 </div>
-                <p className="text-[10px] text-muted-foreground font-bold">* الأيام المحددة سيتم إغلاق الحجوزات فيها تماماً.</p>
+                <p className="text-[10px] text-muted-foreground font-bold">{lang === 'ar' ? '* الأيام المحددة سيتم إغلاق الحجوزات فيها تماماً.' : '* Selected days will be completely closed for bookings.'}</p>
              </div>
 
              {/* Half-Day Logic */}
              <div className="space-y-6 border-r md:ps-12 border-slate-100">
-                <h4 className="font-black text-sm border-s-4 border-blue-400 ps-3">نظام نصف الدوام</h4>
+                <h4 className="font-black text-sm border-s-4 border-blue-400 ps-3">{t('halfDay')}</h4>
                 <div className="grid grid-cols-1 gap-6">
                    <div className="space-y-2">
-                      <Label className="text-xs font-black">يوم نصف الدوام</Label>
+                      <Label className="text-xs font-black">{lang === 'ar' ? 'يوم نصف الدوام' : 'Half-Day of week'}</Label>
                       <Select 
                         value={settings?.halfDay.day} 
                         onValueChange={val => setSettings({...settings!, halfDay: { ...settings!.halfDay, day: val as DayOfWeek }})}
                       >
-                         <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="اختر اليوم" /></SelectTrigger>
+                         <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="..." /></SelectTrigger>
                          <SelectContent>{DAYS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
                       </Select>
                    </div>
                    <div className="space-y-2">
-                      <Label className="text-xs font-black">طريقة العمل</Label>
+                      <Label className="text-xs font-black">{t('halfDayMode')}</Label>
                       <Select 
                         value={settings?.halfDay.mode} 
                         onValueChange={val => setSettings({...settings!, halfDay: { ...settings!.halfDay, mode: val as any }})}
                       >
                          <SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger>
                          <SelectContent>
-                            <SelectItem value="morning_only">فترة صباحية فقط (إلغاء المساء)</SelectItem>
-                            <SelectItem value="custom_end_time">وقت إغلاق مخصص</SelectItem>
+                            <SelectItem value="morning_only">{t('morningOnly')}</SelectItem>
+                            <SelectItem value="custom_end_time">{t('customEndTime')}</SelectItem>
                          </SelectContent>
                       </Select>
                    </div>
                    {settings?.halfDay.mode === 'custom_end_time' && (
                      <div className="space-y-2 animate-in slide-in-from-top-2">
-                        <Label className="text-xs font-black">وقت الإغلاق النهائي</Label>
+                        <Label className="text-xs font-black">{t('endTime')}</Label>
                         <Input type="time" value={settings?.halfDay.endTime} onChange={e => setSettings({...settings!, halfDay: { ...settings!.halfDay, endTime: e.target.value }})} className="h-12 rounded-xl border-2" />
                      </div>
                    )}
@@ -271,8 +270,8 @@ export function WorkHoursManager() {
                 <div className="flex items-center gap-3">
                    <div className="p-3 bg-white/10 rounded-2xl shadow-sm text-indigo-200"><MoonStar className="h-6 w-6" /></div>
                    <div>
-                      <CardTitle className="text-xl font-black">جدول شهر رمضان المبارك</CardTitle>
-                      <CardDescription className="font-bold text-indigo-200/60">تفعيل مواعيد استثنائية خلال الشهر الفضيل.</CardDescription>
+                      <CardTitle className="text-xl font-black">{t('ramadanSchedule')}</CardTitle>
+                      <CardDescription className="font-bold text-indigo-200/60">{lang === 'ar' ? 'تفعيل مواعيد استثنائية خلال الشهر الفضيل.' : 'Activate special working hours during the holy month.'}</CardDescription>
                    </div>
                 </div>
                 <Switch 
@@ -286,34 +285,34 @@ export function WorkHoursManager() {
              <CardContent className="p-8 space-y-8 text-start animate-in fade-in zoom-in-95">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                    <div className="space-y-2">
-                      <Label className="text-xs font-black opacity-70">بداية الفترة</Label>
+                      <Label className="text-xs font-black opacity-70">{t('startDate')}</Label>
                       <Input type="date" value={settings.ramadan.startDate} onChange={e => setSettings({...settings, ramadan: { ...settings.ramadan, startDate: e.target.value }})} className="h-12 rounded-xl bg-white/10 border-white/10 text-white" />
                    </div>
                    <div className="space-y-2">
-                      <Label className="text-xs font-black opacity-70">نهاية الفترة</Label>
+                      <Label className="text-xs font-black opacity-70">{t('endDate')}</Label>
                       <Input type="date" value={settings.ramadan.endDate} onChange={e => setSettings({...settings, ramadan: { ...settings.ramadan, endDate: e.target.value }})} className="h-12 rounded-xl bg-white/10 border-white/10 text-white" />
                    </div>
                    <div className="space-y-2">
-                      <Label className="text-xs font-black opacity-70">بداية الدوام</Label>
+                      <Label className="text-xs font-black opacity-70">{t('startTime')}</Label>
                       <Input type="time" value={settings.ramadan.startTime} onChange={e => setSettings({...settings, ramadan: { ...settings.ramadan, startTime: e.target.value }})} className="h-12 rounded-xl bg-white/10 border-white/10 text-white" />
                    </div>
                    <div className="space-y-2">
-                      <Label className="text-xs font-black opacity-70">نهاية الدوام</Label>
+                      <Label className="text-xs font-black opacity-70">{t('endTime')}</Label>
                       <Input type="time" value={settings.ramadan.endTime} onChange={e => setSettings({...settings, ramadan: { ...settings.ramadan, endTime: e.target.value }})} className="h-12 rounded-xl bg-white/10 border-white/10 text-white" />
                    </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-white/10">
                    <div className="space-y-2">
-                      <Label className="text-xs font-black opacity-70">مدة الموعد</Label>
+                      <Label className="text-xs font-black opacity-70">{t('slotDuration')}</Label>
                       <Input type="number" value={settings.ramadan.slotDurationMinutes} onChange={e => setSettings({...settings, ramadan: { ...settings.ramadan, slotDurationMinutes: Number(e.target.value) }})} className="h-12 rounded-xl bg-white/10 border-white/10 text-white" />
                    </div>
                    <div className="space-y-2">
-                      <Label className="text-xs font-black opacity-70">الفاصل/Buffer</Label>
+                      <Label className="text-xs font-black opacity-70">{t('bufferTime')}</Label>
                       <Input type="number" value={settings.ramadan.bufferMinutes} onChange={e => setSettings({...settings, ramadan: { ...settings.ramadan, bufferMinutes: Number(e.target.value) }})} className="h-12 rounded-xl bg-white/10 border-white/10 text-white" />
                    </div>
                    <div className="flex items-center gap-3 md:pt-6">
                       <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                      <p className="text-[10px] font-bold opacity-60">مواعيد رمضان تلغي كافة الجداول العادية خلال الفترة المحددة.</p>
+                      <p className="text-[10px] font-bold opacity-60">{lang === 'ar' ? 'مواعيد رمضان تلغي كافة الجداول العادية خلال الفترة المحددة.' : 'Ramadan hours override all regular schedules during this period.'}</p>
                    </div>
                 </div>
              </CardContent>
