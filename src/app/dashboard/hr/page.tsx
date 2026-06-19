@@ -9,7 +9,7 @@ import {
   UserCircle, FileText, ShieldAlert, Sparkles, 
   UploadCloud, Loader2, Users, Search, 
   UserCog, ShieldCheck, Mail, Calendar,
-  ArrowRight, MoreHorizontal
+  ArrowRight, MoreHorizontal, CalendarDays
 } from "lucide-react";
 import { analyzeEmployeeDoc } from "@/ai/flows/analyzeEmployeeDoc";
 import { toast } from "@/hooks/use-toast";
@@ -24,6 +24,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Role } from '@/types/roles';
+import { LeavesManager } from './leaves-manager';
 
 export default function HRPage() {
   const { t, lang, dir } = useLanguage();
@@ -72,7 +73,6 @@ export default function HRPage() {
         updatedAt: serverTimestamp()
       });
 
-      // نحدث المسار العالمي أيضاً لضمان عمل القواعد الأمنية بشكل صحيح
       await updateDoc(globalUserRef, {
         roleId: roleObj.id,
         roleCode: roleObj.code,
@@ -117,14 +117,19 @@ export default function HRPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full md:w-[400px] grid-cols-2 h-14 bg-muted/30 rounded-2xl p-1 mb-8 shadow-inner">
-          <TabsTrigger value="team" className="rounded-xl font-black gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md transition-all">
-            <Users className="h-4 w-4" /> {t('team')}
-          </TabsTrigger>
-          <TabsTrigger value="compliance" className="rounded-xl font-black gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md transition-all">
-            <ShieldAlert className="h-4 w-4" /> {t('operationalCompliance')}
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto pb-2">
+          <TabsList className="flex w-fit md:grid md:w-[600px] grid-cols-3 h-14 bg-muted/30 rounded-2xl p-1 mb-8 shadow-inner gap-1">
+            <TabsTrigger value="team" className="rounded-xl font-black gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md transition-all px-6">
+              <Users className="h-4 w-4" /> {t('team')}
+            </TabsTrigger>
+            <TabsTrigger value="leaves" className="rounded-xl font-black gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md transition-all px-6">
+              <CalendarDays className="h-4 w-4" /> {isRtl ? 'الإجازات' : 'Leaves'}
+            </TabsTrigger>
+            <TabsTrigger value="compliance" className="rounded-xl font-black gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md transition-all px-6">
+              <ShieldAlert className="h-4 w-4" /> {t('operationalCompliance')}
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Tab 1: Team Management */}
         <TabsContent value="team" className="space-y-6">
@@ -176,7 +181,7 @@ export default function HRPage() {
                          <TableCell className="text-start">
                             <Badge className={cn(
                               "font-black px-4 py-1.5 rounded-lg border-0",
-                              emp.roleCode === 'admin' ? "bg-primary text-white" : "bg-blue-50 text-blue-600"
+                              emp.roleCode === 'Admin' || emp.roleCode === 'admin' ? "bg-primary text-white" : "bg-blue-50 text-blue-600"
                             )}>
                                <ShieldCheck className="h-3 w-3 me-2" />
                                {emp.roleCode || 'User'}
@@ -210,7 +215,12 @@ export default function HRPage() {
           </Card>
         </TabsContent>
 
-        {/* Tab 2: Compliance & Analysis */}
+        {/* Tab 2: Leaves Management */}
+        <TabsContent value="leaves">
+          <LeavesManager />
+        </TabsContent>
+
+        {/* Tab 3: Compliance & Analysis */}
         <TabsContent value="compliance">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white lg:col-span-1 overflow-hidden ring-1 ring-black/5">

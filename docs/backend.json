@@ -20,30 +20,33 @@
       "properties": {
         "displayName": { "type": "string" },
         "email": { "type": "string", "format": "email" },
-        "roleId": { "type": "string", "description": "Reference to Roles collection" },
+        "roleId": { "type": "string" },
         "roleCode": { "type": "string" },
         "departmentId": { "type": "string" },
         "jobTitleId": { "type": "string" },
         "joinedAt": { "type": "string", "format": "date-time" },
-        "isActive": { "type": "boolean" }
+        "isActive": { "type": "boolean" },
+        "leaveBalance": { "type": "number", "default": 30 }
       },
       "required": ["displayName", "email"]
     },
-    "Role": {
-      "title": "Access Role",
-      "description": "تعريف دور وظيفي مع قائمة صلاحياته.",
+    "LeaveRequest": {
+      "title": "Leave Request",
+      "description": "طلب إجازة مقدم من الموظف.",
       "type": "object",
       "properties": {
-        "code": { "type": "string" },
-        "name": { "type": "string" },
-        "description": { "type": "string" },
-        "permissions": { "type": "array", "items": { "type": "string" } },
-        "isSystemRole": { "type": "boolean" },
-        "isActive": { "type": "boolean" },
-        "order": { "type": "number" },
-        "companyId": { "type": "string" }
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "type": { "type": "string", "enum": ["annual", "sick", "emergency", "unpaid"] },
+        "startDate": { "type": "string", "format": "date" },
+        "endDate": { "type": "string", "format": "date" },
+        "days": { "type": "number" },
+        "reason": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "comment": { "type": "string" },
+        "approvedBy": { "type": "string" }
       },
-      "required": ["code", "name", "permissions"]
+      "required": ["userId", "type", "startDate", "endDate"]
     }
   },
   "auth": {
@@ -53,6 +56,7 @@
     "/global_users/{uid}": { "schema": "#/entities/GlobalUser", "description": "تخزين المسار الأساسي للمستخدم" },
     "/companies/{companyId}": { "schema": "#/entities/Company", "description": "بيانات الشركة" },
     "/companies/{companyId}/users/{uid}": { "schema": "#/entities/TenantUser", "description": "بيانات موظفي الشركة" },
-    "/companies/{companyId}/roles/{roleId}": { "schema": "#/entities/Role", "description": "أدوار وصلاحيات المنشأة" }
+    "/companies/{companyId}/roles/{roleId}": { "schema": "#/entities/Role", "description": "أدوار وصلاحيات المنشأة" },
+    "/companies/{companyId}/leaves/{leaveId}": { "schema": "#/entities/LeaveRequest", "description": "طلبات الإجازات" }
   }
 }

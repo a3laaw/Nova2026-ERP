@@ -8,12 +8,10 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // التحقق من وجود المستخدم في قاعدة البيانات العالمية
     function getGlobalUser() {
       return get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
     }
 
-    // التحقق مما إذا كان المستخدم مطوراً للنظام
     function isDeveloper() {
       return isAuthenticated() && (
         request.auth.token.email == 'admin@novaflow.com' ||
@@ -22,7 +20,6 @@ service cloud.firestore {
       );
     }
 
-    // التحقق من الانتماء للشركة (عزل البيانات)
     function belongsToCompany(companyId) {
       return isAuthenticated() && (
         isDeveloper() ||
@@ -31,70 +28,52 @@ service cloud.firestore {
       );
     }
 
-    // التحقق من دور المدير (Admin)
     function isAdmin(companyId) {
       return isAuthenticated() && (
         isDeveloper() ||
         (exists(/databases/$(database)/documents/global_users/$(request.auth.uid)) && 
          getGlobalUser().companyId == companyId && 
-         getGlobalUser().role == 'admin')
+         (getGlobalUser().role == 'admin' || getGlobalUser().roleCode == 'Admin'))
       );
     }
 
     // --- قواعد المجموعات (Collection Rules) ---
 
-    // 1. حسابات المستخدمين العالميين
     match /global_users/{uid} {
       allow read: if isAuthenticated() && (request.auth.uid == uid || isDeveloper());
       allow write: if isAuthenticated() && (request.auth.uid == uid || isDeveloper());
     }
     
-    // 2. هيكل الشركات والبيانات الموزعة (Multi-tenant)
     match /companies/{companyId} {
       allow read: if belongsToCompany(companyId);
       allow create: if isAuthenticated();
       allow update: if isAdmin(companyId);
 
-      // الأدوار والصلاحيات
       match /roles/{roleId} {
         allow read: if belongsToCompany(companyId);
         allow write: if isAdmin(companyId);
       }
 
-      // الموظفين
       match /users/{uid} {
         allow read: if belongsToCompany(companyId);
         allow create: if isAuthenticated() && request.auth.uid == uid;
         allow update, delete: if isAdmin(companyId);
       }
 
-      // المراجع (أقسام، محافظات، مسارات فنية)
-      match /departments/{allPaths=**} {
+      match /leaves/{leaveId} {
         allow read: if belongsToCompany(companyId);
-        allow write: if isAdmin(companyId);
+        allow create: if belongsToCompany(companyId);
+        allow update: if isAdmin(companyId) || (isAuthenticated() && resource.data.userId == request.auth.uid && resource.data.status == 'pending');
+        allow delete: if isAdmin(companyId);
       }
 
-      match /governorates/{allPaths=**} {
-        allow read: if belongsToCompany(companyId);
-        allow write: if isAdmin(companyId);
-      }
-
-      match /activityTypes/{allPaths=**} {
-        allow read: if belongsToCompany(companyId);
-        allow write: if isAdmin(companyId);
-      }
-
-      // العمليات التشغيلية
-      match /projects/{allPaths=**} {
-        allow read, write: if belongsToCompany(companyId);
-      }
-      
-      match /leads/{allPaths=**} {
-        allow read, write: if belongsToCompany(companyId);
-      }
+      match /departments/{allPaths=**} { allow read: if belongsToCompany(companyId); allow write: if isAdmin(companyId); }
+      match /governorates/{allPaths=**} { allow read: if belongsToCompany(companyId); allow write: if isAdmin(companyId); }
+      match /activityTypes/{allPaths=**} { allow read: if belongsToCompany(companyId); allow write: if isAdmin(companyId); }
+      match /projects/{allPaths=**} { allow read, write: if belongsToCompany(companyId); }
+      match /leads/{allPaths=**} { allow read, write: if belongsToCompany(companyId); }
     }
 
-    // 3. طلبات الانضمام
     match /company_requests/{requestId} {
       allow create: if isAuthenticated();
       allow read, write: if isDeveloper();
