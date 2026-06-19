@@ -243,7 +243,7 @@ const translations: Record<Language, Record<string, string>> = {
     morningStart: 'Morning Start',
     morningEnd: 'Morning End',
     eveningStart: 'Evening Start',
-    eveningEnd: 'Evening End',
+    eveningEnd: 'Morning End',
     slotDuration: 'Duration (min)',
     bufferTime: 'Buffer (min)',
     saveAllRules: 'Save Rules',
@@ -303,9 +303,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <LanguageContext.Provider value={{ lang, dir: lang === 'ar' ? 'rtl' : 'ltr', setLang, t }}>
-      <div dir={lang === 'ar' ? 'rtl' : 'ltr'} className="min-h-screen">
-        {children}
-      </div>
+      {children}
     </LanguageContext.Provider>
   );
 }

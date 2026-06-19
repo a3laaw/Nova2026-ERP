@@ -8,8 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   UserCircle, FileText, ShieldAlert, Sparkles, 
   UploadCloud, Loader2, Users, Search, 
-  UserCog, ShieldCheck, Mail, Calendar,
-  MoreHorizontal
+  UserCog, ShieldCheck, Mail, Calendar
 } from "lucide-react";
 import { analyzeEmployeeDoc } from "@/ai/flows/analyzeEmployeeDoc";
 import { toast } from "@/hooks/use-toast";
@@ -131,7 +130,6 @@ export default function HRPage() {
           </TabsList>
         </div>
 
-        {/* Tab 1: Team Management */}
         <TabsContent value="team" className="space-y-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
             <div className="relative w-full max-w-md">
@@ -218,12 +216,10 @@ export default function HRPage() {
           </Card>
         </TabsContent>
 
-        {/* Tab 2: Leaves Management */}
         <TabsContent value="leaves">
           <LeavesManager />
         </TabsContent>
 
-        {/* Tab 3: Compliance & Analysis */}
         <TabsContent value="compliance">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white lg:col-span-1 overflow-hidden ring-1 ring-black/5">
