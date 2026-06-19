@@ -8,8 +8,15 @@ import { useAuthContext } from './auth-context';
 interface CompanyData {
   id: string;
   name: string;
-  logo?: string;
-  settings?: any;
+  logoUrl?: string;
+  headerImageUrl?: string;
+  footerImageUrl?: string;
+  headerText?: string;
+  footerText?: string;
+  commercialRegistry?: string;
+  address?: string;
+  status: string;
+  [key: string]: any;
 }
 
 interface CompanyContextType {
