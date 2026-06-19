@@ -1,38 +1,59 @@
 'use client';
 
-import React, { useMemo } from 'react';
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import React, { useState, useEffect } from 'react';
+import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+import { getAuth, Auth } from 'firebase/auth';
+import { getFirestore, Firestore } from 'firebase/firestore';
 import { firebaseConfig } from './config';
 import { FirebaseProvider } from './provider';
+import { Loader2 } from 'lucide-react';
+
+// ضمان وجود نسخة واحدة فقط على مستوى المتصفح
+let initializedApp: FirebaseApp | undefined;
+let initializedAuth: Auth | undefined;
+let initializedDb: Firestore | undefined;
 
 export function FirebaseClientProvider({ children }: { children: React.ReactNode }) {
-  const services = useMemo(() => {
+  const [isReady, setIsReady] = useState(false);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
     // التحقق مما إذا كانت الإعدادات قد تم تعبئتها بالفعل
     const isConfigMissing = !firebaseConfig.apiKey || 
                            firebaseConfig.apiKey.includes("YOUR_") || 
                            firebaseConfig.apiKey === "";
 
     if (isConfigMissing) {
-      return { app: null, auth: null, db: null };
+      setError(true);
+      setIsReady(true);
+      return;
     }
 
     try {
-      const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-      const auth = getAuth(app);
-      const db = getFirestore(app);
-      return { app, auth, db };
-    } catch (error) {
-      console.error("Firebase initialization error:", error);
-      return { app: null, auth: null, db: null };
+      if (!initializedApp) {
+        initializedApp = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+        initializedAuth = getAuth(initializedApp);
+        initializedDb = getFirestore(initializedApp);
+      }
+      setIsReady(true);
+    } catch (err) {
+      console.error("Firebase initialization error:", err);
+      setError(true);
+      setIsReady(true);
     }
   }, []);
 
-  const { app, auth, db } = services;
+  // واجهة الانتظار حتى استقرار النسخة في المتصفح
+  if (!isReady) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   // واجهة إرشادية في حال عدم اكتمال الإعدادات
-  if (!app || !auth || !db) {
+  if (error || !initializedApp || !initializedAuth || !initializedDb) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-6 text-center" dir="rtl">
         <div className="max-w-md space-y-6 bg-white p-10 rounded-3xl shadow-2xl border-2 border-primary/10">
@@ -53,7 +74,7 @@ export function FirebaseClientProvider({ children }: { children: React.ReactNode
   }
 
   return (
-    <FirebaseProvider firebaseApp={app} auth={auth} firestore={db}>
+    <FirebaseProvider firebaseApp={initializedApp} auth={initializedAuth} firestore={initializedDb}>
       {children}
     </FirebaseProvider>
   );
