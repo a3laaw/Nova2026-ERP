@@ -13,7 +13,6 @@ import {
   ShieldCheck,
   Send,
   Clock,
-  ArrowRight,
   ChevronLeft,
   ChevronRight,
   AlertTriangle
@@ -64,7 +63,7 @@ export default function NewLeaveRequestPage() {
 
   const currentBalance = 24; 
 
-  // حساب أيام العمل الفعلية عند تغيير التواريخ
+  // حساب أيام العمل الفعلية
   useEffect(() => {
     async function calculateMetrics() {
       if (form.startDate && form.endDate && db && companyId) {
@@ -99,7 +98,7 @@ export default function NewLeaveRequestPage() {
     setForm(prev => ({
       ...prev,
       startDate: range?.from ? format(range.from, 'yyyy-MM-dd') : '',
-      endDate: range?.to ? format(range.to, 'yyyy-MM-dd') : ''
+      endDate: range?.to ? format(range.to, 'yyyy-MM-dd') : (range?.from ? format(range.from, 'yyyy-MM-dd') : '')
     }));
   };
 
@@ -142,7 +141,6 @@ export default function NewLeaveRequestPage() {
   return (
     <div className="space-y-10 max-w-7xl mx-auto pb-20 animate-in fade-in duration-700" dir={dir}>
       
-      {/* Header & Balance */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b pb-8 border-slate-200">
         <div className="text-start space-y-2">
            <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-primary/5 px-4 py-1.5 rounded-full w-fit">
@@ -160,7 +158,7 @@ export default function NewLeaveRequestPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-        {/* Left Column: Interactive Calendar */}
+        {/* Left Column: Fixed Grid Calendar */}
         <div className="lg:col-span-5 space-y-8">
            <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
               <CardHeader className="bg-slate-50/50 border-b p-8 flex justify-between items-center">
@@ -178,7 +176,7 @@ export default function NewLeaveRequestPage() {
                     numberOfMonths={1}
                     classNames={{
                         months: "flex flex-col",
-                        month: "space-y-8",
+                        month: "space-y-6",
                         caption: "flex justify-center pt-2 relative items-center mb-8",
                         caption_label: "text-xl font-black text-slate-900",
                         nav: "flex items-center absolute inset-x-0 top-0 justify-between px-2 h-14",
@@ -187,17 +185,17 @@ export default function NewLeaveRequestPage() {
                         ),
                         nav_button_previous: "absolute left-0",
                         nav_button_next: "absolute right-0",
-                        table: "w-full border-collapse space-y-1",
-                        head_row: "flex justify-between mb-4",
-                        head_cell: "text-slate-400 w-12 font-black text-[10px] uppercase text-center",
-                        row: "flex w-full mt-3 justify-between",
+                        table: "w-full border-collapse",
+                        head_row: "grid grid-cols-7 mb-4", // إجبار الهيدر على Grid
+                        head_cell: "text-slate-400 font-black text-[10px] uppercase text-center w-full",
+                        row: "grid grid-cols-7 mt-3 w-full", // إجبار الصفوف على Grid لمنع التراكم العمودي
                         cell: cn(
-                          "relative p-0 text-center text-sm focus-within:relative focus-within:z-20 h-12 w-12 transition-all",
-                          "[&:has([aria-selected])]:bg-primary/10 first:[&:has([aria-selected])]:rounded-s-3xl last:[&:has([aria-selected])]:rounded-e-3xl"
+                          "relative p-0 text-center text-sm h-12 w-full flex items-center justify-center transition-all",
+                          "[&:has([aria-selected])]:bg-primary/10"
                         ),
-                        day: cn("h-12 w-12 p-0 font-bold rounded-3xl hover:bg-slate-100 transition-all cursor-pointer flex items-center justify-center"),
-                        day_range_start: "day-range-start !rounded-3xl bg-primary !text-white hover:bg-primary hover:text-white shadow-xl shadow-primary/30 z-30 font-black",
-                        day_range_end: "day-range-end !rounded-3xl bg-primary !text-white hover:bg-primary hover:text-white shadow-xl shadow-primary/30 z-30 font-black",
+                        day: cn("h-10 w-10 p-0 font-bold rounded-2xl hover:bg-slate-100 transition-all cursor-pointer flex items-center justify-center"),
+                        day_range_start: "!rounded-2xl bg-primary !text-white shadow-xl shadow-primary/30 z-30 font-black",
+                        day_range_end: "!rounded-2xl bg-primary !text-white shadow-xl shadow-primary/30 z-30 font-black",
                         day_range_middle: "aria-selected:bg-primary/10 aria-selected:!text-primary !rounded-none z-10",
                         day_selected: "bg-primary text-white focus:bg-primary focus:text-white",
                         day_today: "bg-slate-100 text-primary border-2 border-primary/20",
@@ -221,7 +219,6 @@ export default function NewLeaveRequestPage() {
               </div>
            </Card>
 
-           {/* Remaining Balance Tracker */}
            <Card className="border-0 shadow-xl rounded-[3rem] bg-slate-900 text-white overflow-hidden">
               <CardContent className="p-8 space-y-6 text-start">
                  <div className="flex items-center gap-3 border-b border-white/10 pb-4">
@@ -239,7 +236,7 @@ export default function NewLeaveRequestPage() {
            </Card>
         </div>
 
-        {/* Right Column: Main Form */}
+        {/* Right Column: Form */}
         <div className="lg:col-span-7 space-y-8 animate-in slide-in-from-bottom-6 duration-500">
            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
               <div className="h-2 bg-primary w-full" />
