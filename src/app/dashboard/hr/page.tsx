@@ -151,10 +151,10 @@ export default function HRPage() {
                <Table dir={dir}>
                  <TableHeader className="bg-muted/30">
                    <TableRow className="hover:bg-transparent">
-                     <TableHead className="text-start font-black py-6 ps-8">{t('employeeName')}</TableHead>
-                     <TableHead className="text-start font-black">{t('assignRole')}</TableHead>
-                     <TableHead className="text-start font-black">{t('joinDate')}</TableHead>
-                     <TableHead className="text-center font-black pe-8"></TableHead>
+                     <TableHead className="py-6 ps-8">{t('employeeName')}</TableHead>
+                     <TableHead>{t('assignRole')}</TableHead>
+                     <TableHead>{t('joinDate')}</TableHead>
+                     <TableHead className="pe-8"></TableHead>
                    </TableRow>
                  </TableHeader>
                  <TableBody>
@@ -165,7 +165,7 @@ export default function HRPage() {
                    ) : (
                      filteredEmployees.map((emp) => (
                        <TableRow key={emp.id} className="hover:bg-primary/5 transition-colors group">
-                         <TableCell className="py-6 ps-8 text-start">
+                         <TableCell className="py-6 ps-8">
                             <div className="flex items-center gap-4">
                                <div className="h-12 w-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors font-black text-lg uppercase">
                                   {emp.displayName?.charAt(0) || emp.email?.charAt(0)}
@@ -179,7 +179,7 @@ export default function HRPage() {
                                </div>
                             </div>
                          </TableCell>
-                         <TableCell className="text-start">
+                         <TableCell>
                             <Badge className={cn(
                               "font-black px-4 py-1.5 rounded-lg border-0",
                               emp.roleCode === 'Admin' || emp.roleCode === 'admin' ? "bg-primary text-white" : "bg-blue-50 text-blue-600"
@@ -188,13 +188,13 @@ export default function HRPage() {
                                {emp.roleCode || 'User'}
                             </Badge>
                          </TableCell>
-                         <TableCell className="text-start">
+                         <TableCell>
                             <div className="text-xs font-bold text-muted-foreground flex items-center gap-1">
                                <Calendar className="h-3 w-3" />
                                {emp.joinedAt?.toDate().toLocaleDateString() || '---'}
                             </div>
                          </TableCell>
-                         <TableCell className="text-center pe-8">
+                         <TableCell className="pe-8 text-end">
                             <Button 
                               variant="ghost" 
                               size="icon" 
