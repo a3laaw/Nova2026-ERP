@@ -19,7 +19,8 @@ import {
   UserCog,
   ChevronRight,
   Clock,
-  ShieldCheck
+  ShieldCheck,
+  Scale
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
@@ -58,7 +59,15 @@ export function DashboardSidebar() {
     { title: t('crm'), icon: Users, url: "/dashboard/crm", module: 'crm' },
     { title: t('projects'), icon: HardHat, url: "/dashboard/projects", module: 'projects' },
     { title: t('accounting'), icon: Calculator, url: "/dashboard/accounting", module: 'accounting' },
-    { title: t('hr'), icon: UserCircle, url: "/dashboard/hr", module: 'hr' },
+    { 
+      title: t('hr'), 
+      icon: UserCircle, 
+      url: "/dashboard/hr", 
+      module: 'hr',
+      subItems: [
+        { title: t('gratuity'), url: "/dashboard/hr/gratuity", icon: Scale }
+      ]
+    },
     { title: t('procurement'), icon: ShoppingCart, url: "/dashboard/procurement", module: 'procurement' },
     { title: t('inventory'), icon: Warehouse, url: "/dashboard/inventory", module: 'inventory' },
     { title: t('reports'), icon: BarChart3, url: "/dashboard/reports", module: 'reports' },
@@ -74,8 +83,6 @@ export function DashboardSidebar() {
   ].filter(item => {
     if (item.permission === 'public') return true;
     if (item.permission === 'admin') return isAdmin;
-    const { check } = usePermissions(); // لمحاكاة المنطق داخل الفلتر
-    // نستخدم الـ canAccess الممررة من الـ hook بالأعلى
     if (item.permission.includes(':view')) {
         const mod = item.permission.split(':')[0];
         return canAccess(mod);
@@ -106,25 +113,64 @@ export function DashboardSidebar() {
             <SidebarMenu className="px-4 space-y-1">
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={pathname === item.url}
-                    tooltip={item.title}
-                    className={cn(
-                      "transition-all duration-200 rounded-xl group py-6 px-4",
-                      pathname === item.url 
-                        ? "bg-primary/10 text-primary font-black shadow-sm" 
-                        : "text-slate-600 hover:bg-slate-50 hover:text-black"
-                    )}
-                  >
-                    <Link href={item.url} className={cn("flex items-center gap-4")}>
-                      <item.icon className={cn(
-                        "h-5 w-5 transition-colors", 
-                        pathname === item.url ? "text-primary" : "text-slate-400 group-hover:text-black"
-                      )} />
-                      <span className="flex-1 text-start">{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
+                  {item.subItems ? (
+                    <Collapsible asChild className="group/collapsible">
+                      <div>
+                        <CollapsibleTrigger asChild>
+                          <SidebarMenuButton
+                            isActive={pathname.startsWith(item.url)}
+                            className={cn(
+                              "transition-all duration-200 rounded-xl py-6 px-4",
+                              pathname.startsWith(item.url) ? "bg-primary/10 text-primary font-black" : "text-slate-600 hover:bg-slate-50"
+                            )}
+                          >
+                            <item.icon className="h-5 w-5" />
+                            <span className="flex-1 text-start">{item.title}</span>
+                            <ChevronRight className={cn("ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-90", lang === 'ar' && "rotate-180")} />
+                          </SidebarMenuButton>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <SidebarMenuSub className="ms-6 mt-1 border-s-2 border-slate-100">
+                            <SidebarMenuSubItem>
+                              <SidebarMenuSubButton asChild isActive={pathname === item.url}>
+                                <Link href={item.url} className="text-xs font-bold">{t('overview') || 'Overview'}</Link>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                            {item.subItems.map(sub => (
+                              <SidebarMenuSubItem key={sub.url}>
+                                <SidebarMenuSubButton asChild isActive={pathname === sub.url}>
+                                  <Link href={sub.url} className="text-xs flex items-center gap-2">
+                                    <sub.icon className="h-3 w-3" />
+                                    <span>{sub.title}</span>
+                                  </Link>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            ))}
+                          </SidebarMenuSub>
+                        </CollapsibleContent>
+                      </div>
+                    </Collapsible>
+                  ) : (
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname === item.url}
+                      tooltip={item.title}
+                      className={cn(
+                        "transition-all duration-200 rounded-xl group py-6 px-4",
+                        pathname === item.url 
+                          ? "bg-primary/10 text-primary font-black shadow-sm" 
+                          : "text-slate-600 hover:bg-slate-50 hover:text-black"
+                      )}
+                    >
+                      <Link href={item.url} className={cn("flex items-center gap-4")}>
+                        <item.icon className={cn(
+                          "h-5 w-5 transition-colors", 
+                          pathname === item.url ? "text-primary" : "text-slate-400 group-hover:text-black"
+                        )} />
+                        <span className="flex-1 text-start">{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  )}
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
@@ -195,7 +241,7 @@ export function DashboardSidebar() {
       
       <SidebarFooter className="border-t p-6 text-center">
         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-          NovaFlow v1.6.0
+          NovaFlow v1.8.0
         </p>
       </SidebarFooter>
     </Sidebar>
