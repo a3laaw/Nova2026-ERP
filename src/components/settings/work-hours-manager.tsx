@@ -15,7 +15,7 @@ import {
   Loader2, Save, Sun, HardHat,
   Coffee, Utensils, Sparkles, Trash2,
   CalendarCheck, Plus, Flag,
-  Info
+  Info, Edit3, X
 } from "lucide-react";
 import { useFirestore } from '@/firebase';
 import { useAuthContext } from '@/context/auth-context';
@@ -28,7 +28,6 @@ import { format } from 'date-fns';
 
 const DAYS: DayOfWeek[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-// قائمة العطلات الرسمية في الكويت لعام 2025 (تواريخ ثابتة وتقديرية للأعياد)
 const SUGGESTED_KUWAIT_HOLIDAYS: PublicHoliday[] = [
   { date: '2025-01-01', name: 'رأس السنة الميلادية', nameEn: 'New Year\'s Day' },
   { date: '2025-01-27', name: 'ذكرى الإسراء والمعراج', nameEn: 'Isra and Mi\'raj' },
@@ -53,8 +52,9 @@ export function WorkHoursManager() {
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<WorkHoursSettings | null>(null);
 
-  // حالة لإضافة عطلة يدوية
+  // حالة العطلة اليدوية وتتبع التعديل
   const [manualHoliday, setManualHoliday] = useState({ name: '', date: format(new Date(), 'yyyy-MM-dd') });
+  const [editingDate, setEditingDate] = useState<string | null>(null);
 
   const service = useMemo(() => 
     db && globalUser?.companyId ? new WorkHoursService(db, globalUser.companyId) : null, 
@@ -92,18 +92,49 @@ export function WorkHoursManager() {
     }
   };
 
-  const addManualHoliday = () => {
+  const addOrUpdateHoliday = () => {
     if (!manualHoliday.name || !manualHoliday.date) return;
-    const exists = settings?.publicHolidays.some(h => h.date === manualHoliday.date);
-    if (exists) {
-      toast({ variant: "destructive", title: lang === 'ar' ? "التاريخ موجود مسبقاً" : "Date already exists" });
-      return;
-    }
-    setSettings(prev => ({
-      ...prev!,
-      publicHolidays: [...(prev?.publicHolidays || []), { ...manualHoliday, nameEn: manualHoliday.name }]
-    }));
+    
+    setSettings(prev => {
+      if (!prev) return prev;
+      
+      let updatedHolidays = [...prev.publicHolidays];
+      
+      if (editingDate) {
+        // تحديث عطلة موجودة
+        updatedHolidays = updatedHolidays.map(h => 
+          h.date === editingDate ? { ...manualHoliday, nameEn: manualHoliday.name } : h
+        );
+      } else {
+        // إضافة عطلة جديدة (مع التحقق من التكرار)
+        const exists = updatedHolidays.some(h => h.date === manualHoliday.date);
+        if (exists) {
+          toast({ variant: "destructive", title: lang === 'ar' ? "التاريخ موجود مسبقاً" : "Date already exists" });
+          return prev;
+        }
+        updatedHolidays.push({ ...manualHoliday, nameEn: manualHoliday.name });
+      }
+
+      return {
+        ...prev,
+        publicHolidays: updatedHolidays.sort((a, b) => a.date.localeCompare(b.date))
+      };
+    });
+
+    // إعادة تعيين النموذج
     setManualHoliday({ name: '', date: format(new Date(), 'yyyy-MM-dd') });
+    setEditingDate(null);
+    toast({ title: t('saved') });
+  };
+
+  const editHoliday = (holiday: PublicHoliday) => {
+    setManualHoliday({ name: holiday.name, date: holiday.date });
+    setEditingDate(holiday.date);
+  };
+
+  const cancelEdit = () => {
+    setManualHoliday({ name: '', date: format(new Date(), 'yyyy-MM-dd') });
+    setEditingDate(null);
   };
 
   const addSuggestedHolidays = () => {
@@ -128,6 +159,7 @@ export function WorkHoursManager() {
       ...settings,
       publicHolidays: settings.publicHolidays.filter(h => h.date !== date)
     });
+    if (editingDate === date) cancelEdit();
   };
 
   const updateSchedule = (scope: 'general' | 'architectural', field: keyof DailySchedule, value: any) => {
@@ -308,23 +340,37 @@ export function WorkHoursManager() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                   {/* فورم الإضافة اليدوية */}
-                   <div className="p-6 rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50/30 space-y-4">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{lang === 'ar' ? 'إضافة عطلة جديدة' : 'Add New Holiday'}</p>
+                   {/* فورم الإضافة / التعديل اليدوي */}
+                   <div className={cn(
+                     "p-6 rounded-3xl border-2 border-dashed transition-all space-y-4",
+                     editingDate ? "bg-primary/5 border-primary/30" : "bg-slate-50/30 border-slate-200"
+                   )}>
+                      <div className="flex justify-between items-center">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                          {editingDate ? (lang === 'ar' ? 'تعديل العطلة' : 'Edit Holiday') : (lang === 'ar' ? 'إضافة عطلة جديدة' : 'Add New Holiday')}
+                        </p>
+                        {editingDate && (
+                          <Button variant="ghost" size="icon" onClick={cancelEdit} className="h-6 w-6 rounded-full hover:bg-white">
+                            <X className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
                       <Input 
                         placeholder={lang === 'ar' ? 'اسم العطلة' : 'Holiday Name'} 
                         value={manualHoliday.name} 
                         onChange={e => setManualHoliday({...manualHoliday, name: e.target.value})}
-                        className="h-11 rounded-xl"
+                        className="h-11 rounded-xl bg-white"
                       />
                       <Input 
                         type="date" 
                         value={manualHoliday.date} 
                         onChange={e => setManualHoliday({...manualHoliday, date: e.target.value})}
-                        className="h-11 rounded-xl"
+                        className="h-11 rounded-xl bg-white"
+                        disabled={!!editingDate} // لا يسمح بتغيير التاريخ عند التعديل لضمان المزامنة
                       />
-                      <Button onClick={addManualHoliday} className="w-full h-12 rounded-xl gap-2 font-black shadow-md">
-                        <Plus className="h-5 w-5" /> {lang === 'ar' ? 'إضافة للجدول' : 'Add to Schedule'}
+                      <Button onClick={addOrUpdateHoliday} className="w-full h-12 rounded-xl gap-2 font-black shadow-md">
+                        {editingDate ? <Save className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
+                        {editingDate ? (lang === 'ar' ? 'تحديث البيانات' : 'Update Holiday') : (lang === 'ar' ? 'إضافة للجدول' : 'Add to Schedule')}
                       </Button>
                    </div>
 
@@ -337,19 +383,32 @@ export function WorkHoursManager() {
                       </div>
                     ) : (
                       settings?.publicHolidays?.sort((a,b) => a.date.localeCompare(b.date)).map((ph) => (
-                        <div key={ph.date} className="p-4 rounded-2xl bg-white border-2 border-slate-100 flex items-center justify-between group hover:border-emerald-200 transition-all shadow-sm">
+                        <div key={ph.date} className={cn(
+                          "p-4 rounded-2xl border-2 flex items-center justify-between group transition-all shadow-sm",
+                          editingDate === ph.date ? "bg-primary/5 border-primary/30" : "bg-white border-slate-100 hover:border-emerald-200"
+                        )}>
                           <div className="text-start">
                             <p className="font-black text-sm text-slate-800">{lang === 'ar' ? ph.name : ph.nameEn}</p>
                             <p className="text-[10px] font-mono font-bold text-emerald-600 mt-0.5">{ph.date}</p>
                           </div>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => removePublicHoliday(ph.date)}
-                            className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/5 rounded-lg"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => editHoliday(ph)}
+                              className="h-8 w-8 text-blue-600 hover:bg-blue-50 rounded-lg"
+                            >
+                              <Edit3 className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => removePublicHoliday(ph.date)}
+                              className="h-8 w-8 text-destructive hover:bg-destructive/5 rounded-lg"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       ))
                     )}
