@@ -18,6 +18,7 @@ import { Role } from '@/types/roles';
 import { RoleService } from '@/services/role-service';
 import { AVAILABLE_PERMISSIONS } from './permissions-list';
 import { cn } from '@/lib/utils';
+import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface Props {
   role: Role | null;
@@ -62,15 +63,15 @@ export function RoleForm({ role, onClose, roleService }: Props) {
   return (
     <div className="flex flex-col h-[85vh] bg-white" dir={dir}>
       <div className="p-8 border-b bg-primary/5 flex justify-between items-center shrink-0">
-        <div className="text-start">
-          <h2 className="text-2xl font-black font-headline flex items-center gap-3">
+        <DialogHeader className="text-start">
+          <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3">
              <ShieldCheck className="h-7 w-7 text-primary" />
              {role ? (isRtl ? 'تعديل دور' : 'Edit Role') : (isRtl ? 'إضافة دور جديد' : 'New Role')}
-          </h2>
+          </DialogTitle>
           <p className="text-xs font-bold text-muted-foreground mt-1 opacity-70">
             {isRtl ? 'تحديد نطاق الوصول وصلاحيات العمل' : 'Define access scope and work permissions'}
           </p>
-        </div>
+        </DialogHeader>
         <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-white">
           <X className="h-6 w-6" />
         </Button>

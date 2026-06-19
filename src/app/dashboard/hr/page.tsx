@@ -292,10 +292,10 @@ export default function HRPage() {
       {/* Role Assignment Dialog */}
       <Dialog open={!!editingUser} onOpenChange={() => setEditingUser(null)}>
         <DialogContent className="rounded-[2.5rem] max-w-md p-0 overflow-hidden border-0 shadow-2xl">
-          <div className="bg-primary/5 p-8 border-b text-start">
+          <DialogHeader className="bg-primary/5 p-8 border-b text-start">
              <DialogTitle className="font-black font-headline text-2xl text-slate-800">{t('changeRole')}</DialogTitle>
              <p className="text-xs font-bold text-muted-foreground mt-1">{isRtl ? 'تعيين دور وظيفي من القائمة المرجعية للموظف:' : 'Assign a role from reference hub to:'} <span className="text-primary">{editingUser?.displayName}</span></p>
-          </div>
+          </DialogHeader>
           <div className="p-8 space-y-6">
              <div className="space-y-3">
                 <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest block text-start">{isRtl ? 'اختر الدور الجديد' : 'Select New Role'}</span>
