@@ -65,35 +65,39 @@ service cloud.firestore {
         match /auditLogs/{logId} {
           allow read: if belongsToCompany(companyId);
           allow create: if isAdmin(companyId);
-          allow update, delete: if false; // حماية السجل من التعديل أو الحذف (Immutable)
+          allow update, delete: if false; 
         }
+      }
+
+      // المشتريات والتوريد
+      match /suppliers/{supId} {
+        allow read: if belongsToCompany(companyId);
+        allow write: if isAdmin(companyId);
+      }
+      match /purchaseOrders/{poId} {
+        allow read: if belongsToCompany(companyId);
+        allow write: if isAdmin(companyId);
       }
 
       // طلبات الإجازات (Leave Requests)
       match /leaveRequests/{leaveId} {
-        allow read: if belongsToCompany(companyId) && (isAdmin(companyId) || isOwner(resource.data.userId));
-        allow create: if belongsToCompany(companyId) && (isAdmin(companyId) || isOwner(request.resource.data.userId));
-        allow update: if belongsToCompany(companyId) && (
-          isAdmin(companyId) || 
-          (isOwner(resource.data.userId) && resource.data.status == 'pending')
-        );
+        allow read: if belongsToCompany(companyId);
+        allow create: if belongsToCompany(companyId);
+        allow update: if belongsToCompany(companyId);
         allow delete: if isAdmin(companyId);
       }
 
       // طلبات الاستئذان (Permission Requests)
       match /permissionRequests/{requestId} {
-        allow read: if belongsToCompany(companyId) && (isAdmin(companyId) || isOwner(resource.data.userId));
-        allow create: if belongsToCompany(companyId) && (isAdmin(companyId) || isOwner(request.resource.data.userId));
-        allow update: if belongsToCompany(companyId) && (
-          isAdmin(companyId) || 
-          (isOwner(resource.data.userId) && resource.data.status == 'pending')
-        );
+        allow read: if belongsToCompany(companyId);
+        allow create: if belongsToCompany(companyId);
+        allow update: if belongsToCompany(companyId);
         allow delete: if isAdmin(companyId);
       }
 
       // سجلات الحضور (Attendance)
       match /attendance/{attId} {
-        allow read: if belongsToCompany(companyId) && (isAdmin(companyId) || isOwner(resource.data.employeeId));
+        allow read: if belongsToCompany(companyId);
         allow write: if isAdmin(companyId);
       }
 
@@ -103,7 +107,7 @@ service cloud.firestore {
         allow write: if isAdmin(companyId);
 
         match /records/{recordId} {
-          allow read: if belongsToCompany(companyId) && (isAdmin(companyId) || isOwner(resource.data.employeeId));
+          allow read: if belongsToCompany(companyId);
           allow write: if isAdmin(companyId);
         }
       }

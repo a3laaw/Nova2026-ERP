@@ -4,26 +4,39 @@
 
 @layer base {
   :root {
-    --background: 210 100% 98%; /* #f4faff */
-    --foreground: 0 0% 0%; /* Black #000000 */
+    /* الهوية البصرية الجديدة: مستوحاة من البرتقالي الهندسي والأزرق التكنولوجي */
+    --background: 210 40% 98%; /* خلفية فاتحة جداً مائلة للأزرق */
+    --foreground: 222 47% 11%;
+    
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 0%;
+    --card-foreground: 222 47% 11%;
+    
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 0%;
-    --primary: 31 100% 48%; /* #f57c00 Fire Orange */
+    --popover-foreground: 222 47% 11%;
+    
+    /* اللون الأساسي: البرتقالي (Orange) */
+    --primary: 25 100% 50%; 
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 0 0% 0%;
-    --muted: 210 20% 94%;
-    --muted-foreground: 0 0% 40%;
-    --accent: 31 100% 95%;
-    --accent-foreground: 31 100% 30%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 210 20% 90%;
-    --input: 210 20% 90%;
-    --ring: 31 100% 48%;
-    --radius: 1rem;
+    
+    /* لون التمييز: الأصفر الذهبي (Gold) */
+    --accent: 45 100% 50%;
+    --accent-foreground: 25 100% 10%;
+    
+    /* لون المعلومات: الأزرق السماوي (Sky Blue) */
+    --secondary: 199 89% 48%;
+    --secondary-foreground: 0 0% 100%;
+    
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    
+    --destructive: 12 100% 70%; /* الوردي المرجاني للحالات التنبيهية */
+    --destructive-foreground: 210 40% 98%;
+    
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 25 100% 50%;
+    
+    --radius: 1.25rem;
   }
 }
 
@@ -39,6 +52,11 @@
   }
 }
 
+/* تحسينات الواجهة العامة */
+.sidebar-active-item {
+  @apply bg-primary/10 text-primary border-s-4 border-primary;
+}
+
 /* Hide Spinners */
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
@@ -47,4 +65,13 @@ input::-webkit-inner-spin-button {
 }
 input[type=number] {
   -moz-appearance: textfield;
+}
+
+/* أنيميشن مخصص للتقارير */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-report {
+  animation: slideUp 0.5s ease-out forwards;
 }

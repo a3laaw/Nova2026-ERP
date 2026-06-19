@@ -14,15 +14,29 @@
       },
       "required": ["employeeNumber", "fullName", "civilId", "basicSalary"]
     },
-    "AttendanceRecord": {
-      "title": "Attendance",
-      "description": "سجلات الحضور والانصراف اليومية.",
+    "Supplier": {
+      "title": "Supplier",
+      "description": "بيانات الموردين المعتمدين.",
       "type": "object",
       "properties": {
-        "employeeId": { "type": "string" },
-        "date": { "type": "string", "format": "date" },
-        "checkIn": { "type": "string" },
-        "status": { "type": "string", "enum": ["present", "absent", "weekend", "holiday"] }
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "contactPerson": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "rating": { "type": "number" }
+      }
+    },
+    "PurchaseOrder": {
+      "title": "Purchase Order",
+      "description": "أمر شراء صادر لمورد.",
+      "type": "object",
+      "properties": {
+        "poNumber": { "type": "string" },
+        "supplierId": { "type": "string" },
+        "projectId": { "type": "string" },
+        "totalAmount": { "type": "number" },
+        "status": { "type": "string", "enum": ["draft", "sent", "confirmed", "received", "cancelled"] }
       }
     }
   },
@@ -31,8 +45,10 @@
   },
   "firestore": {
     "/companies/{companyId}/employees/{empId}": { "schema": "#/entities/Employee", "description": "سجلات الموظفين" },
-    "/companies/{companyId}/attendance/{attId}": { "schema": "#/entities/AttendanceRecord", "description": "سجلات الحضور" },
+    "/companies/{companyId}/suppliers/{supId}": { "schema": "#/entities/Supplier", "description": "قاعدة بيانات الموردين" },
+    "/companies/{companyId}/purchaseOrders/{poId}": { "schema": "#/entities/PurchaseOrder", "description": "أوامر الشراء" },
     "/companies/{companyId}/payroll/{payId}": { "description": "سجلات الرواتب الشهرية" },
-    "/companies/{companyId}/leaveRequests/{leaveId}": { "description": "طلبات الإجازات المطورة" }
+    "/companies/{companyId}/leaveRequests/{leaveId}": { "description": "طلبات الإجازات" },
+    "/companies/{companyId}/permissionRequests/{permId}": { "description": "طلبات الاستئذان" }
   }
 }
