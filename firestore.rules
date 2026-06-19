@@ -63,6 +63,21 @@ service cloud.firestore {
         allow delete: if isAdmin(companyId);
       }
 
+      match /permissionRequests/{requestId} {
+        allow read: if belongsToCompany(companyId);
+        allow create: if belongsToCompany(companyId);
+        allow update: if isAdmin(companyId) || (
+          isAuthenticated() && 
+          resource.data.userId == request.auth.uid && 
+          resource.data.status == 'pending'
+        );
+        allow delete: if isAdmin(companyId);
+      }
+
+      match /leads/{leadId} {
+        allow read, write: if belongsToCompany(companyId);
+      }
+
       match /roles/{roleId} { allow read: if belongsToCompany(companyId); allow write: if isAdmin(companyId); }
       match /departments/{allPaths=**} { allow read: if belongsToCompany(companyId); allow write: if isAdmin(companyId); }
       match /governorates/{allPaths=**} { allow read: if belongsToCompany(companyId); allow write: if isAdmin(companyId); }
