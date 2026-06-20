@@ -14,7 +14,7 @@ import {
   Gavel, Clock, Loader2
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
@@ -42,10 +42,16 @@ export default function GratuityCalculatorPage() {
 
   const [result, setResult] = useState<GratuityResult | null>(null);
 
+  // استعلام بسيط ومستقر لضمان عدم حدوث Loop
   const empsQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.employees(companyId)), orderBy('fullName')) : null, 
+    companyId && db ? query(collection(db, paths.employees(companyId))) : null, 
   [db, companyId]);
-  const { data: employees, loading: empsLoading } = useCollection<Employee>(empsQuery);
+  
+  const { data: rawEmployees, loading: empsLoading } = useCollection<Employee>(empsQuery);
+  
+  const employees = useMemo(() => 
+    [...rawEmployees].sort((a, b) => a.fullName.localeCompare(b.fullName)), 
+  [rawEmployees]);
 
   useEffect(() => {
     if (selectedEmpId && employees) {
@@ -112,7 +118,7 @@ export default function GratuityCalculatorPage() {
                     </Select>
                  </div>
 
-                 <div className="space-y-4 pt-4 border-t border-slate-50">
+                 <div className="space-y-4 pt-4 border-t border-slate-100">
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'تاريخ التعيين' : 'Hire Date'}</Label>
                        <SmartDateInput value={form.hireDate} onChange={v => setForm({...form, hireDate: v})} />
@@ -127,7 +133,7 @@ export default function GratuityCalculatorPage() {
                          type="number" 
                          value={form.totalSalary} 
                          readOnly
-                         className="h-12 rounded-xl border-2 font-black text-emerald-600 text-lg bg-slate-100 cursor-not-allowed text-center" 
+                         className="h-12 rounded-xl border-2 font-black text-emerald-600 text-lg bg-slate-50 cursor-not-allowed text-center" 
                        />
                        <p className="text-[9px] text-muted-foreground font-bold italic">{isRtl ? "* الراتب مسحوب من سجل الموظف لضمان النزاهة." : "* Salary fetched from record for integrity."}</p>
                     </div>
@@ -226,7 +232,7 @@ export default function GratuityCalculatorPage() {
                                   <span className="text-slate-500">{isRtl ? 'بدل الإجازات المستحق' : 'Leave Balance'}</span>
                                   <div className="text-end">
                                      <span className="font-black text-slate-800">{result.leaveBalancePay.toLocaleString()} KWD</span>
-                                     <p className="text-[9px] text-muted-foreground font-bold">{result.accruedLeaveDays} {isRtl ? 'يوم' : 'Days'}</p>
+                                     <div className="text-[9px] text-muted-foreground font-bold">{result.accruedLeaveDays} {isRtl ? 'يوم' : 'Days'}</div>
                                   </div>
                                </div>
                                <div className="flex justify-between items-center text-sm font-bold">

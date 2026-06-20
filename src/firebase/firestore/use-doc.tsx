@@ -6,72 +6,53 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 /**
- * Hook محسن لجلب مستند واحد مع معالجة ذكية للأخطاء ومنع الحلقات اللانهائية.
+ * خطاف محسن لجلب مستند واحد يضمن عدم الدخول في حلقات تكرار لا نهائية.
  */
 export function useDoc<T = DocumentData>(docRef: DocumentReference<T> | null) {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(!!docRef);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
-  const unsubscribeRef = useRef<(() => void) | null>(null);
-  const lastRef = useRef<DocumentReference<T> | null>(null);
+  
+  const currentRef = useRef<DocumentReference<T> | null>(null);
 
   useEffect(() => {
+    const isSameRef = docRef && currentRef.current && refEqual(docRef, currentRef.current);
+
     if (!docRef) {
-      if (lastRef.current !== null) {
-        lastRef.current = null;
+      if (currentRef.current !== null) {
+        currentRef.current = null;
         setData(null);
         setLoading(false);
-        setError(null);
       }
       return;
     }
 
-    if (lastRef.current && refEqual(docRef, lastRef.current)) {
-      return;
-    }
+    if (isSameRef) return;
 
-    lastRef.current = docRef;
+    currentRef.current = docRef;
     setLoading(true);
     setError(null);
 
-    if (unsubscribeRef.current) {
-      unsubscribeRef.current();
-    }
-
-    try {
-      const unsubscribe = onSnapshot(
-        docRef,
-        (snapshot) => {
-          setData(snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as T) : null);
-          setLoading(false);
-          setError(null);
-        },
-        (serverError: FirestoreError) => {
-          setLoading(false);
-          setError(serverError);
-          
-          if (serverError.code === 'permission-denied') {
-            const permissionError = new FirestorePermissionError({
-              path: docRef.path || 'document_reference',
-              operation: 'get',
-            } satisfies SecurityRuleContext);
-            errorEmitter.emit('permission-error', permissionError);
-          }
+    const unsubscribe = onSnapshot(
+      docRef,
+      (snapshot) => {
+        setData(snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as T) : null);
+        setLoading(false);
+      },
+      (serverError: FirestoreError) => {
+        setLoading(false);
+        setError(serverError);
+        
+        if (serverError.code === 'permission-denied') {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: docRef.path || 'document',
+            operation: 'get',
+          } satisfies SecurityRuleContext));
         }
-      );
-
-      unsubscribeRef.current = unsubscribe;
-    } catch (e: any) {
-      setLoading(false);
-      setError(e);
-    }
-
-    return () => {
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-        unsubscribeRef.current = null;
       }
-    };
+    );
+
+    return () => unsubscribe();
   }, [docRef]);
 
   return { data, loading, error };
