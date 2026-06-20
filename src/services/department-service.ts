@@ -55,10 +55,17 @@ export class DepartmentService {
       const jobsRef = collection(this.db, paths.jobs(this.companyId, id));
       const jobsSnap = await getDocs(jobsRef);
       const batch = writeBatch(this.db);
+      
+      // حذف كافة الوظائف التابعة أولاً
       jobsSnap.docs.forEach(jobDoc => batch.delete(jobDoc.ref));
       batch.delete(docRef);
-      return await batch.commit();
+      
+      return await batch.commit().catch((err) => {
+        this.handleError(docRef.path, 'delete');
+        throw err;
+      });
     } catch (err) {
+      // إذا فشل الـ Batch، حاول الحذف المباشر
       return deleteDoc(docRef).catch((e) => {
         this.handleError(docRef.path, 'delete');
         throw e;

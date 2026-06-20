@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
   Building2, Plus, Loader2, Trash2, Edit3, 
-  ChevronRight, Briefcase, Search, ShieldCheck
+  ChevronRight, Briefcase, Search, ShieldCheck,
+  AlertTriangle
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +18,16 @@ import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
 import { DepartmentService } from '@/services/department-service';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle 
+} from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -33,6 +44,7 @@ export default function DepartmentsPage() {
   const [selectedDept, setSelectedDept] = useState<Department | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   
   const [isDeptOpen, setIsDeptOpen] = useState(false);
   const [isJobOpen, setIsJobOpen] = useState(false);
@@ -76,11 +88,8 @@ export default function DepartmentsPage() {
     }
   };
 
-  const handleConfirmDeleteDept = async (e: React.MouseEvent, id: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!deptService || !window.confirm(t('confirmDelete'))) return;
-    
+  const handleDeleteDept = async (id: string) => {
+    if (!deptService) return;
     setLoadingAction(`delete_dept_${id}`);
     try {
       await deptService.deleteDepartment(id);
@@ -90,6 +99,7 @@ export default function DepartmentsPage() {
       console.error(error);
     } finally {
       setLoadingAction(null);
+      setDeletingId(null);
     }
   };
 
@@ -117,11 +127,8 @@ export default function DepartmentsPage() {
     }
   };
 
-  const handleConfirmDeleteJob = async (e: React.MouseEvent, jobId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!deptService || !selectedDept?.id || !window.confirm(t('confirmDelete'))) return;
-    
+  const handleDeleteJob = async (jobId: string) => {
+    if (!deptService || !selectedDept?.id) return;
     setLoadingAction(`delete_job_${jobId}`);
     try {
       await deptService.deleteJob(selectedDept.id, jobId);
@@ -130,6 +137,7 @@ export default function DepartmentsPage() {
       console.error(error);
     } finally {
       setLoadingAction(null);
+      setDeletingId(null);
     }
   };
 
@@ -179,12 +187,12 @@ export default function DepartmentsPage() {
                     key={dept.id} 
                     onClick={() => setSelectedDept(dept)} 
                     className={cn(
-                      "p-5 border-b flex items-center justify-between cursor-pointer transition-all group", 
+                      "p-5 border-b flex items-center justify-between cursor-pointer transition-all group relative", 
                       selectedDept?.id === dept.id ? 'bg-primary/5 border-s-4 border-s-primary' : 'hover:bg-muted/30'
                     )}
                   >
                     <span className="text-sm font-black">{isRtl ? dept.name : dept.nameEn}</span>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 z-20">
                       <Button 
                         variant="ghost" 
                         size="icon" 
@@ -199,7 +207,7 @@ export default function DepartmentsPage() {
                         size="icon" 
                         className="h-8 w-8 text-destructive"
                         disabled={loadingAction === `delete_dept_${dept.id}`}
-                        onClick={e => handleConfirmDeleteDept(e, dept.id!)} 
+                        onClick={e => { e.preventDefault(); e.stopPropagation(); setDeletingId(dept.id!); }} 
                       >
                         {loadingAction === `delete_dept_${dept.id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                       </Button>
@@ -273,7 +281,7 @@ export default function DepartmentsPage() {
                               <ShieldCheck className="h-2.5 w-2.5" /> {job.roleName || (isRtl ? 'بدون دور' : 'No Role')}
                            </span>
                         </div>
-                        <div className="flex gap-1">
+                        <div className="flex gap-1 z-20">
                            <Button 
                             variant="ghost" 
                             size="icon" 
@@ -287,7 +295,7 @@ export default function DepartmentsPage() {
                             size="icon" 
                             className="h-8 w-8 text-destructive"
                             disabled={loadingAction === `delete_job_${job.id}`}
-                            onClick={(e) => handleConfirmDeleteJob(e, job.id!)}
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDeletingId(job.id!); }}
                            >
                             {loadingAction === `delete_job_${job.id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                            </Button>
@@ -301,6 +309,37 @@ export default function DepartmentsPage() {
           </Card>
         </div>
       </div>
+
+      {/* حوار تأكيد الحذف الموحد */}
+      <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
+        <AlertDialogContent className="rounded-[2rem] p-8" dir={dir}>
+          <AlertDialogHeader>
+            <div className="mx-auto w-16 h-16 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mb-4">
+               <AlertTriangle className="h-8 w-8" />
+            </div>
+            <AlertDialogTitle className="text-start font-black text-2xl">{t('confirmDelete')}</AlertDialogTitle>
+            <AlertDialogDescription className="text-start font-bold">
+              {isRtl ? 'هل أنت متأكد؟ لا يمكن التراجع عن هذا الإجراء وسوف يتم حذف كافة البيانات المرتبطة بهذا العنصر فوراً.' : 'Are you sure? This action cannot be undone and will delete all associated data immediately.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-8 gap-4">
+            <AlertDialogCancel className="rounded-xl h-12 font-bold border-2">{isRtl ? 'إلغاء' : 'Cancel'}</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                if (deletingId) {
+                  // تحديد ما إذا كان الحذف لقسم أم لوظيفة بناءً على السياق
+                  const isDept = departments?.some(d => d.id === deletingId);
+                  if (isDept) handleDeleteDept(deletingId);
+                  else handleDeleteJob(deletingId);
+                }
+              }}
+              className="rounded-xl h-12 font-black bg-rose-600 hover:bg-rose-700 text-white px-8"
+            >
+              {isRtl ? 'نعم، احذف الآن' : 'Yes, Delete Now'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

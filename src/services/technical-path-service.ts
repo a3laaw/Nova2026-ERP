@@ -7,7 +7,9 @@ import {
   addDoc, 
   updateDoc, 
   deleteDoc, 
-  serverTimestamp
+  serverTimestamp,
+  writeBatch,
+  getDocs
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -17,96 +19,120 @@ import { ActivityType, Service, SubService, TechnicalStage } from '@/types/refer
 export class TechnicalPathService {
   constructor(private db: Firestore, private companyId: string) {}
 
-  // --- 1. Activity Types ---
-  addActivityType(data: Omit<ActivityType, 'id' | 'createdAt' | 'updatedAt' | 'companyId'>) {
+  async addActivityType(data: Omit<ActivityType, 'id' | 'createdAt' | 'updatedAt' | 'companyId'>) {
     const path = paths.activityTypes(this.companyId);
     const docData = { ...data, companyId: this.companyId, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
-    
-    addDoc(collection(this.db, path), docData).catch(async () => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path, operation: 'create', requestResourceData: docData }));
+    return addDoc(collection(this.db, path), docData).catch((err) => {
+      this.handleError(path, 'create', docData);
+      throw err;
     });
   }
 
-  updateActivityType(id: string, data: Partial<ActivityType>) {
+  async updateActivityType(id: string, data: Partial<ActivityType>) {
     const path = paths.activityTypes(this.companyId);
-    updateDoc(doc(this.db, path, id), { ...data, updatedAt: serverTimestamp() }).catch(async () => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `${path}/${id}`, operation: 'update', requestResourceData: data }));
+    const docRef = doc(this.db, path, id);
+    return updateDoc(docRef, { ...data, updatedAt: serverTimestamp() }).catch((err) => {
+      this.handleError(docRef.path, 'update', data);
+      throw err;
     });
   }
 
-  deleteActivityType(id: string) {
+  async deleteActivityType(id: string) {
     const path = paths.activityTypes(this.companyId);
-    deleteDoc(doc(this.db, path, id)).catch(async () => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `${path}/${id}`, operation: 'delete' }));
+    const docRef = doc(this.db, path, id);
+    return deleteDoc(docRef).catch((err) => {
+      this.handleError(docRef.path, 'delete');
+      throw err;
     });
   }
 
-  // --- 2. Services ---
-  addService(actId: string, data: any) {
+  async addService(actId: string, data: any) {
     const path = paths.services(this.companyId, actId);
     const docData = { ...data, activityTypeId: actId, companyId: this.companyId, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
-    addDoc(collection(this.db, path), docData).catch(async () => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path, operation: 'create', requestResourceData: docData }));
+    return addDoc(collection(this.db, path), docData).catch((err) => {
+      this.handleError(path, 'create', docData);
+      throw err;
     });
   }
 
-  updateService(actId: string, srvId: string, data: any) {
+  async updateService(actId: string, srvId: string, data: any) {
     const path = paths.services(this.companyId, actId);
-    updateDoc(doc(this.db, path, srvId), { ...data, updatedAt: serverTimestamp() }).catch(async () => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `${path}/${srvId}`, operation: 'update', requestResourceData: data }));
+    const docRef = doc(this.db, path, srvId);
+    return updateDoc(docRef, { ...data, updatedAt: serverTimestamp() }).catch((err) => {
+      this.handleError(docRef.path, 'update', data);
+      throw err;
     });
   }
 
-  deleteService(actId: string, srvId: string) {
+  async deleteService(actId: string, srvId: string) {
     const path = paths.services(this.companyId, actId);
-    deleteDoc(doc(this.db, path, srvId)).catch(async () => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `${path}/${srvId}`, operation: 'delete' }));
+    const docRef = doc(this.db, path, srvId);
+    return deleteDoc(docRef).catch((err) => {
+      this.handleError(docRef.path, 'delete');
+      throw err;
     });
   }
 
-  // --- 3. Sub Services ---
-  addSubService(actId: string, srvId: string, data: any) {
+  async addSubService(actId: string, srvId: string, data: any) {
     const path = paths.subServices(this.companyId, actId, srvId);
     const docData = { ...data, activityTypeId: actId, serviceId: srvId, companyId: this.companyId, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
-    addDoc(collection(this.db, path), docData).catch(async () => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path, operation: 'create', requestResourceData: docData }));
+    return addDoc(collection(this.db, path), docData).catch((err) => {
+      this.handleError(path, 'create', docData);
+      throw err;
     });
   }
 
-  updateSubService(actId: string, srvId: string, subId: string, data: any) {
+  async updateSubService(actId: string, srvId: string, subId: string, data: any) {
     const path = paths.subServices(this.companyId, actId, srvId);
-    updateDoc(doc(this.db, path, subId), { ...data, updatedAt: serverTimestamp() }).catch(async () => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `${path}/${subId}`, operation: 'update', requestResourceData: data }));
+    const docRef = doc(this.db, path, subId);
+    return updateDoc(docRef, { ...data, updatedAt: serverTimestamp() }).catch((err) => {
+      this.handleError(docRef.path, 'update', data);
+      throw err;
     });
   }
 
-  deleteSubService(actId: string, srvId: string, subId: string) {
+  async deleteSubService(actId: string, srvId: string, subId: string) {
     const path = paths.subServices(this.companyId, actId, srvId);
-    deleteDoc(doc(this.db, path, subId)).catch(async () => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `${path}/${subId}`, operation: 'delete' }));
+    const docRef = doc(this.db, path, subId);
+    return deleteDoc(docRef).catch((err) => {
+      this.handleError(docRef.path, 'delete');
+      throw err;
     });
   }
 
-  // --- 4. Technical Stages ---
-  addTechnicalStage(actId: string, srvId: string, subId: string, data: any) {
+  async addTechnicalStage(actId: string, srvId: string, subId: string, data: any) {
     const path = paths.technicalStages(this.companyId, actId, srvId, subId);
     const docData = { ...data, activityTypeId: actId, serviceId: srvId, subServiceId: subId, companyId: this.companyId, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
-    addDoc(collection(this.db, path), docData).catch(async () => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path, operation: 'create', requestResourceData: docData }));
+    return addDoc(collection(this.db, path), docData).catch((err) => {
+      this.handleError(path, 'create', docData);
+      throw err;
     });
   }
 
-  updateTechnicalStage(actId: string, srvId: string, subId: string, stageId: string, data: any) {
+  async updateTechnicalStage(actId: string, srvId: string, subId: string, stageId: string, data: any) {
     const path = paths.technicalStages(this.companyId, actId, srvId, subId);
-    updateDoc(doc(this.db, path, stageId), { ...data, updatedAt: serverTimestamp() }).catch(async () => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `${path}/${stageId}`, operation: 'update', requestResourceData: data }));
+    const docRef = doc(this.db, path, stageId);
+    return updateDoc(docRef, { ...data, updatedAt: serverTimestamp() }).catch((err) => {
+      this.handleError(docRef.path, 'update', data);
+      throw err;
     });
   }
 
-  deleteTechnicalStage(actId: string, srvId: string, subId: string, stageId: string) {
+  async deleteTechnicalStage(actId: string, srvId: string, subId: string, stageId: string) {
     const path = paths.technicalStages(this.companyId, actId, srvId, subId);
-    deleteDoc(doc(this.db, path, stageId)).catch(async () => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `${path}/${stageId}`, operation: 'delete' }));
+    const docRef = doc(this.db, path, stageId);
+    return deleteDoc(docRef).catch((err) => {
+      this.handleError(docRef.path, 'delete');
+      throw err;
     });
+  }
+
+  private handleError(path: string, operation: any, data?: any) {
+    const permissionError = new FirestorePermissionError({
+      path,
+      operation,
+      requestResourceData: data,
+    });
+    errorEmitter.emit('permission-error', permissionError);
   }
 }
