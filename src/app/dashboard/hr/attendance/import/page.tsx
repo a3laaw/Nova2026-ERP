@@ -43,8 +43,10 @@ export default function AttendanceImportPage() {
 
   const yearsList = useMemo(() => {
     const currentYear = new Date().getFullYear();
+    const startYear = 2026; // تم التعديل لتبدأ من 2026
     const years = [];
-    for (let y = 2024; y <= currentYear + 1; y++) {
+    const limitYear = Math.max(startYear, currentYear) + 1;
+    for (let y = startYear; y <= limitYear; y++) {
       years.push(y);
     }
     return years.reverse();
