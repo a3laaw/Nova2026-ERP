@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -32,6 +33,8 @@ export default function DepartmentsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   
+  const [isDeptOpen, setIsDeptOpen] = useState(false);
+  const [isJobOpen, setIsJobOpen] = useState(false);
   const [deptForm, setDeptForm] = useState<Partial<Department>>({ name: '', nameEn: '', description: '' });
   const [jobForm, setJobForm] = useState<Partial<Job>>({ name: '', nameEn: '' });
 
@@ -50,6 +53,7 @@ export default function DepartmentsPage() {
     else deptService.addDepartment(data as any);
     toast({ title: t('saved') });
     setDeptForm({ name: '', nameEn: '', description: '' });
+    setIsDeptOpen(false);
     setLoadingAction(null);
   };
 
@@ -60,6 +64,7 @@ export default function DepartmentsPage() {
     deptService.addJob(selectedDept.id, data as any);
     toast({ title: t('saved') });
     setJobForm({ name: '', nameEn: '' });
+    setIsJobOpen(false);
     setLoadingAction(null);
   };
 
@@ -67,7 +72,12 @@ export default function DepartmentsPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-black font-headline flex items-center gap-3 text-start"><Building2 className="h-6 w-6 text-primary" /> {isRtl ? 'الهيكل التنظيمي' : 'Organizational Structure'}</h2>
-        <Dialog><DialogTrigger asChild><Button onClick={() => setDeptForm({ name: '', nameEn: '', description: '' })} className="rounded-xl"><Plus className="me-2 h-4 w-4" /> {t('newDept')}</Button></DialogTrigger>
+        <Dialog open={isDeptOpen} onOpenChange={setIsDeptOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={() => setDeptForm({ name: '', nameEn: '', description: '' })} className="rounded-xl">
+              <Plus className="me-2 h-4 w-4" /> {t('newDept')}
+            </Button>
+          </DialogTrigger>
           <DialogContent className="rounded-[2.5rem] max-w-2xl p-8" dir={dir}>
             <DialogHeader><DialogTitle className="text-start font-black text-2xl">{deptForm.id ? t('edit') : t('newDept')}</DialogTitle></DialogHeader>
             <div className="grid grid-cols-2 gap-6 py-4 text-start">
@@ -89,7 +99,10 @@ export default function DepartmentsPage() {
                 departments?.filter(d => d.name.includes(searchTerm)).map(dept => (
                   <div key={dept.id} onClick={() => setSelectedDept(dept)} className={cn("p-5 border-b flex items-center justify-between cursor-pointer transition-all group", selectedDept?.id === dept.id ? 'bg-primary/5 border-s-4 border-s-primary' : 'hover:bg-muted/30')}>
                     <span className="text-sm font-black">{isRtl ? dept.name : dept.nameEn}</span>
-                    <div className="flex items-center gap-2"><Button variant="ghost" size="icon" onClick={e => { e.stopPropagation(); setDeptForm(dept); }} className="h-8 w-8 text-blue-600 opacity-0 group-hover:opacity-100"><Edit3 className="h-4 w-4" /></Button><ChevronRight className={cn("h-4 w-4", isRtl && 'rotate-180', selectedDept?.id === dept.id && 'text-primary')} /></div>
+                    <div className="flex items-center gap-2">
+                      <Button variant="ghost" size="icon" onClick={e => { e.stopPropagation(); setDeptForm(dept); setIsDeptOpen(true); }} className="h-8 w-8 text-blue-600 opacity-0 group-hover:opacity-100"><Edit3 className="h-4 w-4" /></Button>
+                      <ChevronRight className={cn("h-4 w-4", isRtl && 'rotate-180', selectedDept?.id === dept.id && 'text-primary')} />
+                    </div>
                   </div>
                 ))
               )}
@@ -99,18 +112,26 @@ export default function DepartmentsPage() {
 
         <div className={cn("lg:col-span-7", !selectedDept && 'opacity-40')}>
           <Card className="border-0 shadow-lg rounded-3xl overflow-hidden bg-white text-start">
-            <CardHeader className="bg-slate-50/50 border-b p-6 flex flex-row items-center justify-between"><div><CardTitle className="text-lg font-black flex items-center gap-2"><Briefcase className="h-5 w-5 text-primary" /> {isRtl ? 'الوظائف' : 'Job Titles'}</CardTitle></div>{selectedDept && (
-              <Dialog><DialogTrigger asChild><Button variant="secondary" size="sm" className="rounded-xl h-10 px-4"><Plus className="me-2 h-4 w-4" /> {isRtl ? 'وظيفة' : 'Add Job'}</Button></DialogTrigger>
-                <DialogContent className="rounded-[2.5rem] p-8" dir={dir}>
-                  <DialogHeader><DialogTitle className="text-start font-black">{isRtl ? 'إضافة وظيفة' : 'Add Job'}</DialogTitle></DialogHeader>
-                  <div className="grid grid-cols-2 gap-4 py-4 text-start">
-                    <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={jobForm.name || ''} onChange={e => setJobForm({...jobForm, name: e.target.value})} /></div>
-                    <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={jobForm.nameEn || ''} onChange={e => setJobForm({...jobForm, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
-                  </div>
-                  <DialogFooter className="mt-6"><Button onClick={handleSaveJob} disabled={loadingAction === 'job'} className="w-full h-12 rounded-xl font-bold bg-primary text-white">{t('save')}</Button></DialogFooter>
-                </DialogContent>
-              </Dialog>
-            )}</CardHeader>
+            <CardHeader className="bg-slate-50/50 border-b p-6 flex flex-row items-center justify-between">
+              <div><CardTitle className="text-lg font-black flex items-center gap-2"><Briefcase className="h-5 w-5 text-primary" /> {isRtl ? 'الوظائف' : 'Job Titles'}</CardTitle></div>
+              {selectedDept && (
+                <Dialog open={isJobOpen} onOpenChange={setIsJobOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="secondary" size="sm" className="rounded-xl h-10 px-4">
+                      <Plus className="me-2 h-4 w-4" /> {isRtl ? 'وظيفة' : 'Add Job'}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="rounded-[2.5rem] p-8" dir={dir}>
+                    <DialogHeader><DialogTitle className="text-start font-black">{isRtl ? 'إضافة وظيفة' : 'Add Job'}</DialogTitle></DialogHeader>
+                    <div className="grid grid-cols-2 gap-4 py-4 text-start">
+                      <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={jobForm.name || ''} onChange={e => setJobForm({...jobForm, name: e.target.value})} /></div>
+                      <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={jobForm.nameEn || ''} onChange={e => setJobForm({...jobForm, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
+                    </div>
+                    <DialogFooter className="mt-6"><Button onClick={handleSaveJob} disabled={loadingAction === 'job'} className="w-full h-12 rounded-xl font-bold bg-primary text-white">{t('save')}</Button></DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              )}
+            </CardHeader>
             <CardContent className="p-6">
               {!selectedDept ? <div className="py-20 text-center italic text-muted-foreground">اختر قسماً</div> : (
                 jobsLoading ? <div className="py-10 text-center"><Loader2 className="animate-spin mx-auto text-primary/30" /></div> : (

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -28,7 +29,8 @@ export default function GeoPage() {
   const isRtl = lang === 'ar';
 
   const [selectedGov, setSelectedGov] = useState<Governorate | null>(null);
-  const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  const [isGovOpen, setIsGovOpen] = useState(false);
+  const [isAreaOpen, setIsAreaOpen] = useState(false);
   
   const [govForm, setGovForm] = useState<Partial<Governorate>>({ name: '', nameEn: '' });
   const [areaForm, setAreaForm] = useState<Partial<Area>>({ name: '', nameEn: '' });
@@ -47,6 +49,7 @@ export default function GeoPage() {
     else locationService.addGovernorate(data as any);
     toast({ title: t('saved') });
     setGovForm({ name: '', nameEn: '' });
+    setIsGovOpen(false);
   };
 
   const handleSaveArea = () => {
@@ -56,13 +59,19 @@ export default function GeoPage() {
     else locationService.addArea(selectedGov.id, data as any);
     toast({ title: t('saved') });
     setAreaForm({ name: '', nameEn: '' });
+    setIsAreaOpen(false);
   };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-black font-headline flex items-center gap-3 text-start"><MapPinned className="h-6 w-6 text-primary" /> {isRtl ? 'البيانات الجغرافية' : 'Geographic Data'}</h2>
-        <Dialog><DialogTrigger asChild><Button onClick={() => setGovForm({ name: '', nameEn: '' })} className="rounded-xl"><Plus className="me-2 h-4 w-4" /> {t('newGov')}</Button></DialogTrigger>
+        <Dialog open={isGovOpen} onOpenChange={setIsGovOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={() => setGovForm({ name: '', nameEn: '' })} className="rounded-xl">
+              <Plus className="me-2 h-4 w-4" /> {t('newGov')}
+            </Button>
+          </DialogTrigger>
           <DialogContent className="rounded-[2.5rem] p-8" dir={dir}>
              <DialogHeader><DialogTitle className="text-start font-black text-xl">{govForm.id ? t('edit') : t('newGov')}</DialogTitle></DialogHeader>
              <div className="grid grid-cols-2 gap-4 py-4 text-start">
@@ -81,7 +90,9 @@ export default function GeoPage() {
               {govsLoading ? <div className="p-20 text-center"><Loader2 className="animate-spin mx-auto text-primary/30" /></div> : governorates?.map(gov => (
                 <div key={gov.id} onClick={() => setSelectedGov(gov)} className={cn("p-5 border-b flex items-center justify-between cursor-pointer transition-all", selectedGov?.id === gov.id ? 'bg-primary/5 border-s-4 border-s-primary' : 'hover:bg-muted/30')}>
                   <span className="text-sm font-black">{isRtl ? gov.name : gov.nameEn}</span>
-                  <div className="flex gap-2 opacity-0 group-hover:opacity-100"><Button variant="ghost" size="icon" onClick={() => setGovForm(gov)}><Edit3 className="h-4 w-4" /></Button></div>
+                  <div className="flex gap-2 opacity-0 group-hover:opacity-100">
+                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setGovForm(gov); setIsGovOpen(true); }}><Edit3 className="h-4 w-4" /></Button>
+                  </div>
                 </div>
               ))}
             </CardContent>
@@ -90,18 +101,26 @@ export default function GeoPage() {
 
         <div className={cn("lg:col-span-8 text-start", !selectedGov && 'opacity-40')}>
           <Card className="border-0 shadow-lg rounded-3xl overflow-hidden bg-white">
-            <CardHeader className="bg-slate-50/50 border-b p-6 flex flex-row items-center justify-between"><div><CardTitle className="text-lg font-black flex items-center gap-2"><MapPin className="h-5 w-5 text-primary" /> {isRtl ? 'المناطق' : 'Areas'}</CardTitle></div>{selectedGov && (
-              <Dialog><DialogTrigger asChild><Button variant="secondary" size="sm" className="rounded-xl h-10 px-4"><Plus className="me-2 h-4 w-4" /> {isRtl ? 'منطقة' : 'Add Area'}</Button></DialogTrigger>
-                <DialogContent className="rounded-[2.5rem] p-8" dir={dir}>
-                  <DialogHeader><DialogTitle className="text-start font-black">{isRtl ? 'إضافة منطقة' : 'Add Area'}</DialogTitle></DialogHeader>
-                  <div className="grid grid-cols-2 gap-4 py-4 text-start">
-                    <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={areaForm.name || ''} onChange={e => setAreaForm({...areaForm, name: e.target.value})} /></div>
-                    <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={areaForm.nameEn || ''} onChange={e => setAreaForm({...areaForm, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
-                  </div>
-                  <DialogFooter className="mt-6"><Button onClick={handleSaveArea} className="w-full h-12 rounded-xl font-bold">{t('save')}</Button></DialogFooter>
-                </DialogContent>
-              </Dialog>
-            )}</CardHeader>
+            <CardHeader className="bg-slate-50/50 border-b p-6 flex flex-row items-center justify-between">
+              <div><CardTitle className="text-lg font-black flex items-center gap-2"><MapPin className="h-5 w-5 text-primary" /> {isRtl ? 'المناطق' : 'Areas'}</CardTitle></div>
+              {selectedGov && (
+                <Dialog open={isAreaOpen} onOpenChange={setIsAreaOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="secondary" size="sm" className="rounded-xl h-10 px-4">
+                      <Plus className="me-2 h-4 w-4" /> {isRtl ? 'منطقة' : 'Add Area'}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="rounded-[2.5rem] p-8" dir={dir}>
+                    <DialogHeader><DialogTitle className="text-start font-black">{isRtl ? 'إضافة منطقة' : 'Add Area'}</DialogTitle></DialogHeader>
+                    <div className="grid grid-cols-2 gap-4 py-4 text-start">
+                      <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={areaForm.name || ''} onChange={e => setAreaForm({...areaForm, name: e.target.value})} /></div>
+                      <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={areaForm.nameEn || ''} onChange={e => setAreaForm({...areaForm, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
+                    </div>
+                    <DialogFooter className="mt-6"><Button onClick={handleSaveArea} className="w-full h-12 rounded-xl font-bold">{t('save')}</Button></DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              )}
+            </CardHeader>
             <CardContent className="p-6">
               {!selectedGov ? <div className="py-20 text-center italic text-muted-foreground">يرجى اختيار محافظة</div> : (
                 areasLoading ? <div className="py-10 text-center"><Loader2 className="animate-spin mx-auto text-primary/30" /></div> : (

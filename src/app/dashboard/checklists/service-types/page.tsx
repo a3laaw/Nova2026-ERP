@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -31,6 +32,7 @@ export default function ServiceTypesPage() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   
   const [form, setForm] = useState<Partial<ServiceType>>({
     name: '', nameEn: '', description: '', moduleScope: 'technical', isActive: true, order: 0, color: '#f57c00'
@@ -51,6 +53,7 @@ export default function ServiceTypesPage() {
       }
       toast({ title: t('saved') });
       setForm({ name: '', nameEn: '', description: '', moduleScope: 'technical', isActive: true, order: 0, color: '#f57c00' });
+      setIsDialogOpen(false);
     } catch (e) { toast({ variant: "destructive", title: t('error') }); }
     finally { setLoadingAction(null); }
   };
@@ -67,7 +70,7 @@ export default function ServiceTypesPage() {
           <LayoutGrid className="h-6 w-6 text-primary" />
           {isRtl ? 'أنشطة الأعمال' : 'Service Types'}
         </h2>
-        <Dialog>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => setForm({ name: '', nameEn: '', description: '', moduleScope: 'technical', isActive: true, order: (serviceTypes?.length || 0) + 1, color: '#f57c00' })} className="rounded-xl">
               <Plus className="me-2 h-4 w-4" /> {isRtl ? 'نشاط جديد' : 'New Activity'}
@@ -101,8 +104,8 @@ export default function ServiceTypesPage() {
                 <div className="flex justify-between items-start mb-4">
                   <span className="text-[10px] font-black uppercase text-slate-400 tracking-tighter">{item.nameEn}</span>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button variant="ghost" size="icon" onClick={() => setForm(item)} className="h-8 w-8 text-blue-600"><Edit3 className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => service?.deleteServiceType(item.id!)} className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => { setForm(item); setIsDialogOpen(true); }} className="h-8 w-8 text-blue-600"><Edit3 className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => { if(confirm(t('confirmDelete'))) service?.deleteServiceType(item.id!); }} className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>
                   </div>
                 </div>
                 <h3 className="text-lg font-black text-slate-800 mb-1">{isRtl ? item.name : item.nameEn}</h3>
