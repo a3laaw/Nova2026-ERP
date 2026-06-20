@@ -43,13 +43,13 @@ export default function AttendanceImportPage() {
 
   const yearsList = useMemo(() => {
     const currentYear = new Date().getFullYear();
-    const startYear = 2026; // تم التعديل لتبدأ من 2026
+    const startYear = 2026; 
     const years = [];
     const limitYear = Math.max(startYear, currentYear) + 1;
     for (let y = startYear; y <= limitYear; y++) {
       years.push(y);
     }
-    return years.reverse();
+    return years; // تمت إزالة الترتيب التنازلي لإظهار الأقدم أولاً
   }, []);
 
   const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId))) : null, [db, companyId]);

@@ -45,13 +45,13 @@ export default function NewPayrollBatchPage() {
   // توليد قائمة السنوات ديناميكياً (تبدأ من 2026 وتتجدد تلقائياً مع الزمن)
   const yearsList = useMemo(() => {
     const currentYear = new Date().getFullYear();
-    const startYear = 2026; // تم التعديل لتبدأ من 2026
+    const startYear = 2026; 
     const limitYear = Math.max(startYear, currentYear) + 1;
     const years = [];
     for (let y = startYear; y <= limitYear; y++) {
       years.push(y);
     }
-    return years.reverse(); // الأحدث أولاً
+    return years; // تمت إزالة الترتيب التنازلي لإظهار الأقدم أولاً
   }, []);
 
   const payrollService = useMemo(() => 
