@@ -16,15 +16,17 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<T> | null) {
       return;
     }
 
+    setLoading(true);
+
     const unsubscribe = onSnapshot(
       docRef,
       (snapshot) => {
         setData(snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as T) : null);
         setLoading(false);
       },
-      async (serverError) => {
+      (serverError) => {
         const permissionError = new FirestorePermissionError({
-          path: docRef.path,
+          path: docRef.path || 'document_reference',
           operation: 'get',
         } satisfies SecurityRuleContext);
 

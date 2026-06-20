@@ -4,7 +4,6 @@ import {
   Firestore, 
   collection, 
   doc, 
-  addDoc, 
   serverTimestamp,
   query,
   where,
@@ -12,12 +11,13 @@ import {
   writeBatch,
   getDoc,
   updateDoc,
-  limit
+  limit,
+  orderBy
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { Employee, AttendanceRecord, LeaveRequest, PermissionRequest } from '@/types/hr';
 import { PayrollBatch, PayrollRecord, PayrollStatus } from '@/types/payroll';
-import { format, eachDayOfInterval, parseISO, startOfMonth, endOfMonth } from 'date-fns';
+import { format, eachDayOfInterval, parseISO } from 'date-fns';
 import { AccountingIntegrationService } from './accounting-integration-service';
 
 export class PayrollService {
@@ -209,7 +209,4 @@ export class PayrollService {
 
     await updateDoc(batchRef, updates);
   }
-}
-function orderBy(arg0: string, arg1: string): import("@/firebase").Query<import("firebase/firestore").DocumentData, import("firebase/firestore").DocumentData> {
-  throw new Error('Function not implemented.');
 }

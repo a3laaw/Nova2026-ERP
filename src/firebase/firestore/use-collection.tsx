@@ -16,6 +16,9 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
       return;
     }
 
+    // تنظيف الحالة عند تغيير الاستعلام لمنع تعليق البيانات القديمة
+    setLoading(true);
+
     const unsubscribe = onSnapshot(
       query,
       (snapshot) => {
@@ -27,11 +30,9 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
         setLoading(false);
       },
       (serverError) => {
-        // تجنب الوصول للخصائص الخاصة لمنع أخطاء التأكيد الداخلي
-        const safePath = 'collection_query';
-        
+        // تجنب الوصول المباشر لخصائص الخطأ لتفادي مشاكل الـ Assertion في SDK
         const permissionError = new FirestorePermissionError({
-          path: safePath,
+          path: 'collection_query',
           operation: 'list',
         } satisfies SecurityRuleContext);
 
