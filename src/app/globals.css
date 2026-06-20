@@ -4,39 +4,37 @@
 
 @layer base {
   :root {
-    /* الهوية البصرية الجديدة: مستوحاة من البرتقالي الهندسي والأزرق التكنولوجي */
-    --background: 210 40% 98%; /* خلفية فاتحة جداً مائلة للأزرق */
-    --foreground: 222 47% 11%;
+    /* الهوية البصرية المعتمدة لـ Nova ERP */
+    --background: 45 60% 97%; /* #fdfaf3 - العاجي الفاخر */
+    --foreground: 244 45% 20%; /* #1e1b4b - كحلي هندسي داكن */
     
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 244 45% 20%;
     
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 244 45% 20%;
     
-    /* اللون الأساسي: البرتقالي (Orange) */
-    --primary: 25 100% 50%; 
+    /* الألوان الرئيسية */
+    --primary: 27 82% 53%; /* #e87c24 - البرتقالي الأساسي */
     --primary-foreground: 0 0% 100%;
     
-    /* لون التمييز: الأصفر الذهبي (Gold) */
-    --accent: 45 100% 50%;
-    --accent-foreground: 25 100% 10%;
+    --accent: 41 100% 50%; /* #FFB000 - الذهبي/الأصفر */
+    --accent-foreground: 244 45% 10%;
     
-    /* لون المعلومات: الأزرق السماوي (Sky Blue) */
-    --secondary: 199 89% 48%;
+    --secondary: 199 89% 48%; /* أزرق تكنولوجي مساند */
     --secondary-foreground: 0 0% 100%;
     
-    --muted: 210 40% 96%;
+    --muted: 45 30% 94%;
     --muted-foreground: 215 16% 47%;
     
-    --destructive: 12 100% 70%; /* الوردي المرجاني للحالات التنبيهية */
+    --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
     
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 25 100% 50%;
+    --border: 27 82% 90%;
+    --input: 27 82% 90%;
+    --ring: 27 82% 53%;
     
-    --radius: 1.25rem;
+    --radius: 2rem;
   }
 }
 
@@ -46,18 +44,29 @@
   }
   body {
     @apply bg-background text-foreground font-body;
+    background-color: #fdfaf3; /* تثبيت اللون العاجي */
   }
   h1, h2, h3, h4, h5, h6 {
-    @apply font-headline text-foreground tracking-tight font-black;
+    @apply font-headline text-[#1e1b4b] tracking-tight font-black;
   }
 }
 
-/* تحسينات الواجهة العامة */
-.sidebar-active-item {
-  @apply bg-primary/10 text-primary border-s-4 border-primary;
+/* نمط الأزرار البرتقالي الذهبي */
+.btn-nova-primary {
+  @apply bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white font-black shadow-xl shadow-orange-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all;
 }
 
-/* Hide Spinners */
+/* نمط القائمة الجانبية النشط */
+.sidebar-item-active {
+  @apply bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-lg shadow-orange-500/30 scale-[1.02] font-black;
+}
+
+/* تحسينات البطاقات */
+.card-nova {
+  @apply bg-white/95 backdrop-blur-sm border-0 shadow-2xl rounded-[2.5rem] ring-1 ring-black/[0.02];
+}
+
+/* إخفاء مؤشرات الإدخال للأرقام */
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
   -webkit-appearance: none;
@@ -65,13 +74,4 @@ input::-webkit-inner-spin-button {
 }
 input[type=number] {
   -moz-appearance: textfield;
-}
-
-/* أنيميشن مخصص للتقارير */
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.animate-report {
-  animation: slideUp 0.5s ease-out forwards;
 }

@@ -20,17 +20,16 @@ import {
   ChevronRight,
   Clock,
   ShieldCheck,
-  Scale,
   Calendar,
   FileSpreadsheet,
-  Briefcase,
   FileText,
   DollarSign,
   Package,
   Layers,
   FileSearch,
   BookOpen,
-  TrendingUp
+  TrendingUp,
+  Truck
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
@@ -62,6 +61,7 @@ export function DashboardSidebar() {
   const { state } = useSidebar()
   const { t, lang } = useLanguage()
   const { canAccess, isAdmin } = usePermissions()
+  const isRtl = lang === 'ar'
 
   const menuItems = [
     { title: t('dashboard'), icon: LayoutDashboard, url: "/dashboard", module: 'dashboard' },
@@ -86,14 +86,14 @@ export function DashboardSidebar() {
       ]
     },
     { 
-      title: t('accounting'), 
-      icon: Calculator, 
-      url: "/dashboard/accounting", 
-      module: 'accounting',
+      title: t('procurement'), 
+      icon: ShoppingCart, 
+      url: "/dashboard/procurement", 
+      module: 'procurement',
       subItems: [
-        { title: t('smartReconciliation'), url: "/dashboard/accounting", icon: Sparkles },
-        { title: t('journalEntries'), url: "/dashboard/ai", icon: FileText },
-        { title: t('chartOfAccounts'), url: "/dashboard/accounting", icon: BookOpen },
+        { title: t('suppliers'), url: "/dashboard/procurement/suppliers", icon: Truck },
+        { title: t('supplierQuotes'), url: "/dashboard/ai", icon: FileSearch },
+        { title: t('purchaseOrders'), url: "/dashboard/procurement", icon: Package },
       ]
     },
     { 
@@ -112,13 +112,14 @@ export function DashboardSidebar() {
       ]
     },
     { 
-      title: t('procurement'), 
-      icon: ShoppingCart, 
-      url: "/dashboard/procurement", 
-      module: 'procurement',
+      title: t('accounting'), 
+      icon: Calculator, 
+      url: "/dashboard/accounting", 
+      module: 'accounting',
       subItems: [
-        { title: t('supplierQuotes'), url: "/dashboard/ai", icon: FileSearch },
-        { title: t('purchaseOrders'), url: "/dashboard/procurement", icon: Package },
+        { title: t('smartReconciliation'), url: "/dashboard/accounting", icon: Sparkles },
+        { title: t('journalEntries'), url: "/dashboard/ai", icon: FileText },
+        { title: t('chartOfAccounts'), url: "/dashboard/accounting", icon: BookOpen },
       ]
     },
     { 
@@ -161,26 +162,26 @@ export function DashboardSidebar() {
   });
 
   return (
-    <Sidebar collapsible="icon" className="border-e bg-white shadow-sm" side={lang === 'ar' ? 'right' : 'left'}>
-      <SidebarHeader className="p-6 flex flex-row items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white shadow-lg">
+    <Sidebar collapsible="icon" className="border-e-0 bg-white/40 backdrop-blur-xl shadow-none" side={isRtl ? 'right' : 'left'}>
+      <SidebarHeader className="p-8 flex flex-row items-center gap-4">
+        <div className="flex h-12 w-12 items-center justify-center rounded-[1.25rem] bg-gradient-to-br from-[#e87c24] to-[#FFB000] text-white shadow-xl shadow-orange-500/30 rotate-3">
           <Sparkles className="h-6 w-6" />
         </div>
         {state === "expanded" && (
           <div className={cn("flex flex-col text-start")}>
-            <span className="font-headline font-black text-xl leading-none text-black">NovaFlow</span>
-            <span className="text-[10px] uppercase tracking-widest text-black/50">Enterprise ERP</span>
+            <span className="font-headline font-black text-2xl leading-none text-[#1e1b4b]">NovaFlow</span>
+            <span className="text-[9px] uppercase font-black tracking-[0.2em] text-[#e87c24] mt-1">Enterprise ERP</span>
           </div>
         )}
       </SidebarHeader>
       
-      <SidebarContent>
+      <SidebarContent className="px-4">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-black/40 font-bold px-6 py-2 text-start">
-            {lang === 'ar' ? 'التنقل' : 'Navigation'}
+          <SidebarGroupLabel className="text-[#1e1b4b]/40 font-black px-4 py-4 text-start uppercase text-[10px] tracking-widest">
+            {isRtl ? 'القائمة الرئيسية' : 'Main Menu'}
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu className="px-4 space-y-1">
+            <SidebarMenu className="space-y-2">
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   {item.subItems ? (
@@ -190,27 +191,30 @@ export function DashboardSidebar() {
                           <SidebarMenuButton
                             isActive={pathname.startsWith(item.url)}
                             className={cn(
-                              "transition-all duration-200 rounded-xl py-6 px-4",
-                              pathname.startsWith(item.url) ? "bg-primary/10 text-primary font-black" : "text-slate-600 hover:bg-slate-50"
+                              "transition-all duration-300 rounded-[1.5rem] py-8 px-5 h-auto",
+                              pathname.startsWith(item.url) 
+                                ? "bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-xl shadow-orange-500/20 font-black" 
+                                : "text-[#1e1b4b] hover:bg-orange-50/50 hover:text-[#e87c24]"
                             )}
                           >
-                            <item.icon className="h-5 w-5" />
-                            <span className="flex-1 text-start">{item.title}</span>
-                            <ChevronRight className={cn("ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-90", lang === 'ar' && "rotate-180")} />
+                            <item.icon className={cn("h-6 w-6", pathname.startsWith(item.url) ? "text-white" : "text-slate-400")} />
+                            <span className="flex-1 text-start text-base">{item.title}</span>
+                            <ChevronRight className={cn(
+                              "ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-90", 
+                              isRtl && "rotate-180"
+                            )} />
                           </SidebarMenuButton>
                         </CollapsibleTrigger>
                         <CollapsibleContent>
-                          <SidebarMenuSub className="ms-6 mt-1 border-s-2 border-slate-100">
-                            <SidebarMenuSubItem>
-                              <SidebarMenuSubButton asChild isActive={pathname === item.url}>
-                                <Link href={item.url} className="text-xs font-bold">{lang === 'ar' ? 'نظرة عامة' : 'Overview'}</Link>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
+                          <SidebarMenuSub className="ms-8 mt-2 border-s-2 border-orange-100/50 space-y-1">
                             {item.subItems.map(sub => (
                               <SidebarMenuSubItem key={sub.title}>
-                                <SidebarMenuSubButton asChild isActive={pathname === sub.url}>
-                                  <Link href={sub.url} className="text-xs flex items-center gap-2">
-                                    <sub.icon className="h-3.5 w-3.5 opacity-70" />
+                                <SidebarMenuSubButton asChild isActive={pathname === sub.url} className="h-10 rounded-xl px-4">
+                                  <Link href={sub.url} className={cn(
+                                    "text-sm flex items-center gap-3 transition-colors",
+                                    pathname === sub.url ? "text-[#e87c24] font-black" : "text-slate-500 hover:text-[#1e1b4b]"
+                                  )}>
+                                    <sub.icon className="h-4 w-4 opacity-70" />
                                     <span>{sub.title}</span>
                                   </Link>
                                 </SidebarMenuSubButton>
@@ -226,18 +230,18 @@ export function DashboardSidebar() {
                       isActive={pathname === item.url}
                       tooltip={item.title}
                       className={cn(
-                        "transition-all duration-200 rounded-xl group py-6 px-4",
+                        "transition-all duration-300 rounded-[1.5rem] py-8 px-5 h-auto",
                         pathname === item.url 
-                          ? "bg-primary/10 text-primary font-black shadow-sm" 
-                          : "text-slate-600 hover:bg-slate-50 hover:text-black"
+                          ? "bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-xl shadow-orange-500/20 font-black" 
+                          : "text-[#1e1b4b] hover:bg-orange-50/50 hover:text-[#e87c24]"
                       )}
                     >
-                      <Link href={item.url} className={cn("flex items-center gap-4")}>
+                      <Link href={item.url} className={cn("flex items-center gap-5")}>
                         <item.icon className={cn(
-                          "h-5 w-5 transition-colors", 
-                          pathname === item.url ? "text-primary" : "text-slate-400 group-hover:text-black"
+                          "h-6 w-6 transition-colors", 
+                          pathname === item.url ? "text-white" : "text-slate-400 group-hover:text-[#e87c24]"
                         )} />
-                        <span className="flex-1 text-start">{item.title}</span>
+                        <span className="flex-1 text-start text-base">{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
                   )}
@@ -246,73 +250,17 @@ export function DashboardSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-        {settingsItems.length > 0 && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="text-black/40 font-bold px-6 py-2 text-start">
-              {lang === 'ar' ? 'النظام' : 'System'}
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu className="px-4">
-                <Collapsible
-                  asChild
-                  defaultOpen={pathname.startsWith("/dashboard/settings")}
-                  className="group/collapsible"
-                >
-                  <SidebarMenuItem>
-                    <CollapsibleTrigger asChild>
-                      <SidebarMenuButton 
-                        tooltip={t('settings')}
-                        className={cn(
-                          "transition-all duration-200 rounded-xl py-6 px-4",
-                          pathname.startsWith("/dashboard/settings") 
-                            ? "bg-slate-100 text-black font-black" 
-                            : "text-slate-600 hover:bg-slate-50"
-                        )}
-                      >
-                        <Settings className="h-5 w-5 text-slate-400 group-hover:text-black" />
-                        <span className="flex-1 text-start">{t('settings')}</span>
-                        <ChevronRight className={cn(
-                          "ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90",
-                          lang === 'ar' && "rotate-180"
-                        )} />
-                      </SidebarMenuButton>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <SidebarMenuSub className="mx-0 border-s-2 border-slate-100 ms-6 mt-1 space-y-1">
-                        {settingsItems.map((subItem) => (
-                          <SidebarMenuSubItem key={subItem.title}>
-                            <SidebarMenuSubButton 
-                              asChild 
-                              isActive={pathname === subItem.url}
-                              className={cn(
-                                "rounded-lg h-10 px-4 transition-all",
-                                pathname === subItem.url 
-                                  ? "text-primary font-bold bg-primary/5" 
-                                  : "text-slate-500 hover:text-black hover:bg-slate-50"
-                              )}
-                            >
-                              <Link href={subItem.url} className="flex items-center gap-3">
-                                <subItem.icon className="h-3.5 w-3.5" />
-                                <span className="text-xs">{subItem.title}</span>
-                              </Link>
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                        ))}
-                      </SidebarMenuSub>
-                    </CollapsibleContent>
-                  </SidebarMenuItem>
-                </Collapsible>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
       </SidebarContent>
       
-      <SidebarFooter className="border-t p-6 text-center">
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-          NovaFlow v1.9.0
-        </p>
+      <SidebarFooter className="p-8 text-center bg-white/5 border-t border-orange-100/30">
+        <div className="flex flex-col items-center gap-2">
+           <Badge variant="outline" className="bg-white/50 text-[9px] font-black uppercase tracking-widest text-[#e87c24] border-[#e87c24]/20 px-3">
+             Premium Edition
+           </Badge>
+           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+             NovaFlow v1.9.5
+           </p>
+        </div>
       </SidebarFooter>
     </Sidebar>
   )
