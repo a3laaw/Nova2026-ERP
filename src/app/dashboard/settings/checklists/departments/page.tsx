@@ -60,13 +60,22 @@ export default function DepartmentsPage() {
     setLoadingAction(null);
   };
 
+  const handleDeleteDept = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (!deptService || !confirm(t('confirmDelete'))) return;
+    try {
+      await deptService.deleteDepartment(id);
+      if (selectedDept?.id === id) setSelectedDept(null);
+      toast({ title: t('deleted') });
+    } catch (err) {
+      toast({ variant: "destructive", title: t('error') });
+    }
+  };
+
   const handleSaveJob = async () => {
     if (!deptService || !selectedDept?.id || !jobForm.name) return;
     setLoadingAction('job');
-    
-    // إيجاد اسم الدور المختار لتخزينه كمرجع نصي أيضاً لزيادة الأداء
     const selectedRole = roles?.find(r => r.id === jobForm.roleId);
-    
     const data = { 
       ...jobForm, 
       order: jobs?.length || 0, 
@@ -75,14 +84,23 @@ export default function DepartmentsPage() {
       name: jobForm.name || '', 
       nameEn: jobForm.nameEn || '' 
     };
-
     if (jobForm.id) await deptService.updateJob(selectedDept.id, jobForm.id, data);
     else await deptService.addJob(selectedDept.id, data as any);
-    
     toast({ title: t('saved') });
     setJobForm({ name: '', nameEn: '', roleId: '' });
     setIsJobOpen(false);
     setLoadingAction(null);
+  };
+
+  const handleDeleteJob = async (e: React.MouseEvent, jobId: string) => {
+    e.stopPropagation();
+    if (!deptService || !selectedDept?.id || !confirm(t('confirmDelete'))) return;
+    try {
+      await deptService.deleteJob(selectedDept.id, jobId);
+      toast({ title: t('deleted') });
+    } catch (err) {
+      toast({ variant: "destructive", title: t('error') });
+    }
   };
 
   return (
@@ -91,9 +109,9 @@ export default function DepartmentsPage() {
         <h2 className="text-2xl font-black font-headline flex items-center gap-3 text-start"><Building2 className="h-6 w-6 text-primary" /> {isRtl ? 'الهيكل التنظيمي' : 'Organizational Structure'}</h2>
         <Dialog open={isDeptOpen} onOpenChange={setIsDeptOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => setDeptForm({ name: '', nameEn: '', description: '' })} className="rounded-xl">
-              <Plus className="me-2 h-4 w-4" /> {t('newDept')}
-            </Button>
+            <button onClick={() => setDeptForm({ name: '', nameEn: '', description: '' })} className="btn-nova-primary h-12 px-6 rounded-2xl flex items-center gap-2">
+              <Plus className="h-5 w-5" /> {t('newDept')}
+            </button>
           </DialogTrigger>
           <DialogContent className="rounded-[2.5rem] max-w-2xl p-8" dir={dir}>
             <DialogHeader><DialogTitle className="text-start font-black text-2xl">{deptForm.id ? t('edit') : t('newDept')}</DialogTitle></DialogHeader>
@@ -116,9 +134,10 @@ export default function DepartmentsPage() {
                 departments?.filter(d => d.name.includes(searchTerm)).map(dept => (
                   <div key={dept.id} onClick={() => setSelectedDept(dept)} className={cn("p-5 border-b flex items-center justify-between cursor-pointer transition-all group", selectedDept?.id === dept.id ? 'bg-primary/5 border-s-4 border-s-primary' : 'hover:bg-muted/30')}>
                     <span className="text-sm font-black">{isRtl ? dept.name : dept.nameEn}</span>
-                    <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="icon" onClick={e => { e.stopPropagation(); setDeptForm(dept); setIsDeptOpen(true); }} className="h-8 w-8 text-blue-600 opacity-0 group-hover:opacity-100"><Edit3 className="h-4 w-4" /></Button>
-                      <ChevronRight className={cn("h-4 w-4", isRtl && 'rotate-180', selectedDept?.id === dept.id && 'text-primary')} />
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button variant="ghost" size="icon" onClick={e => { e.stopPropagation(); setDeptForm(dept); setIsDeptOpen(true); }} className="h-8 w-8 text-blue-600"><Edit3 className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={e => handleDeleteDept(e, dept.id!)} className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                      <ChevronRight className={cn("h-4 w-4 ms-2", isRtl && 'rotate-180', selectedDept?.id === dept.id && 'text-primary')} />
                     </div>
                   </div>
                 ))
@@ -145,7 +164,6 @@ export default function DepartmentsPage() {
                         <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={jobForm.name || ''} onChange={e => setJobForm({...jobForm, name: e.target.value})} /></div>
                         <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={jobForm.nameEn || ''} onChange={e => setJobForm({...jobForm, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
                       </div>
-                      
                       <div className="p-6 bg-primary/5 rounded-2xl border-2 border-primary/10 space-y-4">
                          <div className="flex items-center gap-2 text-primary font-black text-xs uppercase tracking-widest">
                             <ShieldCheck className="h-4 w-4" /> {isRtl ? 'ربط الصلاحيات (الدور)' : 'Permission Binding (Role)'}
@@ -156,15 +174,10 @@ export default function DepartmentsPage() {
                             </SelectTrigger>
                             <SelectContent>
                                {roles?.map(r => (
-                                 <SelectItem key={r.id} value={r.id!} className="font-bold">
-                                   {isRtl ? r.name : r.nameEn}
-                                 </SelectItem>
+                                 <SelectItem key={r.id} value={r.id!} className="font-bold">{isRtl ? r.name : r.nameEn}</SelectItem>
                                ))}
                             </SelectContent>
                          </Select>
-                         <p className="text-[10px] text-muted-foreground font-bold leading-relaxed">
-                            {isRtl ? 'تنبيه: سيحصل أي موظف يتم تعيينه في هذه الوظيفة على صلاحيات هذا الدور تلقائياً.' : 'Warning: Any employee assigned to this job will inherit this role permissions automatically.'}
-                         </p>
                       </div>
                     </div>
                     <DialogFooter className="mt-6"><Button onClick={handleSaveJob} disabled={loadingAction === 'job'} className="w-full h-12 rounded-xl font-bold bg-primary text-white">{t('save')}</Button></DialogFooter>
@@ -185,8 +198,8 @@ export default function DepartmentsPage() {
                            </span>
                         </div>
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                           <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600" onClick={() => { setJobForm(job); setIsJobOpen(true); }}><Edit3 className="h-4 w-4" /></Button>
-                           <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => { if(confirm(t('confirmDelete'))) deptService?.deleteJob(selectedDept.id!, job.id!); }}><Trash2 className="h-4 w-4" /></Button>
+                           <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600" onClick={(e) => { e.stopPropagation(); setJobForm(job); setIsJobOpen(true); }}><Edit3 className="h-4 w-4" /></Button>
+                           <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={(e) => handleDeleteJob(e, job.id!)}><Trash2 className="h-4 w-4" /></Button>
                         </div>
                       </div>
                     ))}
