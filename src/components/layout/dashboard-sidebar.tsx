@@ -199,7 +199,7 @@ export function DashboardSidebar() {
 
         <SidebarGroup className="mt-8 p-0">
           {!isCollapsed && (
-            <SidebarGroupLabel className="text-[#1e1b4b]/40 font-black px-4 mb-2 text-start uppercase text-[9px] tracking-widest border-t border-orange-100/30 pt-4">
+            <SidebarGroupLabel className="text-[#1e1b4b]/40 font-black px-2 mb-3 text-start uppercase text-[9px] tracking-widest border-t border-orange-100/30 pt-4">
               {isRtl ? 'الإعدادات' : 'Settings'}
             </SidebarGroupLabel>
           )}
@@ -213,7 +213,7 @@ export function DashboardSidebar() {
       
       <SidebarFooter className="flex-none transition-all duration-300 p-3 mt-auto">
         {!isCollapsed ? (
-          <div className="p-4 rounded-2xl bg-white border border-orange-100 shadow-xl ring-1 ring-black/[0.02] animate-in fade-in zoom-in-95 duration-500">
+          <div className="p-4 rounded-2xl bg-white border border-orange-100 shadow-2xl ring-1 ring-black/[0.02] animate-in fade-in zoom-in-95 duration-500">
              <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -277,24 +277,26 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
               sideOffset={5}
               align="start"
               dir={isRtl ? "rtl" : "ltr"}
-              className="w-60 p-2 bg-white/98 backdrop-blur-xl border-2 border-orange-100 shadow-2xl rounded-[1.8rem] z-[9999] animate-in fade-in zoom-in-95 duration-200"
+              className="w-64 p-0 bg-orange-50/95 backdrop-blur-xl border-2 border-orange-200/50 shadow-3xl rounded-[2.5rem] z-[9999] animate-in fade-in zoom-in-95 duration-200 overflow-hidden"
               onPointerEnter={handlePointerEnter}
               onPointerLeave={handlePointerLeave}
             >
-              <DropdownMenuLabel className="font-black text-[#1e1b4b] px-4 py-4 text-xs border-b border-orange-50 mb-2 uppercase tracking-widest text-start flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-orange-50 text-orange-600">
+              <DropdownMenuLabel className="font-black text-[#1e1b4b] px-4 py-4 text-xs border-b border-orange-100 mb-2 uppercase tracking-widest text-start flex items-center justify-between">
+                <span className="flex-1">{item.title}</span>
+                <div className="p-2 rounded-xl bg-white shadow-sm text-orange-600">
                   <item.icon className="h-4 w-4" />
                 </div>
-                {item.title}
               </DropdownMenuLabel>
-              {item.subItems.map((sub: any) => (
-                <DropdownMenuItem key={sub.title} asChild className="rounded-xl py-3 px-4 focus:bg-orange-50 cursor-pointer mb-1 group">
-                  <Link href={sub.url} className="flex items-center justify-between w-full">
-                    <span className={cn("font-black text-[11px] flex-1 text-start transition-colors", pathname === sub.url ? "text-[#e87c24]" : "text-[#1e1b4b]")}>{sub.title}</span>
-                    <sub.icon className={cn("h-3.5 w-3.5 ml-3 opacity-30 group-hover:opacity-100 transition-all", pathname === sub.url && "text-[#e87c24] opacity-100")} />
-                  </Link>
-                </DropdownMenuItem>
-              ))}
+              <div className="p-2 space-y-1">
+                {item.subItems.map((sub: any) => (
+                  <DropdownMenuItem key={sub.title} asChild className="rounded-2xl py-3 px-4 focus:bg-white focus:shadow-sm cursor-pointer mb-1 group">
+                    <Link href={sub.url} className="flex items-center justify-between w-full">
+                      <span className={cn("font-black text-[11px] flex-1 text-start transition-colors", pathname === sub.url ? "text-[#e87c24]" : "text-[#1e1b4b]")}>{sub.title}</span>
+                      <sub.icon className={cn("h-3.5 w-3.5 ml-3 opacity-30 group-hover:opacity-100 transition-all", pathname === sub.url && "text-[#e87c24] opacity-100")} />
+                    </Link>
+                  </DropdownMenuItem>
+                ))}
+              </div>
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
@@ -326,14 +328,14 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
       {item.subItems ? (
         <Collapsible defaultOpen={isActive} className="group/collapsible">
           <div className={cn(
-            "rounded-[1.4rem] transition-all duration-300 overflow-hidden",
+            "rounded-xl transition-all duration-300 overflow-hidden",
             isActive ? activeCard : inactiveCard
           )}>
             <CollapsibleTrigger asChild>
               <button className="flex items-center justify-between w-full h-12 px-4 hover:bg-white/10 transition-colors">
-                <div className={cn("flex items-center gap-3", isRtl ? "flex-row" : "flex-row-reverse")}>
+                <div className={cn("flex items-center gap-3 w-full", isRtl ? "flex-row" : "flex-row-reverse")}>
                   <item.icon className={cn("h-5 w-5 shrink-0", isActive ? "text-[#e87c24]" : "text-white")} />
-                  <span className="text-start text-sm font-black truncate">{item.title}</span>
+                  <span className="flex-1 text-start text-sm font-black truncate">{item.title}</span>
                 </div>
                 <ChevronLeft className={cn(
                   "h-3.5 w-3.5 transition-transform opacity-40", 
@@ -343,10 +345,10 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
             </CollapsibleTrigger>
             <CollapsibleContent>
               <div className={cn(
-                "mx-2 mb-3 p-2 rounded-[1.2rem] space-y-1 animate-in slide-in-from-top-2 duration-300",
+                "mx-2 mb-3 p-2 rounded-xl space-y-1 animate-in slide-in-from-top-2 duration-300",
                 isActive 
-                  ? "bg-orange-50/70 border border-orange-100/50" 
-                  : "bg-white/20 backdrop-blur-md border border-white/10"
+                  ? "bg-orange-100/30 border border-orange-200/20" 
+                  : "bg-white/15 backdrop-blur-md border border-white/10"
               )}>
                 {item.subItems.map((sub: any) => {
                   const isSubActive = pathname === sub.url
@@ -355,9 +357,9 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                       key={sub.title} 
                       href={sub.url}
                       className={cn(
-                        "flex items-center justify-between h-9 rounded-xl px-3 transition-all text-[10px] font-black",
+                        "flex items-center justify-between h-9 rounded-lg px-3 transition-all text-[10px] font-black",
                         isActive 
-                          ? (isSubActive ? "bg-white text-[#e87c24] shadow-sm" : "text-slate-500 hover:text-[#e87c24]")
+                          ? (isSubActive ? "bg-white text-[#e87c24] shadow-sm" : "text-slate-500/80 hover:text-[#e87c24]")
                           : (isSubActive ? "bg-white/40 text-white shadow-inner" : "text-white/80 hover:text-white")
                       )}
                     >
@@ -374,7 +376,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
         <Link 
           href={item.url}
           className={cn(
-            "flex items-center gap-3 transition-all duration-300 rounded-[1.4rem] h-12 px-4",
+            "flex items-center gap-3 transition-all duration-300 rounded-xl h-12 px-4",
             isActive ? activeCard : inactiveCard
           )}
         >
