@@ -31,7 +31,8 @@ import {
   Building2,
   UserCog,
   Database,
-  ChevronLeft
+  ChevronLeft,
+  Search
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
@@ -49,8 +50,8 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSub,
-  SidebarMenuSubButton,
   SidebarMenuSubItem,
+  SidebarMenuSubButton,
   useSidebar,
 } from "@/components/ui/sidebar"
 import {
@@ -180,29 +181,34 @@ export function DashboardSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="border-e-0 bg-transparent shadow-none" side={isRtl ? 'right' : 'left'}>
-      <SidebarHeader className="p-8 flex flex-row items-center justify-center lg:justify-between gap-4">
+      <SidebarHeader className="p-8 mb-4">
         {!isCollapsed && (
-          <div className={cn("flex flex-col text-start overflow-hidden animate-in fade-in slide-in-from-right-4 duration-500")}>
-            <span className="font-headline font-black text-3xl leading-none text-[#1e1b4b]">NovaFlow</span>
-            <span className="text-[10px] uppercase font-black tracking-[0.2em] text-[#e87c24] mt-1.5 truncate">ENTERPRISE ERP</span>
+          <div className="flex flex-col text-start animate-in fade-in slide-in-from-top-4 duration-700">
+            <span className="font-headline font-black text-4xl text-[#1e1b4b] leading-tight tracking-tighter">NovaFlow</span>
+            <div className="flex items-center gap-2">
+              <div className="h-0.5 w-8 bg-gradient-to-r from-[#FFB000] to-[#e87c24]" />
+              <span className="text-[9px] uppercase font-black tracking-[0.3em] text-[#e87c24]">SYSTEMS</span>
+            </div>
           </div>
         )}
-        <div className="flex h-14 w-14 items-center justify-center shrink-0 rounded-[1.5rem] bg-gradient-to-br from-[#FFB000] to-[#e87c24] text-white shadow-2xl shadow-orange-500/40 rotate-3 transition-transform hover:rotate-0">
-          <Sparkles className="h-8 w-8" />
-        </div>
+        {isCollapsed && (
+          <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-[#FFB000] to-[#e87c24] flex items-center justify-center text-white shadow-xl rotate-3">
+             <Sparkles className="h-6 w-6" />
+          </div>
+        )}
       </SidebarHeader>
       
       <SidebarContent className="px-6 scrollbar-hide">
         <SidebarGroup>
           {!isCollapsed && (
-            <SidebarGroupLabel className="text-[#1e1b4b]/30 font-black px-4 py-8 text-start uppercase text-[11px] tracking-widest">
-              {isRtl ? 'القائمة الرئيسية' : 'Main Menu'}
+            <SidebarGroupLabel className="text-[#1e1b4b]/40 font-black px-4 mb-4 text-start uppercase text-[10px] tracking-[0.2em]">
+              {isRtl ? 'إدارة العمليات' : 'Operation Hub'}
             </SidebarGroupLabel>
           )}
           <SidebarGroupContent>
-            <SidebarMenu className="space-y-4">
+            <SidebarMenu className="gap-5">
               {menuItems.map((item) => (
-                <SidebarItemRenderer 
+                <SidebarCardRenderer 
                   key={item.title} 
                   item={item} 
                   isCollapsed={isCollapsed} 
@@ -214,15 +220,15 @@ export function DashboardSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup className="mt-8 mb-10">
+        <SidebarGroup className="mt-12 mb-10">
           {!isCollapsed && (
-            <SidebarGroupLabel className="text-[#1e1b4b]/30 font-black px-4 py-6 text-start uppercase text-[11px] tracking-widest border-t border-orange-100/50 pt-8">
-              {isRtl ? 'الإعدادات' : 'System Settings'}
+            <SidebarGroupLabel className="text-[#1e1b4b]/40 font-black px-4 mb-4 text-start uppercase text-[10px] tracking-[0.2em] border-t border-orange-100/30 pt-8">
+              {isRtl ? 'التهيئة والإعدادات' : 'System Config'}
             </SidebarGroupLabel>
           )}
-          <SidebarMenu className="space-y-4">
+          <SidebarMenu className="gap-5">
             {settingsItems.map((item) => (
-              <SidebarItemRenderer 
+              <SidebarCardRenderer 
                 key={item.title} 
                 item={item} 
                 isCollapsed={isCollapsed} 
@@ -234,27 +240,30 @@ export function DashboardSidebar() {
         </SidebarGroup>
       </SidebarContent>
       
-      <SidebarFooter className="p-8 text-center bg-white/5 border-t border-orange-100/30">
-        <div className="flex flex-col items-center gap-2">
-           <Badge variant="outline" className="bg-white/50 text-[9px] font-black uppercase tracking-widest text-[#e87c24] border-[#e87c24]/20 px-3">
-             Premium Edition
-           </Badge>
-           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-             NovaFlow v1.9.5
-           </p>
-        </div>
-      </SidebarFooter>
+      {!isCollapsed && (
+        <SidebarFooter className="p-10 text-center">
+          <div className="p-6 rounded-[2rem] bg-white/40 backdrop-blur-md border border-white/60 shadow-lg group hover:bg-white/60 transition-all cursor-pointer">
+             <div className="flex items-center justify-between mb-2">
+                <Badge className="bg-[#e87c24] text-white text-[8px] font-black uppercase">Enterprise</Badge>
+                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+             </div>
+             <p className="text-[10px] font-bold text-[#1e1b4b]/60 text-start leading-tight">All systems operational in your Kuwait Cloud.</p>
+          </div>
+        </SidebarFooter>
+      )}
     </Sidebar>
   )
 }
 
-function SidebarItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
+function SidebarCardRenderer({ item, isCollapsed, isRtl, pathname }: any) {
   const [isOpen, setIsOpen] = React.useState(false);
   const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
+  const isActive = pathname === item.url || (item.url !== '/dashboard' && pathname.startsWith(item.url));
+
   const handleMouseEnter = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    setIsOpen(true);
+    if (isCollapsed) setIsOpen(true);
   };
 
   const handleMouseLeave = () => {
@@ -263,20 +272,15 @@ function SidebarItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
     }, 150);
   };
 
-  const isActive = pathname === item.url || (item.url !== '/dashboard' && pathname.startsWith(item.url));
-
-  // التصميم النشط: بطاقة بيضاء بارزة كما في الصورة
-  const activeCardStyle = "bg-white text-[#1e1b4b] shadow-2xl shadow-orange-500/10 border border-orange-100/50 scale-[1.02] font-black";
+  // بطاقة غير نشطة: زجاجية ملونة برتقالي ذهبي
+  const inactiveCard = "bg-gradient-to-br from-[#FFB000]/90 to-[#e87c24]/90 backdrop-blur-lg border border-white/20 shadow-xl shadow-orange-500/10 text-white hover:scale-[1.02] hover:shadow-orange-500/20";
   
-  // التصميم غير النشط: أيقونة برتقالية وخلفية شفافة
-  const inactiveCardStyle = "text-[#1e1b4b] hover:bg-orange-50/50 transition-all duration-300";
-  
-  // لون الأيقونة: داكن للنشط، برتقالي ذهبي لغير النشط
-  const iconColor = isActive ? "text-[#1e1b4b]" : "text-[#e87c24]";
+  // بطاقة نشطة: زجاجية بيضاء فاتحة بارزة
+  const activeCard = "bg-white/95 backdrop-blur-xl border border-orange-100 shadow-2xl shadow-orange-500/10 scale-[1.03] text-[#1e1b4b] font-black";
 
   if (isCollapsed) {
     return (
-      <SidebarMenuItem className="flex justify-center py-1">
+      <SidebarMenuItem className="flex justify-center">
         <TooltipProvider delayDuration={0}>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -287,11 +291,11 @@ function SidebarItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                       onMouseEnter={handleMouseEnter}
                       onMouseLeave={handleMouseLeave}
                       className={cn(
-                        "flex h-14 w-14 items-center justify-center rounded-[1.25rem] transition-all duration-500 outline-none",
-                        isActive ? activeCardStyle : inactiveCardStyle
+                        "flex h-14 w-14 items-center justify-center rounded-[1.5rem] transition-all duration-500 outline-none",
+                        isActive ? activeCard : inactiveCard
                       )}
                     >
-                      <item.icon className={cn("h-6 w-6 shrink-0", iconColor)} />
+                      <item.icon className={cn("h-7 w-7 shrink-0", isActive ? "text-[#e87c24]" : "text-white")} />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
@@ -299,20 +303,21 @@ function SidebarItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                     sideOffset={20}
                     align="start"
                     dir={isRtl ? "rtl" : "ltr"}
-                    onMouseEnter={handleMouseEnter}
-                    onMouseLeave={handleMouseLeave}
-                    className="w-64 p-2 bg-white/95 backdrop-blur-xl border-2 border-primary/10 shadow-3xl rounded-[2rem] z-[9999]"
+                    className="w-72 p-2 bg-white/95 backdrop-blur-2xl border-2 border-orange-100 shadow-3xl rounded-[2.5rem] z-[9999]"
                   >
-                    <DropdownMenuLabel className="font-black text-[#1e1b4b] px-5 py-4 text-sm border-b-2 border-primary/5 mb-2 uppercase tracking-widest text-start">
+                    <DropdownMenuLabel className="font-black text-[#1e1b4b] px-6 py-5 text-sm border-b-2 border-orange-50 mb-2 uppercase tracking-widest text-start flex items-center gap-3">
+                      <div className="p-2 rounded-xl bg-orange-50 text-orange-600">
+                        <item.icon className="h-4 w-4" />
+                      </div>
                       {item.title}
                     </DropdownMenuLabel>
                     {item.subItems.map((sub: any) => {
                       const isSubActive = pathname === sub.url;
                       return (
-                        <DropdownMenuItem key={sub.title} asChild className="rounded-xl py-3 px-4 focus:bg-primary/5 cursor-pointer mb-1">
+                        <DropdownMenuItem key={sub.title} asChild className="rounded-2xl py-4 px-5 focus:bg-orange-50 cursor-pointer mb-1">
                           <Link href={sub.url} className="flex items-center justify-between w-full">
                             <span className={cn("font-black text-sm flex-1 text-start", isSubActive ? "text-[#e87c24]" : "text-[#1e1b4b]")}>{sub.title}</span>
-                            <sub.icon className={cn("h-4 w-4 ml-3", isSubActive ? "text-[#e87c24]" : "text-primary/30")} />
+                            <sub.icon className={cn("h-4 w-4 ml-4", isSubActive ? "text-[#e87c24]" : "text-slate-300")} />
                           </Link>
                         </DropdownMenuItem>
                       )
@@ -322,14 +327,13 @@ function SidebarItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
               ) : (
                 <SidebarMenuButton
                   asChild
-                  isActive={isActive}
                   className={cn(
-                    "flex h-14 w-14 items-center justify-center rounded-[1.25rem] transition-all duration-500",
-                    isActive ? activeCardStyle : inactiveCardStyle
+                    "flex h-14 w-14 items-center justify-center rounded-[1.5rem] transition-all duration-500",
+                    isActive ? activeCard : inactiveCard
                   )}
                 >
                   <Link href={item.url}>
-                    <item.icon className={cn("h-6 w-6 shrink-0", iconColor)} />
+                    <item.icon className={cn("h-7 w-7 shrink-0", isActive ? "text-[#e87c24]" : "text-white")} />
                   </Link>
                 </SidebarMenuButton>
               )}
@@ -346,69 +350,59 @@ function SidebarItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
   }
 
   return (
-    <SidebarMenuItem className="px-2 py-1">
+    <SidebarMenuItem className="px-1">
       {item.subItems ? (
-        <Collapsible asChild className="group/collapsible" defaultOpen={isActive}>
-          <div>
+        <Collapsible asChild defaultOpen={isActive} className="group/collapsible">
+          <div className={cn("rounded-[2rem] transition-all duration-500 overflow-hidden", isActive ? activeCard : inactiveCard)}>
             <CollapsibleTrigger asChild>
-              <SidebarMenuButton
-                isActive={isActive}
-                className={cn(
-                  "transition-all duration-500 rounded-[1.5rem] h-auto py-7 px-6 group",
-                  isActive ? activeCardStyle : inactiveCardStyle
-                )}
-              >
-                <div className="flex items-center justify-between w-full h-full">
-                  <div className="flex items-center gap-6 flex-1 min-w-0">
-                    <item.icon className={cn("h-7 w-7 shrink-0 transition-transform group-hover:scale-110", iconColor)} />
-                    <span className="text-start text-base truncate font-black">{item.title}</span>
+              <SidebarMenuButton className="h-auto py-7 px-8 hover:bg-transparent">
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-6">
+                    <item.icon className={cn("h-7 w-7 shrink-0 transition-transform group-hover/collapsible:scale-110", isActive ? "text-[#e87c24]" : "text-white")} />
+                    <span className="text-start text-base font-black truncate">{item.title}</span>
                   </div>
                   <ChevronLeft className={cn(
                     "h-4 w-4 transition-transform group-data-[state=open]/collapsible:-rotate-90 opacity-40", 
-                    isActive ? "text-[#1e1b4b]" : "text-[#e87c24]",
                     !isRtl && "rotate-180"
                   )} />
                 </div>
               </SidebarMenuButton>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <SidebarMenuSub className="mx-6 mt-3 mb-4 space-y-2 border-none">
+              <div className="px-6 pb-6 space-y-2">
                 {item.subItems.map((sub: any) => {
                   const isSubActive = pathname === sub.url;
                   return (
-                    <SidebarMenuSubItem key={sub.title}>
-                      <SidebarMenuSubButton asChild isActive={isSubActive} className={cn(
-                        "h-12 rounded-xl px-5 transition-all duration-300",
+                    <Link 
+                      key={sub.title} 
+                      href={sub.url}
+                      className={cn(
+                        "flex items-center justify-between h-12 rounded-2xl px-6 transition-all",
                         isSubActive 
-                          ? "bg-white shadow-md text-[#e87c24] font-black border border-orange-50" 
-                          : "bg-white/20 hover:bg-orange-50/50 text-slate-600 hover:text-primary"
-                      )}>
-                        <Link href={sub.url}>
-                          <div className="flex items-center justify-between w-full h-full">
-                            <span className="text-xs font-black truncate flex-1 text-start">{sub.title}</span>
-                            <sub.icon className={cn("h-4 w-4 ml-3 opacity-60", isSubActive ? "text-primary" : "text-primary/30")} />
-                          </div>
-                        </Link>
-                      </SidebarMenuSubButton>
-                    </SidebarMenuSubItem>
+                          ? (isActive ? "bg-orange-50 text-[#e87c24] shadow-inner" : "bg-white text-[#e87c24] shadow-lg")
+                          : (isActive ? "text-slate-500 hover:bg-orange-50/50" : "text-white/70 hover:bg-white/10")
+                      )}
+                    >
+                      <span className="text-xs font-black truncate text-start">{sub.title}</span>
+                      <sub.icon className={cn("h-4 w-4 ml-4 opacity-50", isSubActive && "opacity-100")} />
+                    </Link>
                   )
                 })}
-              </SidebarMenuSub>
+              </div>
             </CollapsibleContent>
           </div>
         </Collapsible>
       ) : (
         <SidebarMenuButton
           asChild
-          isActive={isActive}
           className={cn(
-            "transition-all duration-500 rounded-[1.5rem] h-auto py-7 px-6 group",
-            isActive ? activeCardStyle : inactiveCardStyle
+            "transition-all duration-500 rounded-[2rem] h-auto py-7 px-8",
+            isActive ? activeCard : inactiveCard
           )}
         >
           <Link href={item.url} className="flex items-center gap-6">
-            <item.icon className={cn("h-7 w-7 shrink-0 transition-transform group-hover:scale-110", iconColor)} />
-            <span className="flex-1 text-start text-base truncate font-black">{item.title}</span>
+            <item.icon className={cn("h-7 w-7 shrink-0 transition-transform group-hover:scale-110", isActive ? "text-[#e87c24]" : "text-white")} />
+            <span className="flex-1 text-start text-base font-black truncate">{item.title}</span>
           </Link>
         </SidebarMenuButton>
       )}
