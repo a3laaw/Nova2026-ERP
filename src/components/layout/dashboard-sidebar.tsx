@@ -42,7 +42,6 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarFooter,
   SidebarMenu,
   SidebarMenuItem,
@@ -84,7 +83,7 @@ export function DashboardSidebar() {
       module: 'crm',
       subItems: [
         { title: t('leads'), url: "/dashboard/crm", icon: Users },
-        { title: t('clients'), url: "/dashboard/crm?tab=clients", icon: UserCircle },
+        { title: t('clients'), url: "/dashboard/clients", icon: UserCircle },
       ]
     },
     { 
@@ -135,16 +134,6 @@ export function DashboardSidebar() {
       ]
     },
     { 
-      title: t('inventory'), 
-      icon: Warehouse, 
-      url: "/dashboard/inventory", 
-      module: 'inventory',
-      subItems: [
-        { title: t('warehouses'), url: "/dashboard/inventory", icon: Warehouse },
-        { title: t('fieldAssets'), url: "/dashboard/inventory", icon: HardHat },
-      ]
-    },
-    { 
       title: t('reports'), 
       icon: BarChart3, 
       url: "/dashboard/reports", 
@@ -165,7 +154,7 @@ export function DashboardSidebar() {
         { title: t('rolesRef'), url: "/dashboard/settings/roles", icon: ShieldCheck, permission: 'admin' },
         { title: t('workHours'), url: "/dashboard/settings/work-hours", icon: Clock, permission: 'ref:view' },
         { title: t('profile'), url: "/dashboard/settings/profile", icon: UserCog, permission: 'public' },
-      ].filter(sub => {
+      ].filter((sub: any) => {
         if (sub.permission === 'public') return true;
         if (sub.permission === 'admin') return isAdmin;
         return canAccess(sub.permission.split(':')[0]);
@@ -176,7 +165,7 @@ export function DashboardSidebar() {
 
   return (
     <Sidebar collapsible="icon" side={isRtl ? "right" : "left"} className="border-none bg-transparent">
-      <SidebarHeader className="flex-none transition-all duration-300 p-4">
+      <SidebarHeader className="flex-none p-4">
         {!isCollapsed ? (
           <div className="flex flex-col text-start px-2">
             <span className="font-headline font-black text-2xl text-[#1e1b4b] tracking-tighter leading-none">NovaFlow</span>
@@ -204,9 +193,9 @@ export function DashboardSidebar() {
         </SidebarGroup>
       </SidebarContent>
       
-      <SidebarFooter className="flex-none transition-all duration-300 p-3 mt-auto">
-        {!isCollapsed ? (
-          <div className="p-4 rounded-2xl bg-white border border-orange-100 shadow-2xl ring-1 ring-black/[0.02] animate-in fade-in zoom-in-95 duration-500">
+      <SidebarFooter className="flex-none p-3 mt-auto">
+        {!isCollapsed && (
+          <div className="p-4 rounded-3xl bg-white border border-orange-100 shadow-2xl ring-1 ring-black/[0.02] animate-in fade-in zoom-in-95 duration-500">
              <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -215,10 +204,6 @@ export function DashboardSidebar() {
                 <Badge className="bg-[#e87c24] text-white text-[8px] font-black uppercase h-4 px-1.5">v1.9</Badge>
              </div>
              <p className="text-[9px] font-black text-[#1e1b4b]/80 text-center uppercase tracking-tighter">Enterprise Intelligence</p>
-          </div>
-        ) : (
-          <div className="mx-auto h-8 w-8 rounded-xl bg-white border border-orange-100 shadow-sm flex items-center justify-center text-[#e87c24]">
-             <ShieldCheck className="h-4 w-4" />
           </div>
         )}
       </SidebarFooter>
@@ -248,6 +233,9 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
   const activeCard = "bg-white border-2 border-orange-100 shadow-2xl text-[#1e1b4b] font-black"
   const inactiveCard = "bg-gradient-to-br from-[#FFB000] to-[#e87c24] border-0 shadow-lg text-white font-black"
 
+  // المظهر المشترك للبطاقة الفرعية العائمة
+  const subCardBase = "flex items-center justify-between h-11 rounded-[1.2rem] px-4 transition-all text-[11px] font-black mb-1.5 backdrop-blur-md"
+  
   if (isCollapsed) {
     return (
       <SidebarMenuItem className="flex justify-center mb-1">
@@ -258,37 +246,49 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                 onPointerEnter={handlePointerEnter}
                 onPointerLeave={handlePointerLeave}
                 className={cn(
-                  "flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300 outline-none hover:scale-105 shadow-md",
+                  "flex h-12 w-12 items-center justify-center rounded-[1.4rem] transition-all duration-300 outline-none hover:scale-105 shadow-md",
                   isActive ? activeCard : inactiveCard
                 )}
               >
-                <item.icon className={cn("h-5 w-5", isActive ? "text-[#e87c24]" : "text-white")} />
+                <item.icon className={cn("h-6 w-6", isActive ? "text-[#e87c24]" : "text-white")} />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
               side={isRtl ? "left" : "right"}
-              sideOffset={5}
+              sideOffset={8}
               align="start"
               dir={isRtl ? "rtl" : "ltr"}
-              className="w-64 p-0 bg-orange-50/95 backdrop-blur-xl border-2 border-orange-200/50 shadow-3xl rounded-[2.5rem] z-[9999] animate-in fade-in zoom-in-95 duration-200 overflow-hidden"
+              className="w-64 p-3 bg-orange-50/95 backdrop-blur-xl border-2 border-orange-200/50 shadow-3xl rounded-[2.5rem] z-[9999] animate-in fade-in zoom-in-95 duration-200 overflow-hidden"
               onPointerEnter={handlePointerEnter}
               onPointerLeave={handlePointerLeave}
             >
-              <DropdownMenuLabel className="font-black text-[#1e1b4b] px-4 py-4 text-xs border-b border-orange-100 mb-2 uppercase tracking-widest text-start flex items-center justify-between">
-                <span className="flex-1">{item.title}</span>
+              <DropdownMenuLabel className="font-black text-[#1e1b4b] px-4 py-3 text-xs border-b border-orange-100 mb-4 uppercase tracking-widest text-start flex items-center justify-between">
+                <span>{item.title}</span>
                 <div className="p-2 rounded-xl bg-white shadow-sm text-orange-600">
                   <item.icon className="h-4 w-4" />
                 </div>
               </DropdownMenuLabel>
-              <div className="p-2 space-y-1">
-                {item.subItems.map((sub: any) => (
-                  <DropdownMenuItem key={sub.title} asChild className="rounded-2xl py-3 px-4 focus:bg-white focus:shadow-sm cursor-pointer mb-1 group">
-                    <Link href={sub.url} className="flex items-center justify-between w-full">
-                      <span className={cn("font-black text-[11px] flex-1 text-start transition-colors", pathname === sub.url ? "text-[#e87c24]" : "text-[#1e1b4b]")}>{sub.title}</span>
-                      <sub.icon className={cn("h-3.5 w-3.5 ml-3 opacity-30 group-hover:opacity-100 transition-all", pathname === sub.url && "text-[#e87c24] opacity-100")} />
-                    </Link>
-                  </DropdownMenuItem>
-                ))}
+              
+              <div className="space-y-1">
+                {item.subItems.map((sub: any) => {
+                  const isSubActive = pathname === sub.url
+                  return (
+                    <DropdownMenuItem key={sub.title} asChild className="p-0 focus:bg-transparent bg-transparent">
+                      <Link 
+                        href={sub.url} 
+                        className={cn(
+                          subCardBase,
+                          isSubActive 
+                            ? "bg-white text-[#e87c24] shadow-lg scale-[1.02]" 
+                            : "bg-white/40 text-[#1e1b4b] border border-white/40 hover:bg-white/60"
+                        )}
+                      >
+                        <span className="flex-1 text-start">{sub.title}</span>
+                        <sub.icon className={cn("h-3.5 w-3.5 ml-3 transition-all", isSubActive ? "text-[#e87c24] opacity-100" : "opacity-30")} />
+                      </Link>
+                    </DropdownMenuItem>
+                  )
+                })}
               </div>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -299,14 +299,14 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                 <Link 
                   href={item.url}
                   className={cn(
-                    "flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300 hover:scale-105 shadow-md",
+                    "flex h-12 w-12 items-center justify-center rounded-[1.4rem] transition-all duration-300 hover:scale-105 shadow-md",
                     isActive ? activeCard : inactiveCard
                   )}
                 >
-                  <item.icon className={cn("h-5 w-5", isActive ? "text-[#e87c24]" : "text-white")} />
+                  <item.icon className={cn("h-6 w-6", isActive ? "text-[#e87c24]" : "text-white")} />
                 </Link>
               </TooltipTrigger>
-              <TooltipContent side={isRtl ? "left" : "right"} sideOffset={5} className="bg-[#1e1b4b] text-white font-black text-[10px] rounded-lg px-3 py-1.5 shadow-2xl border-0 z-[9999]">
+              <TooltipContent side={isRtl ? "left" : "right"} sideOffset={8} className="bg-[#1e1b4b] text-white font-black text-[10px] rounded-lg px-3 py-1.5 shadow-2xl border-0 z-[9999]">
                 {item.title}
               </TooltipContent>
             </Tooltip>
@@ -321,11 +321,11 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
       {item.subItems && item.subItems.length > 0 ? (
         <Collapsible defaultOpen={isActive} className="group/collapsible">
           <div className={cn(
-            "rounded-xl transition-all duration-300 overflow-hidden",
+            "rounded-[1.8rem] transition-all duration-300 overflow-hidden",
             isActive ? activeCard : inactiveCard
           )}>
             <CollapsibleTrigger asChild>
-              <button className="flex items-center justify-between w-full h-12 px-4 hover:bg-white/10 transition-colors">
+              <button className="flex items-center justify-between w-full h-12 px-5 hover:bg-white/10 transition-colors">
                 <div className={cn("flex items-center gap-3 w-full", isRtl ? "flex-row" : "flex-row-reverse")}>
                   <item.icon className={cn("h-5 w-5 shrink-0", isActive ? "text-[#e87c24]" : "text-white")} />
                   <span className="flex-1 text-start text-sm font-black truncate">{item.title}</span>
@@ -337,12 +337,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
               </button>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className={cn(
-                "mx-2 mb-3 p-2 rounded-xl space-y-1 animate-in slide-in-from-top-2 duration-300 shadow-inner",
-                isActive 
-                  ? "bg-amber-50/15 border border-white/10 backdrop-blur-md" 
-                  : "bg-amber-50/15 border border-white/10 backdrop-blur-md"
-              )}>
+              <div className="mx-3 mb-4 mt-2 space-y-1 animate-in slide-in-from-top-2 duration-300">
                 {item.subItems.map((sub: any) => {
                   const isSubActive = pathname === sub.url
                   return (
@@ -350,14 +345,14 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                       key={sub.title} 
                       href={sub.url}
                       className={cn(
-                        "flex items-center justify-between h-9 rounded-lg px-3 transition-all text-[10px] font-black",
+                        subCardBase,
                         isActive 
-                          ? (isSubActive ? "bg-white text-[#e87c24] shadow-sm" : "text-white/80 hover:text-white")
-                          : (isSubActive ? "bg-white/40 text-white shadow-inner" : "text-white/80 hover:text-white")
+                          ? (isSubActive ? "bg-white text-[#e87c24] shadow-lg scale-[1.02]" : "bg-amber-50/15 text-white/80 hover:bg-white/20 hover:text-white border border-white/5")
+                          : (isSubActive ? "bg-white/90 text-[#e87c24] shadow-lg" : "bg-white/20 text-white/90 hover:bg-white/30 hover:text-white border border-white/10")
                       )}
                     >
                       <span className="truncate text-start">{sub.title}</span>
-                      <sub.icon className={cn("h-3 w-3 ml-2 opacity-30", isSubActive && "opacity-100")} />
+                      <sub.icon className={cn("h-3.5 w-3.5 ml-2 transition-all", isSubActive ? "opacity-100" : "opacity-30")} />
                     </Link>
                   )
                 })}
@@ -369,7 +364,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
         <Link 
           href={item.url}
           className={cn(
-            "flex items-center gap-3 transition-all duration-300 rounded-xl h-12 px-4",
+            "flex items-center gap-3 transition-all duration-300 rounded-[1.8rem] h-12 px-5",
             isActive ? activeCard : inactiveCard
           )}
         >
