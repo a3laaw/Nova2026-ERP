@@ -345,10 +345,10 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
             </CollapsibleTrigger>
             <CollapsibleContent>
               <div className={cn(
-                "mx-2 mb-3 p-2 rounded-xl space-y-1 animate-in slide-in-from-top-2 duration-300",
+                "mx-2 mb-3 p-2 rounded-xl space-y-1 animate-in slide-in-from-top-2 duration-300 shadow-inner",
                 isActive 
-                  ? "bg-orange-100/30 border border-orange-200/20" 
-                  : "bg-white/15 backdrop-blur-md border border-white/10"
+                  ? "bg-orange-50/50 border border-orange-100/50" 
+                  : "bg-amber-50/15 backdrop-blur-md border border-white/10"
               )}>
                 {item.subItems.map((sub: any) => {
                   const isSubActive = pathname === sub.url
