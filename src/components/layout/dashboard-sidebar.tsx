@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/navigation"
+import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   LayoutDashboard,
@@ -216,7 +216,6 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
   const isSelfActive = pathname === item.url
   const isActive = isSelfActive || isGroupActive
   
-  // تتبع حالة الفتح للقوائم المنسدلة
   const [isExpanded, setIsExpanded] = React.useState(isActive)
 
   const timeoutRef = React.useRef<NodeJS.Timeout | null>(null)
@@ -322,13 +321,12 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
       {item.subItems && item.subItems.length > 0 ? (
         <Collapsible 
           open={isExpanded} 
-          onOpenChange={setIsExpanded}
+          onValueChange={(val) => setIsExpanded(val)}
           className="group/collapsible"
         >
           <CollapsibleTrigger asChild>
             <button className={cn(
               "flex items-center transition-all duration-300 rounded-[1.6rem] overflow-hidden w-full h-14 px-6",
-              // التدرج البرتقالي يظهر فقط على رأس المجموعة المفتوحة أو النشطة
               (isExpanded || isActive) ? inactiveStyle : inactiveStyle
             )}>
               <div className={cn("flex items-center gap-4 w-full", isRtl ? "flex-row" : "flex-row-reverse")}>
@@ -353,9 +351,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                     className={cn(
                       "flex items-center justify-between h-11 rounded-full px-6 transition-all text-[11px] font-black",
                       isSubActive 
-                        // العنصر النشط يأخذ البطاقة البرتقالية
                         ? "bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-xl scale-[1.03]" 
-                        // العناصر غير النشطة تأخذ خلفية فاتحة جداً لتبرز فوق العاجي
                         : "bg-orange-100/50 text-[#1e1b4b] hover:bg-orange-100/70 border border-orange-200/30"
                     )}
                   >
