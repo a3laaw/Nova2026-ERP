@@ -30,12 +30,14 @@ import {
   Scale,
   Building2,
   UserCog,
-  Database
+  Database,
+  ChevronLeft
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
 import { usePermissions } from "@/hooks/use-permissions"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
   Sidebar,
   SidebarContent,
@@ -62,16 +64,18 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu"
 import {
   Tooltip,
   TooltipContent,
+  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 
 export function DashboardSidebar() {
   const pathname = usePathname()
-  const { state, isMobile } = useSidebar()
+  const { state } = useSidebar()
   const { t, lang } = useLanguage()
   const { canAccess, isAdmin } = usePermissions()
   const isRtl = lang === 'ar'
@@ -177,12 +181,12 @@ export function DashboardSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="border-e-0 bg-white/40 backdrop-blur-xl shadow-none" side={isRtl ? 'right' : 'left'}>
-      <SidebarHeader className="p-8 flex flex-row items-center gap-4">
-        <div className="flex h-12 w-12 items-center justify-center shrink-0 rounded-[1.25rem] bg-gradient-to-br from-[#e87c24] to-[#FFB000] text-white shadow-xl shadow-orange-500/30 rotate-3">
+      <SidebarHeader className="p-8 flex flex-row items-center justify-center lg:justify-start gap-4">
+        <div className="flex h-12 w-12 items-center justify-center shrink-0 rounded-[1.25rem] bg-gradient-to-br from-[#FFB000] to-[#e87c24] text-white shadow-xl shadow-orange-500/30 rotate-3 transition-transform hover:rotate-0">
           <Sparkles className="h-6 w-6" />
         </div>
         {!isCollapsed && (
-          <div className={cn("flex flex-col text-start overflow-hidden")}>
+          <div className={cn("flex flex-col text-start overflow-hidden animate-in fade-in slide-in-from-right-4 duration-500")}>
             <span className="font-headline font-black text-2xl leading-none text-[#1e1b4b]">NovaFlow</span>
             <span className="text-[9px] uppercase font-black tracking-[0.2em] text-[#e87c24] mt-1 truncate">Enterprise ERP</span>
           </div>
@@ -249,9 +253,6 @@ export function DashboardSidebar() {
   )
 }
 
-/**
- * مكون فرعي للتعامل مع رندرة العناصر بشكل ذكي (Flyout or Collapsible)
- */
 function SidebarItemRenderer({ item, isCollapsed, isRtl, pathname, t }: any) {
   const [isOpen, setIsOpen] = React.useState(false);
   const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -268,98 +269,82 @@ function SidebarItemRenderer({ item, isCollapsed, isRtl, pathname, t }: any) {
   };
 
   const isActive = pathname.startsWith(item.url);
+  const orangeGradientClass = "bg-gradient-to-r from-[#FFB000] to-[#e87c24] text-white shadow-xl shadow-orange-500/20 scale-[1.02]";
+  const inactiveClass = "text-[#1e1b4b] hover:bg-orange-50/50 hover:text-[#e87c24]";
 
-  // الحالة 1: القائمة مغلقة ويوجد عناصر فرعية -> Flyout
-  if (isCollapsed && item.subItems) {
-    return (
-      <SidebarMenuItem>
-        <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-          <DropdownMenuTrigger asChild>
-            <button
-              onMouseEnter={handleMouseEnter}
-              onMouseLeave={handleMouseLeave}
-              className={cn(
-                "flex h-14 w-14 items-center justify-center rounded-[1.25rem] transition-all duration-300 relative group outline-none",
-                isActive 
-                  ? "bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-xl shadow-orange-500/20" 
-                  : "text-[#e87c24] hover:bg-orange-50/50"
-              )}
-            >
-              <item.icon className={cn("h-6 w-6 shrink-0", isActive ? "text-white" : "text-[#e87c24]")} />
-              
-              {/* Tooltip بسيط يظهر فوق الأيقونة عند التحويم */}
-              <div className="absolute hidden group-hover:block left-full ml-4 px-2 py-1 bg-[#1e1b4b] text-white text-[10px] font-black rounded-md whitespace-nowrap z-50">
-                 {item.title}
-              </div>
-            </button>
-          </DropdownMenuTrigger>
-          
-          <DropdownMenuContent
-            side={isRtl ? "left" : "right"}
-            sideOffset={20}
-            align="start"
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
-            className="w-64 p-2 bg-white/95 backdrop-blur-xl border-0 shadow-3xl rounded-[2rem] animate-in fade-in zoom-in-95 duration-200"
-          >
-            <div className="px-4 py-3 mb-2 border-b border-orange-100/50">
-               <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('workspace')}</p>
-               <h4 className="text-sm font-black text-[#1e1b4b]">{item.title}</h4>
-            </div>
-            {item.subItems.map((sub: any) => (
-              <DropdownMenuItem key={sub.title} asChild>
-                <Link
-                  href={sub.url}
-                  className={cn(
-                    "flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-colors mb-1",
-                    pathname === sub.url 
-                      ? "bg-orange-50 text-[#e87c24] font-black" 
-                      : "text-slate-600 hover:bg-slate-50 hover:text-[#1e1b4b]"
-                  )}
-                >
-                  <sub.icon className={cn("h-4 w-4", pathname === sub.url ? "text-[#e87c24]" : "text-[#e87c24]/50")} />
-                  <span className="text-sm">{sub.title}</span>
-                </Link>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </SidebarMenuItem>
-    );
-  }
-
-  // الحالة 2: القائمة مغلقة ولا يوجد عناصر فرعية -> Simple Icon Button with Tooltip
   if (isCollapsed) {
     return (
-      <SidebarMenuItem>
-        <Tooltip delayDuration={0}>
-          <TooltipTrigger asChild>
-             <SidebarMenuButton
-              asChild
-              isActive={isActive}
-              className={cn(
-                "flex h-14 w-14 items-center justify-center rounded-[1.25rem] transition-all duration-300",
-                isActive 
-                  ? "bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-xl shadow-orange-500/20" 
-                  : "text-[#e87c24] hover:bg-orange-50/50"
+      <SidebarMenuItem className="flex justify-center">
+        <TooltipProvider delayDuration={0}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              {item.subItems ? (
+                <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      onMouseEnter={handleMouseEnter}
+                      onMouseLeave={handleMouseLeave}
+                      className={cn(
+                        "flex h-14 w-14 items-center justify-center rounded-[1.25rem] transition-all duration-300 relative group outline-none",
+                        isActive ? orangeGradientClass : "text-[#e87c24] hover:bg-orange-50/50"
+                      )}
+                    >
+                      <item.icon className={cn("h-6 w-6 shrink-0 transition-transform group-hover:scale-110", isActive ? "text-white" : "text-[#e87c24]")} />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    side={isRtl ? "left" : "right"}
+                    sideOffset={20}
+                    align="start"
+                    dir={isRtl ? "rtl" : "ltr"}
+                    onMouseEnter={handleMouseEnter}
+                    onMouseLeave={handleMouseLeave}
+                    className="w-64 p-2 bg-white/95 backdrop-blur-xl border-2 border-primary/10 shadow-3xl rounded-[2rem] z-[9999]"
+                  >
+                    <DropdownMenuLabel className="font-black text-primary px-5 py-4 text-sm border-b-2 border-primary/5 mb-2 uppercase tracking-widest text-start">
+                      {item.title}
+                    </DropdownMenuLabel>
+                    {item.subItems.map((sub: any) => {
+                      const isSubActive = pathname === sub.url;
+                      return (
+                        <DropdownMenuItem key={sub.title} asChild className="rounded-xl py-3 px-4 focus:bg-primary/5 cursor-pointer mb-1 transition-colors">
+                          <Link href={sub.url} className="flex items-center justify-between w-full">
+                            <span className={cn("font-black text-sm flex-1 text-start", isSubActive ? "text-primary" : "text-[#1e1b4b]")}>{sub.title}</span>
+                            <sub.icon className={cn("h-4 w-4 ml-3", isSubActive ? "text-primary" : "text-primary/30")} />
+                          </Link>
+                        </DropdownMenuItem>
+                      )
+                    })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive}
+                  className={cn(
+                    "flex h-14 w-14 items-center justify-center rounded-[1.25rem] transition-all duration-300",
+                    isActive ? orangeGradientClass : "text-[#e87c24] hover:bg-orange-50/50"
+                  )}
+                >
+                  <Link href={item.url}>
+                    <item.icon className={cn("h-6 w-6 shrink-0 transition-transform group-hover:scale-110", isActive ? "text-white" : "text-[#e87c24]")} />
+                  </Link>
+                </SidebarMenuButton>
               )}
-            >
-              <Link href={item.url}>
-                <item.icon className={cn("h-6 w-6 shrink-0", isActive ? "text-white" : "text-[#e87c24]")} />
-              </Link>
-            </SidebarMenuButton>
-          </TooltipTrigger>
-          <TooltipContent side={isRtl ? "left" : "right"} sideOffset={12} className="bg-[#1e1b4b] text-white font-black text-[10px] rounded-lg border-0">
-             {item.title}
-          </TooltipContent>
-        </Tooltip>
+            </TooltipTrigger>
+            {!item.subItems && (
+              <TooltipContent side={isRtl ? "left" : "right"} sideOffset={12} className="bg-[#1e1b4b] text-white font-black text-[10px] rounded-lg border-0 px-3 py-1.5 z-[9999]">
+                {item.title}
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
       </SidebarMenuItem>
     );
   }
 
-  // الحالة 3: القائمة مفتوحة (السلوك الافتراضي السابق)
   return (
-    <SidebarMenuItem>
+    <SidebarMenuItem className="px-2">
       {item.subItems ? (
         <Collapsible asChild className="group/collapsible" defaultOpen={isActive}>
           <div>
@@ -368,34 +353,42 @@ function SidebarItemRenderer({ item, isCollapsed, isRtl, pathname, t }: any) {
                 isActive={isActive}
                 className={cn(
                   "transition-all duration-300 rounded-[1.5rem] h-auto py-8 px-6 group",
-                  isActive 
-                    ? "bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-xl shadow-orange-500/20 font-black" 
-                    : "text-[#1e1b4b] hover:bg-orange-50/50"
+                  isActive ? orangeGradientClass : inactiveClass
                 )}
               >
-                <item.icon className={cn("h-6 w-6 shrink-0", isActive ? "text-white" : "text-[#e87c24]")} />
-                <span className="flex-1 text-start text-base truncate font-bold">{item.title}</span>
-                <ChevronRight className={cn(
-                  "ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-90", 
-                  isRtl && "rotate-180"
-                )} />
+                <div className="flex items-center justify-between w-full h-full">
+                  <div className="flex items-center gap-6 flex-1 min-w-0">
+                    <item.icon className={cn("h-6 w-6 shrink-0 transition-transform group-hover:scale-110", isActive ? "text-white" : "text-[#e87c24]")} />
+                    <span className="text-start text-base truncate font-black">{item.title}</span>
+                  </div>
+                  <ChevronLeft className={cn(
+                    "h-4 w-4 transition-transform group-data-[state=open]/collapsible:-rotate-90 opacity-40", 
+                    isActive ? "text-white" : "text-[#e87c24]",
+                    !isRtl && "rotate-180"
+                  )} />
+                </div>
               </SidebarMenuButton>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <SidebarMenuSub className="ms-8 mt-3 border-s-2 border-orange-100/50 space-y-2">
-                {item.subItems.map((sub: any) => (
-                  <SidebarMenuSubItem key={sub.title}>
-                    <SidebarMenuSubButton asChild isActive={pathname === sub.url} className="h-10 rounded-xl px-4">
-                      <Link href={sub.url} className={cn(
-                        "text-sm flex items-center gap-3 transition-colors",
-                        pathname === sub.url ? "text-[#e87c24] font-black" : "text-slate-500 hover:text-[#1e1b4b]"
+              <SidebarMenuSub className="mx-6 mt-2 mb-4 space-y-1.5 border-none">
+                {item.subItems.map((sub: any) => {
+                  const isSubActive = pathname === sub.url;
+                  return (
+                    <SidebarMenuSubItem key={sub.title}>
+                      <SidebarMenuSubButton asChild isActive={isSubActive} className={cn(
+                        "h-12 rounded-xl px-5 transition-all duration-300",
+                        isSubActive 
+                          ? "bg-primary/10 text-primary font-black shadow-sm" 
+                          : "bg-white/40 hover:bg-orange-50 text-slate-600 hover:text-primary"
                       )}>
-                        <sub.icon className={cn("h-4 w-4 shrink-0", pathname === sub.url ? "text-[#e87c24]" : "text-[#e87c24]/50")} />
-                        <span className="truncate">{sub.title}</span>
-                      </Link>
-                    </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-                ))}
+                        <Link href={sub.url} className="flex items-center justify-between w-full">
+                          <span className="text-xs font-black truncate flex-1 text-start">{sub.title}</span>
+                          <sub.icon className={cn("h-4 w-4 ml-3 opacity-60", isSubActive ? "text-primary" : "text-primary/30")} />
+                        </Link>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                  )
+                })}
               </SidebarMenuSub>
             </CollapsibleContent>
           </div>
@@ -403,21 +396,18 @@ function SidebarItemRenderer({ item, isCollapsed, isRtl, pathname, t }: any) {
       ) : (
         <SidebarMenuButton
           asChild
-          isActive={pathname === item.url}
+          isActive={isActive}
           className={cn(
-            "transition-all duration-300 rounded-[1.5rem] h-auto py-8 px-6",
-            pathname === item.url 
-              ? "bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-xl shadow-orange-500/20 font-black" 
-              : "text-[#1e1b4b] hover:bg-orange-50/50"
+            "transition-all duration-300 rounded-[1.5rem] h-auto py-8 px-6 group",
+            isActive ? orangeGradientClass : inactiveClass
           )}
         >
           <Link href={item.url} className="flex items-center gap-6">
-            <item.icon className={cn("h-6 w-6 shrink-0", pathname === item.url ? "text-white" : "text-[#e87c24]")} />
-            <span className="flex-1 text-start text-base truncate font-bold">{item.title}</span>
+            <item.icon className={cn("h-6 w-6 shrink-0 transition-transform group-hover:scale-110", isActive ? "text-white" : "text-[#e87c24]")} />
+            <span className="flex-1 text-start text-base truncate font-black">{item.title}</span>
           </Link>
         </SidebarMenuButton>
       )}
     </SidebarMenuItem>
   );
 }
-
