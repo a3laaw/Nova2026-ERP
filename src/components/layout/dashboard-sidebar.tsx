@@ -234,7 +234,6 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
   }
 
   const orangeGradient = "bg-gradient-to-br from-[#FFB000] to-[#e87c24] shadow-xl shadow-orange-500/20"
-  const activeStyle = "bg-white text-[#e87c24] shadow-2xl border-2 border-orange-50 scale-[1.03]"
   const inactiveStyle = cn(orangeGradient, "text-white hover:scale-[1.02] active:scale-[0.98]")
 
   if (isCollapsed) {
@@ -248,7 +247,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                 onPointerLeave={handlePointerLeave}
                 className={cn(
                   "flex h-12 w-12 items-center justify-center outline-none transition-all duration-300 rounded-[1.2rem]",
-                  isActive ? activeStyle : inactiveStyle
+                  isActive ? "bg-white text-[#e87c24] shadow-2xl border-2 border-orange-50" : inactiveStyle
                 )}
               >
                 <item.icon className="h-6 w-6" />
@@ -300,7 +299,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                   href={item.url}
                   className={cn(
                     "flex h-12 w-12 items-center justify-center transition-all duration-300 rounded-[1.2rem]",
-                    isActive ? activeStyle : inactiveStyle
+                    isActive ? "bg-white text-[#e87c24] shadow-2xl border-2 border-orange-50" : inactiveStyle
                   )}
                 >
                   <item.icon className="h-6 w-6" />
@@ -321,7 +320,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
       {item.subItems && item.subItems.length > 0 ? (
         <Collapsible 
           open={isExpanded} 
-          onValueChange={(val) => setIsExpanded(val)}
+          onOpenChange={(val) => setIsExpanded(val)}
           className="group/collapsible"
         >
           <CollapsibleTrigger asChild>
@@ -368,7 +367,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
           href={item.url}
           className={cn(
             "flex items-center transition-all duration-300 rounded-[1.6rem] overflow-hidden h-14 px-6",
-            isActive ? activeStyle : inactiveStyle
+            isActive ? "bg-white text-[#e87c24] shadow-2xl border-2 border-orange-50" : inactiveStyle
           )}
         >
           <div className={cn("flex items-center gap-4 w-full", isRtl ? "flex-row" : "flex-row-reverse")}>
