@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { onSnapshot, Query, DocumentData, FirestoreError } from 'firebase/firestore';
+import { onSnapshot, Query, DocumentData, FirestoreError, queryEqual } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
@@ -14,19 +14,26 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
   const [loading, setLoading] = useState(!!query);
   const [error, setError] = useState<Error | null>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
+  const lastQueryRef = useRef<Query<T> | null>(null);
 
   useEffect(() => {
-    // إذا لم يتوفر الاستعلام، ننهي حالة التحميل
+    // التحقق من استقرار الاستعلام لمنع الحلقات اللانهائية
     if (!query) {
-      setLoading(false);
-      setData([]);
+      if (lastQueryRef.current !== null) {
+        lastQueryRef.current = null;
+        setData([]);
+        setLoading(false);
+      }
       return;
     }
 
-    // تعيين حالة التحميل عند تغيير الاستعلام الفعلي
+    if (lastQueryRef.current && queryEqual(query, lastQueryRef.current)) {
+      return;
+    }
+
+    lastQueryRef.current = query;
     setLoading(true);
 
-    // تنظيف أي مراقب قديم قبل بدء الجديد لمنع Assertion Failed
     if (unsubscribeRef.current) {
       unsubscribeRef.current();
     }
@@ -44,19 +51,15 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
       },
       (serverError: FirestoreError) => {
         setLoading(false);
-        
-        // التحقق مما إذا كان الخطأ فعلياً بسبب الصلاحيات
         if (serverError.code === 'permission-denied') {
           const permissionError = new FirestorePermissionError({
             path: 'collection_query',
             operation: 'list',
           } satisfies SecurityRuleContext);
-
           errorEmitter.emit('permission-error', permissionError);
           setError(permissionError);
         } else {
-          // أخطاء أخرى (مثل نقص الفهارس) تظهر في الكونسول للتشخيص
-          console.error("Firestore Collection Error:", serverError.message, "Path:", (query as any).path);
+          console.error("Firestore Collection Error:", serverError.message);
           setError(serverError);
         }
       }
@@ -70,7 +73,7 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
         unsubscribeRef.current = null;
       }
     };
-  }, [query]); // يعتمد على استقرار مرجع الاستعلام من المكون الأب
+  }, [query]);
 
   return { data, loading, error };
 }
