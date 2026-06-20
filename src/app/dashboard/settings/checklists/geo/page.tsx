@@ -51,10 +51,11 @@ export default function GeoPage() {
     setIsGovOpen(false);
   };
 
-  const handleDeleteGov = async (e: React.MouseEvent, id: string) => {
+  const handleDeleteGov = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (!locationService || !confirm(t('confirmDelete'))) return;
-    await locationService.deleteGovernorate(id);
+    // غير محظور لسرعة الاستجابة
+    locationService.deleteGovernorate(id);
     if (selectedGov?.id === id) setSelectedGov(null);
     toast({ title: t('deleted') });
   };
@@ -69,7 +70,7 @@ export default function GeoPage() {
     setIsAreaOpen(false);
   };
 
-  const handleDeleteArea = async (e: React.MouseEvent, areaId: string) => {
+  const handleDeleteArea = (e: React.MouseEvent, areaId: string) => {
     e.stopPropagation();
     if (!locationService || !selectedGov?.id || !confirm(t('confirmDelete'))) return;
     locationService.deleteArea(selectedGov.id, areaId);

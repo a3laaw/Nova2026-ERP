@@ -61,10 +61,11 @@ export default function DepartmentsPage() {
     setLoadingAction(null);
   };
 
-  const handleDeleteDept = async (e: React.MouseEvent, id: string) => {
+  const handleDeleteDept = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (!deptService || !confirm(t('confirmDelete'))) return;
-    await deptService.deleteDepartment(id);
+    // تنفيذ غير محظور لسرعة الاستجابة
+    deptService.deleteDepartment(id);
     if (selectedDept?.id === id) setSelectedDept(null);
     toast({ title: t('deleted') });
   };
@@ -90,7 +91,7 @@ export default function DepartmentsPage() {
     setLoadingAction(null);
   };
 
-  const handleDeleteJob = async (e: React.MouseEvent, jobId: string) => {
+  const handleDeleteJob = (e: React.MouseEvent, jobId: string) => {
     e.stopPropagation();
     if (!deptService || !selectedDept?.id || !confirm(t('confirmDelete'))) return;
     deptService.deleteJob(selectedDept.id, jobId);
