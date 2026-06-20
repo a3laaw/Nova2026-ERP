@@ -8,11 +8,11 @@ import {
   Package, Boxes, Truck, Plus, 
   Search, Loader2, Warehouse as WarehouseIcon,
   LayoutGrid, AlertTriangle, ArrowRight, Save,
-  User, CheckCircle2, History
+  User, CheckCircle2, History, RotateCcw
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, limit } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
@@ -36,6 +36,7 @@ export default function InventoryDashboard() {
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
   const [isAssignAssetOpen, setIsAssignAssetOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [returningId, setReturningId] = useState<string | null>(null);
 
   // Forms
   const [warehouseForm, setWarehouseForm] = useState({ name: '', location: '' });
@@ -46,10 +47,12 @@ export default function InventoryDashboard() {
   const warehousesQuery = useMemo(() => companyId && db ? query(collection(db, paths.warehouses(companyId)), orderBy('name')) : null, [db, companyId]);
   const itemsQuery = useMemo(() => companyId && db ? query(collection(db, paths.inventoryItems(companyId)), orderBy('name')) : null, [db, companyId]);
   const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId)), orderBy('fullName')) : null, [db, companyId]);
+  const logsQuery = useMemo(() => companyId && db ? query(collection(db, paths.assetAssignments(companyId)), orderBy('assignedAt', 'desc'), limit(10)) : null, [db, companyId]);
 
   const { data: warehouses, loading: wLoading } = useCollection(warehousesQuery);
   const { data: items, loading: iLoading } = useCollection(itemsQuery);
   const { data: employees } = useCollection<Employee>(empsQuery);
+  const { data: assignments, loading: logsLoading } = useCollection<any>(logsQuery);
 
   const inventoryService = useMemo(() => db && companyId ? new InventoryService(db, companyId) : null, [db, companyId]);
 
@@ -98,6 +101,19 @@ export default function InventoryDashboard() {
       toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleReturnAsset = async (assignment: any) => {
+    if (!inventoryService) return;
+    setReturningId(assignment.id);
+    try {
+      await inventoryService.returnAsset(assignment.id, assignment.itemId, assignment.quantity);
+      toast({ title: isRtl ? "تم استرجاع العهدة للمخزن" : "Asset returned to stock" });
+    } catch (e) {
+      toast({ variant: "destructive", title: t('error') });
+    } finally {
+      setReturningId(null);
     }
   };
 
@@ -208,7 +224,7 @@ export default function InventoryDashboard() {
          {[
            { label: isRtl ? 'إجمالي المستودعات' : 'Total Warehouses', val: warehouses?.length || 0, icon: WarehouseIcon, color: 'text-primary', bg: 'bg-primary/5' },
            { label: isRtl ? 'أصناف مخزنية' : 'Inventory Items', val: items?.length || 0, icon: Boxes, color: 'text-blue-600', bg: 'bg-blue-50' },
-           { label: isRtl ? 'عهد ميدانية' : 'Field Assets', val: '142', icon: Truck, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+           { label: isRtl ? 'عهد ميدانية' : 'Field Assets', val: assignments?.filter((a: any) => a.status === 'in-use').length || 0, icon: Truck, color: 'text-emerald-600', bg: 'bg-emerald-50' },
            { label: isRtl ? 'تنبيهات نقص' : 'Low Stock', val: items?.filter(i => i.quantity < 5).length || 0, icon: AlertTriangle, color: 'text-rose-600', bg: 'bg-rose-50' },
          ].map((stat, i) => (
            <Card key={i} className="border-0 shadow-lg rounded-[2.5rem] p-6 text-start bg-white group hover:shadow-xl transition-all">
@@ -279,16 +295,46 @@ export default function InventoryDashboard() {
                   <div className="h-12 w-12 bg-primary rounded-2xl flex items-center justify-center">
                      <History className="h-6 w-6 text-white" />
                   </div>
-                  <CardTitle className="text-xl font-black">{isRtl ? 'آخر التحركات' : 'Recent Logs'}</CardTitle>
+                  <CardTitle className="text-xl font-black">{isRtl ? 'تحركات العهد الميدانية' : 'Field Asset Logs'}</CardTitle>
                </div>
             </CardHeader>
-            <CardContent className="p-8 space-y-6 text-start">
-               <div className="space-y-4">
-                  <div className="divide-y divide-white/5">
-                     <div className="py-4 text-center text-xs text-slate-500 italic">
-                        {isRtl ? 'سيتم عرض سجل العمليات قريباً.' : 'Operational logs will appear here.'}
-                     </div>
-                  </div>
+            <CardContent className="p-0 max-h-[600px] overflow-y-auto">
+               <div className="divide-y divide-white/5">
+                  {logsLoading ? <div className="p-10 text-center"><Loader2 className="animate-spin mx-auto text-primary/40" /></div> : (
+                    assignments?.map((log: any) => (
+                      <div key={log.id} className="p-6 space-y-4 hover:bg-white/5 transition-all text-start">
+                         <div className="flex justify-between items-start">
+                            <div className="space-y-1">
+                               <p className="text-sm font-black text-white">{log.itemName}</p>
+                               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                  <User className="h-2 w-2" /> {log.employeeName}
+                               </p>
+                            </div>
+                            <Badge variant="outline" className={cn(
+                              "text-[8px] font-black uppercase",
+                              log.status === 'in-use' ? "border-amber-500 text-amber-400" : "border-emerald-500 text-emerald-400"
+                            )}>{log.status}</Badge>
+                         </div>
+                         
+                         <div className="flex justify-between items-center">
+                            <span className="text-[10px] font-mono text-slate-600">{log.assignedAt?.toDate().toLocaleDateString()}</span>
+                            {log.status === 'in-use' && (
+                               <Button 
+                                 size="sm" 
+                                 variant="ghost" 
+                                 onClick={() => handleReturnAsset(log)}
+                                 disabled={returningId === log.id}
+                                 className="h-8 rounded-lg bg-white/5 text-primary hover:bg-primary hover:text-white font-black text-[9px] gap-1.5"
+                               >
+                                  {returningId === log.id ? <Loader2 className="animate-spin h-3 w-3" /> : <RotateCcw className="h-3 w-3" />}
+                                  {isRtl ? 'استرجاع' : 'Return'}
+                               </Button>
+                            )}
+                         </div>
+                      </div>
+                    ))
+                  )}
+                  {assignments?.length === 0 && <div className="p-20 text-center text-slate-500 italic text-sm">{isRtl ? 'لا يوجد حركات مسجلة.' : 'No movements found.'}</div>}
                </div>
             </CardContent>
          </Card>
@@ -296,4 +342,3 @@ export default function InventoryDashboard() {
     </div>
   );
 }
-

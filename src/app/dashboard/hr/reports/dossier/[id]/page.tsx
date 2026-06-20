@@ -8,14 +8,15 @@ import { Badge } from "@/components/ui/badge";
 import { 
   ArrowRight, Loader2, ShieldCheck, Printer,
   User, Calendar, Clock, Calculator, History,
-  HardHat, MapPin, CheckCircle2, Phone, Mail
+  HardHat, MapPin, CheckCircle2, Phone, Mail,
+  Package, Boxes, Truck
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
-import { Employee, AttendanceRecord, LeaveRequest, PermissionRequest, EmployeeAuditLog } from '@/types/hr';
+import { Employee, AttendanceRecord, LeaveRequest, EmployeeAuditLog } from '@/types/hr';
 import { cn } from '@/lib/utils';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
 
@@ -37,10 +38,12 @@ export default function EmployeeDossierPage() {
   const attendanceQuery = useMemo(() => companyId && db ? query(collection(db, paths.attendance(companyId)), where('employeeId', '==', empId), orderBy('date', 'desc')) : null, [db, companyId, empId]);
   const leavesQuery = useMemo(() => companyId && db ? query(collection(db, paths.leaveRequests(companyId)), where('userId', '==', empId), orderBy('startDate', 'desc')) : null, [db, companyId, empId]);
   const auditQuery = useMemo(() => companyId && db ? query(collection(db, `${paths.employees(companyId)}/${empId}/auditLogs`), orderBy('createdAt', 'desc')) : null, [db, companyId, empId]);
+  const assetsQuery = useMemo(() => companyId && db ? query(collection(db, paths.assetAssignments(companyId)), where('employeeId', '==', empId), where('status', '==', 'in-use')) : null, [db, companyId, empId]);
 
   const { data: attendance } = useCollection<AttendanceRecord>(attendanceQuery);
   const { data: leaves } = useCollection<LeaveRequest>(leavesQuery);
   const { data: auditLogs } = useCollection<EmployeeAuditLog>(auditQuery);
+  const { data: assets } = useCollection<any>(assetsQuery);
 
   if (empLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
   if (!employee) return <div className="p-20 text-center font-bold">{isRtl ? 'الموظف غير موجود' : 'Employee not found'}</div>;
@@ -93,6 +96,32 @@ export default function EmployeeDossierPage() {
                   <Badge className={cn("mt-4 font-black uppercase", employee.status === 'active' ? "bg-emerald-500 text-white" : "bg-rose-500 text-white")}>
                      {employee.status}
                   </Badge>
+               </div>
+            </div>
+
+            {/* Assets & Equipment (New Section) */}
+            <div className="space-y-6">
+               <h3 className="text-lg font-black border-s-4 border-amber-500 ps-3 flex items-center gap-2">
+                  <Truck className="h-5 w-5 text-amber-500" /> {isRtl ? 'العهد والمعدات المستلمة' : 'Assigned Assets & Equipment'}
+               </h3>
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {assets && assets.length > 0 ? (
+                    assets.map((asset: any) => (
+                      <div key={asset.id} className="p-4 rounded-2xl bg-white border-2 border-slate-50 shadow-sm flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-inner">
+                           <Package className="h-5 w-5" />
+                        </div>
+                        <div className="text-start">
+                           <p className="font-black text-sm text-slate-800">{asset.itemName}</p>
+                           <p className="text-[10px] font-bold text-slate-400 uppercase">{asset.quantity} UNIT(S)</p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="col-span-full py-8 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-100">
+                       <p className="text-xs font-bold text-slate-400 italic">{isRtl ? 'لا توجد عهد مسجلة حالياً.' : 'No active assets assigned.'}</p>
+                    </div>
+                  )}
                </div>
             </div>
 
