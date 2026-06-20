@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   Users, UserPlus, Search, Loader2, ArrowRight, 
-  Filter, Briefcase, Phone, Trash2, AlertTriangle 
+  Filter, Briefcase, Phone, Trash2, AlertTriangle,
+  Eye, EyeOff
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -41,6 +42,7 @@ export default function EmployeesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  const [showSalaries, setShowSalaries] = useState(false);
   const isRtl = lang === 'ar';
 
   const companyId = globalUser?.companyId;
@@ -122,7 +124,19 @@ export default function EmployeesPage() {
                 <TableHead className="py-6 ps-8 text-start">{isRtl ? 'الموظف' : 'Employee'}</TableHead>
                 <TableHead className="text-start">{isRtl ? 'الوظيفة / القسم' : 'Job / Dept'}</TableHead>
                 <TableHead className="text-start">{isRtl ? 'الحالة' : 'Status'}</TableHead>
-                <TableHead className="text-end">{isRtl ? 'الراتب' : 'Salary'}</TableHead>
+                <TableHead className="text-end">
+                   <div className="flex items-center justify-end gap-2 group">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 p-0 rounded-lg hover:bg-primary/10 text-primary transition-all"
+                        onClick={() => setShowSalaries(!showSalaries)}
+                      >
+                         {showSalaries ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                      <span className="font-black">{isRtl ? 'الراتب' : 'Salary'}</span>
+                   </div>
+                </TableHead>
                 <TableHead className="text-center pe-8"></TableHead>
               </TableRow>
             </TableHeader>
@@ -159,13 +173,13 @@ export default function EmployeesPage() {
                        <Badge className={cn(
                          "font-black px-3 py-1 rounded-lg border-0 shadow-sm",
                          emp.status === 'active' ? 'bg-emerald-500 text-white' : 
-                         emp.status === 'on-leave' ? 'bg-amber-500 text-white' : 'bg-rose-500 text-white'
+                         emp.status === 'on-leave' ? 'bg-amber-50 text-amber-600' : 'bg-rose-500 text-white'
                        )}>
                           {isRtl ? (emp.status === 'active' ? 'نشط' : emp.status === 'on-leave' ? 'في إجازة' : 'منتهي') : emp.status.toUpperCase()}
                        </Badge>
                     </TableCell>
                     <TableCell className="text-end font-mono font-black text-emerald-600 text-lg">
-                      {emp.basicSalary?.toLocaleString()}
+                      {showSalaries ? emp.basicSalary?.toLocaleString() : '••••'}
                     </TableCell>
                     <TableCell className="text-center pe-8" onClick={e => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-2">
