@@ -47,6 +47,11 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -253,7 +258,9 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
     }, 150);
   };
 
+  // الحالة النشطة: بطاقة بيضاء بظلال قوية وأيقونة برتقالية
   const activeCard = "bg-white border border-orange-200 shadow-xl text-[#1e1b4b] font-black";
+  // الحالة العادية: بطاقة بتدرج برتقالي ذهبي وأيقونة بيضاء
   const inactiveCard = "bg-gradient-to-br from-[#FFB000] to-[#e87c24] border-0 shadow-lg text-white";
 
   if (isCollapsed) {
