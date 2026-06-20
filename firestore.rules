@@ -15,21 +15,24 @@ service cloud.firestore {
     function isDeveloper() {
       return isAuthenticated() && (
         request.auth.token.email == 'admin@novaflow.com' ||
-        getGlobalUser().isDeveloper == true
+        (exists(/databases/$(database)/documents/global_users/$(request.auth.uid)) && 
+         getGlobalUser().isDeveloper == true)
       );
     }
 
     function belongsToCompany(companyId) {
       return isAuthenticated() && (
         isDeveloper() ||
-        getGlobalUser().companyId == companyId
+        (exists(/databases/$(database)/documents/global_users/$(request.auth.uid)) && 
+         getGlobalUser().companyId == companyId)
       );
     }
 
     function isAdmin(companyId) {
       return isAuthenticated() && (
         isDeveloper() ||
-        (getGlobalUser().companyId == companyId && 
+        (exists(/databases/$(database)/documents/global_users/$(request.auth.uid)) && 
+         getGlobalUser().companyId == companyId && 
          (getGlobalUser().role == 'admin' || getGlobalUser().roleCode == 'Admin'))
       );
     }
@@ -41,8 +44,20 @@ service cloud.firestore {
     // --- السجلات العالمية ---
     
     match /global_users/{uid} {
-      allow read: if isAuthenticated() && (request.auth.uid == uid || isDeveloper());
-      allow write: if isDeveloper() || (isAuthenticated() && request.auth.uid == uid);
+      // السماح للقراءة إذا كان المالك أو مطور أو مدير لنفس الشركة
+      allow read: if isAuthenticated() && (
+        request.auth.uid == uid || 
+        isDeveloper() || 
+        (exists(/databases/$(database)/documents/global_users/$(uid)) && 
+         isAdmin(get(/databases/$(database)/documents/global_users/$(uid)).data.companyId))
+      );
+      
+      // السماح بالكتابة إذا كان المالك أو مطور أو مدير لنفس الشركة (لتحديث الأدوار)
+      allow write: if isDeveloper() || (isAuthenticated() && (
+        request.auth.uid == uid ||
+        (exists(/databases/$(database)/documents/global_users/$(uid)) && 
+         isAdmin(get(/databases/$(database)/documents/global_users/$(uid)).data.companyId))
+      ));
     }
     
     match /company_requests/{reqId} {

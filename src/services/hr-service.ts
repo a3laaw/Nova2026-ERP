@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -33,15 +32,20 @@ export class HRService {
    * جلب الرقم التالي للموظف (تلقائي)
    */
   async getNextEmployeeNumber(): Promise<string> {
-    const q = query(
-      collection(this.db, paths.employees(this.companyId)), 
-      orderBy('employeeNumber', 'desc'), 
-      limit(1)
-    );
-    const snap = await getDocs(q);
-    if (snap.empty) return "1001";
-    const lastNum = parseInt(snap.docs[0].data().employeeNumber);
-    return isNaN(lastNum) ? "1001" : (lastNum + 1).toString();
+    try {
+      const q = query(
+        collection(this.db, paths.employees(this.companyId)), 
+        orderBy('employeeNumber', 'desc'), 
+        limit(1)
+      );
+      const snap = await getDocs(q);
+      if (snap.empty) return "1001";
+      const lastNum = parseInt(snap.docs[0].data().employeeNumber);
+      return isNaN(lastNum) ? "1001" : (lastNum + 1).toString();
+    } catch (e) {
+      console.warn("Failed to fetch next employee number, falling back to 1001", e);
+      return "1001";
+    }
   }
 
   /**
@@ -120,17 +124,22 @@ export class HRService {
 
   private async syncGlobalPermissions(email: string, roleId?: string) {
     if (!roleId) return;
-    const q = query(collection(this.db, 'global_users'), where('email', '==', email));
-    const snap = await getDocs(q);
+    try {
+      // البحث عن المستخدم العالمي بالبريد الإلكتروني
+      const q = query(collection(this.db, 'global_users'), where('email', '==', email));
+      const snap = await getDocs(q);
 
-    if (!snap.empty) {
-      const globalUserRef = doc(this.db, 'global_users', snap.docs[0].id);
-      updateDoc(globalUserRef, {
-        roleId: roleId,
-        updatedAt: serverTimestamp()
-      }).catch(() => {
-        // حماية هادئة: قد لا يملك الأدمن صلاحية تعديل سجل المستخدم العالمي مباشرة
-      });
+      if (!snap.empty) {
+        const globalUserRef = doc(this.db, 'global_users', snap.docs[0].id);
+        updateDoc(globalUserRef, {
+          roleId: roleId,
+          updatedAt: serverTimestamp()
+        }).catch((err) => {
+           console.warn("Silent permission sync failure:", err.message);
+        });
+      }
+    } catch (e) {
+      console.warn("Failed to query global_users for permission sync", e);
     }
   }
 
@@ -172,6 +181,8 @@ export class HRService {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
-    addDoc(collection(this.db, logPath), logData);
+    addDoc(collection(this.db, logPath), logData).catch(() => {
+      // سجل التدقيق لا ينبغي أن يعطل العملية الرئيسية
+    });
   }
 }
