@@ -24,7 +24,7 @@ export interface Transaction extends BaseReference {
 
 export interface TransactionTimelineEvent extends BaseReference {
   transactionId: string;
-  type: 'system' | 'update' | 'note' | 'status_change';
+  type: 'system' | 'update' | 'note' | 'status_change' | 'stage_start' | 'stage_complete' | 'numeric_update';
   content: string;
   userId?: string;
   userName?: string;
@@ -51,6 +51,7 @@ export interface StageInstance extends BaseReference {
   subServiceId: string;
   startDate?: any;
   endDate?: any;
+  startedAt?: any;
   completedAt?: any;
   completedBy?: string;
 }
