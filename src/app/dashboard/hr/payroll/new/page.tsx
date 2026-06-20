@@ -27,17 +27,22 @@ export default function NewPayrollBatchPage() {
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
+  // الحالات الأساسية (الشهر والسنة)
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [month, setMonth] = useState(new Date().getMonth().toString());
+  const [month, setMonth] = useState(new Date().getMonth().toString()); // 0-indexed
   const [year, setYear] = useState(new Date().getFullYear().toString());
   const [drafts, setDrafts] = useState<Partial<PayrollRecord>[] | null>(null);
   
-  const [dataStatus, setDataStatus] = useState<{ checked: boolean; hasData: boolean; count: number }>({ checked: false, hasData: false, count: 0 });
+  // حالة التحقق من البيانات
+  const [dataStatus, setDataStatus] = useState<{ checked: boolean; hasData: boolean; count: number }>({ 
+    checked: false, 
+    hasData: false, 
+    count: 0 
+  });
   const [checkingData, setCheckingData] = useState(false);
 
-  // توليد قائمة السنوات ديناميكياً
-  // تبدأ من 2024 (سنة إطلاق النظام) وتستمر حتى السنة الحالية + 1
+  // توليد قائمة السنوات ديناميكياً (تبدأ من 2024 وتتجدد تلقائياً مع الزمن)
   const yearsList = useMemo(() => {
     const currentYear = new Date().getFullYear();
     const startYear = 2024;
@@ -46,17 +51,19 @@ export default function NewPayrollBatchPage() {
     for (let y = startYear; y <= endYear; y++) {
       years.push(y);
     }
-    return years.reverse(); // عرض الأحدث أولاً
+    return years.reverse(); // الأحدث أولاً
   }, []);
 
   const payrollService = useMemo(() => 
     db && companyId ? new PayrollService(db, companyId) : null, 
   [db, companyId]);
 
+  // وظيفة التحقق من توفر بيانات البصمة
   const verifyData = useCallback(async () => {
     if (!payrollService || !companyId) return;
     setCheckingData(true);
     try {
+      // نرسل الشهر بصيغة 1-indexed للخدمة
       const res = await payrollService.checkDataAvailability(Number(month) + 1, Number(year));
       setDataStatus({ checked: true, hasData: res.hasAttendance, count: res.count });
     } catch (e) {
@@ -66,6 +73,7 @@ export default function NewPayrollBatchPage() {
     }
   }, [month, year, payrollService, companyId]);
 
+  // إعادة التشغيل عند تغيير الشهر أو السنة
   useEffect(() => {
     verifyData();
   }, [verifyData]);
@@ -77,7 +85,7 @@ export default function NewPayrollBatchPage() {
       toast({
         variant: "destructive",
         title: isRtl ? "بيانات ناقصة" : "Missing Data",
-        description: isRtl ? `لا توجد سجلات بصمة لشهر ${Number(month) + 1} سنة ${year}.` : `No attendance found for month ${Number(month) + 1} year ${year}.`
+        description: isRtl ? `لا توجد سجلات بصمة لشهر ${Number(month) + 1} سنة ${year}. يرجى رفع ملف الحضور أولاً.` : `No attendance logs found for ${Number(month) + 1}/${year}.`
       });
       return;
     }
@@ -86,9 +94,9 @@ export default function NewPayrollBatchPage() {
     try {
       const data = await payrollService.calculateDrafts(Number(month) + 1, Number(year));
       setDrafts(data);
-      toast({ title: isRtl ? 'تم توليد المسودة' : 'Draft Generated' });
+      toast({ title: isRtl ? 'تم توليد مسودة الرواتب' : 'Draft Batch Generated' });
     } catch (err) {
-      toast({ variant: "destructive", title: t('error') });
+      toast({ variant: "destructive", title: t('error'), description: t('saveFailed') });
     } finally {
       setLoading(false);
     }
@@ -99,7 +107,7 @@ export default function NewPayrollBatchPage() {
     setSaving(true);
     try {
       await payrollService.saveBatch(Number(month) + 1, Number(year), drafts, user.uid);
-      toast({ title: t('saved'), description: isRtl ? 'تم حفظ مسودة الرواتب بنجاح.' : 'Payroll draft saved successfully.' });
+      toast({ title: t('saved'), description: isRtl ? 'تم اعتماد وحفظ كشف الرواتب.' : 'Payroll batch saved.' });
       router.push('/dashboard/hr/payroll');
     } catch (err) {
       toast({ variant: "destructive", title: t('error') });
@@ -117,7 +125,7 @@ export default function NewPayrollBatchPage() {
     };
   }, [drafts]);
 
-  const currentMonthName = new Date(0, Number(month)).toLocaleString(lang === 'ar' ? 'ar-KW' : 'en-US', { month: 'long' });
+  const monthName = new Date(0, Number(month)).toLocaleString(isRtl ? 'ar-KW' : 'en-US', { month: 'long' });
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20" dir={dir}>
@@ -128,15 +136,16 @@ export default function NewPayrollBatchPage() {
             {isRtl ? 'توليد الرواتب الذكي' : 'Smart Payroll Generator'}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-            {isRtl ? 'دمج بيانات الحضور والإجازات في كشوف مالية دقيقة' : 'Merge attendance and leave data into precise financial statements'}
+            {isRtl ? 'نظام دمج بيانات الحضور والغياب في كشوف مالية دقيقة' : 'Integrate attendance data into precise financial batch'}
           </p>
         </div>
       </div>
 
       <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
         <CardContent className="p-10 flex flex-col md:flex-row items-end gap-6 bg-slate-50/50">
+           {/* القائمة اليدوية للأشهر */}
            <div className="space-y-2 text-start flex-1">
-              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'الشهر المستهدف' : 'Target Month'}</label>
+              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اختيار الشهر' : 'Target Month'}</label>
               <Select value={month} onValueChange={setMonth}>
                  <SelectTrigger className="h-14 rounded-2xl border-2 bg-white font-black text-lg">
                     <SelectValue />
@@ -144,12 +153,14 @@ export default function NewPayrollBatchPage() {
                  <SelectContent>
                     {Array.from({ length: 12 }).map((_, i) => (
                        <SelectItem key={i} value={i.toString()} className="font-bold">
-                          {new Date(0, i).toLocaleString(lang === 'ar' ? 'ar-KW' : 'en-US', { month: 'long' })}
+                          {new Date(0, i).toLocaleString(isRtl ? 'ar-KW' : 'en-US', { month: 'long' })}
                        </SelectItem>
                     ))}
                  </SelectContent>
               </Select>
            </div>
+
+           {/* القائمة اليدوية للسنوات */}
            <div className="space-y-2 text-start flex-1">
               <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'السنة المالية' : 'Fiscal Year'}</label>
               <Select value={year} onValueChange={setYear}>
@@ -171,12 +182,12 @@ export default function NewPayrollBatchPage() {
                 className="h-14 rounded-2xl px-10 bg-primary text-white font-black text-lg shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-2"
               >
                   {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <RefreshCw className="h-6 w-6" />}
-                  {isRtl ? `تحليل بيانات ${currentMonthName} ${year}` : `Analyze ${currentMonthName} ${year}`}
+                  {isRtl ? `بدء التحليل لـ ${monthName} ${year}` : `Analyze ${monthName} ${year}`}
               </Button>
               
               {dataStatus.checked && (
                 <div className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-tighter border",
+                  "flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-tighter border transition-all",
                   dataStatus.hasData 
                     ? "bg-emerald-50 text-emerald-600 border-emerald-100" 
                     : "bg-rose-50 text-rose-600 border-rose-100 animate-pulse"
@@ -187,15 +198,15 @@ export default function NewPayrollBatchPage() {
                     <>
                       <DatabaseZap className="h-3 w-3" /> 
                       {isRtl 
-                        ? `متوفر ${dataStatus.count} سجل بصمة لشهر ${currentMonthName}` 
-                        : `Ready: ${dataStatus.count} logs found for ${currentMonthName}`}
+                        ? `متوفر ${dataStatus.count} سجل بصمة لشهر ${monthName} ${year}` 
+                        : `Ready: ${dataStatus.count} logs found for ${monthName} ${year}`}
                     </>
                   ) : (
                     <>
                       <AlertTriangle className="h-3 w-3" /> 
                       {isRtl 
-                        ? `تنبيه: لا يوجد بيانات بصمة مسجلة لشهر ${currentMonthName} ${year}` 
-                        : `Warning: No data for ${currentMonthName} ${year}`}
+                        ? `تنبيه: لا يوجد بيانات بصمة لشهر ${monthName} ${year}` 
+                        : `No data for ${monthName} ${year}`}
                     </>
                   )}
                 </div>
@@ -206,18 +217,17 @@ export default function NewPayrollBatchPage() {
 
       {drafts && (
         <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
-           {/* إحصائيات سريعة للمسودة */}
            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Card className="border-0 shadow-lg rounded-[2rem] p-6 text-start bg-white border-b-4 border-emerald-500">
-                 <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{isRtl ? 'صافي الرواتب المتوقع' : 'Expected Net'}</p>
+                 <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{isRtl ? 'صافي المستحق' : 'Net Total'}</p>
                  <h3 className="text-3xl font-black text-emerald-600">{totals.net.toLocaleString()} <span className="text-xs">KWD</span></h3>
               </Card>
               <Card className="border-0 shadow-lg rounded-[2rem] p-6 text-start bg-white border-b-4 border-rose-500">
-                 <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{isRtl ? 'إجمالي الخصومات' : 'Total Deductions'}</p>
+                 <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{isRtl ? 'إجمالي الخصومات' : 'Deductions'}</p>
                  <h3 className="text-3xl font-black text-rose-600">{totals.deductions.toLocaleString()} <span className="text-xs">KWD</span></h3>
               </Card>
               <Card className="border-0 shadow-lg rounded-[2rem] p-6 text-start bg-white border-b-4 border-blue-500">
-                 <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{isRtl ? 'عدد الموظفين' : 'Employees'}</p>
+                 <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{isRtl ? 'موظف مدرج' : 'Staff Count'}</p>
                  <h3 className="text-3xl font-black text-blue-600">{drafts.length}</h3>
               </Card>
            </div>
@@ -225,8 +235,8 @@ export default function NewPayrollBatchPage() {
            <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
               <CardHeader className="bg-slate-50 border-b p-8 flex flex-row items-center justify-between">
                  <div>
-                    <CardTitle className="text-xl font-black">{isRtl ? `معاينة رواتب ${currentMonthName} ${year}` : `Payroll Preview ${currentMonthName} ${year}`}</CardTitle>
-                    <CardDescription className="font-bold">{isRtl ? 'مراجعة المبالغ والخصومات المبررة وغير المبررة' : 'Review amounts and justified/unjustified deductions'}</CardDescription>
+                    <CardTitle className="text-xl font-black">{isRtl ? `معاينة مسودة ${monthName} ${year}` : `Preview ${monthName} ${year}`}</CardTitle>
+                    <CardDescription className="font-bold">{isRtl ? 'مراجعة بيانات الرواتب قبل الاعتماد النهائي' : 'Review calculations before final commit'}</CardDescription>
                  </div>
                  <div className="flex gap-4">
                     <Button variant="outline" onClick={() => setDrafts(null)} className="rounded-xl font-bold border-2 h-12">
@@ -235,10 +245,10 @@ export default function NewPayrollBatchPage() {
                     <Button 
                       onClick={handleSave} 
                       disabled={saving}
-                      className="bg-emerald-600 text-white font-black rounded-xl h-12 px-8 shadow-xl shadow-emerald-100 hover:scale-105 transition-all"
+                      className="bg-emerald-600 text-white font-black rounded-xl h-12 px-8 shadow-xl shadow-emerald-100"
                     >
                        {saving ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="me-2 h-5 w-5" />}
-                       {isRtl ? 'حفظ المسودة' : 'Save Draft Batch'}
+                       {isRtl ? 'اعتماد وحفظ' : 'Confirm & Save'}
                     </Button>
                  </div>
               </CardHeader>
