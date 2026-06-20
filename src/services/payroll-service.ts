@@ -24,7 +24,7 @@ export class PayrollService {
   constructor(private db: Firestore, private companyId: string) {}
 
   /**
-   * فحص توفر بيانات البصمة لشهر معين
+   * فحص توفر بيانات البصمة لشهر وسنة معينة
    */
   async checkDataAvailability(month: number, year: number): Promise<{ hasAttendance: boolean; count: number }> {
     const monthStr = month < 10 ? `0${month}` : `${month}`;
@@ -35,33 +35,13 @@ export class PayrollService {
     const q = query(
       collection(this.db, paths.attendance(this.companyId)),
       where('date', '>=', start),
-      where('date', '<=', end),
-      limit(1)
+      where('date', '<=', end)
     );
 
     const snap = await getDocs(q);
     return {
       hasAttendance: !snap.empty,
       count: snap.size
-    };
-  }
-
-  /**
-   * جلب آخر شهر تم إدخال بصمة فيه ليكون الخيار الافتراضي
-   */
-  async getLatestAttendanceMonth(): Promise<{ month: number; year: number } | null> {
-    const q = query(
-      collection(this.db, paths.attendance(this.companyId)),
-      orderBy('date', 'desc'),
-      limit(1)
-    );
-    const snap = await getDocs(q);
-    if (snap.empty) return null;
-    
-    const date = parseISO(snap.docs[0].data().date);
-    return {
-      month: date.getMonth(),
-      year: date.getFullYear()
     };
   }
 
@@ -107,6 +87,7 @@ export class PayrollService {
           continue; 
         }
 
+        // منطق احتساب الغياب والتأخير
         if (!record || record.status === 'absent') {
           unjustifiedAbsenceDays++;
           deductions += (emp.basicSalary / 30);
@@ -114,7 +95,7 @@ export class PayrollService {
           const hasPerm = empPerms.some(p => p.date === dateStr && p.type === 'late_arrival');
           if (!hasPerm) {
             const minuteRate = (emp.basicSalary / 30 / 8 / 60);
-            deductions += (minuteRate * record.minutesLate);
+            deductions += (minuteRate * (record.minutesLate || 0));
           }
         }
       }

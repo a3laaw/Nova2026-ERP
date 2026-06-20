@@ -7,10 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
-  Calculator, Sparkles, Loader2, CheckCircle2, 
-  AlertTriangle, ArrowRight, Save, X, Info,
-  TrendingDown, TrendingUp, DollarSign, RefreshCw,
-  Database, DatabaseZap
+  Calculator, Sparkles, Loader2, Save, X, 
+  RefreshCw, DatabaseZap, AlertTriangle, CalendarDays
 } from "lucide-react";
 import { useFirestore } from '@/firebase';
 import { useAuthContext } from '@/context/auth-context';
@@ -35,20 +33,20 @@ export default function NewPayrollBatchPage() {
   const [year, setYear] = useState(new Date().getFullYear().toString());
   const [drafts, setDrafts] = useState<Partial<PayrollRecord>[] | null>(null);
   
-  const [dataStatus, setDataStatus] = useState<{ checked: boolean; hasData: boolean }>({ checked: false, hasData: false });
+  const [dataStatus, setDataStatus] = useState<{ checked: boolean; hasData: boolean; count: number }>({ checked: false, hasData: false, count: 0 });
   const [checkingData, setCheckingData] = useState(false);
 
   const payrollService = useMemo(() => 
     db && companyId ? new PayrollService(db, companyId) : null, 
   [db, companyId]);
 
-  // استخدام useCallback لتثبيت وظيفة التحقق ومنع حلقات التكرار
+  // محرك التحقق الذكي من البيانات بناءً على الشهر والسنة
   const verifyData = useCallback(async () => {
     if (!payrollService || !companyId) return;
     setCheckingData(true);
     try {
       const res = await payrollService.checkDataAvailability(Number(month) + 1, Number(year));
-      setDataStatus({ checked: true, hasData: res.hasAttendance });
+      setDataStatus({ checked: true, hasData: res.hasAttendance, count: res.count });
     } catch (e) {
       console.error("Verification failed", e);
     } finally {
@@ -67,7 +65,7 @@ export default function NewPayrollBatchPage() {
       toast({
         variant: "destructive",
         title: isRtl ? "بيانات ناقصة" : "Missing Data",
-        description: isRtl ? "لا توجد سجلات بصمة لهذا الشهر. يرجى استيراد الحضور أولاً." : "No attendance records found for this month."
+        description: isRtl ? `لا توجد سجلات بصمة لشهر ${Number(month) + 1} سنة ${year}.` : `No attendance found for month ${Number(month) + 1} year ${year}.`
       });
       return;
     }
@@ -107,6 +105,8 @@ export default function NewPayrollBatchPage() {
     };
   }, [drafts]);
 
+  const currentMonthName = new Date(0, Number(month)).toLocaleString(lang === 'ar' ? 'ar-KW' : 'en-US', { month: 'long' });
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -126,7 +126,7 @@ export default function NewPayrollBatchPage() {
            <div className="space-y-2 text-start flex-1">
               <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'الشهر المستهدف' : 'Target Month'}</label>
               <Select value={month} onValueChange={setMonth}>
-                 <SelectTrigger className="h-14 rounded-2xl border-2 bg-white font-bold">
+                 <SelectTrigger className="h-14 rounded-2xl border-2 bg-white font-black text-lg">
                     <SelectValue />
                  </SelectTrigger>
                  <SelectContent>
@@ -139,9 +139,9 @@ export default function NewPayrollBatchPage() {
               </Select>
            </div>
            <div className="space-y-2 text-start flex-1">
-              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'السنة' : 'Year'}</label>
+              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'السنة المالية' : 'Fiscal Year'}</label>
               <Select value={year} onValueChange={setYear}>
-                 <SelectTrigger className="h-14 rounded-2xl border-2 bg-white font-bold">
+                 <SelectTrigger className="h-14 rounded-2xl border-2 bg-white font-black text-lg">
                     <SelectValue />
                  </SelectTrigger>
                  <SelectContent>
@@ -152,27 +152,39 @@ export default function NewPayrollBatchPage() {
               </Select>
            </div>
 
-           <div className="flex-1 flex flex-col gap-2">
+           <div className="flex-[1.5] flex flex-col gap-2">
               <Button 
                 onClick={handleGenerate} 
                 disabled={loading || checkingData}
                 className="h-14 rounded-2xl px-10 bg-primary text-white font-black text-lg shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-2"
               >
                   {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <RefreshCw className="h-6 w-6" />}
-                  {isRtl ? 'توليد المسودة' : 'Generate Draft'}
+                  {isRtl ? `تحليل بيانات ${currentMonthName} ${year}` : `Analyze ${currentMonthName} ${year}`}
               </Button>
               
               {dataStatus.checked && (
                 <div className={cn(
-                  "flex items-center gap-2 px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-tighter",
-                  dataStatus.hasData ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600 animate-pulse"
+                  "flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-tighter border",
+                  dataStatus.hasData 
+                    ? "bg-emerald-50 text-emerald-600 border-emerald-100" 
+                    : "bg-rose-50 text-rose-600 border-rose-100 animate-pulse"
                 )}>
                   {checkingData ? (
                     <Loader2 className="h-3 w-3 animate-spin" />
                   ) : dataStatus.hasData ? (
-                    <><DatabaseZap className="h-3 w-3" /> {isRtl ? 'بيانات البصمة متوفرة' : 'Attendance Data Ready'}</>
+                    <>
+                      <DatabaseZap className="h-3 w-3" /> 
+                      {isRtl 
+                        ? `متوفر ${dataStatus.count} سجل بصمة لشهر ${currentMonthName}` 
+                        : `Ready: ${dataStatus.count} logs found for ${currentMonthName}`}
+                    </>
                   ) : (
-                    <><AlertTriangle className="h-3 w-3" /> {isRtl ? 'لا يوجد بصمة لهذا الشهر' : 'No Data Found'}</>
+                    <>
+                      <AlertTriangle className="h-3 w-3" /> 
+                      {isRtl 
+                        ? `تنبيه: لا يوجد بيانات بصمة مسجلة لشهر ${currentMonthName} ${year}` 
+                        : `Warning: No data for ${currentMonthName} ${year}`}
+                    </>
                   )}
                 </div>
               )}
@@ -182,6 +194,7 @@ export default function NewPayrollBatchPage() {
 
       {drafts && (
         <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
+           {/* إحصائيات سريعة للمسودة */}
            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Card className="border-0 shadow-lg rounded-[2rem] p-6 text-start bg-white border-b-4 border-emerald-500">
                  <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{isRtl ? 'صافي الرواتب المتوقع' : 'Expected Net'}</p>
@@ -200,7 +213,7 @@ export default function NewPayrollBatchPage() {
            <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
               <CardHeader className="bg-slate-50 border-b p-8 flex flex-row items-center justify-between">
                  <div>
-                    <CardTitle className="text-xl font-black">{isRtl ? 'معاينة مسودة الرواتب' : 'Payroll Draft Preview'}</CardTitle>
+                    <CardTitle className="text-xl font-black">{isRtl ? `معاينة رواتب ${currentMonthName} ${year}` : `Payroll Preview ${currentMonthName} ${year}`}</CardTitle>
                     <CardDescription className="font-bold">{isRtl ? 'مراجعة المبالغ والخصومات المبررة وغير المبررة' : 'Review amounts and justified/unjustified deductions'}</CardDescription>
                  </div>
                  <div className="flex gap-4">
