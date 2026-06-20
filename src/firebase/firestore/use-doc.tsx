@@ -1,20 +1,31 @@
+
 'use client';
 
-import { useEffect, useState } from 'react';
-import { onSnapshot, DocumentReference, DocumentData } from 'firebase/firestore';
+import { useEffect, useState, useRef } from 'react';
+import { onSnapshot, DocumentReference, DocumentData, FirestoreError } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
+/**
+ * Hook محسن لجلب مستند واحد مع معالجة ذكية للأخطاء.
+ */
 export function useDoc<T = DocumentData>(docRef: DocumentReference<T> | null) {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(!!docRef);
   const [error, setError] = useState<Error | null>(null);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (!docRef) {
       setLoading(false);
       setData(null);
       return;
+    }
+
+    setLoading(true);
+
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
     }
 
     const unsubscribe = onSnapshot(
@@ -24,19 +35,31 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<T> | null) {
         setLoading(false);
         setError(null);
       },
-      (serverError) => {
-        const permissionError = new FirestorePermissionError({
-          path: docRef.path || 'document_reference',
-          operation: 'get',
-        } satisfies SecurityRuleContext);
-
-        errorEmitter.emit('permission-error', permissionError);
-        setError(permissionError);
+      (serverError: FirestoreError) => {
         setLoading(false);
+        if (serverError.code === 'permission-denied') {
+          const permissionError = new FirestorePermissionError({
+            path: docRef.path || 'document_reference',
+            operation: 'get',
+          } satisfies SecurityRuleContext);
+
+          errorEmitter.emit('permission-error', permissionError);
+          setError(permissionError);
+        } else {
+          console.error("Firestore Document Error:", serverError.message, "Path:", docRef.path);
+          setError(serverError);
+        }
       }
     );
 
-    return () => unsubscribe();
+    unsubscribeRef.current = unsubscribe;
+
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+    };
   }, [docRef]);
 
   return { data, loading, error };

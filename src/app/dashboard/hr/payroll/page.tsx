@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -24,14 +25,17 @@ export default function PayrollBatchesPage() {
   const { t, lang, dir } = useLanguage();
   const db = useFirestore();
   const router = useRouter();
+  const [searchTerm, setSearchTerm] = useState("");
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
+  // استخدام استعلام مبسط أولاً لتجنب الحاجة لفهرس مركب فوراً
+  // Firestore يحتاج لفهرس عند الجمع بين orderBy لعدة حقول.
   const batchesQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.payroll(companyId)), orderBy('year', 'desc'), orderBy('month', 'desc')) : null, 
+    companyId && db ? query(collection(db, paths.payroll(companyId)), orderBy('year', 'desc')) : null, 
   [db, companyId]);
 
-  const { data: batches, loading } = useCollection<PayrollBatch>(batchesQuery);
+  const { data: batches, loading, error } = useCollection<PayrollBatch>(batchesQuery);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500" dir={dir}>
@@ -39,7 +43,7 @@ export default function PayrollBatchesPage() {
         <div className="text-start">
           <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
             <Calculator className="h-10 w-10 text-primary" />
-            {isRtl ? 'كشوف الرواتب' : 'Payroll Management'}
+            {t('payroll')}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
             {isRtl ? 'إدارة المستحقات المالية والخصومات التشغيلية' : 'Manage financial entitlements and operational deductions'}
@@ -54,6 +58,13 @@ export default function PayrollBatchesPage() {
           {isRtl ? 'توليد كشف جديد' : 'New Payroll Batch'}
         </Button>
       </div>
+
+      {error && (
+        <Card className="border-2 border-rose-100 bg-rose-50 p-6 rounded-2xl text-start">
+           <p className="text-rose-700 font-black text-sm">خطأ في جلب البيانات: {error.message}</p>
+           <p className="text-rose-600 text-xs mt-1 font-bold">إذا كان الخطأ يتعلق بـ "Index"، يرجى مراجعة كونسول المتصفح للضغط على رابط إنشاء الفهرس المفقود.</p>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
          <Card className="border-0 shadow-lg rounded-[2rem] p-6 text-start bg-white">

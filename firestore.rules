@@ -34,7 +34,7 @@ service cloud.firestore {
         isDeveloper() ||
         (exists(/databases/$(database)/documents/global_users/$(request.auth.uid)) && 
          getUserData().companyId == companyId && 
-         (getUserData().role in ['admin', 'Admin'] || getUserData().roleCode == 'Admin'))
+         (getUserData().role == 'admin' || getUserData().role == 'Admin' || getUserData().roleCode == 'Admin'))
       );
     }
 
@@ -60,14 +60,6 @@ service cloud.firestore {
       match /{allSubCollections=**} {
         allow read: if belongsToCompany(companyId);
         allow write: if isAdmin(companyId);
-      }
-      
-      // قواعد إضافية للخدمة الذاتية (الموظفين) لضمان العمليات الأساسية
-      match /leaveRequests/{leaveId} {
-        allow create, update: if belongsToCompany(companyId);
-      }
-      match /permissionRequests/{requestId} {
-        allow create, update: if belongsToCompany(companyId);
       }
     }
   }
