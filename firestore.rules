@@ -34,15 +34,15 @@ service cloud.firestore {
         isDeveloper() ||
         (exists(/databases/$(database)/documents/global_users/$(request.auth.uid)) && 
          getUserData().companyId == companyId && 
-         (getUserData().role.matches('(?i)admin') || getUserData().roleCode == 'Admin'))
+         (getUserData().role in ['admin', 'Admin'] || getUserData().roleCode == 'Admin'))
       );
     }
 
     // --- السجلات العالمية ---
     
     match /global_users/{uid} {
-      allow read: if isAuthenticated() && (request.auth.uid == uid || isDeveloper() || isAdmin(getUserData().companyId));
-      allow write: if isDeveloper() || (isAuthenticated() && (request.auth.uid == uid || isAdmin(getUserData().companyId)));
+      allow read: if isAuthenticated() && (request.auth.uid == uid || isDeveloper());
+      allow write: if isDeveloper() || (isAuthenticated() && request.auth.uid == uid);
     }
     
     match /company_requests/{reqId} {
@@ -62,7 +62,7 @@ service cloud.firestore {
         allow write: if isAdmin(companyId);
       }
       
-      // قواعد إضافية للخدمة الذاتية (الموظفين)
+      // قواعد إضافية للخدمة الذاتية (الموظفين) لضمان العمليات الأساسية
       match /leaveRequests/{leaveId} {
         allow create, update: if belongsToCompany(companyId);
       }

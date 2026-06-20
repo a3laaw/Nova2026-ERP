@@ -39,27 +39,28 @@ export default function AttendanceImportPage() {
   const { data: employees } = useCollection<Employee>(empsQuery);
 
   const downloadTemplate = () => {
+    // إنشاء نموذج إكسيل حقيقي (XLSX) بـ 6 أعمدة لدعم الفترتين
     const headers = [
       isRtl ? "رقم_الموظف" : "EmployeeNum",
       isRtl ? "التاريخ" : "Date",
-      isRtl ? "دخول_1" : "In1",
-      isRtl ? "خروج_1" : "Out1",
-      isRtl ? "دخول_2" : "In2",
-      isRtl ? "خروج_2" : "Out2"
+      isRtl ? "دخول_صباحي" : "CheckIn1",
+      isRtl ? "خروج_صباحي" : "CheckOut1",
+      isRtl ? "دخول_مسائي" : "CheckIn2",
+      isRtl ? "خروج_مسائي" : "CheckOut2"
     ];
     
     const data = [
       headers,
       ["1001", "2026-01-01", "08:00", "13:00", "14:00", "17:00"],
-      ["1002", "2026-01-01", "08:15", "13:05", "14:10", "17:15"]
+      ["1002", "2026-01-01", "08:15", "13:05", "", ""]
     ];
 
     const ws = XLSX.utils.aoa_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Attendance");
-    XLSX.writeFile(wb, isRtl ? "نموذج_الحضور_نوفا.xlsx" : "NovaFlow_Attendance_Template.xlsx");
+    XLSX.writeFile(wb, isRtl ? "نموذج_حضور_نوفا_المطور.xlsx" : "NovaFlow_Advanced_Attendance.xlsx");
     
-    toast({ title: isRtl ? "تم تحميل النموذج" : "Template Downloaded" });
+    toast({ title: isRtl ? "تم تحميل النموذج المطور" : "Advanced Template Downloaded" });
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -75,7 +76,7 @@ export default function AttendanceImportPage() {
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
         
-        // تحويل البيانات لـ JSON مع ضمان قراءة كافة الأعمدة
+        // تحويل البيانات لـ JSON مع ضمان قراءة كافة الأعمدة الستة
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
         
         if (jsonData.length < 2) throw new Error(isRtl ? 'الملف فارغ أو غير صالح.' : 'File is empty or invalid.');
@@ -135,19 +136,19 @@ export default function AttendanceImportPage() {
         <div className="text-start">
           <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
             <FileSpreadsheet className="h-10 w-10 text-primary" />
-            {isRtl ? 'استيراد الحضور (XLSX / CSV)' : 'Attendance Import'}
+            {isRtl ? 'استيراد الحضور الذكي (XLSX)' : 'Smart Attendance Import'}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-            {isRtl ? 'أصبح النظام يدعم الآن ملفات الإكسيل (Worksheet) مباشرة.' : 'System now supports Excel Worksheets directly.'}
+            {isRtl ? 'دعم كامل لملفات الإكسيل ونظام الفترتين (الصباحي والمسائي).' : 'Full support for Excel files and double-shift systems.'}
           </p>
         </div>
         <Button 
           variant="outline" 
           onClick={downloadTemplate}
-          className="rounded-xl font-black border-2 h-14 px-8 gap-3 bg-white shadow-sm"
+          className="rounded-xl font-black border-2 h-14 px-8 gap-3 bg-white shadow-sm hover:bg-slate-50 transition-all"
         >
           <Download className="h-5 w-5 text-primary" />
-          {isRtl ? 'تحميل نموذج XLSX' : 'Download XLSX Template'}
+          {isRtl ? 'تحميل نموذج XLSX المطور' : 'Download XLSX Template'}
         </Button>
       </div>
 
@@ -159,8 +160,8 @@ export default function AttendanceImportPage() {
                   <UploadCloud className="h-12 w-12" />
                 </div>
                 <div className="space-y-3">
-                  <h2 className="text-2xl font-black">{isRtl ? 'رفع سجل البصمة' : 'Upload Spreadsheet'}</h2>
-                  <p className="text-slate-400 font-bold max-w-md mx-auto">{isRtl ? 'اسحب ملف الإكسيل هنا أو اضغط للاختيار. ندعم XLSX و CSV.' : 'Drag Excel file here or click to browse. Supports XLSX & CSV.'}</p>
+                  <h2 className="text-2xl font-black">{isRtl ? 'رفع سجل الحضور' : 'Upload Spreadsheet'}</h2>
+                  <p className="text-slate-400 font-bold max-w-md mx-auto">{isRtl ? 'اسحب ملف الإكسيل هنا أو اختره من جهازك. ندعم XLSX و CSV.' : 'Drag Excel file here or click to browse. Supports XLSX & CSV.'}</p>
                 </div>
                 
                 <div className="flex flex-col items-center gap-4">
@@ -185,18 +186,23 @@ export default function AttendanceImportPage() {
               <CardHeader className="bg-white/5 p-8 border-b border-white/5">
                  <CardTitle className="text-lg font-black flex items-center gap-3 text-start">
                     <Info className="h-5 w-5 text-primary" />
-                    {isRtl ? 'توافق الملفات' : 'File Compatibility'}
+                    {isRtl ? 'كيفية إعداد الملف' : 'How to Prepare File'}
                  </CardTitle>
               </CardHeader>
               <CardContent className="p-8 space-y-6 text-start">
                  <div className="space-y-4">
                     <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                       <h5 className="font-black text-xs text-primary mb-1">{isRtl ? 'Microsoft Excel (XLSX)' : 'Excel Worksheet'}</h5>
-                       <p className="text-[10px] text-slate-400 leading-relaxed font-bold">{isRtl ? 'يمكنك الآن رفع ملفات الإكسيل الأصلية دون الحاجة لتحويلها.' : 'You can now upload original Excel files directly.'}</p>
+                       <h5 className="font-black text-xs text-primary mb-1">{isRtl ? 'ترتيب الأعمدة (6 أعمدة)' : 'Columns Order'}</h5>
+                       <p className="text-[10px] text-slate-400 leading-relaxed font-bold">
+                          1. رقم الموظف<br/>
+                          2. التاريخ (YYYY-MM-DD)<br/>
+                          3. دخول 1 | 4. خروج 1<br/>
+                          5. دخول 2 | 6. خروج 2
+                       </p>
                     </div>
                     <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                       <h5 className="font-black text-xs text-blue-400 mb-1">{isRtl ? 'ترتيب الأعمدة' : 'Column Order'}</h5>
-                       <p className="text-[10px] text-slate-400 leading-relaxed font-bold">{isRtl ? 'تأكد أن العمود الأول هو رقم الموظف والثاني هو التاريخ.' : 'Ensure Col 1 is Employee ID and Col 2 is Date.'}</p>
+                       <h5 className="font-black text-xs text-blue-400 mb-1">{isRtl ? 'النظام الذكي' : 'Smart Detection'}</h5>
+                       <p className="text-[10px] text-slate-400 leading-relaxed font-bold">{isRtl ? 'إذا كان دوام شركتك فترة واحدة، يمكنك ترك الأعمدة 5 و 6 فارغة تماماً.' : 'If single shift, leave columns 5 & 6 empty.'}</p>
                     </div>
                  </div>
               </CardContent>
@@ -206,7 +212,7 @@ export default function AttendanceImportPage() {
         <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
           <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
             <CardHeader className="bg-slate-50 border-b p-8 flex flex-row items-center justify-between">
-               <CardTitle className="text-xl font-black">{isRtl ? 'معاينة البيانات المستخرجة' : 'Data Preview'}</CardTitle>
+               <CardTitle className="text-xl font-black">{isRtl ? 'معاينة الحضور المكتشف' : 'Extracted Data Preview'}</CardTitle>
                <div className="flex gap-4">
                   <Button variant="outline" onClick={() => setPreview(null)} className="rounded-xl font-black h-12">
                      {isRtl ? 'إلغاء' : 'Cancel'}
@@ -214,7 +220,7 @@ export default function AttendanceImportPage() {
                   <Button 
                     onClick={handleSave} 
                     disabled={saving}
-                    className="bg-emerald-600 text-white font-black rounded-xl h-12 px-10 shadow-xl"
+                    className="bg-emerald-600 text-white font-black rounded-xl h-12 px-10 shadow-xl shadow-emerald-100"
                   >
                      {saving ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="me-2 h-5 w-5" />}
                      {isRtl ? 'اعتماد الحفظ النهائي' : 'Confirm & Save'}
