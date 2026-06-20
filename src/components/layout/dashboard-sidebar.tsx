@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
+import Link from "next/navigation"
 import { usePathname } from "next/navigation"
 import {
   LayoutDashboard,
@@ -216,7 +216,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
   const isSelfActive = pathname === item.url
   const isActive = isSelfActive || isGroupActive
   
-  // تتبع حالة الفتح للقوائم المنسدلة للتحكم في لون الحاوية الكبيرة
+  // تتبع حالة الفتح للقوائم المنسدلة
   const [isExpanded, setIsExpanded] = React.useState(isActive)
 
   const timeoutRef = React.useRef<NodeJS.Timeout | null>(null)
@@ -325,50 +325,47 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
           onOpenChange={setIsExpanded}
           className="group/collapsible"
         >
-          <div className={cn(
-            "transition-all duration-500 rounded-[2.2rem] overflow-hidden",
-            // إذا كانت القائمة مفتوحة، تأخذ الخلفية البرتقالية لضمان ظهور المحتوى الداخلي بوضوح
-            isExpanded ? cn(orangeGradient, "p-2 pb-4") : "bg-transparent"
-          )}>
-            <CollapsibleTrigger asChild>
-              <button className={cn(
-                "flex items-center transition-all duration-300 rounded-[1.6rem] overflow-hidden w-full h-14 px-6",
-                isExpanded ? "text-white" : (isActive ? activeStyle : inactiveStyle)
-              )}>
-                <div className={cn("flex items-center gap-4 w-full", isRtl ? "flex-row" : "flex-row-reverse")}>
-                  <item.icon className="h-6 w-6 shrink-0" />
-                  <span className="flex-1 text-start text-sm font-black tracking-tight">{item.title}</span>
-                </div>
-                <ChevronLeft className={cn(
-                  "h-4 w-4 transition-transform opacity-60", 
-                  isExpanded ? (isRtl ? "-rotate-90" : "rotate-90") : "rotate-0"
-                )} />
-              </button>
-            </CollapsibleTrigger>
-            
-            <CollapsibleContent>
-              <div className="mt-3 space-y-2 px-2 animate-in slide-in-from-top-2 duration-400">
-                {item.subItems.map((sub: any) => {
-                  const isSubActive = pathname === sub.url
-                  return (
-                    <Link 
-                      key={sub.title} 
-                      href={sub.url}
-                      className={cn(
-                        "flex items-center justify-between h-11 rounded-full px-6 transition-all text-[11px] font-black",
-                        isSubActive 
-                          ? "bg-white text-[#e87c24] shadow-xl scale-[1.03]" 
-                          : "bg-white/20 text-white hover:bg-white/30 border border-white/10"
-                      )}
-                    >
-                      <span className="truncate text-start flex-1">{sub.title}</span>
-                      <sub.icon className={cn("h-3.5 w-3.5 ml-3 transition-all", isSubActive ? "opacity-100" : "opacity-40")} />
-                    </Link>
-                  )
-                })}
+          <CollapsibleTrigger asChild>
+            <button className={cn(
+              "flex items-center transition-all duration-300 rounded-[1.6rem] overflow-hidden w-full h-14 px-6",
+              // التدرج البرتقالي يظهر فقط على رأس المجموعة المفتوحة أو النشطة
+              (isExpanded || isActive) ? inactiveStyle : inactiveStyle
+            )}>
+              <div className={cn("flex items-center gap-4 w-full", isRtl ? "flex-row" : "flex-row-reverse")}>
+                <item.icon className="h-6 w-6 shrink-0" />
+                <span className="flex-1 text-start text-sm font-black tracking-tight">{item.title}</span>
               </div>
-            </CollapsibleContent>
-          </div>
+              <ChevronLeft className={cn(
+                "h-4 w-4 transition-transform opacity-60", 
+                isExpanded ? (isRtl ? "-rotate-90" : "rotate-90") : "rotate-0"
+              )} />
+            </button>
+          </CollapsibleTrigger>
+          
+          <CollapsibleContent>
+            <div className="mt-3 space-y-2 px-2 animate-in slide-in-from-top-2 duration-400">
+              {item.subItems.map((sub: any) => {
+                const isSubActive = pathname === sub.url
+                return (
+                  <Link 
+                    key={sub.title} 
+                    href={sub.url}
+                    className={cn(
+                      "flex items-center justify-between h-11 rounded-full px-6 transition-all text-[11px] font-black",
+                      isSubActive 
+                        // العنصر النشط يأخذ البطاقة البرتقالية
+                        ? "bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-xl scale-[1.03]" 
+                        // العناصر غير النشطة تأخذ خلفية فاتحة جداً لتبرز فوق العاجي
+                        : "bg-orange-100/50 text-[#1e1b4b] hover:bg-orange-100/70 border border-orange-200/30"
+                    )}
+                  >
+                    <span className="truncate text-start flex-1">{sub.title}</span>
+                    <sub.icon className={cn("h-3.5 w-3.5 ml-3 transition-all", isSubActive ? "opacity-100" : "opacity-40")} />
+                  </Link>
+                )
+              })}
+            </div>
+          </CollapsibleContent>
         </Collapsible>
       ) : (
         <Link 
