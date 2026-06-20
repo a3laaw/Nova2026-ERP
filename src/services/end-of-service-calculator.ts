@@ -1,7 +1,6 @@
 'use client';
 
 import { 
-  differenceInMonths, 
   differenceInDays, 
   parseISO, 
   addMonths, 
@@ -17,14 +16,17 @@ import {
 
 /**
  * خدمة حساب مستحقات نهاية الخدمة وفق قانون العمل الكويتي وNova ERP.
+ * تلتزم بقاعدة (الأجر اليومي = الراتب الشامل / 26).
  */
 export class EndOfServiceCalculator {
   
   /**
-   * حساب رصيد الإجازات السنوية المستحق
+   * حساب رصيد الإجازات السنوية المستحق بناءً على معدل 2.5 يوم/شهر.
+   * المادة 70 و 72 من قانون العمل.
    */
-  static calculateAnnualLeaveBalance(monthsServed: number, carried: number, used: number): number {
-    const accrued = (monthsServed / 12) * 30;
+  static calculateAnnualLeaveBalance(totalDaysServed: number, carried: number, used: number): number {
+    // القاعدة القانونية: 30 يوماً لكل 365 يوماً من الخدمة
+    const accrued = (totalDaysServed / 365.25) * 30;
     const balance = accrued + carried - used;
     return Math.max(0, Math.round(balance * 100) / 100);
   }
@@ -37,6 +39,7 @@ export class EndOfServiceCalculator {
     noticeStartDate: string,
     noticeType: NoticeType
   ): SettlementResult {
+    // 1. الراتب الشامل والأجر اليومي (قاعدة 26 يوماً)
     const lastSalary = input.basicSalary + input.housingAllowance + input.transportAllowance + (input.otherAllowances || 0);
     
     if (lastSalary <= 0) {
@@ -45,7 +48,7 @@ export class EndOfServiceCalculator {
 
     const dailyWage = lastSalary / 26;
     
-    // 1. تحديد تاريخ الانتهاء الفعلي وتكلفة الإنذار
+    // 2. تحديد تاريخ الانتهاء الفعلي ومدة الإنذار (المادة 44)
     let effectiveEndDate = noticeStartDate;
     let noticeIndemnity = 0;
     let noticeText = "";
@@ -53,43 +56,45 @@ export class EndOfServiceCalculator {
     if (noticeType === 'worked') {
       const datePlus3Months = addMonths(parseISO(noticeStartDate), 3);
       effectiveEndDate = format(datePlus3Months, 'yyyy-MM-dd');
-      noticeText = "فترة الإنذار: عمل فعلي (3 أشهر)";
+      noticeText = "فترة الإنذار: استيفاء فترة الإنذار (عمل فعلي 90 يوماً)";
     } else if (noticeType === 'indemnity') {
-      noticeIndemnity = lastSalary * 3;
-      noticeText = "بدل إنذار: صرف نقدي (3 أشهر)";
+      noticeIndemnity = lastSalary * 3; // راتب 3 أشهر كاملة
+      noticeText = "فترة الإنذار: إنهاء فوري (استحقاق بدل إنذار 3 أشهر)";
     } else {
-      noticeText = "فترة الإنذار: تنازل متبادل";
+      noticeText = "فترة الإنذار: تنازل متبادل عن المدة";
     }
 
-    // 2. حساب مدة الخدمة الكلية بالسنوات والشهور
+    // 3. حساب مدة الخدمة الكلية بدقة (بالأيام والسنوات)
     const hireDateObj = parseISO(input.hireDate);
     const endDateObj = parseISO(effectiveEndDate);
     
+    const totalDaysCount = differenceInDays(endDateObj, hireDateObj);
     const duration = intervalToDuration({ start: hireDateObj, end: endDateObj });
-    const totalMonths = (duration.years || 0) * 12 + (duration.months || 0);
-    const fractionalYears = (duration.years || 0) + (duration.months || 0) / 12 + (duration.days || 0) / 365;
+    const serviceYears = totalDaysCount / 365.25;
 
-    // 3. حساب المكافأة الأساسية (قاعدة 15/30)
+    // 4. حساب المكافأة الأساسية (المادة 51)
     let baseGratuity = 0;
-    if (fractionalYears <= 5) {
-      baseGratuity = fractionalYears * (15 * dailyWage);
+    if (serviceYears <= 5) {
+      // 15 يوماً عن كل سنة لأول 5 سنوات
+      baseGratuity = serviceYears * (15 * dailyWage);
     } else {
+      // 15 يوماً عن أول 5 سنوات + شهر كامل عن كل سنة تالية
       const first5 = 5 * (15 * dailyWage);
-      const remainingYears = fractionalYears - 5;
+      const remainingYears = serviceYears - 5;
       baseGratuity = first5 + (remainingYears * lastSalary);
     }
 
-    // تطبيق الحد الأعلى (18 شهر)
+    // تطبيق الحد الأعلى (أجر 18 شهراً)
     const maxGratuity = 1.5 * 12 * lastSalary;
     const isCapped = baseGratuity > maxGratuity;
     if (isCapped) baseGratuity = maxGratuity;
 
-    // 4. تطبيق عامل الاستقالة (المادة 53)
+    // 5. تطبيق عامل الاستقالة (المادة 53)
     let resignationFactor = 1;
     if (input.terminationReason === 'resignation') {
-      if (fractionalYears < 3) resignationFactor = 0;
-      else if (fractionalYears < 5) resignationFactor = 0.5;
-      else if (fractionalYears < 10) resignationFactor = 0.6666;
+      if (serviceYears < 3) resignationFactor = 0;
+      else if (serviceYears < 5) resignationFactor = 0.5;
+      else if (serviceYears < 10) resignationFactor = 0.6666;
       else resignationFactor = 1;
     } else if (input.terminationReason === 'misconduct') {
       resignationFactor = 0;
@@ -97,8 +102,9 @@ export class EndOfServiceCalculator {
 
     const finalGratuity = baseGratuity * resignationFactor;
 
-    // 5. حساب بدل الإجازات
-    const leaveBalance = this.calculateAnnualLeaveBalance(totalMonths, input.carriedLeaveDays, input.annualLeaveUsed);
+    // 6. حساب بدل رصيد الإجازات المتبقي (المادة 72)
+    // يُحسب بناءً على مدة الخدمة الفعلية بمعدل 2.5 يوم/شهر
+    const leaveBalance = this.calculateAnnualLeaveBalance(totalDaysCount, input.carriedLeaveDays, input.annualLeaveUsed);
     const leaveBalancePay = leaveBalance * dailyWage;
 
     return {
