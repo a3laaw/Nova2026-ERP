@@ -1,14 +1,15 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // --- الدوال المساعدة (Helper Functions) ---
+    // --- الدوال المساعدة المطورة ---
     
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    function getGlobalUser() {
+    function getUserData() {
       return get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
     }
 
@@ -16,7 +17,7 @@ service cloud.firestore {
       return isAuthenticated() && (
         request.auth.token.email == 'admin@novaflow.com' ||
         (exists(/databases/$(database)/documents/global_users/$(request.auth.uid)) && 
-         getGlobalUser().isDeveloper == true)
+         getUserData().isDeveloper == true)
       );
     }
 
@@ -24,7 +25,7 @@ service cloud.firestore {
       return isAuthenticated() && (
         isDeveloper() ||
         (exists(/databases/$(database)/documents/global_users/$(request.auth.uid)) && 
-         getGlobalUser().companyId == companyId)
+         getUserData().companyId == companyId)
       );
     }
 
@@ -32,32 +33,16 @@ service cloud.firestore {
       return isAuthenticated() && (
         isDeveloper() ||
         (exists(/databases/$(database)/documents/global_users/$(request.auth.uid)) && 
-         getGlobalUser().companyId == companyId && 
-         (getGlobalUser().role == 'admin' || getGlobalUser().roleCode == 'Admin'))
+         getUserData().companyId == companyId && 
+         (getUserData().role.matches('(?i)admin') || getUserData().roleCode == 'Admin'))
       );
-    }
-
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
     }
 
     // --- السجلات العالمية ---
     
     match /global_users/{uid} {
-      // السماح للقراءة إذا كان المالك أو مطور أو مدير لنفس الشركة
-      allow read: if isAuthenticated() && (
-        request.auth.uid == uid || 
-        isDeveloper() || 
-        (exists(/databases/$(database)/documents/global_users/$(uid)) && 
-         isAdmin(get(/databases/$(database)/documents/global_users/$(uid)).data.companyId))
-      );
-      
-      // السماح بالكتابة إذا كان المالك أو مطور أو مدير لنفس الشركة (لتحديث الأدوار)
-      allow write: if isDeveloper() || (isAuthenticated() && (
-        request.auth.uid == uid ||
-        (exists(/databases/$(database)/documents/global_users/$(uid)) && 
-         isAdmin(get(/databases/$(database)/documents/global_users/$(uid)).data.companyId))
-      ));
+      allow read: if isAuthenticated() && (request.auth.uid == uid || isDeveloper() || isAdmin(getUserData().companyId));
+      allow write: if isDeveloper() || (isAuthenticated() && (request.auth.uid == uid || isAdmin(getUserData().companyId)));
     }
     
     match /company_requests/{reqId} {
@@ -69,77 +54,21 @@ service cloud.firestore {
     
     match /companies/{companyId} {
       allow read: if belongsToCompany(companyId);
-      allow update: if isAdmin(companyId);
-      allow create: if isAuthenticated();
+      allow write: if isAdmin(companyId);
 
-      // الموظفين وسجلات التدقيق
-      match /employees/{employeeId} {
-        allow read: if belongsToCompany(companyId);
-        allow write: if isAdmin(companyId);
-        
-        match /auditLogs/{logId} {
-          allow read: if belongsToCompany(companyId);
-          allow create: if isAdmin(companyId);
-          allow update, delete: if false; 
-        }
-      }
-
-      // المشتريات والتوريد
-      match /suppliers/{supId} {
+      // السماح بالوصول الكامل للأدمن على كافة المجموعات الفرعية
+      match /{allSubCollections=**} {
         allow read: if belongsToCompany(companyId);
         allow write: if isAdmin(companyId);
       }
-      match /purchaseOrders/{poId} {
-        allow read: if belongsToCompany(companyId);
-        allow write: if isAdmin(companyId);
-      }
-
-      // طلبات الإجازات (Leave Requests)
+      
+      // قواعد إضافية للخدمة الذاتية (الموظفين)
       match /leaveRequests/{leaveId} {
-        allow read: if belongsToCompany(companyId);
-        allow create: if belongsToCompany(companyId);
-        allow update: if belongsToCompany(companyId);
-        allow delete: if isAdmin(companyId);
+        allow create, update: if belongsToCompany(companyId);
       }
-
-      // طلبات الاستئذان (Permission Requests)
       match /permissionRequests/{requestId} {
-        allow read: if belongsToCompany(companyId);
-        allow create: if belongsToCompany(companyId);
-        allow update: if belongsToCompany(companyId);
-        allow delete: if isAdmin(companyId);
+        allow create, update: if belongsToCompany(companyId);
       }
-
-      // سجلات الحضور (Attendance)
-      match /attendance/{attId} {
-        allow read: if belongsToCompany(companyId);
-        allow write: if isAdmin(companyId);
-      }
-
-      // الرواتب (Payroll)
-      match /payroll/{batchId} {
-        allow read: if belongsToCompany(companyId) && isAdmin(companyId);
-        allow write: if isAdmin(companyId);
-
-        match /records/{recordId} {
-          allow read: if belongsToCompany(companyId);
-          allow write: if isAdmin(companyId);
-        }
-      }
-
-      // المسارات الفنية والخدمات
-      match /activityTypes/{allPaths=**} { allow read: if belongsToCompany(companyId); allow write: if isAdmin(companyId); }
-      match /departments/{allPaths=**} { allow read: if belongsToCompany(companyId); allow write: if isAdmin(companyId); }
-      match /governorates/{allPaths=**} { allow read: if belongsToCompany(companyId); allow write: if isAdmin(companyId); }
-      match /roles/{roleId} { allow read: if belongsToCompany(companyId); allow write: if isAdmin(companyId); }
-      
-      // المشاريع والعملاء
-      match /leads/{leadId} { allow read, write: if belongsToCompany(companyId); }
-      match /projects/{allPaths=**} { allow read, write: if belongsToCompany(companyId); }
-      
-      // الإعدادات العامة
-      match /settings/{allPaths=**} { allow read: if belongsToCompany(companyId); allow write: if isAdmin(companyId); }
-      match /holidays/{allPaths=**} { allow read: if belongsToCompany(companyId); allow write: if isAdmin(companyId); }
     }
   }
 }

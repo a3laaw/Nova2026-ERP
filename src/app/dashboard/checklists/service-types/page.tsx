@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   LayoutGrid, Plus, Loader2, Trash2, Edit3, 
-  Search, CheckCircle2, XCircle, Palette
+  Search, CheckCircle2, XCircle, Palette,
+  AlertTriangle
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +20,16 @@ import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
 import { ServiceTypeService } from '@/services/service-type-service';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle 
+} from "@/components/ui/alert-dialog";
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { ServiceType } from '@/types/reference';
@@ -32,6 +43,7 @@ export default function ServiceTypesPage() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   
   const [form, setForm] = useState<Partial<ServiceType>>({
@@ -56,6 +68,18 @@ export default function ServiceTypesPage() {
       setIsDialogOpen(false);
     } catch (e) { toast({ variant: "destructive", title: t('error') }); }
     finally { setLoadingAction(null); }
+  };
+
+  const handleFinalDelete = async () => {
+    if (!service || !deletingId) return;
+    setLoadingAction(`delete_${deletingId}`);
+    try {
+      await service.deleteServiceType(deletingId);
+      toast({ title: t('deleted') });
+    } finally {
+      setLoadingAction(null);
+      setDeletingId(null);
+    }
   };
 
   const filteredData = serviceTypes?.filter(s => 
@@ -85,7 +109,7 @@ export default function ServiceTypesPage() {
               <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={form.nameEn} onChange={e => setForm({...form, nameEn: e.target.value})} className="text-start" dir="ltr" placeholder="Example: Architectural Engineering" /></div>
               <div className="md:col-span-2 space-y-2"><Label>{isRtl ? 'الوصف' : 'Description'}</Label><Textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} /></div>
             </div>
-            <DialogFooter><Button onClick={handleSave} disabled={loadingAction === 'save'} className="w-full h-12 rounded-xl font-bold">{loadingAction === 'save' ? <Loader2 className="animate-spin" /> : t('save')}</Button></DialogFooter>
+            <DialogFooter><Button onClick={handleSave} disabled={loadingAction === 'save'} className="w-full h-12 rounded-xl font-bold bg-primary text-white">{loadingAction === 'save' ? <Loader2 className="animate-spin" /> : t('save')}</Button></DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
@@ -96,16 +120,16 @@ export default function ServiceTypesPage() {
       </div>
 
       {loading ? <div className="py-20 text-center"><Loader2 className="animate-spin mx-auto text-primary/30" /></div> : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-start">
           {filteredData.map(item => (
             <Card key={item.id} className="border-0 shadow-lg rounded-[2rem] bg-white overflow-hidden group hover:shadow-xl transition-all">
               <div className="h-2 w-full" style={{ backgroundColor: item.color || '#f57c00' }} />
               <CardContent className="p-6">
                 <div className="flex justify-between items-start mb-4">
                   <span className="text-[10px] font-black uppercase text-slate-400 tracking-tighter">{item.nameEn}</span>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex gap-1">
                     <Button variant="ghost" size="icon" onClick={() => { setForm(item); setIsDialogOpen(true); }} className="h-8 w-8 text-blue-600"><Edit3 className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => { if(confirm(t('confirmDelete'))) service?.deleteServiceType(item.id!); }} className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" disabled={loadingAction === `delete_${item.id}`} onClick={() => setDeletingId(item.id!)} className="h-8 w-8 text-destructive">{loadingAction === `delete_${item.id}` ? <Loader2 className="animate-spin h-3 w-3" /> : <Trash2 className="h-4 w-4" />}</Button>
                   </div>
                 </div>
                 <h3 className="text-lg font-black text-slate-800 mb-1">{isRtl ? item.name : item.nameEn}</h3>
@@ -115,6 +139,24 @@ export default function ServiceTypesPage() {
           ))}
         </div>
       )}
+
+      <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
+        <AlertDialogContent className="rounded-[2rem] p-8" dir={dir}>
+          <AlertDialogHeader>
+            <div className="mx-auto w-16 h-16 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mb-4"><AlertTriangle className="h-8 w-8" /></div>
+            <AlertDialogTitle className="text-start font-black text-2xl">{t('confirmDelete')}</AlertDialogTitle>
+            <AlertDialogDescription className="text-start font-bold">
+              {isRtl ? 'سيؤدي هذا لحذف النشاط بشكل نهائي من قاعدة البيانات.' : 'This will permanently delete this activity from the database.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-8 gap-4">
+            <AlertDialogCancel className="rounded-xl h-12 border-2 font-bold">{isRtl ? 'إلغاء' : 'Cancel'}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleFinalDelete} className="rounded-xl h-12 font-black bg-rose-600 hover:bg-rose-700 text-white px-8">
+              {isRtl ? 'نعم، احذف' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

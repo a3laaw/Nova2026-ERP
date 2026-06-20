@@ -28,6 +28,31 @@
         "companyId": { "type": "string" }
       }
     },
+    "PayrollBatch": {
+      "title": "Payroll Batch",
+      "description": "كشف رواتب شهري مجمع للموظفين.",
+      "type": "object",
+      "properties": {
+        "month": { "type": "number" },
+        "year": { "type": "number" },
+        "status": { "type": "string" },
+        "totalNetSalary": { "type": "number" },
+        "companyId": { "type": "string" }
+      }
+    },
+    "LeaveRequest": {
+      "title": "Leave Request",
+      "description": "طلب إجازة مقدم من موظف.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": { "type": "string" },
+        "startDate": { "type": "string" },
+        "endDate": { "type": "string" },
+        "status": { "type": "string" },
+        "companyId": { "type": "string" }
+      }
+    },
     "Transaction": {
       "title": "Technical Transaction",
       "description": "المعاملة الفنية المفتوحة للعميل، ترتبط بمسار فني محدد.",
@@ -42,59 +67,6 @@
         "companyId": { "type": "string" }
       },
       "required": ["transactionNumber", "clientId", "activityTypeId", "serviceId", "subServiceId", "status", "companyId"]
-    },
-    "Supplier": {
-      "title": "Supplier Record",
-      "description": "بيانات المورد المعتمد في نظام المشتريات.",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string" },
-        "category": { "type": "string" },
-        "phone": { "type": "string" },
-        "email": { "type": "string" },
-        "rating": { "type": "number" },
-        "companyId": { "type": "string" }
-      },
-      "required": ["name", "category", "companyId"]
-    },
-    "Warehouse": {
-      "title": "Warehouse Location",
-      "description": "بيانات المخزن أو الموقع التخزيني التابع للشركة.",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string" },
-        "location": { "type": "string" },
-        "managerId": { "type": "string" },
-        "companyId": { "type": "string" }
-      }
-    },
-    "InventoryItem": {
-      "title": "Inventory Item",
-      "description": "الأصناف المخزنية والمواد المتاحة في المستودعات.",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string" },
-        "sku": { "type": "string" },
-        "quantity": { "type": "number" },
-        "unit": { "type": "string" },
-        "warehouseId": { "type": "string" },
-        "companyId": { "type": "string" }
-      }
-    },
-    "AssetAssignment": {
-      "title": "Field Asset Assignment",
-      "description": "سجل تسليم العهد الميدانية والمعدات للموظفين والمهندسين.",
-      "type": "object",
-      "properties": {
-        "employeeId": { "type": "string" },
-        "employeeName": { "type": "string" },
-        "itemId": { "type": "string" },
-        "itemName": { "type": "string" },
-        "quantity": { "type": "number" },
-        "assignedAt": { "type": "string", "format": "date-time" },
-        "status": { "type": "string", "enum": ["in-use", "returned", "damaged", "lost"] },
-        "companyId": { "type": "string" }
-      }
     }
   },
   "auth": {
@@ -103,10 +75,8 @@
   "firestore": {
     "/companies/{companyId}/clients/{clientId}": { "schema": "#/entities/Client", "description": "سجلات العملاء" },
     "/companies/{companyId}/employees/{empId}": { "schema": "#/entities/Employee", "description": "سجلات الموظفين" },
-    "/companies/{companyId}/transactions/{tId}": { "schema": "#/entities/Transaction", "description": "المعاملات الفنية" },
-    "/companies/{companyId}/suppliers/{supId}": { "schema": "#/entities/Supplier", "description": "بيانات الموردين" },
-    "/companies/{companyId}/warehouses/{wId}": { "schema": "#/entities/Warehouse", "description": "المستودعات" },
-    "/companies/{companyId}/inventoryItems/{itemId}": { "schema": "#/entities/InventoryItem", "description": "الأصناف والمخزون" },
-    "/companies/{companyId}/assetAssignments/{assignId}": { "schema": "#/entities/AssetAssignment", "description": "العهد الميدانية" }
+    "/companies/{companyId}/payroll/{batchId}": { "schema": "#/entities/PayrollBatch", "description": "كشوف الرواتب" },
+    "/companies/{companyId}/leaveRequests/{leaveId}": { "schema": "#/entities/LeaveRequest", "description": "طلبات الإجازات" },
+    "/companies/{companyId}/transactions/{tId}": { "schema": "#/entities/Transaction", "description": "المعاملات الفنية" }
   }
 }
