@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { 
   Calculator, Sparkles, Loader2, CheckCircle2, 
   AlertTriangle, ArrowRight, Save, X, Info,
-  TrendingDown, TrendingUp, DollarSign, RefreshCw
+  TrendingDown, TrendingUp, DollarSign, RefreshCw,
+  Database, DatabaseZap
 } from "lucide-react";
 import { useFirestore } from '@/firebase';
 import { useAuthContext } from '@/context/auth-context';
@@ -33,13 +34,40 @@ export default function NewPayrollBatchPage() {
   const [month, setMonth] = useState(new Date().getMonth().toString());
   const [year, setYear] = useState(new Date().getFullYear().toString());
   const [drafts, setDrafts] = useState<Partial<PayrollRecord>[] | null>(null);
+  
+  // حالة التحقق من البيانات
+  const [dataStatus, setDataStatus] = useState<{ checked: boolean; hasData: boolean }>({ checked: false, hasData: false });
+  const [checkingData, setCheckingData] = useState(false);
+
+  const payrollService = useMemo(() => db && companyId ? new PayrollService(db, companyId) : null, [db, companyId]);
+
+  // التحقق التلقائي عند تغيير الشهر أو السنة
+  useEffect(() => {
+    async function verify() {
+      if (!payrollService) return;
+      setCheckingData(true);
+      const res = await payrollService.checkDataAvailability(Number(month) + 1, Number(year));
+      setDataStatus({ checked: true, hasData: res.hasAttendance });
+      setCheckingData(false);
+    }
+    verify();
+  }, [month, year, payrollService]);
 
   const handleGenerate = async () => {
-    if (!db || !companyId) return;
+    if (!payrollService) return;
+    
+    if (!dataStatus.hasData) {
+      toast({
+        variant: "destructive",
+        title: isRtl ? "بيانات ناقصة" : "Missing Data",
+        description: isRtl ? "لا توجد سجلات بصمة لهذا الشهر. يرجى استيراد الحضور أولاً." : "No attendance records found for this month."
+      });
+      return;
+    }
+
     setLoading(true);
     try {
-      const service = new PayrollService(db, companyId);
-      const data = await service.calculateDrafts(Number(month) + 1, Number(year));
+      const data = await payrollService.calculateDrafts(Number(month) + 1, Number(year));
       setDrafts(data);
       toast({ title: isRtl ? 'تم توليد المسودة' : 'Draft Generated' });
     } catch (err) {
@@ -50,11 +78,10 @@ export default function NewPayrollBatchPage() {
   };
 
   const handleSave = async () => {
-    if (!drafts || !db || !companyId || !user) return;
+    if (!drafts || !payrollService || !user) return;
     setSaving(true);
     try {
-      const service = new PayrollService(db, companyId);
-      await service.saveBatch(Number(month) + 1, Number(year), drafts, user.uid);
+      await payrollService.saveBatch(Number(month) + 1, Number(year), drafts, user.uid);
       toast({ title: t('saved'), description: isRtl ? 'تم حفظ مسودة الرواتب بنجاح.' : 'Payroll draft saved successfully.' });
       router.push('/dashboard/hr/payroll');
     } catch (err) {
@@ -117,14 +144,32 @@ export default function NewPayrollBatchPage() {
                  </SelectContent>
               </Select>
            </div>
-           <Button 
-             onClick={handleGenerate} 
-             disabled={loading}
-             className="h-14 rounded-2xl px-10 bg-primary text-white font-black text-lg shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-2"
-           >
-              {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <RefreshCw className="h-6 w-6" />}
-              {isRtl ? 'توليد المسودة الآن' : 'Generate Draft'}
-           </Button>
+
+           <div className="flex-1 flex flex-col gap-2">
+              <Button 
+                onClick={handleGenerate} 
+                disabled={loading || checkingData}
+                className="h-14 rounded-2xl px-10 bg-primary text-white font-black text-lg shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-2"
+              >
+                  {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <RefreshCw className="h-6 w-6" />}
+                  {isRtl ? 'توليد المسودة' : 'Generate Draft'}
+              </Button>
+              
+              {dataStatus.checked && (
+                <div className={cn(
+                  "flex items-center gap-2 px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-tighter",
+                  dataStatus.hasData ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600 animate-pulse"
+                )}>
+                  {checkingData ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : dataStatus.hasData ? (
+                    <><DatabaseZap className="h-3 w-3" /> {isRtl ? 'بيانات البصمة متوفرة' : 'Attendance Data Ready'}</>
+                  ) : (
+                    <><AlertTriangle className="h-3 w-3" /> {isRtl ? 'لا يوجد بصمة لهذا الشهر' : 'No Data Found'}</>
+                  )}
+                </div>
+              )}
+           </div>
         </CardContent>
       </Card>
 

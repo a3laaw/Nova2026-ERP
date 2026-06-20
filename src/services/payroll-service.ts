@@ -11,16 +11,59 @@ import {
   getDocs,
   writeBatch,
   getDoc,
-  updateDoc
+  updateDoc,
+  limit
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { Employee, AttendanceRecord, LeaveRequest, PermissionRequest } from '@/types/hr';
 import { PayrollBatch, PayrollRecord, PayrollStatus } from '@/types/payroll';
-import { format, eachDayOfInterval, parseISO } from 'date-fns';
+import { format, eachDayOfInterval, parseISO, startOfMonth, endOfMonth } from 'date-fns';
 import { AccountingIntegrationService } from './accounting-integration-service';
 
 export class PayrollService {
   constructor(private db: Firestore, private companyId: string) {}
+
+  /**
+   * فحص توفر بيانات البصمة لشهر معين
+   */
+  async checkDataAvailability(month: number, year: number): Promise<{ hasAttendance: boolean; count: number }> {
+    const monthStr = month < 10 ? `0${month}` : `${month}`;
+    const start = `${year}-${monthStr}-01`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const end = `${year}-${monthStr}-${lastDay}`;
+
+    const q = query(
+      collection(this.db, paths.attendance(this.companyId)),
+      where('date', '>=', start),
+      where('date', '<=', end),
+      limit(1)
+    );
+
+    const snap = await getDocs(q);
+    return {
+      hasAttendance: !snap.empty,
+      count: snap.size
+    };
+  }
+
+  /**
+   * جلب آخر شهر تم إدخال بصمة فيه ليكون الخيار الافتراضي
+   */
+  async getLatestAttendanceMonth(): Promise<{ month: number; year: number } | null> {
+    const q = query(
+      collection(this.db, paths.attendance(this.companyId)),
+      orderBy('date', 'desc'),
+      limit(1)
+    );
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+    
+    const date = parseISO(snap.docs[0].data().date);
+    return {
+      month: date.getMonth(),
+      year: date.getFullYear()
+    };
+  }
 
   /**
    * توليد بيانات مسودة الرواتب لشهر معين
@@ -97,16 +140,16 @@ export class PayrollService {
     return payrollDrafts;
   }
 
-  async saveBatch(month: number, year: number, records: Partial<PayrollRecord>[], userId: string) {
+  async saveBatch(month: number, year: number, drafts: Partial<PayrollRecord>[], userId: string) {
     const batch = writeBatch(this.db);
     const batchRef = doc(collection(this.db, paths.payroll(this.companyId)));
     
     const summary = {
-      totalEmployees: records.length,
-      totalBasicSalary: records.reduce((acc, r) => acc + (r.basicSalary || 0), 0),
-      totalAllowances: records.reduce((acc, r) => acc + (r.allowances || 0), 0),
-      totalDeductions: records.reduce((acc, r) => acc + (r.deductions || 0), 0),
-      totalNetSalary: records.reduce((acc, r) => acc + (r.netSalary || 0), 0),
+      totalEmployees: drafts.length,
+      totalBasicSalary: drafts.reduce((acc, r) => acc + (r.basicSalary || 0), 0),
+      totalAllowances: drafts.reduce((acc, r) => acc + (r.allowances || 0), 0),
+      totalDeductions: drafts.reduce((acc, r) => acc + (r.deductions || 0), 0),
+      totalNetSalary: drafts.reduce((acc, r) => acc + (r.netSalary || 0), 0),
     };
 
     const batchData: PayrollBatch = {
@@ -124,7 +167,7 @@ export class PayrollService {
     batch.set(batchRef, batchData);
 
     const recordsCollPath = `${paths.payroll(this.companyId)}/${batchRef.id}/records`;
-    records.forEach(rec => {
+    drafts.forEach(rec => {
       const recRef = doc(collection(this.db, recordsCollPath));
       batch.set(recRef, {
         ...rec,
@@ -152,7 +195,6 @@ export class PayrollService {
       updates.paidBy = userId; 
       updates.paidAt = serverTimestamp();
       
-      // تنفيذ الربط المحاسبي (Accounting Hook)
       const batchSnap = await getDoc(batchRef);
       const recordsSnap = await getDocs(collection(this.db, `${paths.payroll(this.companyId)}/${batchId}/records`));
       
@@ -162,10 +204,12 @@ export class PayrollService {
           recordsSnap.docs.map(d => ({ id: d.id, ...d.data() } as PayrollRecord))
         );
         console.log('INTEGRATION: Accounting Journal Payload Generated', payload);
-        // هنا يمكن استدعاء AccountingService.createJournalEntry(payload)
       }
     }
 
     await updateDoc(batchRef, updates);
   }
+}
+function orderBy(arg0: string, arg1: string): import("@/firebase").Query<import("firebase/firestore").DocumentData, import("firebase/firestore").DocumentData> {
+  throw new Error('Function not implemented.');
 }
