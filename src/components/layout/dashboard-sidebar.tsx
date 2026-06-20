@@ -30,6 +30,7 @@ import {
   UserCog,
   Database,
   ChevronLeft,
+  Settings2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
@@ -153,20 +154,25 @@ export function DashboardSidebar() {
         { title: t('financialReports'), url: "/dashboard/hr/reports/payroll", icon: DollarSign },
       ]
     },
+    { 
+      title: t('settings'), 
+      icon: Settings2, 
+      url: "/dashboard/settings", 
+      module: 'dashboard',
+      subItems: [
+        { title: t('companyIdentity'), url: "/dashboard/settings/company", icon: Building2, permission: 'admin' },
+        { title: t('checklists'), url: "/dashboard/settings/checklists", icon: Database, permission: 'ref:view' },
+        { title: t('rolesRef'), url: "/dashboard/settings/roles", icon: ShieldCheck, permission: 'admin' },
+        { title: t('workHours'), url: "/dashboard/settings/work-hours", icon: Clock, permission: 'ref:view' },
+        { title: t('profile'), url: "/dashboard/settings/profile", icon: UserCog, permission: 'public' },
+      ].filter(sub => {
+        if (sub.permission === 'public') return true;
+        if (sub.permission === 'admin') return isAdmin;
+        return canAccess(sub.permission.split(':')[0]);
+      })
+    },
     { title: t('ai'), icon: Sparkles, url: "/dashboard/ai", module: 'dashboard' },
   ].filter(item => canAccess(item.module));
-
-  const settingsItems = [
-    { title: t('companyIdentity'), url: "/dashboard/settings/company", icon: Building2, permission: 'admin' },
-    { title: t('checklists'), url: "/dashboard/settings/checklists", icon: Database, permission: 'ref:view' },
-    { title: t('rolesRef'), url: "/dashboard/settings/roles", icon: ShieldCheck, permission: 'admin' },
-    { title: t('workHours'), url: "/dashboard/settings/work-hours", icon: Clock, permission: 'ref:view' },
-    { title: t('profile'), url: "/dashboard/settings/profile", icon: UserCog, permission: 'public' },
-  ].filter(item => {
-    if (item.permission === 'public') return true;
-    if (item.permission === 'admin') return isAdmin;
-    return canAccess(item.permission.split(':')[0]);
-  });
 
   return (
     <Sidebar collapsible="icon" side={isRtl ? "right" : "left"} className="border-none bg-transparent">
@@ -195,19 +201,6 @@ export function DashboardSidebar() {
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup className="mt-8 p-0">
-          {!isCollapsed && (
-            <SidebarGroupLabel className="text-[#1e1b4b]/40 font-black px-2 mb-3 text-start uppercase text-[9px] tracking-widest border-t border-orange-100/30 pt-4">
-              {isRtl ? 'الإعدادات' : 'Settings'}
-            </SidebarGroupLabel>
-          )}
-          <SidebarMenu className="gap-2">
-            {settingsItems.map((item) => (
-              <NavItemRenderer key={item.title} item={item} isCollapsed={isCollapsed} isRtl={isRtl} pathname={pathname} />
-            ))}
-          </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
       
@@ -258,7 +251,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
   if (isCollapsed) {
     return (
       <SidebarMenuItem className="flex justify-center mb-1">
-        {item.subItems ? (
+        {item.subItems && item.subItems.length > 0 ? (
           <DropdownMenu open={isFlyoutOpen} onOpenChange={setIsFlyoutOpen} modal={false}>
             <DropdownMenuTrigger asChild>
               <button
@@ -325,7 +318,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
 
   return (
     <SidebarMenuItem className="px-1">
-      {item.subItems ? (
+      {item.subItems && item.subItems.length > 0 ? (
         <Collapsible defaultOpen={isActive} className="group/collapsible">
           <div className={cn(
             "rounded-xl transition-all duration-300 overflow-hidden",
@@ -347,8 +340,8 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
               <div className={cn(
                 "mx-2 mb-3 p-2 rounded-xl space-y-1 animate-in slide-in-from-top-2 duration-300 shadow-inner",
                 isActive 
-                  ? "bg-orange-50/50 border border-orange-100/50" 
-                  : "bg-amber-50/15 backdrop-blur-md border border-white/10"
+                  ? "bg-amber-50/15 border border-white/10 backdrop-blur-md" 
+                  : "bg-amber-50/15 border border-white/10 backdrop-blur-md"
               )}>
                 {item.subItems.map((sub: any) => {
                   const isSubActive = pathname === sub.url
@@ -359,7 +352,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                       className={cn(
                         "flex items-center justify-between h-9 rounded-lg px-3 transition-all text-[10px] font-black",
                         isActive 
-                          ? (isSubActive ? "bg-white text-[#e87c24] shadow-sm" : "text-slate-500/80 hover:text-[#e87c24]")
+                          ? (isSubActive ? "bg-white text-[#e87c24] shadow-sm" : "text-white/80 hover:text-white")
                           : (isSubActive ? "bg-white/40 text-white shadow-inner" : "text-white/80 hover:text-white")
                       )}
                     >
