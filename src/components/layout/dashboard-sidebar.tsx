@@ -181,32 +181,32 @@ export function DashboardSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="border-e-0 bg-transparent shadow-none" side={isRtl ? 'right' : 'left'}>
-      <SidebarHeader className="p-8 mb-4">
+      <SidebarHeader className="p-10 mb-6">
         {!isCollapsed && (
           <div className="flex flex-col text-start animate-in fade-in slide-in-from-top-4 duration-700">
-            <span className="font-headline font-black text-4xl text-[#1e1b4b] leading-tight tracking-tighter">NovaFlow</span>
-            <div className="flex items-center gap-2">
-              <div className="h-0.5 w-8 bg-gradient-to-r from-[#FFB000] to-[#e87c24]" />
-              <span className="text-[9px] uppercase font-black tracking-[0.3em] text-[#e87c24]">SYSTEMS</span>
+            <span className="font-headline font-black text-5xl text-[#1e1b4b] leading-tight tracking-tighter">NovaFlow</span>
+            <div className="flex items-center gap-3 mt-1">
+              <span className="text-[10px] uppercase font-black tracking-[0.4em] text-[#e87c24]">SYSTEMS</span>
+              <div className="h-0.5 w-12 bg-[#e87c24]" />
             </div>
           </div>
         )}
         {isCollapsed && (
-          <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-[#FFB000] to-[#e87c24] flex items-center justify-center text-white shadow-xl rotate-3">
-             <Sparkles className="h-6 w-6" />
+          <div className="h-14 w-14 rounded-3xl bg-gradient-to-br from-[#FFB000] to-[#e87c24] flex items-center justify-center text-white shadow-xl rotate-3">
+             <Sparkles className="h-7 w-7" />
           </div>
         )}
       </SidebarHeader>
       
-      <SidebarContent className="px-6 scrollbar-hide">
+      <SidebarContent className="px-8 scrollbar-hide">
         <SidebarGroup>
           {!isCollapsed && (
-            <SidebarGroupLabel className="text-[#1e1b4b]/40 font-black px-4 mb-4 text-start uppercase text-[10px] tracking-[0.2em]">
+            <SidebarGroupLabel className="text-[#1e1b4b]/40 font-black px-4 mb-6 text-start uppercase text-[10px] tracking-[0.3em]">
               {isRtl ? 'إدارة العمليات' : 'Operation Hub'}
             </SidebarGroupLabel>
           )}
           <SidebarGroupContent>
-            <SidebarMenu className="gap-5">
+            <SidebarMenu className="gap-6">
               {menuItems.map((item) => (
                 <SidebarCardRenderer 
                   key={item.title} 
@@ -220,13 +220,13 @@ export function DashboardSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup className="mt-12 mb-10">
+        <SidebarGroup className="mt-16 mb-12">
           {!isCollapsed && (
-            <SidebarGroupLabel className="text-[#1e1b4b]/40 font-black px-4 mb-4 text-start uppercase text-[10px] tracking-[0.2em] border-t border-orange-100/30 pt-8">
+            <SidebarGroupLabel className="text-[#1e1b4b]/40 font-black px-4 mb-6 text-start uppercase text-[10px] tracking-[0.3em] border-t border-orange-100/30 pt-10">
               {isRtl ? 'التهيئة والإعدادات' : 'System Config'}
             </SidebarGroupLabel>
           )}
-          <SidebarMenu className="gap-5">
+          <SidebarMenu className="gap-6">
             {settingsItems.map((item) => (
               <SidebarCardRenderer 
                 key={item.title} 
@@ -241,13 +241,16 @@ export function DashboardSidebar() {
       </SidebarContent>
       
       {!isCollapsed && (
-        <SidebarFooter className="p-10 text-center">
-          <div className="p-6 rounded-[2rem] bg-white/40 backdrop-blur-md border border-white/60 shadow-lg group hover:bg-white/60 transition-all cursor-pointer">
-             <div className="flex items-center justify-between mb-2">
-                <Badge className="bg-[#e87c24] text-white text-[8px] font-black uppercase">Enterprise</Badge>
-                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+        <SidebarFooter className="p-10">
+          <div className="p-8 rounded-[2.5rem] bg-white border border-orange-100 shadow-2xl group hover:shadow-orange-500/10 transition-all cursor-pointer">
+             <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                   <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Kuwait Cloud</span>
+                </div>
+                <Badge className="bg-[#e87c24] text-white text-[8px] font-black uppercase rounded-lg px-2">ENTERPRISE</Badge>
              </div>
-             <p className="text-[10px] font-bold text-[#1e1b4b]/60 text-start leading-tight">All systems operational in your Kuwait Cloud.</p>
+             <p className="text-[10px] font-bold text-[#1e1b4b]/80 text-center leading-relaxed">All systems operational in your local instance.</p>
           </div>
         </SidebarFooter>
       )}
@@ -272,11 +275,11 @@ function SidebarCardRenderer({ item, isCollapsed, isRtl, pathname }: any) {
     }, 150);
   };
 
-  // بطاقة غير نشطة: زجاجية ملونة برتقالي ذهبي
-  const inactiveCard = "bg-gradient-to-br from-[#FFB000]/90 to-[#e87c24]/90 backdrop-blur-lg border border-white/20 shadow-xl shadow-orange-500/10 text-white hover:scale-[1.02] hover:shadow-orange-500/20";
+  // بطاقة غير نشطة: برتقالي ذهبي متدرج (كما في الصورة)
+  const inactiveCard = "bg-gradient-to-br from-[#FFB000] to-[#e87c24] border-0 shadow-2xl shadow-orange-500/10 text-white hover:scale-[1.02] hover:shadow-orange-500/20";
   
-  // بطاقة نشطة: زجاجية بيضاء فاتحة بارزة
-  const activeCard = "bg-white/95 backdrop-blur-xl border border-orange-100 shadow-2xl shadow-orange-500/10 scale-[1.03] text-[#1e1b4b] font-black";
+  // بطاقة نشطة: بيضاء فاتحة بارزة (كما في الصورة)
+  const activeCard = "bg-white border-2 border-orange-50 shadow-3xl shadow-orange-500/10 scale-[1.05] text-[#1e1b4b] font-black";
 
   if (isCollapsed) {
     return (
@@ -291,33 +294,33 @@ function SidebarCardRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                       onMouseEnter={handleMouseEnter}
                       onMouseLeave={handleMouseLeave}
                       className={cn(
-                        "flex h-14 w-14 items-center justify-center rounded-[1.5rem] transition-all duration-500 outline-none",
+                        "flex h-16 w-16 items-center justify-center rounded-[1.8rem] transition-all duration-500 outline-none",
                         isActive ? activeCard : inactiveCard
                       )}
                     >
-                      <item.icon className={cn("h-7 w-7 shrink-0", isActive ? "text-[#e87c24]" : "text-white")} />
+                      <item.icon className={cn("h-8 w-8 shrink-0", isActive ? "text-[#e87c24]" : "text-white")} />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
                     side={isRtl ? "left" : "right"}
-                    sideOffset={20}
+                    sideOffset={25}
                     align="start"
                     dir={isRtl ? "rtl" : "ltr"}
-                    className="w-72 p-2 bg-white/95 backdrop-blur-2xl border-2 border-orange-100 shadow-3xl rounded-[2.5rem] z-[9999]"
+                    className="w-72 p-3 bg-white/98 backdrop-blur-2xl border-2 border-orange-100 shadow-3xl rounded-[3rem] z-[9999]"
                   >
-                    <DropdownMenuLabel className="font-black text-[#1e1b4b] px-6 py-5 text-sm border-b-2 border-orange-50 mb-2 uppercase tracking-widest text-start flex items-center gap-3">
-                      <div className="p-2 rounded-xl bg-orange-50 text-orange-600">
-                        <item.icon className="h-4 w-4" />
+                    <DropdownMenuLabel className="font-black text-[#1e1b4b] px-6 py-6 text-sm border-b-2 border-orange-50 mb-3 uppercase tracking-widest text-start flex items-center gap-4">
+                      <div className="p-2.5 rounded-2xl bg-orange-50 text-orange-600">
+                        <item.icon className="h-5 w-5" />
                       </div>
                       {item.title}
                     </DropdownMenuLabel>
                     {item.subItems.map((sub: any) => {
                       const isSubActive = pathname === sub.url;
                       return (
-                        <DropdownMenuItem key={sub.title} asChild className="rounded-2xl py-4 px-5 focus:bg-orange-50 cursor-pointer mb-1">
+                        <DropdownMenuItem key={sub.title} asChild className="rounded-[1.5rem] py-5 px-6 focus:bg-orange-50 cursor-pointer mb-2">
                           <Link href={sub.url} className="flex items-center justify-between w-full">
                             <span className={cn("font-black text-sm flex-1 text-start", isSubActive ? "text-[#e87c24]" : "text-[#1e1b4b]")}>{sub.title}</span>
-                            <sub.icon className={cn("h-4 w-4 ml-4", isSubActive ? "text-[#e87c24]" : "text-slate-300")} />
+                            <sub.icon className={cn("h-5 w-5 ml-5", isSubActive ? "text-[#e87c24]" : "text-slate-300")} />
                           </Link>
                         </DropdownMenuItem>
                       )
@@ -328,18 +331,18 @@ function SidebarCardRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                 <SidebarMenuButton
                   asChild
                   className={cn(
-                    "flex h-14 w-14 items-center justify-center rounded-[1.5rem] transition-all duration-500",
+                    "flex h-16 w-16 items-center justify-center rounded-[1.8rem] transition-all duration-500",
                     isActive ? activeCard : inactiveCard
                   )}
                 >
                   <Link href={item.url}>
-                    <item.icon className={cn("h-7 w-7 shrink-0", isActive ? "text-[#e87c24]" : "text-white")} />
+                    <item.icon className={cn("h-8 w-8 shrink-0", isActive ? "text-[#e87c24]" : "text-white")} />
                   </Link>
                 </SidebarMenuButton>
               )}
             </TooltipTrigger>
             {!item.subItems && (
-              <TooltipContent side={isRtl ? "left" : "right"} sideOffset={12} className="bg-[#1e1b4b] text-white font-black text-[10px] rounded-lg border-0 px-3 py-1.5 z-[9999]">
+              <TooltipContent side={isRtl ? "left" : "right"} sideOffset={15} className="bg-[#1e1b4b] text-white font-black text-[11px] rounded-xl border-0 px-4 py-2 z-[9999] shadow-2xl">
                 {item.title}
               </TooltipContent>
             )}
@@ -350,26 +353,26 @@ function SidebarCardRenderer({ item, isCollapsed, isRtl, pathname }: any) {
   }
 
   return (
-    <SidebarMenuItem className="px-1">
+    <SidebarMenuItem className="px-2">
       {item.subItems ? (
         <Collapsible asChild defaultOpen={isActive} className="group/collapsible">
-          <div className={cn("rounded-[2rem] transition-all duration-500 overflow-hidden", isActive ? activeCard : inactiveCard)}>
+          <div className={cn("rounded-[2.2rem] transition-all duration-500 overflow-hidden", isActive ? activeCard : inactiveCard)}>
             <CollapsibleTrigger asChild>
-              <SidebarMenuButton className="h-auto py-7 px-8 hover:bg-transparent">
-                <div className="flex items-center justify-between w-full">
-                  <div className="flex items-center gap-6">
-                    <item.icon className={cn("h-7 w-7 shrink-0 transition-transform group-hover/collapsible:scale-110", isActive ? "text-[#e87c24]" : "text-white")} />
-                    <span className="text-start text-base font-black truncate">{item.title}</span>
+              <SidebarMenuButton className="h-auto py-8 px-10 hover:bg-transparent">
+                <div className={cn("flex items-center justify-between w-full", isRtl ? "flex-row-reverse" : "flex-row")}>
+                  <div className={cn("flex items-center gap-6", isRtl ? "flex-row-reverse" : "flex-row")}>
+                    <item.icon className={cn("h-8 w-8 shrink-0 transition-transform group-hover/collapsible:scale-110", isActive ? "text-[#e87c24]" : "text-white")} />
+                    <span className="text-start text-lg font-black truncate tracking-tight">{item.title}</span>
                   </div>
                   <ChevronLeft className={cn(
-                    "h-4 w-4 transition-transform group-data-[state=open]/collapsible:-rotate-90 opacity-40", 
+                    "h-5 w-5 transition-transform group-data-[state=open]/collapsible:-rotate-90 opacity-60", 
                     !isRtl && "rotate-180"
                   )} />
                 </div>
               </SidebarMenuButton>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="px-6 pb-6 space-y-2">
+              <div className="px-8 pb-8 space-y-3">
                 {item.subItems.map((sub: any) => {
                   const isSubActive = pathname === sub.url;
                   return (
@@ -377,14 +380,14 @@ function SidebarCardRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                       key={sub.title} 
                       href={sub.url}
                       className={cn(
-                        "flex items-center justify-between h-12 rounded-2xl px-6 transition-all",
+                        "flex items-center justify-between h-14 rounded-2xl px-8 transition-all",
                         isSubActive 
-                          ? (isActive ? "bg-orange-50 text-[#e87c24] shadow-inner" : "bg-white text-[#e87c24] shadow-lg")
-                          : (isActive ? "text-slate-500 hover:bg-orange-50/50" : "text-white/70 hover:bg-white/10")
+                          ? (isActive ? "bg-orange-50 text-[#e87c24] shadow-inner font-black" : "bg-white text-[#e87c24] shadow-lg font-black")
+                          : (isActive ? "text-slate-500 hover:bg-orange-50/50" : "text-white/80 hover:bg-white/10")
                       )}
                     >
-                      <span className="text-xs font-black truncate text-start">{sub.title}</span>
-                      <sub.icon className={cn("h-4 w-4 ml-4 opacity-50", isSubActive && "opacity-100")} />
+                      <span className="text-xs font-bold truncate text-start">{sub.title}</span>
+                      <sub.icon className={cn("h-4 w-4 ml-5 opacity-60", isSubActive && "opacity-100")} />
                     </Link>
                   )
                 })}
@@ -396,13 +399,13 @@ function SidebarCardRenderer({ item, isCollapsed, isRtl, pathname }: any) {
         <SidebarMenuButton
           asChild
           className={cn(
-            "transition-all duration-500 rounded-[2rem] h-auto py-7 px-8",
+            "transition-all duration-500 rounded-[2.2rem] h-auto py-8 px-10",
             isActive ? activeCard : inactiveCard
           )}
         >
-          <Link href={item.url} className="flex items-center gap-6">
-            <item.icon className={cn("h-7 w-7 shrink-0 transition-transform group-hover:scale-110", isActive ? "text-[#e87c24]" : "text-white")} />
-            <span className="flex-1 text-start text-base font-black truncate">{item.title}</span>
+          <Link href={item.url} className={cn("flex items-center gap-6", isRtl ? "flex-row-reverse" : "flex-row")}>
+            <item.icon className={cn("h-8 w-8 shrink-0 transition-transform group-hover:scale-110", isActive ? "text-[#e87c24]" : "text-white")} />
+            <span className="flex-1 text-start text-lg font-black truncate tracking-tight">{item.title}</span>
           </Link>
         </SidebarMenuButton>
       )}
