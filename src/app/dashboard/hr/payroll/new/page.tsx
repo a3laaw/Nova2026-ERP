@@ -36,11 +36,23 @@ export default function NewPayrollBatchPage() {
   const [dataStatus, setDataStatus] = useState<{ checked: boolean; hasData: boolean; count: number }>({ checked: false, hasData: false, count: 0 });
   const [checkingData, setCheckingData] = useState(false);
 
+  // توليد قائمة السنوات ديناميكياً
+  // تبدأ من 2024 (سنة إطلاق النظام) وتستمر حتى السنة الحالية + 1
+  const yearsList = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const startYear = 2024;
+    const endYear = currentYear + 1;
+    const years = [];
+    for (let y = startYear; y <= endYear; y++) {
+      years.push(y);
+    }
+    return years.reverse(); // عرض الأحدث أولاً
+  }, []);
+
   const payrollService = useMemo(() => 
     db && companyId ? new PayrollService(db, companyId) : null, 
   [db, companyId]);
 
-  // محرك التحقق الذكي من البيانات بناءً على الشهر والسنة
   const verifyData = useCallback(async () => {
     if (!payrollService || !companyId) return;
     setCheckingData(true);
@@ -145,7 +157,7 @@ export default function NewPayrollBatchPage() {
                     <SelectValue />
                  </SelectTrigger>
                  <SelectContent>
-                    {[2024, 2025, 2026].map(y => (
+                    {yearsList.map(y => (
                        <SelectItem key={y} value={y.toString()} className="font-bold">{y}</SelectItem>
                     ))}
                  </SelectContent>
