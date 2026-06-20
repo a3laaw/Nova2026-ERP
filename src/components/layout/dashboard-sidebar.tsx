@@ -212,11 +212,14 @@ export function DashboardSidebar() {
 
 function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
   const [isFlyoutOpen, setIsFlyoutOpen] = React.useState(false)
-  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null)
-
   const isGroupActive = item.subItems?.some((sub: any) => pathname === sub.url)
   const isSelfActive = pathname === item.url
   const isActive = isSelfActive || isGroupActive
+  
+  // تتبع حالة الفتح للقوائم المنسدلة للتحكم في لون الحاوية الكبيرة
+  const [isExpanded, setIsExpanded] = React.useState(isActive)
+
+  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null)
 
   const handlePointerEnter = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current)
@@ -231,11 +234,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
     }, 200)
   }
 
-  // التدرج البرتقالي الذهبي صريح هنا
   const orangeGradient = "bg-gradient-to-br from-[#FFB000] to-[#e87c24] shadow-xl shadow-orange-500/20"
-  
-  // أنماط البطاقات الفردية
-  const cardBase = "flex items-center transition-all duration-300 rounded-[1.6rem] overflow-hidden"
   const activeStyle = "bg-white text-[#e87c24] shadow-2xl border-2 border-orange-50 scale-[1.03]"
   const inactiveStyle = cn(orangeGradient, "text-white hover:scale-[1.02] active:scale-[0.98]")
 
@@ -282,7 +281,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                           "flex items-center justify-between h-12 rounded-[1.4rem] px-5 transition-all text-[11px] font-black",
                           isSubActive 
                             ? "bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-lg scale-[1.02]" 
-                            : "bg-white/40 text-[#1e1b4b] hover:bg-white/60"
+                            : "bg-white/60 text-[#1e1b4b] hover:bg-white/80"
                         )}
                       >
                         <span className="flex-1 text-start">{sub.title}</span>
@@ -321,18 +320,20 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
   return (
     <SidebarMenuItem>
       {item.subItems && item.subItems.length > 0 ? (
-        <Collapsible defaultOpen={isActive} className="group/collapsible">
+        <Collapsible 
+          open={isExpanded} 
+          onOpenChange={setIsExpanded}
+          className="group/collapsible"
+        >
           <div className={cn(
             "transition-all duration-500 rounded-[2.2rem] overflow-hidden",
-            isActive ? cn(orangeGradient, "p-2 pb-4") : "bg-transparent"
+            // إذا كانت القائمة مفتوحة، تأخذ الخلفية البرتقالية لضمان ظهور المحتوى الداخلي بوضوح
+            isExpanded ? cn(orangeGradient, "p-2 pb-4") : "bg-transparent"
           )}>
             <CollapsibleTrigger asChild>
               <button className={cn(
-                cardBase,
-                "w-full h-14 px-6",
-                isActive 
-                  ? "text-white" 
-                  : inactiveStyle
+                "flex items-center transition-all duration-300 rounded-[1.6rem] overflow-hidden w-full h-14 px-6",
+                isExpanded ? "text-white" : (isActive ? activeStyle : inactiveStyle)
               )}>
                 <div className={cn("flex items-center gap-4 w-full", isRtl ? "flex-row" : "flex-row-reverse")}>
                   <item.icon className="h-6 w-6 shrink-0" />
@@ -340,7 +341,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                 </div>
                 <ChevronLeft className={cn(
                   "h-4 w-4 transition-transform opacity-60", 
-                  isRtl ? "group-data-[state=open]/collapsible:-rotate-90" : "group-data-[state=open]/collapsible:rotate-90"
+                  isExpanded ? (isRtl ? "-rotate-90" : "rotate-90") : "rotate-0"
                 )} />
               </button>
             </CollapsibleTrigger>
@@ -357,7 +358,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                         "flex items-center justify-between h-11 rounded-full px-6 transition-all text-[11px] font-black",
                         isSubActive 
                           ? "bg-white text-[#e87c24] shadow-xl scale-[1.03]" 
-                          : "bg-white/15 text-white hover:bg-white/25 border border-white/5"
+                          : "bg-white/20 text-white hover:bg-white/30 border border-white/10"
                       )}
                     >
                       <span className="truncate text-start flex-1">{sub.title}</span>
@@ -373,8 +374,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
         <Link 
           href={item.url}
           className={cn(
-            cardBase,
-            "h-14 px-6",
+            "flex items-center transition-all duration-300 rounded-[1.6rem] overflow-hidden h-14 px-6",
             isActive ? activeStyle : inactiveStyle
           )}
         >
