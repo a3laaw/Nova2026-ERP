@@ -12,8 +12,7 @@ import {
   orderBy,
   getDocs,
   writeBatch,
-  updateDoc,
-  increment
+  updateDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { Transaction, TransactionTimelineEvent, StageInstance, StageInstanceStatus } from '@/types/transaction';
@@ -24,9 +23,6 @@ import { FirestorePermissionError } from '@/firebase/errors';
 export class TransactionService {
   constructor(private db: Firestore, private companyId: string) {}
 
-  /**
-   * إنشاء معاملة جديدة مع استنساخ المسار الفني المرجعي
-   */
   async createTransaction(
     data: Omit<Transaction, 'id' | 'transactionNumber' | 'createdAt' | 'updatedAt' | 'companyId' | 'status'>,
     userId: string,
@@ -50,25 +46,27 @@ export class TransactionService {
       createdBy: userId,
     };
 
-    try {
-      await setDoc(transactionRef, transactionData);
-      await this.cloneTechnicalStages(tId, data);
-      this.addTimelineEvent(tId, {
-        type: 'system',
-        content: `تم فتح المسار الفني للمعاملة لـ ${data.subServiceName}`,
-        userId,
-        userName,
-        companyId: this.companyId
-      });
-      return tId;
-    } catch (err) {
+    // تنفيذ غير محظور
+    setDoc(transactionRef, transactionData).catch((err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: transactionRef.path,
         operation: 'create',
         requestResourceData: transactionData
       }));
-      throw err;
-    }
+    });
+
+    // استنساخ المراحل
+    this.cloneTechnicalStages(tId, data);
+    
+    this.addTimelineEvent(tId, {
+      type: 'system',
+      content: `تم فتح المسار الفني للمعاملة لـ ${data.subServiceName}`,
+      userId,
+      userName,
+      companyId: this.companyId
+    });
+
+    return tId;
   }
 
   private async cloneTechnicalStages(transactionId: string, context: any) {
@@ -82,8 +80,8 @@ export class TransactionService {
     const instancesRef = collection(this.db, paths.transactionStages(this.companyId, transactionId));
 
     const allNextIds = new Set<string>();
-    templateSnap.docs.forEach(doc => {
-      const stage = doc.data() as TechnicalStage;
+    templateSnap.docs.forEach(docSnap => {
+      const stage = docSnap.data() as TechnicalStage;
       stage.nextStageIds?.forEach(id => allNextIds.add(id));
     });
 
@@ -92,40 +90,28 @@ export class TransactionService {
       const instanceRef = doc(instancesRef);
       const isStartStage = !allNextIds.has(docSnap.id);
       
-      const instanceData: StageInstance = {
+      batch.set(instanceRef, {
         transactionId,
         technicalStageId: docSnap.id,
         code: template.code,
         name: template.name,
-        description: template.description || '',
         order: template.order,
         isNumeric: template.isNumeric,
         numericTarget: template.numericTarget,
         currentCount: 0,
         isTimed: template.isTimed,
         timeTargetDays: template.timeTargetDays,
-        isRequired: template.isRequired,
-        isEditable: template.isEditable,
-        nextStageIds: template.nextStageIds || [],
         status: isStartStage ? 'pending' : 'blocked',
         companyId: this.companyId,
-        activityTypeId,
-        serviceId,
-        subServiceId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
-      };
-      batch.set(instanceRef, instanceData);
+      });
     });
-    await batch.commit();
+    batch.commit();
   }
 
-  /**
-   * بدء العمل في مرحلة فنية
-   */
   async startStage(transactionId: string, instanceId: string, stageName: string, userId: string, userName: string) {
     const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), instanceId);
-    
     updateDoc(stageRef, {
       status: 'in-progress' as StageInstanceStatus,
       startedAt: serverTimestamp(),
@@ -141,12 +127,8 @@ export class TransactionService {
     });
   }
 
-  /**
-   * إكمال مرحلة فنية
-   */
   async completeStage(transactionId: string, instanceId: string, stageName: string, userId: string, userName: string) {
     const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), instanceId);
-    
     updateDoc(stageRef, {
       status: 'completed' as StageInstanceStatus,
       completedAt: serverTimestamp(),
@@ -162,17 +144,12 @@ export class TransactionService {
       companyId: this.companyId
     });
 
-    // تحديث حالة المعاملة إلى "قيد التنفيذ" إذا كانت "جديدة"
     const transactionRef = doc(this.db, paths.transactions(this.companyId), transactionId);
     updateDoc(transactionRef, { status: 'in-progress', updatedAt: serverTimestamp() });
   }
 
-  /**
-   * تحديث العداد العددي للمرحلة
-   */
   async updateStageNumeric(transactionId: string, instanceId: string, stageName: string, value: number, userId: string, userName: string) {
     const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), instanceId);
-    
     updateDoc(stageRef, {
       currentCount: value,
       updatedAt: serverTimestamp()
@@ -194,6 +171,6 @@ export class TransactionService {
       transactionId,
       createdAt: serverTimestamp()
     };
-    addDoc(collection(this.db, path), eventData);
+    addDoc(collection(this.db, path), eventData).catch(() => {});
   }
 }

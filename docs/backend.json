@@ -15,6 +15,19 @@
       },
       "required": ["fileNumber", "nameAr", "mobile", "status", "companyId"]
     },
+    "Employee": {
+      "title": "Employee Record",
+      "description": "سجل الموظف الشامل والبيانات المالية والوظيفية.",
+      "type": "object",
+      "properties": {
+        "employeeNumber": { "type": "string" },
+        "fullName": { "type": "string" },
+        "civilId": { "type": "string" },
+        "jobTitle": { "type": "string" },
+        "basicSalary": { "type": "number" },
+        "companyId": { "type": "string" }
+      }
+    },
     "Transaction": {
       "title": "Technical Transaction",
       "description": "المعاملة الفنية المفتوحة للعميل، ترتبط بمسار فني محدد.",
@@ -89,6 +102,7 @@
   },
   "firestore": {
     "/companies/{companyId}/clients/{clientId}": { "schema": "#/entities/Client", "description": "سجلات العملاء" },
+    "/companies/{companyId}/employees/{empId}": { "schema": "#/entities/Employee", "description": "سجلات الموظفين" },
     "/companies/{companyId}/transactions/{tId}": { "schema": "#/entities/Transaction", "description": "المعاملات الفنية" },
     "/companies/{companyId}/suppliers/{supId}": { "schema": "#/entities/Supplier", "description": "بيانات الموردين" },
     "/companies/{companyId}/warehouses/{wId}": { "schema": "#/entities/Warehouse", "description": "المستودعات" },

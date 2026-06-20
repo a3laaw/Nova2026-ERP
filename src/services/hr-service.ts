@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -6,12 +7,12 @@ import {
   doc, 
   addDoc, 
   updateDoc, 
+  setDoc,
   serverTimestamp,
   query,
   where,
   getDocs,
   getDoc,
-  setDoc,
   orderBy,
   limit
 } from 'firebase/firestore';
@@ -44,37 +45,36 @@ export class HRService {
   }
 
   /**
-   * إضافة موظف جديد مع تحديث السجل العالمي (Global User) للصلاحيات
+   * إضافة موظف جديد بنمط Non-blocking
    */
   async addEmployee(data: Omit<Employee, 'id' | 'createdAt' | 'updatedAt' | 'companyId'>) {
     ensureActionPermission(this.permissions, 'hr:create');
     const path = paths.employees(this.companyId);
     
-    // 1. إضافة الموظف لسجل الشركة
+    const empRef = doc(collection(this.db, path));
     const docData = {
       ...data,
+      id: empRef.id,
       companyId: this.companyId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
 
-    try {
-      const empRef = await addDoc(collection(this.db, path), docData);
-
-      // 2. تحديث السجل العالمي إذا وجد موثق (Email match) لتمكينه من الدخول بالصلاحيات
-      if (data.email) {
-        await this.syncGlobalPermissions(data.email, data.roleId);
-      }
-
-      return empRef.id;
-    } catch (err) {
+    // تنفيذ غير محظور (No await)
+    setDoc(empRef, docData).catch((err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path,
+        path: empRef.path,
         operation: 'create',
         requestResourceData: docData
       }));
-      throw err;
+    });
+
+    if (data.email) {
+      // تحديث الصلاحيات في الخلفية
+      this.syncGlobalPermissions(data.email, data.roleId);
     }
+
+    return empRef.id;
   }
 
   async updateEmployee(id: string, newData: Partial<Employee>, currentUser: { uid: string, name: string }) {
@@ -82,61 +82,61 @@ export class HRService {
     const path = paths.employees(this.companyId);
     const empRef = doc(this.db, path, id);
 
-    try {
-      const oldSnap = await getDoc(empRef);
-      if (!oldSnap.exists()) throw new Error('Employee not found');
-      const oldData = oldSnap.data() as Employee;
+    // جلب البيانات القديمة للتدقيق (قراءة - مسموح بـ await)
+    const oldSnap = await getDoc(empRef);
+    if (!oldSnap.exists()) return;
+    const oldData = oldSnap.data() as Employee;
 
-      const criticalFields: (keyof Employee)[] = ['basicSalary', 'jobTitle', 'departmentName', 'status', 'roleId'];
-      const updates: any = { ...newData, updatedAt: serverTimestamp() };
-      
-      await updateDoc(empRef, updates);
+    const updates = { ...newData, updatedAt: serverTimestamp() };
+    
+    // تحديث غير محظور
+    updateDoc(empRef, updates).catch((err) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: empRef.path,
+        operation: 'update',
+        requestResourceData: updates
+      }));
+    });
 
-      // إذا تغير الدور، نقوم بتحديث السجل العالمي فوراً
-      if (newData.roleId && newData.roleId !== oldData.roleId && (newData.email || oldData.email)) {
-        await this.syncGlobalPermissions(newData.email || oldData.email!, newData.roleId);
+    if (newData.roleId && newData.roleId !== oldData.roleId && (newData.email || oldData.email)) {
+      this.syncGlobalPermissions(newData.email || oldData.email!, newData.roleId);
+    }
+
+    // تسجيل في سجل التدقيق
+    const criticalFields: (keyof Employee)[] = ['basicSalary', 'jobTitle', 'departmentName', 'status', 'roleId'];
+    for (const field of criticalFields) {
+      if (newData[field] !== undefined && newData[field] !== oldData[field]) {
+        this.addAuditLog(id, {
+          action: 'update',
+          field: field as string,
+          oldValue: oldData[field] || 'None',
+          newValue: newData[field],
+          changedBy: currentUser.uid,
+          changedByName: currentUser.name
+        });
       }
-
-      for (const field of criticalFields) {
-        if (newData[field] !== undefined && newData[field] !== oldData[field]) {
-          this.addAuditLog(id, {
-            action: 'update',
-            field: field as string,
-            oldValue: oldData[field] || 'None',
-            newValue: newData[field],
-            changedBy: currentUser.uid,
-            changedByName: currentUser.name
-          });
-        }
-      }
-    } catch (err) {
-      throw err;
     }
   }
 
-  /**
-   * دالة سحرية لربط الدور المكتسب من الوظيفة بسجل المستخدم العالمي
-   */
   private async syncGlobalPermissions(email: string, roleId?: string) {
     if (!roleId) return;
-
-    const globalUsersRef = collection(this.db, 'global_users');
-    const q = query(globalUsersRef, where('email', '==', email));
+    const q = query(collection(this.db, 'global_users'), where('email', '==', email));
     const snap = await getDocs(q);
 
     if (!snap.empty) {
       const globalUserRef = doc(this.db, 'global_users', snap.docs[0].id);
-      await updateDoc(globalUserRef, {
+      updateDoc(globalUserRef, {
         roleId: roleId,
         updatedAt: serverTimestamp()
+      }).catch(() => {
+        // حماية هادئة: قد لا يملك الأدمن صلاحية تعديل سجل المستخدم العالمي مباشرة
       });
     }
   }
 
   async terminateEmployee(id: string, reason: string, date: string, currentUser: { uid: string, name: string }) {
     ensureActionPermission(this.permissions, 'hr:edit');
-    const path = paths.employees(this.companyId);
-    const empRef = doc(this.db, path, id);
+    const empRef = doc(this.db, paths.employees(this.companyId), id);
 
     const updateData = {
       status: 'terminated' as const,
@@ -146,7 +146,12 @@ export class HRService {
       updatedAt: serverTimestamp()
     };
 
-    await updateDoc(empRef, updateData);
+    updateDoc(empRef, updateData).catch(() => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: empRef.path,
+        operation: 'update'
+      }));
+    });
 
     this.addAuditLog(id, {
       action: 'terminate',
@@ -168,14 +173,5 @@ export class HRService {
       updatedAt: serverTimestamp()
     };
     addDoc(collection(this.db, logPath), logData);
-  }
-
-  async getEmployeeByNumber(empNumber: string) {
-    const q = query(
-      collection(this.db, paths.employees(this.companyId)), 
-      where('employeeNumber', '==', empNumber)
-    );
-    const snap = await getDocs(q);
-    return snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() } as Employee;
   }
 }
