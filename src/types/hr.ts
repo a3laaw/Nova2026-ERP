@@ -20,6 +20,8 @@ export interface Employee extends BaseReference {
   departmentName?: string;
   jobId: string;
   jobTitle?: string;
+  roleId?: string;       // الدور المكتسب تلقائياً من الوظيفة
+  roleName?: string;
   roleCode?: string;
   hireDate: string;
   contractType?: string;

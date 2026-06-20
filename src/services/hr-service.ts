@@ -10,7 +10,8 @@ import {
   query,
   where,
   getDocs,
-  getDoc
+  getDoc,
+  setDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { Employee, EmployeeAuditLog } from '@/types/hr';
@@ -25,9 +26,14 @@ export class HRService {
     private permissions: string[] = []
   ) {}
 
+  /**
+   * إضافة موظف جديد مع تحديث السجل العالمي (Global User) للصلاحيات
+   */
   async addEmployee(data: Omit<Employee, 'id' | 'createdAt' | 'updatedAt' | 'companyId'>) {
     ensureActionPermission(this.permissions, 'hr:create');
     const path = paths.employees(this.companyId);
+    
+    // 1. إضافة الموظف لسجل الشركة
     const docData = {
       ...data,
       companyId: this.companyId,
@@ -35,14 +41,23 @@ export class HRService {
       updatedAt: serverTimestamp(),
     };
 
-    // تنفيذ غير محظور (Non-blocking)
-    addDoc(collection(this.db, path), docData).catch(async (err) => {
+    try {
+      const empRef = await addDoc(collection(this.db, path), docData);
+
+      // 2. تحديث السجل العالمي إذا وجد موثق (Email match) لتمكينه من الدخول بالصلاحيات
+      if (data.email) {
+        await this.syncGlobalPermissions(data.email, data.roleId);
+      }
+
+      return empRef.id;
+    } catch (err) {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path,
         operation: 'create',
         requestResourceData: docData
       }));
-    });
+      throw err;
+    }
   }
 
   async updateEmployee(id: string, newData: Partial<Employee>, currentUser: { uid: string, name: string }) {
@@ -55,17 +70,15 @@ export class HRService {
       if (!oldSnap.exists()) throw new Error('Employee not found');
       const oldData = oldSnap.data() as Employee;
 
-      const criticalFields: (keyof Employee)[] = ['basicSalary', 'jobTitle', 'departmentName', 'status', 'contractExpiry'];
+      const criticalFields: (keyof Employee)[] = ['basicSalary', 'jobTitle', 'departmentName', 'status', 'roleId'];
       const updates: any = { ...newData, updatedAt: serverTimestamp() };
       
-      // تحديث غير محظور
-      updateDoc(empRef, updates).catch(async (err) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: empRef.path,
-          operation: 'update',
-          requestResourceData: updates
-        }));
-      });
+      await updateDoc(empRef, updates);
+
+      // إذا تغير الدور، نقوم بتحديث السجل العالمي فوراً
+      if (newData.roleId && newData.roleId !== oldData.roleId && (newData.email || oldData.email)) {
+        await this.syncGlobalPermissions(newData.email || oldData.email!, newData.roleId);
+      }
 
       for (const field of criticalFields) {
         if (newData[field] !== undefined && newData[field] !== oldData[field]) {
@@ -84,6 +97,25 @@ export class HRService {
     }
   }
 
+  /**
+   * دالة سحرية لربط الدور المكتسب من الوظيفة بسجل المستخدم العالمي
+   */
+  private async syncGlobalPermissions(email: string, roleId?: string) {
+    if (!roleId) return;
+
+    const globalUsersRef = collection(this.db, 'global_users');
+    const q = query(globalUsersRef, where('email', '==', email));
+    const snap = await getDocs(q);
+
+    if (!snap.empty) {
+      const globalUserRef = doc(this.db, 'global_users', snap.docs[0].id);
+      await updateDoc(globalUserRef, {
+        roleId: roleId,
+        updatedAt: serverTimestamp()
+      });
+    }
+  }
+
   async terminateEmployee(id: string, reason: string, date: string, currentUser: { uid: string, name: string }) {
     ensureActionPermission(this.permissions, 'hr:edit');
     const path = paths.employees(this.companyId);
@@ -97,12 +129,7 @@ export class HRService {
       updatedAt: serverTimestamp()
     };
 
-    updateDoc(empRef, updateData).catch(async (err) => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: empRef.path,
-        operation: 'update'
-      }));
-    });
+    await updateDoc(empRef, updateData);
 
     this.addAuditLog(id, {
       action: 'terminate',
