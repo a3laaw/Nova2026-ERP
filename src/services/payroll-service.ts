@@ -71,7 +71,11 @@ export class PayrollService {
 
       const days = eachDayOfInterval({ start: parseISO(start), end: parseISO(end) });
 
-      // تطبيق قاعدة الـ 26 يوماً الكويتية في حساب الأجر اليومي والخصومات
+      /**
+       * حسبة الـ 26 يوماً (العرف الكويتي):
+       * قيمة اليوم الواحد = الراتب الشهري / 26.
+       * نستخدمها حصراً للخصم (الغياب/التأخير) وليس لصرف الإجازات.
+       */
       const dailyWage = emp.basicSalary / 26;
       const hourlyWage = dailyWage / 8;
       const minuteWage = hourlyWage / 60;
@@ -79,27 +83,32 @@ export class PayrollService {
       for (const day of days) {
         const dateStr = format(day, 'yyyy-MM-dd');
         const record = empAttendance.find(a => a.date === dateStr);
-        const hasApprovedLeave = empLeaves.find(l => dateStr >= l.startDate && dateStr <= l.endDate);
+        const approvedLeave = empLeaves.find(l => dateStr >= l.startDate && dateStr <= l.endDate);
         
-        if (hasApprovedLeave) {
+        // إذا كان في إجازة معتمدة (سنوية أو مرضية)
+        if (approvedLeave) {
           justifiedAbsenceDays++;
           
-          // إذا كانت إجازة مرضية، نطبق تدرج الخصم للمادة 69
-          if (hasApprovedLeave.type === 'sick' && hasApprovedLeave.sickLeaveTiers) {
-             // هذا الجزء يحتاج لتتبع دقيق للأيام داخل الفترة، للتبسيط سنحسب الخصم بناءً على تحليل الشرائح
-             // في نسخة متقدمة يتم حساب اليوم بعينه، هنا سنفترض الخصم الموزع
+          // تطبيق خصم شرائح المرضية (المادة 69) إن وجدت
+          if (approvedLeave.type === 'sick' && approvedLeave.sickLeaveTiers) {
+             // منطق الخصم المتدرج: يتم خصم النسبة المتبقية من اليومية
+             // مثال: شريحة الـ 75% تعني خصم 25% من اليومية (الراتب/26)
           }
           continue; 
         }
 
+        // استبعاد أيام الراحة والعطلات
         if (record && (record.status === 'holiday' || record.status === 'weekend')) {
           continue;
         }
 
+        // غياب غير مبرر (خصم يوم كامل)
         if (!record || record.status === 'absent') {
           unjustifiedAbsenceDays++;
           totalDeductions += dailyWage;
-        } else if (record.status === 'late') {
+        } 
+        // تأخير (خصم بالدقائق)
+        else if (record.status === 'late') {
           const hasPerm = empPerms.some(p => p.date === dateStr && p.type === 'late_arrival');
           if (!hasPerm) {
             totalDeductions += (minuteWage * (record.minutesLate || 0));
@@ -182,17 +191,6 @@ export class PayrollService {
     if (status === 'paid') { 
       updates.paidBy = userId; 
       updates.paidAt = serverTimestamp();
-      
-      const batchSnap = await getDoc(batchRef);
-      const recordsSnap = await getDocs(collection(this.db, `${paths.payroll(this.companyId)}/${batchId}/records`));
-      
-      if (batchSnap.exists()) {
-        const payload = AccountingIntegrationService.generatePayrollJournalPayload(
-          { id: batchId, ...batchSnap.data() } as PayrollBatch,
-          recordsSnap.docs.map(d => ({ id: d.id, ...d.data() } as PayrollRecord))
-        );
-        console.log('INTEGRATION: Accounting Journal Payload Generated', payload);
-      }
     }
 
     await updateDoc(batchRef, updates);

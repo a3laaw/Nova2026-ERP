@@ -16,7 +16,7 @@ import {
 
 /**
  * خدمة حساب مستحقات نهاية الخدمة وفق قانون العمل الكويتي وNova ERP.
- * تلتزم بقاعدة (الأجر اليومي = الراتب الشامل / 26).
+ * تلتزم بقاعدة (الأجر اليومي للتصفية والخصم = الراتب الشامل / 26).
  */
 export class EndOfServiceCalculator {
   
@@ -25,7 +25,6 @@ export class EndOfServiceCalculator {
    * المادة 70 و 72 من قانون العمل.
    */
   static calculateAnnualLeaveBalance(totalDaysServed: number, carried: number, used: number): number {
-    // القاعدة القانونية: 30 يوماً لكل 365 يوماً من الخدمة
     const accrued = (totalDaysServed / 365.25) * 30;
     const balance = accrued + carried - used;
     return Math.max(0, Math.round(balance * 100) / 100);
@@ -39,16 +38,20 @@ export class EndOfServiceCalculator {
     noticeStartDate: string,
     noticeType: NoticeType
   ): SettlementResult {
-    // 1. الراتب الشامل والأجر اليومي (قاعدة 26 يوماً)
     const lastSalary = input.basicSalary + input.housingAllowance + input.transportAllowance + (input.otherAllowances || 0);
     
     if (lastSalary <= 0) {
       throw new Error('SALARY_ZERO: يجب أن يكون الراتب أكبر من صفر.');
     }
 
+    /**
+     * قاعدة الـ 26 يوماً (قانون العمل الكويتي):
+     * تُستخدم فقط لاحتساب قيمة اليوم الواحد عند التصفية النقدي أو الخصم.
+     * مثال: راتب 650 / 26 = 25 دينار لليوم.
+     * رصيد 30 يوماً عند التصفية = 30 * 25 = 750 دينار (أعلى من الراتب الشهري).
+     */
     const dailyWage = lastSalary / 26;
     
-    // 2. تحديد تاريخ الانتهاء الفعلي ومدة الإنذار (المادة 44)
     let effectiveEndDate = noticeStartDate;
     let noticeIndemnity = 0;
     let noticeText = "";
@@ -56,15 +59,14 @@ export class EndOfServiceCalculator {
     if (noticeType === 'worked') {
       const datePlus3Months = addMonths(parseISO(noticeStartDate), 3);
       effectiveEndDate = format(datePlus3Months, 'yyyy-MM-dd');
-      noticeText = "فترة الإنذار: استيفاء فترة الإنذار (عمل فعلي 90 يوماً)";
+      noticeText = "استيفاء فترة الإنذار (عمل فعلي 90 يوماً)";
     } else if (noticeType === 'indemnity') {
       noticeIndemnity = lastSalary * 3; // راتب 3 أشهر كاملة
-      noticeText = "فترة الإنذار: إنهاء فوري (استحقاق بدل إنذار 3 أشهر)";
+      noticeText = "إنهاء فوري (استحقاق بدل إنذار 3 أشهر)";
     } else {
-      noticeText = "فترة الإنذار: تنازل متبادل عن المدة";
+      noticeText = "تنازل متبادل عن مدة الإنذار";
     }
 
-    // 3. حساب مدة الخدمة الكلية بدقة (بالأيام والسنوات)
     const hireDateObj = parseISO(input.hireDate);
     const endDateObj = parseISO(effectiveEndDate);
     
@@ -72,24 +74,21 @@ export class EndOfServiceCalculator {
     const duration = intervalToDuration({ start: hireDateObj, end: endDateObj });
     const serviceYears = totalDaysCount / 365.25;
 
-    // 4. حساب المكافأة الأساسية (المادة 51)
+    // حساب المكافأة الأساسية (المادة 51)
     let baseGratuity = 0;
     if (serviceYears <= 5) {
-      // 15 يوماً عن كل سنة لأول 5 سنوات
       baseGratuity = serviceYears * (15 * dailyWage);
     } else {
-      // 15 يوماً عن أول 5 سنوات + شهر كامل عن كل سنة تالية
       const first5 = 5 * (15 * dailyWage);
       const remainingYears = serviceYears - 5;
       baseGratuity = first5 + (remainingYears * lastSalary);
     }
 
-    // تطبيق الحد الأعلى (أجر 18 شهراً)
     const maxGratuity = 1.5 * 12 * lastSalary;
     const isCapped = baseGratuity > maxGratuity;
     if (isCapped) baseGratuity = maxGratuity;
 
-    // 5. تطبيق عامل الاستقالة (المادة 53)
+    // تطبيق عامل الاستقالة (المادة 53)
     let resignationFactor = 1;
     if (input.terminationReason === 'resignation') {
       if (serviceYears < 3) resignationFactor = 0;
@@ -102,8 +101,7 @@ export class EndOfServiceCalculator {
 
     const finalGratuity = baseGratuity * resignationFactor;
 
-    // 6. حساب بدل رصيد الإجازات المتبقي (المادة 72)
-    // يُحسب بناءً على مدة الخدمة الفعلية بمعدل 2.5 يوم/شهر
+    // البديل النقدي للإجازات (المادة 72) - يُحسب بقاعدة الـ 26
     const leaveBalance = this.calculateAnnualLeaveBalance(totalDaysCount, input.carriedLeaveDays, input.annualLeaveUsed);
     const leaveBalancePay = leaveBalance * dailyWage;
 
