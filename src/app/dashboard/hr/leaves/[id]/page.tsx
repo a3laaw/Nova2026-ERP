@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -9,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { 
   ArrowRight, Loader2, CheckCircle2, XCircle,
   Calendar, User, FileText, AlertTriangle,
-  History, ShieldCheck
+  History, ShieldCheck, MessageSquare
 } from "lucide-react";
 import { useFirestore, useDoc } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -22,6 +21,8 @@ import { LeaveRequest } from '@/types/hr';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { LeaveTiersDisplay } from '@/components/hr/leave-tiers-display';
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function LeaveDetailsPage() {
   const params = useParams();
@@ -34,6 +35,7 @@ export default function LeaveDetailsPage() {
   const isRtl = lang === 'ar';
 
   const [processing, setProcessing] = useState(false);
+  const [adminComment, setAdminComment] = useState("");
 
   const companyId = globalUser?.companyId;
   const leaveService = useMemo(() => 
@@ -50,8 +52,11 @@ export default function LeaveDetailsPage() {
     if (!leaveService || !user) return;
     setProcessing(true);
     try {
-      await leaveService.updateRequestStatus(leaveId, status, user.uid);
+      await leaveService.updateRequestStatus(leaveId, status, user.uid, {
+        comment: adminComment
+      });
       toast({ title: t('saved') });
+      router.push('/dashboard/hr/leaves');
     } catch (e) {
       toast({ variant: "destructive", title: t('error') });
     } finally {
@@ -129,21 +134,42 @@ export default function LeaveDetailsPage() {
                      </div>
                   </div>
 
-                  {leave.type === 'sick' && leave.sickLeaveTiers && (
-                     <div className="pt-6 border-t border-slate-100 animate-in slide-in-from-top-4 duration-500">
-                        <LeaveTiersDisplay tiers={leave.sickLeaveTiers} />
-                     </div>
-                  )}
-
                   <div className="space-y-4 pt-6 border-t border-slate-100">
                      <div className="flex items-center gap-2 text-slate-800">
                         <FileText className="h-5 w-5 text-primary" />
-                        <h4 className="font-black text-lg">{isRtl ? 'سبب الإجازة / ملاحظات' : 'Reason / Notes'}</h4>
+                        <h4 className="font-black text-lg">{isRtl ? 'سبب الإجازة (من الموظف)' : 'Employee Reason'}</h4>
                      </div>
                      <p className="text-lg text-slate-600 bg-slate-50 p-6 rounded-2xl leading-relaxed italic border">
                         {leave.reason || (isRtl ? 'لا يوجد تفاصيل إضافية.' : 'No details provided.')}
                      </p>
                   </div>
+
+                  {isAdmin && leave.status === 'pending' && (
+                     <div className="space-y-4 pt-6 border-t border-slate-100 animate-in slide-in-from-bottom-2">
+                        <Label className="font-black text-xs uppercase text-slate-500 flex items-center gap-2">
+                           <MessageSquare className="h-3 w-3" />
+                           {isRtl ? 'ملاحظات الإدارة (ستظهر للموظف)' : 'Admin Notes (Visible to Employee)'}
+                        </Label>
+                        <Textarea 
+                          value={adminComment} 
+                          onChange={(e) => setAdminComment(e.target.value)}
+                          className="min-h-[100px] rounded-2xl border-2 p-4 text-sm"
+                          placeholder={isRtl ? "اكتب سبب الرفض أو أي تعليمات إضافية هنا..." : "Enter reason for rejection or instructions..."}
+                        />
+                     </div>
+                  )}
+
+                  {leave.comment && leave.status !== 'pending' && (
+                     <div className="space-y-4 pt-6 border-t border-slate-100">
+                        <div className="flex items-center gap-2 text-emerald-700">
+                           <MessageSquare className="h-5 w-5" />
+                           <h4 className="font-black text-lg">{isRtl ? 'قرار الإدارة' : 'Admin Decision Notes'}</h4>
+                        </div>
+                        <p className="text-lg text-emerald-900 bg-emerald-50 p-6 rounded-2xl leading-relaxed font-bold border border-emerald-100">
+                           {leave.comment}
+                        </p>
+                     </div>
+                  )}
                </CardContent>
             </Card>
 
@@ -163,7 +189,7 @@ export default function LeaveDetailsPage() {
                     disabled={processing}
                     className="flex-1 h-20 rounded-[2rem] border-2 border-rose-100 bg-white text-rose-600 font-black text-2xl hover:bg-rose-50 transition-all gap-4"
                   >
-                     {processing ? <Loader2 className="h-8 w-8 animate-spin" /> : <XCircle className="h-8 w-8" />}
+                     {processing ? <Loader2 className="animate-spin" /> : <XCircle className="h-8 w-8" />}
                      {isRtl ? 'رفض الطلب' : 'Reject Request'}
                   </Button>
                </div>
@@ -171,13 +197,13 @@ export default function LeaveDetailsPage() {
          </div>
 
          <div className="space-y-6">
-            <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
-               <CardHeader className="bg-slate-50 border-b p-6 text-start">
+            <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 text-start">
+               <CardHeader className="bg-slate-50 border-b p-6">
                   <CardTitle className="text-sm font-black flex items-center gap-2">
                      <History className="h-4 w-4 text-primary" /> {isRtl ? 'سجل العمليات' : 'Audit Trail'}
                   </CardTitle>
                </CardHeader>
-               <CardContent className="p-6 space-y-4 text-start">
+               <CardContent className="p-6 space-y-4">
                   <div className="flex justify-between items-center text-xs">
                      <span className="font-bold text-slate-400">{isRtl ? 'تاريخ التقديم' : 'Submitted At'}</span>
                      <span className="font-black text-slate-800">{leave.createdAt?.toDate().toLocaleDateString()}</span>
@@ -191,16 +217,16 @@ export default function LeaveDetailsPage() {
                </CardContent>
             </Card>
 
-            <Card className="border-2 border-dashed border-amber-200 rounded-[2.5rem] bg-amber-50/30 p-8 space-y-4">
+            <Card className="border-2 border-dashed border-amber-200 rounded-[2.5rem] bg-amber-50/30 p-8 space-y-4 text-start">
                <div className="flex items-center gap-3 text-amber-600">
                   <AlertTriangle className="h-6 w-6" />
                   <h4 className="font-black text-sm uppercase tracking-widest">{isRtl ? 'تنبيهات النظام' : 'System Alerts'}</h4>
                </div>
-               <p className="text-xs text-amber-800 leading-relaxed font-bold text-start">
-                  {isRtl ? '• هذا الطلب متوافق مع قانون العمل الكويتي وتم حساب شرائح الراتب آلياً.' : '• This request complies with Kuwait Labor Law with auto-calculated salary tiers.'}
+               <p className="text-xs text-amber-800 leading-relaxed font-bold">
+                  {isRtl ? '• ملاحظات الإدارة تحفظ بشكل دائم في ملف الموظف التاريخي.' : '• Admin notes are permanently saved in the employee\'s dossier.'}
                </p>
-               <p className="text-xs text-amber-800 leading-relaxed font-bold text-start">
-                  {isRtl ? '• سيتم تجميد رصيد الإجازات السنوية فور الاعتماد.' : '• Annual balance will be locked upon approval.'}
+               <p className="text-xs text-amber-800 leading-relaxed font-bold">
+                  {isRtl ? '• في حال الرغبة في تعديل التواريخ، يرجى التواصل مع الموظف أو تعديلها من لوحة التحكم قبل الحفظ.' : '• To modify dates, adjust them in the control panel before saving.'}
                </p>
             </Card>
          </div>

@@ -28,7 +28,7 @@ export class LeaveService {
   async submitRequest(data: Omit<LeaveRequest, 'id' | 'createdAt' | 'updatedAt' | 'companyId' | 'status'>) {
     const path = paths.leaveRequests(this.companyId);
     
-    // فحص التداخل (تبسيط الاستعلام لتجنب الفهارس المركبة)
+    // فحص التداخل
     const overlapQuery = query(
       collection(this.db, path),
       where('userId', '==', data.userId)
@@ -37,14 +37,12 @@ export class LeaveService {
     const overlapSnap = await getDocs(overlapQuery);
     const hasOverlap = overlapSnap.docs.some(docSnap => {
       const d = docSnap.data();
-      // استبعاد الطلبات المرفوضة
       if (d.status === 'rejected') return false;
-      // منطق التداخل الزمني
       return (data.startDate <= d.endDate && data.endDate >= d.startDate);
     });
 
     if (hasOverlap) {
-      throw new Error('OVERLAP: يوجد طلب إجازة آخر (قيد الانتظار أو معتمد) متداخل مع هذه الفترة.');
+      throw new Error('OVERLAP: يوجد طلب إجازة آخر متداخل مع هذه الفترة.');
     }
 
     const docData = {
@@ -55,7 +53,6 @@ export class LeaveService {
       updatedAt: serverTimestamp()
     };
 
-    // كتابة - غير محظورة
     addDoc(collection(this.db, path), docData).catch(async (err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path,
@@ -65,17 +62,30 @@ export class LeaveService {
     });
   }
 
-  async updateRequestStatus(leaveId: string, status: LeaveRequest['status'], adminId: string, comment?: string) {
+  /**
+   * تحديث حالة الطلب مع إمكانية تعديل البيانات المالية/الزمنية وإضافة ملاحظات
+   */
+  async updateRequestStatus(
+    leaveId: string, 
+    status: LeaveRequest['status'], 
+    adminId: string, 
+    payload: { comment?: string, startDate?: string, endDate?: string, workingDays?: number } = {}
+  ) {
     ensureActionPermission(this.permissions, 'hr:edit');
     const leaveRef = doc(this.db, paths.leaveRequests(this.companyId), leaveId);
 
-    const updateData = {
+    const updateData: any = {
       status,
       approvedBy: adminId,
       approvedAt: serverTimestamp(),
-      comment: comment || '',
+      comment: payload.comment || '',
       updatedAt: serverTimestamp()
     };
+
+    // إذا قام المدير بتعديل التواريخ أثناء المعالجة
+    if (payload.startDate) updateData.startDate = payload.startDate;
+    if (payload.endDate) updateData.endDate = payload.endDate;
+    if (payload.workingDays !== undefined) updateData.workingDays = payload.workingDays;
 
     updateDoc(leaveRef, updateData).catch(async (err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
