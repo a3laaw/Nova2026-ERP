@@ -7,29 +7,35 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
 
 /**
  * خطاف محسن لجلب المجموعات يضمن عدم الدخول في حلقات تكرار لا نهائية.
+ * يستخدم مقارنة Firestore العميقة لضمان استقرار الاستعلام.
  */
 export function useCollection<T = DocumentData>(query: Query<T> | null) {
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(!!query);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
   
-  // حفظ الاستعلام الفعلي لمقارنته بعمق
   const queryRef = useRef<Query<T> | null>(null);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    // التحقق من التغيير الحقيقي للاستعلام باستخدام queryEqual
+    // التحقق مما إذا كان الاستعلام قد تغير فعلياً
     const isSameQuery = query && queryRef.current && queryEqual(query, queryRef.current);
     
-    if (!query) {
-      if (queryRef.current !== null) {
-        queryRef.current = null;
-        setData([]);
-        setLoading(false);
-      }
-      return;
+    // إذا لم يتغير الاستعلام، لا تفعل شيئاً
+    if (isSameQuery) return;
+
+    // تنظيف المراقب القديم إذا وجد
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+      unsubscribeRef.current = null;
     }
 
-    if (isSameQuery) return;
+    if (!query) {
+      queryRef.current = null;
+      setData([]);
+      setLoading(false);
+      return;
+    }
 
     queryRef.current = query;
     setLoading(true);
@@ -58,7 +64,14 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
       }
     );
 
-    return () => unsubscribe();
+    unsubscribeRef.current = unsubscribe;
+
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+    };
   }, [query]);
 
   return { data, loading, error };

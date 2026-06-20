@@ -42,16 +42,12 @@ export default function GratuityCalculatorPage() {
 
   const [result, setResult] = useState<GratuityResult | null>(null);
 
-  // استعلام بسيط ومستقر لضمان عدم حدوث Loop
+  // استقرار الاستعلام عبر useMemo
   const empsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.employees(companyId))) : null, 
   [db, companyId]);
   
-  const { data: rawEmployees, loading: empsLoading } = useCollection<Employee>(empsQuery);
-  
-  const employees = useMemo(() => 
-    [...rawEmployees].sort((a, b) => a.fullName.localeCompare(b.fullName)), 
-  [rawEmployees]);
+  const { data: employees, loading: empsLoading } = useCollection<Employee>(empsQuery);
 
   useEffect(() => {
     if (selectedEmpId && employees) {
@@ -93,7 +89,6 @@ export default function GratuityCalculatorPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
-        {/* Left: Input Form */}
         <div className="lg:col-span-4 space-y-6 print:hidden text-start">
            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
               <CardHeader className="bg-slate-50/50 border-b p-8">
@@ -135,7 +130,6 @@ export default function GratuityCalculatorPage() {
                          readOnly
                          className="h-12 rounded-xl border-2 font-black text-emerald-600 text-lg bg-slate-50 cursor-not-allowed text-center" 
                        />
-                       <p className="text-[9px] text-muted-foreground font-bold italic">{isRtl ? "* الراتب مسحوب من سجل الموظف لضمان النزاهة." : "* Salary fetched from record for integrity."}</p>
                     </div>
                  </div>
 
@@ -172,7 +166,6 @@ export default function GratuityCalculatorPage() {
            </Card>
         </div>
 
-        {/* Right: Results Analysis */}
         <div className="lg:col-span-8">
            {result ? (
              <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500 text-start">
@@ -245,6 +238,7 @@ export default function GratuityCalculatorPage() {
                          </div>
                       </div>
 
+                      {/* FIX: Changed 0 from <p> to <div> to avoid Hydration Error */}
                       <div className="p-8 bg-slate-50 rounded-3xl border-2 space-y-4">
                          <h5 className="font-black text-xs text-slate-400 uppercase tracking-widest flex items-center gap-2">
                             <History className="h-3 w-3" /> {isRtl ? 'ملاحظات التدقيق القانوني' : 'Legal Notes'}

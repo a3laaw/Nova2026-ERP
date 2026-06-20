@@ -14,20 +14,24 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<T> | null) {
   const [error, setError] = useState<FirestoreError | Error | null>(null);
   
   const currentRef = useRef<DocumentReference<T> | null>(null);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const isSameRef = docRef && currentRef.current && refEqual(docRef, currentRef.current);
 
-    if (!docRef) {
-      if (currentRef.current !== null) {
-        currentRef.current = null;
-        setData(null);
-        setLoading(false);
-      }
-      return;
+    if (isSameRef) return;
+
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+      unsubscribeRef.current = null;
     }
 
-    if (isSameRef) return;
+    if (!docRef) {
+      currentRef.current = null;
+      setData(null);
+      setLoading(false);
+      return;
+    }
 
     currentRef.current = docRef;
     setLoading(true);
@@ -52,7 +56,14 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<T> | null) {
       }
     );
 
-    return () => unsubscribe();
+    unsubscribeRef.current = unsubscribe;
+
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+    };
   }, [docRef]);
 
   return { data, loading, error };
