@@ -25,6 +25,12 @@ export const paths = {
   areas: (companyId: string, govId: string) => 
     `${getTenantPath(companyId, 'governorates')}/${govId}/areas`,
 
+  // موديول العملاء (CRM Core)
+  clients: (companyId: string) => 
+    getTenantPath(companyId, 'clients'),
+  clientHistory: (companyId: string, clientId: string) => 
+    `${getTenantPath(companyId, 'clients')}/${clientId}/history`,
+
   // الموارد البشرية (HR)
   employees: (companyId: string) => 
     getTenantPath(companyId, 'employees'),

@@ -1,5 +1,35 @@
 {
   "entities": {
+    "Client": {
+      "title": "Client Record",
+      "description": "الجذر التجاري للعميل في النظام، يحتوي على بيانات التواصل والعنوان والحالة التشغيلية.",
+      "type": "object",
+      "properties": {
+        "fileNumber": { "type": "string", "description": "رقم الملف المسلسل" },
+        "nameAr": { "type": "string", "description": "الاسم باللغة العربية" },
+        "nameEn": { "type": "string" },
+        "mobile": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "civilId": { "type": "string" },
+        "status": { "type": "string", "enum": ["prospective", "registered", "contracted", "inactive"] },
+        "transactionCounter": { "type": "number", "description": "عدد المعاملات الفنية المرتبطة بالعميل" },
+        "assignedEngineerId": { "type": "string" },
+        "companyId": { "type": "string" }
+      },
+      "required": ["fileNumber", "nameAr", "mobile", "status", "companyId"]
+    },
+    "ClientHistory": {
+      "title": "Client Interaction History",
+      "description": "سجل الأحداث والأنشطة المرتبطة بالعميل.",
+      "type": "object",
+      "properties": {
+        "clientId": { "type": "string" },
+        "type": { "type": "string" },
+        "content": { "type": "string" },
+        "userName": { "type": "string" },
+        "companyId": { "type": "string" }
+      }
+    },
     "Employee": {
       "title": "Employee Record",
       "description": "بيانات الموظف الشاملة لأغراض الموارد البشرية والرواتب.",
@@ -44,6 +74,8 @@
     "providers": ["password"]
   },
   "firestore": {
+    "/companies/{companyId}/clients/{clientId}": { "schema": "#/entities/Client", "description": "سجلات العملاء الرئيسية" },
+    "/companies/{companyId}/clients/{clientId}/history/{hId}": { "schema": "#/entities/ClientHistory", "description": "سجل أنشطة العميل" },
     "/companies/{companyId}/employees/{empId}": { "schema": "#/entities/Employee", "description": "سجلات الموظفين" },
     "/companies/{companyId}/suppliers/{supId}": { "schema": "#/entities/Supplier", "description": "قاعدة بيانات الموردين" },
     "/companies/{companyId}/purchaseOrders/{poId}": { "schema": "#/entities/PurchaseOrder", "description": "أوامر الشراء" },
