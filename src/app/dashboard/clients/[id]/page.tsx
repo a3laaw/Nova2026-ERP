@@ -2,13 +2,15 @@
 
 import { useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { 
   ArrowRight, Edit3, User, MapPin, Phone, Mail, 
   ShieldCheck, History, Clock, Loader2, AlertCircle,
-  HardHat, FileText, ChevronRight, Activity, Plus
+  HardHat, FileText, ChevronRight, Activity, Plus,
+  MessageSquare, UserCog
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy } from 'firebase/firestore';
@@ -28,19 +30,34 @@ export default function ClientDetailsPage() {
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
-  const clientRef = useMemo(() => companyId && db ? doc(db, paths.clients(companyId), clientId) : null, [db, companyId, clientId]);
-  const historyQuery = useMemo(() => companyId && db ? query(collection(db, paths.clientHistory(companyId, clientId)), orderBy('createdAt', 'desc')) : null, [db, companyId, clientId]);
+  // جلب بيانات العميل
+  const clientRef = useMemo(() => 
+    companyId && db ? doc(db, paths.clients(companyId), clientId) : null, 
+  [db, companyId, clientId]);
+
+  // جلب سجل التاريخ
+  const historyQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.clientHistory(companyId, clientId)), orderBy('createdAt', 'desc')) : null, 
+  [db, companyId, clientId]);
 
   const { data: client, loading: clientLoading } = useDoc<Client>(clientRef);
   const { data: history, loading: historyLoading } = useCollection<ClientHistory>(historyQuery);
 
   if (clientLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
-  if (!client) return <div className="p-20 text-center"><AlertCircle className="h-12 w-12 mx-auto text-destructive mb-4" /><h2 className="text-2xl font-black">{isRtl ? 'الملف غير موجود' : 'Client file not found'}</h2></div>;
+  if (!client) return (
+    <div className="h-[60vh] flex flex-col items-center justify-center space-y-4">
+      <AlertCircle className="h-16 w-16 text-destructive/20" />
+      <h2 className="text-2xl font-black text-slate-400">{isRtl ? 'عذراً، الملف غير موجود' : 'Client file not found'}</h2>
+      <Button onClick={() => router.push('/dashboard/clients')} variant="outline" className="rounded-xl">
+        {isRtl ? 'العودة لقاعدة البيانات' : 'Back to database'}
+      </Button>
+    </div>
+  );
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-20" dir={dir}>
       
-      {/* Header Profile */}
+      {/* Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div className="flex items-center gap-6">
           <Button variant="ghost" onClick={() => router.push('/dashboard/clients')} className="h-14 w-14 p-0 rounded-2xl bg-white shadow-sm border-2 hover:bg-slate-50 transition-all">
@@ -54,7 +71,7 @@ export default function ClientDetailsPage() {
                 <div>
                    <h1 className="text-4xl font-black font-headline text-slate-900 tracking-tight">{client.nameAr}</h1>
                    <p className="text-sm font-bold text-slate-400 mt-1 flex items-center gap-2">
-                      <ShieldCheck className="h-4 w-4 text-primary" /> {isRtl ? 'رقم السجل الموحد:' : 'System ID:'} <span className="font-mono text-slate-800">{clientId}</span>
+                      <ShieldCheck className="h-4 w-4 text-primary" /> {isRtl ? 'الرقم الموحد:' : 'System ID:'} <span className="font-mono text-slate-800">{clientId}</span>
                    </p>
                 </div>
              </div>
@@ -76,8 +93,10 @@ export default function ClientDetailsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* Left Column: Details */}
+        {/* Left/Main Column: Client Dossier Info */}
         <div className="lg:col-span-2 space-y-8">
+           
+           {/* Contact & Location Card */}
            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
               <CardHeader className="bg-slate-50/50 border-b p-8 text-start">
                  <CardTitle className="text-xl font-black flex items-center gap-3">
@@ -87,7 +106,7 @@ export default function ClientDetailsPage() {
               </CardHeader>
               <CardContent className="p-8 space-y-10 text-start">
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                        <div className="flex items-center gap-4">
                           <div className="h-12 w-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><Phone className="h-6 w-6" /></div>
                           <div className="text-start">
@@ -103,63 +122,74 @@ export default function ClientDetailsPage() {
                           </div>
                        </div>
                     </div>
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                        <div className="flex items-center gap-4">
                           <div className="h-12 w-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center"><MapPin className="h-6 w-6" /></div>
                           <div className="text-start">
-                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'الموقع والعنوان' : 'Location'}</p>
-                             <p className="text-base font-black text-slate-900">{client.governorateName} - {client.areaName}</p>
+                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'الموقع الجغرافي' : 'Location'}</p>
+                             <p className="text-base font-black text-slate-900">{client.governorateName || '---'} - {client.areaName || '---'}</p>
                              <p className="text-xs font-bold text-slate-500">قطعة {client.block}، شارع {client.street}، منزل {client.houseNumber}</p>
                           </div>
                        </div>
                     </div>
                  </div>
 
-                 <div className="pt-8 border-t border-slate-100 grid grid-cols-2 gap-8">
+                 <div className="pt-8 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div className="p-6 bg-slate-50 rounded-[2rem] border-2 border-white shadow-inner text-start space-y-1">
                        <p className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'الحالة التشغيلية' : 'Status'}</p>
                        <Badge className={cn(
                           "font-black px-4 py-1.5 rounded-xl border-0 shadow-sm uppercase text-[10px]",
-                          client.status === 'contracted' ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'
+                          client.status === 'contracted' ? 'bg-emerald-500 text-white' : 
+                          client.status === 'registered' ? 'bg-blue-500 text-white' :
+                          client.status === 'prospective' ? 'bg-amber-500 text-white' : 'bg-slate-400 text-white'
                        )}>{client.status}</Badge>
                     </div>
                     <div className="p-6 bg-slate-50 rounded-[2rem] border-2 border-white shadow-inner text-start space-y-1">
                        <p className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'المهندس المسؤول' : 'Assigned Engineer'}</p>
                        <p className="text-sm font-black text-slate-800 flex items-center gap-2">
-                          <HardHat className="h-4 w-4 text-primary" /> {client.assignedEngineerName || (isRtl ? 'غير معين' : 'Not assigned')}
+                          <HardHat className="h-4 w-4 text-primary" /> {client.assignedEngineerName || (isRtl ? 'لم يتم التعيين بعد' : 'Not assigned yet')}
                        </p>
                     </div>
                  </div>
 
                  <div className="space-y-3 pt-4">
                     <Label className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'ملاحظات إضافية' : 'Notes'}</Label>
-                    <p className="text-sm font-bold text-slate-600 leading-relaxed bg-slate-50/50 p-6 rounded-2xl border italic">
-                       {client.notes || (isRtl ? 'لا توجد ملاحظات مسجلة.' : 'No notes available.')}
-                    </p>
+                    <div className="p-6 rounded-2xl border-2 border-dashed bg-slate-50/30">
+                       <p className="text-sm font-bold text-slate-600 leading-relaxed italic">
+                          {client.notes || (isRtl ? 'لا توجد ملاحظات مسجلة لهذا العميل.' : 'No notes recorded for this client.')}
+                       </p>
+                    </div>
                  </div>
               </CardContent>
            </Card>
 
-           {/* مؤشرات الأداء للعميل */}
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="border-0 shadow-lg rounded-[2rem] bg-white p-8 flex items-center justify-between">
+           {/* Quick Stats Grid */}
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white p-8 flex items-center justify-between">
                  <div className="text-start">
-                    <p className="text-xs font-black text-slate-400 uppercase mb-2">{isRtl ? 'إجمالي المعاملات' : 'Total Trans'}</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase mb-2">{isRtl ? 'إجمالي المعاملات' : 'Total Trans'}</p>
                     <h3 className="text-5xl font-black font-headline text-slate-900">{client.transactionCounter || 0}</h3>
                  </div>
-                 <Activity className="h-12 w-12 text-primary/20" />
+                 <Activity className="h-12 w-12 text-primary/10" />
               </Card>
-              <Card className="border-0 shadow-lg rounded-[2rem] bg-slate-900 text-white p-8 flex items-center justify-between">
+              <Card className="border-0 shadow-lg rounded-[2.5rem] bg-slate-900 text-white p-8 flex items-center justify-between">
                  <div className="text-start">
-                    <p className="text-xs font-black text-slate-400 uppercase mb-2">{isRtl ? 'العقود النشطة' : 'Active Contracts'}</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase mb-2">{isRtl ? 'العقود النشطة' : 'Active Contracts'}</p>
                     <h3 className="text-5xl font-black font-headline text-emerald-400">0</h3>
                  </div>
-                 <FileText className="h-12 w-12 text-white/10" />
+                 <FileText className="h-12 w-12 text-white/5" />
+              </Card>
+              <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white p-8 flex items-center justify-between">
+                 <div className="text-start">
+                    <p className="text-[10px] font-black text-slate-400 uppercase mb-2">{isRtl ? 'المبالغ المحصلة' : 'Collected'}</p>
+                    <h3 className="text-2xl font-black font-headline text-slate-900">0.000 <span className="text-xs">KWD</span></h3>
+                 </div>
+                 <ChevronRight className="h-12 w-12 text-primary/10" />
               </Card>
            </div>
         </div>
 
-        {/* Right Column: History & Events */}
+        {/* Right Column: Interaction History Timeline */}
         <div className="space-y-8">
            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 flex flex-col h-full min-h-[600px]">
               <CardHeader className="bg-slate-50 border-b p-8 text-start flex flex-row items-center justify-between">
@@ -171,34 +201,53 @@ export default function ClientDetailsPage() {
                  </div>
                  <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 hover:bg-white"><Plus className="h-4 w-4" /></Button>
               </CardHeader>
-              <CardContent className="p-0 flex-1 overflow-y-auto max-h-[700px] scrollbar-hide">
-                 {historyLoading ? <div className="p-20 text-center"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></div> : (
-                   <div className="divide-y divide-slate-100">
-                      {history?.length === 0 ? (
-                        <div className="p-20 text-center text-slate-300 font-bold italic text-sm">{isRtl ? 'لا يوجد تفاعلات مسجلة بعد.' : 'No history events yet.'}</div>
-                      ) : (
-                        history?.map((event) => (
-                          <div key={event.id} className="p-6 hover:bg-slate-50 transition-colors text-start group">
-                             <div className="flex justify-between items-start mb-2">
-                                <Badge variant="secondary" className="bg-slate-100 text-slate-500 font-black text-[9px] uppercase h-5">
-                                   {event.type.replace('_', ' ')}
-                                </Badge>
-                                <span className="text-[10px] font-mono text-slate-400 font-bold">
-                                   {event.createdAt?.toDate().toLocaleDateString(isRtl ? 'ar-KW' : 'en-US')}
-                                </span>
-                             </div>
-                             <p className="text-sm font-bold text-slate-700 leading-relaxed mb-3">
-                                {event.content}
-                             </p>
-                             <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
-                                <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-black text-primary">
-                                   {event.userName?.charAt(0)}
-                                </div>
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{event.userName}</span>
-                             </div>
-                          </div>
-                        ))
-                      )}
+              <CardContent className="p-0 flex-1 overflow-y-auto max-h-[750px] scrollbar-hide">
+                 {historyLoading ? (
+                   <div className="p-20 text-center"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></div>
+                 ) : (
+                   <div className="relative">
+                      {/* Vertical line */}
+                      <div className={cn(
+                        "absolute top-0 bottom-0 w-[2px] bg-slate-100",
+                        isRtl ? "right-10" : "left-10"
+                      )} />
+
+                      <div className="divide-y divide-slate-50">
+                        {history?.length === 0 ? (
+                          <div className="p-20 text-center text-slate-300 font-bold italic text-sm">{isRtl ? 'لا يوجد سجلات بعد.' : 'No history yet.'}</div>
+                        ) : (
+                          history?.map((event) => (
+                            <div key={event.id} className="p-8 relative group hover:bg-slate-50/50 transition-colors text-start">
+                               <div className={cn(
+                                 "absolute top-10 h-4 w-4 rounded-full border-4 border-white shadow-md z-10 transition-transform group-hover:scale-125",
+                                 event.type === 'status_change' ? "bg-blue-500" : 
+                                 event.type === 'system_log' ? "bg-primary" : "bg-slate-400",
+                                 isRtl ? "right-[33px]" : "left-[33px]"
+                               )} />
+                               
+                               <div className={cn(isRtl ? "pr-10" : "pl-10")}>
+                                  <div className="flex justify-between items-start mb-2">
+                                     <Badge variant="secondary" className="bg-slate-100 text-slate-500 font-black text-[9px] uppercase h-5">
+                                        {event.type.replace('_', ' ')}
+                                     </Badge>
+                                     <span className="text-[10px] font-mono text-slate-400 font-bold">
+                                        {event.createdAt?.toDate().toLocaleDateString(isRtl ? 'ar-KW' : 'en-US')}
+                                     </span>
+                                  </div>
+                                  <p className="text-sm font-bold text-slate-700 leading-relaxed mb-4">
+                                     {event.content}
+                                  </p>
+                                  <div className="flex items-center gap-2 pt-3 border-t border-slate-50">
+                                     <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-black text-primary">
+                                        {event.userName?.charAt(0) || <UserCog className="h-3 w-3" />}
+                                     </div>
+                                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{event.userName || 'System'}</span>
+                                  </div>
+                               </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
                    </div>
                  )}
               </CardContent>
