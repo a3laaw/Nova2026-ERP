@@ -11,7 +11,7 @@ export interface GratuityCalculationInput {
   totalSalary: number;
   reason: TerminationReason;
   noticeType: NoticeType;
-  remainingLeaveDays: number; // Snapshot from employee record
+  remainingLeaveDays: number; 
 }
 
 export interface GratuityResult {
@@ -26,6 +26,7 @@ export interface GratuityResult {
   resignationFactor: number;
   finalGratuity: number;
   leaveBalancePay: number;
+  accruedLeaveDays: number;
   noticeIndemnity: number;
   totalEntitlement: number;
   isCapped: boolean;
@@ -42,11 +43,10 @@ export class GratuityService {
     const start = parseISO(hireDate);
     const end = parseISO(endDate);
     const totalDaysCount = Math.max(0, differenceInDays(end, start));
-    const totalMonthsCount = Math.max(0, differenceInMonths(end, start));
     const duration = intervalToDuration({ start, end });
     
-    // احتساب السنوات الكسرية بدقة
-    const serviceYears = (duration.years || 0) + (duration.months || 0) / 12 + (duration.days || 0) / 365;
+    // احتساب السنوات الكسرية بدقة (كل يوم يفرق في الحسبة)
+    const serviceYears = totalDaysCount / 365.25;
     const dailyWage = totalSalary / 26;
     const legalNotes: string[] = [];
 
@@ -78,7 +78,7 @@ export class GratuityService {
         resignationFactor = 0.5;
         legalNotes.push("استحقاق 1/2 المكافأة (خدمة بين 3-5 سنوات).");
       } else if (serviceYears < 10) {
-        resignationFactor = 0.666; // 2/3
+        resignationFactor = 0.666; 
         legalNotes.push("استحقاق 2/3 المكافأة (خدمة بين 5-10 سنوات).");
       } else {
         resignationFactor = 1;
@@ -91,22 +91,20 @@ export class GratuityService {
 
     const finalGratuity = baseGratuity * resignationFactor;
 
-    // 4. احتساب رصيد الإجازات المستحق (Accrued)
-    // القانون الكويتي: 30 يوماً عن كل سنة
-    const totalLeaveEntitled = (totalMonthsCount / 12) * 30;
-    // نفترض أن remainingLeaveDays هو ما تبقى فعلياً في السجل، 
-    // ولكن لإظهار "الحساب" للمستخدم، نستخدمه كمرجع نهائي
-    const leaveBalancePay = remainingLeaveDays * dailyWage;
-    legalNotes.push(`تم احتساب بدل الإجازات بناءً على رصيد ${remainingLeaveDays} يوم متبقي x الأجر اليومي.`);
+    // 4. احتساب رصيد الإجازات المستحق تراكمياً (بقوة القانون 30 يوم/سنة)
+    // نستخدم الرصيد المحسوب بناءً على مدة الخدمة الفعلية
+    const accruedLeaveDays = Math.round((serviceYears * 30) * 100) / 100;
+    const leaveBalancePay = accruedLeaveDays * dailyWage;
+    legalNotes.push(`تم احتساب مستحقات الإجازات تراكمياً لـ ${accruedLeaveDays} يوم استحقاق عن كامل المدة.`);
 
-    // 5. بدل الإنذار (90 يوماً / 3 أشهر - المادة 44)
+    // 5. بدل الإنذار (المادة 44)
     let noticeIndemnity = 0;
     if (noticeType === 'not_served_by_employer') {
       noticeIndemnity = totalSalary * 3; 
-      legalNotes.push("إضافة بدل إنذار يعادل راتب 3 أشهر (المادة 44) بطلب صاحب العمل.");
+      legalNotes.push("إضافة بدل إنذار يعادل راتب 3 أشهر.");
     } else if (noticeType === 'not_served_by_employee') {
       noticeIndemnity = -(totalSalary * 3); 
-      legalNotes.push("خصم بدل إنذار يعادل راتب 3 أشهر لعدم استكمال فترة الإخطار.");
+      legalNotes.push("خصم بدل إنذار يعادل راتب 3 أشهر.");
     }
 
     const totalEntitlement = finalGratuity + leaveBalancePay + (noticeIndemnity > 0 ? noticeIndemnity : 0);
@@ -123,6 +121,7 @@ export class GratuityService {
       resignationFactor,
       finalGratuity,
       leaveBalancePay,
+      accruedLeaveDays,
       noticeIndemnity,
       totalEntitlement,
       isCapped,

@@ -11,7 +11,7 @@ import {
   Calculator, Receipt, Info, ArrowRight, 
   Printer, UserCircle, CalendarDays, Wallet,
   ShieldCheck, AlertTriangle, Scale, History,
-  Gavel, Clock
+  Gavel, Clock, Loader2
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -45,7 +45,7 @@ export default function GratuityCalculatorPage() {
   const empsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.employees(companyId)), orderBy('fullName')) : null, 
   [db, companyId]);
-  const { data: employees } = useCollection<Employee>(empsQuery);
+  const { data: employees, loading: empsLoading } = useCollection<Employee>(empsQuery);
 
   useEffect(() => {
     if (selectedEmpId && employees) {
@@ -93,16 +93,19 @@ export default function GratuityCalculatorPage() {
               <CardHeader className="bg-slate-50/50 border-b p-8">
                  <CardTitle className="text-lg font-black flex items-center gap-2">
                     <UserCircle className="h-5 w-5 text-primary" />
-                    {isRtl ? 'بيانات الخدمة' : 'Service Data'}
+                    {isRtl ? 'بيانات الخدمة والراتب' : 'Service & Salary Data'}
                  </CardTitle>
               </CardHeader>
               <CardContent className="p-8 space-y-6">
                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الموظف' : 'Employee'}</Label>
+                    <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الموظف المستهدف' : 'Target Employee'}</Label>
                     <Select value={selectedEmpId} onValueChange={setSelectedEmpId}>
-                       <SelectTrigger className="h-12 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
+                       <SelectTrigger className="h-12 rounded-xl border-2 font-bold">
+                          <SelectValue placeholder={isRtl ? "اختر موظفاً..." : "Select employee..."} />
+                       </SelectTrigger>
                        <SelectContent>
-                          {employees?.map(emp => (
+                          {empsLoading ? <div className="p-4 text-center"><Loader2 className="h-4 w-4 animate-spin mx-auto" /></div> : 
+                            employees?.map(emp => (
                              <SelectItem key={emp.id} value={emp.id!} className="font-bold">{emp.fullName}</SelectItem>
                           ))}
                        </SelectContent>
@@ -119,38 +122,38 @@ export default function GratuityCalculatorPage() {
                        <SmartDateInput value={form.endDate} onChange={v => setForm({...form, endDate: v})} />
                     </div>
                     <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الراتب الشامل (د.ك)' : 'Gross Salary'}</Label>
+                       <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الراتب الشامل (للقراءة فقط)' : 'Gross Salary (Read-only)'}</Label>
                        <Input 
                          type="number" 
                          value={form.totalSalary} 
                          readOnly
-                         className="h-12 rounded-xl border-2 font-black text-emerald-600 text-lg bg-slate-50/50 cursor-not-allowed" 
+                         className="h-12 rounded-xl border-2 font-black text-emerald-600 text-lg bg-slate-100 cursor-not-allowed text-center" 
                        />
-                       <p className="text-[9px] text-muted-foreground font-bold italic">{isRtl ? "* الراتب مسحوب من سجل الموظف ولا يمكن تعديله يدوياً." : "* Salary is fetched from employee record and cannot be edited."}</p>
+                       <p className="text-[9px] text-muted-foreground font-bold italic">{isRtl ? "* الراتب مسحوب من سجل الموظف لضمان النزاهة." : "* Salary fetched from record for integrity."}</p>
                     </div>
                  </div>
 
                  <div className="space-y-4 pt-4 border-t border-slate-50">
                     <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'السبب القانوني' : 'Legal Reason'}</Label>
+                       <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'السبب القانوني للترك' : 'Legal Exit Reason'}</Label>
                        <Select value={form.reason} onValueChange={(v: TerminationReason) => setForm({...form, reason: v})}>
                           <SelectTrigger className="h-12 rounded-xl border-2 font-bold"><SelectValue /></SelectTrigger>
                           <SelectContent>
                              <SelectItem value="resignation" className="font-bold">{isRtl ? 'استقالة' : 'Resignation'}</SelectItem>
-                             <SelectItem value="termination" className="font-bold">{isRtl ? 'إنهاء خدمات (استحقاق بدل)' : 'Employer Termination'}</SelectItem>
+                             <SelectItem value="termination" className="font-bold">{isRtl ? 'إنهاء خدمات (إقالة)' : 'Employer Termination'}</SelectItem>
                              <SelectItem value="retirement" className="font-bold">{isRtl ? 'تقاعد' : 'Retirement'}</SelectItem>
                              <SelectItem value="misconduct" className="font-bold text-rose-600">{isRtl ? 'فصل تأديبي (مادة 41)' : 'Misconduct'}</SelectItem>
                           </SelectContent>
                        </Select>
                     </div>
                     <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'فترة الإنذار (90 يوماً)' : 'Notice Period (90 Days)'}</Label>
+                       <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'فترة الإنذار' : 'Notice Period'}</Label>
                        <Select value={form.noticeType} onValueChange={(v: NoticeType) => setForm({...form, noticeType: v})}>
                           <SelectTrigger className="h-12 rounded-xl border-2 font-bold"><SelectValue /></SelectTrigger>
                           <SelectContent>
-                             <SelectItem value="served" className="font-bold">{isRtl ? 'استيفاء فترة الإنذار (عمل فعلي)' : 'Notice Served (3M)'}</SelectItem>
-                             <SelectItem value="not_served_by_employer" className="font-bold">{isRtl ? 'إنهاء فوري (استحقاق بدل الإنذار)' : 'Immediate Payout'}</SelectItem>
-                             <SelectItem value="not_served_by_employee" className="font-bold">{isRtl ? 'ترك فوري (خصم بدل الإنذار)' : 'Immediate Resignation'}</SelectItem>
+                             <SelectItem value="served" className="font-bold">{isRtl ? 'استيفاء فترة الإنذار (عمل)' : 'Notice Served'}</SelectItem>
+                             <SelectItem value="not_served_by_employer" className="font-bold">{isRtl ? 'إنهاء فوري (استحقاق بدل)' : 'Immediate (Pay)'}</SelectItem>
+                             <SelectItem value="not_served_by_employee" className="font-bold">{isRtl ? 'ترك فوري (خصم بدل)' : 'Immediate (Deduct)'}</SelectItem>
                           </SelectContent>
                        </Select>
                     </div>
@@ -193,7 +196,7 @@ export default function GratuityCalculatorPage() {
                    </CardHeader>
                    <CardContent className="p-10 space-y-10">
                       
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                          <div className="space-y-6">
                             <h4 className="font-black text-sm text-primary uppercase border-b pb-2 flex items-center gap-2">
                                <ShieldCheck className="h-4 w-4" /> {isRtl ? 'مكافأة الخدمة (المواد 51-53)' : 'Gratuity (Art 51-53)'}
@@ -216,21 +219,21 @@ export default function GratuityCalculatorPage() {
 
                          <div className="space-y-6">
                             <h4 className="font-black text-sm text-blue-600 uppercase border-b pb-2 flex items-center gap-2">
-                               <Wallet className="h-4 w-4" /> {isRtl ? 'الإنذار والتسويات' : 'Notice & Adjustments'}
+                               <Wallet className="h-4 w-4" /> {isRtl ? 'التسويات النقدية' : 'Indemnities'}
                             </h4>
                             <div className="space-y-4">
                                <div className="flex justify-between items-center text-sm font-bold">
-                                  <span className="text-slate-500">{isRtl ? 'بدل الإنذار (90 يوماً)' : 'Notice Indemnity (90D)'}</span>
+                                  <span className="text-slate-500">{isRtl ? 'رصيد الإجازات المستحق' : 'Accrued Leave Balance'}</span>
+                                  <div className="text-end">
+                                     <span className="font-black text-slate-800">{result.leaveBalancePay.toLocaleString()} KWD</span>
+                                     <p className="text-[9px] text-muted-foreground font-bold">{result.accruedLeaveDays} {isRtl ? 'يوم' : 'Days'}</p>
+                                  </div>
+                               </div>
+                               <div className="flex justify-between items-center text-sm font-bold">
+                                  <span className="text-slate-500">{isRtl ? 'بدل الإنذار (90 يوماً)' : 'Notice Indemnity'}</span>
                                   <span className={cn("font-black", result.noticeIndemnity < 0 ? "text-rose-600" : "text-emerald-600")}>
                                      {result.noticeIndemnity.toLocaleString()} KWD
                                   </span>
-                               </div>
-                               <div className="flex justify-between items-center text-sm font-bold">
-                                  <div className="text-start">
-                                     <span className="text-slate-500">{isRtl ? 'رصيد الإجازات المستحق' : 'Accrued Leave Balance'}</span>
-                                     <p className="text-[10px] text-muted-foreground italic">{isRtl ? `(عن كامل فترة الخدمة)` : `(Full service period)`}</p>
-                                  </div>
-                                  <span className="font-black text-slate-800">{result.leaveBalancePay.toLocaleString()} KWD</span>
                                </div>
                             </div>
                          </div>
@@ -247,18 +250,6 @@ export default function GratuityCalculatorPage() {
                                   <span>{note}</span>
                                </div>
                             ))}
-                         </div>
-                      </div>
-
-                      <div className="bg-amber-50 rounded-3xl p-6 border border-amber-200 flex items-start gap-4">
-                         <Clock className="h-6 w-6 text-amber-600 shrink-0 mt-1" />
-                         <div className="space-y-1">
-                            <h6 className="font-black text-sm text-amber-800">{isRtl ? 'حقوق العامل خلال فترة الإنذار' : 'Worker Rights During Notice'}</h6>
-                            <p className="text-xs text-amber-700 leading-relaxed font-bold">
-                               {isRtl 
-                                 ? 'بناءً على المادة 44، يحق للموظف خلال فترة الـ 90 يوماً التغيب يوماً واحداً في الأسبوع أو العمل لمدة 6 ساعات فقط يومياً للبحث عن عمل، مع استحقاقه لكامل الأجر.'
-                                 : 'As per Art 44, the worker is entitled to take 1 day off per week or work 6 hours daily during the 90-day notice to search for a job, with full pay.'}
-                            </p>
                          </div>
                       </div>
                    </CardContent>
