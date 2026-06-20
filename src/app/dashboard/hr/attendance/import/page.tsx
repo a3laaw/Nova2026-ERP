@@ -39,13 +39,13 @@ export default function AttendanceImportPage() {
 
   const downloadTemplate = () => {
     const headers = isRtl 
-      ? "رقم_الموظف,التاريخ,وقت_الحضور,وقت_الانصراف" 
-      : "EmployeeNum,Date,CheckIn,CheckOut";
+      ? "رقم_الموظف,التاريخ,دخول_1,خروج_1,دخول_2,خروج_2" 
+      : "EmployeeNum,Date,In1,Out1,In2,Out2";
     
     const rows = [
-      "1001,2026-01-01,08:00,17:00",
-      "1002,2026-01-01,08:15,17:05",
-      "1001,2026-01-02,07:55,16:50"
+      "1001,2026-01-01,08:00,13:00,14:00,17:00",
+      "1002,2026-01-01,08:15,13:05,14:10,17:15",
+      "1001,2026-01-02,07:55,17:00,,"
     ];
     
     const csvContent = "\uFEFF" + headers + "\n" + rows.join("\n");
@@ -53,12 +53,12 @@ export default function AttendanceImportPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", isRtl ? "نموذج_الحضور_نوفافلو.csv" : "NovaFlow_Attendance_Template.csv");
+    link.setAttribute("download", isRtl ? "نموذج_الحضور_المطور.csv" : "NovaFlow_Attendance_Pro.csv");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     
-    toast({ title: isRtl ? "تم تحميل النموذج" : "Template Downloaded" });
+    toast({ title: isRtl ? "تم تحميل النموذج المطور" : "Pro Template Downloaded" });
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -75,22 +75,20 @@ export default function AttendanceImportPage() {
         if (lines.length < 2) throw new Error(isRtl ? 'الملف فارغ أو لا يحتوي على بيانات.' : 'File is empty or lacks data.');
 
         const rows: RawAttendanceRow[] = lines.slice(1).map(line => {
-          // ذكاء اصطناعي بسيط لتحليل السطر (يدعم الفواصل المختلفة)
           const parts = line.split(/[;,]/).map(s => s.trim().replace(/^["']|["']$/g, ''));
           return { 
             employeeNumber: parts[0] || '', 
             date: parts[1] || '', 
             checkIn: parts[2] || '', 
-            checkOut: parts[3] || '' 
+            checkOut: parts[3] || '',
+            checkIn2: parts[4] || '',
+            checkOut2: parts[5] || ''
           };
         });
 
         const whService = new WorkHoursService(db, companyId);
         let settings = await whService.getSettings();
-        
-        if (!settings) {
-          settings = whService.getDefaultSettings() as any;
-        }
+        if (!settings) settings = whService.getDefaultSettings() as any;
 
         const importService = new AttendanceImportService(db, companyId);
         const result = await importService.processImport(rows, employees, settings!);
@@ -99,17 +97,15 @@ export default function AttendanceImportPage() {
         if (result.errors.length > 0) {
           toast({ 
             variant: "destructive", 
-            title: isRtl ? "تنبيه: تم العثور على أخطاء" : "Warnings Found", 
-            description: isRtl ? `تم تجاهل ${result.errors.length} سطر بسبب بيانات خاطئة.` : `Ignored ${result.errors.length} invalid rows.`
+            title: isRtl ? "تنبيه: أخطاء في البيانات" : "Data Warnings", 
+            description: isRtl ? `تم العثور على ${result.errors.length} سطر غير متوافق.` : `Found ${result.errors.length} invalid rows.`
           });
-        } else {
-          toast({ title: isRtl ? 'تم تحليل الملف بنجاح' : 'File Analyzed' });
         }
       } catch (err: any) {
         toast({ variant: "destructive", title: t('error'), description: err.message });
       } finally {
         setImporting(false);
-        if (e.target) e.target.value = ''; // Reset input
+        if (e.target) e.target.value = '';
       }
     };
     reader.readAsText(file, 'UTF-8');
@@ -136,10 +132,10 @@ export default function AttendanceImportPage() {
         <div className="text-start">
           <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
             <FileSpreadsheet className="h-10 w-10 text-primary" />
-            {isRtl ? 'استيراد سجلات البصمة' : 'Import Attendance'}
+            {isRtl ? 'استيراد البصمة المطور' : 'Pro Attendance Import'}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-            {isRtl ? 'ارفع ملفات CSV وحوّلها لبيانات تشغيلية فوراً.' : 'Transform biometric files into operational data.'}
+            {isRtl ? 'دعم تلقائي للفترتين بناءً على إعدادات شركتك.' : 'Auto-supports double shifts based on company rules.'}
           </p>
         </div>
         <Button 
@@ -148,7 +144,7 @@ export default function AttendanceImportPage() {
           className="rounded-xl font-black border-2 h-14 px-8 gap-3 bg-white hover:bg-slate-50 shadow-sm"
         >
           <Download className="h-5 w-5 text-primary" />
-          {isRtl ? 'تحميل نموذج Excel المعتمد' : 'Download Excel Template'}
+          {isRtl ? 'تحميل النموذج (6 أعمدة)' : 'Download 6-Column Template'}
         </Button>
       </div>
 
@@ -156,26 +152,22 @@ export default function AttendanceImportPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
            <Card className="lg:col-span-2 border-4 border-dashed border-primary/20 rounded-[3rem] bg-white overflow-hidden shadow-2xl">
               <CardContent className="p-16 text-center space-y-8">
-                <div className="mx-auto w-24 h-24 bg-primary/10 text-primary rounded-[2rem] flex items-center justify-center mb-6 shadow-inner">
+                <div className="mx-auto w-24 h-24 bg-primary/10 text-primary rounded-[2rem] flex items-center justify-center mb-6">
                   <UploadCloud className="h-12 w-12 animate-bounce" />
                 </div>
                 <div className="space-y-3">
-                  <h2 className="text-2xl font-black">{isRtl ? 'ارفع ملف سجلات البصمة (CSV)' : 'Upload Biometric CSV File'}</h2>
-                  <p className="text-slate-400 font-bold max-w-md mx-auto">{isRtl ? 'تأكد من مطابقة الملف للنموذج المعتمد لضمان دقة الحسابات.' : 'Ensure file matches template for accurate calculations.'}</p>
+                  <h2 className="text-2xl font-black">{isRtl ? 'ارفع ملف الحضور المطور' : 'Upload Pro Attendance File'}</h2>
+                  <p className="text-slate-400 font-bold max-w-md mx-auto">{isRtl ? 'النظام سيقوم بدمج تأخير الفترة الصباحية والمسائية تلقائياً.' : 'The system will merge morning and evening lateness automatically.'}</p>
                 </div>
                 
                 <div className="flex flex-col items-center gap-4">
                    <label className="cursor-pointer group">
                       <div className="bg-primary text-white font-black px-16 py-6 rounded-2xl text-xl shadow-xl shadow-primary/20 group-hover:scale-105 transition-all flex items-center gap-3">
                         {importing ? <Loader2 className="animate-spin h-8 w-8" /> : <Plus className="h-8 w-8" />}
-                        {isRtl ? 'اختر ملف البيانات الآن' : 'Select Data File'}
+                        {isRtl ? 'اختر ملف CSV' : 'Select CSV File'}
                       </div>
                       <input type="file" className="hidden" accept=".csv" onChange={handleFileUpload} disabled={importing} />
                    </label>
-                   <div className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest">
-                     <Info className="h-3 w-3" />
-                     {isRtl ? 'يدعم تنسيق CSV فقط بترميز UTF-8' : 'Supports CSV UTF-8 format only'}
-                   </div>
                 </div>
               </CardContent>
            </Card>
@@ -184,83 +176,43 @@ export default function AttendanceImportPage() {
               <CardHeader className="bg-white/5 p-8 border-b border-white/5">
                  <CardTitle className="text-lg font-black flex items-center gap-3">
                     <TableIcon className="h-5 w-5 text-primary" />
-                    {isRtl ? 'كيف ترتب ملف الإكسيل؟' : 'Data Entry Guide'}
+                    {isRtl ? 'مصفوفة الأعمدة' : 'Column Matrix'}
                  </CardTitle>
               </CardHeader>
-              <CardContent className="p-8 space-y-6 text-start">
-                 <p className="text-xs font-bold text-slate-400 leading-relaxed">
-                    {isRtl ? 'يجب أن يحتوي الملف على 4 أعمدة رئيسية بالترتيب التالي:' : 'The file must contain 4 main columns in this order:'}
-                 </p>
-                 <div className="space-y-4">
-                    {[
-                      { label: isRtl ? '1. رقم الموظف' : '1. Emp Num', desc: isRtl ? 'كما يظهر في سجل الموظفين' : 'Matching records' },
-                      { label: isRtl ? '2. التاريخ' : '2. Date', desc: 'YYYY-MM-DD (2026-01-01)' },
-                      { label: isRtl ? '3. وقت الحضور' : '3. Check In', desc: 'HH:mm (08:00) or 8:00' },
-                      { label: isRtl ? '4. وقت الانصراف' : '4. Check Out', desc: 'HH:mm (17:00) or 17:00' }
-                    ].map((step, i) => (
-                      <div key={i} className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                        <p className="text-sm font-black text-primary">{step.label}</p>
-                        <p className="text-[10px] text-slate-500 font-bold">{step.desc}</p>
-                      </div>
-                    ))}
-                 </div>
+              <CardContent className="p-8 space-y-4 text-start">
+                 {[
+                   { label: isRtl ? '1. رقم الموظف' : '1. Emp Num' },
+                   { label: isRtl ? '2. التاريخ' : '2. Date' },
+                   { label: isRtl ? '3. دخول صباحي' : '3. Morning In' },
+                   { label: isRtl ? '4. خروج صباحي' : '4. Morning Out' },
+                   { label: isRtl ? '5. دخول مسائي' : '5. Evening In' },
+                   { label: isRtl ? '6. خروج مسائي' : '6. Evening Out' }
+                 ].map((col, i) => (
+                   <div key={i} className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5">
+                      <span className="text-xs font-bold">{col.label}</span>
+                      <CheckCircle2 className="h-3 w-3 text-emerald-500 opacity-50" />
+                   </div>
+                 ))}
+                 <p className="text-[9px] text-slate-500 italic mt-4">{isRtl ? '* اترك أعمدة المساء فارغة إذا لم يكن لديك شفت ثانٍ.' : '* Leave evening columns empty if you have a single shift.'}</p>
               </CardContent>
            </Card>
         </div>
       ) : (
         <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-             {[
-               { label: isRtl ? 'إجمالي السجلات' : 'Total', val: preview.summary.total, icon: FileSpreadsheet, color: 'text-blue-600', bg: 'bg-blue-50' },
-               { label: isRtl ? 'جاهز للاستيراد' : 'Valid', val: preview.summary.valid, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-               { label: isRtl ? 'أخطاء مطابقة' : 'Errors', val: preview.summary.invalid, icon: AlertTriangle, color: 'text-rose-600', bg: 'bg-rose-50' },
-               { label: isRtl ? 'حالات تأخير' : 'Late Cases', val: preview.summary.late, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
-             ].map((stat, i) => (
-               <Card key={i} className="border-0 shadow-lg rounded-[2rem] p-6 text-start bg-white flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">{stat.label}</p>
-                    <h3 className={cn("text-3xl font-black font-headline", stat.color)}>{stat.val}</h3>
-                  </div>
-                  <div className={cn("p-4 rounded-2xl", stat.bg, stat.color)}>
-                    <stat.icon className="h-6 w-6" />
-                  </div>
-               </Card>
-             ))}
-          </div>
-
-          {preview.errors.length > 0 && (
-            <Card className="border-2 border-rose-100 rounded-3xl bg-rose-50/30 overflow-hidden">
-               <CardHeader className="p-6 pb-2">
-                  <CardTitle className="text-sm font-black text-rose-600 flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4" /> {isRtl ? 'الأخطاء المكتشفة' : 'Parsing Warnings'}
-                  </CardTitle>
-               </CardHeader>
-               <CardContent className="p-6 pt-0">
-                  <div className="max-h-40 overflow-y-auto space-y-1">
-                     {preview.errors.map((err, i) => (
-                       <p key={i} className="text-[10px] font-bold text-rose-500">
-                         {isRtl ? `سطر ${err.row}: ${err.message}` : `Row ${err.row}: ${err.message}`}
-                       </p>
-                     ))}
-                  </div>
-               </CardContent>
-            </Card>
-          )}
-
           <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
             <CardHeader className="bg-slate-50 border-b p-8 flex flex-row items-center justify-between">
-               <CardTitle className="text-xl font-black">{isRtl ? 'معاينة البيانات قبل الحفظ' : 'Data Preview'}</CardTitle>
+               <CardTitle className="text-xl font-black">{isRtl ? 'معاينة التحليل الذكي' : 'Analysis Preview'}</CardTitle>
                <div className="flex gap-4">
-                  <Button variant="outline" onClick={() => setPreview(null)} className="rounded-xl font-black border-2 h-12 px-6">
+                  <Button variant="outline" onClick={() => setPreview(null)} className="rounded-xl font-black h-12">
                      <X className="me-2 h-4 w-4" /> {isRtl ? 'إلغاء' : 'Cancel'}
                   </Button>
                   <Button 
                     onClick={handleSave} 
-                    disabled={saving || preview.summary.valid === 0}
-                    className="bg-emerald-600 text-white font-black rounded-xl h-12 px-10 shadow-xl shadow-emerald-100 hover:scale-105 transition-all"
+                    disabled={saving}
+                    className="bg-emerald-600 text-white font-black rounded-xl h-12 px-10 shadow-xl shadow-emerald-100"
                   >
                      {saving ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="me-2 h-5 w-5" />}
-                     {isRtl ? 'اعتماد وحفظ السجلات' : 'Commit Records'}
+                     {isRtl ? 'اعتماد الحفظ' : 'Commit Batch'}
                   </Button>
                </div>
             </CardHeader>
@@ -270,26 +222,22 @@ export default function AttendanceImportPage() {
                    <TableRow>
                      <TableHead className="py-6 ps-8 text-start">{isRtl ? 'الموظف' : 'Employee'}</TableHead>
                      <TableHead className="text-start">{isRtl ? 'التاريخ' : 'Date'}</TableHead>
-                     <TableHead className="text-center">{isRtl ? 'دخول / خروج' : 'In / Out'}</TableHead>
-                     <TableHead className="text-center">{isRtl ? 'التأخير' : 'Late'}</TableHead>
-                     <TableHead className="text-start">{isRtl ? 'الحالة' : 'Status'}</TableHead>
+                     <TableHead className="text-center">{isRtl ? 'البصمات' : 'Punches'}</TableHead>
+                     <TableHead className="text-center">{isRtl ? 'إجمالي التأخير' : 'Total Late'}</TableHead>
+                     <TableHead className="text-start pe-8">{isRtl ? 'الحالة' : 'Status'}</TableHead>
                    </TableRow>
                  </TableHeader>
                  <TableBody>
                    {preview.records.map((rec, i) => (
-                     <TableRow key={i} className="hover:bg-slate-50 transition-colors">
-                       <TableCell className="py-4 ps-8 text-start">
-                          <div className="flex flex-col">
-                            <span className="font-black text-slate-800 text-sm">{rec.employeeName || '---'}</span>
-                            <span className="text-[10px] font-mono text-slate-400">#{rec.employeeNumber}</span>
-                          </div>
-                       </TableCell>
-                       <TableCell className="text-start font-mono text-xs font-bold text-slate-500">{rec.date}</TableCell>
+                     <TableRow key={i} className="hover:bg-slate-50">
+                       <TableCell className="py-4 ps-8 text-start font-black text-sm">{rec.employeeName}</TableCell>
+                       <TableCell className="text-start font-mono text-xs text-slate-500">{rec.date}</TableCell>
                        <TableCell className="text-center">
-                          <div className="flex items-center justify-center gap-2 text-xs font-black text-slate-700">
-                             <span className="bg-slate-100 px-2 py-1 rounded-md">{rec.checkIn || '--:--'}</span>
-                             <ArrowRight className={cn("h-3 w-3 opacity-20", isRtl && "rotate-180")} />
-                             <span className="bg-slate-100 px-2 py-1 rounded-md">{rec.checkOut || '--:--'}</span>
+                          <div className="flex flex-col gap-1">
+                             <div className="flex items-center justify-center gap-2 text-[10px] font-bold text-slate-400">
+                                <span className="bg-slate-100 px-2 rounded">AM: {rec.checkIn || '--'}</span>
+                                <span className="bg-slate-100 px-2 rounded">PM: {rec.checkIn2 || '--'}</span>
+                             </div>
                           </div>
                        </TableCell>
                        <TableCell className="text-center">
@@ -297,14 +245,13 @@ export default function AttendanceImportPage() {
                             <Badge variant="destructive" className="bg-rose-50 text-rose-600 font-black border-0">
                                {rec.minutesLate} min
                             </Badge>
-                          ) : <span className="text-slate-300">-</span>}
+                          ) : <span className="text-emerald-500 font-black text-xs">ON TIME</span>}
                        </TableCell>
-                       <TableCell className="text-start">
+                       <TableCell className="pe-8">
                           <Badge className={cn(
                             "font-black px-3 py-1 rounded-lg border-0 shadow-sm uppercase text-[9px]",
                             rec.status === 'present' ? 'bg-emerald-500 text-white' :
-                            rec.status === 'late' ? 'bg-amber-50 text-amber-600' :
-                            rec.status === 'holiday' || rec.status === 'weekend' ? 'bg-blue-100 text-blue-600' :
+                            rec.status === 'late' ? 'bg-amber-500 text-white' :
                             'bg-rose-500 text-white'
                           )}>
                              {rec.status}

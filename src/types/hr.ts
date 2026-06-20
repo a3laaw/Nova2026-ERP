@@ -94,10 +94,12 @@ export interface AttendanceRecord extends BaseReference {
   employeeName: string;
   employeeNumber: string;
   date: string; // YYYY-MM-DD
-  checkIn?: string; // HH:mm
-  checkOut?: string; // HH:mm
+  checkIn?: string; // HH:mm (Morning or Primary)
+  checkOut?: string; 
+  checkIn2?: string; // Evening (Secondary)
+  checkOut2?: string;
   status: AttendanceStatus;
-  minutesLate: number;
+  minutesLate: number; // Combined lateness from both shifts
   minutesEarlyLeave: number;
   isHoliday: boolean;
   isWeekend: boolean;
