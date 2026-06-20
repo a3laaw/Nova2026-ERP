@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { 
   UploadCloud, FileSpreadsheet, Loader2, CheckCircle2, 
   AlertTriangle, ArrowRight, Save, X, Info,
-  Clock, Download, Table as TableIcon
+  Clock, Download, Table as TableIcon, Plus
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
