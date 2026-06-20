@@ -21,6 +21,7 @@ import { WorkHoursService } from '@/services/work-hours-service';
 import { Employee } from '@/types/hr';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import * as XLSX from 'xlsx';
 
 export default function AttendanceImportPage() {
   const { globalUser } = useAuthContext();
@@ -38,25 +39,25 @@ export default function AttendanceImportPage() {
   const { data: employees } = useCollection<Employee>(empsQuery);
 
   const downloadTemplate = () => {
-    const headers = isRtl 
-      ? "رقم_الموظف,التاريخ,دخول_1,خروج_1,دخول_2,خروج_2" 
-      : "EmployeeNum,Date,In1,Out1,In2,Out2";
-    
-    const rows = [
-      "1001,2026-01-01,08:00,13:00,14:00,17:00",
-      "1002,2026-01-01,08:15,13:05,14:10,17:15",
-      "1001,2026-01-02,07:55,17:00,,"
+    const headers = [
+      isRtl ? "رقم_الموظف" : "EmployeeNum",
+      isRtl ? "التاريخ" : "Date",
+      isRtl ? "دخول_1" : "In1",
+      isRtl ? "خروج_1" : "Out1",
+      isRtl ? "دخول_2" : "In2",
+      isRtl ? "خروج_2" : "Out2"
     ];
     
-    const csvContent = "\uFEFF" + headers + "\n" + rows.join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", isRtl ? "نموذج_نوفا_للحضور.csv" : "NovaFlow_Attendance_Template.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const data = [
+      headers,
+      ["1001", "2026-01-01", "08:00", "13:00", "14:00", "17:00"],
+      ["1002", "2026-01-01", "08:15", "13:05", "14:10", "17:15"]
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Attendance");
+    XLSX.writeFile(wb, isRtl ? "نموذج_الحضور_نوفا.xlsx" : "NovaFlow_Attendance_Template.xlsx");
     
     toast({ title: isRtl ? "تم تحميل النموذج" : "Template Downloaded" });
   };
@@ -69,22 +70,24 @@ export default function AttendanceImportPage() {
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
-        const text = event.target?.result as string;
-        const lines = text.split(/\r?\n/).filter(line => line.trim());
+        const data = new Uint8Array(event.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
         
-        if (lines.length < 2) throw new Error(isRtl ? 'الملف فارغ.' : 'File is empty.');
+        // تحويل البيانات لـ JSON مع ضمان قراءة كافة الأعمدة
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+        
+        if (jsonData.length < 2) throw new Error(isRtl ? 'الملف فارغ أو غير صالح.' : 'File is empty or invalid.');
 
-        const rows: RawAttendanceRow[] = lines.slice(1).map(line => {
-          const parts = line.split(/[;,]/).map(s => s.trim().replace(/^["']|["']$/g, ''));
-          return { 
-            employeeNumber: parts[0] || '', 
-            date: parts[1] || '', 
-            checkIn: parts[2] || '', 
-            checkOut: parts[3] || '',
-            checkIn2: parts[4] || '',
-            checkOut2: parts[5] || ''
-          };
-        });
+        const rows: RawAttendanceRow[] = jsonData.slice(1).map(row => ({
+          employeeNumber: String(row[0] || '').trim(),
+          date: String(row[1] || '').trim(),
+          checkIn: String(row[2] || '').trim(),
+          checkOut: String(row[3] || '').trim(),
+          checkIn2: String(row[4] || '').trim(),
+          checkOut2: String(row[5] || '').trim(),
+        })).filter(r => r.employeeNumber && r.date);
 
         const whService = new WorkHoursService(db, companyId);
         let settings = await whService.getSettings();
@@ -98,7 +101,7 @@ export default function AttendanceImportPage() {
           toast({ 
             variant: "destructive", 
             title: isRtl ? "تنبيهات في البيانات" : "Import Warnings", 
-            description: isRtl ? `تم تخطي ${result.errors.length} سجل بسبب أخطاء.` : `Skipped ${result.errors.length} records.`
+            description: isRtl ? `تم تخطي ${result.errors.length} سجل بسبب أخطاء في التنسيق.` : `Skipped ${result.errors.length} records.`
           });
         }
       } catch (err: any) {
@@ -108,7 +111,7 @@ export default function AttendanceImportPage() {
         if (e.target) e.target.value = '';
       }
     };
-    reader.readAsText(file, 'UTF-8');
+    reader.readAsArrayBuffer(file);
   };
 
   const handleSave = async () => {
@@ -132,10 +135,10 @@ export default function AttendanceImportPage() {
         <div className="text-start">
           <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
             <FileSpreadsheet className="h-10 w-10 text-primary" />
-            {isRtl ? 'استيراد الحضور الذكي' : 'Smart Attendance Import'}
+            {isRtl ? 'استيراد الحضور (XLSX / CSV)' : 'Attendance Import'}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-            {isRtl ? 'النظام يكتشف آلياً نوع الدوام (فترة أو فترتين) من الإعدادات.' : 'System auto-detects shift type from settings.'}
+            {isRtl ? 'أصبح النظام يدعم الآن ملفات الإكسيل (Worksheet) مباشرة.' : 'System now supports Excel Worksheets directly.'}
           </p>
         </div>
         <Button 
@@ -144,7 +147,7 @@ export default function AttendanceImportPage() {
           className="rounded-xl font-black border-2 h-14 px-8 gap-3 bg-white shadow-sm"
         >
           <Download className="h-5 w-5 text-primary" />
-          {isRtl ? 'تحميل النموذج' : 'Download Template'}
+          {isRtl ? 'تحميل نموذج XLSX' : 'Download XLSX Template'}
         </Button>
       </div>
 
@@ -156,17 +159,23 @@ export default function AttendanceImportPage() {
                   <UploadCloud className="h-12 w-12" />
                 </div>
                 <div className="space-y-3">
-                  <h2 className="text-2xl font-black">{isRtl ? 'رفع سجل البصمة' : 'Upload Punch Logs'}</h2>
-                  <p className="text-slate-400 font-bold max-w-md mx-auto">{isRtl ? 'ادعم ملفات CSV بـ 6 أعمدة لضمان أقصى درجات الذكاء في الاحتساب.' : 'Support 6-column CSV files for maximum calculation intelligence.'}</p>
+                  <h2 className="text-2xl font-black">{isRtl ? 'رفع سجل البصمة' : 'Upload Spreadsheet'}</h2>
+                  <p className="text-slate-400 font-bold max-w-md mx-auto">{isRtl ? 'اسحب ملف الإكسيل هنا أو اضغط للاختيار. ندعم XLSX و CSV.' : 'Drag Excel file here or click to browse. Supports XLSX & CSV.'}</p>
                 </div>
                 
                 <div className="flex flex-col items-center gap-4">
                    <label className="cursor-pointer group">
                       <div className="bg-primary text-white font-black px-16 py-6 rounded-2xl text-xl shadow-xl shadow-primary/20 group-hover:scale-105 transition-all flex items-center gap-3">
                         {importing ? <Loader2 className="animate-spin h-8 w-8" /> : <Plus className="h-8 w-8" />}
-                        {isRtl ? 'اختيار الملف' : 'Select File'}
+                        {isRtl ? 'اختيار ملف الإكسيل' : 'Select Excel File'}
                       </div>
-                      <input type="file" className="hidden" accept=".csv" onChange={handleFileUpload} disabled={importing} />
+                      <input 
+                        type="file" 
+                        className="hidden" 
+                        accept=".csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" 
+                        onChange={handleFileUpload} 
+                        disabled={importing} 
+                      />
                    </label>
                 </div>
               </CardContent>
@@ -174,20 +183,20 @@ export default function AttendanceImportPage() {
 
            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-slate-900 text-white overflow-hidden">
               <CardHeader className="bg-white/5 p-8 border-b border-white/5">
-                 <CardTitle className="text-lg font-black flex items-center gap-3">
+                 <CardTitle className="text-lg font-black flex items-center gap-3 text-start">
                     <Info className="h-5 w-5 text-primary" />
-                    {isRtl ? 'كيف يعمل الذكاء الذاتي؟' : 'How Smart Logic Works'}
+                    {isRtl ? 'توافق الملفات' : 'File Compatibility'}
                  </CardTitle>
               </CardHeader>
               <CardContent className="p-8 space-y-6 text-start">
                  <div className="space-y-4">
                     <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                       <h5 className="font-black text-xs text-primary mb-1">{isRtl ? 'نظام الفترة الواحدة' : 'Single Shift'}</h5>
-                       <p className="text-[10px] text-slate-400 leading-relaxed font-bold">{isRtl ? 'إذا كانت إعدادات شركتك فترة واحدة، سيهمل النظام أعمدة الفترة الثانية ويركز على الحضور الصباحي.' : 'If your settings are single shift, the system focuses on morning columns and ignores the rest.'}</p>
+                       <h5 className="font-black text-xs text-primary mb-1">{isRtl ? 'Microsoft Excel (XLSX)' : 'Excel Worksheet'}</h5>
+                       <p className="text-[10px] text-slate-400 leading-relaxed font-bold">{isRtl ? 'يمكنك الآن رفع ملفات الإكسيل الأصلية دون الحاجة لتحويلها.' : 'You can now upload original Excel files directly.'}</p>
                     </div>
                     <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                       <h5 className="font-black text-xs text-blue-400 mb-1">{isRtl ? 'نظام الفترتين' : 'Double Shift'}</h5>
-                       <p className="text-[10px] text-slate-400 leading-relaxed font-bold">{isRtl ? 'سيقوم النظام بجمع دقائق التأخير من الفترتين معاً في سجل واحد للموظف.' : 'The system sums up lateness from both periods into a single record per employee.'}</p>
+                       <h5 className="font-black text-xs text-blue-400 mb-1">{isRtl ? 'ترتيب الأعمدة' : 'Column Order'}</h5>
+                       <p className="text-[10px] text-slate-400 leading-relaxed font-bold">{isRtl ? 'تأكد أن العمود الأول هو رقم الموظف والثاني هو التاريخ.' : 'Ensure Col 1 is Employee ID and Col 2 is Date.'}</p>
                     </div>
                  </div>
               </CardContent>
@@ -197,7 +206,7 @@ export default function AttendanceImportPage() {
         <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
           <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
             <CardHeader className="bg-slate-50 border-b p-8 flex flex-row items-center justify-between">
-               <CardTitle className="text-xl font-black">{isRtl ? 'معاينة التحليل المكتشف' : 'Detection Preview'}</CardTitle>
+               <CardTitle className="text-xl font-black">{isRtl ? 'معاينة البيانات المستخرجة' : 'Data Preview'}</CardTitle>
                <div className="flex gap-4">
                   <Button variant="outline" onClick={() => setPreview(null)} className="rounded-xl font-black h-12">
                      {isRtl ? 'إلغاء' : 'Cancel'}
@@ -208,7 +217,7 @@ export default function AttendanceImportPage() {
                     className="bg-emerald-600 text-white font-black rounded-xl h-12 px-10 shadow-xl"
                   >
                      {saving ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="me-2 h-5 w-5" />}
-                     {isRtl ? 'اعتماد الحفظ' : 'Confirm Save'}
+                     {isRtl ? 'اعتماد الحفظ النهائي' : 'Confirm & Save'}
                   </Button>
                </div>
             </CardHeader>
@@ -224,7 +233,7 @@ export default function AttendanceImportPage() {
                  </TableHeader>
                  <TableBody>
                    {preview.records.map((rec, i) => (
-                     <TableRow key={i} className="hover:bg-slate-50">
+                     <TableRow key={i} className="hover:bg-slate-50 transition-colors">
                        <TableCell className="py-4 ps-8 text-start font-black text-sm">{rec.employeeName}</TableCell>
                        <TableCell className="text-start font-mono text-xs text-slate-500">{rec.date}</TableCell>
                        <TableCell className="text-center">
@@ -232,7 +241,7 @@ export default function AttendanceImportPage() {
                             <Badge variant="destructive" className="bg-rose-50 text-rose-600 font-black border-0">
                                {rec.minutesLate} {isRtl ? 'دقيقة' : 'min'}
                             </Badge>
-                          ) : <span className="text-emerald-500 font-black text-xs">ON TIME</span>}
+                          ) : <span className="text-emerald-500 font-black text-xs uppercase tracking-tighter">On Time</span>}
                        </TableCell>
                        <TableCell className="pe-8">
                           <Badge className={cn(
