@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -7,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
   Users, Search, Loader2, ArrowRight, 
-  ShieldCheck, Phone, Briefcase
+  ShieldCheck, Phone, Briefcase, AlertCircle,
+  RefreshCw
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -26,17 +28,26 @@ export default function DossierSearchPage() {
   const isRtl = lang === 'ar';
 
   const companyId = globalUser?.companyId;
+
+  // استعلام مستقر ومبسط
   const employeesQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.employees(companyId)), orderBy('employeeNumber')) : null, 
+    companyId && db ? query(
+      collection(db, paths.employees(companyId)), 
+      orderBy('employeeNumber')
+    ) : null, 
   [db, companyId]);
 
-  const { data: employees, loading } = useCollection<Employee>(employeesQuery);
+  const { data: employees, loading, error } = useCollection<Employee>(employeesQuery);
 
-  const filteredEmployees = employees?.filter(emp => 
-    emp.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    emp.employeeNumber?.includes(searchTerm) ||
-    emp.civilId?.includes(searchTerm)
-  ) || [];
+  const filteredEmployees = useMemo(() => {
+    if (!employees) return [];
+    const term = searchTerm.toLowerCase();
+    return employees.filter(emp => 
+      emp.fullName?.toLowerCase().includes(term) || 
+      emp.employeeNumber?.includes(term) ||
+      emp.civilId?.includes(term)
+    );
+  }, [employees, searchTerm]);
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto" dir={dir}>
@@ -66,9 +77,27 @@ export default function DossierSearchPage() {
         <CardContent className="p-4">
           <div className="space-y-3">
             {loading ? (
-              <div className="py-20 text-center"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></div>
+              <div className="py-20 text-center flex flex-col items-center gap-4">
+                <Loader2 className="animate-spin h-10 w-10 text-primary/30" />
+                <p className="text-xs font-bold text-slate-400 animate-pulse">{isRtl ? 'جاري جلب سجل الموظفين...' : 'Fetching employees...'}</p>
+              </div>
+            ) : error ? (
+              <div className="py-16 text-center space-y-4">
+                <div className="h-16 w-16 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto">
+                   <AlertCircle className="h-8 w-8" />
+                </div>
+                <div className="space-y-1">
+                   <h3 className="font-black text-rose-900">{isRtl ? 'حدث خطأ أثناء جلب البيانات' : 'Error Fetching Data'}</h3>
+                   <p className="text-xs text-rose-600 font-bold">{(error as any).message}</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="rounded-xl h-10 px-6 gap-2">
+                   <RefreshCw className="h-4 w-4" /> {isRtl ? 'إعادة المحاولة' : 'Retry'}
+                </Button>
+              </div>
             ) : filteredEmployees.length === 0 ? (
-              <div className="py-20 text-center text-slate-400 font-bold italic">{isRtl ? 'لا توجد نتائج.' : 'No results found.'}</div>
+              <div className="py-20 text-center text-slate-400 font-bold italic">
+                {searchTerm ? (isRtl ? 'لا توجد نتائج مطابقة لبحثك.' : 'No matching results.') : (isRtl ? 'لا يوجد موظفين مسجلين حالياً.' : 'No employees registered.')}
+              </div>
             ) : (
               filteredEmployees.map((emp) => (
                 <div 

@@ -12,7 +12,7 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
 export function useDoc<T = DocumentData>(docRef: DocumentReference<T> | null) {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(!!docRef);
-  const [error, setError] = useState<Error | null>(null);
+  const [error, setError] = useState<FirestoreError | Error | null>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const lastRef = useRef<DocumentReference<T> | null>(null);
 
@@ -46,16 +46,16 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<T> | null) {
       },
       (serverError: FirestoreError) => {
         setLoading(false);
+        setError(serverError);
+        
         if (serverError.code === 'permission-denied') {
           const permissionError = new FirestorePermissionError({
             path: docRef.path || 'document_reference',
             operation: 'get',
           } satisfies SecurityRuleContext);
           errorEmitter.emit('permission-error', permissionError);
-          setError(permissionError);
         } else {
-          console.error("Firestore Document Error:", serverError.message);
-          setError(serverError);
+          console.error("Firestore Error:", serverError.code, serverError.message);
         }
       }
     );

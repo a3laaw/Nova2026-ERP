@@ -12,12 +12,12 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
 export function useCollection<T = DocumentData>(query: Query<T> | null) {
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(!!query);
-  const [error, setError] = useState<Error | null>(null);
+  const [error, setError] = useState<FirestoreError | Error | null>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const lastQueryRef = useRef<Query<T> | null>(null);
 
   useEffect(() => {
-    // التحقق من استقرار الاستعلام لمنع الحلقات اللانهائية
+    // 1. التعامل مع الاستعلام الفارغ
     if (!query) {
       if (lastQueryRef.current !== null) {
         lastQueryRef.current = null;
@@ -27,13 +27,16 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
       return;
     }
 
+    // 2. منع إعادة التحميل إذا كان الاستعلام مطابقاً للسابق منطقياً
     if (lastQueryRef.current && queryEqual(query, lastQueryRef.current)) {
       return;
     }
 
+    // 3. تحديث المرجع وبدء التحميل
     lastQueryRef.current = query;
     setLoading(true);
 
+    // 4. تنظيف المراقب السابق
     if (unsubscribeRef.current) {
       unsubscribeRef.current();
     }
@@ -51,16 +54,16 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
       },
       (serverError: FirestoreError) => {
         setLoading(false);
+        setError(serverError);
+        
         if (serverError.code === 'permission-denied') {
           const permissionError = new FirestorePermissionError({
             path: 'collection_query',
             operation: 'list',
           } satisfies SecurityRuleContext);
           errorEmitter.emit('permission-error', permissionError);
-          setError(permissionError);
         } else {
-          console.error("Firestore Collection Error:", serverError.message);
-          setError(serverError);
+          console.error("Firestore Error:", serverError.code, serverError.message);
         }
       }
     );
