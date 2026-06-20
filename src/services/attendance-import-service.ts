@@ -58,7 +58,7 @@ export class AttendanceImportService {
     const summary = { total: rows.length, valid: 0, invalid: 0, present: 0, late: 0, holiday: 0 };
 
     rows.forEach((row, index) => {
-      if (!row.employeeNumber && !row.date) return;
+      if (!row.employeeNumber || !row.date) return;
 
       const emp = employees.find(e => e.employeeNumber === row.employeeNumber);
       if (!emp) {
@@ -82,43 +82,50 @@ export class AttendanceImportService {
 
       let status: AttendanceRecord['status'] = 'present';
       let totalMinutesLate = 0;
-      let totalMinutesEarlyLeave = 0;
 
       const actualIn1 = this.parseFlexibleTime(row.checkIn);
-      const actualOut1 = this.parseFlexibleTime(row.checkOut);
       const actualIn2 = this.parseFlexibleTime(row.checkIn2);
-      const actualOut2 = this.parseFlexibleTime(row.checkOut2);
 
       if (isPublicHoliday || isWeekend) {
         status = isPublicHoliday ? 'holiday' : 'weekend';
         summary.holiday++;
       } else {
-        // احتساب الفترة الأولى (الصباحية)
-        if (actualIn1) {
-          const expectedIn1 = this.parseFlexibleTime(schedule.morningStartTime)!;
-          const diff = differenceInMinutes(actualIn1, expectedIn1);
-          if (diff > (schedule.bufferMinutes || 0)) {
-            totalMinutesLate += diff;
+        const isDoubleShift = !!schedule.eveningStartTime && schedule.eveningStartTime !== "00:00" && schedule.eveningStartTime !== "";
+
+        if (isDoubleShift) {
+          // ذكاء الفترتين: فحص كل فترة على حدة
+          if (actualIn1) {
+            const expectedIn1 = this.parseFlexibleTime(schedule.morningStartTime)!;
+            const diff = differenceInMinutes(actualIn1, expectedIn1);
+            if (diff > (schedule.bufferMinutes || 0)) totalMinutesLate += diff;
+          } else {
+            // غياب جزئي عن الفترة الأولى
+          }
+
+          if (actualIn2) {
+            const expectedIn2 = this.parseFlexibleTime(schedule.eveningStartTime)!;
+            const diff = differenceInMinutes(actualIn2, expectedIn2);
+            if (diff > (schedule.bufferMinutes || 0)) totalMinutesLate += diff;
           }
         } else {
-          status = 'absent'; // غياب إذا لم يحضر الفترة الأولى
-        }
-
-        // احتساب الفترة الثانية (المسائية) إذا كانت مفعلة
-        const isDoubleShift = !!schedule.eveningStartTime && schedule.eveningStartTime !== "00:00";
-        if (isDoubleShift && actualIn2) {
-          const expectedIn2 = this.parseFlexibleTime(schedule.eveningStartTime)!;
-          const diff = differenceInMinutes(actualIn2, expectedIn2);
-          if (diff > (schedule.bufferMinutes || 0)) {
-            totalMinutesLate += diff;
+          // ذكاء الفترة الواحدة: البحث عن أي بصمة دخول متاحة
+          const bestEntry = actualIn1 || actualIn2;
+          if (bestEntry) {
+            const expectedIn = this.parseFlexibleTime(schedule.morningStartTime)!;
+            const diff = differenceInMinutes(bestEntry, expectedIn);
+            if (diff > (schedule.bufferMinutes || 0)) totalMinutesLate += diff;
+          } else {
+            status = 'absent';
           }
         }
 
-        if (totalMinutesLate > 0) {
-          status = 'late';
-          summary.late++;
-        } else if (status === 'present') {
-          summary.present++;
+        if (status !== 'absent') {
+          if (totalMinutesLate > 0) {
+            status = 'late';
+            summary.late++;
+          } else {
+            summary.present++;
+          }
         }
       }
 
@@ -133,7 +140,6 @@ export class AttendanceImportService {
         checkOut2: row.checkOut2 || '',
         status,
         minutesLate: totalMinutesLate,
-        minutesEarlyLeave: totalMinutesEarlyLeave,
         isHoliday: isPublicHoliday,
         isWeekend,
         companyId: this.companyId
