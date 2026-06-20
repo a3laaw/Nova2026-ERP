@@ -39,6 +39,7 @@ export default function EmployeeDetailsPage() {
   const [saving, setSaving] = useState(false);
   const [terminating, setTerminating] = useState(false);
   const [termForm, setTermForm] = useState({ reason: '', date: new Date().toISOString().split('T')[0] });
+  const [isTerminateOpen, setIsTerminateOpen] = useState(false);
 
   const companyId = globalUser?.companyId;
   const hrService = useMemo(() => 
@@ -70,6 +71,7 @@ export default function EmployeeDetailsPage() {
     try {
       await hrService.terminateEmployee(empId, termForm.reason, termForm.date, { uid: user.uid, name: user.displayName || 'Admin' });
       toast({ title: isRtl ? 'تم إنهاء الخدمة' : 'Service Terminated' });
+      setIsTerminateOpen(false);
       router.push('/dashboard/hr/employees');
     } catch (e) {
       toast({ variant: "destructive", title: t('error') });
@@ -108,7 +110,7 @@ export default function EmployeeDetailsPage() {
         </div>
 
         {employee.status === 'active' && (
-          <Dialog>
+          <Dialog open={isTerminateOpen} onOpenChange={setIsTerminateOpen}>
              <DialogTrigger asChild>
                 <Button variant="destructive" className="rounded-xl font-bold h-12 gap-2 shadow-lg shadow-rose-200">
                    <Ban className="h-4 w-4" /> {isRtl ? 'إنهاء الخدمة' : 'Terminate'}
