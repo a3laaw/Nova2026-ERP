@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Filter, Loader2, ArrowRight, AlertCircle, RefreshCw } from "lucide-react";
+import { Clock, Loader2, ArrowRight, AlertCircle, RefreshCw } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
 
 export default function AttendanceReportPage() {
   const { globalUser } = useAuthContext();
-  const { t, lang, dir } = useLanguage();
+  const { lang, dir } = useLanguage();
   const db = useFirestore();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
@@ -27,19 +27,24 @@ export default function AttendanceReportPage() {
     end: new Date().toISOString().split('T')[0]
   });
 
+  // تبسيط الاستعلام: إزالة orderBy لتجنب الحاجة لفهارس مركبة فورية
   const attendanceQuery = useMemo(() => 
     companyId && db ? query(
       collection(db, paths.attendance(companyId)),
       where('date', '>=', filters.start),
-      where('date', '<=', filters.end),
-      orderBy('date', 'desc')
+      where('date', '<=', filters.end)
     ) : null, 
-  [db, companyId, filters]);
+  [db, companyId, filters.start, filters.end]);
 
-  const { data: records, loading, error } = useCollection<AttendanceRecord>(attendanceQuery);
+  const { data: rawRecords, loading, error } = useCollection<AttendanceRecord>(attendanceQuery);
+
+  // فرز البيانات في الذاكرة لضمان العمل بدون أخطاء فهارس
+  const records = useMemo(() => {
+    return [...rawRecords].sort((a, b) => b.date.localeCompare(a.date));
+  }, [rawRecords]);
 
   const stats = useMemo(() => {
-    if (!records) return { total: 0, present: 0, late: 0, absent: 0, totalLateMins: 0 };
+    if (!records.length) return { total: 0, present: 0, late: 0, absent: 0, totalLateMins: 0 };
     return {
       total: records.length,
       present: records.filter(r => r.status === 'present').length,
@@ -103,10 +108,10 @@ export default function AttendanceReportPage() {
                 <TableBody>
                   {loading ? (
                     <TableRow><TableCell colSpan={5} className="text-center py-24"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
-                  ) : records?.length === 0 ? (
+                  ) : records.length === 0 ? (
                     <TableRow><TableCell colSpan={5} className="text-center py-24 text-slate-400 font-bold italic">{isRtl ? 'لا يوجد سجلات لهذه الفترة.' : 'No records for this period.'}</TableCell></TableRow>
                   ) : (
-                    records?.map((rec) => (
+                    records.map((rec) => (
                       <TableRow key={rec.id} className="hover:bg-slate-50 transition-colors">
                         <TableCell className="py-4 ps-8 text-start">
                            <div className="flex flex-col">

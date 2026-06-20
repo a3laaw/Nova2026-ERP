@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Calculator, Loader2, DollarSign, FileText, AlertCircle, RefreshCw } from "lucide-react";
+import { Calculator, Loader2, AlertCircle, RefreshCw, FileText } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
@@ -17,20 +17,28 @@ import { Button } from '@/components/ui/button';
 
 export default function PayrollSummaryReportPage() {
   const { globalUser } = useAuthContext();
-  const { t, lang, dir } = useLanguage();
+  const { lang, dir } = useLanguage();
   const db = useFirestore();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
-  // استعلام مبسط لتجنب الحاجة لفهارس مركبة معقدة فوراً
+  // استعلام خام بدون ترتيب لتجنب طلب فهرس فوري
   const payrollQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.payroll(companyId)), orderBy('year', 'desc')) : null, 
+    companyId && db ? query(collection(db, paths.payroll(companyId))) : null, 
   [db, companyId]);
 
-  const { data: batches, loading, error } = useCollection<PayrollBatch>(payrollQuery);
+  const { data: rawBatches, loading, error } = useCollection<PayrollBatch>(payrollQuery);
+
+  // الفرز والتلخيص في الذاكرة
+  const batches = useMemo(() => {
+    return [...rawBatches].sort((a, b) => {
+        if (b.year !== a.year) return b.year - a.year;
+        return b.month - a.month;
+    });
+  }, [rawBatches]);
 
   const totals = useMemo(() => {
-    if (!batches) return { net: 0, deductions: 0, count: 0 };
+    if (!batches.length) return { net: 0, deductions: 0, count: 0 };
     return {
       net: batches.reduce((sum, b) => sum + (b.totalNetSalary || 0), 0),
       deductions: batches.reduce((sum, b) => sum + (b.totalDeductions || 0), 0),
@@ -93,10 +101,10 @@ export default function PayrollSummaryReportPage() {
                 <TableBody>
                   {loading ? (
                     <TableRow><TableCell colSpan={5} className="text-center py-24"><Loader2 className="animate-spin h-12 w-12 mx-auto text-primary/30" /></TableCell></TableRow>
-                  ) : batches?.length === 0 ? (
-                    <TableRow><TableCell colSpan={5} className="text-center py-24 italic text-slate-400 font-bold">{isRtl ? 'لا توجد كشوف رواتب معتمدة.' : 'No payroll batches found.'}</TableCell></TableRow>
+                  ) : batches.length === 0 ? (
+                    <TableRow><TableCell colSpan={5} className="text-center py-24 text-slate-400 font-bold italic">{isRtl ? 'لا توجد كشوف رواتب معتمدة.' : 'No payroll batches found.'}</TableCell></TableRow>
                   ) : (
-                    batches?.map((batch) => (
+                    batches.map((batch) => (
                       <TableRow key={batch.id} className="hover:bg-slate-50 transition-colors font-bold">
                         <TableCell className="py-6 ps-8 text-start">
                            <div className="flex items-center gap-3">

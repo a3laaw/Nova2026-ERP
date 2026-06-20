@@ -1,18 +1,17 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
-  Users, Search, Loader2, ArrowRight, 
-  ShieldCheck, Phone, Briefcase, AlertCircle,
+  Search, Loader2, ArrowRight, 
+  ShieldCheck, Briefcase, AlertCircle,
   RefreshCw
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
@@ -21,7 +20,7 @@ import { cn } from '@/lib/utils';
 
 export default function DossierSearchPage() {
   const { globalUser } = useAuthContext();
-  const { t, lang, dir } = useLanguage();
+  const { lang, dir } = useLanguage();
   const db = useFirestore();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
@@ -29,25 +28,23 @@ export default function DossierSearchPage() {
 
   const companyId = globalUser?.companyId;
 
-  // استعلام مستقر ومبسط
+  // استعلام بسيط بدون orderBy لضمان العمل الفوري
   const employeesQuery = useMemo(() => 
-    companyId && db ? query(
-      collection(db, paths.employees(companyId)), 
-      orderBy('employeeNumber')
-    ) : null, 
+    companyId && db ? query(collection(db, paths.employees(companyId))) : null, 
   [db, companyId]);
 
-  const { data: employees, loading, error } = useCollection<Employee>(employeesQuery);
+  const { data: rawEmployees, loading, error } = useCollection<Employee>(employeesQuery);
 
   const filteredEmployees = useMemo(() => {
-    if (!employees) return [];
     const term = searchTerm.toLowerCase();
-    return employees.filter(emp => 
-      emp.fullName?.toLowerCase().includes(term) || 
-      emp.employeeNumber?.includes(term) ||
-      emp.civilId?.includes(term)
-    );
-  }, [employees, searchTerm]);
+    return rawEmployees
+      .filter(emp => 
+        emp.fullName?.toLowerCase().includes(term) || 
+        emp.employeeNumber?.includes(term) ||
+        emp.civilId?.includes(term)
+      )
+      .sort((a, b) => a.employeeNumber.localeCompare(b.employeeNumber));
+  }, [rawEmployees, searchTerm]);
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto" dir={dir}>
