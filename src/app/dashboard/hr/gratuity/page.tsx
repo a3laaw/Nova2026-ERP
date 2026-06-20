@@ -147,9 +147,9 @@ export default function GratuityCalculatorPage() {
                        <Select value={form.noticeType} onValueChange={(v: NoticeType) => setForm({...form, noticeType: v})}>
                           <SelectTrigger className="h-12 rounded-xl border-2 font-bold"><SelectValue /></SelectTrigger>
                           <SelectContent>
-                             <SelectItem value="served" className="font-bold">{isRtl ? 'تم الالتزام بـ 3 أشهر' : 'Notice Served (3M)'}</SelectItem>
-                             <SelectItem value="not_served_by_employer" className="font-bold">{isRtl ? 'مخالفة صاحب العمل (بدل)' : 'Employer Breach'}</SelectItem>
-                             <SelectItem value="not_served_by_employee" className="font-bold">{isRtl ? 'مخالفة الموظف (خصم)' : 'Employee Breach'}</SelectItem>
+                             <SelectItem value="served" className="font-bold">{isRtl ? 'استيفاء فترة الإنذار (عمل)' : 'Notice Served (3M)'}</SelectItem>
+                             <SelectItem value="not_served_by_employer" className="font-bold">{isRtl ? 'إنهاء فوري (صرف بدل)' : 'Immediate Payout'}</SelectItem>
+                             <SelectItem value="not_served_by_employee" className="font-bold">{isRtl ? 'ترك فوري (خصم بدل)' : 'Immediate Resignation'}</SelectItem>
                           </SelectContent>
                        </Select>
                     </div>

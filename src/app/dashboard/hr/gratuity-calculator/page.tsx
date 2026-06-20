@@ -174,9 +174,9 @@ export default function GratuityCalculatorPage() {
                              <SelectValue />
                           </SelectTrigger>
                           <SelectContent className="rounded-2xl">
-                             <SelectItem value="worked" className="font-bold">{isRtl ? 'عمل خلال الإنذار (90 يوم)' : 'Work during notice'}</SelectItem>
-                             <SelectItem value="indemnity" className="font-bold">{isRtl ? 'صرف بدل نقدي فوري' : 'Indemnity payout'}</SelectItem>
-                             <SelectItem value="waived" className="font-bold">{isRtl ? 'تنازل عن المدة' : 'Waived period'}</SelectItem>
+                             <SelectItem value="worked" className="font-bold">{isRtl ? 'استيفاء فترة الإنذار (عمل)' : 'Work during notice'}</SelectItem>
+                             <SelectItem value="indemnity" className="font-bold">{isRtl ? 'إنهاء فوري (صرف بدل)' : 'Indemnity payout'}</SelectItem>
+                             <SelectItem value="waived" className="font-bold">{isRtl ? 'تنازل متبادل عن المدة' : 'Waived period'}</SelectItem>
                           </SelectContent>
                        </Select>
                     </div>
