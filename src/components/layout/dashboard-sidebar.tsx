@@ -36,6 +36,7 @@ import { useLanguage } from "@/context/language-context"
 import { usePermissions } from "@/hooks/use-permissions"
 import { Badge } from "@/components/ui/badge"
 import {
+  Sidebar,
   SidebarHeader,
   SidebarContent,
   SidebarGroup,
@@ -44,6 +45,7 @@ import {
   SidebarFooter,
   SidebarMenu,
   SidebarMenuItem,
+  SidebarMenuButton,
   useSidebar,
 } from "@/components/ui/sidebar"
 import {
@@ -172,32 +174,32 @@ export function DashboardSidebar() {
   });
 
   return (
-    <>
-      <SidebarHeader className="flex-none transition-all duration-300 p-4 border-b border-orange-100/20">
+    <Sidebar collapsible="icon" side={isRtl ? "right" : "left"} className="border-none bg-transparent">
+      <SidebarHeader className="flex-none p-4 pb-2 transition-all">
         {!isCollapsed ? (
-          <div className="flex flex-col text-start animate-in fade-in slide-in-from-top-2 px-1">
+          <div className="flex flex-col text-start px-2">
             <span className="font-headline font-black text-2xl text-[#1e1b4b] tracking-tighter leading-none">NovaFlow</span>
-            <div className="flex items-center gap-1.5 mt-1.5">
+            <div className="flex items-center gap-1.5 mt-1">
               <span className="text-[7px] uppercase font-black tracking-[0.4em] text-[#e87c24]">SYSTEMS</span>
               <div className="h-[1.5px] w-5 bg-[#e87c24] rounded-full" />
             </div>
           </div>
         ) : (
-          <div className="mx-auto h-10 w-10 rounded-2xl bg-gradient-to-br from-[#FFB000] to-[#e87c24] flex items-center justify-center text-white shadow-xl shadow-orange-500/20">
-             <Sparkles className="h-6 w-6" />
+          <div className="mx-auto h-9 w-9 rounded-2xl bg-gradient-to-br from-[#FFB000] to-[#e87c24] flex items-center justify-center text-white shadow-lg">
+             <Sparkles className="h-5 w-5" />
           </div>
         )}
       </SidebarHeader>
       
-      <SidebarContent className="flex-1 px-2 scrollbar-hide overflow-y-auto">
+      <SidebarContent className="flex-1 px-2 overflow-y-auto scrollbar-hide py-2">
         <SidebarGroup className="p-0">
           {!isCollapsed && (
-            <SidebarGroupLabel className="text-[#1e1b4b]/40 font-black px-2 mb-2 text-start uppercase text-[9px] tracking-widest mt-4">
+            <SidebarGroupLabel className="text-[#1e1b4b]/40 font-black px-3 mb-2 text-start uppercase text-[9px] tracking-widest mt-2">
               {isRtl ? 'إدارة العمليات' : 'Operations'}
             </SidebarGroupLabel>
           )}
           <SidebarGroupContent>
-            <SidebarMenu className="gap-2 mt-1">
+            <SidebarMenu className="gap-2">
               {menuItems.map((item) => (
                 <NavItemRenderer key={item.title} item={item} isCollapsed={isCollapsed} isRtl={isRtl} pathname={pathname} />
               ))}
@@ -205,9 +207,9 @@ export function DashboardSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup className="mt-4 mb-2 p-0">
+        <SidebarGroup className="mt-4 p-0">
           {!isCollapsed && (
-            <SidebarGroupLabel className="text-[#1e1b4b]/40 font-black px-2 mb-2 text-start uppercase text-[9px] tracking-widest border-t border-orange-100/30 pt-4">
+            <SidebarGroupLabel className="text-[#1e1b4b]/40 font-black px-3 mb-2 text-start uppercase text-[9px] tracking-widest border-t border-orange-100/30 pt-4">
               {isRtl ? 'الإعدادات' : 'Settings'}
             </SidebarGroupLabel>
           )}
@@ -219,10 +221,10 @@ export function DashboardSidebar() {
         </SidebarGroup>
       </SidebarContent>
       
-      <SidebarFooter className="flex-none transition-all duration-300 p-3 mt-auto border-t border-orange-100/20">
+      <SidebarFooter className="flex-none p-3 mt-auto transition-all">
         {!isCollapsed ? (
           <div className="p-3 rounded-2xl bg-white border border-orange-100 shadow-xl ring-1 ring-black/[0.02]">
-             <div className="flex items-center justify-between mb-1.5">
+             <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-1.5">
                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Kuwait Cloud</span>
@@ -232,36 +234,34 @@ export function DashboardSidebar() {
              <p className="text-[9px] font-black text-[#1e1b4b]/80 text-center uppercase tracking-tighter">Enterprise Intelligence</p>
           </div>
         ) : (
-          <div className="mx-auto h-9 w-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 shadow-sm">
-             <ShieldCheck className="h-5 w-5" />
+          <div className="mx-auto h-8 w-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 shadow-sm">
+             <ShieldCheck className="h-4 w-4" />
           </div>
         )}
       </SidebarFooter>
-    </>
+    </Sidebar>
   )
 }
 
 function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
-  const [isFlyoutOpen, setIsFlyoutOpen] = React.useState(false);
-  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const [isFlyoutOpen, setIsFlyoutOpen] = React.useState(false)
+  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null)
 
-  const isActive = pathname === item.url || (item.url !== '/dashboard' && pathname.startsWith(item.url));
+  const isActive = pathname === item.url || (item.url !== '/dashboard' && pathname.startsWith(item.url))
 
   const handleMouseEnter = () => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    if (isCollapsed && item.subItems) setIsFlyoutOpen(true);
-  };
+    if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    if (isCollapsed && item.subItems) setIsFlyoutOpen(true)
+  }
 
   const handleMouseLeave = () => {
     timeoutRef.current = setTimeout(() => {
-      setIsFlyoutOpen(false);
-    }, 150);
-  };
+      setIsFlyoutOpen(false)
+    }, 150)
+  }
 
-  // الحالة النشطة: بطاقة بيضاء بظلال قوية وأيقونة برتقالية
-  const activeCard = "bg-white border border-orange-200 shadow-xl text-[#1e1b4b] font-black";
-  // الحالة العادية: بطاقة بتدرج برتقالي ذهبي وأيقونة بيضاء
-  const inactiveCard = "bg-gradient-to-br from-[#FFB000] to-[#e87c24] border-0 shadow-lg text-white";
+  const activeCard = "bg-white border border-orange-200 shadow-xl text-[#1e1b4b] font-black"
+  const inactiveCard = "bg-gradient-to-br from-[#FFB000] to-[#e87c24] border-0 shadow-md text-white"
 
   if (isCollapsed) {
     return (
@@ -276,7 +276,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                       onMouseEnter={handleMouseEnter}
                       onMouseLeave={handleMouseLeave}
                       className={cn(
-                        "flex h-11 w-11 items-center justify-center rounded-2xl transition-all duration-300 outline-none hover:scale-105 active:scale-95",
+                        "flex h-10 w-10 items-center justify-center rounded-2xl transition-all duration-300 outline-none hover:scale-105 active:scale-95",
                         isActive ? activeCard : inactiveCard
                       )}
                     >
@@ -285,7 +285,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
                     side={isRtl ? "left" : "right"}
-                    sideOffset={14}
+                    sideOffset={12}
                     align="start"
                     dir={isRtl ? "rtl" : "ltr"}
                     className="w-64 p-2 bg-white/98 backdrop-blur-xl border-2 border-orange-100 shadow-2xl rounded-[2rem] z-[9999]"
@@ -312,7 +312,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                 <Link 
                   href={item.url}
                   className={cn(
-                    "flex h-11 w-11 items-center justify-center rounded-2xl transition-all duration-300 hover:scale-105",
+                    "flex h-10 w-10 items-center justify-center rounded-2xl transition-all duration-300 hover:scale-105",
                     isActive ? activeCard : inactiveCard
                   )}
                 >
@@ -328,17 +328,17 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
           </Tooltip>
         </TooltipProvider>
       </SidebarMenuItem>
-    );
+    )
   }
 
   return (
     <SidebarMenuItem className="px-1">
       {item.subItems ? (
         <Collapsible defaultOpen={isActive} className="group/collapsible">
-          <div className={cn("rounded-[1.4rem] transition-all duration-300 overflow-hidden", isActive ? activeCard : inactiveCard)}>
+          <div className={cn("rounded-[1.3rem] transition-all duration-300 overflow-hidden", isActive ? activeCard : inactiveCard)}>
             <CollapsibleTrigger asChild>
-              <button className="flex items-center justify-between w-full h-12 px-4 hover:bg-white/10 transition-colors">
-                <div className={cn("flex items-center gap-3", isRtl ? "flex-row-reverse" : "flex-row")}>
+              <button className="flex items-center justify-between w-full h-11 px-4 hover:bg-white/10 transition-colors">
+                <div className={cn("flex items-center gap-3", isRtl ? "flex-row" : "flex-row-reverse")}>
                   <item.icon className={cn("h-5 w-5 shrink-0", isActive ? "text-[#e87c24]" : "text-white")} />
                   <span className="text-start text-sm font-black truncate">{item.title}</span>
                 </div>
@@ -349,22 +349,22 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
               </button>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="px-2 pb-3 space-y-1 animate-in slide-in-from-top-2 duration-300">
+              <div className="px-2 pb-2 space-y-1 animate-in slide-in-from-top-2 duration-300">
                 {item.subItems.map((sub: any) => {
-                  const isSubActive = pathname === sub.url;
+                  const isSubActive = pathname === sub.url
                   return (
                     <Link 
                       key={sub.title} 
                       href={sub.url}
                       className={cn(
-                        "flex items-center justify-between h-9 rounded-xl px-3 transition-all text-[11px] font-bold",
+                        "flex items-center justify-between h-8 rounded-xl px-3 transition-all text-[10px] font-bold",
                         isSubActive 
                           ? (isActive ? "bg-orange-50 text-[#e87c24] shadow-sm" : "bg-white/20 text-white shadow-inner")
                           : (isActive ? "text-slate-500 hover:bg-orange-50/50" : "text-white/70 hover:bg-white/10")
                       )}
                     >
                       <span className="truncate text-start">{sub.title}</span>
-                      <sub.icon className={cn("h-3.5 w-3.5 ml-2.5 opacity-50", isSubActive && "opacity-100")} />
+                      <sub.icon className={cn("h-3 w-3 ml-2 opacity-50", isSubActive && "opacity-100")} />
                     </Link>
                   )
                 })}
@@ -376,14 +376,16 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
         <Link 
           href={item.url}
           className={cn(
-            "flex items-center gap-3 transition-all duration-300 rounded-[1.4rem] h-12 px-4 shadow-md",
+            "flex items-center gap-3 transition-all duration-300 rounded-[1.3rem] h-11 px-4 shadow-sm",
             isActive ? activeCard : inactiveCard
           )}
         >
-          <item.icon className={cn("h-5 w-5 shrink-0", isActive ? "text-[#e87c24]" : "text-white")} />
-          <span className="flex-1 text-start text-sm font-black truncate">{item.title}</span>
+          <div className={cn("flex items-center gap-3 w-full", isRtl ? "flex-row" : "flex-row-reverse")}>
+            <item.icon className={cn("h-5 w-5 shrink-0", isActive ? "text-[#e87c24]" : "text-white")} />
+            <span className="flex-1 text-start text-sm font-black truncate">{item.title}</span>
+          </div>
         </Link>
       )}
     </SidebarMenuItem>
-  );
+  )
 }
