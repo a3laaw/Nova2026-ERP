@@ -29,7 +29,8 @@ import {
   FileSearch,
   BookOpen,
   TrendingUp,
-  Truck
+  Truck,
+  Scale
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
