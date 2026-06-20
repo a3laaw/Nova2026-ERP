@@ -65,6 +65,9 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip"
 
+// تم زيادة العرض هنا لاستيعاب الكبسولات العريضة
+const SIDEBAR_WIDTH_ICON = "6rem"
+
 export function DashboardSidebar() {
   const pathname = usePathname()
   const { state } = useSidebar()
@@ -163,7 +166,7 @@ export function DashboardSidebar() {
   ].filter(item => canAccess(item.module));
 
   return (
-    <Sidebar collapsible="icon" side={isRtl ? "right" : "left"} className="border-none bg-transparent">
+    <Sidebar collapsible="icon" side={isRtl ? "right" : "left"} className="border-none bg-transparent" style={{ "--sidebar-width-icon": SIDEBAR_WIDTH_ICON } as React.CSSProperties}>
       <SidebarHeader className="flex-none p-4 pt-6">
         {!isCollapsed ? (
           <div className="flex flex-col text-start px-2">
@@ -174,8 +177,8 @@ export function DashboardSidebar() {
             </div>
           </div>
         ) : (
-          <div className="mx-auto h-12 w-12 rounded-[1.2rem] bg-gradient-to-br from-[#FFB000] to-[#e87c24] flex items-center justify-center text-white shadow-xl shadow-orange-500/30">
-             <Sparkles className="h-6 w-6" />
+          <div className="mx-auto h-16 w-20 rounded-[1.8rem] bg-gradient-to-br from-[#FFB000] to-[#e87c24] flex items-center justify-center text-white shadow-xl shadow-orange-500/30">
+             <Sparkles className="h-10 w-10" />
           </div>
         )}
       </SidebarHeader>
@@ -233,6 +236,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
     }, 200)
   }
 
+  // التدرج البرتقالي الملكي الخاص بـ NovaFlow
   const orangeGradient = "bg-gradient-to-br from-[#FFB000] to-[#e87c24] shadow-xl shadow-orange-500/20"
   const inactiveStyle = cn(orangeGradient, "text-white hover:scale-[1.02] active:scale-[0.98]")
 
@@ -246,11 +250,11 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                 onPointerEnter={handlePointerEnter}
                 onPointerLeave={handlePointerLeave}
                 className={cn(
-                  "flex h-12 w-12 items-center justify-center outline-none transition-all duration-300 rounded-[1.2rem]",
+                  "flex h-14 w-20 items-center justify-center outline-none transition-all duration-300 rounded-full",
                   isActive ? "bg-white text-[#e87c24] shadow-2xl border-2 border-orange-50" : inactiveStyle
                 )}
               >
-                <item.icon className="h-6 w-6" />
+                <item.icon className="h-9 w-9" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
@@ -298,11 +302,11 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                 <Link 
                   href={item.url}
                   className={cn(
-                    "flex h-12 w-12 items-center justify-center transition-all duration-300 rounded-[1.2rem]",
+                    "flex h-14 w-20 items-center justify-center transition-all duration-300 rounded-full",
                     isActive ? "bg-white text-[#e87c24] shadow-2xl border-2 border-orange-50" : inactiveStyle
                   )}
                 >
-                  <item.icon className="h-6 w-6" />
+                  <item.icon className="h-9 w-9" />
                 </Link>
               </TooltipTrigger>
               <TooltipContent side={isRtl ? "left" : "right"} sideOffset={10} className="bg-[#1e1b4b] text-white font-black text-[10px] rounded-lg px-3 py-1.5">
@@ -326,7 +330,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
           <CollapsibleTrigger asChild>
             <button className={cn(
               "flex items-center transition-all duration-300 rounded-[1.6rem] overflow-hidden w-full h-14 px-6",
-              (isExpanded || isActive) ? inactiveStyle : inactiveStyle
+              inactiveStyle
             )}>
               <div className={cn("flex items-center gap-4 w-full", isRtl ? "flex-row" : "flex-row-reverse")}>
                 <item.icon className="h-6 w-6 shrink-0" />
