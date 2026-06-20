@@ -1,6 +1,6 @@
 'use client';
 
-import { differenceInDays, parseISO, intervalToDuration } from 'date-fns';
+import { differenceInDays, parseISO, intervalToDuration, differenceInMonths } from 'date-fns';
 
 export type TerminationReason = 'resignation' | 'termination' | 'retirement' | 'misconduct';
 export type NoticeType = 'served' | 'not_served_by_employer' | 'not_served_by_employee';
@@ -11,7 +11,7 @@ export interface GratuityCalculationInput {
   totalSalary: number;
   reason: TerminationReason;
   noticeType: NoticeType;
-  remainingLeaveDays: number;
+  remainingLeaveDays: number; // Snapshot from employee record
 }
 
 export interface GratuityResult {
@@ -33,7 +33,7 @@ export interface GratuityResult {
 }
 
 /**
- * محرك احتساب مكافأة نهاية الخدمة المطور - قانون العمل الكويتي (تحديث 2024)
+ * محرك احتساب مكافأة نهاية الخدمة المطور - قانون العمل الكويتي
  */
 export class GratuityService {
   static calculate(input: GratuityCalculationInput): GratuityResult {
@@ -42,6 +42,7 @@ export class GratuityService {
     const start = parseISO(hireDate);
     const end = parseISO(endDate);
     const totalDaysCount = Math.max(0, differenceInDays(end, start));
+    const totalMonthsCount = Math.max(0, differenceInMonths(end, start));
     const duration = intervalToDuration({ start, end });
     
     // احتساب السنوات الكسرية بدقة
@@ -56,7 +57,7 @@ export class GratuityService {
     } else {
       const firstFiveYears = 5 * (dailyWage * 15);
       const remainingYears = serviceYears - 5;
-      baseGratuity = firstFiveYears + (remainingYears * totalSalary); // شهر كامل عن كل سنة بعد الـ 5 الأولى
+      baseGratuity = firstFiveYears + (remainingYears * totalSalary); 
     }
 
     // 2. تطبيق سقف الـ 18 شهراً
@@ -90,17 +91,22 @@ export class GratuityService {
 
     const finalGratuity = baseGratuity * resignationFactor;
 
-    // 4. بدل رصيد الإجازات
+    // 4. احتساب رصيد الإجازات المستحق (Accrued)
+    // القانون الكويتي: 30 يوماً عن كل سنة
+    const totalLeaveEntitled = (totalMonthsCount / 12) * 30;
+    // نفترض أن remainingLeaveDays هو ما تبقى فعلياً في السجل، 
+    // ولكن لإظهار "الحساب" للمستخدم، نستخدمه كمرجع نهائي
     const leaveBalancePay = remainingLeaveDays * dailyWage;
+    legalNotes.push(`تم احتساب بدل الإجازات بناءً على رصيد ${remainingLeaveDays} يوم متبقي x الأجر اليومي.`);
 
     // 5. بدل الإنذار (90 يوماً / 3 أشهر - المادة 44)
     let noticeIndemnity = 0;
     if (noticeType === 'not_served_by_employer') {
-      noticeIndemnity = totalSalary * 3; // تعويض 3 أشهر
-      legalNotes.push("إضافة بدل إنذار يعادل راتب 3 أشهر (المادة 44).");
+      noticeIndemnity = totalSalary * 3; 
+      legalNotes.push("إضافة بدل إنذار يعادل راتب 3 أشهر (المادة 44) بطلب صاحب العمل.");
     } else if (noticeType === 'not_served_by_employee') {
-      noticeIndemnity = -(totalSalary * 3); // خصم 3 أشهر
-      legalNotes.push("خصم بدل إنذار يعادل راتب 3 أشهر لمخالفة فترة الإخطار.");
+      noticeIndemnity = -(totalSalary * 3); 
+      legalNotes.push("خصم بدل إنذار يعادل راتب 3 أشهر لعدم استكمال فترة الإخطار.");
     }
 
     const totalEntitlement = finalGratuity + leaveBalancePay + (noticeIndemnity > 0 ? noticeIndemnity : 0);

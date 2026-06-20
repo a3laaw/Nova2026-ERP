@@ -123,9 +123,10 @@ export default function GratuityCalculatorPage() {
                        <Input 
                          type="number" 
                          value={form.totalSalary} 
-                         onChange={e => setForm({...form, totalSalary: Number(e.target.value)})}
-                         className="h-12 rounded-xl border-2 font-black text-emerald-600 text-lg" 
+                         readOnly
+                         className="h-12 rounded-xl border-2 font-black text-emerald-600 text-lg bg-slate-50/50 cursor-not-allowed" 
                        />
+                       <p className="text-[9px] text-muted-foreground font-bold italic">{isRtl ? "* الراتب مسحوب من سجل الموظف ولا يمكن تعديله يدوياً." : "* Salary is fetched from employee record and cannot be edited."}</p>
                     </div>
                  </div>
 
@@ -136,7 +137,7 @@ export default function GratuityCalculatorPage() {
                           <SelectTrigger className="h-12 rounded-xl border-2 font-bold"><SelectValue /></SelectTrigger>
                           <SelectContent>
                              <SelectItem value="resignation" className="font-bold">{isRtl ? 'استقالة' : 'Resignation'}</SelectItem>
-                             <SelectItem value="termination" className="font-bold">{isRtl ? 'إنهاء (صاحب العمل)' : 'Employer Termination'}</SelectItem>
+                             <SelectItem value="termination" className="font-bold">{isRtl ? 'إنهاء خدمات (استحقاق بدل)' : 'Employer Termination'}</SelectItem>
                              <SelectItem value="retirement" className="font-bold">{isRtl ? 'تقاعد' : 'Retirement'}</SelectItem>
                              <SelectItem value="misconduct" className="font-bold text-rose-600">{isRtl ? 'فصل تأديبي (مادة 41)' : 'Misconduct'}</SelectItem>
                           </SelectContent>
@@ -147,9 +148,9 @@ export default function GratuityCalculatorPage() {
                        <Select value={form.noticeType} onValueChange={(v: NoticeType) => setForm({...form, noticeType: v})}>
                           <SelectTrigger className="h-12 rounded-xl border-2 font-bold"><SelectValue /></SelectTrigger>
                           <SelectContent>
-                             <SelectItem value="served" className="font-bold">{isRtl ? 'استيفاء فترة الإنذار (عمل)' : 'Notice Served (3M)'}</SelectItem>
-                             <SelectItem value="not_served_by_employer" className="font-bold">{isRtl ? 'إنهاء فوري (صرف بدل)' : 'Immediate Payout'}</SelectItem>
-                             <SelectItem value="not_served_by_employee" className="font-bold">{isRtl ? 'ترك فوري (خصم بدل)' : 'Immediate Resignation'}</SelectItem>
+                             <SelectItem value="served" className="font-bold">{isRtl ? 'استيفاء فترة الإنذار (عمل فعلي)' : 'Notice Served (3M)'}</SelectItem>
+                             <SelectItem value="not_served_by_employer" className="font-bold">{isRtl ? 'إنهاء فوري (استحقاق بدل الإنذار)' : 'Immediate Payout'}</SelectItem>
+                             <SelectItem value="not_served_by_employee" className="font-bold">{isRtl ? 'ترك فوري (خصم بدل الإنذار)' : 'Immediate Resignation'}</SelectItem>
                           </SelectContent>
                        </Select>
                     </div>
@@ -195,7 +196,7 @@ export default function GratuityCalculatorPage() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                          <div className="space-y-6">
                             <h4 className="font-black text-sm text-primary uppercase border-b pb-2 flex items-center gap-2">
-                               <ShieldCheck className="h-4 w-4" /> {isRtl ? 'مكافأة الخدمة (المادة 51)' : 'Gratuity (Art 51)'}
+                               <ShieldCheck className="h-4 w-4" /> {isRtl ? 'مكافأة الخدمة (المواد 51-53)' : 'Gratuity (Art 51-53)'}
                             </h4>
                             <div className="space-y-4">
                                <div className="flex justify-between items-center text-sm font-bold">
@@ -203,7 +204,7 @@ export default function GratuityCalculatorPage() {
                                   <span>{result.baseGratuity.toLocaleString()} KWD</span>
                                </div>
                                <div className="flex justify-between items-center text-sm font-black p-3 bg-amber-50 rounded-xl border border-amber-100 text-amber-800">
-                                  <span>{isRtl ? 'عامل المادة 53 (تدرج السنوات)' : 'Art 53 Tier Factor'}</span>
+                                  <span>{isRtl ? 'عامل التدرج (سنوات الخدمة)' : 'Art 53 Tier Factor'}</span>
                                   <span>x {(result.resignationFactor).toFixed(2)}</span>
                                </div>
                                <div className="flex justify-between items-center text-lg pt-2 border-t font-black text-emerald-600">
@@ -225,8 +226,11 @@ export default function GratuityCalculatorPage() {
                                   </span>
                                </div>
                                <div className="flex justify-between items-center text-sm font-bold">
-                                  <span className="text-slate-500">{isRtl ? 'رصيد الإجازات المتبقي' : 'Leave Balance Pay'}</span>
-                                  <span>{result.leaveBalancePay.toLocaleString()} KWD</span>
+                                  <div className="text-start">
+                                     <span className="text-slate-500">{isRtl ? 'رصيد الإجازات المستحق' : 'Accrued Leave Balance'}</span>
+                                     <p className="text-[10px] text-muted-foreground italic">{isRtl ? `(عن كامل فترة الخدمة)` : `(Full service period)`}</p>
+                                  </div>
+                                  <span className="font-black text-slate-800">{result.leaveBalancePay.toLocaleString()} KWD</span>
                                </div>
                             </div>
                          </div>
@@ -238,9 +242,10 @@ export default function GratuityCalculatorPage() {
                          </h5>
                          <div className="space-y-2">
                             {result.legalNotes.map((note, i) => (
-                               <p key={i} className="text-xs font-bold text-slate-600 flex items-center gap-2">
-                                  <div className="w-1.5 h-1.5 rounded-full bg-primary" /> {note}
-                                </p>
+                               <div key={i} className="text-xs font-bold text-slate-600 flex items-center gap-2">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" /> 
+                                  <span>{note}</span>
+                               </div>
                             ))}
                          </div>
                       </div>
