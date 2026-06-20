@@ -40,7 +40,7 @@ export default function DepartmentsPage() {
   const [deptForm, setDeptForm] = useState<Partial<Department>>({ name: '', nameEn: '', description: '' });
   const [jobForm, setJobForm] = useState<Partial<Job>>({ name: '', nameEn: '', roleId: '' });
 
-  // ضمان استقرار الخدمة لضمان عمل دوال الحذف
+  // تثبيت الخدمة لضمان بقاء المراجع حية
   const deptService = useMemo(() => {
     if (!db || !companyId) return null;
     return new DepartmentService(db, companyId);
@@ -62,70 +62,96 @@ export default function DepartmentsPage() {
   const { data: jobs, loading: jobsLoading } = useCollection<Job>(jobsQuery);
   const { data: roles } = useCollection<Role>(rolesQuery);
 
-  const handleSaveDept = () => {
+  const handleSaveDept = async () => {
     if (!deptService || !deptForm.name) return;
-    setLoadingAction('dept');
-    const data = { ...deptForm, order: departments?.length || 0, isActive: true, name: deptForm.name || '', nameEn: deptForm.nameEn || '' };
-    
-    if (deptForm.id) deptService.updateDepartment(deptForm.id, data);
-    else deptService.addDepartment(data as any);
-    
-    toast({ title: t('saved') });
-    setDeptForm({ name: '', nameEn: '', description: '' });
-    setIsDeptOpen(false);
-    setLoadingAction(null);
-  };
-
-  const handleDeleteDept = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    if (!deptService) return;
-    if (window.confirm(t('confirmDelete'))) {
-      deptService.deleteDepartment(id);
-      if (selectedDept?.id === id) setSelectedDept(null);
-      toast({ title: t('deleted') });
+    setLoadingAction('save_dept');
+    try {
+      const data = { 
+        ...deptForm, 
+        order: departments?.length || 0, 
+        isActive: true, 
+        name: deptForm.name || '', 
+        nameEn: deptForm.nameEn || '' 
+      };
+      
+      if (deptForm.id) await deptService.updateDepartment(deptForm.id, data);
+      else await deptService.addDepartment(data as any);
+      
+      toast({ title: t('saved') });
+      setIsDeptOpen(false);
+      setDeptForm({ name: '', nameEn: '', description: '' });
+    } catch (e) {
+      toast({ variant: "destructive", title: t('error') });
+    } finally {
+      setLoadingAction(null);
     }
   };
 
-  const handleSaveJob = () => {
-    if (!deptService || !selectedDept?.id || !jobForm.name) return;
-    setLoadingAction('job');
-    const selectedRole = roles?.find(r => r.id === jobForm.roleId);
-    const data = { 
-      ...jobForm, 
-      order: jobs?.length || 0, 
-      isActive: true, 
-      roleName: selectedRole ? (isRtl ? selectedRole.name : selectedRole.nameEn) : '',
-      name: jobForm.name || '', 
-      nameEn: jobForm.nameEn || '' 
-    };
+  const handleConfirmDeleteDept = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation(); // منع تفعيل الـ onClick الخاص بالـ div الأب
+    if (!deptService) return;
     
-    if (jobForm.id) deptService.updateJob(selectedDept.id, jobForm.id, data);
-    else deptService.addJob(selectedDept.id, data as any);
-    
-    toast({ title: t('saved') });
-    setJobForm({ name: '', nameEn: '', roleId: '' });
-    setIsJobOpen(false);
-    setLoadingAction(null);
+    if (window.confirm(t('confirmDelete'))) {
+      setLoadingAction(`delete_dept_${id}`);
+      deptService.deleteDepartment(id);
+      if (selectedDept?.id === id) setSelectedDept(null);
+      toast({ title: t('deleted') });
+      setLoadingAction(null);
+    }
   };
 
-  const handleDeleteJob = (e: React.MouseEvent, jobId: string) => {
+  const handleSaveJob = async () => {
+    if (!deptService || !selectedDept?.id || !jobForm.name) return;
+    setLoadingAction('save_job');
+    try {
+      const selectedRole = roles?.find(r => r.id === jobForm.roleId);
+      const data = { 
+        ...jobForm, 
+        order: jobs?.length || 0, 
+        isActive: true, 
+        roleName: selectedRole ? (isRtl ? selectedRole.name : selectedRole.nameEn) : '',
+        name: jobForm.name || '', 
+        nameEn: jobForm.nameEn || '' 
+      };
+      
+      if (jobForm.id) await deptService.updateJob(selectedDept.id, jobForm.id, data);
+      else await deptService.addJob(selectedDept.id, data as any);
+      
+      toast({ title: t('saved') });
+      setIsJobOpen(false);
+      setJobForm({ name: '', nameEn: '', roleId: '' });
+    } catch (e) {
+      toast({ variant: "destructive", title: t('error') });
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  const handleConfirmDeleteJob = (e: React.MouseEvent, jobId: string) => {
     e.stopPropagation();
     if (!deptService || !selectedDept?.id) return;
+    
     if (window.confirm(t('confirmDelete'))) {
+      setLoadingAction(`delete_job_${jobId}`);
       deptService.deleteJob(selectedDept.id, jobId);
       toast({ title: t('deleted') });
+      setLoadingAction(null);
     }
   };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-black font-headline flex items-center gap-3 text-start"><Building2 className="h-6 w-6 text-primary" /> {isRtl ? 'الهيكل التنظيمي' : 'Organizational Structure'}</h2>
+        <h2 className="text-2xl font-black font-headline flex items-center gap-3 text-start">
+          <Building2 className="h-6 w-6 text-primary" /> 
+          {isRtl ? 'الهيكل التنظيمي' : 'Organizational Structure'}
+        </h2>
+        
         <Dialog open={isDeptOpen} onOpenChange={setIsDeptOpen}>
           <DialogTrigger asChild>
-            <button onClick={() => setDeptForm({ name: '', nameEn: '', description: '' })} className="btn-nova-primary h-12 px-6 rounded-2xl flex items-center gap-2">
+            <Button onClick={() => setDeptForm({ name: '', nameEn: '', description: '' })} className="btn-nova-primary h-12 px-6 rounded-2xl flex items-center gap-2">
               <Plus className="h-5 w-5" /> {t('newDept')}
-            </button>
+            </Button>
           </DialogTrigger>
           <DialogContent className="rounded-[2.5rem] max-w-2xl p-8" dir={dir}>
             <DialogHeader><DialogTitle className="text-start font-black text-2xl">{deptForm.id ? t('edit') : t('newDept')}</DialogTitle></DialogHeader>
@@ -134,23 +160,57 @@ export default function DepartmentsPage() {
               <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={deptForm.nameEn || ''} onChange={e => setDeptForm({...deptForm, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
               <div className="col-span-2 space-y-2"><Label>{isRtl ? 'الوصف' : 'Description'}</Label><Textarea value={deptForm.description || ''} onChange={e => setDeptForm({...deptForm, description: e.target.value})} /></div>
             </div>
-            <DialogFooter className="mt-6"><Button onClick={handleSaveDept} disabled={loadingAction === 'dept'} className="w-full h-12 rounded-xl font-bold bg-primary text-white">{loadingAction === 'dept' ? <Loader2 className="animate-spin" /> : t('save')}</Button></DialogFooter>
+            <DialogFooter className="mt-6">
+              <Button onClick={handleSaveDept} disabled={loadingAction === 'save_dept'} className="w-full h-12 rounded-xl font-bold bg-primary text-white">
+                {loadingAction === 'save_dept' ? <Loader2 className="animate-spin" /> : t('save')}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Column: Departments List */}
         <div className="lg:col-span-5 text-start">
           <Card className="border-0 shadow-lg rounded-3xl overflow-hidden bg-white">
-            <CardHeader className="bg-slate-50/50 border-b p-4"><div className="relative"><Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder={t('search')} className="ps-10 rounded-xl bg-white" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} /></div></CardHeader>
+            <CardHeader className="bg-slate-50/50 border-b p-4">
+              <div className="relative">
+                <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input placeholder={t('search')} className="ps-10 rounded-xl bg-white" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+              </div>
+            </CardHeader>
             <CardContent className="p-0 max-h-[600px] overflow-y-auto">
               {deptsLoading ? <div className="p-20 text-center"><Loader2 className="animate-spin mx-auto text-primary/30" /></div> : (
                 departments?.filter(d => d.name.includes(searchTerm)).map(dept => (
-                  <div key={dept.id} onClick={() => setSelectedDept(dept)} className={cn("p-5 border-b flex items-center justify-between cursor-pointer transition-all group", selectedDept?.id === dept.id ? 'bg-primary/5 border-s-4 border-s-primary' : 'hover:bg-muted/30')}>
+                  <div 
+                    key={dept.id} 
+                    onClick={() => setSelectedDept(dept)} 
+                    className={cn(
+                      "p-5 border-b flex items-center justify-between cursor-pointer transition-all group", 
+                      selectedDept?.id === dept.id ? 'bg-primary/5 border-s-4 border-s-primary' : 'hover:bg-muted/30'
+                    )}
+                  >
                     <span className="text-sm font-black">{isRtl ? dept.name : dept.nameEn}</span>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="icon" onClick={e => { e.stopPropagation(); setDeptForm(dept); setIsDeptOpen(true); }} className="h-8 w-8 text-blue-600"><Edit3 className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={e => handleDeleteDept(e, dept.id!)} className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-blue-600"
+                        onClick={e => { e.stopPropagation(); setDeptForm(dept); setIsDeptOpen(true); }} 
+                      >
+                        <Edit3 className="h-4 w-4" />
+                      </Button>
+                      
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-destructive"
+                        disabled={loadingAction === `delete_dept_${dept.id}`}
+                        onClick={e => handleConfirmDeleteDept(e, dept.id!)} 
+                      >
+                        {loadingAction === `delete_dept_${dept.id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                      </Button>
+                      
                       <ChevronRight className={cn("h-4 w-4 ms-2", isRtl && 'rotate-180', selectedDept?.id === dept.id && 'text-primary')} />
                     </div>
                   </div>
@@ -160,6 +220,7 @@ export default function DepartmentsPage() {
           </Card>
         </div>
 
+        {/* Right Column: Jobs List */}
         <div className={cn("lg:col-span-7", !selectedDept && 'opacity-40')}>
           <Card className="border-0 shadow-lg rounded-3xl overflow-hidden bg-white text-start">
             <CardHeader className="bg-slate-50/50 border-b p-6 flex flex-row items-center justify-between">
@@ -194,13 +255,22 @@ export default function DepartmentsPage() {
                          </Select>
                       </div>
                     </div>
-                    <DialogFooter className="mt-6"><Button onClick={handleSaveJob} disabled={loadingAction === 'job'} className="w-full h-12 rounded-xl font-bold bg-primary text-white">{t('save')}</Button></DialogFooter>
+                    <DialogFooter className="mt-6">
+                      <Button onClick={handleSaveJob} disabled={loadingAction === 'save_job'} className="w-full h-12 rounded-xl font-bold bg-primary text-white">
+                        {loadingAction === 'save_job' ? <Loader2 className="animate-spin" /> : t('save')}
+                      </Button>
+                    </DialogFooter>
                   </DialogContent>
                 </Dialog>
               )}
             </CardHeader>
             <CardContent className="p-6">
-              {!selectedDept ? <div className="py-20 text-center italic text-muted-foreground">اختر قسماً</div> : (
+              {!selectedDept ? (
+                <div className="py-20 text-center italic text-muted-foreground flex flex-col items-center gap-2">
+                  <ChevronRight className={cn("h-10 w-10 opacity-10", !isRtl && "rotate-180")} />
+                  {isRtl ? 'يرجى اختيار قسم من القائمة اليمنى لعرض الوظائف' : 'Please select a department to view jobs'}
+                </div>
+              ) : (
                 jobsLoading ? <div className="py-10 text-center"><Loader2 className="animate-spin mx-auto text-primary/30" /></div> : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {jobs?.map(job => (
@@ -212,11 +282,31 @@ export default function DepartmentsPage() {
                            </span>
                         </div>
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                           <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600" onClick={(e) => { e.stopPropagation(); setJobForm(job); setIsJobOpen(true); }}><Edit3 className="h-4 w-4" /></Button>
-                           <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={(e) => handleDeleteJob(e, job.id!)}><Trash2 className="h-4 w-4" /></Button>
+                           <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-blue-600" 
+                            onClick={(e) => { e.stopPropagation(); setJobForm(job); setIsJobOpen(true); }}
+                           >
+                            <Edit3 className="h-4 w-4" />
+                           </Button>
+                           <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-destructive"
+                            disabled={loadingAction === `delete_job_${job.id}`}
+                            onClick={(e) => handleConfirmDeleteJob(e, job.id!)}
+                           >
+                            {loadingAction === `delete_job_${job.id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                           </Button>
                         </div>
                       </div>
                     ))}
+                    {jobs?.length === 0 && (
+                      <div className="col-span-full py-10 text-center text-xs text-muted-foreground italic">
+                        {isRtl ? 'لا توجد وظائف معرفة لهذا القسم.' : 'No jobs defined for this department.'}
+                      </div>
+                    )}
                   </div>
                 )
               )}
