@@ -128,7 +128,7 @@ const translations: Record<Language, Record<string, string>> = {
     doubleShift: 'ورديتين',
     ramadanMode: 'نظام الدوام',
     periodStart: 'بداية',
-    periodEnd: 'نهاية',
+    periodEnd: 'End',
     addKuwaitHolidays: 'عطلات الكويت 2026',
     personalInfo: 'بياناتي',
     accountSecurity: 'الأمان',
@@ -158,7 +158,7 @@ const translations: Record<Language, Record<string, string>> = {
     journalEntries: 'قيود اليومية',
     chartOfAccounts: 'دليل الحسابات',
     suppliers: 'الموردين',
-    purchaseOrders: 'أوامر الشراء',
+    purchaseOrders: 'LPO',
     supplierQuotes: 'عروض الموردين',
     quoteAnalysis: 'التحليل الذكي للعروض',
     warehouses: 'إدارة المخازن',
@@ -184,7 +184,8 @@ const translations: Record<Language, Record<string, string>> = {
     annual: 'سنوية',
     sick: 'مرضية',
     emergency: 'اضطرارية',
-    unpaid: 'بدون راتب'
+    unpaid: 'بدون راتب',
+    legalGuide: 'الدليل القانوني'
   },
   en: {
     dashboard: 'Dashboard',
@@ -358,7 +359,8 @@ const translations: Record<Language, Record<string, string>> = {
     annual: 'Annual',
     sick: 'Sick',
     emergency: 'Emergency',
-    unpaid: 'Unpaid'
+    unpaid: 'Unpaid',
+    legalGuide: 'Legal Guide'
   }
 };
 

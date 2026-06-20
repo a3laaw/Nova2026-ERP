@@ -30,6 +30,7 @@ import {
   Database,
   ChevronLeft,
   Settings2,
+  BookMarked
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
@@ -121,6 +122,7 @@ export function DashboardSidebar() {
         { title: t('attendance'), url: "/dashboard/hr/attendance/import", icon: FileSpreadsheet },
         { title: t('payroll'), url: "/dashboard/hr/payroll", icon: Calculator },
         { title: t('gratuity'), url: "/dashboard/hr/gratuity", icon: Scale },
+        { title: t('legalGuide'), url: "/dashboard/hr/legal-guide", icon: BookMarked },
         { title: t('hrReports'), url: "/dashboard/hr/reports", icon: BarChart3 },
       ]
     },
