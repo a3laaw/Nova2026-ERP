@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -17,10 +16,6 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { paths } from '@/firebase/multi-tenant';
 import { Department, Job } from '@/types/reference';
 
-/**
- * خدمة إدارة الهيكل التنظيمي (الأقسام والوظائف).
- * تتبع نمط العمليات غير المحظورة (Non-blocking) مع الاعتماد على Real-time listeners.
- */
 export class DepartmentService {
   constructor(private db: Firestore, private companyId: string) {}
 
@@ -52,32 +47,18 @@ export class DepartmentService {
     });
   }
 
-  /**
-   * حذف قسم مع كافة الوظائف التابعة له
-   */
   async deleteDepartment(id: string) {
     const path = paths.departments(this.companyId);
     const docRef = doc(this.db, path, id);
     
     try {
-      // 1. جلب الوظائف المرتبطة لحذفها في عملية واحدة (Batch)
       const jobsRef = collection(this.db, paths.jobs(this.companyId, id));
       const jobsSnap = await getDocs(jobsRef);
-      
       const batch = writeBatch(this.db);
-      
-      // إضافة الوظائف للحذف
       jobsSnap.docs.forEach(jobDoc => batch.delete(jobDoc.ref));
-      
-      // إضافة القسم للحذف
       batch.delete(docRef);
-      
-      return await batch.commit().catch((err) => {
-        this.handleError(docRef.path, 'delete');
-        throw err;
-      });
+      return await batch.commit();
     } catch (err) {
-      // في حال فشل جلب الوظائف، نحاول حذف القسم منفرداً
       return deleteDoc(docRef).catch((e) => {
         this.handleError(docRef.path, 'delete');
         throw e;
@@ -117,7 +98,6 @@ export class DepartmentService {
   async deleteJob(deptId: string, jobId: string) {
     const path = paths.jobs(this.companyId, deptId);
     const docRef = doc(this.db, path, jobId);
-    
     return deleteDoc(docRef).catch((err) => {
       this.handleError(docRef.path, 'delete');
       throw err;

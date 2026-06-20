@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -40,7 +39,6 @@ export default function DepartmentsPage() {
   const [deptForm, setDeptForm] = useState<Partial<Department>>({ name: '', nameEn: '', description: '' });
   const [jobForm, setJobForm] = useState<Partial<Job>>({ name: '', nameEn: '', roleId: '' });
 
-  // تثبيت الخدمة لضمان بقاء المراجع حية
   const deptService = useMemo(() => {
     if (!db || !companyId) return null;
     return new DepartmentService(db, companyId);
@@ -66,20 +64,11 @@ export default function DepartmentsPage() {
     if (!deptService || !deptForm.name) return;
     setLoadingAction('save_dept');
     try {
-      const data = { 
-        ...deptForm, 
-        order: departments?.length || 0, 
-        isActive: true, 
-        name: deptForm.name || '', 
-        nameEn: deptForm.nameEn || '' 
-      };
-      
+      const data = { ...deptForm, order: departments?.length || 0, isActive: true, name: deptForm.name || '', nameEn: deptForm.nameEn || '' };
       if (deptForm.id) await deptService.updateDepartment(deptForm.id, data);
       else await deptService.addDepartment(data as any);
-      
       toast({ title: t('saved') });
       setIsDeptOpen(false);
-      setDeptForm({ name: '', nameEn: '', description: '' });
     } catch (e) {
       toast({ variant: "destructive", title: t('error') });
     } finally {
@@ -87,15 +76,19 @@ export default function DepartmentsPage() {
     }
   };
 
-  const handleConfirmDeleteDept = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation(); // منع تفعيل الـ onClick الخاص بالـ div الأب
-    if (!deptService) return;
+  const handleConfirmDeleteDept = async (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!deptService || !window.confirm(t('confirmDelete'))) return;
     
-    if (window.confirm(t('confirmDelete'))) {
-      setLoadingAction(`delete_dept_${id}`);
-      deptService.deleteDepartment(id);
+    setLoadingAction(`delete_dept_${id}`);
+    try {
+      await deptService.deleteDepartment(id);
       if (selectedDept?.id === id) setSelectedDept(null);
       toast({ title: t('deleted') });
+    } catch (error) {
+      console.error(error);
+    } finally {
       setLoadingAction(null);
     }
   };
@@ -113,13 +106,10 @@ export default function DepartmentsPage() {
         name: jobForm.name || '', 
         nameEn: jobForm.nameEn || '' 
       };
-      
       if (jobForm.id) await deptService.updateJob(selectedDept.id, jobForm.id, data);
       else await deptService.addJob(selectedDept.id, data as any);
-      
       toast({ title: t('saved') });
       setIsJobOpen(false);
-      setJobForm({ name: '', nameEn: '', roleId: '' });
     } catch (e) {
       toast({ variant: "destructive", title: t('error') });
     } finally {
@@ -127,14 +117,18 @@ export default function DepartmentsPage() {
     }
   };
 
-  const handleConfirmDeleteJob = (e: React.MouseEvent, jobId: string) => {
+  const handleConfirmDeleteJob = async (e: React.MouseEvent, jobId: string) => {
+    e.preventDefault();
     e.stopPropagation();
-    if (!deptService || !selectedDept?.id) return;
+    if (!deptService || !selectedDept?.id || !window.confirm(t('confirmDelete'))) return;
     
-    if (window.confirm(t('confirmDelete'))) {
-      setLoadingAction(`delete_job_${jobId}`);
-      deptService.deleteJob(selectedDept.id, jobId);
+    setLoadingAction(`delete_job_${jobId}`);
+    try {
+      await deptService.deleteJob(selectedDept.id, jobId);
       toast({ title: t('deleted') });
+    } catch (error) {
+      console.error(error);
+    } finally {
       setLoadingAction(null);
     }
   };
@@ -170,7 +164,6 @@ export default function DepartmentsPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: Departments List */}
         <div className="lg:col-span-5 text-start">
           <Card className="border-0 shadow-lg rounded-3xl overflow-hidden bg-white">
             <CardHeader className="bg-slate-50/50 border-b p-4">
@@ -191,12 +184,12 @@ export default function DepartmentsPage() {
                     )}
                   >
                     <span className="text-sm font-black">{isRtl ? dept.name : dept.nameEn}</span>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1">
                       <Button 
                         variant="ghost" 
                         size="icon" 
                         className="h-8 w-8 text-blue-600"
-                        onClick={e => { e.stopPropagation(); setDeptForm(dept); setIsDeptOpen(true); }} 
+                        onClick={e => { e.preventDefault(); e.stopPropagation(); setDeptForm(dept); setIsDeptOpen(true); }} 
                       >
                         <Edit3 className="h-4 w-4" />
                       </Button>
@@ -220,7 +213,6 @@ export default function DepartmentsPage() {
           </Card>
         </div>
 
-        {/* Right Column: Jobs List */}
         <div className={cn("lg:col-span-7", !selectedDept && 'opacity-40')}>
           <Card className="border-0 shadow-lg rounded-3xl overflow-hidden bg-white text-start">
             <CardHeader className="bg-slate-50/50 border-b p-6 flex flex-row items-center justify-between">
@@ -281,12 +273,12 @@ export default function DepartmentsPage() {
                               <ShieldCheck className="h-2.5 w-2.5" /> {job.roleName || (isRtl ? 'بدون دور' : 'No Role')}
                            </span>
                         </div>
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex gap-1">
                            <Button 
                             variant="ghost" 
                             size="icon" 
                             className="h-8 w-8 text-blue-600" 
-                            onClick={(e) => { e.stopPropagation(); setJobForm(job); setIsJobOpen(true); }}
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setJobForm(job); setIsJobOpen(true); }}
                            >
                             <Edit3 className="h-4 w-4" />
                            </Button>
@@ -302,11 +294,6 @@ export default function DepartmentsPage() {
                         </div>
                       </div>
                     ))}
-                    {jobs?.length === 0 && (
-                      <div className="col-span-full py-10 text-center text-xs text-muted-foreground italic">
-                        {isRtl ? 'لا توجد وظائف معرفة لهذا القسم.' : 'No jobs defined for this department.'}
-                      </div>
-                    )}
                   </div>
                 )
               )}
