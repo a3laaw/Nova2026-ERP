@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -8,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { 
   Package, Boxes, Truck, Plus, 
   Search, Loader2, Warehouse as WarehouseIcon,
-  LayoutGrid, AlertTriangle, ArrowRight, ArrowUpRight
+  LayoutGrid, AlertTriangle, ArrowRight, Save,
+  User, CheckCircle2, History
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useFirestore, useCollection } from '@/firebase';
@@ -19,7 +19,9 @@ import { paths } from '@/firebase/multi-tenant';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { InventoryService } from '@/services/inventory-service';
+import { Employee } from '@/types/hr';
 import { toast } from '@/hooks/use-toast';
 
 export default function InventoryDashboard() {
@@ -29,30 +31,71 @@ export default function InventoryDashboard() {
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
+  // States
   const [isAddWarehouseOpen, setIsAddWarehouseOpen] = useState(false);
-  const [warehouseForm, setWarehouseForm] = useState({ name: '', location: '' });
+  const [isAddItemOpen, setIsAddItemOpen] = useState(false);
+  const [isAssignAssetOpen, setIsAssignAssetOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const warehousesQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.warehouses(companyId)), orderBy('name')) : null, 
-  [db, companyId]);
+  // Forms
+  const [warehouseForm, setWarehouseForm] = useState({ name: '', location: '' });
+  const [itemForm, setItemForm] = useState({ name: '', sku: '', quantity: 0, unit: 'pcs', warehouseId: '' });
+  const [assignForm, setAssignForm] = useState({ employeeId: '', itemId: '', quantity: 1 });
 
-  const itemsQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.inventoryItems(companyId)), orderBy('name')) : null, 
-  [db, companyId]);
+  // Data
+  const warehousesQuery = useMemo(() => companyId && db ? query(collection(db, paths.warehouses(companyId)), orderBy('name')) : null, [db, companyId]);
+  const itemsQuery = useMemo(() => companyId && db ? query(collection(db, paths.inventoryItems(companyId)), orderBy('name')) : null, [db, companyId]);
+  const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId)), orderBy('fullName')) : null, [db, companyId]);
 
   const { data: warehouses, loading: wLoading } = useCollection(warehousesQuery);
   const { data: items, loading: iLoading } = useCollection(itemsQuery);
+  const { data: employees } = useCollection<Employee>(empsQuery);
+
+  const inventoryService = useMemo(() => db && companyId ? new InventoryService(db, companyId) : null, [db, companyId]);
 
   const handleAddWarehouse = async () => {
-    if (!db || !companyId || !warehouseForm.name) return;
+    if (!inventoryService || !warehouseForm.name) return;
     setLoading(true);
     try {
-      const service = new InventoryService(db, companyId);
-      await service.addWarehouse(warehouseForm);
+      await inventoryService.addWarehouse(warehouseForm);
       toast({ title: t('saved') });
       setWarehouseForm({ name: '', location: '' });
       setIsAddWarehouseOpen(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddItem = async () => {
+    if (!inventoryService || !itemForm.name || !itemForm.warehouseId) return;
+    setLoading(true);
+    try {
+      await inventoryService.addItem(itemForm);
+      toast({ title: t('saved') });
+      setItemForm({ name: '', sku: '', quantity: 0, unit: 'pcs', warehouseId: '' });
+      setIsAddItemOpen(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAssignAsset = async () => {
+    if (!inventoryService || !assignForm.employeeId || !assignForm.itemId) return;
+    setLoading(true);
+    try {
+      const emp = employees?.find(e => e.id === assignForm.employeeId);
+      const item = items?.find(i => i.id === assignForm.itemId);
+      
+      await inventoryService.assignAsset({
+        ...assignForm,
+        employeeName: emp?.fullName || '',
+        itemName: item?.name || ''
+      });
+      toast({ title: isRtl ? "تم صرف العهدة بنجاح" : "Asset Assigned Successfully" });
+      setAssignForm({ employeeId: '', itemId: '', quantity: 1 });
+      setIsAssignAssetOpen(false);
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
       setLoading(false);
     }
@@ -64,42 +107,100 @@ export default function InventoryDashboard() {
         <div className="text-start space-y-2">
            <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
              <Package className="h-10 w-10 text-primary" />
-             {isRtl ? 'المخازن والمستودعات' : 'Inventory & Warehouses'}
+             {isRtl ? 'إدارة المخازن والعهد' : 'Inventory & Assets'}
            </h1>
            <p className="text-muted-foreground font-bold text-sm opacity-80 italic">
-             {isRtl ? 'إدارة الأصول المخزنية، المواد الخام، وتوزيع العهد.' : 'Manage inventory assets, raw materials, and field assignments.'}
+             {isRtl ? 'تتبع المخزون اللحظي وإدارة تسليم المعدات للميدان.' : 'Real-time inventory tracking and equipment assignment.'}
            </p>
         </div>
 
         <div className="flex gap-4">
-           <Dialog open={isAddWarehouseOpen} onOpenChange={setIsAddWarehouseOpen}>
+           {/* صرف عهدة */}
+           <Dialog open={isAssignAssetOpen} onOpenChange={setIsAssignAssetOpen}>
               <DialogTrigger asChild>
-                 <Button className="h-16 px-8 rounded-2xl bg-white border-2 text-slate-800 font-black gap-2 hover:bg-slate-50 transition-all">
-                    <WarehouseIcon className="h-5 w-5 text-primary" /> {isRtl ? 'مستودع جديد' : 'New Warehouse'}
+                 <Button className="h-16 px-8 rounded-2xl bg-slate-900 text-white font-black gap-2 hover:bg-slate-800 transition-all shadow-xl">
+                    <Truck className="h-5 w-5 text-primary" /> {isRtl ? 'صرف عهدة' : 'Assign Asset'}
                  </Button>
               </DialogTrigger>
               <DialogContent className="rounded-[2.5rem] p-8 max-w-lg" dir={dir}>
-                 <DialogHeader><DialogTitle className="text-start font-black text-2xl">{isRtl ? 'إضافة مستودع' : 'Add Warehouse'}</DialogTitle></DialogHeader>
+                 <DialogHeader><DialogTitle className="text-start font-black text-2xl">{isRtl ? 'تسليم عهدة لموظف' : 'Assign to Employee'}</DialogTitle></DialogHeader>
                  <div className="space-y-6 py-4 text-start">
                     <div className="space-y-2">
-                       <Label className="font-black text-xs uppercase tracking-widest text-slate-400">{isRtl ? 'اسم المستودع' : 'Warehouse Name'}</Label>
-                       <Input value={warehouseForm.name} onChange={e => setWarehouseForm({...warehouseForm, name: e.target.value})} className="h-12 rounded-xl" />
+                       <Label className="font-black text-xs text-slate-400 uppercase">{isRtl ? 'الموظف المستلم' : 'Select Employee'}</Label>
+                       <Select value={assignForm.employeeId} onValueChange={v => setAssignForm({...assignForm, employeeId: v})}>
+                          <SelectTrigger className="h-12 rounded-xl border-2"><SelectValue placeholder="..." /></SelectTrigger>
+                          <SelectContent>
+                             {employees?.map(e => <SelectItem key={e.id} value={e.id!}>{e.fullName} (#{e.employeeNumber})</SelectItem>)}
+                          </SelectContent>
+                       </Select>
                     </div>
                     <div className="space-y-2">
-                       <Label className="font-black text-xs uppercase tracking-widest text-slate-400">{isRtl ? 'الموقع' : 'Location'}</Label>
-                       <Input value={warehouseForm.location} onChange={e => setWarehouseForm({...warehouseForm, location: e.target.value})} className="h-12 rounded-xl" />
+                       <Label className="font-black text-xs text-slate-400 uppercase">{isRtl ? 'الصنف المراد صرفه' : 'Select Item'}</Label>
+                       <Select value={assignForm.itemId} onValueChange={v => setAssignForm({...assignForm, itemId: v})}>
+                          <SelectTrigger className="h-12 rounded-xl border-2"><SelectValue placeholder="..." /></SelectTrigger>
+                          <SelectContent>
+                             {items?.filter(i => i.quantity > 0).map(i => <SelectItem key={i.id} value={i.id!}>{i.name} ({i.quantity} {i.unit})</SelectItem>)}
+                          </SelectContent>
+                       </Select>
+                    </div>
+                    <div className="space-y-2">
+                       <Label className="font-black text-xs text-slate-400 uppercase">{isRtl ? 'الكمية' : 'Quantity'}</Label>
+                       <Input type="number" value={assignForm.quantity} onChange={e => setAssignForm({...assignForm, quantity: Number(e.target.value)})} className="h-12 rounded-xl border-2 font-black" />
                     </div>
                  </div>
                  <DialogFooter>
-                    <Button onClick={handleAddWarehouse} disabled={loading} className="w-full h-12 rounded-xl font-bold">{loading ? <Loader2 className="animate-spin" /> : t('save')}</Button>
+                    <Button onClick={handleAssignAsset} disabled={loading || !assignForm.employeeId || !assignForm.itemId} className="w-full h-14 rounded-2xl font-black text-lg bg-primary">
+                       {loading ? <Loader2 className="animate-spin" /> : (isRtl ? 'تأكيد عملية الصرف' : 'Confirm Assignment')}
+                    </Button>
                  </DialogFooter>
               </DialogContent>
            </Dialog>
-           <Button 
-             className="h-16 px-10 rounded-2xl bg-primary text-white font-black text-lg shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-3"
-           >
-              <Boxes className="h-6 w-6" /> {isRtl ? 'إضافة صنف' : 'Add Item'}
-           </Button>
+
+           {/* إضافة صنف */}
+           <Dialog open={isAddItemOpen} onOpenChange={setIsAddItemOpen}>
+              <DialogTrigger asChild>
+                 <Button className="h-16 px-10 rounded-2xl bg-primary text-white font-black text-lg shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-3">
+                    <Boxes className="h-6 w-6" /> {isRtl ? 'إضافة صنف' : 'Add Item'}
+                 </Button>
+              </DialogTrigger>
+              <DialogContent className="rounded-[2.5rem] p-8 max-w-lg" dir={dir}>
+                 <DialogHeader><DialogTitle className="text-start font-black text-2xl">{isRtl ? 'إضافة صنف مخزني' : 'New Inventory Item'}</DialogTitle></DialogHeader>
+                 <div className="space-y-4 py-4 text-start">
+                    <div className="grid grid-cols-2 gap-4">
+                       <div className="space-y-2">
+                          <Label className="font-black text-[10px] text-slate-400 uppercase">{isRtl ? 'اسم الصنف' : 'Item Name'}</Label>
+                          <Input value={itemForm.name} onChange={e => setItemForm({...itemForm, name: e.target.value})} className="h-12 rounded-xl border-2" />
+                       </div>
+                       <div className="space-y-2">
+                          <Label className="font-black text-[10px] text-slate-400 uppercase">{isRtl ? 'الباركود / SKU' : 'SKU'}</Label>
+                          <Input value={itemForm.sku} onChange={e => setItemForm({...itemForm, sku: e.target.value})} className="h-12 rounded-xl border-2 font-mono" />
+                       </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                       <div className="space-y-2">
+                          <Label className="font-black text-[10px] text-slate-400 uppercase">{isRtl ? 'الكمية الافتتاحية' : 'Initial Qty'}</Label>
+                          <Input type="number" value={itemForm.quantity} onChange={e => setItemForm({...itemForm, quantity: Number(e.target.value)})} className="h-12 rounded-xl border-2" />
+                       </div>
+                       <div className="space-y-2">
+                          <Label className="font-black text-[10px] text-slate-400 uppercase">{isRtl ? 'وحدة القياس' : 'Unit'}</Label>
+                          <Input value={itemForm.unit} onChange={e => setItemForm({...itemForm, unit: e.target.value})} className="h-12 rounded-xl border-2" placeholder="pcs, kg, m..." />
+                       </div>
+                    </div>
+                    <div className="space-y-2">
+                       <Label className="font-black text-[10px] text-slate-400 uppercase">{isRtl ? 'المستودع' : 'Warehouse'}</Label>
+                       <Select value={itemForm.warehouseId} onValueChange={v => setItemForm({...itemForm, warehouseId: v})}>
+                          <SelectTrigger className="h-12 rounded-xl border-2 font-black"><SelectValue placeholder="..." /></SelectTrigger>
+                          <SelectContent>
+                             {warehouses?.map(w => <SelectItem key={w.id} value={w.id!}>{w.name}</SelectItem>)}
+                          </SelectContent>
+                       </Select>
+                    </div>
+                 </div>
+                 <DialogFooter>
+                    <Button onClick={handleAddItem} disabled={loading || !itemForm.warehouseId} className="w-full h-12 rounded-xl font-bold">{loading ? <Loader2 className="animate-spin" /> : t('save')}</Button>
+                 </DialogFooter>
+              </DialogContent>
+           </Dialog>
         </div>
       </div>
 
@@ -108,7 +209,7 @@ export default function InventoryDashboard() {
            { label: isRtl ? 'إجمالي المستودعات' : 'Total Warehouses', val: warehouses?.length || 0, icon: WarehouseIcon, color: 'text-primary', bg: 'bg-primary/5' },
            { label: isRtl ? 'أصناف مخزنية' : 'Inventory Items', val: items?.length || 0, icon: Boxes, color: 'text-blue-600', bg: 'bg-blue-50' },
            { label: isRtl ? 'عهد ميدانية' : 'Field Assets', val: '142', icon: Truck, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-           { label: isRtl ? 'تنبيهات نقص' : 'Low Stock', val: '3', icon: AlertTriangle, color: 'text-rose-600', bg: 'bg-rose-50' },
+           { label: isRtl ? 'تنبيهات نقص' : 'Low Stock', val: items?.filter(i => i.quantity < 5).length || 0, icon: AlertTriangle, color: 'text-rose-600', bg: 'bg-rose-50' },
          ].map((stat, i) => (
            <Card key={i} className="border-0 shadow-lg rounded-[2.5rem] p-6 text-start bg-white group hover:shadow-xl transition-all">
               <div className={cn("p-4 rounded-2xl w-fit mb-4", stat.bg, stat.color)}>
@@ -124,28 +225,51 @@ export default function InventoryDashboard() {
          <Card className="lg:col-span-2 border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
             <CardHeader className="bg-slate-50 border-b p-8 text-start flex flex-row items-center justify-between">
                <div className="space-y-1">
-                  <CardTitle className="text-xl font-black">{isRtl ? 'المستودعات النشطة' : 'Active Warehouses'}</CardTitle>
-                  <CardDescription className="font-bold">{isRtl ? 'قائمة المواقع التخزينية المعتمدة.' : 'List of approved storage locations.'}</CardDescription>
-               </div>
-               <div className="relative w-full max-w-[200px]">
-                  <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  <Input placeholder={t('search')} className="ps-9 rounded-xl h-10 bg-white" />
+                  <CardTitle className="text-xl font-black">{isRtl ? 'جدول الأصناف والمواد' : 'Inventory Items Table'}</CardTitle>
+                  <CardDescription className="font-bold">{isRtl ? 'مراجعة الكميات المتاحة في كافة المستودعات.' : 'Available quantities across all warehouses.'}</CardDescription>
                </div>
             </CardHeader>
-            <CardContent className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-               {wLoading ? <div className="col-span-full py-20 text-center"><Loader2 className="animate-spin mx-auto text-primary" /></div> : (
-                 warehouses?.map((w) => (
-                    <div key={w.id} className="p-6 rounded-3xl bg-slate-50 border-2 border-white hover:border-primary/20 hover:bg-primary/5 transition-all cursor-pointer group flex items-center justify-between shadow-sm">
-                       <div className="text-start space-y-1">
-                          <h4 className="font-black text-slate-900">{w.name}</h4>
-                          <p className="text-xs text-slate-400 font-bold">{w.location}</p>
-                       </div>
-                       <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
-                          <ArrowRight className={cn("h-4 w-4", isRtl && "rotate-180")} />
-                       </div>
-                    </div>
-                 ))
-               )}
+            <CardContent className="p-0 overflow-x-auto">
+               <table className="w-full text-start text-sm">
+                  <thead className="bg-slate-50/50 border-b">
+                     <tr className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                        <th className="p-6 text-start">{isRtl ? 'الصنف' : 'Item'}</th>
+                        <th className="p-6 text-start">{isRtl ? 'SKU' : 'SKU'}</th>
+                        <th className="p-6 text-center">{isRtl ? 'الكمية' : 'Qty'}</th>
+                        <th className="p-6 text-start">{isRtl ? 'الحالة' : 'Status'}</th>
+                     </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                     {iLoading ? <tr><td colSpan={4} className="p-10 text-center"><Loader2 className="animate-spin mx-auto" /></td></tr> : 
+                        items?.map(item => (
+                           <tr key={item.id} className="hover:bg-slate-50/50 transition-colors group">
+                              <td className="p-6">
+                                 <div className="flex items-center gap-3">
+                                    <div className="h-10 w-10 rounded-xl bg-primary/5 text-primary flex items-center justify-center font-black">
+                                       {item.name?.charAt(0)}
+                                    </div>
+                                    <span className="font-black text-slate-800">{item.name}</span>
+                                 </div>
+                              </td>
+                              <td className="p-6 font-mono text-xs text-slate-400">{item.sku}</td>
+                              <td className="p-6 text-center">
+                                 <span className={cn("font-black text-lg", item.quantity < 5 ? "text-rose-600" : "text-slate-900")}>
+                                    {item.quantity}
+                                 </span>
+                                 <span className="text-[10px] ms-1 text-slate-400">{item.unit}</span>
+                              </td>
+                              <td className="p-6">
+                                 {item.quantity < 5 ? (
+                                    <Badge variant="destructive" className="bg-rose-50 text-rose-600 border-0 text-[9px] font-black uppercase tracking-tighter">Low Stock</Badge>
+                                 ) : (
+                                    <Badge variant="secondary" className="bg-emerald-50 text-emerald-600 border-0 text-[9px] font-black uppercase tracking-tighter">In Stock</Badge>
+                                 )}
+                              </td>
+                           </tr>
+                        ))
+                     }
+                  </tbody>
+               </table>
             </CardContent>
          </Card>
 
@@ -153,33 +277,17 @@ export default function InventoryDashboard() {
             <CardHeader className="bg-white/5 border-b border-white/5 p-8 text-start">
                <div className="flex items-center gap-4">
                   <div className="h-12 w-12 bg-primary rounded-2xl flex items-center justify-center">
-                     <Truck className="h-6 w-6 text-white" />
+                     <History className="h-6 w-6 text-white" />
                   </div>
-                  <CardTitle className="text-xl font-black">{isRtl ? 'العهد الميدانية' : 'Field Assets'}</CardTitle>
+                  <CardTitle className="text-xl font-black">{isRtl ? 'آخر التحركات' : 'Recent Logs'}</CardTitle>
                </div>
             </CardHeader>
             <CardContent className="p-8 space-y-6 text-start">
-               <div className="p-6 bg-white/5 rounded-3xl border border-white/10 space-y-4">
-                  <p className="text-xs font-bold text-slate-400">{isRtl ? 'صرف معدات للمهندسين والمواقع' : 'Assign equipment to field staff.'}</p>
-                  <Button className="w-full bg-white text-slate-900 font-black h-12 rounded-xl hover:scale-105 transition-all">
-                     {isRtl ? 'بدء عملية صرف عهدة' : 'New Assignment'}
-                  </Button>
-               </div>
                <div className="space-y-4">
-                  <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{isRtl ? 'نظرة سريعة' : 'Quick Glance'}</h4>
                   <div className="divide-y divide-white/5">
-                     {[
-                       { label: 'Laptop - Dell XPS', emp: 'Ahmad M.', status: 'in-use' },
-                       { label: 'Site Helmet v2', emp: 'Sami K.', status: 'in-use' }
-                     ].map((item, i) => (
-                       <div key={i} className="py-3 flex justify-between items-center">
-                          <div className="text-start">
-                             <p className="text-sm font-bold">{item.label}</p>
-                             <p className="text-[10px] text-slate-500">{item.emp}</p>
-                          </div>
-                          <Badge variant="outline" className="text-[8px] border-white/10 text-slate-400">{item.status}</Badge>
-                       </div>
-                     ))}
+                     <div className="py-4 text-center text-xs text-slate-500 italic">
+                        {isRtl ? 'سيتم عرض سجل العمليات قريباً.' : 'Operational logs will appear here.'}
+                     </div>
                   </div>
                </div>
             </CardContent>
@@ -188,3 +296,4 @@ export default function InventoryDashboard() {
     </div>
   );
 }
+
