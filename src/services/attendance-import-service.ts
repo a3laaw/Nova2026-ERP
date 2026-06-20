@@ -9,8 +9,8 @@ import {
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { AttendanceRecord, Employee } from '@/types/hr';
-import { WorkHoursSettings, DayOfWeek, DailySchedule } from '@/types/work-hours';
-import { parse, differenceInMinutes, format, isValid } from 'date-fns';
+import { WorkHoursSettings, DayOfWeek } from '@/types/work-hours';
+import { parse, differenceInMinutes, format, isValid, parseISO } from 'date-fns';
 
 export interface RawAttendanceRow {
   employeeNumber: string;
@@ -37,10 +37,56 @@ export interface ImportPreviewResult {
 export class AttendanceImportService {
   constructor(private db: Firestore, private companyId: string) {}
 
+  /**
+   * تحويل النصوص والأرقام إلى تاريخ موحد بصيغة YYYY-MM-DD
+   */
+  private normalizeDate(input: string): string | null {
+    if (!input) return null;
+    const clean = input.trim();
+    
+    // 1. محاولة كونه تاريخ ISO (2026-01-01)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) return clean;
+    
+    // 2. محاولة كونه تنسيق إكسيل التسلسلي (الذي يظهر كأرقام 45000)
+    // أو الأرقام التي تظهر في الصورة (9498)
+    const num = Number(clean);
+    if (!isNaN(num) && num > 0) {
+      // إكسيل يبدأ الترقيم من 1899-12-30
+      const date = new Date(1899, 12, 30);
+      date.setDate(date.getDate() + num);
+      if (isValid(date)) return format(date, 'yyyy-MM-dd');
+    }
+
+    // 3. محاولة استخدام parseISO من date-fns
+    const parsed = parseISO(clean);
+    if (isValid(parsed)) return format(parsed, 'yyyy-MM-dd');
+
+    // 4. محاولة التنسيقات الشائعة (DD/MM/YYYY)
+    const commonFormats = ['dd/MM/yyyy', 'MM/dd/yyyy', 'dd-MM-yyyy', 'yyyy/MM/dd'];
+    for (const f of commonFormats) {
+      const p = parse(clean, f, new Date());
+      if (isValid(p)) return format(p, 'yyyy-MM-dd');
+    }
+
+    return null;
+  }
+
   private parseFlexibleTime(timeStr: string | undefined): Date | null {
     if (!timeStr || typeof timeStr !== 'string' || !timeStr.trim()) return null;
     const cleanTime = timeStr.trim();
-    const formats = ['HH:mm', 'H:mm', 'HH:mm:ss', 'H:mm:ss'];
+    
+    // دعم الأرقام العشرية التي قد يرسلها إكسيل للوقت أحياناً
+    const num = Number(cleanTime);
+    if (!isNaN(num) && num > 0 && num < 1) {
+      const totalSeconds = Math.round(num * 86400);
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const date = new Date();
+      date.setHours(hours, minutes, 0, 0);
+      return date;
+    }
+
+    const formats = ['HH:mm', 'H:mm', 'HH:mm:ss', 'H:mm:ss', 'hh:mm a', 'h:mm a'];
     for (const f of formats) {
       const parsed = parse(cleanTime, f, new Date());
       if (isValid(parsed)) return parsed;
@@ -58,7 +104,13 @@ export class AttendanceImportService {
     const summary = { total: rows.length, valid: 0, invalid: 0, present: 0, late: 0, holiday: 0 };
 
     rows.forEach((row, index) => {
-      if (!row.employeeNumber || !row.date) return;
+      const normalizedDate = this.normalizeDate(row.date);
+      
+      if (!row.employeeNumber || !normalizedDate) {
+        errors.push({ row: index + 2, message: `بيانات ناقصة أو تاريخ غير صالح: ${row.date || '---'}` });
+        summary.invalid++;
+        return;
+      }
 
       const emp = employees.find(e => e.employeeNumber === row.employeeNumber);
       if (!emp) {
@@ -67,18 +119,12 @@ export class AttendanceImportService {
         return;
       }
 
-      const dateObj = new Date(row.date);
-      if (isNaN(dateObj.getTime())) {
-        errors.push({ row: index + 2, message: `تاريخ غير صالح: ${row.date || '---'}` });
-        summary.invalid++;
-        return;
-      }
-
+      const dateObj = parseISO(normalizedDate);
       const isArch = emp.departmentName?.toLowerCase().includes('arch') || false;
       const schedule = isArch ? workSettings.architectural : workSettings.general;
       const dayName = format(dateObj, 'EEEE') as DayOfWeek;
       const isWeekend = workSettings.holidays.includes(dayName);
-      const isPublicHoliday = workSettings.publicHolidays.some(h => h.date === row.date);
+      const isPublicHoliday = workSettings.publicHolidays.some(h => h.date === normalizedDate);
 
       let status: AttendanceRecord['status'] = 'present';
       let totalMinutesLate = 0;
@@ -93,22 +139,18 @@ export class AttendanceImportService {
         const isDoubleShift = !!schedule.eveningStartTime && schedule.eveningStartTime !== "00:00" && schedule.eveningStartTime !== "";
 
         if (isDoubleShift) {
-          // ذكاء الفترتين: فحص كل فترة على حدة
           if (actualIn1) {
             const expectedIn1 = this.parseFlexibleTime(schedule.morningStartTime)!;
             const diff = differenceInMinutes(actualIn1, expectedIn1);
             if (diff > (schedule.bufferMinutes || 0)) totalMinutesLate += diff;
-          } else {
-            // غياب جزئي عن الفترة الأولى
           }
-
           if (actualIn2) {
             const expectedIn2 = this.parseFlexibleTime(schedule.eveningStartTime)!;
             const diff = differenceInMinutes(actualIn2, expectedIn2);
             if (diff > (schedule.bufferMinutes || 0)) totalMinutesLate += diff;
           }
+          if (!actualIn1 && !actualIn2) status = 'absent';
         } else {
-          // ذكاء الفترة الواحدة: البحث عن أي بصمة دخول متاحة
           const bestEntry = actualIn1 || actualIn2;
           if (bestEntry) {
             const expectedIn = this.parseFlexibleTime(schedule.morningStartTime)!;
@@ -133,7 +175,7 @@ export class AttendanceImportService {
         employeeId: emp.id,
         employeeName: emp.fullName,
         employeeNumber: emp.employeeNumber,
-        date: row.date,
+        date: normalizedDate,
         checkIn: row.checkIn || '',
         checkOut: row.checkOut || '',
         checkIn2: row.checkIn2 || '',
