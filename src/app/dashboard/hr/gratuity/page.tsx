@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -190,8 +189,8 @@ export default function GratuityCalculatorPage() {
                 <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
                    <CardHeader className="bg-slate-50 border-b p-10 flex flex-row items-center justify-between">
                       <div>
-                         <CardTitle className="text-2xl font-black font-headline">{isRtl ? 'تفصيل المستحقات القانونية' : 'Legal Breakdown'}</CardTitle>
-                         <CardDescription className="font-bold italic">{isRtl ? 'تحليل البنود وفقاً لقانون العمل' : 'Itemized analysis based on Labor Law'}</CardDescription>
+                         <CardTitle className="text-2xl font-black font-headline">{isRtl ? 'تفصيل المستحقات القانونية' : 'Breakdown'}</CardTitle>
+                         <CardDescription className="font-bold italic">{isRtl ? 'تحليل البنود وفقاً لقانون العمل' : 'Itemized analysis'}</CardDescription>
                       </div>
                       <Gavel className="h-10 w-10 text-primary/20" />
                    </CardHeader>
@@ -200,19 +199,19 @@ export default function GratuityCalculatorPage() {
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                          <div className="space-y-6">
                             <h4 className="font-black text-sm text-primary uppercase border-b pb-2 flex items-center gap-2">
-                               <ShieldCheck className="h-4 w-4" /> {isRtl ? 'مكافأة الخدمة (المواد 51-53)' : 'Gratuity (Art 51-53)'}
+                               <ShieldCheck className="h-4 w-4" /> {isRtl ? 'مكافأة الخدمة (المواد 51-53)' : 'Gratuity'}
                             </h4>
                             <div className="space-y-4">
                                <div className="flex justify-between items-center text-sm font-bold">
-                                  <span className="text-slate-500">{isRtl ? 'رصيد المكافأة المتراكم' : 'Accumulated Gratuity'}</span>
+                                  <span className="text-slate-500">{isRtl ? 'رصيد المكافأة المتراكم' : 'Base'}</span>
                                   <span>{result.baseGratuity.toLocaleString()} KWD</span>
                                </div>
                                <div className="flex justify-between items-center text-sm font-black p-3 bg-amber-50 rounded-xl border border-amber-100 text-amber-800">
-                                  <span>{isRtl ? 'عامل التدرج (سنوات الخدمة)' : 'Art 53 Tier Factor'}</span>
+                                  <span>{isRtl ? 'عامل التدرج' : 'Factor'}</span>
                                   <span>x {(result.resignationFactor).toFixed(2)}</span>
                                </div>
                                <div className="flex justify-between items-center text-lg pt-2 border-t font-black text-emerald-600">
-                                  <span>{isRtl ? 'صافي المكافأة المستحقة' : 'Net Gratuity'}</span>
+                                  <span>{isRtl ? 'صافي المكافأة' : 'Net'}</span>
                                   <span>{result.finalGratuity.toLocaleString()} KWD</span>
                                </div>
                             </div>
@@ -224,14 +223,14 @@ export default function GratuityCalculatorPage() {
                             </h4>
                             <div className="space-y-4">
                                <div className="flex justify-between items-center text-sm font-bold">
-                                  <span className="text-slate-500">{isRtl ? 'رصيد الإجازات المستحق' : 'Accrued Leave Balance'}</span>
+                                  <span className="text-slate-500">{isRtl ? 'بدل الإجازات المستحق' : 'Leave Balance'}</span>
                                   <div className="text-end">
                                      <span className="font-black text-slate-800">{result.leaveBalancePay.toLocaleString()} KWD</span>
                                      <p className="text-[9px] text-muted-foreground font-bold">{result.accruedLeaveDays} {isRtl ? 'يوم' : 'Days'}</p>
                                   </div>
                                </div>
                                <div className="flex justify-between items-center text-sm font-bold">
-                                  <span className="text-slate-500">{isRtl ? 'بدل الإنذار (90 يوماً)' : 'Notice Indemnity'}</span>
+                                  <span className="text-slate-500">{isRtl ? 'بدل الإنذار' : 'Notice'}</span>
                                   <span className={cn("font-black", result.noticeIndemnity < 0 ? "text-rose-600" : "text-emerald-600")}>
                                      {result.noticeIndemnity.toLocaleString()} KWD
                                   </span>
@@ -242,7 +241,7 @@ export default function GratuityCalculatorPage() {
 
                       <div className="p-8 bg-slate-50 rounded-3xl border-2 space-y-4">
                          <h5 className="font-black text-xs text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                            <History className="h-3 w-3" /> {isRtl ? 'ملاحظات التدقيق القانوني' : 'Legal Audit Logs'}
+                            <History className="h-3 w-3" /> {isRtl ? 'ملاحظات التدقيق القانوني' : 'Legal Notes'}
                          </h5>
                          <div className="space-y-2">
                             {result.legalNotes.map((note, i) => (

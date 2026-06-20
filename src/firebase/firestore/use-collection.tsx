@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
@@ -7,7 +6,7 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 /**
- * Hook محسن لجلب المجموعات مع معالجة ذكية للأخطاء ومنع حلقات التكرار.
+ * Hook محسن لجلب المجموعات مع معالجة ذكية للأخطاء ومنع الحلقات اللانهائية.
  */
 export function useCollection<T = DocumentData>(query: Query<T> | null) {
   const [data, setData] = useState<T[]>([]);
@@ -23,6 +22,7 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
         lastQueryRef.current = null;
         setData([]);
         setLoading(false);
+        setError(null);
       }
       return;
     }
@@ -35,40 +35,46 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
     // 3. تحديث المرجع وبدء التحميل
     lastQueryRef.current = query;
     setLoading(true);
+    setError(null);
 
-    // 4. تنظيف المراقب السابق
+    // 4. تنظيف المراقب السابق قبل بدء الجديد
     if (unsubscribeRef.current) {
       unsubscribeRef.current();
     }
 
-    const unsubscribe = onSnapshot(
-      query,
-      (snapshot) => {
-        const items = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as unknown as T[];
-        setData(items);
-        setLoading(false);
-        setError(null);
-      },
-      (serverError: FirestoreError) => {
-        setLoading(false);
-        setError(serverError);
-        
-        if (serverError.code === 'permission-denied') {
-          const permissionError = new FirestorePermissionError({
-            path: 'collection_query',
-            operation: 'list',
-          } satisfies SecurityRuleContext);
-          errorEmitter.emit('permission-error', permissionError);
-        } else {
-          console.error("Firestore Error:", serverError.code, serverError.message);
+    try {
+      const unsubscribe = onSnapshot(
+        query,
+        (snapshot) => {
+          const items = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          })) as unknown as T[];
+          setData(items);
+          setLoading(false);
+          setError(null);
+        },
+        (serverError: FirestoreError) => {
+          setLoading(false);
+          setError(serverError);
+          
+          if (serverError.code === 'permission-denied') {
+            const permissionError = new FirestorePermissionError({
+              path: 'collection_query',
+              operation: 'list',
+            } satisfies SecurityRuleContext);
+            errorEmitter.emit('permission-error', permissionError);
+          } else {
+            console.error("Firestore Query Error:", serverError.code, serverError.message);
+          }
         }
-      }
-    );
+      );
 
-    unsubscribeRef.current = unsubscribe;
+      unsubscribeRef.current = unsubscribe;
+    } catch (e: any) {
+      setLoading(false);
+      setError(e);
+    }
 
     return () => {
       if (unsubscribeRef.current) {

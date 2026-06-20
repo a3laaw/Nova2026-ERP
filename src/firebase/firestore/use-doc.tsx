@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
@@ -22,6 +21,7 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<T> | null) {
         lastRef.current = null;
         setData(null);
         setLoading(false);
+        setError(null);
       }
       return;
     }
@@ -32,35 +32,39 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<T> | null) {
 
     lastRef.current = docRef;
     setLoading(true);
+    setError(null);
 
     if (unsubscribeRef.current) {
       unsubscribeRef.current();
     }
 
-    const unsubscribe = onSnapshot(
-      docRef,
-      (snapshot) => {
-        setData(snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as T) : null);
-        setLoading(false);
-        setError(null);
-      },
-      (serverError: FirestoreError) => {
-        setLoading(false);
-        setError(serverError);
-        
-        if (serverError.code === 'permission-denied') {
-          const permissionError = new FirestorePermissionError({
-            path: docRef.path || 'document_reference',
-            operation: 'get',
-          } satisfies SecurityRuleContext);
-          errorEmitter.emit('permission-error', permissionError);
-        } else {
-          console.error("Firestore Error:", serverError.code, serverError.message);
+    try {
+      const unsubscribe = onSnapshot(
+        docRef,
+        (snapshot) => {
+          setData(snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as T) : null);
+          setLoading(false);
+          setError(null);
+        },
+        (serverError: FirestoreError) => {
+          setLoading(false);
+          setError(serverError);
+          
+          if (serverError.code === 'permission-denied') {
+            const permissionError = new FirestorePermissionError({
+              path: docRef.path || 'document_reference',
+              operation: 'get',
+            } satisfies SecurityRuleContext);
+            errorEmitter.emit('permission-error', permissionError);
+          }
         }
-      }
-    );
+      );
 
-    unsubscribeRef.current = unsubscribe;
+      unsubscribeRef.current = unsubscribe;
+    } catch (e: any) {
+      setLoading(false);
+      setError(e);
+    }
 
     return () => {
       if (unsubscribeRef.current) {
