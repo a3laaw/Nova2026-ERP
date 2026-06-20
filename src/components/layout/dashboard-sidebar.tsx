@@ -180,27 +180,27 @@ export function DashboardSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="border-e-0 bg-transparent shadow-none" side={isRtl ? 'right' : 'left'}>
-      <SidebarHeader className="p-8 flex flex-row items-center justify-center lg:justify-start gap-4">
-        <div className="flex h-12 w-12 items-center justify-center shrink-0 rounded-[1.25rem] bg-gradient-to-br from-[#FFB000] to-[#e87c24] text-white shadow-xl shadow-orange-500/30 rotate-3 transition-transform hover:rotate-0">
-          <Sparkles className="h-6 w-6" />
-        </div>
+      <SidebarHeader className="p-8 flex flex-row items-center justify-center lg:justify-between gap-4">
         {!isCollapsed && (
           <div className={cn("flex flex-col text-start overflow-hidden animate-in fade-in slide-in-from-right-4 duration-500")}>
-            <span className="font-headline font-black text-2xl leading-none text-[#1e1b4b]">NovaFlow</span>
-            <span className="text-[9px] uppercase font-black tracking-[0.2em] text-[#e87c24] mt-1 truncate">Enterprise ERP</span>
+            <span className="font-headline font-black text-3xl leading-none text-[#1e1b4b]">NovaFlow</span>
+            <span className="text-[10px] uppercase font-black tracking-[0.2em] text-[#e87c24] mt-1.5 truncate">ENTERPRISE ERP</span>
           </div>
         )}
+        <div className="flex h-14 w-14 items-center justify-center shrink-0 rounded-[1.5rem] bg-gradient-to-br from-[#FFB000] to-[#e87c24] text-white shadow-2xl shadow-orange-500/40 rotate-3 transition-transform hover:rotate-0">
+          <Sparkles className="h-8 w-8" />
+        </div>
       </SidebarHeader>
       
-      <SidebarContent className="px-4">
+      <SidebarContent className="px-6 scrollbar-hide">
         <SidebarGroup>
           {!isCollapsed && (
-            <SidebarGroupLabel className="text-[#1e1b4b]/40 font-black px-4 py-6 text-start uppercase text-[10px] tracking-widest">
+            <SidebarGroupLabel className="text-[#1e1b4b]/30 font-black px-4 py-8 text-start uppercase text-[11px] tracking-widest">
               {isRtl ? 'القائمة الرئيسية' : 'Main Menu'}
             </SidebarGroupLabel>
           )}
           <SidebarGroupContent>
-            <SidebarMenu className="space-y-2">
+            <SidebarMenu className="space-y-4">
               {menuItems.map((item) => (
                 <SidebarItemRenderer 
                   key={item.title} 
@@ -214,13 +214,13 @@ export function DashboardSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup className="mt-auto">
+        <SidebarGroup className="mt-8 mb-10">
           {!isCollapsed && (
-            <SidebarGroupLabel className="text-[#1e1b4b]/40 font-black px-4 py-6 text-start uppercase text-[10px] tracking-widest">
+            <SidebarGroupLabel className="text-[#1e1b4b]/30 font-black px-4 py-6 text-start uppercase text-[11px] tracking-widest border-t border-orange-100/50 pt-8">
               {isRtl ? 'الإعدادات' : 'System Settings'}
             </SidebarGroupLabel>
           )}
-          <SidebarMenu className="space-y-2">
+          <SidebarMenu className="space-y-4">
             {settingsItems.map((item) => (
               <SidebarItemRenderer 
                 key={item.title} 
@@ -234,9 +234,9 @@ export function DashboardSidebar() {
         </SidebarGroup>
       </SidebarContent>
       
-      <SidebarFooter className="p-8 text-center">
-        <div className="flex flex-col items-center gap-3">
-           <Badge variant="outline" className="bg-white/50 text-[9px] font-black uppercase tracking-widest text-[#e87c24] border-[#e87c24]/20 px-3 py-1">
+      <SidebarFooter className="p-8 text-center bg-white/5 border-t border-orange-100/30">
+        <div className="flex flex-col items-center gap-2">
+           <Badge variant="outline" className="bg-white/50 text-[9px] font-black uppercase tracking-widest text-[#e87c24] border-[#e87c24]/20 px-3">
              Premium Edition
            </Badge>
            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
@@ -263,16 +263,15 @@ function SidebarItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
     }, 150);
   };
 
-  // تحقق مما إذا كان المسار الحالي يبدأ برابط العنصر
   const isActive = pathname === item.url || (item.url !== '/dashboard' && pathname.startsWith(item.url));
 
-  // النمط النشط: بطاقة بيضاء فاتحة مع ظلال برتقالية ناعمة
-  const activeStyle = "bg-white text-[#1e1b4b] shadow-2xl shadow-orange-500/10 border border-orange-100/50 scale-[1.02] font-black";
+  // التصميم النشط: بطاقة بيضاء بارزة كما في الصورة
+  const activeCardStyle = "bg-white text-[#1e1b4b] shadow-2xl shadow-orange-500/10 border border-orange-100/50 scale-[1.02] font-black";
   
-  // النمط غير النشط: شفاف مع أيقونات برتقالية ذهبية
-  const inactiveStyle = "text-[#1e1b4b] hover:bg-orange-50/50 transition-all duration-300";
+  // التصميم غير النشط: أيقونة برتقالية وخلفية شفافة
+  const inactiveCardStyle = "text-[#1e1b4b] hover:bg-orange-50/50 transition-all duration-300";
   
-  // ألوان الأيقونات المعكوسة
+  // لون الأيقونة: داكن للنشط، برتقالي ذهبي لغير النشط
   const iconColor = isActive ? "text-[#1e1b4b]" : "text-[#e87c24]";
 
   if (isCollapsed) {
@@ -289,7 +288,7 @@ function SidebarItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                       onMouseLeave={handleMouseLeave}
                       className={cn(
                         "flex h-14 w-14 items-center justify-center rounded-[1.25rem] transition-all duration-500 outline-none",
-                        isActive ? activeStyle : inactiveStyle
+                        isActive ? activeCardStyle : inactiveCardStyle
                       )}
                     >
                       <item.icon className={cn("h-6 w-6 shrink-0", iconColor)} />
@@ -326,7 +325,7 @@ function SidebarItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                   isActive={isActive}
                   className={cn(
                     "flex h-14 w-14 items-center justify-center rounded-[1.25rem] transition-all duration-500",
-                    isActive ? activeStyle : inactiveStyle
+                    isActive ? activeCardStyle : inactiveCardStyle
                   )}
                 >
                   <Link href={item.url}>
@@ -347,7 +346,7 @@ function SidebarItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
   }
 
   return (
-    <SidebarMenuItem className="px-2 py-0.5">
+    <SidebarMenuItem className="px-2 py-1">
       {item.subItems ? (
         <Collapsible asChild className="group/collapsible" defaultOpen={isActive}>
           <div>
@@ -355,13 +354,13 @@ function SidebarItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
               <SidebarMenuButton
                 isActive={isActive}
                 className={cn(
-                  "transition-all duration-500 rounded-[1.5rem] h-auto py-6 px-6 group",
-                  isActive ? activeStyle : inactiveStyle
+                  "transition-all duration-500 rounded-[1.5rem] h-auto py-7 px-6 group",
+                  isActive ? activeCardStyle : inactiveCardStyle
                 )}
               >
                 <div className="flex items-center justify-between w-full h-full">
                   <div className="flex items-center gap-6 flex-1 min-w-0">
-                    <item.icon className={cn("h-6 w-6 shrink-0 transition-transform group-hover:scale-110", iconColor)} />
+                    <item.icon className={cn("h-7 w-7 shrink-0 transition-transform group-hover:scale-110", iconColor)} />
                     <span className="text-start text-base truncate font-black">{item.title}</span>
                   </div>
                   <ChevronLeft className={cn(
@@ -373,7 +372,7 @@ function SidebarItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
               </SidebarMenuButton>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <SidebarMenuSub className="mx-6 mt-2 mb-4 space-y-1.5 border-none">
+              <SidebarMenuSub className="mx-6 mt-3 mb-4 space-y-2 border-none">
                 {item.subItems.map((sub: any) => {
                   const isSubActive = pathname === sub.url;
                   return (
@@ -403,12 +402,12 @@ function SidebarItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
           asChild
           isActive={isActive}
           className={cn(
-            "transition-all duration-500 rounded-[1.5rem] h-auto py-6 px-6 group",
-            isActive ? activeStyle : inactiveStyle
+            "transition-all duration-500 rounded-[1.5rem] h-auto py-7 px-6 group",
+            isActive ? activeCardStyle : inactiveCardStyle
           )}
         >
           <Link href={item.url} className="flex items-center gap-6">
-            <item.icon className={cn("h-6 w-6 shrink-0 transition-transform group-hover:scale-110", iconColor)} />
+            <item.icon className={cn("h-7 w-7 shrink-0 transition-transform group-hover:scale-110", iconColor)} />
             <span className="flex-1 text-start text-base truncate font-black">{item.title}</span>
           </Link>
         </SidebarMenuButton>
