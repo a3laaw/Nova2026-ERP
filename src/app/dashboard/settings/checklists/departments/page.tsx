@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -39,19 +40,33 @@ export default function DepartmentsPage() {
   const [deptForm, setDeptForm] = useState<Partial<Department>>({ name: '', nameEn: '', description: '' });
   const [jobForm, setJobForm] = useState<Partial<Job>>({ name: '', nameEn: '', roleId: '' });
 
-  const deptService = useMemo(() => db && companyId ? new DepartmentService(db, companyId) : null, [db, companyId]);
-  const deptsQuery = useMemo(() => companyId && db ? query(collection(db, paths.departments(companyId)), orderBy('order')) : null, [db, companyId]);
-  const jobsQuery = useMemo(() => companyId && db && selectedDept?.id ? query(collection(db, paths.jobs(companyId, selectedDept.id)), orderBy('order')) : null, [db, companyId, selectedDept]);
-  const rolesQuery = useMemo(() => companyId && db ? query(collection(db, paths.roles(companyId)), orderBy('order')) : null, [db, companyId]);
+  // ضمان استقرار الخدمة لضمان عمل دوال الحذف
+  const deptService = useMemo(() => {
+    if (!db || !companyId) return null;
+    return new DepartmentService(db, companyId);
+  }, [db, companyId]);
+
+  const deptsQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.departments(companyId)), orderBy('order')) : null, 
+  [db, companyId]);
+
+  const jobsQuery = useMemo(() => 
+    companyId && db && selectedDept?.id ? query(collection(db, paths.jobs(companyId, selectedDept.id)), orderBy('order')) : null, 
+  [db, companyId, selectedDept]);
+
+  const rolesQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.roles(companyId)), orderBy('order')) : null, 
+  [db, companyId]);
 
   const { data: departments, loading: deptsLoading } = useCollection<Department>(deptsQuery);
   const { data: jobs, loading: jobsLoading } = useCollection<Job>(jobsQuery);
   const { data: roles } = useCollection<Role>(rolesQuery);
 
-  const handleSaveDept = async () => {
+  const handleSaveDept = () => {
     if (!deptService || !deptForm.name) return;
     setLoadingAction('dept');
     const data = { ...deptForm, order: departments?.length || 0, isActive: true, name: deptForm.name || '', nameEn: deptForm.nameEn || '' };
+    
     if (deptForm.id) deptService.updateDepartment(deptForm.id, data);
     else deptService.addDepartment(data as any);
     
@@ -63,14 +78,15 @@ export default function DepartmentsPage() {
 
   const handleDeleteDept = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (!deptService || !confirm(t('confirmDelete'))) return;
-    // تنفيذ غير محظور لسرعة الاستجابة
-    deptService.deleteDepartment(id);
-    if (selectedDept?.id === id) setSelectedDept(null);
-    toast({ title: t('deleted') });
+    if (!deptService) return;
+    if (window.confirm(t('confirmDelete'))) {
+      deptService.deleteDepartment(id);
+      if (selectedDept?.id === id) setSelectedDept(null);
+      toast({ title: t('deleted') });
+    }
   };
 
-  const handleSaveJob = async () => {
+  const handleSaveJob = () => {
     if (!deptService || !selectedDept?.id || !jobForm.name) return;
     setLoadingAction('job');
     const selectedRole = roles?.find(r => r.id === jobForm.roleId);
@@ -82,6 +98,7 @@ export default function DepartmentsPage() {
       name: jobForm.name || '', 
       nameEn: jobForm.nameEn || '' 
     };
+    
     if (jobForm.id) deptService.updateJob(selectedDept.id, jobForm.id, data);
     else deptService.addJob(selectedDept.id, data as any);
     
@@ -93,9 +110,11 @@ export default function DepartmentsPage() {
 
   const handleDeleteJob = (e: React.MouseEvent, jobId: string) => {
     e.stopPropagation();
-    if (!deptService || !selectedDept?.id || !confirm(t('confirmDelete'))) return;
-    deptService.deleteJob(selectedDept.id, jobId);
-    toast({ title: t('deleted') });
+    if (!deptService || !selectedDept?.id) return;
+    if (window.confirm(t('confirmDelete'))) {
+      deptService.deleteJob(selectedDept.id, jobId);
+      toast({ title: t('deleted') });
+    }
   };
 
   return (
