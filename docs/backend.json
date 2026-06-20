@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Client": {
@@ -5,68 +6,39 @@
       "description": "الجذر التجاري للعميل في النظام، يحتوي على بيانات التواصل والعنوان والحالة التشغيلية.",
       "type": "object",
       "properties": {
-        "fileNumber": { "type": "string", "description": "رقم الملف المسلسل" },
-        "nameAr": { "type": "string", "description": "الاسم باللغة العربية" },
+        "fileNumber": { "type": "string" },
+        "nameAr": { "type": "string" },
         "nameEn": { "type": "string" },
         "mobile": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
-        "civilId": { "type": "string" },
-        "status": { "type": "string", "enum": ["prospective", "registered", "contracted", "inactive"] },
-        "transactionCounter": { "type": "number", "description": "عدد المعاملات الفنية المرتبطة بالعميل" },
-        "assignedEngineerId": { "type": "string" },
+        "status": { "type": "string" },
         "companyId": { "type": "string" }
       },
       "required": ["fileNumber", "nameAr", "mobile", "status", "companyId"]
     },
-    "ClientHistory": {
-      "title": "Client Interaction History",
-      "description": "سجل الأحداث والأنشطة المرتبطة بالعميل.",
+    "Transaction": {
+      "title": "Technical Transaction",
+      "description": "المعاملة الفنية المفتوحة للعميل، ترتبط بمسار فني محدد.",
       "type": "object",
       "properties": {
+        "transactionNumber": { "type": "string" },
         "clientId": { "type": "string" },
+        "activityTypeId": { "type": "string" },
+        "serviceId": { "type": "string" },
+        "subServiceId": { "type": "string" },
+        "status": { "type": "string", "enum": ["new", "in-progress", "completed", "on-hold", "cancelled"] },
+        "companyId": { "type": "string" }
+      },
+      "required": ["transactionNumber", "clientId", "activityTypeId", "serviceId", "subServiceId", "status", "companyId"]
+    },
+    "TimelineEvent": {
+      "title": "Transaction Timeline Event",
+      "description": "حدث زمني يوثق حركة المعاملة.",
+      "type": "object",
+      "properties": {
         "type": { "type": "string" },
         "content": { "type": "string" },
         "userName": { "type": "string" },
         "companyId": { "type": "string" }
-      }
-    },
-    "Employee": {
-      "title": "Employee Record",
-      "description": "بيانات الموظف الشاملة لأغراض الموارد البشرية والرواتب.",
-      "type": "object",
-      "properties": {
-        "employeeNumber": { "type": "string" },
-        "fullName": { "type": "string" },
-        "civilId": { "type": "string" },
-        "basicSalary": { "type": "number" },
-        "status": { "type": "string", "enum": ["active", "on-leave", "terminated"] },
-        "companyId": { "type": "string" }
-      },
-      "required": ["employeeNumber", "fullName", "civilId", "basicSalary"]
-    },
-    "Supplier": {
-      "title": "Supplier",
-      "description": "بيانات الموردين المعتمدين.",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string" },
-        "category": { "type": "string" },
-        "contactPerson": { "type": "string" },
-        "phone": { "type": "string" },
-        "email": { "type": "string" },
-        "rating": { "type": "number" }
-      }
-    },
-    "PurchaseOrder": {
-      "title": "Purchase Order",
-      "description": "أمر شراء صادر لمورد.",
-      "type": "object",
-      "properties": {
-        "poNumber": { "type": "string" },
-        "supplierId": { "type": "string" },
-        "projectId": { "type": "string" },
-        "totalAmount": { "type": "number" },
-        "status": { "type": "string", "enum": ["draft", "sent", "confirmed", "received", "cancelled"] }
       }
     }
   },
@@ -74,13 +46,8 @@
     "providers": ["password"]
   },
   "firestore": {
-    "/companies/{companyId}/clients/{clientId}": { "schema": "#/entities/Client", "description": "سجلات العملاء الرئيسية" },
-    "/companies/{companyId}/clients/{clientId}/history/{hId}": { "schema": "#/entities/ClientHistory", "description": "سجل أنشطة العميل" },
-    "/companies/{companyId}/employees/{empId}": { "schema": "#/entities/Employee", "description": "سجلات الموظفين" },
-    "/companies/{companyId}/suppliers/{supId}": { "schema": "#/entities/Supplier", "description": "قاعدة بيانات الموردين" },
-    "/companies/{companyId}/purchaseOrders/{poId}": { "schema": "#/entities/PurchaseOrder", "description": "أوامر الشراء" },
-    "/companies/{companyId}/payroll/{payId}": { "description": "سجلات الرواتب الشهرية" },
-    "/companies/{companyId}/leaveRequests/{leaveId}": { "description": "طلبات الإجازات" },
-    "/companies/{companyId}/permissionRequests/{permId}": { "description": "طلبات الاستئذان" }
+    "/companies/{companyId}/clients/{clientId}": { "schema": "#/entities/Client", "description": "سجلات العملاء" },
+    "/companies/{companyId}/transactions/{tId}": { "schema": "#/entities/Transaction", "description": "المعاملات الفنية" },
+    "/companies/{companyId}/transactions/{tId}/timelineEvents/{eId}": { "schema": "#/entities/TimelineEvent", "description": "السجل الزمني للمعاملة" }
   }
 }
