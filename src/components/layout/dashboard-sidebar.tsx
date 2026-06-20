@@ -35,6 +35,7 @@ import {
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
 import { usePermissions } from "@/hooks/use-permissions"
+import { Badge } from "@/components/ui/badge"
 import {
   Sidebar,
   SidebarContent,
