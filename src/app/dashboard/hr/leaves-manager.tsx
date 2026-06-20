@@ -1,13 +1,14 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   CalendarDays, Plus, Loader2, CheckCircle2, 
-  XCircle, ArrowRight, MessageSquare, Save, Clock
+  XCircle, ArrowRight, MessageSquare, Save, Clock,
+  Calendar, Hash
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -22,7 +23,9 @@ import { cn } from '@/lib/utils';
 import { paths } from '@/firebase/multi-tenant';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { SmartDateInput } from '@/components/ui/smart-date-input';
 
 export function LeavesManager() {
   const { globalUser, user } = useAuthContext();
@@ -34,8 +37,15 @@ export function LeavesManager() {
   const companyId = globalUser?.companyId;
 
   const [processingLeave, setProcessingLeave] = useState<LeaveRequest | null>(null);
-  const [adminComment, setAdminComment] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // نموذج التعديل السريع للمدير
+  const [editForm, setEditForm] = useState({
+    comment: '',
+    startDate: '',
+    endDate: '',
+    workingDays: 0
+  });
 
   const leaveService = useMemo(() => 
     db && companyId ? new LeaveService(db, companyId, permissions) : null, 
@@ -46,16 +56,30 @@ export function LeavesManager() {
   [db, companyId]);
   const { data: leaves, loading } = useCollection<LeaveRequest>(leavesQuery);
 
+  // تحديث النموذج عند اختيار طلب معالجة
+  useEffect(() => {
+    if (processingLeave) {
+      setEditForm({
+        comment: '',
+        startDate: processingLeave.startDate,
+        endDate: processingLeave.endDate,
+        workingDays: processingLeave.workingDays
+      });
+    }
+  }, [processingLeave]);
+
   const handleAction = async (status: 'approved' | 'rejected') => {
     if (!leaveService || !user || !processingLeave) return;
     setIsProcessing(true);
     try {
       await leaveService.updateRequestStatus(processingLeave.id!, status, user.uid, {
-        comment: adminComment
+        comment: editForm.comment,
+        startDate: editForm.startDate,
+        endDate: editForm.endDate,
+        workingDays: editForm.workingDays
       });
       toast({ title: t('saved') });
       setProcessingLeave(null);
-      setAdminComment("");
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error') });
     } finally {
@@ -158,13 +182,13 @@ export function LeavesManager() {
          </CardContent>
       </Card>
 
-      {/* نافذة معالجة الطلب الذكية */}
+      {/* نافذة معالجة الطلب السريعة (Quick Process) */}
       <Dialog open={!!processingLeave} onOpenChange={(open) => !open && setProcessingLeave(null)}>
-        <DialogContent className="rounded-[2.5rem] max-w-xl p-0 overflow-hidden" dir={dir}>
+        <DialogContent className="rounded-[2.5rem] max-w-2xl p-0 overflow-hidden" dir={dir}>
            <div className="bg-primary/5 p-8 border-b">
               <DialogTitle className="text-start font-black text-2xl flex items-center gap-3">
                  <Clock className="h-7 w-7 text-primary" />
-                 {isRtl ? 'اتخاذ قرار بشأن الإجازة' : 'Process Leave Request'}
+                 {isRtl ? 'اتخاذ قرار مع إمكانية التعديل' : 'Process with Edit Capability'}
               </DialogTitle>
               <DialogDescription className="text-start font-bold mt-2">
                  {isRtl ? `موظف: ${processingLeave?.userName}` : `Employee: ${processingLeave?.userName}`}
@@ -172,14 +196,33 @@ export function LeavesManager() {
            </div>
            
            <div className="p-8 space-y-6 text-start">
-              <div className="p-4 rounded-2xl bg-slate-50 border-2 border-white shadow-inner grid grid-cols-2 gap-4">
-                 <div className="space-y-1">
-                    <Label className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'الفترة المطلوبة' : 'Period'}</Label>
-                    <p className="text-xs font-black">{processingLeave?.startDate} → {processingLeave?.endDate}</p>
+              {/* قسم التعديل السريع للمدير */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-6 rounded-3xl border-2 border-dashed border-primary/10">
+                 <div className="space-y-2">
+                    <Label className="text-[10px] font-black text-slate-400 uppercase flex items-center gap-2">
+                       <Calendar className="h-3 w-3" /> {isRtl ? 'تعديل تاريخ البدء' : 'Edit Start Date'}
+                    </Label>
+                    <SmartDateInput value={editForm.startDate} onChange={v => setEditForm({...editForm, startDate: v})} />
                  </div>
-                 <div className="space-y-1">
-                    <Label className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'أيام العمل' : 'Work Days'}</Label>
-                    <p className="text-xs font-black text-primary">{processingLeave?.workingDays} {isRtl ? 'يوم' : 'Days'}</p>
+                 <div className="space-y-2">
+                    <Label className="text-[10px] font-black text-slate-400 uppercase flex items-center gap-2">
+                       <Calendar className="h-3 w-3" /> {isRtl ? 'تعديل تاريخ العودة' : 'Edit Return Date'}
+                    </Label>
+                    <SmartDateInput value={editForm.endDate} onChange={v => setEditForm({...editForm, endDate: v})} />
+                 </div>
+                 <div className="space-y-2 md:col-span-2">
+                    <Label className="text-[10px] font-black text-slate-400 uppercase flex items-center gap-2">
+                       <Hash className="h-3 w-3" /> {isRtl ? 'أيام العمل الصافية (المخصومة)' : 'Net Working Days (Deducted)'}
+                    </Label>
+                    <Input 
+                      type="number" 
+                      value={editForm.workingDays} 
+                      onChange={e => setEditForm({...editForm, workingDays: Number(e.target.value)})}
+                      className="h-12 rounded-xl border-2 font-black text-primary"
+                    />
+                    <p className="text-[9px] text-muted-foreground font-bold italic">
+                       {isRtl ? '* ملاحظة: يمكنك تغيير عدد الأيام يدوياً لتجاوز حساب النظام التلقائي.' : '* Note: You can manually override days to bypass auto-calculation.'}
+                    </p>
                  </div>
               </div>
 
@@ -189,9 +232,9 @@ export function LeavesManager() {
                     {isRtl ? 'ملاحظات الإدارة / سبب الرفض' : 'Admin Notes / Reason'}
                  </Label>
                  <Textarea 
-                   value={adminComment} 
-                   onChange={(e) => setAdminComment(e.target.value)}
-                   className="min-h-[120px] rounded-2xl border-2 p-4 text-sm"
+                   value={editForm.comment} 
+                   onChange={(e) => setEditForm({...editForm, comment: e.target.value})}
+                   className="min-h-[100px] rounded-2xl border-2 p-4 text-sm"
                    placeholder={isRtl ? "اكتب هنا أي ملاحظات تود إبلاغ الموظف بها..." : "Enter any notes for the employee..."}
                  />
               </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { 
   ArrowRight, Loader2, CheckCircle2, XCircle,
   Calendar, User, FileText, AlertTriangle,
-  History, ShieldCheck, MessageSquare
+  History, ShieldCheck, MessageSquare, Hash
 } from "lucide-react";
 import { useFirestore, useDoc } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -20,9 +20,10 @@ import { LeaveService } from '@/services/leave-service';
 import { LeaveRequest } from '@/types/hr';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { LeaveTiersDisplay } from '@/components/hr/leave-tiers-display';
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { SmartDateInput } from '@/components/ui/smart-date-input';
 
 export default function LeaveDetailsPage() {
   const params = useParams();
@@ -35,7 +36,14 @@ export default function LeaveDetailsPage() {
   const isRtl = lang === 'ar';
 
   const [processing, setProcessing] = useState(false);
-  const [adminComment, setAdminComment] = useState("");
+  
+  // نموذج التعديل السريع
+  const [editForm, setEditForm] = useState({
+    comment: '',
+    startDate: '',
+    endDate: '',
+    workingDays: 0
+  });
 
   const companyId = globalUser?.companyId;
   const leaveService = useMemo(() => 
@@ -48,12 +56,26 @@ export default function LeaveDetailsPage() {
 
   const { data: leave, loading } = useDoc<LeaveRequest>(leaveRef);
 
+  useEffect(() => {
+    if (leave) {
+      setEditForm({
+        comment: leave.comment || '',
+        startDate: leave.startDate,
+        endDate: leave.endDate,
+        workingDays: leave.workingDays
+      });
+    }
+  }, [leave]);
+
   const handleAction = async (status: 'approved' | 'rejected') => {
     if (!leaveService || !user) return;
     setProcessing(true);
     try {
       await leaveService.updateRequestStatus(leaveId, status, user.uid, {
-        comment: adminComment
+        comment: editForm.comment,
+        startDate: editForm.startDate,
+        endDate: editForm.endDate,
+        workingDays: editForm.workingDays
       });
       toast({ title: t('saved') });
       router.push('/dashboard/hr/leaves');
@@ -116,23 +138,53 @@ export default function LeaveDetailsPage() {
                      </div>
                   </div>
 
-                  <div className="p-8 rounded-[2rem] bg-slate-50/50 border-2 border-slate-100 flex flex-col md:flex-row justify-between items-center gap-8">
-                     <div className="text-center md:text-start space-y-1">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'تاريخ البداية' : 'Start Date'}</Label>
-                        <p className="text-2xl font-black text-slate-900">{leave.startDate}</p>
+                  {/* منطقة التعديل السريع للمدير - تظهر فقط إذا كان الطلب قيد الانتظار */}
+                  {isAdmin && leave.status === 'pending' ? (
+                     <div className="p-8 rounded-[2rem] bg-primary/5 border-2 border-dashed border-primary/20 space-y-6">
+                        <h4 className="font-black text-sm text-primary uppercase tracking-widest mb-2 flex items-center gap-2">
+                           <Edit3 className="h-4 w-4" /> {isRtl ? 'تعديل بيانات الفترة قبل الاعتماد' : 'Quick Edit Period Before Approval'}
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                           <div className="space-y-2">
+                              <Label className="text-[10px] font-black text-slate-500 uppercase">{isRtl ? 'تاريخ البداية' : 'Start Date'}</Label>
+                              <SmartDateInput value={editForm.startDate} onChange={v => setEditForm({...editForm, startDate: v})} />
+                           </div>
+                           <div className="space-y-2">
+                              <Label className="text-[10px] font-black text-slate-500 uppercase">{isRtl ? 'تاريخ النهاية' : 'End Date'}</Label>
+                              <SmartDateInput value={editForm.endDate} onChange={v => setEditForm({...editForm, endDate: v})} />
+                           </div>
+                           <div className="space-y-2 md:col-span-2">
+                              <Label className="text-[10px] font-black text-slate-500 uppercase flex items-center gap-2">
+                                 <Hash className="h-3 w-3" /> {isRtl ? 'أيام العمل الفعلية المخصومة' : 'Actual Working Days Deducted'}
+                              </Label>
+                              <Input 
+                                type="number" 
+                                value={editForm.workingDays} 
+                                onChange={e => setEditForm({...editForm, workingDays: Number(e.target.value)})}
+                                className="h-12 rounded-xl border-2 font-black text-lg bg-white"
+                              />
+                           </div>
+                        </div>
                      </div>
-                     <div className="h-10 w-10 rounded-full bg-white flex items-center justify-center shadow-sm text-slate-300">
-                        <ArrowRight className={cn("h-5 w-5", isRtl && "rotate-180")} />
+                  ) : (
+                     <div className="p-8 rounded-[2rem] bg-slate-50/50 border-2 border-slate-100 flex flex-col md:flex-row justify-between items-center gap-8">
+                        <div className="text-center md:text-start space-y-1">
+                           <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'تاريخ البداية' : 'Start Date'}</Label>
+                           <p className="text-2xl font-black text-slate-900">{leave.startDate}</p>
+                        </div>
+                        <div className="h-10 w-10 rounded-full bg-white flex items-center justify-center shadow-sm text-slate-300">
+                           <ArrowRight className={cn("h-5 w-5", isRtl && "rotate-180")} />
+                        </div>
+                        <div className="text-center md:text-end space-y-1">
+                           <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'تاريخ النهاية' : 'End Date'}</Label>
+                           <p className="text-2xl font-black text-slate-900">{leave.endDate}</p>
+                        </div>
+                        <div className="px-8 border-s-2 border-slate-200 hidden md:block">
+                           <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'أيام العمل المخصومة' : 'Work Days'}</Label>
+                           <p className="text-4xl font-black text-primary">{leave.workingDays}</p>
+                        </div>
                      </div>
-                     <div className="text-center md:text-end space-y-1">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'تاريخ النهاية' : 'End Date'}</Label>
-                        <p className="text-2xl font-black text-slate-900">{leave.endDate}</p>
-                     </div>
-                     <div className="px-8 border-s-2 border-slate-200 hidden md:block">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'أيام العمل المخصومة' : 'Work Days'}</Label>
-                        <p className="text-4xl font-black text-primary">{leave.workingDays}</p>
-                     </div>
-                  </div>
+                  )}
 
                   <div className="space-y-4 pt-6 border-t border-slate-100">
                      <div className="flex items-center gap-2 text-slate-800">
@@ -151,8 +203,8 @@ export default function LeaveDetailsPage() {
                            {isRtl ? 'ملاحظات الإدارة (ستظهر للموظف)' : 'Admin Notes (Visible to Employee)'}
                         </Label>
                         <Textarea 
-                          value={adminComment} 
-                          onChange={(e) => setAdminComment(e.target.value)}
+                          value={editForm.comment} 
+                          onChange={(e) => setEditForm({...editForm, comment: e.target.value})}
                           className="min-h-[100px] rounded-2xl border-2 p-4 text-sm"
                           placeholder={isRtl ? "اكتب سبب الرفض أو أي تعليمات إضافية هنا..." : "Enter reason for rejection or instructions..."}
                         />
@@ -178,10 +230,10 @@ export default function LeaveDetailsPage() {
                   <Button 
                     onClick={() => handleAction('approved')}
                     disabled={processing}
-                    className="flex-1 h-20 rounded-[2rem] bg-emerald-600 text-white font-black text-2xl shadow-xl shadow-emerald-100 hover:scale-[1.02] active:scale-[0.98] transition-all gap-4"
+                    className="flex-1 h-20 rounded-[2rem] bg-emerald-600 text-white font-black text-2xl shadow-xl shadow-emerald-100 hover:scale-[1.02] active:scale-[0.98] transition-all gap-4 border-b-8 border-emerald-800"
                   >
                      {processing ? <Loader2 className="h-8 w-8 animate-spin" /> : <CheckCircle2 className="h-8 w-8" />}
-                     {isRtl ? 'اعتماد الطلب' : 'Approve Request'}
+                     {isRtl ? 'اعتماد مع التعديلات' : 'Approve with Edits'}
                   </Button>
                   <Button 
                     variant="outline"
@@ -223,10 +275,10 @@ export default function LeaveDetailsPage() {
                   <h4 className="font-black text-sm uppercase tracking-widest">{isRtl ? 'تنبيهات النظام' : 'System Alerts'}</h4>
                </div>
                <p className="text-xs text-amber-800 leading-relaxed font-bold">
-                  {isRtl ? '• ملاحظات الإدارة تحفظ بشكل دائم في ملف الموظف التاريخي.' : '• Admin notes are permanently saved in the employee\'s dossier.'}
+                  {isRtl ? '• التعديلات التي تجريها هنا سيتم اعتمادها كبيانات نهائية للإجازة.' : '• Edits made here will be saved as the final leave record.'}
                </p>
                <p className="text-xs text-amber-800 leading-relaxed font-bold">
-                  {isRtl ? '• في حال الرغبة في تعديل التواريخ، يرجى التواصل مع الموظف أو تعديلها من لوحة التحكم قبل الحفظ.' : '• To modify dates, adjust them in the control panel before saving.'}
+                  {isRtl ? '• ملاحظات الإدارة تحفظ بشكل دائم في ملف الموظف التاريخي.' : '• Admin notes are permanently saved in the employee\'s dossier.'}
                </p>
             </Card>
          </div>
