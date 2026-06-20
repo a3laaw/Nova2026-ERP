@@ -5,6 +5,7 @@
 export type DayOfWeek = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
 
 export interface DailySchedule {
+  mode: 'single' | 'double'; // جديد: تحديد نوع الدوام
   morningStartTime: string; // HH:mm
   morningEndTime: string;
   eveningStartTime: string;
@@ -42,7 +43,7 @@ export interface WorkHoursSettings {
   general: DailySchedule;
   architectural: DailySchedule;
   holidays: DayOfWeek[];
-  publicHolidays: PublicHoliday[]; // جديد: العطلات الرسمية المحددة بتاريخ
+  publicHolidays: PublicHoliday[];
   halfDay: HalfDayRule;
   ramadan: RamadanSchedule;
   companyId: string;

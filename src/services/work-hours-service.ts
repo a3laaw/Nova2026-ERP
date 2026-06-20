@@ -47,20 +47,22 @@ export class WorkHoursService {
   getDefaultSettings(): Omit<WorkHoursSettings, 'companyId'> {
     return {
       general: {
+        mode: 'single',
         morningStartTime: "08:00",
-        morningEndTime: "12:00",
-        eveningStartTime: "13:00",
+        morningEndTime: "13:00",
+        eveningStartTime: "14:00",
         eveningEndTime: "17:00",
         slotDurationMinutes: 30,
-        bufferMinutes: 0
+        bufferMinutes: 15
       },
       architectural: {
+        mode: 'single',
         morningStartTime: "08:00",
-        morningEndTime: "12:00",
-        eveningStartTime: "13:00",
+        morningEndTime: "13:00",
+        eveningStartTime: "14:00",
         eveningEndTime: "17:00",
         slotDurationMinutes: 30,
-        bufferMinutes: 0
+        bufferMinutes: 15
       },
       holidays: ["Friday"],
       publicHolidays: [],
@@ -71,7 +73,7 @@ export class WorkHoursService {
       },
       ramadan: {
         enabled: false,
-        mode: "double",
+        mode: "single",
         startDate: format(new Date(), 'yyyy-MM-dd'),
         endDate: format(new Date(), 'yyyy-MM-dd'),
         morningStartTime: "09:00",
