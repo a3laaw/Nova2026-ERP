@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { 
   ArrowRight, Loader2, CheckCircle2, XCircle,
   Clock, User, FileText, AlertTriangle,
-  History, ShieldCheck, Timer
+  History, ShieldCheck, Timer, Calendar
 } from "lucide-react";
 import { useFirestore, useDoc } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -159,7 +159,7 @@ export default function PermissionDetailsPage() {
                     disabled={processing}
                     className="flex-1 h-20 rounded-[2rem] border-2 border-rose-100 bg-white text-rose-600 font-black text-2xl hover:bg-rose-50 transition-all gap-4"
                   >
-                     {processing ? <Loader2 className="h-8 w-8 animate-spin" /> : <XCircle className="h-8 w-8" />}
+                     {processing ? <Loader2 className="animate-spin" /> : <XCircle className="h-8 w-8" />}
                      {isRtl ? 'رفض الطلب' : 'Reject Request'}
                   </Button>
                </div>
