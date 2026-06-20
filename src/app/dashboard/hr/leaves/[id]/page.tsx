@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { 
   ArrowRight, Loader2, CheckCircle2, XCircle,
   Calendar, User, FileText, AlertTriangle,
-  History, ShieldCheck, MessageSquare, Hash
+  History, ShieldCheck, MessageSquare, Hash,
+  Scale, Info
 } from "lucide-react";
 import { useFirestore, useDoc } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -24,6 +25,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { SmartDateInput } from '@/components/ui/smart-date-input';
+import { LeaveTiersDisplay } from '@/components/hr/leave-tiers-display';
 
 export default function LeaveDetailsPage() {
   const params = useParams();
@@ -132,17 +134,16 @@ export default function LeaveDetailsPage() {
                      </div>
                      <div className="space-y-1">
                         <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'تصنيف الإجازة' : 'Leave Type'}</Label>
-                        <Badge variant="secondary" className="block w-fit text-lg px-4 py-1 rounded-xl font-black bg-slate-100">
-                           {leave.type.toUpperCase()}
+                        <Badge variant="secondary" className="block w-fit text-lg px-4 py-1 rounded-xl font-black bg-slate-100 uppercase">
+                           {leave.type}
                         </Badge>
                      </div>
                   </div>
 
-                  {/* منطقة التعديل السريع للمدير - تظهر فقط إذا كان الطلب قيد الانتظار */}
                   {isAdmin && leave.status === 'pending' ? (
                      <div className="p-8 rounded-[2rem] bg-primary/5 border-2 border-dashed border-primary/20 space-y-6">
                         <h4 className="font-black text-sm text-primary uppercase tracking-widest mb-2 flex items-center gap-2">
-                           <Edit3 className="h-4 w-4" /> {isRtl ? 'تعديل بيانات الفترة قبل الاعتماد' : 'Quick Edit Period Before Approval'}
+                           <Scale className="h-4 w-4" /> {isRtl ? 'معالجة الفترة (قانون العمل الكويتي)' : 'Legal Period Processing'}
                         </h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                            <div className="space-y-2">
@@ -155,7 +156,7 @@ export default function LeaveDetailsPage() {
                            </div>
                            <div className="space-y-2 md:col-span-2">
                               <Label className="text-[10px] font-black text-slate-500 uppercase flex items-center gap-2">
-                                 <Hash className="h-3 w-3" /> {isRtl ? 'أيام العمل الفعلية المخصومة' : 'Actual Working Days Deducted'}
+                                 <Hash className="h-3 w-3" /> {isRtl ? 'أيام العمل الصافية المستحقة للخصم' : 'Actual Net Working Days'}
                               </Label>
                               <Input 
                                 type="number" 
@@ -184,6 +185,13 @@ export default function LeaveDetailsPage() {
                            <p className="text-4xl font-black text-primary">{leave.workingDays}</p>
                         </div>
                      </div>
+                  )}
+
+                  {/* عرض شرائح المادة 69 للمرضية */}
+                  {leave.type === 'sick' && leave.sickLeaveTiers && (
+                    <div className="animate-in slide-in-from-top-4 duration-500">
+                      <LeaveTiersDisplay tiers={leave.sickLeaveTiers} />
+                    </div>
                   )}
 
                   <div className="space-y-4 pt-6 border-t border-slate-100">
@@ -233,7 +241,7 @@ export default function LeaveDetailsPage() {
                     className="flex-1 h-20 rounded-[2rem] bg-emerald-600 text-white font-black text-2xl shadow-xl shadow-emerald-100 hover:scale-[1.02] active:scale-[0.98] transition-all gap-4 border-b-8 border-emerald-800"
                   >
                      {processing ? <Loader2 className="h-8 w-8 animate-spin" /> : <CheckCircle2 className="h-8 w-8" />}
-                     {isRtl ? 'اعتماد مع التعديلات' : 'Approve with Edits'}
+                     {isRtl ? 'اعتماد وفق المادة 69' : 'Approve (Art 69)'}
                   </Button>
                   <Button 
                     variant="outline"
@@ -275,10 +283,10 @@ export default function LeaveDetailsPage() {
                   <h4 className="font-black text-sm uppercase tracking-widest">{isRtl ? 'تنبيهات النظام' : 'System Alerts'}</h4>
                </div>
                <p className="text-xs text-amber-800 leading-relaxed font-bold">
-                  {isRtl ? '• التعديلات التي تجريها هنا سيتم اعتمادها كبيانات نهائية للإجازة.' : '• Edits made here will be saved as the final leave record.'}
+                  {isRtl ? '• النظام يطبق آلياً المادة 69 للإجازات المرضية بحد أقصى 75 يوماً في السنة.' : '• System automatically applies Art 69 for sick leaves (max 75 days/year).'}
                </p>
                <p className="text-xs text-amber-800 leading-relaxed font-bold">
-                  {isRtl ? '• ملاحظات الإدارة تحفظ بشكل دائم في ملف الموظف التاريخي.' : '• Admin notes are permanently saved in the employee\'s dossier.'}
+                  {isRtl ? '• يتم استبعاد العطلات الرسمية والأسبوعية من خصم الرصيد.' : '• Public holidays and weekends are excluded from balance deduction.'}
                </p>
             </Card>
          </div>
