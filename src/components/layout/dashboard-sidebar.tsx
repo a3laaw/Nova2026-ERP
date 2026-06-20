@@ -175,7 +175,7 @@ export function DashboardSidebar() {
 
   return (
     <Sidebar collapsible="icon" side={isRtl ? "right" : "left"} className="border-none bg-transparent">
-      <SidebarHeader className="flex-none p-4 pb-2 transition-all">
+      <SidebarHeader className="flex-none p-3 pb-2 transition-all">
         {!isCollapsed ? (
           <div className="flex flex-col text-start px-2">
             <span className="font-headline font-black text-2xl text-[#1e1b4b] tracking-tighter leading-none">NovaFlow</span>
@@ -185,7 +185,7 @@ export function DashboardSidebar() {
             </div>
           </div>
         ) : (
-          <div className="mx-auto h-9 w-9 rounded-2xl bg-gradient-to-br from-[#FFB000] to-[#e87c24] flex items-center justify-center text-white shadow-lg">
+          <div className="mx-auto h-9 w-9 rounded-xl bg-gradient-to-br from-[#FFB000] to-[#e87c24] flex items-center justify-center text-white shadow-lg">
              <Sparkles className="h-5 w-5" />
           </div>
         )}
@@ -194,7 +194,7 @@ export function DashboardSidebar() {
       <SidebarContent className="flex-1 px-2 overflow-y-auto scrollbar-hide py-2">
         <SidebarGroup className="p-0">
           {!isCollapsed && (
-            <SidebarGroupLabel className="text-[#1e1b4b]/40 font-black px-3 mb-2 text-start uppercase text-[9px] tracking-widest mt-2">
+            <SidebarGroupLabel className="text-[#1e1b4b]/40 font-black px-2 mb-2 text-start uppercase text-[9px] tracking-widest mt-2">
               {isRtl ? 'إدارة العمليات' : 'Operations'}
             </SidebarGroupLabel>
           )}
@@ -209,7 +209,7 @@ export function DashboardSidebar() {
 
         <SidebarGroup className="mt-4 p-0">
           {!isCollapsed && (
-            <SidebarGroupLabel className="text-[#1e1b4b]/40 font-black px-3 mb-2 text-start uppercase text-[9px] tracking-widest border-t border-orange-100/30 pt-4">
+            <SidebarGroupLabel className="text-[#1e1b4b]/40 font-black px-2 mb-2 text-start uppercase text-[9px] tracking-widest border-t border-orange-100/30 pt-4">
               {isRtl ? 'الإعدادات' : 'Settings'}
             </SidebarGroupLabel>
           )}
@@ -221,15 +221,15 @@ export function DashboardSidebar() {
         </SidebarGroup>
       </SidebarContent>
       
-      <SidebarFooter className="flex-none p-3 mt-auto transition-all">
+      <SidebarFooter className="flex-none p-2 mt-auto transition-all">
         {!isCollapsed ? (
           <div className="p-3 rounded-2xl bg-white border border-orange-100 shadow-xl ring-1 ring-black/[0.02]">
              <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-1.5">
-                   <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                   <div className="h-1 w-1 rounded-full bg-emerald-500 animate-pulse" />
                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Kuwait Cloud</span>
                 </div>
-                <Badge className="bg-[#e87c24] text-white text-[8px] font-black uppercase h-3.5 px-1.5">v1.9</Badge>
+                <Badge className="bg-[#e87c24] text-white text-[7px] font-black uppercase h-3.5 px-1">v1.9</Badge>
              </div>
              <p className="text-[9px] font-black text-[#1e1b4b]/80 text-center uppercase tracking-tighter">Enterprise Intelligence</p>
           </div>
@@ -249,18 +249,18 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
 
   const isActive = pathname === item.url || (item.url !== '/dashboard' && pathname.startsWith(item.url))
 
-  // تحكم احترافي في الحوام لمنع الارتعاش
-  const handleMouseEnter = () => {
+  // استخدام Pointer Events لضمان استقرار الحركة في وضع الانكماش
+  const handlePointerEnter = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current)
     if (isCollapsed && item.subItems) {
       setIsFlyoutOpen(true)
     }
   }
 
-  const handleMouseLeave = () => {
+  const handlePointerLeave = () => {
     timeoutRef.current = setTimeout(() => {
       setIsFlyoutOpen(false)
-    }, 150)
+    }, 200) // مهلة كافية لمنع الارتعاش
   }
 
   const activeCard = "bg-white border border-orange-200 shadow-xl text-[#1e1b4b] font-black"
@@ -270,14 +270,14 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
     return (
       <SidebarMenuItem className="flex justify-center">
         {item.subItems ? (
-          // موديول flyout للأقسام التي لها أبناء - تم إزالة Tooltip لمنع الارتعاش
-          <DropdownMenu open={isFlyoutOpen} onOpenChange={setIsFlyoutOpen}>
+          // استخدام modal={false} يمنع القائمة من سرقة التركيز والتسبب في الارتعاش
+          <DropdownMenu open={isFlyoutOpen} onOpenChange={setIsFlyoutOpen} modal={false}>
             <DropdownMenuTrigger asChild>
               <button
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
+                onPointerEnter={handlePointerEnter}
+                onPointerLeave={handlePointerLeave}
                 className={cn(
-                  "flex h-10 w-10 items-center justify-center rounded-[1.2rem] transition-all duration-300 outline-none hover:scale-105 active:scale-95",
+                  "flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300 outline-none hover:scale-105 active:scale-95",
                   isActive ? activeCard : inactiveCard
                 )}
               >
@@ -286,12 +286,12 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
             </DropdownMenuTrigger>
             <DropdownMenuContent
               side={isRtl ? "left" : "right"}
-              sideOffset={8}
+              sideOffset={5} // تقليص الفجوة (Bridge) لمنع فقدان مؤشر الماوس
               align="start"
               dir={isRtl ? "rtl" : "ltr"}
-              className="w-64 p-2 bg-white/98 backdrop-blur-xl border-2 border-orange-100 shadow-2xl rounded-[2rem] z-[9999]"
-              onMouseEnter={handleMouseEnter}
-              onMouseLeave={handleMouseLeave}
+              className="w-60 p-2 bg-white/98 backdrop-blur-xl border-2 border-orange-100 shadow-2xl rounded-[1.8rem] z-[9999]"
+              onPointerEnter={handlePointerEnter}
+              onPointerLeave={handlePointerLeave}
             >
               <DropdownMenuLabel className="font-black text-[#1e1b4b] px-4 py-4 text-xs border-b border-orange-50 mb-2 uppercase tracking-widest text-start flex items-center gap-3">
                 <div className="p-2 rounded-xl bg-orange-50 text-orange-600">
@@ -302,22 +302,21 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
               {item.subItems.map((sub: any) => (
                 <DropdownMenuItem key={sub.title} asChild className="rounded-xl py-3 px-4 focus:bg-orange-50 cursor-pointer mb-1 group">
                   <Link href={sub.url} className="flex items-center justify-between w-full">
-                    <span className={cn("font-black text-[12px] flex-1 text-start transition-colors", pathname === sub.url ? "text-[#e87c24]" : "text-[#1e1b4b]")}>{sub.title}</span>
-                    <sub.icon className={cn("h-4 w-4 ml-3 opacity-30 group-hover:opacity-100 transition-all", pathname === sub.url && "text-[#e87c24] opacity-100")} />
+                    <span className={cn("font-black text-[11px] flex-1 text-start transition-colors", pathname === sub.url ? "text-[#e87c24]" : "text-[#1e1b4b]")}>{sub.title}</span>
+                    <sub.icon className={cn("h-3.5 w-3.5 ml-3 opacity-30 group-hover:opacity-100 transition-all", pathname === sub.url && "text-[#e87c24] opacity-100")} />
                   </Link>
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
-          // موديول tooltip للأقسام البسيطة فقط
           <TooltipProvider delayDuration={0}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link 
                   href={item.url}
                   className={cn(
-                    "flex h-10 w-10 items-center justify-center rounded-[1.2rem] transition-all duration-300 hover:scale-105",
+                    "flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300 hover:scale-105",
                     isActive ? activeCard : inactiveCard
                   )}
                 >
@@ -338,15 +337,18 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
     <SidebarMenuItem className="px-1">
       {item.subItems ? (
         <Collapsible defaultOpen={isActive} className="group/collapsible">
-          <div className={cn("rounded-[1.3rem] transition-all duration-300 overflow-hidden", isActive ? activeCard : inactiveCard)}>
+          <div className={cn("rounded-xl transition-all duration-300 overflow-hidden", isActive ? activeCard : "bg-transparent border-0")}>
             <CollapsibleTrigger asChild>
-              <button className="flex items-center justify-between w-full h-11 px-4 hover:bg-white/10 transition-colors">
+              <button className={cn(
+                "flex items-center justify-between w-full h-11 px-3 transition-colors",
+                !isActive && "text-[#1e1b4b] hover:bg-orange-50 rounded-xl"
+              )}>
                 <div className={cn("flex items-center gap-3", isRtl ? "flex-row" : "flex-row-reverse")}>
-                  <item.icon className={cn("h-5 w-5 shrink-0", isActive ? "text-[#e87c24]" : "text-white")} />
+                  <item.icon className={cn("h-5 w-5 shrink-0", isActive ? "text-[#e87c24]" : "text-[#e87c24]")} />
                   <span className="text-start text-sm font-black truncate">{item.title}</span>
                 </div>
                 <ChevronLeft className={cn(
-                  "h-3.5 w-3.5 transition-transform opacity-60", 
+                  "h-3.5 w-3.5 transition-transform opacity-40", 
                   isRtl ? "group-data-[state=open]/collapsible:-rotate-90" : "group-data-[state=open]/collapsible:rotate-90"
                 )} />
               </button>
@@ -360,10 +362,10 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                       key={sub.title} 
                       href={sub.url}
                       className={cn(
-                        "flex items-center justify-between h-8 rounded-xl px-3 transition-all text-[10px] font-bold",
+                        "flex items-center justify-between h-9 rounded-lg px-3 transition-all text-[11px] font-bold",
                         isSubActive 
-                          ? (isActive ? "bg-orange-50 text-[#e87c24] shadow-sm" : "bg-white/20 text-white shadow-inner")
-                          : (isActive ? "text-slate-500 hover:bg-orange-50/50" : "text-white/70 hover:bg-white/10")
+                          ? "bg-orange-50 text-[#e87c24] shadow-sm"
+                          : "text-slate-500 hover:bg-orange-50/50"
                       )}
                     >
                       <span className="truncate text-start">{sub.title}</span>
@@ -379,12 +381,12 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
         <Link 
           href={item.url}
           className={cn(
-            "flex items-center gap-3 transition-all duration-300 rounded-[1.3rem] h-11 px-4 shadow-sm",
-            isActive ? activeCard : inactiveCard
+            "flex items-center gap-3 transition-all duration-300 rounded-xl h-11 px-3",
+            isActive ? activeCard : "text-[#1e1b4b] hover:bg-orange-50"
           )}
         >
           <div className={cn("flex items-center gap-3 w-full", isRtl ? "flex-row" : "flex-row-reverse")}>
-            <item.icon className={cn("h-5 w-5 shrink-0", isActive ? "text-[#e87c24]" : "text-white")} />
+            <item.icon className={cn("h-5 w-5 shrink-0", isActive ? "text-[#e87c24]" : "text-[#e87c24]")} />
             <span className="flex-1 text-start text-sm font-black truncate">{item.title}</span>
           </div>
         </Link>
