@@ -249,9 +249,12 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
 
   const isActive = pathname === item.url || (item.url !== '/dashboard' && pathname.startsWith(item.url))
 
+  // تحكم احترافي في الحوام لمنع الارتعاش
   const handleMouseEnter = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current)
-    if (isCollapsed && item.subItems) setIsFlyoutOpen(true)
+    if (isCollapsed && item.subItems) {
+      setIsFlyoutOpen(true)
+    }
   }
 
   const handleMouseLeave = () => {
@@ -266,67 +269,67 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
   if (isCollapsed) {
     return (
       <SidebarMenuItem className="flex justify-center">
-        <TooltipProvider delayDuration={0}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              {item.subItems ? (
-                <DropdownMenu open={isFlyoutOpen} onOpenChange={setIsFlyoutOpen}>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      onMouseEnter={handleMouseEnter}
-                      onMouseLeave={handleMouseLeave}
-                      className={cn(
-                        "flex h-10 w-10 items-center justify-center rounded-2xl transition-all duration-300 outline-none hover:scale-105 active:scale-95",
-                        isActive ? activeCard : inactiveCard
-                      )}
-                    >
-                      <item.icon className={cn("h-5 w-5 shrink-0", isActive ? "text-[#e87c24]" : "text-white")} />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    side={isRtl ? "left" : "right"}
-                    sideOffset={12}
-                    align="start"
-                    dir={isRtl ? "rtl" : "ltr"}
-                    className="w-64 p-2 bg-white/98 backdrop-blur-xl border-2 border-orange-100 shadow-2xl rounded-[2rem] z-[9999]"
-                    onMouseEnter={handleMouseEnter}
-                    onMouseLeave={handleMouseLeave}
-                  >
-                    <DropdownMenuLabel className="font-black text-[#1e1b4b] px-4 py-4 text-xs border-b border-orange-50 mb-2 uppercase tracking-widest text-start flex items-center gap-3">
-                      <div className="p-2 rounded-xl bg-orange-50 text-orange-600">
-                        <item.icon className="h-4 w-4" />
-                      </div>
-                      {item.title}
-                    </DropdownMenuLabel>
-                    {item.subItems.map((sub: any) => (
-                      <DropdownMenuItem key={sub.title} asChild className="rounded-xl py-3 px-4 focus:bg-orange-50 cursor-pointer mb-1 group">
-                        <Link href={sub.url} className="flex items-center justify-between w-full">
-                          <span className={cn("font-black text-[12px] flex-1 text-start transition-colors", pathname === sub.url ? "text-[#e87c24]" : "text-[#1e1b4b]")}>{sub.title}</span>
-                          <sub.icon className={cn("h-4 w-4 ml-3 opacity-30 group-hover:opacity-100 transition-all", pathname === sub.url && "text-[#e87c24] opacity-100")} />
-                        </Link>
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              ) : (
+        {item.subItems ? (
+          // موديول flyout للأقسام التي لها أبناء - تم إزالة Tooltip لمنع الارتعاش
+          <DropdownMenu open={isFlyoutOpen} onOpenChange={setIsFlyoutOpen}>
+            <DropdownMenuTrigger asChild>
+              <button
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+                className={cn(
+                  "flex h-10 w-10 items-center justify-center rounded-[1.2rem] transition-all duration-300 outline-none hover:scale-105 active:scale-95",
+                  isActive ? activeCard : inactiveCard
+                )}
+              >
+                <item.icon className={cn("h-5 w-5 shrink-0", isActive ? "text-[#e87c24]" : "text-white")} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              side={isRtl ? "left" : "right"}
+              sideOffset={8}
+              align="start"
+              dir={isRtl ? "rtl" : "ltr"}
+              className="w-64 p-2 bg-white/98 backdrop-blur-xl border-2 border-orange-100 shadow-2xl rounded-[2rem] z-[9999]"
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+            >
+              <DropdownMenuLabel className="font-black text-[#1e1b4b] px-4 py-4 text-xs border-b border-orange-50 mb-2 uppercase tracking-widest text-start flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-orange-50 text-orange-600">
+                  <item.icon className="h-4 w-4" />
+                </div>
+                {item.title}
+              </DropdownMenuLabel>
+              {item.subItems.map((sub: any) => (
+                <DropdownMenuItem key={sub.title} asChild className="rounded-xl py-3 px-4 focus:bg-orange-50 cursor-pointer mb-1 group">
+                  <Link href={sub.url} className="flex items-center justify-between w-full">
+                    <span className={cn("font-black text-[12px] flex-1 text-start transition-colors", pathname === sub.url ? "text-[#e87c24]" : "text-[#1e1b4b]")}>{sub.title}</span>
+                    <sub.icon className={cn("h-4 w-4 ml-3 opacity-30 group-hover:opacity-100 transition-all", pathname === sub.url && "text-[#e87c24] opacity-100")} />
+                  </Link>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          // موديول tooltip للأقسام البسيطة فقط
+          <TooltipProvider delayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
                 <Link 
                   href={item.url}
                   className={cn(
-                    "flex h-10 w-10 items-center justify-center rounded-2xl transition-all duration-300 hover:scale-105",
+                    "flex h-10 w-10 items-center justify-center rounded-[1.2rem] transition-all duration-300 hover:scale-105",
                     isActive ? activeCard : inactiveCard
                   )}
                 >
                   <item.icon className={cn("h-5 w-5 shrink-0", isActive ? "text-[#e87c24]" : "text-white")} />
                 </Link>
-              )}
-            </TooltipTrigger>
-            {!item.subItems && (
-              <TooltipContent side={isRtl ? "left" : "right"} sideOffset={8} className="bg-[#1e1b4b] text-white font-black text-[10px] rounded-lg px-3 py-1.5 shadow-2xl border-0">
+              </TooltipTrigger>
+              <TooltipContent side={isRtl ? "left" : "right"} sideOffset={8} className="bg-[#1e1b4b] text-white font-black text-[10px] rounded-lg px-3 py-1.5 shadow-2xl border-0 z-[9999]">
                 {item.title}
               </TooltipContent>
-            )}
-          </Tooltip>
-        </TooltipProvider>
+            </Tooltip>
+          </TooltipProvider>
+        )}
       </SidebarMenuItem>
     )
   }
