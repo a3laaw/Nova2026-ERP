@@ -37,7 +37,6 @@ import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
 import { usePermissions } from "@/hooks/use-permissions"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import {
   Sidebar,
   SidebarContent,
@@ -180,7 +179,7 @@ export function DashboardSidebar() {
   });
 
   return (
-    <Sidebar collapsible="icon" className="border-e-0 bg-white/40 backdrop-blur-xl shadow-none" side={isRtl ? 'right' : 'left'}>
+    <Sidebar collapsible="icon" className="border-e-0 bg-transparent shadow-none" side={isRtl ? 'right' : 'left'}>
       <SidebarHeader className="p-8 flex flex-row items-center justify-center lg:justify-start gap-4">
         <div className="flex h-12 w-12 items-center justify-center shrink-0 rounded-[1.25rem] bg-gradient-to-br from-[#FFB000] to-[#e87c24] text-white shadow-xl shadow-orange-500/30 rotate-3 transition-transform hover:rotate-0">
           <Sparkles className="h-6 w-6" />
@@ -201,7 +200,7 @@ export function DashboardSidebar() {
             </SidebarGroupLabel>
           )}
           <SidebarGroupContent>
-            <SidebarMenu className="space-y-4">
+            <SidebarMenu className="space-y-2">
               {menuItems.map((item) => (
                 <SidebarItemRenderer 
                   key={item.title} 
@@ -209,7 +208,6 @@ export function DashboardSidebar() {
                   isCollapsed={isCollapsed} 
                   isRtl={isRtl} 
                   pathname={pathname}
-                  t={t}
                 />
               ))}
             </SidebarMenu>
@@ -222,7 +220,7 @@ export function DashboardSidebar() {
               {isRtl ? 'الإعدادات' : 'System Settings'}
             </SidebarGroupLabel>
           )}
-          <SidebarMenu className="space-y-4">
+          <SidebarMenu className="space-y-2">
             {settingsItems.map((item) => (
               <SidebarItemRenderer 
                 key={item.title} 
@@ -230,22 +228,19 @@ export function DashboardSidebar() {
                 isCollapsed={isCollapsed} 
                 isRtl={isRtl} 
                 pathname={pathname}
-                t={t}
               />
             ))}
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
       
-      <SidebarFooter className="p-8 text-center bg-white/5 border-t border-orange-100/30">
+      <SidebarFooter className="p-8 text-center">
         <div className="flex flex-col items-center gap-3">
-           {!isCollapsed && (
-             <Badge variant="outline" className="bg-white/50 text-[9px] font-black uppercase tracking-widest text-[#e87c24] border-[#e87c24]/20 px-3 py-1">
-               Premium Edition
-             </Badge>
-           )}
+           <Badge variant="outline" className="bg-white/50 text-[9px] font-black uppercase tracking-widest text-[#e87c24] border-[#e87c24]/20 px-3 py-1">
+             Premium Edition
+           </Badge>
            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-             {isCollapsed ? "v1.9" : "NovaFlow v1.9.5"}
+             NovaFlow v1.9.5
            </p>
         </div>
       </SidebarFooter>
@@ -253,7 +248,7 @@ export function DashboardSidebar() {
   )
 }
 
-function SidebarItemRenderer({ item, isCollapsed, isRtl, pathname, t }: any) {
+function SidebarItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
   const [isOpen, setIsOpen] = React.useState(false);
   const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
@@ -268,13 +263,21 @@ function SidebarItemRenderer({ item, isCollapsed, isRtl, pathname, t }: any) {
     }, 150);
   };
 
-  const isActive = pathname.startsWith(item.url);
-  const orangeGradientClass = "bg-gradient-to-r from-[#FFB000] to-[#e87c24] text-white shadow-xl shadow-orange-500/20 scale-[1.02]";
-  const inactiveClass = "text-[#1e1b4b] hover:bg-orange-50/50 hover:text-[#e87c24]";
+  // تحقق مما إذا كان المسار الحالي يبدأ برابط العنصر
+  const isActive = pathname === item.url || (item.url !== '/dashboard' && pathname.startsWith(item.url));
+
+  // النمط النشط: بطاقة بيضاء فاتحة مع ظلال برتقالية ناعمة
+  const activeStyle = "bg-white text-[#1e1b4b] shadow-2xl shadow-orange-500/10 border border-orange-100/50 scale-[1.02] font-black";
+  
+  // النمط غير النشط: شفاف مع أيقونات برتقالية ذهبية
+  const inactiveStyle = "text-[#1e1b4b] hover:bg-orange-50/50 transition-all duration-300";
+  
+  // ألوان الأيقونات المعكوسة
+  const iconColor = isActive ? "text-[#1e1b4b]" : "text-[#e87c24]";
 
   if (isCollapsed) {
     return (
-      <SidebarMenuItem className="flex justify-center">
+      <SidebarMenuItem className="flex justify-center py-1">
         <TooltipProvider delayDuration={0}>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -285,11 +288,11 @@ function SidebarItemRenderer({ item, isCollapsed, isRtl, pathname, t }: any) {
                       onMouseEnter={handleMouseEnter}
                       onMouseLeave={handleMouseLeave}
                       className={cn(
-                        "flex h-14 w-14 items-center justify-center rounded-[1.25rem] transition-all duration-300 relative group outline-none",
-                        isActive ? orangeGradientClass : "text-[#e87c24] hover:bg-orange-50/50"
+                        "flex h-14 w-14 items-center justify-center rounded-[1.25rem] transition-all duration-500 outline-none",
+                        isActive ? activeStyle : inactiveStyle
                       )}
                     >
-                      <item.icon className={cn("h-6 w-6 shrink-0 transition-transform group-hover:scale-110", isActive ? "text-white" : "text-[#e87c24]")} />
+                      <item.icon className={cn("h-6 w-6 shrink-0", iconColor)} />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
@@ -301,16 +304,16 @@ function SidebarItemRenderer({ item, isCollapsed, isRtl, pathname, t }: any) {
                     onMouseLeave={handleMouseLeave}
                     className="w-64 p-2 bg-white/95 backdrop-blur-xl border-2 border-primary/10 shadow-3xl rounded-[2rem] z-[9999]"
                   >
-                    <DropdownMenuLabel className="font-black text-primary px-5 py-4 text-sm border-b-2 border-primary/5 mb-2 uppercase tracking-widest text-start">
+                    <DropdownMenuLabel className="font-black text-[#1e1b4b] px-5 py-4 text-sm border-b-2 border-primary/5 mb-2 uppercase tracking-widest text-start">
                       {item.title}
                     </DropdownMenuLabel>
                     {item.subItems.map((sub: any) => {
                       const isSubActive = pathname === sub.url;
                       return (
-                        <DropdownMenuItem key={sub.title} asChild className="rounded-xl py-3 px-4 focus:bg-primary/5 cursor-pointer mb-1 transition-colors">
+                        <DropdownMenuItem key={sub.title} asChild className="rounded-xl py-3 px-4 focus:bg-primary/5 cursor-pointer mb-1">
                           <Link href={sub.url} className="flex items-center justify-between w-full">
-                            <span className={cn("font-black text-sm flex-1 text-start", isSubActive ? "text-primary" : "text-[#1e1b4b]")}>{sub.title}</span>
-                            <sub.icon className={cn("h-4 w-4 ml-3", isSubActive ? "text-primary" : "text-primary/30")} />
+                            <span className={cn("font-black text-sm flex-1 text-start", isSubActive ? "text-[#e87c24]" : "text-[#1e1b4b]")}>{sub.title}</span>
+                            <sub.icon className={cn("h-4 w-4 ml-3", isSubActive ? "text-[#e87c24]" : "text-primary/30")} />
                           </Link>
                         </DropdownMenuItem>
                       )
@@ -322,12 +325,12 @@ function SidebarItemRenderer({ item, isCollapsed, isRtl, pathname, t }: any) {
                   asChild
                   isActive={isActive}
                   className={cn(
-                    "flex h-14 w-14 items-center justify-center rounded-[1.25rem] transition-all duration-300",
-                    isActive ? orangeGradientClass : "text-[#e87c24] hover:bg-orange-50/50"
+                    "flex h-14 w-14 items-center justify-center rounded-[1.25rem] transition-all duration-500",
+                    isActive ? activeStyle : inactiveStyle
                   )}
                 >
                   <Link href={item.url}>
-                    <item.icon className={cn("h-6 w-6 shrink-0 transition-transform group-hover:scale-110", isActive ? "text-white" : "text-[#e87c24]")} />
+                    <item.icon className={cn("h-6 w-6 shrink-0", iconColor)} />
                   </Link>
                 </SidebarMenuButton>
               )}
@@ -344,7 +347,7 @@ function SidebarItemRenderer({ item, isCollapsed, isRtl, pathname, t }: any) {
   }
 
   return (
-    <SidebarMenuItem className="px-2">
+    <SidebarMenuItem className="px-2 py-0.5">
       {item.subItems ? (
         <Collapsible asChild className="group/collapsible" defaultOpen={isActive}>
           <div>
@@ -352,18 +355,18 @@ function SidebarItemRenderer({ item, isCollapsed, isRtl, pathname, t }: any) {
               <SidebarMenuButton
                 isActive={isActive}
                 className={cn(
-                  "transition-all duration-300 rounded-[1.5rem] h-auto py-8 px-6 group",
-                  isActive ? orangeGradientClass : inactiveClass
+                  "transition-all duration-500 rounded-[1.5rem] h-auto py-6 px-6 group",
+                  isActive ? activeStyle : inactiveStyle
                 )}
               >
                 <div className="flex items-center justify-between w-full h-full">
                   <div className="flex items-center gap-6 flex-1 min-w-0">
-                    <item.icon className={cn("h-6 w-6 shrink-0 transition-transform group-hover:scale-110", isActive ? "text-white" : "text-[#e87c24]")} />
+                    <item.icon className={cn("h-6 w-6 shrink-0 transition-transform group-hover:scale-110", iconColor)} />
                     <span className="text-start text-base truncate font-black">{item.title}</span>
                   </div>
                   <ChevronLeft className={cn(
                     "h-4 w-4 transition-transform group-data-[state=open]/collapsible:-rotate-90 opacity-40", 
-                    isActive ? "text-white" : "text-[#e87c24]",
+                    isActive ? "text-[#1e1b4b]" : "text-[#e87c24]",
                     !isRtl && "rotate-180"
                   )} />
                 </div>
@@ -378,12 +381,14 @@ function SidebarItemRenderer({ item, isCollapsed, isRtl, pathname, t }: any) {
                       <SidebarMenuSubButton asChild isActive={isSubActive} className={cn(
                         "h-12 rounded-xl px-5 transition-all duration-300",
                         isSubActive 
-                          ? "bg-primary/10 text-primary font-black shadow-sm" 
-                          : "bg-white/40 hover:bg-orange-50 text-slate-600 hover:text-primary"
+                          ? "bg-white shadow-md text-[#e87c24] font-black border border-orange-50" 
+                          : "bg-white/20 hover:bg-orange-50/50 text-slate-600 hover:text-primary"
                       )}>
-                        <Link href={sub.url} className="flex items-center justify-between w-full">
-                          <span className="text-xs font-black truncate flex-1 text-start">{sub.title}</span>
-                          <sub.icon className={cn("h-4 w-4 ml-3 opacity-60", isSubActive ? "text-primary" : "text-primary/30")} />
+                        <Link href={sub.url}>
+                          <div className="flex items-center justify-between w-full h-full">
+                            <span className="text-xs font-black truncate flex-1 text-start">{sub.title}</span>
+                            <sub.icon className={cn("h-4 w-4 ml-3 opacity-60", isSubActive ? "text-primary" : "text-primary/30")} />
+                          </div>
                         </Link>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
@@ -398,12 +403,12 @@ function SidebarItemRenderer({ item, isCollapsed, isRtl, pathname, t }: any) {
           asChild
           isActive={isActive}
           className={cn(
-            "transition-all duration-300 rounded-[1.5rem] h-auto py-8 px-6 group",
-            isActive ? orangeGradientClass : inactiveClass
+            "transition-all duration-500 rounded-[1.5rem] h-auto py-6 px-6 group",
+            isActive ? activeStyle : inactiveStyle
           )}
         >
           <Link href={item.url} className="flex items-center gap-6">
-            <item.icon className={cn("h-6 w-6 shrink-0 transition-transform group-hover:scale-110", isActive ? "text-white" : "text-[#e87c24]")} />
+            <item.icon className={cn("h-6 w-6 shrink-0 transition-transform group-hover:scale-110", iconColor)} />
             <span className="flex-1 text-start text-base truncate font-black">{item.title}</span>
           </Link>
         </SidebarMenuButton>
