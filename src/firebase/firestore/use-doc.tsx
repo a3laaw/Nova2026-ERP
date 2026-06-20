@@ -7,22 +7,22 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
 
 export function useDoc<T = DocumentData>(docRef: DocumentReference<T> | null) {
   const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!!docRef);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
     if (!docRef) {
       setLoading(false);
+      setData(null);
       return;
     }
-
-    setLoading(true);
 
     const unsubscribe = onSnapshot(
       docRef,
       (snapshot) => {
         setData(snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as T) : null);
         setLoading(false);
+        setError(null);
       },
       (serverError) => {
         const permissionError = new FirestorePermissionError({

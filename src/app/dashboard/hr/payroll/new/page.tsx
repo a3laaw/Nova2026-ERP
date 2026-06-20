@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,23 +35,30 @@ export default function NewPayrollBatchPage() {
   const [year, setYear] = useState(new Date().getFullYear().toString());
   const [drafts, setDrafts] = useState<Partial<PayrollRecord>[] | null>(null);
   
-  // حالة التحقق من البيانات
   const [dataStatus, setDataStatus] = useState<{ checked: boolean; hasData: boolean }>({ checked: false, hasData: false });
   const [checkingData, setCheckingData] = useState(false);
 
-  const payrollService = useMemo(() => db && companyId ? new PayrollService(db, companyId) : null, [db, companyId]);
+  const payrollService = useMemo(() => 
+    db && companyId ? new PayrollService(db, companyId) : null, 
+  [db, companyId]);
 
-  // التحقق التلقائي عند تغيير الشهر أو السنة
-  useEffect(() => {
-    async function verify() {
-      if (!payrollService) return;
-      setCheckingData(true);
+  // استخدام useCallback لتثبيت وظيفة التحقق ومنع حلقات التكرار
+  const verifyData = useCallback(async () => {
+    if (!payrollService || !companyId) return;
+    setCheckingData(true);
+    try {
       const res = await payrollService.checkDataAvailability(Number(month) + 1, Number(year));
       setDataStatus({ checked: true, hasData: res.hasAttendance });
+    } catch (e) {
+      console.error("Verification failed", e);
+    } finally {
       setCheckingData(false);
     }
-    verify();
-  }, [month, year, payrollService]);
+  }, [month, year, payrollService, companyId]);
+
+  useEffect(() => {
+    verifyData();
+  }, [verifyData]);
 
   const handleGenerate = async () => {
     if (!payrollService) return;
