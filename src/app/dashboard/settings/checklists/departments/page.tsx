@@ -52,8 +52,9 @@ export default function DepartmentsPage() {
     if (!deptService || !deptForm.name) return;
     setLoadingAction('dept');
     const data = { ...deptForm, order: departments?.length || 0, isActive: true, name: deptForm.name || '', nameEn: deptForm.nameEn || '' };
-    if (deptForm.id) await deptService.updateDepartment(deptForm.id, data);
-    else await deptService.addDepartment(data as any);
+    if (deptForm.id) deptService.updateDepartment(deptForm.id, data);
+    else deptService.addDepartment(data as any);
+    
     toast({ title: t('saved') });
     setDeptForm({ name: '', nameEn: '', description: '' });
     setIsDeptOpen(false);
@@ -63,13 +64,9 @@ export default function DepartmentsPage() {
   const handleDeleteDept = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (!deptService || !confirm(t('confirmDelete'))) return;
-    try {
-      await deptService.deleteDepartment(id);
-      if (selectedDept?.id === id) setSelectedDept(null);
-      toast({ title: t('deleted') });
-    } catch (err) {
-      toast({ variant: "destructive", title: t('error') });
-    }
+    await deptService.deleteDepartment(id);
+    if (selectedDept?.id === id) setSelectedDept(null);
+    toast({ title: t('deleted') });
   };
 
   const handleSaveJob = async () => {
@@ -84,8 +81,9 @@ export default function DepartmentsPage() {
       name: jobForm.name || '', 
       nameEn: jobForm.nameEn || '' 
     };
-    if (jobForm.id) await deptService.updateJob(selectedDept.id, jobForm.id, data);
-    else await deptService.addJob(selectedDept.id, data as any);
+    if (jobForm.id) deptService.updateJob(selectedDept.id, jobForm.id, data);
+    else deptService.addJob(selectedDept.id, data as any);
+    
     toast({ title: t('saved') });
     setJobForm({ name: '', nameEn: '', roleId: '' });
     setIsJobOpen(false);
@@ -95,12 +93,8 @@ export default function DepartmentsPage() {
   const handleDeleteJob = async (e: React.MouseEvent, jobId: string) => {
     e.stopPropagation();
     if (!deptService || !selectedDept?.id || !confirm(t('confirmDelete'))) return;
-    try {
-      await deptService.deleteJob(selectedDept.id, jobId);
-      toast({ title: t('deleted') });
-    } catch (err) {
-      toast({ variant: "destructive", title: t('error') });
-    }
+    deptService.deleteJob(selectedDept.id, jobId);
+    toast({ title: t('deleted') });
   };
 
   return (

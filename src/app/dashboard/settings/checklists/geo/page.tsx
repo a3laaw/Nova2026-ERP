@@ -72,7 +72,7 @@ export default function GeoPage() {
   const handleDeleteArea = async (e: React.MouseEvent, areaId: string) => {
     e.stopPropagation();
     if (!locationService || !selectedGov?.id || !confirm(t('confirmDelete'))) return;
-    // Note: deleteArea needed in service, reusing deleteItem or similar logic
+    locationService.deleteArea(selectedGov.id, areaId);
     toast({ title: t('deleted') });
   };
 

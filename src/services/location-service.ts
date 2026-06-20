@@ -22,6 +22,7 @@ export class LocationService {
   addGovernorate(data: Omit<Governorate, 'id' | 'createdAt' | 'updatedAt' | 'companyId'>) {
     const path = paths.governorates(this.companyId);
     const docData = { ...data, companyId: this.companyId, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
+    
     addDoc(collection(this.db, path), docData).catch(async () => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({ path, operation: 'create', requestResourceData: docData }));
     });
@@ -29,30 +30,57 @@ export class LocationService {
 
   updateGovernorate(id: string, data: Partial<Governorate>) {
     const path = paths.governorates(this.companyId);
-    updateDoc(doc(this.db, path, id), { ...data, updatedAt: serverTimestamp() }).catch(async () => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `${path}/${id}`, operation: 'update', requestResourceData: data }));
+    const docRef = doc(this.db, path, id);
+    
+    updateDoc(docRef, { ...data, updatedAt: serverTimestamp() }).catch(async () => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: docRef.path, operation: 'update', requestResourceData: data }));
     });
   }
 
   async deleteGovernorate(id: string) {
     const path = paths.governorates(this.companyId);
+    const docRef = doc(this.db, path, id);
+    
     try {
       const areasRef = collection(this.db, paths.areas(this.companyId, id));
       const areasSnap = await getDocs(areasRef);
       const batch = writeBatch(this.db);
+      
       areasSnap.docs.forEach(areaDoc => batch.delete(areaDoc.ref));
-      batch.delete(doc(this.db, path, id));
-      batch.commit().catch(async () => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `${path}/${id}`, operation: 'delete' }));
+      batch.delete(docRef);
+      
+      await batch.commit().catch(async () => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: docRef.path, operation: 'delete' }));
       });
-    } catch (err) {}
+    } catch (err) {
+      console.error("Delete gov error:", err);
+    }
   }
 
   addArea(govId: string, data: Omit<Area, 'id' | 'createdAt' | 'updatedAt' | 'companyId'>) {
     const path = paths.areas(this.companyId, govId);
     const docData = { ...data, companyId: this.companyId, governorateId: govId, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
+    
     addDoc(collection(this.db, path), docData).catch(async () => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({ path, operation: 'create', requestResourceData: docData }));
+    });
+  }
+
+  updateArea(govId: string, areaId: string, data: Partial<Area>) {
+    const path = paths.areas(this.companyId, govId);
+    const docRef = doc(this.db, path, areaId);
+    
+    updateDoc(docRef, { ...data, updatedAt: serverTimestamp() }).catch(async () => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: docRef.path, operation: 'update', requestResourceData: data }));
+    });
+  }
+
+  deleteArea(govId: string, areaId: string) {
+    const path = paths.areas(this.companyId, govId);
+    const docRef = doc(this.db, path, areaId);
+    
+    deleteDoc(docRef).catch(async () => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: docRef.path, operation: 'delete' }));
     });
   }
 }

@@ -19,64 +19,68 @@ import { Department, Job } from '@/types/reference';
 export class DepartmentService {
   constructor(private db: Firestore, private companyId: string) {}
 
-  async addDepartment(data: Omit<Department, 'id' | 'createdAt' | 'updatedAt' | 'companyId'>) {
+  addDepartment(data: Omit<Department, 'id' | 'createdAt' | 'updatedAt' | 'companyId'>) {
     const path = paths.departments(this.companyId);
     const docData = { ...data, companyId: this.companyId, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
-    try {
-      await addDoc(collection(this.db, path), docData);
-    } catch (err) {
+    
+    addDoc(collection(this.db, path), docData).catch(async () => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({ path, operation: 'create', requestResourceData: docData }));
-    }
+    });
   }
 
-  async updateDepartment(id: string, data: Partial<Department>) {
+  updateDepartment(id: string, data: Partial<Department>) {
     const path = paths.departments(this.companyId);
-    try {
-      await updateDoc(doc(this.db, path, id), { ...data, updatedAt: serverTimestamp() });
-    } catch (err) {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `${path}/${id}`, operation: 'update', requestResourceData: data }));
-    }
+    const docRef = doc(this.db, path, id);
+    
+    updateDoc(docRef, { ...data, updatedAt: serverTimestamp() }).catch(async () => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: docRef.path, operation: 'update', requestResourceData: data }));
+    });
   }
 
   async deleteDepartment(id: string) {
     const path = paths.departments(this.companyId);
+    const docRef = doc(this.db, path, id);
+    
     try {
       const jobsRef = collection(this.db, paths.jobs(this.companyId, id));
       const jobsSnap = await getDocs(jobsRef);
       const batch = writeBatch(this.db);
+      
       jobsSnap.docs.forEach(jobDoc => batch.delete(jobDoc.ref));
-      batch.delete(doc(this.db, path, id));
-      await batch.commit();
+      batch.delete(docRef);
+      
+      await batch.commit().catch(async () => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: docRef.path, operation: 'delete' }));
+      });
     } catch (err) {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `${path}/${id}`, operation: 'delete' }));
+      console.error("Delete department error:", err);
     }
   }
 
-  async addJob(deptId: string, data: Omit<Job, 'id' | 'createdAt' | 'updatedAt' | 'companyId'>) {
+  addJob(deptId: string, data: Omit<Job, 'id' | 'createdAt' | 'updatedAt' | 'companyId'>) {
     const path = paths.jobs(this.companyId, deptId);
     const docData = { ...data, companyId: this.companyId, departmentId: deptId, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
-    try {
-      await addDoc(collection(this.db, path), docData);
-    } catch (err) {
+    
+    addDoc(collection(this.db, path), docData).catch(async () => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({ path, operation: 'create', requestResourceData: docData }));
-    }
+    });
   }
 
-  async updateJob(deptId: string, jobId: string, data: Partial<Job>) {
+  updateJob(deptId: string, jobId: string, data: Partial<Job>) {
     const path = paths.jobs(this.companyId, deptId);
-    try {
-      await updateDoc(doc(this.db, path, jobId), { ...data, updatedAt: serverTimestamp() });
-    } catch (err) {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `${path}/${jobId}`, operation: 'update', requestResourceData: data }));
-    }
+    const docRef = doc(this.db, path, jobId);
+    
+    updateDoc(docRef, { ...data, updatedAt: serverTimestamp() }).catch(async () => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: docRef.path, operation: 'update', requestResourceData: data }));
+    });
   }
 
-  async deleteJob(deptId: string, jobId: string) {
+  deleteJob(deptId: string, jobId: string) {
     const path = paths.jobs(this.companyId, deptId);
-    try {
-      await deleteDoc(doc(this.db, path, jobId));
-    } catch (err) {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `${path}/${jobId}`, operation: 'delete' }));
-    }
+    const docRef = doc(this.db, path, jobId);
+    
+    deleteDoc(docRef).catch(async () => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: docRef.path, operation: 'delete' }));
+    });
   }
 }
