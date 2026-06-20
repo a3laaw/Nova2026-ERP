@@ -5,14 +5,12 @@ import {
   collection, 
   doc, 
   writeBatch, 
-  serverTimestamp,
-  getDocs,
-  query
+  serverTimestamp
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { AttendanceRecord, Employee } from '@/types/hr';
 import { WorkHoursSettings, DayOfWeek } from '@/types/work-hours';
-import { parse, differenceInMinutes, format } from 'date-fns';
+import { parse, differenceInMinutes, format, isValid } from 'date-fns';
 
 export interface RawAttendanceRow {
   employeeNumber: string;
@@ -38,8 +36,22 @@ export class AttendanceImportService {
   constructor(private db: Firestore, private companyId: string) {}
 
   /**
-   * معالجة ملف الحضور ومطابقته مع الموظفين وإعدادات الدوام
+   * دالة مساعدة لتحليل الوقت بمرونة (تقبل 08:00 أو 8:00)
    */
+  private parseFlexibleTime(timeStr: string | undefined): Date | null {
+    if (!timeStr || typeof timeStr !== 'string' || !timeStr.trim()) return null;
+    
+    const cleanTime = timeStr.trim();
+    const formats = ['HH:mm', 'H:mm', 'HH:mm:ss', 'H:mm:ss'];
+    
+    for (const f of formats) {
+      const parsed = parse(cleanTime, f, new Date());
+      if (isValid(parsed)) return parsed;
+    }
+    
+    return null;
+  }
+
   async processImport(
     rows: RawAttendanceRow[], 
     employees: Employee[], 
@@ -50,20 +62,26 @@ export class AttendanceImportService {
     const summary = { total: rows.length, valid: 0, invalid: 0, present: 0, late: 0, holiday: 0 };
 
     rows.forEach((row, index) => {
+      // تجاهل الأسطر الفارغة تماماً
+      if (!row.employeeNumber && !row.date) return;
+
       const emp = employees.find(e => e.employeeNumber === row.employeeNumber);
-      
       if (!emp) {
-        errors.push({ row: index + 1, message: `موظف غير معروف: ${row.employeeNumber}` });
+        errors.push({ row: index + 2, message: `موظف غير موجود: ${row.employeeNumber || '---'}` });
         summary.invalid++;
         return;
       }
 
-      // 1. تحديد نوع الدوام (معماري أو عام)
+      // تحليل التاريخ
+      const dateObj = new Date(row.date);
+      if (isNaN(dateObj.getTime())) {
+        errors.push({ row: index + 2, message: `تاريخ غير صالح: ${row.date || '---'}` });
+        summary.invalid++;
+        return;
+      }
+
       const isArch = emp.departmentName?.toLowerCase().includes('arch') || false;
       const schedule = isArch ? workSettings.architectural : workSettings.general;
-      
-      // 2. التحقق من العطلات
-      const dateObj = new Date(row.date);
       const dayName = format(dateObj, 'EEEE') as DayOfWeek;
       const isWeekend = workSettings.holidays.includes(dayName);
       const isPublicHoliday = workSettings.publicHolidays.some(h => h.date === row.date);
@@ -72,6 +90,9 @@ export class AttendanceImportService {
       let minutesLate = 0;
       let minutesEarlyLeave = 0;
 
+      const actualIn = this.parseFlexibleTime(row.checkIn);
+      const actualOut = this.parseFlexibleTime(row.checkOut);
+
       if (isPublicHoliday) {
         status = 'holiday';
         summary.holiday++;
@@ -79,32 +100,30 @@ export class AttendanceImportService {
         status = 'weekend';
         summary.holiday++;
       } else {
-        // حساب التأخير إذا كان هناك بصمة دخول
-        if (row.checkIn) {
-          const actualIn = parse(row.checkIn, 'HH:mm', new Date());
-          const expectedIn = parse(schedule.morningStartTime, 'HH:mm', new Date());
+        // حساب التأخير
+        if (actualIn) {
+          const expectedIn = this.parseFlexibleTime(schedule.morningStartTime) || parse('08:00', 'HH:mm', new Date());
           const diff = differenceInMinutes(actualIn, expectedIn);
-          if (diff > schedule.bufferMinutes) {
+          if (diff > (schedule.bufferMinutes || 0)) {
             minutesLate = diff;
             status = 'late';
             summary.late++;
+          } else {
+            summary.present++;
           }
         } else {
           status = 'absent';
         }
 
         // حساب الانصراف المبكر
-        if (row.checkOut) {
-          const actualOut = parse(row.checkOut, 'HH:mm', new Date());
-          const expectedOut = parse(schedule.eveningEndTime, 'HH:mm', new Date());
+        if (actualOut) {
+          const expectedOut = this.parseFlexibleTime(schedule.eveningEndTime) || parse('17:00', 'HH:mm', new Date());
           const diff = differenceInMinutes(expectedOut, actualOut);
           if (diff > 0) {
             minutesEarlyLeave = diff;
             if (status === 'present') status = 'early_leave';
           }
         }
-
-        if (status === 'present') summary.present++;
       }
 
       records.push({
@@ -128,9 +147,6 @@ export class AttendanceImportService {
     return { records, errors, summary };
   }
 
-  /**
-   * حفظ السجلات في دفعات (Batches)
-   */
   async saveRecords(records: Partial<AttendanceRecord>[]) {
     const batch = writeBatch(this.db);
     const collectionRef = collection(this.db, paths.attendance(this.companyId));

@@ -37,9 +37,6 @@ export default function AttendanceImportPage() {
   const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId))) : null, [db, companyId]);
   const { data: employees } = useCollection<Employee>(empsQuery);
 
-  /**
-   * إنشاء وتحميل نموذج CSV متوافق مع إكسيل
-   */
   const downloadTemplate = () => {
     const headers = isRtl 
       ? "رقم_الموظف,التاريخ,وقت_الحضور,وقت_الانصراف" 
@@ -51,7 +48,6 @@ export default function AttendanceImportPage() {
       "1001,2026-01-02,07:55,16:50"
     ];
     
-    // إضافة BOM لدعم اللغة العربية في إكسيل
     const csvContent = "\uFEFF" + headers + "\n" + rows.join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -76,31 +72,44 @@ export default function AttendanceImportPage() {
         const text = event.target?.result as string;
         const lines = text.split(/\r?\n/).filter(line => line.trim());
         
+        if (lines.length < 2) throw new Error(isRtl ? 'الملف فارغ أو لا يحتوي على بيانات.' : 'File is empty or lacks data.');
+
         const rows: RawAttendanceRow[] = lines.slice(1).map(line => {
-          // التعامل مع الفواصل سواء كانت فاصلة أو فاصلة منقوطة (CSV)
-          const parts = line.split(/[;,]/).map(s => s.trim());
+          // ذكاء اصطناعي بسيط لتحليل السطر (يدعم الفواصل المختلفة)
+          const parts = line.split(/[;,]/).map(s => s.trim().replace(/^["']|["']$/g, ''));
           return { 
-            employeeNumber: parts[0], 
-            date: parts[1], 
-            checkIn: parts[2], 
-            checkOut: parts[3] 
+            employeeNumber: parts[0] || '', 
+            date: parts[1] || '', 
+            checkIn: parts[2] || '', 
+            checkOut: parts[3] || '' 
           };
         });
 
         const whService = new WorkHoursService(db, companyId);
-        const settings = await whService.getSettings();
+        let settings = await whService.getSettings();
         
-        if (!settings) throw new Error(isRtl ? 'يرجى ضبط إعدادات ساعات العمل أولاً.' : 'Please set work hours settings first.');
+        if (!settings) {
+          settings = whService.getDefaultSettings() as any;
+        }
 
         const importService = new AttendanceImportService(db, companyId);
-        const result = await importService.processImport(rows, employees, settings);
+        const result = await importService.processImport(rows, employees, settings!);
         setPreview(result);
         
-        toast({ title: isRtl ? 'تم تحليل الملف بنجاح' : 'File Analyzed' });
+        if (result.errors.length > 0) {
+          toast({ 
+            variant: "destructive", 
+            title: isRtl ? "تنبيه: تم العثور على أخطاء" : "Warnings Found", 
+            description: isRtl ? `تم تجاهل ${result.errors.length} سطر بسبب بيانات خاطئة.` : `Ignored ${result.errors.length} invalid rows.`
+          });
+        } else {
+          toast({ title: isRtl ? 'تم تحليل الملف بنجاح' : 'File Analyzed' });
+        }
       } catch (err: any) {
         toast({ variant: "destructive", title: t('error'), description: err.message });
       } finally {
         setImporting(false);
+        if (e.target) e.target.value = ''; // Reset input
       }
     };
     reader.readAsText(file, 'UTF-8');
@@ -111,7 +120,7 @@ export default function AttendanceImportPage() {
     setSaving(true);
     try {
       const importService = new AttendanceImportService(db, companyId);
-      await importService.saveRecords(preview.records);
+      await importService.saveRecords(preview.records.filter(r => r.employeeId));
       toast({ title: t('saved'), description: isRtl ? 'تم استيراد سجلات الحضور بنجاح.' : 'Attendance records imported successfully.' });
       router.push('/dashboard/hr');
     } catch (err) {
@@ -145,7 +154,6 @@ export default function AttendanceImportPage() {
 
       {!preview ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-           {/* منطقة الرفع */}
            <Card className="lg:col-span-2 border-4 border-dashed border-primary/20 rounded-[3rem] bg-white overflow-hidden shadow-2xl">
               <CardContent className="p-16 text-center space-y-8">
                 <div className="mx-auto w-24 h-24 bg-primary/10 text-primary rounded-[2rem] flex items-center justify-center mb-6 shadow-inner">
@@ -172,7 +180,6 @@ export default function AttendanceImportPage() {
               </CardContent>
            </Card>
 
-           {/* دليل تعبئة البيانات */}
            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-slate-900 text-white overflow-hidden">
               <CardHeader className="bg-white/5 p-8 border-b border-white/5">
                  <CardTitle className="text-lg font-black flex items-center gap-3">
@@ -188,18 +195,14 @@ export default function AttendanceImportPage() {
                     {[
                       { label: isRtl ? '1. رقم الموظف' : '1. Emp Num', desc: isRtl ? 'كما يظهر في سجل الموظفين' : 'Matching records' },
                       { label: isRtl ? '2. التاريخ' : '2. Date', desc: 'YYYY-MM-DD (2026-01-01)' },
-                      { label: isRtl ? '3. وقت الحضور' : '3. Check In', desc: 'HH:mm (08:00)' },
-                      { label: isRtl ? '4. وقت الانصراف' : '4. Check Out', desc: 'HH:mm (17:00)' }
+                      { label: isRtl ? '3. وقت الحضور' : '3. Check In', desc: 'HH:mm (08:00) or 8:00' },
+                      { label: isRtl ? '4. وقت الانصراف' : '4. Check Out', desc: 'HH:mm (17:00) or 17:00' }
                     ].map((step, i) => (
                       <div key={i} className="p-4 bg-white/5 rounded-2xl border border-white/5">
                         <p className="text-sm font-black text-primary">{step.label}</p>
                         <p className="text-[10px] text-slate-500 font-bold">{step.desc}</p>
                       </div>
                     ))}
-                 </div>
-                 <div className="pt-4 flex items-center gap-3 text-[10px] text-amber-400 font-bold">
-                    <AlertTriangle className="h-4 w-4" />
-                    <span>{isRtl ? 'تجنب ترك خانة رقم الموظف أو التاريخ فارغة.' : 'Avoid empty employee ID or date fields.'}</span>
                  </div>
               </CardContent>
            </Card>
@@ -225,6 +228,25 @@ export default function AttendanceImportPage() {
              ))}
           </div>
 
+          {preview.errors.length > 0 && (
+            <Card className="border-2 border-rose-100 rounded-3xl bg-rose-50/30 overflow-hidden">
+               <CardHeader className="p-6 pb-2">
+                  <CardTitle className="text-sm font-black text-rose-600 flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4" /> {isRtl ? 'الأخطاء المكتشفة' : 'Parsing Warnings'}
+                  </CardTitle>
+               </CardHeader>
+               <CardContent className="p-6 pt-0">
+                  <div className="max-h-40 overflow-y-auto space-y-1">
+                     {preview.errors.map((err, i) => (
+                       <p key={i} className="text-[10px] font-bold text-rose-500">
+                         {isRtl ? `سطر ${err.row}: ${err.message}` : `Row ${err.row}: ${err.message}`}
+                       </p>
+                     ))}
+                  </div>
+               </CardContent>
+            </Card>
+          )}
+
           <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
             <CardHeader className="bg-slate-50 border-b p-8 flex flex-row items-center justify-between">
                <CardTitle className="text-xl font-black">{isRtl ? 'معاينة البيانات قبل الحفظ' : 'Data Preview'}</CardTitle>
@@ -242,7 +264,7 @@ export default function AttendanceImportPage() {
                   </Button>
                </div>
             </CardHeader>
-            <CardContent className="p-0 overflow-x-auto max-h-[600px] overflow-y-auto">
+            <CardContent className="p-0 overflow-x-auto max-h-[600px] overflow-y-auto text-start">
                <Table>
                  <TableHeader className="bg-muted/30 sticky top-0 z-10">
                    <TableRow>
@@ -258,7 +280,7 @@ export default function AttendanceImportPage() {
                      <TableRow key={i} className="hover:bg-slate-50 transition-colors">
                        <TableCell className="py-4 ps-8 text-start">
                           <div className="flex flex-col">
-                            <span className="font-black text-slate-800 text-sm">{rec.employeeName}</span>
+                            <span className="font-black text-slate-800 text-sm">{rec.employeeName || '---'}</span>
                             <span className="text-[10px] font-mono text-slate-400">#{rec.employeeNumber}</span>
                           </div>
                        </TableCell>
