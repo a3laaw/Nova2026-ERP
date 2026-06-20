@@ -13,10 +13,6 @@ import {
   Warehouse,
   BarChart3,
   Sparkles,
-  Settings,
-  Building2,
-  Database,
-  UserCog,
   ChevronRight,
   Clock,
   ShieldCheck,
@@ -30,7 +26,9 @@ import {
   BookOpen,
   TrendingUp,
   Truck,
-  Scale
+  Scale,
+  Building2,
+  UserCog
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
@@ -181,12 +179,12 @@ export function DashboardSidebar() {
       <SidebarContent className="px-4">
         <SidebarGroup>
           {!isCollapsed && (
-            <SidebarGroupLabel className="text-[#1e1b4b]/40 font-black px-4 py-4 text-start uppercase text-[10px] tracking-widest">
+            <SidebarGroupLabel className="text-[#1e1b4b]/40 font-black px-4 py-6 text-start uppercase text-[10px] tracking-widest">
               {isRtl ? 'القائمة الرئيسية' : 'Main Menu'}
             </SidebarGroupLabel>
           )}
           <SidebarGroupContent>
-            <SidebarMenu className="space-y-2">
+            <SidebarMenu className="space-y-4">
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   {item.subItems ? (
@@ -197,14 +195,17 @@ export function DashboardSidebar() {
                             isActive={pathname.startsWith(item.url)}
                             tooltip={item.title}
                             className={cn(
-                              "transition-all duration-300 rounded-[1.5rem] h-auto",
-                              isCollapsed ? "py-4 px-0 justify-center" : "py-8 px-5",
+                              "transition-all duration-300 rounded-[1.5rem] h-auto group",
+                              isCollapsed ? "py-5 px-0 justify-center" : "py-8 px-6",
                               pathname.startsWith(item.url) 
                                 ? "bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-xl shadow-orange-500/20 font-black" 
                                 : "text-[#1e1b4b] hover:bg-orange-50/50 hover:text-[#e87c24]"
                             )}
                           >
-                            <item.icon className={cn("h-6 w-6 shrink-0", pathname.startsWith(item.url) ? "text-white" : "text-slate-400")} />
+                            <item.icon className={cn(
+                              "h-6 w-6 shrink-0 transition-colors", 
+                              pathname.startsWith(item.url) ? "text-white" : "text-[#e87c24]"
+                            )} />
                             {!isCollapsed && (
                               <>
                                 <span className="flex-1 text-start text-base truncate">{item.title}</span>
@@ -218,7 +219,7 @@ export function DashboardSidebar() {
                         </CollapsibleTrigger>
                         <CollapsibleContent>
                           {!isCollapsed && (
-                            <SidebarMenuSub className="ms-8 mt-2 border-s-2 border-orange-100/50 space-y-1">
+                            <SidebarMenuSub className="ms-8 mt-3 border-s-2 border-orange-100/50 space-y-2">
                               {item.subItems.map(sub => (
                                 <SidebarMenuSubItem key={sub.title}>
                                   <SidebarMenuSubButton asChild isActive={pathname === sub.url} className="h-10 rounded-xl px-4">
@@ -226,7 +227,10 @@ export function DashboardSidebar() {
                                       "text-sm flex items-center gap-3 transition-colors",
                                       pathname === sub.url ? "text-[#e87c24] font-black" : "text-slate-500 hover:text-[#1e1b4b]"
                                     )}>
-                                      <sub.icon className="h-4 w-4 opacity-70 shrink-0" />
+                                      <sub.icon className={cn(
+                                        "h-4 w-4 shrink-0 transition-colors",
+                                        pathname === sub.url ? "text-[#e87c24]" : "text-[#e87c24]/50"
+                                      )} />
                                       <span className="truncate">{sub.title}</span>
                                     </Link>
                                   </SidebarMenuSubButton>
@@ -244,16 +248,16 @@ export function DashboardSidebar() {
                       tooltip={item.title}
                       className={cn(
                         "transition-all duration-300 rounded-[1.5rem] h-auto",
-                        isCollapsed ? "py-4 px-0 justify-center" : "py-8 px-5",
+                        isCollapsed ? "py-5 px-0 justify-center" : "py-8 px-6",
                         pathname === item.url 
                           ? "bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-xl shadow-orange-500/20 font-black" 
                           : "text-[#1e1b4b] hover:bg-orange-50/50 hover:text-[#e87c24]"
                       )}
                     >
-                      <Link href={item.url} className={cn("flex items-center", isCollapsed ? "justify-center" : "gap-5")}>
+                      <Link href={item.url} className={cn("flex items-center", isCollapsed ? "justify-center" : "gap-6")}>
                         <item.icon className={cn(
                           "h-6 w-6 transition-colors shrink-0", 
-                          pathname === item.url ? "text-white" : "text-slate-400 group-hover:text-[#e87c24]"
+                          pathname === item.url ? "text-white" : "text-[#e87c24]"
                         )} />
                         {!isCollapsed && <span className="flex-1 text-start text-base truncate">{item.title}</span>}
                       </Link>
@@ -267,9 +271,9 @@ export function DashboardSidebar() {
       </SidebarContent>
       
       <SidebarFooter className="p-8 text-center bg-white/5 border-t border-orange-100/30">
-        <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-col items-center gap-3">
            {!isCollapsed && (
-             <Badge variant="outline" className="bg-white/50 text-[9px] font-black uppercase tracking-widest text-[#e87c24] border-[#e87c24]/20 px-3">
+             <Badge variant="outline" className="bg-white/50 text-[9px] font-black uppercase tracking-widest text-[#e87c24] border-[#e87c24]/20 px-3 py-1">
                Premium Edition
              </Badge>
            )}
