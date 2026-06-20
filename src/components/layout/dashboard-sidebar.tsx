@@ -61,9 +61,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import {
   Tooltip,
-  TooltipContent,
   TooltipProvider,
   TooltipTrigger,
+  TooltipContent,
 } from "@/components/ui/tooltip"
 
 export function DashboardSidebar() {
@@ -170,7 +170,7 @@ export function DashboardSidebar() {
 
   return (
     <Sidebar collapsible="icon" side={isRtl ? "right" : "left"} className="border-none bg-transparent">
-      <SidebarHeader className="flex-none transition-all duration-300 p-4 pb-2">
+      <SidebarHeader className="flex-none transition-all duration-300 p-4">
         {!isCollapsed ? (
           <div className="flex flex-col text-start px-2">
             <span className="font-headline font-black text-2xl text-[#1e1b4b] tracking-tighter leading-none">NovaFlow</span>
@@ -186,15 +186,10 @@ export function DashboardSidebar() {
         )}
       </SidebarHeader>
       
-      <SidebarContent className="flex-1 px-2 overflow-y-auto scrollbar-hide py-4">
+      <SidebarContent className="flex-1 px-2 overflow-y-auto scrollbar-hide py-2">
         <SidebarGroup className="p-0">
-          {!isCollapsed && (
-            <SidebarGroupLabel className="text-[#1e1b4b]/40 font-black px-2 mb-3 text-start uppercase text-[9px] tracking-widest">
-              {isRtl ? 'إدارة العمليات' : 'Operations'}
-            </SidebarGroupLabel>
-          )}
           <SidebarGroupContent>
-            <SidebarMenu className="gap-2">
+            <SidebarMenu className="gap-4">
               {menuItems.map((item) => (
                 <NavItemRenderer key={item.title} item={item} isCollapsed={isCollapsed} isRtl={isRtl} pathname={pathname} />
               ))}
@@ -202,13 +197,13 @@ export function DashboardSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup className="mt-6 p-0">
+        <SidebarGroup className="mt-8 p-0">
           {!isCollapsed && (
-            <SidebarGroupLabel className="text-[#1e1b4b]/40 font-black px-2 mb-3 text-start uppercase text-[9px] tracking-widest border-t border-orange-100/30 pt-4">
+            <SidebarGroupLabel className="text-[#1e1b4b]/40 font-black px-4 mb-3 text-start uppercase text-[9px] tracking-widest border-t border-orange-100/30 pt-4">
               {isRtl ? 'الإعدادات' : 'Settings'}
             </SidebarGroupLabel>
           )}
-          <SidebarMenu className="gap-2">
+          <SidebarMenu className="gap-3">
             {settingsItems.map((item) => (
               <NavItemRenderer key={item.title} item={item} isCollapsed={isCollapsed} isRtl={isRtl} pathname={pathname} />
             ))}
@@ -219,14 +214,14 @@ export function DashboardSidebar() {
       <SidebarFooter className="flex-none transition-all duration-300 p-3 mt-auto">
         {!isCollapsed ? (
           <div className="p-4 rounded-2xl bg-white border border-orange-100 shadow-xl ring-1 ring-black/[0.02] animate-in fade-in zoom-in-95 duration-500">
-             <div className="flex items-center justify-between mb-1.5">
+             <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                   <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Kuwait Cloud</span>
+                   <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Kuwait Cloud</span>
                 </div>
                 <Badge className="bg-[#e87c24] text-white text-[8px] font-black uppercase h-4 px-1.5">v1.9</Badge>
              </div>
-             <p className="text-[10px] font-black text-[#1e1b4b]/80 text-center uppercase tracking-tighter">Enterprise Intelligence</p>
+             <p className="text-[9px] font-black text-[#1e1b4b]/80 text-center uppercase tracking-tighter">Enterprise Intelligence</p>
           </div>
         ) : (
           <div className="mx-auto h-8 w-8 rounded-xl bg-white border border-orange-100 shadow-sm flex items-center justify-center text-[#e87c24]">
@@ -270,7 +265,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                 onPointerEnter={handlePointerEnter}
                 onPointerLeave={handlePointerLeave}
                 className={cn(
-                  "flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300 outline-none",
+                  "flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300 outline-none hover:scale-105 shadow-md",
                   isActive ? activeCard : inactiveCard
                 )}
               >
@@ -279,7 +274,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
             </DropdownMenuTrigger>
             <DropdownMenuContent
               side={isRtl ? "left" : "right"}
-              sideOffset={5}
+              sideOffset={8}
               align="start"
               dir={isRtl ? "rtl" : "ltr"}
               className="w-60 p-2 bg-white/98 backdrop-blur-xl border-2 border-orange-100 shadow-2xl rounded-[1.8rem] z-[9999]"
@@ -309,7 +304,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                 <Link 
                   href={item.url}
                   className={cn(
-                    "flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300 hover:scale-105",
+                    "flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300 hover:scale-105 shadow-md",
                     isActive ? activeCard : inactiveCard
                   )}
                 >
@@ -327,7 +322,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
   }
 
   return (
-    <SidebarMenuItem className="px-1 mb-2">
+    <SidebarMenuItem className="px-1">
       {item.subItems ? (
         <Collapsible defaultOpen={isActive} className="group/collapsible">
           <div className={cn(
@@ -335,7 +330,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
             isActive ? activeCard : inactiveCard
           )}>
             <CollapsibleTrigger asChild>
-              <button className="flex items-center justify-between w-full h-12 px-4 hover:bg-white/10 transition-colors">
+              <button className="flex items-center justify-between w-full h-12 px-5 hover:bg-white/10 transition-colors">
                 <div className={cn("flex items-center gap-3", isRtl ? "flex-row" : "flex-row-reverse")}>
                   <item.icon className={cn("h-5 w-5 shrink-0", isActive ? "text-[#e87c24]" : "text-white")} />
                   <span className="text-start text-sm font-black truncate">{item.title}</span>
@@ -347,7 +342,10 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
               </button>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="px-2 pb-3 space-y-1 animate-in slide-in-from-top-2 duration-300">
+              <div className={cn(
+                "mx-3 mb-3 p-1.5 rounded-[1.2rem] space-y-1 animate-in slide-in-from-top-2 duration-300 border border-transparent",
+                isActive ? "bg-orange-50/50" : "bg-white/15 backdrop-blur-sm border-white/10"
+              )}>
                 {item.subItems.map((sub: any) => {
                   const isSubActive = pathname === sub.url
                   return (
@@ -355,14 +353,14 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                       key={sub.title} 
                       href={sub.url}
                       className={cn(
-                        "flex items-center justify-between h-9 rounded-xl px-3 transition-all text-[10px] font-bold",
+                        "flex items-center justify-between h-9 rounded-xl px-3 transition-all text-[10px] font-black",
                         isActive 
-                          ? (isSubActive ? "bg-orange-50 text-[#e87c24] shadow-sm" : "text-slate-500 hover:text-[#e87c24]")
-                          : (isSubActive ? "bg-white/20 text-white" : "text-white/60 hover:text-white")
+                          ? (isSubActive ? "bg-white text-[#e87c24] shadow-sm" : "text-slate-500 hover:text-[#e87c24]")
+                          : (isSubActive ? "bg-white/40 text-white" : "text-white/80 hover:text-white")
                       )}
                     >
                       <span className="truncate text-start">{sub.title}</span>
-                      <sub.icon className={cn("h-3 w-3 ml-2 opacity-50", isSubActive && "opacity-100")} />
+                      <sub.icon className={cn("h-3 w-3 ml-2 opacity-30", isSubActive && "opacity-100")} />
                     </Link>
                   )
                 })}
@@ -374,7 +372,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
         <Link 
           href={item.url}
           className={cn(
-            "flex items-center gap-3 transition-all duration-300 rounded-[1.6rem] h-12 px-4",
+            "flex items-center gap-3 transition-all duration-300 rounded-[1.6rem] h-12 px-5",
             isActive ? activeCard : inactiveCard
           )}
         >
