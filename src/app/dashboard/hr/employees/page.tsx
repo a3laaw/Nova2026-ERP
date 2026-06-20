@@ -7,21 +7,40 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, UserPlus, Search, Loader2, ArrowRight, Filter, Briefcase, Mail, Phone } from "lucide-react";
+import { 
+  Users, UserPlus, Search, Loader2, ArrowRight, 
+  Filter, Briefcase, Phone, Trash2, AlertTriangle 
+} from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
+import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
+import { HRService } from '@/services/hr-service';
 import { cn } from '@/lib/utils';
 import { Employee } from '@/types/hr';
+import { toast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function EmployeesPage() {
   const { globalUser } = useAuthContext();
   const { t, lang, dir } = useLanguage();
+  const { permissions, check, isAdmin } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const isRtl = lang === 'ar';
 
   const companyId = globalUser?.companyId;
@@ -31,11 +50,29 @@ export default function EmployeesPage() {
 
   const { data: employees, loading } = useCollection<Employee>(employeesQuery);
 
+  const hrService = useMemo(() => 
+    db && companyId ? new HRService(db, companyId, permissions) : null, 
+  [db, companyId, permissions]);
+
   const filteredEmployees = employees?.filter(emp => 
     emp.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
     emp.employeeNumber?.includes(searchTerm) ||
     emp.civilId?.includes(searchTerm)
   ) || [];
+
+  const handleDelete = async () => {
+    if (!hrService || !deletingId) return;
+    setLoadingAction(deletingId);
+    try {
+      await hrService.deleteEmployee(deletingId);
+      toast({ title: t('deleted') });
+    } catch (e) {
+      toast({ variant: "destructive", title: t('error') });
+    } finally {
+      setLoadingAction(null);
+      setDeletingId(null);
+    }
+  };
 
   return (
     <div className="space-y-8" dir={dir}>
@@ -50,13 +87,15 @@ export default function EmployeesPage() {
           </p>
         </div>
 
-        <Button 
-          onClick={() => router.push('/dashboard/hr/employees/new')}
-          className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform"
-        >
-          <UserPlus className="me-2 h-6 w-6" />
-          {isRtl ? 'موظف جديد' : 'New Employee'}
-        </Button>
+        {check('hr:create') && (
+          <Button 
+            onClick={() => router.push('/dashboard/hr/employees/new')}
+            className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform"
+          >
+            <UserPlus className="me-2 h-6 w-6" />
+            {isRtl ? 'موظف جديد' : 'New Employee'}
+          </Button>
+        )}
       </div>
 
       <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
@@ -128,10 +167,23 @@ export default function EmployeesPage() {
                     <TableCell className="text-end font-mono font-black text-emerald-600 text-lg">
                       {emp.basicSalary?.toLocaleString()}
                     </TableCell>
-                    <TableCell className="text-center pe-8">
-                      <Button variant="ghost" size="icon" className="rounded-xl group-hover:bg-primary group-hover:text-white transition-all">
-                        <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-180")} />
-                      </Button>
+                    <TableCell className="text-center pe-8" onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-2">
+                         {isAdmin && (
+                           <Button 
+                             variant="ghost" 
+                             size="icon" 
+                             className="text-destructive hover:bg-destructive/5 rounded-xl"
+                             disabled={loadingAction === emp.id}
+                             onClick={() => setDeletingId(emp.id!)}
+                           >
+                             {loadingAction === emp.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                           </Button>
+                         )}
+                         <Button variant="ghost" size="icon" className="rounded-xl group-hover:bg-primary group-hover:text-white transition-all" onClick={() => router.push(`/dashboard/hr/employees/${emp.id}`)}>
+                           <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-180")} />
+                         </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -140,6 +192,26 @@ export default function EmployeesPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <AlertDialog open={!!deletingId} onOpenChange={open => !open && setDeletingId(null)}>
+        <AlertDialogContent className="rounded-[2.5rem] p-8" dir={dir}>
+          <AlertDialogHeader>
+            <div className="mx-auto w-16 h-16 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mb-4">
+               <AlertTriangle className="h-8 w-8" />
+            </div>
+            <AlertDialogTitle className="text-start font-black text-2xl">{t('confirmDelete')}</AlertDialogTitle>
+            <AlertDialogDescription className="text-start font-bold">
+              {isRtl ? 'هل أنت متأكد؟ سيتم حذف ملف الموظف وسجلاته المالية فوراً ولا يمكن التراجع.' : 'Are you sure? Employee profile and financial records will be deleted immediately.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-8 gap-4">
+            <AlertDialogCancel className="rounded-xl h-12 font-bold border-2">{isRtl ? 'إلغاء' : 'Cancel'}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="rounded-xl h-12 font-black bg-rose-600 hover:bg-rose-700 text-white px-8">
+              {isRtl ? 'نعم، احذف السجل' : 'Yes, Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

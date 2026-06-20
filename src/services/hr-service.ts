@@ -6,6 +6,7 @@ import {
   doc, 
   addDoc, 
   updateDoc, 
+  deleteDoc,
   setDoc,
   serverTimestamp,
   query,
@@ -74,7 +75,6 @@ export class HRService {
     });
 
     if (data.email) {
-      // تحديث الصلاحيات في الخلفية
       this.syncGlobalPermissions(data.email, data.roleId);
     }
 
@@ -86,14 +86,12 @@ export class HRService {
     const path = paths.employees(this.companyId);
     const empRef = doc(this.db, path, id);
 
-    // جلب البيانات القديمة للتدقيق (قراءة - مسموح بـ await)
     const oldSnap = await getDoc(empRef);
     if (!oldSnap.exists()) return;
     const oldData = oldSnap.data() as Employee;
 
     const updates = { ...newData, updatedAt: serverTimestamp() };
     
-    // تحديث غير محظور
     updateDoc(empRef, updates).catch((err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: empRef.path,
@@ -106,7 +104,6 @@ export class HRService {
       this.syncGlobalPermissions(newData.email || oldData.email!, newData.roleId);
     }
 
-    // تسجيل في سجل التدقيق
     const criticalFields: (keyof Employee)[] = ['basicSalary', 'jobTitle', 'departmentName', 'status', 'roleId'];
     for (const field of criticalFields) {
       if (newData[field] !== undefined && newData[field] !== oldData[field]) {
@@ -122,10 +119,22 @@ export class HRService {
     }
   }
 
+  async deleteEmployee(id: string) {
+    ensureActionPermission(this.permissions, 'hr:delete');
+    const empRef = doc(this.db, paths.employees(this.companyId), id);
+    
+    return deleteDoc(empRef).catch((err) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: empRef.path,
+        operation: 'delete'
+      }));
+      throw err;
+    });
+  }
+
   private async syncGlobalPermissions(email: string, roleId?: string) {
     if (!roleId) return;
     try {
-      // البحث عن المستخدم العالمي بالبريد الإلكتروني
       const q = query(collection(this.db, 'global_users'), where('email', '==', email));
       const snap = await getDocs(q);
 
@@ -181,8 +190,6 @@ export class HRService {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
-    addDoc(collection(this.db, logPath), logData).catch(() => {
-      // سجل التدقيق لا ينبغي أن يعطل العملية الرئيسية
-    });
+    addDoc(collection(this.db, logPath), logData).catch(() => {});
   }
 }
