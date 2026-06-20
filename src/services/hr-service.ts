@@ -11,7 +11,9 @@ import {
   where,
   getDocs,
   getDoc,
-  setDoc
+  setDoc,
+  orderBy,
+  limit
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { Employee, EmployeeAuditLog } from '@/types/hr';
@@ -25,6 +27,21 @@ export class HRService {
     private companyId: string,
     private permissions: string[] = []
   ) {}
+
+  /**
+   * جلب الرقم التالي للموظف (تلقائي)
+   */
+  async getNextEmployeeNumber(): Promise<string> {
+    const q = query(
+      collection(this.db, paths.employees(this.companyId)), 
+      orderBy('employeeNumber', 'desc'), 
+      limit(1)
+    );
+    const snap = await getDocs(q);
+    if (snap.empty) return "1001";
+    const lastNum = parseInt(snap.docs[0].data().employeeNumber);
+    return isNaN(lastNum) ? "1001" : (lastNum + 1).toString();
+  }
 
   /**
    * إضافة موظف جديد مع تحديث السجل العالمي (Global User) للصلاحيات
