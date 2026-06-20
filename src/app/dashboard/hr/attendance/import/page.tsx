@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { 
   UploadCloud, FileSpreadsheet, Loader2, CheckCircle2, 
   AlertTriangle, ArrowRight, Save, X, Info,
-  Users, CalendarDays, Clock
+  Users, CalendarDays, Clock, Download
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
@@ -34,9 +34,27 @@ export default function AttendanceImportPage() {
   const [saving, setSaving] = useState(false);
   const [preview, setPreview] = useState<ImportPreviewResult | null>(null);
 
-  // 1. جلب الموظفين وإعدادات الدوام
   const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId))) : null, [db, companyId]);
   const { data: employees } = useCollection<Employee>(empsQuery);
+
+  // دالة تحميل النموذج التجريبي
+  const downloadTemplate = () => {
+    const headers = "EmployeeNum,Date,CheckIn,CheckOut";
+    const rows = [
+      "1001,2026-01-01,08:00,17:00",
+      "1002,2026-01-01,08:15,17:05",
+      "1001,2026-01-02,07:55,16:50"
+    ];
+    const csvContent = "\uFEFF" + headers + "\n" + rows.join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", "NovaFlow_Attendance_Template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -49,7 +67,6 @@ export default function AttendanceImportPage() {
         const text = event.target?.result as string;
         const lines = text.split('\n').filter(line => line.trim());
         
-        // المحلل البسيط لملفات CSV (EmployeeNum, Date, CheckIn, CheckOut)
         const rows: RawAttendanceRow[] = lines.slice(1).map(line => {
           const [empNum, date, cin, cout] = line.split(',').map(s => s.trim());
           return { employeeNumber: empNum, date, checkIn: cin, checkOut: cout };
@@ -58,7 +75,7 @@ export default function AttendanceImportPage() {
         const whService = new WorkHoursService(db, companyId);
         const settings = await whService.getSettings();
         
-        if (!settings) throw new Error('يرجى ضبط إعدادات ساعات العمل أولاً.');
+        if (!settings) throw new Error(isRtl ? 'يرجى ضبط إعدادات ساعات العمل أولاً.' : 'Please set work hours settings first.');
 
         const importService = new AttendanceImportService(db, companyId);
         const result = await importService.processImport(rows, employees, settings);
@@ -101,6 +118,14 @@ export default function AttendanceImportPage() {
             {isRtl ? 'تحويل ملفات البصمة إلى بيانات تشغيلية' : 'Transform biometric files into operational data'}
           </p>
         </div>
+        <Button 
+          variant="outline" 
+          onClick={downloadTemplate}
+          className="rounded-xl font-bold border-2 h-12 gap-2 hover:bg-slate-50 transition-all"
+        >
+          <Download className="h-4 w-4" />
+          {isRtl ? 'تحميل نموذج Excel' : 'Download Template'}
+        </Button>
       </div>
 
       {!preview ? (
@@ -225,7 +250,7 @@ export default function AttendanceImportPage() {
                           <Badge className={cn(
                             "font-black px-3 py-1 rounded-lg border-0 shadow-sm uppercase text-[9px]",
                             rec.status === 'present' ? 'bg-emerald-500 text-white' :
-                            rec.status === 'late' ? 'bg-amber-500 text-white' :
+                            rec.status === 'late' ? 'bg-amber-50 text-amber-600' :
                             rec.status === 'holiday' || rec.status === 'weekend' ? 'bg-blue-100 text-blue-600' :
                             'bg-rose-500 text-white'
                           )}>
