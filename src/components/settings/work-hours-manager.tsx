@@ -5,33 +5,20 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Clock, Calendar, MoonStar, 
   Loader2, Save, Sun, HardHat,
-  Coffee, Utensils, Trash2,
-  CalendarCheck, Plus, Flag,
-  Info, Edit3, X, Zap
+  Trash2, Info, Zap
 } from "lucide-react";
 import { useFirestore } from '@/firebase';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { WorkHoursService } from '@/services/work-hours-service';
-import { WorkHoursSettings, DayOfWeek, DailySchedule, PublicHoliday } from '@/types/work-hours';
+import { WorkHoursSettings, DayOfWeek, DailySchedule } from '@/types/work-hours';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
-import { SmartDateInput } from '@/components/ui/smart-date-input';
 
 const DAYS: DayOfWeek[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-const SUGGESTED_KUWAIT_HOLIDAYS_2026: PublicHoliday[] = [
-  { date: '2026-01-01', name: 'رأس السنة الميلادية', nameEn: 'New Year\'s Day' },
-  { date: '2026-02-25', name: 'العيد الوطني', nameEn: 'National Day' },
-  { date: '2026-02-26', name: 'يوم التحرير', nameEn: 'Liberation Day' },
-];
 
 export function WorkHoursManager() {
   const { globalUser, user } = useAuthContext();
@@ -40,9 +27,6 @@ export function WorkHoursManager() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<WorkHoursSettings | null>(null);
-
-  const [manualHoliday, setManualHoliday] = useState({ name: '', date: format(new Date(), 'yyyy-MM-dd') });
-  const [editingDate, setEditingDate] = useState<string | null>(null);
 
   const service = useMemo(() => 
     db && globalUser?.companyId ? new WorkHoursService(db, globalUser.companyId) : null, 
@@ -101,6 +85,8 @@ export function WorkHoursManager() {
     const sched = settings?.[scope];
     if (!sched) return null;
 
+    const isDoubleShift = !!sched.eveningStartTime && sched.eveningStartTime !== "00:00";
+
     return (
       <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
         <CardHeader className={cn("border-b p-8 text-start", bgClass)}>
@@ -109,64 +95,76 @@ export function WorkHoursManager() {
                  <div className="p-3 bg-white rounded-2xl shadow-sm"><Icon className={cn("h-6 w-6", colorClass)} /></div>
                  <div>
                     <CardTitle className="text-xl font-black">{title}</CardTitle>
-                    <CardDescription className="font-bold">{lang === 'ar' ? 'نظام الدوام والورديات.' : 'Work system and shifts.'}</CardDescription>
+                    <CardDescription className="font-bold">
+                       {isDoubleShift 
+                         ? (lang === 'ar' ? 'تم اكتشاف نظام فترتين (صباحي/مسائي).' : 'Split-shift system detected.')
+                         : (lang === 'ar' ? 'نظام فترة واحدة مستمرة.' : 'Continuous single-shift system.')}
+                    </CardDescription>
                  </div>
               </div>
-              <div className="bg-white/80 backdrop-blur p-1 rounded-xl border flex gap-1">
-                 <Button 
-                   variant={sched.mode === 'single' ? 'default' : 'ghost'} 
-                   size="sm" 
-                   onClick={() => updateSchedule(scope, 'mode', 'single')}
-                   className="h-8 text-[10px] font-black rounded-lg"
-                 >
-                   {lang === 'ar' ? 'فترة واحدة' : 'Single'}
-                 </Button>
-                 <Button 
-                   variant={sched.mode === 'double' ? 'default' : 'ghost'} 
-                   size="sm" 
-                   onClick={() => updateSchedule(scope, 'mode', 'double')}
-                   className="h-8 text-[10px] font-black rounded-lg"
-                 >
-                   {lang === 'ar' ? 'فترتين' : 'Double'}
-                 </Button>
-              </div>
+              <Badge className={cn("rounded-lg px-3 py-1 font-black uppercase text-[10px]", isDoubleShift ? "bg-blue-500 text-white" : "bg-primary text-white")}>
+                 {isDoubleShift ? (lang === 'ar' ? 'فترتين' : 'Double') : (lang === 'ar' ? 'فترة واحدة' : 'Single')}
+              </Badge>
            </div>
         </CardHeader>
         <CardContent className="p-8 space-y-8 text-start">
-           <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-4">
-                 <div className="flex items-center gap-2 text-primary">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* الفترة الأولى */}
+              <div className="p-6 rounded-[2rem] bg-slate-50 border-2 border-white shadow-sm space-y-4">
+                 <div className="flex items-center gap-2 text-primary font-black">
                     <Sun className="h-4 w-4" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">{lang === 'ar' ? 'الفترة الصباحية' : 'Morning Shift'}</span>
+                    <span className="text-[10px] uppercase tracking-widest">{lang === 'ar' ? 'الفترة الأولى (أساسي)' : 'Period 1 (Primary)'}</span>
                  </div>
                  <div className="grid grid-cols-2 gap-3">
-                    <Input type="time" value={sched.morningStartTime} onChange={e => updateSchedule(scope, 'morningStartTime', e.target.value)} className="h-10 rounded-lg border-2 font-bold" />
-                    <Input type="time" value={sched.morningEndTime} onChange={e => updateSchedule(scope, 'morningEndTime', e.target.value)} className="h-10 rounded-lg border-2 font-bold" />
+                    <div className="space-y-1">
+                       <Label className="text-[9px] font-bold text-slate-400">{lang === 'ar' ? 'وقت الدخول' : 'Start'}</Label>
+                       <Input type="time" value={sched.morningStartTime} onChange={e => updateSchedule(scope, 'morningStartTime', e.target.value)} className="h-10 rounded-lg border-2 font-bold" />
+                    </div>
+                    <div className="space-y-1">
+                       <Label className="text-[9px] font-bold text-slate-400">{lang === 'ar' ? 'وقت الانصراف' : 'End'}</Label>
+                       <Input type="time" value={sched.morningEndTime} onChange={e => updateSchedule(scope, 'morningEndTime', e.target.value)} className="h-10 rounded-lg border-2 font-bold" />
+                    </div>
                  </div>
               </div>
 
-              <div className={cn("space-y-4 transition-opacity", sched.mode === 'single' ? 'opacity-30' : 'opacity-100')}>
-                 <div className="flex items-center gap-2 text-blue-600">
-                    <MoonStar className="h-4 w-4" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">{lang === 'ar' ? 'الفترة المسائية' : 'Evening Shift'}</span>
+              {/* الفترة الثانية */}
+              <div className="p-6 rounded-[2rem] bg-blue-50/50 border-2 border-white shadow-sm space-y-4">
+                 <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-blue-600 font-black">
+                       <MoonStar className="h-4 w-4" />
+                       <span className="text-[10px] uppercase tracking-widest">{lang === 'ar' ? 'الفترة الثانية (اختياري)' : 'Period 2 (Optional)'}</span>
+                    </div>
+                    {isDoubleShift && (
+                       <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-300 hover:text-rose-500" onClick={() => {
+                          updateSchedule(scope, 'eveningStartTime', '');
+                          updateSchedule(scope, 'eveningEndTime', '');
+                       }}><Trash2 className="h-3 w-3" /></Button>
+                    )}
                  </div>
                  <div className="grid grid-cols-2 gap-3">
-                    <Input type="time" disabled={sched.mode === 'single'} value={sched.eveningStartTime} onChange={e => updateSchedule(scope, 'eveningStartTime', e.target.value)} className="h-10 rounded-lg border-2 font-bold" />
-                    <Input type="time" disabled={sched.mode === 'single'} value={sched.eveningEndTime} onChange={e => updateSchedule(scope, 'eveningEndTime', e.target.value)} className="h-10 rounded-lg border-2 font-bold" />
+                    <div className="space-y-1">
+                       <Label className="text-[9px] font-bold text-slate-400">{lang === 'ar' ? 'وقت الدخول' : 'Start'}</Label>
+                       <Input type="time" value={sched.eveningStartTime || ''} onChange={e => updateSchedule(scope, 'eveningStartTime', e.target.value)} className="h-10 rounded-lg border-2 font-bold bg-white" />
+                    </div>
+                    <div className="space-y-1">
+                       <Label className="text-[9px] font-bold text-slate-400">{lang === 'ar' ? 'وقت الانصراف' : 'End'}</Label>
+                       <Input type="time" value={sched.eveningEndTime || ''} onChange={e => updateSchedule(scope, 'eveningEndTime', e.target.value)} className="h-10 rounded-lg border-2 font-bold bg-white" />
+                    </div>
                  </div>
               </div>
            </div>
 
-           <div className="pt-6 border-t flex items-center justify-between">
-              <div className="space-y-1">
-                 <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'فترة السماح (دقيقة)' : 'Grace Period (Min)'}</Label>
-                 <Input type="number" value={sched.bufferMinutes} onChange={e => updateSchedule(scope, 'bufferMinutes', Number(e.target.value))} className="w-24 h-10 rounded-lg border-2 font-black" />
+           <div className="pt-6 border-t flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="space-y-1 flex-1">
+                 <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'فترة السماح قبل احتساب التأخير (بالدقائق)' : 'Grace Period (Minutes)'}</Label>
+                 <Input type="number" value={sched.bufferMinutes} onChange={e => updateSchedule(scope, 'bufferMinutes', Number(e.target.value))} className="w-32 h-12 rounded-xl border-2 font-black text-lg" />
               </div>
-              <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 max-w-[200px]">
-                 <p className="text-[9px] font-bold text-amber-800 leading-tight">
-                    {sched.mode === 'double' 
-                      ? (lang === 'ar' ? 'يتم حساب التأخير عند بداية كل فترة بشكل منفصل.' : 'Latencies are calculated at the start of each shift.')
-                      : (lang === 'ar' ? 'يتم حساب التأخير بناءً على بداية الصباح فقط.' : 'Lateness is based on morning start only.')}
+              <div className="bg-amber-50 p-5 rounded-3xl border-2 border-amber-100 max-w-sm flex items-start gap-3">
+                 <Zap className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                 <p className="text-[10px] font-bold text-amber-800 leading-relaxed">
+                    {lang === 'ar' 
+                      ? 'النظام ذكي! سيقوم بمقارنة بصمة الموظف بأقرب وقت دخول (صباحي أو مسائي) لتحديد التأخير الفعلي تلقائياً.' 
+                      : 'Smart detection! The system compares check-ins to the nearest period start to auto-detect lateness.'}
                  </p>
               </div>
            </div>
@@ -184,16 +182,16 @@ export function WorkHoursManager() {
              {t('workHours')}
            </h1>
            <p className="text-muted-foreground font-bold text-sm mt-1 opacity-80 italic">
-             {lang === 'ar' ? 'تحديد نظام الشفتات والورديات للمنظمة.' : 'Define shifts and work system for the org.'}
+             {lang === 'ar' ? 'تحديد نظام الفترات والورديات للمنظمة.' : 'Define shifts and work system for the org.'}
            </p>
         </div>
-        <Button onClick={handleSave} disabled={saving} className="bg-primary text-white font-black rounded-2xl px-10 h-16 text-lg shadow-xl">
+        <Button onClick={handleSave} disabled={saving} className="bg-primary text-white font-black rounded-2xl px-10 h-16 text-lg shadow-xl shadow-primary/20 hover:scale-105 transition-all">
           {saving ? <Loader2 className="animate-spin me-2" /> : <Save className="me-2 h-5 w-5" />}
           {t('saveAllRules')}
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-1 gap-8">
         <ScheduleCard 
            scope="general" 
            title={t('generalWorkingHours')} 
@@ -209,7 +207,7 @@ export function WorkHoursManager() {
            bgClass="bg-blue-50/50" 
         />
 
-        <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 lg:col-span-2">
+        <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
           <CardHeader className="bg-amber-50/50 border-b p-8 text-start flex flex-row items-center justify-between">
              <div className="flex items-center gap-3">
                 <div className="p-3 bg-white rounded-2xl shadow-sm text-amber-600"><Calendar className="h-6 w-6" /></div>
@@ -217,18 +215,20 @@ export function WorkHoursManager() {
              </div>
           </CardHeader>
           <CardContent className="p-8 text-start">
+             <p className="text-xs font-bold text-slate-400 mb-6 uppercase tracking-widest">{lang === 'ar' ? 'حدد أيام العطلة الأسبوعية (سيتم استبعادها من حساب التأخير والخصم)' : 'Select weekly holidays (Excluded from lateness/deduction)'}</p>
              <div className="flex flex-wrap gap-3">
                 {DAYS.map(day => (
                    <div 
                      key={day} 
                      onClick={() => toggleHoliday(day)}
                      className={cn(
-                       "cursor-pointer px-5 py-3 rounded-2xl border-2 font-black transition-all",
+                       "cursor-pointer px-8 py-4 rounded-2xl border-2 font-black transition-all flex items-center gap-2",
                        settings?.holidays.includes(day) 
-                         ? "bg-amber-500 text-white border-amber-500 shadow-lg" 
+                         ? "bg-amber-500 text-white border-amber-500 shadow-lg scale-105" 
                          : "bg-white text-slate-400 border-slate-100 hover:border-amber-200"
                      )}
                    >
+                      <Calendar className="h-4 w-4" />
                       {t(day)}
                    </div>
                 ))}

@@ -93,15 +93,21 @@ export class AttendanceImportService {
         summary.holiday++;
       } else {
         if (actualIn) {
-          // ذكاء تحديد الفترة في حال الدوام المزدوج (Double Shift)
+          // --- ذكاء اصطناعي للتعرف على الفترة (Auto-Detection) ---
+          // إذا وجدنا أن الفترة المسائية مدخلة ولها قيمة حقيقية، نعتبره نظام فترتين
+          const hasEveningShift = !!schedule.eveningStartTime && schedule.eveningStartTime !== "00:00" && schedule.eveningStartTime !== "";
+          
           let expectedInStr = schedule.morningStartTime;
           
-          if (schedule.mode === 'double') {
+          if (hasEveningShift) {
             const morningStart = this.parseFlexibleTime(schedule.morningStartTime)!;
             const eveningStart = this.parseFlexibleTime(schedule.eveningStartTime)!;
             
-            // إذا كان الدخول أقرب للفترة المسائية، قارن بها
-            if (isAfter(actualIn, eveningStart) || differenceInMinutes(eveningStart, actualIn) < differenceInMinutes(actualIn, morningStart)) {
+            // حساب المسافة الزمنية بين البصمة وكل شفت واختيار الأقرب
+            const distToMorning = Math.abs(differenceInMinutes(actualIn, morningStart));
+            const distToEvening = Math.abs(differenceInMinutes(actualIn, eveningStart));
+            
+            if (distToEvening < distToMorning) {
               expectedInStr = schedule.eveningStartTime;
             }
           }
@@ -120,14 +126,18 @@ export class AttendanceImportService {
         }
 
         if (actualOut) {
-          let expectedOutStr = schedule.eveningEndTime;
+          const hasEveningShift = !!schedule.eveningEndTime && schedule.eveningEndTime !== "00:00" && schedule.eveningEndTime !== "";
+          let expectedOutStr = hasEveningShift ? schedule.eveningEndTime : schedule.morningEndTime;
           
-          if (schedule.mode === 'double') {
-             // في حال الشفتين، قد يكون الخروج من الشفت الصباحي
+          if (hasEveningShift) {
              const morningEnd = this.parseFlexibleTime(schedule.morningEndTime)!;
              const eveningEnd = this.parseFlexibleTime(schedule.eveningEndTime)!;
              
-             if (isBefore(actualOut, morningEnd) || (differenceInMinutes(morningEnd, actualOut) < differenceInMinutes(actualOut, eveningEnd) && isBefore(actualOut, this.parseFlexibleTime(schedule.eveningStartTime)!))) {
+             // إذا كانت بصمة الخروج أقرب لنهاية الصباح، استخدمها (في حال الشفت المزدوج)
+             const distToMorningEnd = Math.abs(differenceInMinutes(actualOut, morningEnd));
+             const distToEveningEnd = Math.abs(differenceInMinutes(actualOut, eveningEnd));
+
+             if (distToMorningEnd < distToEveningEnd) {
                 expectedOutStr = schedule.morningEndTime;
              }
           }
