@@ -30,14 +30,29 @@
       },
       "required": ["transactionNumber", "clientId", "activityTypeId", "serviceId", "subServiceId", "status", "companyId"]
     },
-    "TimelineEvent": {
-      "title": "Transaction Timeline Event",
-      "description": "حدث زمني يوثق حركة المعاملة.",
+    "Supplier": {
+      "title": "Supplier Record",
+      "description": "بيانات المورد المعتمد في نظام المشتريات.",
       "type": "object",
       "properties": {
-        "type": { "type": "string" },
-        "content": { "type": "string" },
-        "userName": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "rating": { "type": "number" },
+        "companyId": { "type": "string" }
+      },
+      "required": ["name", "category", "companyId"]
+    },
+    "PurchaseOrder": {
+      "title": "Purchase Order (PO)",
+      "description": "أمر شراء صادر لمورد لمواد أو خدمات ميدانية.",
+      "type": "object",
+      "properties": {
+        "poNumber": { "type": "string" },
+        "supplierId": { "type": "string" },
+        "totalAmount": { "type": "number" },
+        "status": { "type": "string", "enum": ["draft", "pending", "approved", "shipped", "received", "cancelled"] },
         "companyId": { "type": "string" }
       }
     }
@@ -48,6 +63,7 @@
   "firestore": {
     "/companies/{companyId}/clients/{clientId}": { "schema": "#/entities/Client", "description": "سجلات العملاء" },
     "/companies/{companyId}/transactions/{tId}": { "schema": "#/entities/Transaction", "description": "المعاملات الفنية" },
-    "/companies/{companyId}/transactions/{tId}/timelineEvents/{eId}": { "schema": "#/entities/TimelineEvent", "description": "السجل الزمني للمعاملة" }
+    "/companies/{companyId}/suppliers/{supId}": { "schema": "#/entities/Supplier", "description": "بيانات الموردين" },
+    "/companies/{companyId}/purchaseOrders/{poId}": { "schema": "#/entities/PurchaseOrder", "description": "أوامر الشراء" }
   }
 }
