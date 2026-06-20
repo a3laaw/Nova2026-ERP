@@ -9,7 +9,7 @@ import {
   ArrowRight, Loader2, ShieldCheck, Printer,
   User, Calendar, Clock, Calculator, History,
   HardHat, MapPin, CheckCircle2, Phone, Mail,
-  Package, Boxes, Truck
+  Package, Boxes, Truck, RotateCcw
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where } from 'firebase/firestore';
@@ -38,7 +38,13 @@ export default function EmployeeDossierPage() {
   const attendanceQuery = useMemo(() => companyId && db ? query(collection(db, paths.attendance(companyId)), where('employeeId', '==', empId), orderBy('date', 'desc')) : null, [db, companyId, empId]);
   const leavesQuery = useMemo(() => companyId && db ? query(collection(db, paths.leaveRequests(companyId)), where('userId', '==', empId), orderBy('startDate', 'desc')) : null, [db, companyId, empId]);
   const auditQuery = useMemo(() => companyId && db ? query(collection(db, `${paths.employees(companyId)}/${empId}/auditLogs`), orderBy('createdAt', 'desc')) : null, [db, companyId, empId]);
-  const assetsQuery = useMemo(() => companyId && db ? query(collection(db, paths.assetAssignments(companyId)), where('employeeId', '==', empId), where('status', '==', 'in-use')) : null, [db, companyId, empId]);
+  
+  // 3. جلب العهد الحالية (Active Only)
+  const assetsQuery = useMemo(() => companyId && db ? query(
+    collection(db, paths.assetAssignments(companyId)), 
+    where('employeeId', '==', empId), 
+    where('status', '==', 'in-use')
+  ) : null, [db, companyId, empId]);
 
   const { data: attendance } = useCollection<AttendanceRecord>(attendanceQuery);
   const { data: leaves } = useCollection<LeaveRequest>(leavesQuery);
@@ -99,27 +105,34 @@ export default function EmployeeDossierPage() {
                </div>
             </div>
 
-            {/* Assets & Equipment (New Section) */}
+            {/* Assets & Equipment - تظهر فقط العهد التي لا تزال بحوزة الموظف */}
             <div className="space-y-6">
                <h3 className="text-lg font-black border-s-4 border-amber-500 ps-3 flex items-center gap-2">
-                  <Truck className="h-5 w-5 text-amber-500" /> {isRtl ? 'العهد والمعدات المستلمة' : 'Assigned Assets & Equipment'}
+                  <Truck className="h-5 w-5 text-amber-500" /> {isRtl ? 'العهد والمعدات الحالية (في عهدته)' : 'Current Assigned Assets'}
                </h3>
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {assets && assets.length > 0 ? (
                     assets.map((asset: any) => (
-                      <div key={asset.id} className="p-4 rounded-2xl bg-white border-2 border-slate-50 shadow-sm flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-inner">
-                           <Package className="h-5 w-5" />
+                      <div key={asset.id} className="p-5 rounded-2xl bg-white border-2 border-slate-50 shadow-sm flex items-center justify-between group">
+                        <div className="flex items-center gap-4">
+                           <div className="h-10 w-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-inner">
+                              <Package className="h-5 w-5" />
+                           </div>
+                           <div className="text-start">
+                              <p className="font-black text-sm text-slate-800">{asset.itemName}</p>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase">{asset.quantity} {isRtl ? 'وحدة' : 'Unit'}</p>
+                           </div>
                         </div>
-                        <div className="text-start">
-                           <p className="font-black text-sm text-slate-800">{asset.itemName}</p>
-                           <p className="text-[10px] font-bold text-slate-400 uppercase">{asset.quantity} UNIT(S)</p>
+                        <div className="text-end">
+                           <span className="text-[8px] font-black text-slate-300 block mb-1 uppercase tracking-tighter">Assigned At</span>
+                           <span className="text-[9px] font-mono font-bold text-slate-500">{asset.assignedAt?.toDate().toLocaleDateString()}</span>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <div className="col-span-full py-8 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-100">
-                       <p className="text-xs font-bold text-slate-400 italic">{isRtl ? 'لا توجد عهد مسجلة حالياً.' : 'No active assets assigned.'}</p>
+                    <div className="col-span-full py-12 text-center bg-slate-50 rounded-[2.5rem] border-2 border-dashed border-slate-100 flex flex-col items-center">
+                       <PackageCheck className="h-10 w-10 text-slate-200 mb-2" />
+                       <p className="text-xs font-bold text-slate-400 italic">{isRtl ? 'ذمة الموظف خالية من العهد حالياً.' : 'No active assets in possession.'}</p>
                     </div>
                   )}
                </div>
@@ -177,36 +190,6 @@ export default function EmployeeDossierPage() {
                         {!leaves?.length && <tr><td colSpan={4} className="p-10 text-center italic text-slate-400">{isRtl ? 'لا يوجد إجازات مسجلة.' : 'No leaves recorded.'}</td></tr>}
                      </tbody>
                   </table>
-               </div>
-            </div>
-
-            {/* Audit Logs (Changes) */}
-            <div className="space-y-6">
-               <h3 className="text-lg font-black border-s-4 border-indigo-500 ps-3 flex items-center gap-2">
-                  <History className="h-5 w-5 text-indigo-500" /> {isRtl ? 'سجل التدقيق والتعديلات' : 'Audit Logs & Changes'}
-               </h3>
-               <div className="space-y-3">
-                  {auditLogs?.map(log => (
-                     <div key={log.id} className="p-5 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between">
-                        <div className="text-start flex items-center gap-4">
-                           <div className="h-8 w-8 rounded-lg bg-white shadow-sm flex items-center justify-center text-indigo-500">
-                              <CheckCircle2 className="h-4 w-4" />
-                           </div>
-                           <div className="space-y-0.5">
-                              <p className="text-xs font-bold text-slate-800">
-                                 {isRtl ? 'تغيير في' : 'Changed'} <span className="font-black">{log.field}</span>
-                              </p>
-                              <p className="text-[10px] text-slate-500">
-                                 {log.oldValue} <ArrowRight className={cn("inline h-2 w-2 mx-1", isRtl && "rotate-180")} /> <span className="text-emerald-600 font-black">{log.newValue}</span>
-                              </p>
-                           </div>
-                        </div>
-                        <div className="text-end space-y-0.5">
-                           <p className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'بواسطة:' : 'By:'} {log.changedByName}</p>
-                           <p className="text-[9px] font-mono text-slate-400">{log.createdAt?.toDate().toLocaleDateString()}</p>
-                        </div>
-                     </div>
-                  ))}
                </div>
             </div>
 
