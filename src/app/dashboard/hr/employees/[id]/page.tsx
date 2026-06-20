@@ -98,12 +98,12 @@ export default function EmployeeDetailsPage() {
                  {isRtl ? (employee.status === 'active' ? 'نشط' : 'منتهي الخدمة') : employee.status.toUpperCase()}
               </Badge>
             </div>
-            <p className="text-xs font-bold text-muted-foreground mt-1 flex items-center gap-2">
+            <div className="text-xs font-bold text-muted-foreground mt-1 flex items-center gap-2">
                <ShieldCheck className="h-3 w-3 text-primary" /> 
                {isRtl ? 'رقم الموظف:' : 'Emp #:'} <span className="font-mono text-slate-800">{employee.employeeNumber}</span>
                <div className="h-1 w-1 rounded-full bg-slate-300" />
                <span className="uppercase text-[9px] font-black">{employee.jobTitle}</span>
-            </p>
+            </div>
           </div>
         </div>
 
