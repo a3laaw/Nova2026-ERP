@@ -9,7 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { 
   UploadCloud, FileSpreadsheet, Loader2, CheckCircle2, 
   AlertTriangle, ArrowRight, Save, X, Info,
-  Clock, Download, Table as TableIcon, Plus
+  Clock, Download, Table as TableIcon, Plus,
+  CalendarDays
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
@@ -22,6 +23,7 @@ import { Employee } from '@/types/hr';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import * as XLSX from 'xlsx';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function AttendanceImportPage() {
   const { globalUser } = useAuthContext();
@@ -34,6 +36,19 @@ export default function AttendanceImportPage() {
   const [importing, setImporting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [preview, setPreview] = useState<ImportPreviewResult | null>(null);
+
+  // حالات الفترة المستهدفة
+  const [month, setMonth] = useState(new Date().getMonth().toString());
+  const [year, setYear] = useState(new Date().getFullYear().toString());
+
+  const yearsList = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let y = 2024; y <= currentYear + 1; y++) {
+      years.push(y);
+    }
+    return years.reverse();
+  }, []);
 
   const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId))) : null, [db, companyId]);
   const { data: employees } = useCollection<Employee>(empsQuery);
@@ -58,8 +73,6 @@ export default function AttendanceImportPage() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Attendance");
     XLSX.writeFile(wb, isRtl ? "نموذج_حضور_نوفا.xlsx" : "NovaFlow_Attendance.xlsx");
-    
-    toast({ title: isRtl ? "تم تحميل النموذج" : "Template Downloaded" });
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -71,12 +84,10 @@ export default function AttendanceImportPage() {
     reader.onload = async (event) => {
       try {
         const data = new Uint8Array(event.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+        const workbook = XLSX.read(data, { type: 'array' });
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
         
-        // استخدام raw: false لاسترجاع النصوص كما هي منسقة في إكسيل
-        // واستخدام dateNF لضمان استرجاع التاريخ بصيغة ISO إذا كانت الخلية منسقة كتاريخ
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
           header: 1, 
           raw: false, 
@@ -100,14 +111,21 @@ export default function AttendanceImportPage() {
         if (!settings) settings = whService.getDefaultSettings() as any;
 
         const importService = new AttendanceImportService(db, companyId);
-        const result = await importService.processImport(rows, employees, settings!);
+        const result = await importService.processImport(
+          rows, 
+          employees, 
+          settings!,
+          Number(month) + 1,
+          Number(year)
+        );
+        
         setPreview(result);
         
         if (result.errors.length > 0) {
           toast({ 
             variant: "destructive", 
             title: isRtl ? "تنبيهات في البيانات" : "Import Warnings", 
-            description: isRtl ? `تم تخطي ${result.errors.length} سجل بسبب أخطاء في التنسيق.` : `Skipped ${result.errors.length} records.`
+            description: isRtl ? `تم اكتشاف ${result.errors.length} خطأ أو عدم تطابق.` : `Found ${result.errors.length} errors or mismatches.`
           });
         }
       } catch (err: any) {
@@ -135,6 +153,8 @@ export default function AttendanceImportPage() {
     }
   };
 
+  const monthName = new Date(0, Number(month)).toLocaleString(isRtl ? 'ar-KW' : 'en-US', { month: 'long' });
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -144,7 +164,7 @@ export default function AttendanceImportPage() {
             {isRtl ? 'استيراد الحضور الذكي (XLSX)' : 'Smart Attendance Import'}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-            {isRtl ? 'دعم كامل لملفات الإكسيل ونظام الفترتين (الصباحي والمسائي).' : 'Full support for Excel files and double-shift systems.'}
+            {isRtl ? 'يرجى تحديد الفترة المستهدفة قبل رفع الملف لضمان دقة البيانات.' : 'Please select target period before upload for data accuracy.'}
           </p>
         </div>
         <Button 
@@ -157,80 +177,111 @@ export default function AttendanceImportPage() {
         </Button>
       </div>
 
-      {!preview ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-           <Card className="lg:col-span-2 border-4 border-dashed border-primary/20 rounded-[3rem] bg-white shadow-2xl">
-              <CardContent className="p-16 text-center space-y-8">
-                <div className="mx-auto w-24 h-24 bg-primary/10 text-primary rounded-[2rem] flex items-center justify-center mb-6">
-                  <UploadCloud className="h-12 w-12" />
-                </div>
-                <div className="space-y-3">
-                  <h2 className="text-2xl font-black">{isRtl ? 'رفع ملف الحضور' : 'Upload Spreadsheet'}</h2>
-                  <p className="text-slate-400 font-bold max-w-md mx-auto">{isRtl ? 'اسحب ملف الإكسيل هنا أو اختره من جهازك.' : 'Drag Excel file here or click to browse.'}</p>
-                </div>
-                
-                <div className="flex flex-col items-center gap-4">
-                   <label className="cursor-pointer group">
-                      <div className="bg-primary text-white font-black px-16 py-6 rounded-2xl text-xl shadow-xl shadow-primary/20 group-hover:scale-105 transition-all flex items-center gap-3">
-                        {importing ? <Loader2 className="animate-spin h-8 w-8" /> : <Plus className="h-8 w-8" />}
-                        {isRtl ? 'اختيار ملف البيانات' : 'Select Data File'}
-                      </div>
-                      <input 
-                        type="file" 
-                        className="hidden" 
-                        accept=".xlsx, .xls, .csv" 
-                        onChange={handleFileUpload} 
-                        disabled={importing} 
-                      />
-                   </label>
-                </div>
-              </CardContent>
-           </Card>
+      <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
+        <CardContent className="p-8 flex flex-col md:flex-row items-end gap-6 bg-slate-50/50">
+           <div className="space-y-2 text-start flex-1">
+              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'الشهر المستهدف' : 'Target Month'}</label>
+              <Select value={month} onValueChange={setMonth} disabled={!!preview}>
+                 <SelectTrigger className="h-14 rounded-2xl border-2 bg-white font-black text-lg">
+                    <SelectValue />
+                 </SelectTrigger>
+                 <SelectContent>
+                    {Array.from({ length: 12 }).map((_, i) => (
+                       <SelectItem key={i} value={i.toString()} className="font-bold">
+                          {new Date(0, i).toLocaleString(isRtl ? 'ar-KW' : 'en-US', { month: 'long' })}
+                       </SelectItem>
+                    ))}
+                 </SelectContent>
+              </Select>
+           </div>
 
-           <Card className="border-0 shadow-xl rounded-[2.5rem] bg-slate-900 text-white overflow-hidden">
-              <CardHeader className="bg-white/5 p-8 border-b border-white/5">
-                 <CardTitle className="text-lg font-black flex items-center gap-3 text-start">
-                    <Info className="h-5 w-5 text-primary" />
-                    {isRtl ? 'ملاحظات هامة' : 'Important Notes'}
-                 </CardTitle>
-              </CardHeader>
-              <CardContent className="p-8 space-y-6 text-start">
-                 <div className="space-y-4">
-                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                       <h5 className="font-black text-xs text-primary mb-1">{isRtl ? 'تنسيق التاريخ' : 'Date Format'}</h5>
-                       <p className="text-[10px] text-slate-400 leading-relaxed font-bold">
-                          {isRtl ? 'يقبل النظام التاريخ المنسق كخلية تاريخ في إكسيل، أو نص بصيغة YYYY-MM-DD.' : 'System accepts dates formatted as date cells or text (YYYY-MM-DD).'}
-                       </p>
-                    </div>
-                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                       <h5 className="font-black text-xs text-blue-400 mb-1">{isRtl ? 'الرقم التسلسلي' : 'Serial Numbers'}</h5>
-                       <p className="text-[10px] text-slate-400 leading-relaxed font-bold">
-                          {isRtl ? 'إذا رأيت أرقاماً في عمود التاريخ، سيقوم النظام تلقائياً بمحاولة تحويلها لتواريخ صحيحة.' : 'If you see numbers in Date column, system will auto-convert them.'}
-                       </p>
-                    </div>
-                 </div>
-              </CardContent>
-           </Card>
-        </div>
+           <div className="space-y-2 text-start flex-1">
+              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'السنة المالية' : 'Fiscal Year'}</label>
+              <Select value={year} onValueChange={setYear} disabled={!!preview}>
+                 <SelectTrigger className="h-14 rounded-2xl border-2 bg-white font-black text-lg">
+                    <SelectValue />
+                 </SelectTrigger>
+                 <SelectContent>
+                    {yearsList.map(y => (
+                       <SelectItem key={y} value={y.toString()} className="font-bold">{y}</SelectItem>
+                    ))}
+                 </SelectContent>
+              </Select>
+           </div>
+
+           <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 flex items-center gap-3 flex-1 h-14">
+              <CalendarDays className="h-5 w-5 text-primary" />
+              <p className="text-[10px] font-black text-primary uppercase leading-tight">
+                 {isRtl ? `سيتم فحص الملف لـ ${monthName} ${year}` : `Validating file for ${monthName} ${year}`}
+              </p>
+           </div>
+        </CardContent>
+      </Card>
+
+      {!preview ? (
+        <Card className="border-4 border-dashed border-primary/20 rounded-[3rem] bg-white shadow-2xl">
+           <CardContent className="p-16 text-center space-y-8">
+             <div className="mx-auto w-24 h-24 bg-primary/10 text-primary rounded-[2rem] flex items-center justify-center mb-6">
+               <UploadCloud className="h-12 w-12" />
+             </div>
+             <div className="space-y-3">
+               <h2 className="text-2xl font-black">{isRtl ? 'رفع ملف البصمة' : 'Upload Spreadsheet'}</h2>
+               <p className="text-slate-400 font-bold max-w-md mx-auto">{isRtl ? 'اختر ملف الإكسيل الذي يحتوي على بصمات الموظفين للفترة المحددة.' : 'Select the Excel file containing fingerprints for the selected period.'}</p>
+             </div>
+             
+             <div className="flex flex-col items-center gap-4">
+                <label className="cursor-pointer group">
+                   <div className="bg-primary text-white font-black px-16 py-6 rounded-2xl text-xl shadow-xl shadow-primary/20 group-hover:scale-105 transition-all flex items-center gap-3">
+                     {importing ? <Loader2 className="animate-spin h-8 w-8" /> : <Plus className="h-8 w-8" />}
+                     {isRtl ? 'اختيار ومعالجة الملف' : 'Select & Process File'}
+                   </div>
+                   <input 
+                     type="file" 
+                     className="hidden" 
+                     accept=".xlsx, .xls, .csv" 
+                     onChange={handleFileUpload} 
+                     disabled={importing} 
+                   />
+                </label>
+             </div>
+           </CardContent>
+        </Card>
       ) : (
         <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
           <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
             <CardHeader className="bg-slate-50 border-b p-8 flex flex-row items-center justify-between">
-               <CardTitle className="text-xl font-black">{isRtl ? 'معاينة الحضور المكتشف' : 'Extracted Data Preview'}</CardTitle>
+               <div className="text-start">
+                  <CardTitle className="text-xl font-black">{isRtl ? `معاينة استيراد ${monthName} ${year}` : `Import Preview ${monthName} ${year}`}</CardTitle>
+                  <p className="text-xs font-bold text-muted-foreground mt-1">{isRtl ? `إجمالي السجلات الصالحة: ${preview.summary.valid}` : `Total valid records: ${preview.summary.valid}`}</p>
+               </div>
                <div className="flex gap-4">
                   <Button variant="outline" onClick={() => setPreview(null)} className="rounded-xl font-black h-12">
-                     {isRtl ? 'إلغاء' : 'Cancel'}
+                     {isRtl ? 'إلغاء وإعادة اختيار' : 'Cancel & Reset'}
                   </Button>
                   <Button 
                     onClick={handleSave} 
-                    disabled={saving}
+                    disabled={saving || preview.summary.valid === 0}
                     className="bg-emerald-600 text-white font-black rounded-xl h-12 px-10 shadow-xl shadow-emerald-100"
                   >
                      {saving ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="me-2 h-5 w-5" />}
-                     {isRtl ? 'اعتماد الحفظ النهائي' : 'Confirm & Save'}
+                     {isRtl ? 'اعتماد وحفظ السجلات' : 'Confirm & Save'}
                   </Button>
                </div>
             </CardHeader>
+            
+            {preview.errors.length > 0 && (
+              <div className="px-8 py-4 bg-rose-50 border-b border-rose-100 space-y-2 text-start">
+                 <h5 className="font-black text-rose-600 text-xs flex items-center gap-2 uppercase tracking-widest">
+                    <AlertTriangle className="h-4 w-4" /> {isRtl ? 'أخطاء وتنبيهات في الملف' : 'File Errors & Warnings'}
+                 </h5>
+                 <div className="max-h-24 overflow-y-auto">
+                    {preview.errors.map((err, i) => (
+                       <p key={i} className="text-[10px] text-rose-700 font-bold">• سطر {err.row}: {err.message}</p>
+                    ))}
+                 </div>
+              </div>
+            )}
+
             <CardContent className="p-0 overflow-x-auto max-h-[600px] overflow-y-auto text-start">
                <Table>
                  <TableHeader className="bg-muted/30 sticky top-0 z-10">

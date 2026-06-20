@@ -10,7 +10,7 @@ import {
 import { paths } from '@/firebase/multi-tenant';
 import { AttendanceRecord, Employee } from '@/types/hr';
 import { WorkHoursSettings, DayOfWeek } from '@/types/work-hours';
-import { parse, differenceInMinutes, format, isValid, parseISO } from 'date-fns';
+import { parse, differenceInMinutes, format, isValid, parseISO, getMonth, getYear } from 'date-fns';
 
 export interface RawAttendanceRow {
   employeeNumber: string;
@@ -47,21 +47,19 @@ export class AttendanceImportService {
     // 1. محاولة كونه تاريخ ISO (2026-01-01)
     if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) return clean;
     
-    // 2. محاولة كونه تنسيق إكسيل التسلسلي (الذي يظهر كأرقام 45000)
-    // أو الأرقام التي تظهر في الصورة (9498)
+    // 2. محاولة كونه تنسيق إكسيل التسلسلي
     const num = Number(clean);
     if (!isNaN(num) && num > 0) {
-      // إكسيل يبدأ الترقيم من 1899-12-30
       const date = new Date(1899, 12, 30);
       date.setDate(date.getDate() + num);
       if (isValid(date)) return format(date, 'yyyy-MM-dd');
     }
 
-    // 3. محاولة استخدام parseISO من date-fns
+    // 3. محاولة استخدام parseISO
     const parsed = parseISO(clean);
     if (isValid(parsed)) return format(parsed, 'yyyy-MM-dd');
 
-    // 4. محاولة التنسيقات الشائعة (DD/MM/YYYY)
+    // 4. محاولة التنسيقات الشائعة
     const commonFormats = ['dd/MM/yyyy', 'MM/dd/yyyy', 'dd-MM-yyyy', 'yyyy/MM/dd'];
     for (const f of commonFormats) {
       const p = parse(clean, f, new Date());
@@ -75,7 +73,6 @@ export class AttendanceImportService {
     if (!timeStr || typeof timeStr !== 'string' || !timeStr.trim()) return null;
     const cleanTime = timeStr.trim();
     
-    // دعم الأرقام العشرية التي قد يرسلها إكسيل للوقت أحياناً
     const num = Number(cleanTime);
     if (!isNaN(num) && num > 0 && num < 1) {
       const totalSeconds = Math.round(num * 86400);
@@ -97,7 +94,9 @@ export class AttendanceImportService {
   async processImport(
     rows: RawAttendanceRow[], 
     employees: Employee[], 
-    workSettings: WorkHoursSettings
+    workSettings: WorkHoursSettings,
+    targetMonth?: number, // 1-indexed
+    targetYear?: number
   ): Promise<ImportPreviewResult> {
     const records: Partial<AttendanceRecord>[] = [];
     const errors: { row: number; message: string }[] = [];
@@ -112,6 +111,19 @@ export class AttendanceImportService {
         return;
       }
 
+      const dateObj = parseISO(normalizedDate);
+      
+      // التحقق من مطابقة الفترة المختارة يدوياً
+      if (targetMonth && targetYear) {
+        const rowMonth = getMonth(dateObj) + 1;
+        const rowYear = getYear(dateObj);
+        if (rowMonth !== targetMonth || rowYear !== targetYear) {
+          errors.push({ row: index + 2, message: `التاريخ ${normalizedDate} لا يتبع الشهر/السنة المحددة.` });
+          summary.invalid++;
+          return;
+        }
+      }
+
       const emp = employees.find(e => e.employeeNumber === row.employeeNumber);
       if (!emp) {
         errors.push({ row: index + 2, message: `موظف غير موجود: ${row.employeeNumber || '---'}` });
@@ -119,7 +131,6 @@ export class AttendanceImportService {
         return;
       }
 
-      const dateObj = parseISO(normalizedDate);
       const isArch = emp.departmentName?.toLowerCase().includes('arch') || false;
       const schedule = isArch ? workSettings.architectural : workSettings.general;
       const dayName = format(dateObj, 'EEEE') as DayOfWeek;
@@ -151,6 +162,7 @@ export class AttendanceImportService {
           }
           if (!actualIn1 && !actualIn2) status = 'absent';
         } else {
+          // نظام الفترة الواحدة: ابحث عن البصمة في أي عمود
           const bestEntry = actualIn1 || actualIn2;
           if (bestEntry) {
             const expectedIn = this.parseFlexibleTime(schedule.morningStartTime)!;
