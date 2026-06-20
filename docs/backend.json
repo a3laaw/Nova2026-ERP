@@ -44,15 +44,42 @@
       },
       "required": ["name", "category", "companyId"]
     },
-    "PurchaseOrder": {
-      "title": "Purchase Order (PO)",
-      "description": "أمر شراء صادر لمورد لمواد أو خدمات ميدانية.",
+    "Warehouse": {
+      "title": "Warehouse Location",
+      "description": "بيانات المخزن أو الموقع التخزيني التابع للشركة.",
       "type": "object",
       "properties": {
-        "poNumber": { "type": "string" },
-        "supplierId": { "type": "string" },
-        "totalAmount": { "type": "number" },
-        "status": { "type": "string", "enum": ["draft", "pending", "approved", "shipped", "received", "cancelled"] },
+        "name": { "type": "string" },
+        "location": { "type": "string" },
+        "managerId": { "type": "string" },
+        "companyId": { "type": "string" }
+      }
+    },
+    "InventoryItem": {
+      "title": "Inventory Item",
+      "description": "الأصناف المخزنية والمواد المتاحة في المستودعات.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "sku": { "type": "string" },
+        "quantity": { "type": "number" },
+        "unit": { "type": "string" },
+        "warehouseId": { "type": "string" },
+        "companyId": { "type": "string" }
+      }
+    },
+    "AssetAssignment": {
+      "title": "Field Asset Assignment",
+      "description": "سجل تسليم العهد الميدانية والمعدات للموظفين والمهندسين.",
+      "type": "object",
+      "properties": {
+        "employeeId": { "type": "string" },
+        "employeeName": { "type": "string" },
+        "itemId": { "type": "string" },
+        "itemName": { "type": "string" },
+        "quantity": { "type": "number" },
+        "assignedAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["in-use", "returned", "damaged", "lost"] },
         "companyId": { "type": "string" }
       }
     }
@@ -64,6 +91,8 @@
     "/companies/{companyId}/clients/{clientId}": { "schema": "#/entities/Client", "description": "سجلات العملاء" },
     "/companies/{companyId}/transactions/{tId}": { "schema": "#/entities/Transaction", "description": "المعاملات الفنية" },
     "/companies/{companyId}/suppliers/{supId}": { "schema": "#/entities/Supplier", "description": "بيانات الموردين" },
-    "/companies/{companyId}/purchaseOrders/{poId}": { "schema": "#/entities/PurchaseOrder", "description": "أوامر الشراء" }
+    "/companies/{companyId}/warehouses/{wId}": { "schema": "#/entities/Warehouse", "description": "المستودعات" },
+    "/companies/{companyId}/inventoryItems/{itemId}": { "schema": "#/entities/InventoryItem", "description": "الأصناف والمخزون" },
+    "/companies/{companyId}/assetAssignments/{assignId}": { "schema": "#/entities/AssetAssignment", "description": "العهد الميدانية" }
   }
 }
