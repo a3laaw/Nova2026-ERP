@@ -10,7 +10,8 @@ import {
   User, Calendar, Clock, Calculator, History,
   HardHat, MapPin, Phone, Mail,
   Package, Truck, RotateCcw, PackageCheck,
-  TrendingUp, TrendingDown, Info, Scale
+  TrendingUp, TrendingDown, Info, Scale,
+  FileText, ExternalLink
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where } from 'firebase/firestore';
@@ -20,10 +21,9 @@ import { paths } from '@/firebase/multi-tenant';
 import { Employee, AttendanceRecord, LeaveRequest } from '@/types/hr';
 import { WorkHoursSettings } from '@/types/work-hours';
 import { WorkHoursService } from '@/services/work-hours-service';
-import { WorkingDaysService } from '@/services/working-days-service';
 import { cn } from '@/lib/utils';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
-import { format, parseISO, isValid, addMonths, startOfMonth, isAfter, isBefore, differenceInDays } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 
 export default function EmployeeDossierPage() {
@@ -53,21 +53,16 @@ export default function EmployeeDossierPage() {
     companyId && db ? query(collection(db, paths.attendance(companyId)), where('employeeId', '==', empId)) : null, 
   [db, companyId, empId]);
   
-  const leavesQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.leaveRequests(companyId)), where('userId', '==', empId)) : null, 
-  [db, companyId, empId]);
-  
   const assetsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.assetAssignments(companyId)), where('employeeId', '==', empId), where('status', '==', 'in-use')) : null, 
   [db, companyId, empId]);
 
   const { data: rawAttendance } = useCollection<AttendanceRecord>(attendanceQuery);
-  const { data: rawLeaves } = useCollection<LeaveRequest>(leavesQuery);
   const { data: assets } = useCollection<any>(assetsQuery);
 
   const attendance = useMemo(() => [...rawAttendance].sort((a, b) => b.date.localeCompare(a.date)), [rawAttendance]);
 
-  // التحليل الشهري للحضور
+  // التحليل الشهري للحضور (موجز)
   const monthlyAttendanceStats = useMemo(() => {
     const groups: Record<string, any> = {};
     attendance.forEach(rec => {
@@ -100,70 +95,12 @@ export default function EmployeeDossierPage() {
     return Object.values(groups).sort((a, b) => b.monthKey.localeCompare(a.monthKey));
   }, [attendance, isRtl]);
 
-  /**
-   * محرك بناء "كشف حساب رصيد الإجازات" (Leave Ledger)
-   * يدمج الاستحقاقات الشهرية مع الخصومات الفعلية
-   */
-  const leaveLedger = useMemo(() => {
-    if (!employee?.hireDate || !settings) return [];
-    
-    const ledger: any[] = [];
-    let runningBalance = 0;
-    const hireDate = parseISO(employee.hireDate);
-    if (hireDate.getFullYear() < 100) hireDate.setFullYear(hireDate.getFullYear() + 2000);
-
-    const today = new Date();
-    const approvedLeaves = rawLeaves
-      .filter(l => ['approved', 'on-leave', 'returned'].includes(l.status))
-      .sort((a, b) => a.startDate.localeCompare(b.startDate));
-
-    let currentMonth = startOfMonth(hireDate);
-    
-    // محاكاة الأشهر منذ التعيين حتى اليوم
-    while (isBefore(currentMonth, today) || format(currentMonth, 'yyyy-MM') === format(today, 'yyyy-MM')) {
-      const monthKey = format(currentMonth, 'yyyy-MM');
-      const monthLabel = format(currentMonth, 'MMMM yyyy', { locale: isRtl ? ar : enUS }).replace('0026', '2026');
-
-      // 1. إضافة الاستحقاق الشهري (ائتمان)
-      runningBalance += 2.5;
-      ledger.push({
-        date: format(currentMonth, 'yyyy-MM-01'),
-        type: 'accrual',
-        description: isRtl ? `استحقاق شهري (${monthLabel})` : `Monthly Accrual (${monthLabel})`,
-        basis: isRtl ? 'المادة 70 (2.5 يوم/شهر)' : 'Art. 70 (2.5d/mo)',
-        change: 2.5,
-        balance: Math.round(runningBalance * 100) / 100
-      });
-
-      // 2. فحص الخصومات في هذا الشهر (ديون)
-      const monthsLeaves = approvedLeaves.filter(l => l.startDate.startsWith(monthKey));
-      monthsLeaves.forEach(l => {
-        runningBalance -= (l.workingDays || 0);
-        ledger.push({
-          date: l.startDate,
-          type: 'deduction',
-          description: isRtl ? `إجازة ${l.type}` : `${l.type} Leave`,
-          basis: isRtl ? `فترة: ${l.startDate} إلى ${l.endDate}` : `Period: ${l.startDate} to ${l.endDate}`,
-          change: -(l.workingDays || 0),
-          balance: Math.round(runningBalance * 100) / 100
-        });
-      });
-
-      currentMonth = addMonths(currentMonth, 1);
-    }
-
-    return ledger.sort((a, b) => b.date.localeCompare(a.date) || (a.type === 'accrual' ? 1 : -1));
-  }, [employee, rawLeaves, settings, isRtl]);
-
-  const currentRealBalance = useMemo(() => {
-    return leaveLedger.length > 0 ? leaveLedger[0].balance : 0;
-  }, [leaveLedger]);
-
   if (empLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
   if (!employee) return <div className="p-20 text-center font-bold">{isRtl ? 'الموظف غير موجود' : 'Employee not found'}</div>;
 
   return (
     <div className="space-y-8 pb-20 animate-in fade-in duration-700" dir={dir}>
+      {/* Action Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 print:hidden">
         <div className="flex items-center gap-4">
            <Button variant="ghost" onClick={() => router.push('/dashboard/hr/reports/dossier')} className="h-12 w-12 p-0 rounded-2xl bg-white shadow-sm border hover:bg-slate-50">
@@ -176,14 +113,24 @@ export default function EmployeeDossierPage() {
              </p>
            </div>
         </div>
-        <Button onClick={() => window.print()} className="rounded-2xl h-14 px-8 font-black gap-2 bg-primary text-white shadow-xl shadow-primary/20 hover:scale-105 transition-all">
-           <Printer className="h-5 w-5" /> {isRtl ? 'طباعة الملف الكامل' : 'Print Full Dossier'}
-        </Button>
+        <div className="flex gap-3">
+           <Button 
+             variant="outline"
+             onClick={() => router.push(`/dashboard/hr/reports/leaves/statement/${empId}`)}
+             className="rounded-2xl h-14 px-6 font-black gap-2 border-2 hover:bg-slate-50"
+           >
+             <FileText className="h-5 w-5 text-primary" /> {isRtl ? 'كشف رصيد الإجازات' : 'Leave Statement'}
+           </Button>
+           <Button onClick={() => window.print()} className="rounded-2xl h-14 px-8 font-black gap-2 bg-primary text-white shadow-xl shadow-primary/20 hover:scale-105 transition-all">
+              <Printer className="h-5 w-5" /> {isRtl ? 'طباعة الملف الكامل' : 'Print Full Dossier'}
+           </Button>
+        </div>
       </div>
 
       <PrintWrapper title={isRtl ? "سجل تاريخي للموظف" : "Comprehensive Employee Record"}>
          <div className="space-y-12">
             
+            {/* Identity Card */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                <div className="md:col-span-2 space-y-6">
                   <div className="flex items-start gap-6">
@@ -204,17 +151,18 @@ export default function EmployeeDossierPage() {
                   </div>
                </div>
                <div className="bg-slate-50 p-8 rounded-[2rem] border-2 border-slate-100 flex flex-col justify-center items-center text-center">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'الرصيد الحالي المستحق' : 'Current Accrued Balance'}</p>
-                  <p className="text-4xl font-black text-emerald-600 font-mono">{currentRealBalance} <span className="text-xs">{isRtl ? 'يوم' : 'Days'}</span></p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'رصيد الإجازات الحالي' : 'Current Leave Balance'}</p>
+                  <p className="text-4xl font-black text-emerald-600 font-mono">{employee.annualLeaveBalance || 0} <span className="text-xs">{isRtl ? 'يوم' : 'Days'}</span></p>
                   <Badge className={cn("mt-4 font-black uppercase", employee.status === 'active' ? "bg-emerald-500 text-white" : "bg-rose-500 text-white")}>
                      {employee.status}
                   </Badge>
                </div>
             </div>
 
+            {/* Assets Section */}
             <div className="space-y-6 text-start">
                <h3 className="text-lg font-black border-s-4 border-amber-500 ps-3 flex items-center gap-2">
-                  <Truck className="h-5 w-5 text-amber-500" /> {isRtl ? 'العهد والمعدات الحالية (في عهدته)' : 'Current Assigned Assets'}
+                  <Truck className="h-5 w-5 text-amber-500" /> {isRtl ? 'العهد والمعدات الميدانية' : 'Field Assets In Possession'}
                </h3>
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {assets && assets.length > 0 ? (
@@ -230,7 +178,6 @@ export default function EmployeeDossierPage() {
                            </div>
                         </div>
                         <div className="text-end">
-                           <span className="text-[8px] font-black text-slate-300 block mb-1 uppercase tracking-tighter">Assigned At</span>
                            <span className="text-[9px] font-mono font-bold text-slate-500">{asset.assignedAt?.toDate().toLocaleDateString()}</span>
                         </div>
                       </div>
@@ -238,15 +185,16 @@ export default function EmployeeDossierPage() {
                   ) : (
                     <div className="col-span-full py-12 text-center bg-slate-50 rounded-[2.5rem] border-2 border-dashed border-slate-100 flex flex-col items-center">
                        <PackageCheck className="h-10 w-10 text-slate-200 mb-2" />
-                       <p className="text-xs font-bold text-slate-400 italic">{isRtl ? 'ذمة الموظف خالية من العهد حالياً.' : 'No active assets in possession.'}</p>
+                       <p className="text-xs font-bold text-slate-400 italic">{isRtl ? 'لا يوجد عهد مسجلة باسم الموظف.' : 'No active assets in possession.'}</p>
                     </div>
                   )}
                </div>
             </div>
 
+            {/* Attendance Monthly Analysis */}
             <div className="space-y-6 text-start">
                <h3 className="text-lg font-black border-s-4 border-primary ps-3 flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-primary" /> {isRtl ? 'تحليل الحضور والغياب الشهري' : 'Monthly Attendance Analysis'}
+                  <Clock className="h-5 w-5 text-primary" /> {isRtl ? 'تحليل الحضور والالتزام الشهري' : 'Monthly Attendance Analytics'}
                </h3>
                <div className="border-2 rounded-[2rem] overflow-hidden shadow-sm bg-white">
                   <table className="w-full text-sm text-start">
@@ -283,68 +231,22 @@ export default function EmployeeDossierPage() {
                            </tr>
                         ))}
                         {!monthlyAttendanceStats.length && 
-                          <tr><td colSpan={5} className="p-20 text-center italic text-slate-300 font-bold">{isRtl ? 'لا يوجد سجلات حضور مسجلة لهذا الموظف.' : 'No attendance records found.'}</td></tr>
+                          <tr><td colSpan={5} className="p-20 text-center italic text-slate-300 font-bold">{isRtl ? 'لا يوجد سجلات حضور مسجلة.' : 'No attendance records found.'}</td></tr>
                         }
                      </tbody>
                   </table>
                </div>
             </div>
 
-            <div className="space-y-6 text-start">
-               <h3 className="text-lg font-black border-s-4 border-emerald-500 ps-3 flex items-center gap-2">
-                  <Scale className="h-5 w-5 text-emerald-500" /> {isRtl ? 'كشف تفصيلي لحركة رصيد الإجازات' : 'Detailed Leave Balance Ledger'}
-               </h3>
-               
-               <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 flex items-start gap-3 mb-4">
-                  <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                  <p className="text-[10px] font-bold text-slate-600 leading-relaxed">
-                     {isRtl ? 'يعتمد هذا الكشف على المادة 70 من قانون العمل الكويتي (استحقاق 30 يوم سنوياً بمعدل 2.5 يوم عن كل شهر عمل فعلي). يتم خصم أيام العمل الفعلية فقط من الرصيد.' : 'This ledger is based on Art. 70 (30 days/year accrued at 2.5 days/month). Only net working days are deducted.'}
-                  </p>
+            {/* Note about separate reports */}
+            <div className="p-6 rounded-2xl bg-primary/5 border border-primary/10 flex items-center justify-between print:hidden">
+               <div className="flex items-center gap-3">
+                  <Info className="h-5 w-5 text-primary" />
+                  <p className="text-xs font-bold text-slate-600">{isRtl ? 'للحصول على تفصيل دقيق لحركات رصيد الإجازات والاستحقاقات الشهرية، يرجى عرض التقرير المتخصص.' : 'For detailed leave balance movements and monthly accruals, please view the specialized report.'}</p>
                </div>
-
-               <div className="border-2 rounded-[2rem] overflow-hidden shadow-sm bg-white">
-                  <table className="w-full text-sm text-start">
-                     <thead className="bg-slate-50 border-b">
-                        <tr className="font-black text-slate-500 uppercase text-[10px] tracking-widest">
-                           <th className="p-6 text-start">{isRtl ? 'التاريخ' : 'Date'}</th>
-                           <th className="p-6 text-start">{isRtl ? 'العملية / السبب' : 'Transaction'}</th>
-                           <th className="p-6 text-start">{isRtl ? 'الأساس القانوني' : 'Legal Basis'}</th>
-                           <th className="p-6 text-center">{isRtl ? 'الحركة' : 'Change'}</th>
-                           <th className="p-6 text-center">{isRtl ? 'الرصيد المتبقي' : 'Balance'}</th>
-                        </tr>
-                     </thead>
-                     <tbody className="divide-y divide-slate-100">
-                        {leaveLedger.map((row: any, i: number) => (
-                           <tr key={i} className={cn("hover:bg-slate-50/50 transition-colors", row.type === 'accrual' ? "bg-emerald-50/10" : "bg-rose-50/5")}>
-                              <td className="p-6 font-mono text-xs text-slate-500">{row.date}</td>
-                              <td className="p-6 font-black text-slate-800">
-                                 <div className="flex items-center gap-2">
-                                    {row.type === 'accrual' ? <TrendingUp className="h-3 w-3 text-emerald-500" /> : <TrendingDown className="h-3 w-3 text-rose-500" />}
-                                    {row.description}
-                                 </div>
-                              </td>
-                              <td className="p-6 text-xs font-bold text-slate-400 italic">{row.basis}</td>
-                              <td className="p-6 text-center">
-                                 <Badge className={cn(
-                                   "font-black border-0",
-                                   row.change > 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
-                                 )}>
-                                    {row.change > 0 ? `+${row.change}` : row.change}
-                                 </Badge>
-                              </td>
-                              <td className="p-6 text-center">
-                                 <span className="font-black text-slate-900 bg-slate-100 px-4 py-1 rounded-full font-mono">
-                                    {row.balance}
-                                 </span>
-                              </td>
-                           </tr>
-                        ))}
-                        {!leaveLedger.length && 
-                          <tr><td colSpan={5} className="p-20 text-center italic text-slate-300 font-bold">{isRtl ? 'لا توجد حركات مسجلة للرصيد.' : 'No balance movement found.'}</td></tr>
-                        }
-                     </tbody>
-                  </table>
-               </div>
+               <Button variant="link" onClick={() => router.push(`/dashboard/hr/reports/leaves/statement/${empId}`)} className="text-xs font-black uppercase text-primary decoration-2 underline-offset-4">
+                  {isRtl ? 'عرض كشف الحساب' : 'Open Statement'} <ExternalLink className="ms-2 h-3 w-3" />
+               </Button>
             </div>
 
          </div>
@@ -352,4 +254,3 @@ export default function EmployeeDossierPage() {
     </div>
   );
 }
-

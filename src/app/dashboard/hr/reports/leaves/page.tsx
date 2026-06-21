@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, Loader2, Plane, AlertTriangle, RefreshCw } from "lucide-react";
+import { CalendarDays, Loader2, Plane, AlertTriangle, RefreshCw, FileText, ArrowRight } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
@@ -19,6 +20,7 @@ export default function LeaveBalanceReportPage() {
   const { globalUser } = useAuthContext();
   const { t, lang, dir } = useLanguage();
   const db = useFirestore();
+  const router = useRouter();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
@@ -67,17 +69,18 @@ export default function LeaveBalanceReportPage() {
                   <TableHead className="text-start">{isRtl ? 'القسم' : 'Department'}</TableHead>
                   <TableHead className="text-center">{isRtl ? 'الرصيد الكلي' : 'Total Entitled'}</TableHead>
                   <TableHead className="text-center">{isRtl ? 'الرصيد المتبقي' : 'Remaining'}</TableHead>
-                  <TableHead className="text-start pe-8">{isRtl ? 'الحالة' : 'Status'}</TableHead>
+                  <TableHead className="text-start">{isRtl ? 'الحالة' : 'Status'}</TableHead>
+                  <TableHead className="pe-8"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-24"><Loader2 className="animate-spin h-12 w-12 mx-auto text-primary/30" /></TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center py-24"><Loader2 className="animate-spin h-12 w-12 mx-auto text-primary/30" /></TableCell></TableRow>
                 ) : employees?.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-24 italic text-slate-400 font-bold">{isRtl ? 'لا يوجد موظفين مسجلين.' : 'No employees found.'}</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center py-24 italic text-slate-400 font-bold">{isRtl ? 'لا يوجد موظفين مسجلين.' : 'No employees found.'}</TableCell></TableRow>
                 ) : (
                   employees?.map((emp) => (
-                    <TableRow key={emp.id} className="hover:bg-slate-50 transition-colors">
+                    <TableRow key={emp.id} className="hover:bg-slate-50 transition-colors group">
                       <TableCell className="py-4 ps-8 text-start">
                          <div className="flex flex-col">
                             <span className="font-black text-slate-800 text-sm">{emp.fullName}</span>
@@ -96,7 +99,7 @@ export default function LeaveBalanceReportPage() {
                             {emp.annualLeaveBalance || 0}
                          </span>
                       </TableCell>
-                      <TableCell className="pe-8">
+                      <TableCell className="text-start">
                          {(emp.annualLeaveBalance || 0) < 5 ? (
                            <Badge className="bg-amber-50 text-amber-600 border-amber-200 border font-black text-[9px] gap-1">
                              <AlertTriangle className="h-2 w-2" /> {isRtl ? 'رصيد منخفض' : 'Low Balance'}
@@ -106,6 +109,17 @@ export default function LeaveBalanceReportPage() {
                              {isRtl ? 'سليم' : 'Healthy'}
                            </Badge>
                          )}
+                      </TableCell>
+                      <TableCell className="pe-8 text-end">
+                         <Button 
+                           variant="ghost" 
+                           onClick={() => router.push(`/dashboard/hr/reports/leaves/statement/${emp.id}`)}
+                           className="h-10 px-4 rounded-xl font-black text-xs gap-2 hover:bg-primary hover:text-white"
+                         >
+                            <FileText className="h-4 w-4" />
+                            {isRtl ? 'كشف تفصيلي' : 'Statement'}
+                            <ArrowRight className={cn("h-3 w-3", !isRtl && "rotate-0", isRtl && "rotate-180")} />
+                         </Button>
                       </TableCell>
                     </TableRow>
                   ))
