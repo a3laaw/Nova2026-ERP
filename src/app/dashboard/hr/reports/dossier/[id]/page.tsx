@@ -80,16 +80,17 @@ export default function EmployeeDossierPage() {
 
         const key = format(date, 'yyyy-MM');
         if (!groups[key]) {
+          const labelText = format(date, 'MMMM yyyy', { locale: isRtl ? ar : enUS });
           groups[key] = {
             monthKey: key,
-            label: format(date, 'MMMM yyyy', { locale: isRtl ? ar : enUS }),
+            label: labelText.replace('0026', '2026'), // حماية للنص
             present: 0,
             late: 0,
             absent: 0,
             lateMins: 0
           };
-        group[key].label = group[key].label.replace('0026', '2026'); // حماية إضافية للنص
         }
+        
         if (rec.status === 'present') groups[key].present++;
         if (rec.status === 'late') {
           groups[key].late++;
