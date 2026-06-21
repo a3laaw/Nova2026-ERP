@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,9 @@ import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
 import { Employee, AttendanceRecord, LeaveRequest, EmployeeAuditLog } from '@/types/hr';
+import { WorkHoursSettings } from '@/types/work-hours';
+import { WorkHoursService } from '@/services/work-hours-service';
+import { WorkingDaysService } from '@/services/working-days-service';
 import { cn } from '@/lib/utils';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
 
@@ -28,6 +31,16 @@ export default function EmployeeDossierPage() {
   const router = useRouter();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
+
+  const [settings, setSettings] = useState<WorkHoursSettings | null>(null);
+
+  // جلب إعدادات العمل للحسابات القانونية
+  useEffect(() => {
+    if (db && companyId) {
+      const whService = new WorkHoursService(db, companyId);
+      whService.getSettings().then(setSettings);
+    }
+  }, [db, companyId]);
 
   const empRef = useMemo(() => 
     companyId && db ? doc(db, paths.employees(companyId), empId) : null, 
@@ -52,11 +65,39 @@ export default function EmployeeDossierPage() {
 
   const { data: rawAttendance } = useCollection<AttendanceRecord>(attendanceQuery);
   const { data: rawLeaves } = useCollection<LeaveRequest>(leavesQuery);
-  const { data: rawAuditLogs } = useCollection<EmployeeAuditLog>(auditQuery);
   const { data: assets } = useCollection<any>(assetsQuery);
 
   const attendance = useMemo(() => [...rawAttendance].sort((a, b) => b.date.localeCompare(a.date)), [rawAttendance]);
-  const leaves = useMemo(() => [...rawLeaves].sort((a, b) => b.startDate.localeCompare(a.startDate)), [rawLeaves]);
+
+  // حساب رصيد الإجازات التراكمي في كل نقطة زمنية
+  const leavesWithBalance = useMemo(() => {
+    if (!employee?.hireDate || !settings || !rawLeaves.length) {
+      return [...rawLeaves].sort((a, b) => b.startDate.localeCompare(a.startDate));
+    }
+    
+    const wdService = new WorkingDaysService(settings);
+    
+    // ترتيب تصاعدي للحساب التراكمي الصحيح
+    const approvedSorted = [...rawLeaves]
+      .filter(l => l.status === 'approved')
+      .sort((a, b) => a.startDate.localeCompare(b.startDate));
+      
+    let cumulativeTaken = 0;
+    const balancedMap = new Map();
+
+    approvedSorted.forEach(l => {
+      cumulativeTaken += (l.workingDays || 0);
+      const accruedAtThatPoint = wdService.calculateAccruedLeave(employee.hireDate, l.endDate);
+      const balanceAfter = Math.round((accruedAtThatPoint - cumulativeTaken) * 100) / 100;
+      balancedMap.set(l.id, balanceAfter);
+    });
+
+    // إعادة الترتيب للتنازلي للعرض في الجدول
+    return [...rawLeaves].map(l => ({
+      ...l,
+      runningBalance: balancedMap.get(l.id) || null
+    })).sort((a, b) => b.startDate.localeCompare(a.startDate));
+  }, [rawLeaves, employee, settings]);
 
   if (empLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
   if (!employee) return <div className="p-20 text-center font-bold">{isRtl ? 'الموظف غير موجود' : 'Employee not found'}</div>;
@@ -103,8 +144,8 @@ export default function EmployeeDossierPage() {
                   </div>
                </div>
                <div className="bg-slate-50 p-8 rounded-[2rem] border-2 border-slate-100 flex flex-col justify-center items-center text-center">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'الراتب الأساسي' : 'Basic Salary'}</p>
-                  <p className="text-3xl font-black text-emerald-600 font-mono">{employee.basicSalary?.toLocaleString()} <span className="text-xs">KWD</span></p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'الرصيد الحالي المستحق' : 'Current Accrued Balance'}</p>
+                  <p className="text-4xl font-black text-emerald-600 font-mono">{employee.annualLeaveBalance || 0} <span className="text-xs">{isRtl ? 'يوم' : 'Days'}</span></p>
                   <Badge className={cn("mt-4 font-black uppercase", employee.status === 'active' ? "bg-emerald-500 text-white" : "bg-rose-500 text-white")}>
                      {employee.status}
                   </Badge>
@@ -147,50 +188,69 @@ export default function EmployeeDossierPage() {
                <h3 className="text-lg font-black border-s-4 border-primary ps-3 flex items-center gap-2">
                   <Clock className="h-5 w-5" /> {isRtl ? 'ملخص الحضور والانصراف' : 'Attendance Summary'}
                </h3>
-               <div className="grid grid-cols-4 gap-4">
-                  <div className="p-4 bg-white border-2 rounded-2xl text-center">
-                     <p className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'أيام الحضور' : 'Present Days'}</p>
-                     <p className="text-2xl font-black text-emerald-600">{attendance?.filter(a => a.status === 'present').length || 0}</p>
+               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="p-6 bg-white border-2 rounded-2xl text-center shadow-sm">
+                     <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{isRtl ? 'أيام الحضور' : 'Present Days'}</p>
+                     <p className="text-3xl font-black text-emerald-600">{attendance?.filter(a => a.status === 'present').length || 0}</p>
                   </div>
-                  <div className="p-4 bg-white border-2 rounded-2xl text-center">
-                     <p className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'مرات التأخير' : 'Late Cases'}</p>
-                     <p className="text-2xl font-black text-amber-600">{attendance?.filter(a => a.status === 'late').length || 0}</p>
+                  <div className="p-6 bg-white border-2 rounded-2xl text-center shadow-sm">
+                     <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{isRtl ? 'مرات التأخير' : 'Late Cases'}</p>
+                     <p className="text-3xl font-black text-amber-600">{attendance?.filter(a => a.status === 'late').length || 0}</p>
                   </div>
-                  <div className="p-4 bg-white border-2 rounded-2xl text-center">
-                     <p className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'أيام الغياب' : 'Absences'}</p>
-                     <p className="text-2xl font-black text-rose-600">{attendance?.filter(a => a.status === 'absent').length || 0}</p>
+                  <div className="p-6 bg-white border-2 rounded-2xl text-center shadow-sm">
+                     <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{isRtl ? 'أيام الغياب' : 'Absences'}</p>
+                     <p className="text-3xl font-black text-rose-600">{attendance?.filter(a => a.status === 'absent').length || 0}</p>
                   </div>
-                  <div className="p-4 bg-white border-2 rounded-2xl text-center">
-                     <p className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'إجمالي الدقائق' : 'Late Mins'}</p>
-                     <p className="text-2xl font-black text-slate-900">{attendance?.reduce((acc, a) => acc + (a.minutesLate || 0), 0)}</p>
+                  <div className="p-6 bg-white border-2 rounded-2xl text-center shadow-sm">
+                     <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{isRtl ? 'إجمالي الدقائق' : 'Late Mins'}</p>
+                     <p className="text-3xl font-black text-slate-900">{attendance?.reduce((acc, a) => acc + (a.minutesLate || 0), 0)}</p>
                   </div>
                </div>
             </div>
 
             <div className="space-y-6 text-start">
                <h3 className="text-lg font-black border-s-4 border-blue-500 ps-3 flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-blue-500" /> {isRtl ? 'تاريخ الإجازات' : 'Leave History'}
+                  <Calendar className="h-5 w-5 text-blue-500" /> {isRtl ? 'تاريخ الإجازات السنوية' : 'Leave History'}
                </h3>
-               <div className="border-2 rounded-[2rem] overflow-hidden">
+               <div className="border-2 rounded-[2rem] overflow-hidden shadow-sm bg-white">
                   <table className="w-full text-sm text-start">
                      <thead className="bg-slate-50 border-b">
-                        <tr className="font-black text-slate-500 uppercase text-[10px]">
-                           <th className="p-4 text-start">{isRtl ? 'النوع' : 'Type'}</th>
-                           <th className="p-4 text-start">{isRtl ? 'الفترة' : 'Period'}</th>
-                           <th className="p-4 text-center">{isRtl ? 'الأيام' : 'Days'}</th>
-                           <th className="p-4 text-start">{isRtl ? 'الحالة' : 'Status'}</th>
+                        <tr className="font-black text-slate-500 uppercase text-[10px] tracking-widest">
+                           <th className="p-6 text-start">{isRtl ? 'النوع' : 'Type'}</th>
+                           <th className="p-6 text-start">{isRtl ? 'الفترة الزمنية' : 'Period'}</th>
+                           <th className="p-6 text-center">{isRtl ? 'الأيام المخصومة' : 'Deducted'}</th>
+                           <th className="p-6 text-center">{isRtl ? 'الرصيد المتبقي' : 'Running Balance'}</th>
+                           <th className="p-6 text-start">{isRtl ? 'الحالة' : 'Status'}</th>
                         </tr>
                      </thead>
-                     <tbody className="divide-y">
-                        {leaves?.map(l => (
-                           <tr key={l.id} className="hover:bg-slate-50/50">
-                              <td className="p-4 font-bold uppercase">{l.type}</td>
-                              <td className="p-4 font-mono text-xs text-slate-500">{l.startDate} → {l.endDate}</td>
-                              <td className="p-4 text-center font-black">{l.workingDays}</td>
-                              <td className="p-4"><Badge variant="outline" className="text-[9px] font-black uppercase">{l.status}</Badge></td>
+                     <tbody className="divide-y divide-slate-100">
+                        {leavesWithBalance?.map((l: any) => (
+                           <tr key={l.id} className="hover:bg-slate-50/50 transition-colors">
+                              <td className="p-6">
+                                 <Badge variant="outline" className="font-black uppercase text-[9px] border-2">{l.type}</Badge>
+                              </td>
+                              <td className="p-6 font-mono text-xs text-slate-500">{l.startDate} → {l.endDate}</td>
+                              <td className="p-6 text-center font-black text-slate-700">{l.workingDays}</td>
+                              <td className="p-6 text-center">
+                                 {l.runningBalance !== null ? (
+                                    <span className="font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-lg">
+                                       {l.runningBalance}
+                                    </span>
+                                 ) : <span className="text-slate-300">---</span>}
+                              </td>
+                              <td className="p-6">
+                                 <Badge variant="secondary" className={cn(
+                                    "text-[9px] font-black uppercase",
+                                    l.status === 'approved' ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-400"
+                                 )}>
+                                    {l.status}
+                                 </Badge>
+                              </td>
                            </tr>
                         ))}
-                        {!leaves?.length && <tr><td colSpan={4} className="p-10 text-center italic text-slate-400">{isRtl ? 'لا يوجد إجازات مسجلة.' : 'No leaves recorded.'}</td></tr>}
+                        {!leavesWithBalance?.length && 
+                          <tr><td colSpan={5} className="p-20 text-center italic text-slate-300 font-bold">{isRtl ? 'لا يوجد سجلات إجازات لهذا الموظف.' : 'No leave records found.'}</td></tr>
+                        }
                      </tbody>
                   </table>
                </div>
