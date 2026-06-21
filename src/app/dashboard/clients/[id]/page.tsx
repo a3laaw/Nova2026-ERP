@@ -20,10 +20,6 @@ import { paths } from '@/firebase/multi-tenant';
 import { Client, ClientHistory } from '@/types/client';
 import { cn } from '@/lib/utils';
 
-/**
- * صفحة ملف العميل الشامل (Client Dossier)
- * تعرض كافة بيانات التواصل والموقع الجغرافي وسجل الحركات التاريخي.
- */
 export default function ClientDetailsPage() {
   const params = useParams();
   const clientId = params.id as string;
@@ -34,12 +30,10 @@ export default function ClientDetailsPage() {
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
-  // 1. جلب بيانات العميل الأساسية
   const clientRef = useMemo(() => 
     companyId && db ? doc(db, paths.clients(companyId), clientId) : null, 
   [db, companyId, clientId]);
 
-  // 2. جلب سجل الحركات التاريخي (Sub-collection) مرتباً تنازلياً
   const historyQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.clientHistory(companyId, clientId)), orderBy('createdAt', 'desc')) : null, 
   [db, companyId, clientId]);
@@ -47,14 +41,12 @@ export default function ClientDetailsPage() {
   const { data: client, loading: clientLoading } = useDoc<Client>(clientRef);
   const { data: history, loading: historyLoading } = useCollection<ClientHistory>(historyQuery);
 
-  // حالة التحميل
   if (clientLoading) return (
     <div className="h-[60vh] flex items-center justify-center">
       <Loader2 className="animate-spin h-10 w-10 text-primary" />
     </div>
   );
 
-  // حالة "لم يتم العثور على العميل"
   if (!client) return (
     <div className="h-[60vh] flex flex-col items-center justify-center space-y-4">
       <AlertCircle className="h-16 w-16 text-destructive/20" />
@@ -67,8 +59,6 @@ export default function ClientDetailsPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-20" dir={dir}>
-      
-      {/* الرأس: الهوية والإجراءات السريعة */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div className="flex items-center gap-6">
           <Button 
@@ -86,9 +76,8 @@ export default function ClientDetailsPage() {
                 <div>
                    <h1 className="text-4xl font-black font-headline text-slate-900 tracking-tight">{client.nameAr}</h1>
                    <p className="text-sm font-bold text-slate-400 mt-1 flex items-center gap-2">
-                      <ShieldCheck className="h-4 w-4 text-primary" /> 
-                      {isRtl ? 'الرقم الموحد للنظام:' : 'System ID:'} 
-                      <span className="font-mono text-slate-800">{clientId}</span>
+                      <ShieldCheck className="h-4 w-4 text-emerald-500" /> 
+                      {isRtl ? 'ملف تجاري معتمد' : 'Verified Commercial File'} 
                    </p>
                 </div>
              </div>
@@ -109,11 +98,7 @@ export default function ClientDetailsPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* العمود الرئيسي: بيانات الملف */}
         <div className="lg:col-span-2 space-y-8">
-           
-           {/* بطاقة التواصل والعنوان */}
            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
               <CardHeader className="bg-slate-50/50 border-b p-8 text-start">
                  <CardTitle className="text-xl font-black flex items-center gap-3">
@@ -174,19 +159,9 @@ export default function ClientDetailsPage() {
                        </p>
                     </div>
                  </div>
-
-                 <div className="space-y-3 pt-4">
-                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'ملاحظات إضافية' : 'Notes & Remarks'}</Label>
-                    <div className="p-6 rounded-2xl border-2 border-dashed bg-slate-50/30">
-                       <p className="text-sm font-bold text-slate-600 leading-relaxed italic">
-                          {client.notes || (isRtl ? 'لا توجد ملاحظات مسجلة لهذا العميل.' : 'No notes recorded for this client.')}
-                       </p>
-                    </div>
-                 </div>
               </CardContent>
            </Card>
 
-           {/* مؤشرات الأداء السريعة */}
            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white p-8 flex items-center justify-between group hover:shadow-xl transition-all">
                  <div className="text-start">
@@ -212,7 +187,6 @@ export default function ClientDetailsPage() {
            </div>
         </div>
 
-        {/* العمود الجانبي: سجل الحركات التاريخي */}
         <div className="space-y-8">
            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 flex flex-col h-full min-h-[600px]">
               <CardHeader className="bg-slate-50 border-b p-8 text-start flex flex-row items-center justify-between">
@@ -229,19 +203,16 @@ export default function ClientDetailsPage() {
                    <div className="p-20 text-center"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></div>
                  ) : (
                    <div className="relative">
-                      {/* الخط العمودي للشريط الزمني */}
                       <div className={cn(
                         "absolute top-0 bottom-0 w-[2px] bg-slate-100",
                         isRtl ? "right-10" : "left-10"
                       )} />
-
                       <div className="divide-y divide-slate-50">
                         {history?.length === 0 ? (
                           <div className="p-20 text-center text-slate-300 font-bold italic text-sm">{isRtl ? 'لا توجد سجلات تاريخية بعد.' : 'No history events yet.'}</div>
                         ) : (
                           history?.map((event) => (
                             <div key={event.id} className="p-8 relative group hover:bg-slate-50/50 transition-colors text-start">
-                               {/* عقدة الشريط الزمني */}
                                <div className={cn(
                                  "absolute top-10 h-4 w-4 rounded-full border-4 border-white shadow-md z-10 transition-transform group-hover:scale-125",
                                  event.type === 'status_change' ? "bg-blue-500" : 
@@ -249,7 +220,6 @@ export default function ClientDetailsPage() {
                                  event.type === 'note_added' ? "bg-amber-500" : "bg-slate-400",
                                  isRtl ? "right-[33px]" : "left-[33px]"
                                )} />
-                               
                                <div className={cn(isRtl ? "pr-10" : "pl-10")}>
                                   <div className="flex justify-between items-start mb-2">
                                      <Badge variant="secondary" className="bg-slate-100 text-slate-500 font-black text-[9px] uppercase h-5 tracking-tighter">

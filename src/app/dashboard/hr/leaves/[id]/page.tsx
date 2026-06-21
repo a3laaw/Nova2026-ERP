@@ -28,8 +28,7 @@ import { SmartDateInput } from '@/components/ui/smart-date-input';
 import { LeaveTiersDisplay } from '@/components/hr/leave-tiers-display';
 
 export default function LeaveDetailsPage() {
-  const params = useParams();
-  const leaveId = params.id as string;
+  const leaveId = useParams().id as string;
   const { user, globalUser } = useAuthContext();
   const { t, lang, dir } = useLanguage();
   const { permissions } = usePermissions();
@@ -38,8 +37,6 @@ export default function LeaveDetailsPage() {
   const isRtl = lang === 'ar';
 
   const [processing, setProcessing] = useState(false);
-  
-  // نموذج التعديل السريع
   const [editForm, setEditForm] = useState({
     comment: '',
     startDate: '',
@@ -112,21 +109,21 @@ export default function LeaveDetailsPage() {
               </Badge>
            </div>
            <p className="text-xs font-bold text-muted-foreground mt-1 flex items-center gap-2">
-              <ShieldCheck className="h-3 w-3 text-primary" /> {isRtl ? 'الرقم المرجعي:' : 'Ref ID:'} <span className="font-mono text-slate-800">{leaveId}</span>
+              <ShieldCheck className="h-3 w-3 text-emerald-500" /> {isRtl ? 'طلب رسمي معتمد' : 'Official Authorized Request'}
            </p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
          <div className="lg:col-span-2 space-y-8">
-            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
-               <CardHeader className="bg-slate-50/50 border-b p-8 text-start">
+            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden text-start">
+               <CardHeader className="bg-slate-50/50 border-b p-8">
                   <CardTitle className="text-xl font-black flex items-center gap-3 text-slate-800">
                      <User className="h-6 w-6 text-primary" />
                      {isRtl ? 'بيانات الموظف والفترة' : 'Employee & Period Info'}
                   </CardTitle>
                </CardHeader>
-               <CardContent className="p-8 space-y-10 text-start">
+               <CardContent className="p-8 space-y-10">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                      <div className="space-y-1">
                         <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اسم الموظف' : 'Employee Name'}</Label>
@@ -187,7 +184,6 @@ export default function LeaveDetailsPage() {
                      </div>
                   )}
 
-                  {/* عرض شرائح المادة 69 للمرضية */}
                   {leave.type === 'sick' && leave.sickLeaveTiers && (
                     <div className="animate-in slide-in-from-top-4 duration-500">
                       <LeaveTiersDisplay tiers={leave.sickLeaveTiers} />
@@ -203,33 +199,6 @@ export default function LeaveDetailsPage() {
                         {leave.reason || (isRtl ? 'لا يوجد تفاصيل إضافية.' : 'No details provided.')}
                      </p>
                   </div>
-
-                  {isAdmin && leave.status === 'pending' && (
-                     <div className="space-y-4 pt-6 border-t border-slate-100 animate-in slide-in-from-bottom-2">
-                        <Label className="font-black text-xs uppercase text-slate-500 flex items-center gap-2">
-                           <MessageSquare className="h-3 w-3" />
-                           {isRtl ? 'ملاحظات الإدارة (ستظهر للموظف)' : 'Admin Notes (Visible to Employee)'}
-                        </Label>
-                        <Textarea 
-                          value={editForm.comment} 
-                          onChange={(e) => setEditForm({...editForm, comment: e.target.value})}
-                          className="min-h-[100px] rounded-2xl border-2 p-4 text-sm"
-                          placeholder={isRtl ? "اكتب سبب الرفض أو أي تعليمات إضافية هنا..." : "Enter reason for rejection or instructions..."}
-                        />
-                     </div>
-                  )}
-
-                  {leave.comment && leave.status !== 'pending' && (
-                     <div className="space-y-4 pt-6 border-t border-slate-100">
-                        <div className="flex items-center gap-2 text-emerald-700">
-                           <MessageSquare className="h-5 w-5" />
-                           <h4 className="font-black text-lg">{isRtl ? 'قرار الإدارة' : 'Admin Decision Notes'}</h4>
-                        </div>
-                        <p className="text-lg text-emerald-900 bg-emerald-50 p-6 rounded-2xl leading-relaxed font-bold border border-emerald-100">
-                           {leave.comment}
-                        </p>
-                     </div>
-                  )}
                </CardContent>
             </Card>
 
@@ -241,7 +210,7 @@ export default function LeaveDetailsPage() {
                     className="flex-1 h-20 rounded-[2rem] bg-emerald-600 text-white font-black text-2xl shadow-xl shadow-emerald-100 hover:scale-[1.02] active:scale-[0.98] transition-all gap-4 border-b-8 border-emerald-800"
                   >
                      {processing ? <Loader2 className="h-8 w-8 animate-spin" /> : <CheckCircle2 className="h-8 w-8" />}
-                     {isRtl ? 'اعتماد وفق المادة 69' : 'Approve (Art 69)'}
+                     {isRtl ? 'اعتماد الإجازة' : 'Approve Leave'}
                   </Button>
                   <Button 
                     variant="outline"
@@ -275,19 +244,6 @@ export default function LeaveDetailsPage() {
                      </div>
                   )}
                </CardContent>
-            </Card>
-
-            <Card className="border-2 border-dashed border-amber-200 rounded-[2.5rem] bg-amber-50/30 p-8 space-y-4 text-start">
-               <div className="flex items-center gap-3 text-amber-600">
-                  <AlertTriangle className="h-6 w-6" />
-                  <h4 className="font-black text-sm uppercase tracking-widest">{isRtl ? 'تنبيهات النظام' : 'System Alerts'}</h4>
-               </div>
-               <p className="text-xs text-amber-800 leading-relaxed font-bold">
-                  {isRtl ? '• النظام يطبق آلياً المادة 69 للإجازات المرضية بحد أقصى 75 يوماً في السنة.' : '• System automatically applies Art 69 for sick leaves (max 75 days/year).'}
-               </p>
-               <p className="text-xs text-amber-800 leading-relaxed font-bold">
-                  {isRtl ? '• يتم استبعاد العطلات الرسمية والأسبوعية من خصم الرصيد.' : '• Public holidays and weekends are excluded from balance deduction.'}
-               </p>
             </Card>
          </div>
       </div>

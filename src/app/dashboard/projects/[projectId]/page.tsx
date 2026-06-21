@@ -23,8 +23,7 @@ import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 export default function ProjectExecutionPage() {
-  const params = useParams();
-  const projectId = params.projectId as string;
+  const projectId = useParams().projectId as string;
   const { globalUser, user } = useAuthContext();
   const { t, lang, dir } = useLanguage();
   const { permissions, check } = usePermissions();
@@ -81,7 +80,7 @@ export default function ProjectExecutionPage() {
               <Badge className="bg-emerald-500 text-white font-black px-3 py-1 rounded-lg border-0">{t(project.status)}</Badge>
             </div>
             <div className="flex items-center gap-3 mt-1">
-              <span className="text-xs font-bold text-muted-foreground flex items-center gap-1"><HardHat className="h-3 w-3" /> {isRtl ? 'مستند المشروع:' : 'Ref ID:'} <span className="font-mono">{projectId}</span></span>
+              <span className="text-xs font-bold text-muted-foreground flex items-center gap-1"><HardHat className="h-3 w-3 text-primary" /> {isRtl ? 'ملف مشروع معتمد' : 'Approved Project File'}</span>
               <div className="h-1 w-1 rounded-full bg-slate-300" />
               <span className="text-xs font-black text-primary uppercase tracking-widest">{isRtl ? 'تنفيذ عمليات' : 'Operational Execution'}</span>
             </div>
@@ -110,7 +109,7 @@ export default function ProjectExecutionPage() {
                </div>
                <Progress value={stats.percent} className="h-3 rounded-full bg-slate-100" />
             </CardHeader>
-            <CardContent className="p-8 space-y-4">
+            <CardContent className="p-8 space-y-4 text-start">
               {instancesLoading ? <div className="py-20 text-center"><Loader2 className="animate-spin mx-auto text-primary/20" /></div> : (
                 instances?.map((instance, idx) => (
                   <div key={instance.id} className={cn(
@@ -157,7 +156,7 @@ export default function ProjectExecutionPage() {
               <CardHeader className="bg-white/5 border-b border-white/5 p-8">
                 <CardTitle className="text-lg font-black flex items-center gap-2"><DollarSign className="h-5 w-5 text-emerald-400" /> {isRtl ? 'البيان المالي' : 'Financial Status'}</CardTitle>
               </CardHeader>
-              <CardContent className="p-8 space-y-6">
+              <CardContent className="p-8 space-y-6 text-start">
                  <div className="text-start">
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{isRtl ? 'الميزانية الإجمالية' : 'Total Budget'}</p>
                     <p className="text-4xl font-black font-headline text-emerald-400 mt-1">{project.budget?.toLocaleString()} <span className="text-sm">KWD</span></p>
@@ -175,7 +174,7 @@ export default function ProjectExecutionPage() {
               </CardContent>
            </Card>
 
-           <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
+           <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 text-start">
               <CardHeader className="bg-slate-50 border-b p-6">
                 <CardTitle className="text-sm font-black flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> {isRtl ? 'تفاصيل الارتباط الفني' : 'Technical Link'}</CardTitle>
               </CardHeader>

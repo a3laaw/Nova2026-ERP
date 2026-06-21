@@ -21,8 +21,7 @@ import { cn } from '@/lib/utils';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
 
 export default function EmployeeDossierPage() {
-  const params = useParams();
-  const empId = params.id as string;
+  const empId = useParams().id as string;
   const { globalUser } = useAuthContext();
   const { t, lang, dir } = useLanguage();
   const db = useFirestore();
@@ -30,13 +29,11 @@ export default function EmployeeDossierPage() {
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
-  // 1. جلب البيانات الأساسية للموظف (ثبيت المرجع)
   const empRef = useMemo(() => 
     companyId && db ? doc(db, paths.employees(companyId), empId) : null, 
   [db, companyId, empId]);
   const { data: employee, loading: empLoading } = useDoc<Employee>(empRef);
 
-  // 2. جلب البيانات التاريخية (ثبيت الاستعلامات)
   const attendanceQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.attendance(companyId)), where('employeeId', '==', empId)) : null, 
   [db, companyId, empId]);
@@ -58,7 +55,6 @@ export default function EmployeeDossierPage() {
   const { data: rawAuditLogs } = useCollection<EmployeeAuditLog>(auditQuery);
   const { data: assets } = useCollection<any>(assetsQuery);
 
-  // الفرز في الذاكرة لتجنب الحاجة للفهارس المعقدة
   const attendance = useMemo(() => [...rawAttendance].sort((a, b) => b.date.localeCompare(a.date)), [rawAttendance]);
   const leaves = useMemo(() => [...rawLeaves].sort((a, b) => b.startDate.localeCompare(a.startDate)), [rawLeaves]);
 
@@ -75,7 +71,7 @@ export default function EmployeeDossierPage() {
            <div className="text-start">
              <h1 className="text-3xl font-black font-headline">{isRtl ? 'الملف الوظيفي الشامل' : 'Employee Dossier'}</h1>
              <p className="text-xs font-bold text-muted-foreground mt-1 flex items-center gap-2">
-                <ShieldCheck className="h-3 w-3 text-primary" /> {isRtl ? 'الرقم المرجعي:' : 'System ID:'} <span className="font-mono">{empId}</span>
+                <ShieldCheck className="h-3 w-3 text-emerald-500" /> {isRtl ? 'بيانات معتمدة وموثقة' : 'Verified Personnel Data'}
              </p>
            </div>
         </div>
@@ -87,7 +83,6 @@ export default function EmployeeDossierPage() {
       <PrintWrapper title={isRtl ? "سجل تاريخي للموظف" : "Comprehensive Employee Record"}>
          <div className="space-y-12">
             
-            {/* Header Profile */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                <div className="md:col-span-2 space-y-6">
                   <div className="flex items-start gap-6">
@@ -116,7 +111,6 @@ export default function EmployeeDossierPage() {
                </div>
             </div>
 
-            {/* Assets & Equipment */}
             <div className="space-y-6 text-start">
                <h3 className="text-lg font-black border-s-4 border-amber-500 ps-3 flex items-center gap-2">
                   <Truck className="h-5 w-5 text-amber-500" /> {isRtl ? 'العهد والمعدات الحالية (في عهدته)' : 'Current Assigned Assets'}
@@ -149,7 +143,6 @@ export default function EmployeeDossierPage() {
                </div>
             </div>
 
-            {/* Attendance Analytics */}
             <div className="space-y-6 text-start">
                <h3 className="text-lg font-black border-s-4 border-primary ps-3 flex items-center gap-2">
                   <Clock className="h-5 w-5" /> {isRtl ? 'ملخص الحضور والانصراف' : 'Attendance Summary'}
@@ -174,7 +167,6 @@ export default function EmployeeDossierPage() {
                </div>
             </div>
 
-            {/* Leave History */}
             <div className="space-y-6 text-start">
                <h3 className="text-lg font-black border-s-4 border-blue-500 ps-3 flex items-center gap-2">
                   <Calendar className="h-5 w-5 text-blue-500" /> {isRtl ? 'تاريخ الإجازات' : 'Leave History'}

@@ -23,8 +23,7 @@ import { cn } from '@/lib/utils';
 import { Label } from "@/components/ui/label";
 
 export default function PermissionDetailsPage() {
-  const params = useParams();
-  const requestId = params.id as string;
+  const requestId = useParams().id as string;
   const { user, globalUser } = useAuthContext();
   const { t, lang, dir } = useLanguage();
   const { permissions } = usePermissions();
@@ -82,7 +81,7 @@ export default function PermissionDetailsPage() {
               </Badge>
            </div>
            <p className="text-xs font-bold text-muted-foreground mt-1 flex items-center gap-2">
-              <ShieldCheck className="h-3 w-3 text-primary" /> {isRtl ? 'الرقم المرجعي:' : 'Ref ID:'} <span className="font-mono text-slate-800">{requestId}</span>
+              <ShieldCheck className="h-3 w-3 text-emerald-500" /> {isRtl ? 'استئذان إداري معتمد' : 'Authorized HR Permission'}
            </p>
         </div>
       </div>
@@ -151,7 +150,7 @@ export default function PermissionDetailsPage() {
                     className="flex-1 h-20 rounded-[2rem] bg-emerald-600 text-white font-black text-2xl shadow-xl shadow-emerald-100 hover:scale-[1.02] active:scale-[0.98] transition-all gap-4"
                   >
                      {processing ? <Loader2 className="h-8 w-8 animate-spin" /> : <CheckCircle2 className="h-8 w-8" />}
-                     {isRtl ? 'اعتماد الطلب' : 'Approve Request'}
+                     {isRtl ? 'اعتماد الاستئذان' : 'Approve Request'}
                   </Button>
                   <Button 
                     variant="outline"
@@ -185,19 +184,6 @@ export default function PermissionDetailsPage() {
                      </div>
                   )}
                </CardContent>
-            </Card>
-
-            <Card className="border-2 border-dashed border-amber-200 rounded-[2.5rem] bg-amber-50/30 p-8 space-y-4 text-start">
-               <div className="flex items-center gap-3 text-amber-600">
-                  <AlertTriangle className="h-6 w-6" />
-                  <h4 className="font-black text-sm uppercase tracking-widest">{isRtl ? 'تنبيهات النظام' : 'System Alerts'}</h4>
-               </div>
-               <p className="text-xs text-amber-800 leading-relaxed font-bold">
-                  {isRtl ? '• الاستئذان لا يتداخل مع أي إجازة سنوية أو مرضية مسجلة.' : '• No overlap with any registered leave was found.'}
-               </p>
-               <p className="text-xs text-amber-800 leading-relaxed font-bold">
-                  {isRtl ? '• تم احتساب المدة وخصمها من الرصيد الشهري (12 ساعة).' : '• Duration calculated and deducted from monthly quota.'}
-               </p>
             </Card>
          </div>
       </div>
