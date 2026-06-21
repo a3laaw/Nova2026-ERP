@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
-  Settings2, Building2, UserCog, Database, ArrowLeft, ShieldCheck, Clock
+  Settings2, Building2, UserCog, Database, ArrowLeft, ShieldCheck, Clock, Users
 } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/context/language-context';
@@ -25,6 +25,16 @@ export default function SettingsHubPage() {
       color: 'text-emerald-600',
       bg: 'bg-emerald-50',
       path: '/dashboard/settings/company',
+      visible: isAdmin
+    },
+    {
+      id: 'users',
+      title: isRtl ? 'إدارة المستخدمين' : 'Users Management',
+      description: isRtl ? 'إدارة حسابات الدخول، تعيين الأدوار، وتفعيل الحسابات' : 'Manage login accounts, assign roles, and activate users',
+      icon: Users,
+      color: 'text-orange-600',
+      bg: 'bg-orange-50',
+      path: '/dashboard/settings/users',
       visible: isAdmin
     },
     {
