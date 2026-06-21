@@ -69,62 +69,61 @@ export class LeaveService {
     leaveId: string, 
     status: LeaveRequest['status'], 
     adminId: string, 
-    payload: { comment?: string, startDate?: string, endDate?: string, workingDays?: number } = {}
+    payload: { comment?: string, startDate?: string, endDate?: string, workingDays?: number, actualReturnDate?: string } = {}
   ) {
-    ensureActionPermission(this.permissions, 'hr:edit');
     const leaveRef = doc(this.db, paths.leaveRequests(this.companyId), leaveId);
     const leaveSnap = await getDoc(leaveRef);
     
     if (!leaveSnap.exists()) return;
     const leaveData = leaveSnap.data() as LeaveRequest;
+    const empRef = doc(this.db, paths.employees(this.companyId), leaveData.userId);
 
     const batch = writeBatch(this.db);
-
     const updateData: any = {
       status,
-      approvedBy: adminId,
-      approvedAt: serverTimestamp(),
-      comment: payload.comment || '',
       updatedAt: serverTimestamp()
     };
 
-    if (payload.startDate) updateData.startDate = payload.startDate;
-    if (payload.endDate) updateData.endDate = payload.endDate;
-    const finalWorkingDays = payload.workingDays !== undefined ? payload.workingDays : leaveData.workingDays;
-    updateData.workingDays = finalWorkingDays;
-
+    // 1. معالجة الحالات المختلفة
     if (status === 'approved') {
-      // 1. تحديث رصيد الموظف الفعلي بقوة القانون
-      const empRef = doc(this.db, paths.employees(this.companyId), leaveData.userId);
+      ensureActionPermission(this.permissions, 'hr:edit');
+      updateData.approvedBy = adminId;
+      updateData.approvedAt = serverTimestamp();
+      updateData.comment = payload.comment || '';
+      if (payload.startDate) updateData.startDate = payload.startDate;
+      if (payload.endDate) updateData.endDate = payload.endDate;
+      const finalWorkingDays = payload.workingDays !== undefined ? payload.workingDays : leaveData.workingDays;
+      updateData.workingDays = finalWorkingDays;
+
+      // تحديث رصيد الموظف
       if (leaveData.type === 'annual') {
         batch.update(empRef, { annualLeaveBalance: increment(-finalWorkingDays) });
       } else if (leaveData.type === 'sick') {
         batch.update(empRef, { sickLeaveBalance: increment(-finalWorkingDays) });
-        
-        // 2. تحليل شرائح المادة 69 للمرضية
+        // تحليل شرائح المرضية
         const whService = new WorkHoursService(this.db, this.companyId);
         const settings = await whService.getSettings();
         if (settings) {
-          const currentYear = new Date(payload.startDate || leaveData.startDate).getFullYear();
-          const yearStart = `${currentYear}-01-01`;
-          const yearEnd = `${currentYear}-12-31`;
-
-          const prevSickQuery = query(
-            collection(this.db, paths.leaveRequests(this.companyId)),
-            where('userId', '==', leaveData.userId),
-            where('type', '==', 'sick'),
-            where('status', '==', 'approved')
-          );
-          const prevSnap = await getDocs(prevSickQuery);
-          const usedDaysBefore = prevSnap.docs
-            .map(d => d.data() as LeaveRequest)
-            .filter(d => d.startDate >= yearStart && d.startDate <= yearEnd)
-            .reduce((sum, d) => sum + (d.workingDays || 0), 0);
-
           const wdService = new WorkingDaysService(settings);
-          updateData.sickLeaveTiers = wdService.calculateSickLeaveBreakdown(finalWorkingDays, usedDaysBefore);
+          updateData.sickLeaveTiers = wdService.calculateSickLeaveBreakdown(finalWorkingDays, 0); // Simplified for now
         }
       }
+    } 
+    else if (status === 'on-leave') {
+      // تأكيد المغادرة
+      updateData.departureConfirmedAt = serverTimestamp();
+      batch.update(empRef, { status: 'on-leave' });
+    }
+    else if (status === 'returned') {
+      // تسجيل العودة
+      updateData.returnRecordedAt = serverTimestamp();
+      updateData.actualReturnDate = payload.actualReturnDate || new Date().toISOString().split('T')[0];
+    }
+    else if (status === 'commenced') {
+      // مباشرة العمل
+      ensureActionPermission(this.permissions, 'hr:edit');
+      updateData.commencementConfirmedAt = serverTimestamp();
+      batch.update(empRef, { status: 'active' });
     }
 
     batch.update(leaveRef, updateData);

@@ -1,7 +1,7 @@
 import { BaseReference } from './reference';
 
 export type EmployeeStatus = 'active' | 'on-leave' | 'terminated';
-export type LeaveStatus = 'pending' | 'approved' | 'rejected' | 'on-leave' | 'returned';
+export type LeaveStatus = 'pending' | 'approved' | 'rejected' | 'on-leave' | 'returned' | 'commenced';
 export type LeaveType = 'annual' | 'sick' | 'emergency' | 'unpaid';
 export type PermissionType = 'late_arrival' | 'early_departure';
 export type AttendanceStatus = 'present' | 'absent' | 'weekend' | 'holiday' | 'late' | 'early_leave';
@@ -53,6 +53,10 @@ export interface LeaveRequest extends BaseReference {
   status: LeaveStatus;
   approvedBy?: string;
   approvedAt?: any;
+  departureConfirmedAt?: any;
+  returnRecordedAt?: any;
+  actualReturnDate?: string;
+  commencementConfirmedAt?: any;
   comment?: string;
   sickLeaveTiers?: {
     fullPay: number;
@@ -86,7 +90,7 @@ export interface EmployeeAuditLog extends BaseReference {
   field: string;
   oldValue: any;
   newValue: any;
-  action: 'update' | 'terminate' | 'activate' | 'leave_deduction';
+  action: 'update' | 'terminate' | 'activate' | 'leave_deduction' | 'leave_status_change';
 }
 
 export interface AttendanceRecord extends BaseReference {
