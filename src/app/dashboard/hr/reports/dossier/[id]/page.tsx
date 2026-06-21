@@ -8,8 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { 
   ArrowRight, Loader2, ShieldCheck, Printer,
   User, Calendar, Clock, Calculator, History,
-  HardHat, MapPin, CheckCircle2, Phone, Mail,
-  Package, Boxes, Truck, RotateCcw, PackageCheck
+  HardHat, MapPin, Phone, Mail,
+  Package, Truck, RotateCcw, PackageCheck,
+  TrendingUp, TrendingDown, Info, Scale
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where } from 'firebase/firestore';
@@ -22,7 +23,7 @@ import { WorkHoursService } from '@/services/work-hours-service';
 import { WorkingDaysService } from '@/services/working-days-service';
 import { cn } from '@/lib/utils';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
-import { format, parseISO, isValid } from 'date-fns';
+import { format, parseISO, isValid, addMonths, startOfMonth, isAfter, isBefore, differenceInDays } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 
 export default function EmployeeDossierPage() {
@@ -73,10 +74,7 @@ export default function EmployeeDossierPage() {
       try {
         const date = parseISO(rec.date);
         if (!isValid(date)) return;
-
-        if (date.getFullYear() < 100) {
-            date.setFullYear(date.getFullYear() + 2000);
-        }
+        if (date.getFullYear() < 100) date.setFullYear(date.getFullYear() + 2000);
 
         const key = format(date, 'yyyy-MM');
         if (!groups[key]) {
@@ -97,50 +95,69 @@ export default function EmployeeDossierPage() {
           groups[key].lateMins += (rec.minutesLate || 0);
         }
         if (rec.status === 'absent') groups[key].absent++;
-      } catch (e) {
-        console.error("Date parsing error in dossier", e);
-      }
+      } catch (e) {}
     });
     return Object.values(groups).sort((a, b) => b.monthKey.localeCompare(a.monthKey));
   }, [attendance, isRtl]);
 
-  // حساب الرصيد التراكمي واللحظي للإجازات
-  const { leavesWithBalance, currentRealBalance } = useMemo(() => {
-    if (!employee?.hireDate || !settings) {
-      return { 
-        leavesWithBalance: [...rawLeaves].sort((a, b) => b.startDate.localeCompare(a.startDate)),
-        currentRealBalance: employee?.annualLeaveBalance || 0 
-      };
-    }
+  /**
+   * محرك بناء "كشف حساب رصيد الإجازات" (Leave Ledger)
+   * يدمج الاستحقاقات الشهرية مع الخصومات الفعلية
+   */
+  const leaveLedger = useMemo(() => {
+    if (!employee?.hireDate || !settings) return [];
     
-    const wdService = new WorkingDaysService(settings);
-    
-    // 1. تصفية وترتيب الإجازات المعتمدة زمنياً
-    const approvedSorted = [...rawLeaves]
+    const ledger: any[] = [];
+    let runningBalance = 0;
+    const hireDate = parseISO(employee.hireDate);
+    if (hireDate.getFullYear() < 100) hireDate.setFullYear(hireDate.getFullYear() + 2000);
+
+    const today = new Date();
+    const approvedLeaves = rawLeaves
       .filter(l => ['approved', 'on-leave', 'returned'].includes(l.status))
       .sort((a, b) => a.startDate.localeCompare(b.startDate));
-      
-    let cumulativeTaken = 0;
-    const balancedMap = new Map();
 
-    approvedSorted.forEach(l => {
-      cumulativeTaken += (l.workingDays || 0);
-      const accruedAtThatPoint = wdService.calculateAccruedLeave(employee.hireDate, l.endDate);
-      const balanceAfter = Math.round((accruedAtThatPoint - cumulativeTaken) * 100) / 100;
-      balancedMap.set(l.id, balanceAfter);
-    });
+    let currentMonth = startOfMonth(hireDate);
+    
+    // محاكاة الأشهر منذ التعيين حتى اليوم
+    while (isBefore(currentMonth, today) || format(currentMonth, 'yyyy-MM') === format(today, 'yyyy-MM')) {
+      const monthKey = format(currentMonth, 'yyyy-MM');
+      const monthLabel = format(currentMonth, 'MMMM yyyy', { locale: isRtl ? ar : enUS }).replace('0026', '2026');
 
-    const leavesList = [...rawLeaves].map(l => ({
-      ...l,
-      runningBalance: balancedMap.has(l.id) ? balancedMap.get(l.id) : null
-    })).sort((a, b) => b.startDate.localeCompare(a.startDate));
+      // 1. إضافة الاستحقاق الشهري (ائتمان)
+      runningBalance += 2.5;
+      ledger.push({
+        date: format(currentMonth, 'yyyy-MM-01'),
+        type: 'accrual',
+        description: isRtl ? `استحقاق شهري (${monthLabel})` : `Monthly Accrual (${monthLabel})`,
+        basis: isRtl ? 'المادة 70 (2.5 يوم/شهر)' : 'Art. 70 (2.5d/mo)',
+        change: 2.5,
+        balance: Math.round(runningBalance * 100) / 100
+      });
 
-    // 2. حساب الرصيد الحالي "الآن"
-    const nowAccrued = wdService.calculateAccruedLeave(employee.hireDate);
-    const finalBalance = Math.round((nowAccrued - cumulativeTaken) * 100) / 100;
+      // 2. فحص الخصومات في هذا الشهر (ديون)
+      const monthsLeaves = approvedLeaves.filter(l => l.startDate.startsWith(monthKey));
+      monthsLeaves.forEach(l => {
+        runningBalance -= (l.workingDays || 0);
+        ledger.push({
+          date: l.startDate,
+          type: 'deduction',
+          description: isRtl ? `إجازة ${l.type}` : `${l.type} Leave`,
+          basis: isRtl ? `فترة: ${l.startDate} إلى ${l.endDate}` : `Period: ${l.startDate} to ${l.endDate}`,
+          change: -(l.workingDays || 0),
+          balance: Math.round(runningBalance * 100) / 100
+        });
+      });
 
-    return { leavesWithBalance: leavesList, currentRealBalance: finalBalance };
-  }, [rawLeaves, employee, settings]);
+      currentMonth = addMonths(currentMonth, 1);
+    }
+
+    return ledger.sort((a, b) => b.date.localeCompare(a.date) || (a.type === 'accrual' ? 1 : -1));
+  }, [employee, rawLeaves, settings, isRtl]);
+
+  const currentRealBalance = useMemo(() => {
+    return leaveLedger.length > 0 ? leaveLedger[0].balance : 0;
+  }, [leaveLedger]);
 
   if (empLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
   if (!employee) return <div className="p-20 text-center font-bold">{isRtl ? 'الموظف غير موجود' : 'Employee not found'}</div>;
@@ -274,47 +291,56 @@ export default function EmployeeDossierPage() {
             </div>
 
             <div className="space-y-6 text-start">
-               <h3 className="text-lg font-black border-s-4 border-blue-500 ps-3 flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-blue-500" /> {isRtl ? 'تاريخ الإجازات السنوية والرصيد' : 'Leave History & Balances'}
+               <h3 className="text-lg font-black border-s-4 border-emerald-500 ps-3 flex items-center gap-2">
+                  <Scale className="h-5 w-5 text-emerald-500" /> {isRtl ? 'كشف تفصيلي لحركة رصيد الإجازات' : 'Detailed Leave Balance Ledger'}
                </h3>
+               
+               <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 flex items-start gap-3 mb-4">
+                  <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                  <p className="text-[10px] font-bold text-slate-600 leading-relaxed">
+                     {isRtl ? 'يعتمد هذا الكشف على المادة 70 من قانون العمل الكويتي (استحقاق 30 يوم سنوياً بمعدل 2.5 يوم عن كل شهر عمل فعلي). يتم خصم أيام العمل الفعلية فقط من الرصيد.' : 'This ledger is based on Art. 70 (30 days/year accrued at 2.5 days/month). Only net working days are deducted.'}
+                  </p>
+               </div>
+
                <div className="border-2 rounded-[2rem] overflow-hidden shadow-sm bg-white">
                   <table className="w-full text-sm text-start">
                      <thead className="bg-slate-50 border-b">
                         <tr className="font-black text-slate-500 uppercase text-[10px] tracking-widest">
-                           <th className="p-6 text-start">{isRtl ? 'النوع' : 'Type'}</th>
-                           <th className="p-6 text-start">{isRtl ? 'الفترة الزمنية' : 'Period'}</th>
-                           <th className="p-6 text-center">{isRtl ? 'الأيام المخصومة' : 'Deducted'}</th>
-                           <th className="p-6 text-center">{isRtl ? 'الرصيد المتبقي' : 'Running Balance'}</th>
-                           <th className="p-6 text-start">{isRtl ? 'الحالة' : 'Status'}</th>
+                           <th className="p-6 text-start">{isRtl ? 'التاريخ' : 'Date'}</th>
+                           <th className="p-6 text-start">{isRtl ? 'العملية / السبب' : 'Transaction'}</th>
+                           <th className="p-6 text-start">{isRtl ? 'الأساس القانوني' : 'Legal Basis'}</th>
+                           <th className="p-6 text-center">{isRtl ? 'الحركة' : 'Change'}</th>
+                           <th className="p-6 text-center">{isRtl ? 'الرصيد المتبقي' : 'Balance'}</th>
                         </tr>
                      </thead>
                      <tbody className="divide-y divide-slate-100">
-                        {leavesWithBalance?.map((l: any) => (
-                           <tr key={l.id} className="hover:bg-slate-50/50 transition-colors">
-                              <td className="p-6">
-                                 <Badge variant="outline" className="font-black uppercase text-[9px] border-2">{l.type}</Badge>
+                        {leaveLedger.map((row: any, i: number) => (
+                           <tr key={i} className={cn("hover:bg-slate-50/50 transition-colors", row.type === 'accrual' ? "bg-emerald-50/10" : "bg-rose-50/5")}>
+                              <td className="p-6 font-mono text-xs text-slate-500">{row.date}</td>
+                              <td className="p-6 font-black text-slate-800">
+                                 <div className="flex items-center gap-2">
+                                    {row.type === 'accrual' ? <TrendingUp className="h-3 w-3 text-emerald-500" /> : <TrendingDown className="h-3 w-3 text-rose-500" />}
+                                    {row.description}
+                                 </div>
                               </td>
-                              <td className="p-6 font-mono text-xs text-slate-500">{l.startDate} → {l.endDate}</td>
-                              <td className="p-6 text-center font-black text-slate-700">{l.workingDays}</td>
+                              <td className="p-6 text-xs font-bold text-slate-400 italic">{row.basis}</td>
                               <td className="p-6 text-center">
-                                 {l.runningBalance !== null ? (
-                                    <span className="font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-lg">
-                                       {l.runningBalance}
-                                    </span>
-                                 ) : <span className="text-slate-300">---</span>}
-                              </td>
-                              <td className="p-6">
-                                 <Badge variant="secondary" className={cn(
-                                    "text-[9px] font-black uppercase",
-                                    l.status === 'approved' ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-400"
+                                 <Badge className={cn(
+                                   "font-black border-0",
+                                   row.change > 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
                                  )}>
-                                    {l.status}
+                                    {row.change > 0 ? `+${row.change}` : row.change}
                                  </Badge>
+                              </td>
+                              <td className="p-6 text-center">
+                                 <span className="font-black text-slate-900 bg-slate-100 px-4 py-1 rounded-full font-mono">
+                                    {row.balance}
+                                 </span>
                               </td>
                            </tr>
                         ))}
-                        {!leavesWithBalance?.length && 
-                          <tr><td colSpan={5} className="p-20 text-center italic text-slate-300 font-bold">{isRtl ? 'لا يوجد سجلات إجازات لهذا الموظف.' : 'No leave records found.'}</td></tr>
+                        {!leaveLedger.length && 
+                          <tr><td colSpan={5} className="p-20 text-center italic text-slate-300 font-bold">{isRtl ? 'لا توجد حركات مسجلة للرصيد.' : 'No balance movement found.'}</td></tr>
                         }
                      </tbody>
                   </table>
@@ -326,3 +352,4 @@ export default function EmployeeDossierPage() {
     </div>
   );
 }
+
