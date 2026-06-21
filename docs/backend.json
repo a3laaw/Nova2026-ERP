@@ -28,45 +28,20 @@
         "companyId": { "type": "string" }
       }
     },
-    "PayrollBatch": {
-      "title": "Payroll Batch",
-      "description": "كشف رواتب شهري مجمع للموظفين.",
+    "JobApplication": {
+      "title": "Job Application",
+      "description": "طلب توظيف مقدم من مرشح خارجي عبر بوابة التوظيف العامة.",
       "type": "object",
       "properties": {
-        "month": { "type": "number" },
-        "year": { "type": "number" },
-        "status": { "type": "string" },
-        "totalNetSalary": { "type": "number" },
+        "fullName": { "type": "string" },
+        "email": { "type": "string" },
+        "mobile": { "type": "string" },
+        "position": { "type": "string" },
+        "experienceYears": { "type": "number" },
+        "resumeUrl": { "type": "string" },
+        "status": { "type": "string", "enum": ["new", "reviewing", "interview", "rejected", "hired"] },
         "companyId": { "type": "string" }
       }
-    },
-    "LeaveRequest": {
-      "title": "Leave Request",
-      "description": "طلب إجازة مقدم من موظف.",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string" },
-        "type": { "type": "string" },
-        "startDate": { "type": "string" },
-        "endDate": { "type": "string" },
-        "status": { "type": "string" },
-        "companyId": { "type": "string" }
-      }
-    },
-    "Transaction": {
-      "title": "Technical Transaction",
-      "description": "المعاملة الفنية المفتوحة للعميل، ترتبط بمسار فني محدد.",
-      "type": "object",
-      "properties": {
-        "transactionNumber": { "type": "string" },
-        "clientId": { "type": "string" },
-        "activityTypeId": { "type": "string" },
-        "serviceId": { "type": "string" },
-        "subServiceId": { "type": "string" },
-        "status": { "type": "string", "enum": ["new", "in-progress", "completed", "on-hold", "cancelled"] },
-        "companyId": { "type": "string" }
-      },
-      "required": ["transactionNumber", "clientId", "activityTypeId", "serviceId", "subServiceId", "status", "companyId"]
     }
   },
   "auth": {
@@ -75,8 +50,6 @@
   "firestore": {
     "/companies/{companyId}/clients/{clientId}": { "schema": "#/entities/Client", "description": "سجلات العملاء" },
     "/companies/{companyId}/employees/{empId}": { "schema": "#/entities/Employee", "description": "سجلات الموظفين" },
-    "/companies/{companyId}/payroll/{batchId}": { "schema": "#/entities/PayrollBatch", "description": "كشوف الرواتب" },
-    "/companies/{companyId}/leaveRequests/{leaveId}": { "schema": "#/entities/LeaveRequest", "description": "طلبات الإجازات" },
-    "/companies/{companyId}/transactions/{tId}": { "schema": "#/entities/Transaction", "description": "المعاملات الفنية" }
+    "/companies/{companyId}/applications/{appId}": { "schema": "#/entities/JobApplication", "description": "طلبات التوظيف المستلمة" }
   }
 }

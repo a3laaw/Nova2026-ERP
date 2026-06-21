@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -30,7 +31,8 @@ import {
   Database,
   ChevronLeft,
   Settings2,
-  BookMarked
+  BookMarked,
+  UserPlus
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
@@ -117,6 +119,7 @@ export function DashboardSidebar() {
       module: 'hr',
       subItems: [
         { title: t('employees'), url: "/dashboard/hr/employees", icon: Users },
+        { title: 'التوظيف', url: "/dashboard/hr/recruitment", icon: UserPlus },
         { title: t('leaves'), url: "/dashboard/hr/leaves", icon: Calendar },
         { title: t('permissions'), url: "/dashboard/hr/permissions", icon: Clock },
         { title: t('attendance'), url: "/dashboard/hr/attendance/import", icon: FileSpreadsheet },

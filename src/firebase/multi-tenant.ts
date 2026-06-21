@@ -24,13 +24,9 @@ export const paths = {
   clients: (companyId: string) => getTenantPath(companyId, 'clients'),
   clientHistory: (companyId: string, clientId: string) => `${getTenantPath(companyId, 'clients')}/${clientId}/history`,
 
-  // المعاملات الفنية (Transactions)
-  transactions: (companyId: string) => getTenantPath(companyId, 'transactions'),
-  transactionTimeline: (companyId: string, tId: string) => `${getTenantPath(companyId, 'transactions')}/${tId}/timelineEvents`,
-  transactionStages: (companyId: string, tId: string) => `${getTenantPath(companyId, 'transactions')}/${tId}/stageInstances`,
-
-  // الموارد البشرية
+  // الموارد البشرية والتوظيف
   employees: (companyId: string) => getTenantPath(companyId, 'employees'),
+  applications: (companyId: string) => getTenantPath(companyId, 'applications'),
   leaveRequests: (companyId: string) => getTenantPath(companyId, 'leaveRequests'),
   permissionRequests: (companyId: string) => getTenantPath(companyId, 'permissionRequests'),
   attendance: (companyId: string) => getTenantPath(companyId, 'attendance'),
@@ -41,13 +37,7 @@ export const paths = {
   inventoryItems: (companyId: string) => getTenantPath(companyId, 'inventoryItems'),
   assetAssignments: (companyId: string) => getTenantPath(companyId, 'assetAssignments'),
 
-  // الهيكل الفني المرجعي
-  activityTypes: (companyId: string) => getTenantPath(companyId, 'activityTypes'),
-  services: (companyId: string, actId: string) => `${getTenantPath(companyId, 'activityTypes')}/${actId}/services`,
-  subServices: (companyId: string, actId: string, srvId: string) => `${getTenantPath(companyId, 'activityTypes')}/${actId}/services/${srvId}/subServices`,
-  technicalStages: (companyId: string, actId: string, srvId: string, subId: string) => `${getTenantPath(companyId, 'activityTypes')}/${actId}/services/${srvId}/subServices/${subId}/technicalStages`,
-
-  // المشاريع والمبيعات
+  // المشاريع والفرص
   projects: (companyId: string) => getTenantPath(companyId, 'projects'),
   leads: (companyId: string) => getTenantPath(companyId, 'leads'),
 };
