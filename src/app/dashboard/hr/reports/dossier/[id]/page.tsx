@@ -9,7 +9,7 @@ import {
   ArrowRight, Loader2, ShieldCheck, Printer,
   User, Calendar, Clock, Calculator, History,
   HardHat, MapPin, CheckCircle2, Phone, Mail,
-  Package, Boxes, Truck, RotateCcw
+  Package, Boxes, Truck, RotateCcw, PackageCheck
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where } from 'firebase/firestore';
@@ -30,26 +30,37 @@ export default function EmployeeDossierPage() {
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
-  // 1. جلب البيانات الأساسية للموظف
-  const empRef = useMemo(() => companyId && db ? doc(db, paths.employees(companyId), empId) : null, [db, companyId, empId]);
+  // 1. جلب البيانات الأساسية للموظف (ثبيت المرجع)
+  const empRef = useMemo(() => 
+    companyId && db ? doc(db, paths.employees(companyId), empId) : null, 
+  [db, companyId, empId]);
   const { data: employee, loading: empLoading } = useDoc<Employee>(empRef);
 
-  // 2. جلب البيانات التاريخية
-  const attendanceQuery = useMemo(() => companyId && db ? query(collection(db, paths.attendance(companyId)), where('employeeId', '==', empId), orderBy('date', 'desc')) : null, [db, companyId, empId]);
-  const leavesQuery = useMemo(() => companyId && db ? query(collection(db, paths.leaveRequests(companyId)), where('userId', '==', empId), orderBy('startDate', 'desc')) : null, [db, companyId, empId]);
-  const auditQuery = useMemo(() => companyId && db ? query(collection(db, `${paths.employees(companyId)}/${empId}/auditLogs`), orderBy('createdAt', 'desc')) : null, [db, companyId, empId]);
+  // 2. جلب البيانات التاريخية (ثبيت الاستعلامات)
+  const attendanceQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.attendance(companyId)), where('employeeId', '==', empId)) : null, 
+  [db, companyId, empId]);
   
-  // 3. جلب العهد الحالية (Active Only)
-  const assetsQuery = useMemo(() => companyId && db ? query(
-    collection(db, paths.assetAssignments(companyId)), 
-    where('employeeId', '==', empId), 
-    where('status', '==', 'in-use')
-  ) : null, [db, companyId, empId]);
+  const leavesQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.leaveRequests(companyId)), where('userId', '==', empId)) : null, 
+  [db, companyId, empId]);
+  
+  const auditQuery = useMemo(() => 
+    companyId && db ? query(collection(db, `${paths.employees(companyId)}/${empId}/auditLogs`)) : null, 
+  [db, companyId, empId]);
+  
+  const assetsQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.assetAssignments(companyId)), where('employeeId', '==', empId), where('status', '==', 'in-use')) : null, 
+  [db, companyId, empId]);
 
-  const { data: attendance } = useCollection<AttendanceRecord>(attendanceQuery);
-  const { data: leaves } = useCollection<LeaveRequest>(leavesQuery);
-  const { data: auditLogs } = useCollection<EmployeeAuditLog>(auditQuery);
+  const { data: rawAttendance } = useCollection<AttendanceRecord>(attendanceQuery);
+  const { data: rawLeaves } = useCollection<LeaveRequest>(leavesQuery);
+  const { data: rawAuditLogs } = useCollection<EmployeeAuditLog>(auditQuery);
   const { data: assets } = useCollection<any>(assetsQuery);
+
+  // الفرز في الذاكرة لتجنب الحاجة للفهارس المعقدة
+  const attendance = useMemo(() => [...rawAttendance].sort((a, b) => b.date.localeCompare(a.date)), [rawAttendance]);
+  const leaves = useMemo(() => [...rawLeaves].sort((a, b) => b.startDate.localeCompare(a.startDate)), [rawLeaves]);
 
   if (empLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
   if (!employee) return <div className="p-20 text-center font-bold">{isRtl ? 'الموظف غير موجود' : 'Employee not found'}</div>;
@@ -68,7 +79,7 @@ export default function EmployeeDossierPage() {
              </p>
            </div>
         </div>
-        <Button onClick={() => window.print()} className="rounded-2xl h-14 px-8 font-black gap-2 bg-primary shadow-xl shadow-primary/20 hover:scale-105 transition-all">
+        <Button onClick={() => window.print()} className="rounded-2xl h-14 px-8 font-black gap-2 bg-primary text-white shadow-xl shadow-primary/20 hover:scale-105 transition-all">
            <Printer className="h-5 w-5" /> {isRtl ? 'طباعة الملف الكامل' : 'Print Full Dossier'}
         </Button>
       </div>
@@ -105,8 +116,8 @@ export default function EmployeeDossierPage() {
                </div>
             </div>
 
-            {/* Assets & Equipment - تظهر فقط العهد التي لا تزال بحوزة الموظف */}
-            <div className="space-y-6">
+            {/* Assets & Equipment */}
+            <div className="space-y-6 text-start">
                <h3 className="text-lg font-black border-s-4 border-amber-500 ps-3 flex items-center gap-2">
                   <Truck className="h-5 w-5 text-amber-500" /> {isRtl ? 'العهد والمعدات الحالية (في عهدته)' : 'Current Assigned Assets'}
                </h3>
@@ -138,8 +149,8 @@ export default function EmployeeDossierPage() {
                </div>
             </div>
 
-            {/* Attendance Analytics (Brief) */}
-            <div className="space-y-6">
+            {/* Attendance Analytics */}
+            <div className="space-y-6 text-start">
                <h3 className="text-lg font-black border-s-4 border-primary ps-3 flex items-center gap-2">
                   <Clock className="h-5 w-5" /> {isRtl ? 'ملخص الحضور والانصراف' : 'Attendance Summary'}
                </h3>
@@ -164,7 +175,7 @@ export default function EmployeeDossierPage() {
             </div>
 
             {/* Leave History */}
-            <div className="space-y-6">
+            <div className="space-y-6 text-start">
                <h3 className="text-lg font-black border-s-4 border-blue-500 ps-3 flex items-center gap-2">
                   <Calendar className="h-5 w-5 text-blue-500" /> {isRtl ? 'تاريخ الإجازات' : 'Leave History'}
                </h3>
@@ -184,7 +195,7 @@ export default function EmployeeDossierPage() {
                               <td className="p-4 font-bold uppercase">{l.type}</td>
                               <td className="p-4 font-mono text-xs text-slate-500">{l.startDate} → {l.endDate}</td>
                               <td className="p-4 text-center font-black">{l.workingDays}</td>
-                              <td className="p-4"><Badge variant="outline" className="text-[9px] font-black">{l.status}</Badge></td>
+                              <td className="p-4"><Badge variant="outline" className="text-[9px] font-black uppercase">{l.status}</Badge></td>
                            </tr>
                         ))}
                         {!leaves?.length && <tr><td colSpan={4} className="p-10 text-center italic text-slate-400">{isRtl ? 'لا يوجد إجازات مسجلة.' : 'No leaves recorded.'}</td></tr>}
