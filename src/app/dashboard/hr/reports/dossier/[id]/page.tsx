@@ -11,7 +11,7 @@ import {
   HardHat, MapPin, Phone, Mail,
   Package, Truck, RotateCcw, PackageCheck,
   TrendingUp, TrendingDown, Info, Scale,
-  FileText, ExternalLink
+  FileText, ExternalLink, Plane
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where } from 'firebase/firestore';
@@ -23,7 +23,7 @@ import { WorkHoursSettings } from '@/types/work-hours';
 import { WorkHoursService } from '@/services/work-hours-service';
 import { cn } from '@/lib/utils';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
-import { format, parseISO, isValid } from 'date-fns';
+import { format, parseISO, isValid, differenceInDays } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 
 export default function EmployeeDossierPage() {
@@ -53,16 +53,36 @@ export default function EmployeeDossierPage() {
     companyId && db ? query(collection(db, paths.attendance(companyId)), where('employeeId', '==', empId)) : null, 
   [db, companyId, empId]);
   
+  const leavesQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.leaveRequests(companyId)), where('userId', '==', empId)) : null, 
+  [db, companyId, empId]);
+
   const assetsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.assetAssignments(companyId)), where('employeeId', '==', empId), where('status', '==', 'in-use')) : null, 
   [db, companyId, empId]);
 
   const { data: rawAttendance } = useCollection<AttendanceRecord>(attendanceQuery);
+  const { data: rawLeaves } = useCollection<LeaveRequest>(leavesQuery);
   const { data: assets } = useCollection<any>(assetsQuery);
 
   const attendance = useMemo(() => [...rawAttendance].sort((a, b) => b.date.localeCompare(a.date)), [rawAttendance]);
+  const approvedLeaves = useMemo(() => 
+    rawLeaves.filter(l => ['approved', 'on-leave', 'returned'].includes(l.status))
+      .sort((a, b) => b.startDate.localeCompare(a.startDate)), 
+  [rawLeaves]);
 
-  // التحليل الشهري للحضور (موجز)
+  // حساب الرصيد الحالي الفعلي (استحقاق تراكمي - إجازات فعلية)
+  const currentBalance = useMemo(() => {
+    if (!employee?.hireDate) return 0;
+    const hireDate = parseISO(employee.hireDate);
+    const today = new Date();
+    const totalDaysServed = Math.max(0, differenceInDays(today, hireDate));
+    const accrued = (totalDaysServed / 365.25) * 30;
+    const totalDeducted = approvedLeaves.reduce((sum, l) => sum + (l.workingDays || 0), 0);
+    return Math.round((accrued - totalDeducted) * 100) / 100;
+  }, [employee, approvedLeaves]);
+
+  // التحليل الشهري للحضور
   const monthlyAttendanceStats = useMemo(() => {
     const groups: Record<string, any> = {};
     attendance.forEach(rec => {
@@ -109,7 +129,7 @@ export default function EmployeeDossierPage() {
            <div className="text-start">
              <h1 className="text-3xl font-black font-headline">{isRtl ? 'الملف الوظيفي الشامل' : 'Employee Dossier'}</h1>
              <p className="text-xs font-bold text-muted-foreground mt-1 flex items-center gap-2">
-                <ShieldCheck className="h-3 w-3 text-emerald-500" /> {isRtl ? 'بيانات معتمدة وموثقة' : 'Verified Personnel Data'}
+                <ShieldCheck className="h-3 w-3 text-emerald-500" /> {isRtl ? 'ملف تجاري معتمد' : 'Verified Personnel File'}
              </p>
            </div>
         </div>
@@ -119,15 +139,15 @@ export default function EmployeeDossierPage() {
              onClick={() => router.push(`/dashboard/hr/reports/leaves/statement/${empId}`)}
              className="rounded-2xl h-14 px-6 font-black gap-2 border-2 hover:bg-slate-50"
            >
-             <FileText className="h-5 w-5 text-primary" /> {isRtl ? 'كشف رصيد الإجازات' : 'Leave Statement'}
+             <FileText className="h-5 w-5 text-primary" /> {isRtl ? 'كشف الحساب التفصيلي' : 'Full Ledger'}
            </Button>
            <Button onClick={() => window.print()} className="rounded-2xl h-14 px-8 font-black gap-2 bg-primary text-white shadow-xl shadow-primary/20 hover:scale-105 transition-all">
-              <Printer className="h-5 w-5" /> {isRtl ? 'طباعة الملف الكامل' : 'Print Full Dossier'}
+              <Printer className="h-5 w-5" /> {isRtl ? 'طباعة التقرير' : 'Print Report'}
            </Button>
         </div>
       </div>
 
-      <PrintWrapper title={isRtl ? "سجل تاريخي للموظف" : "Comprehensive Employee Record"}>
+      <PrintWrapper title={isRtl ? "سجل تاريخي للموظف" : "Employee Historical Record"}>
          <div className="space-y-12">
             
             {/* Identity Card */}
@@ -151,43 +171,50 @@ export default function EmployeeDossierPage() {
                   </div>
                </div>
                <div className="bg-slate-50 p-8 rounded-[2rem] border-2 border-slate-100 flex flex-col justify-center items-center text-center">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'رصيد الإجازات الحالي' : 'Current Leave Balance'}</p>
-                  <p className="text-4xl font-black text-emerald-600 font-mono">{employee.annualLeaveBalance || 0} <span className="text-xs">{isRtl ? 'يوم' : 'Days'}</span></p>
-                  <Badge className={cn("mt-4 font-black uppercase", employee.status === 'active' ? "bg-emerald-500 text-white" : "bg-rose-500 text-white")}>
-                     {employee.status}
-                  </Badge>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'رصيد الإجازات المستحق' : 'Current Leave Balance'}</p>
+                  <p className="text-5xl font-black text-emerald-600 font-mono">{currentBalance} <span className="text-xs">{isRtl ? 'يوم' : 'Days'}</span></p>
+                  <div className="mt-4 flex items-center gap-2 text-[9px] font-bold text-slate-400 uppercase">
+                     <Clock className="h-3 w-3" /> {isRtl ? 'محسوب حتى اليوم' : 'Calculated until today'}
+                  </div>
                </div>
             </div>
 
-            {/* Assets Section */}
+            {/* Leave Summary (Mini Report) */}
             <div className="space-y-6 text-start">
-               <h3 className="text-lg font-black border-s-4 border-amber-500 ps-3 flex items-center gap-2">
-                  <Truck className="h-5 w-5 text-amber-500" /> {isRtl ? 'العهد والمعدات الميدانية' : 'Field Assets In Possession'}
-               </h3>
-               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {assets && assets.length > 0 ? (
-                    assets.map((asset: any) => (
-                      <div key={asset.id} className="p-5 rounded-2xl bg-white border-2 border-slate-50 shadow-sm flex items-center justify-between group">
-                        <div className="flex items-center gap-4">
-                           <div className="h-10 w-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-inner">
-                              <Package className="h-5 w-5" />
-                           </div>
-                           <div className="text-start">
-                              <p className="font-black text-sm text-slate-800">{asset.itemName}</p>
-                              <p className="text-[10px] font-bold text-slate-400 uppercase">{asset.quantity} {isRtl ? 'وحدة' : 'Unit'}</p>
-                           </div>
-                        </div>
-                        <div className="text-end">
-                           <span className="text-[9px] font-mono font-bold text-slate-500">{asset.assignedAt?.toDate().toLocaleDateString()}</span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="col-span-full py-12 text-center bg-slate-50 rounded-[2.5rem] border-2 border-dashed border-slate-100 flex flex-col items-center">
-                       <PackageCheck className="h-10 w-10 text-slate-200 mb-2" />
-                       <p className="text-xs font-bold text-slate-400 italic">{isRtl ? 'لا يوجد عهد مسجلة باسم الموظف.' : 'No active assets in possession.'}</p>
-                    </div>
-                  )}
+               <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-black border-s-4 border-emerald-500 ps-3 flex items-center gap-2">
+                     <Plane className="h-5 w-5 text-emerald-500" /> {isRtl ? 'ملخص الإجازات المعتمدة' : 'Approved Leave History'}
+                  </h3>
+               </div>
+               <div className="border-2 rounded-[2rem] overflow-hidden shadow-sm bg-white">
+                  <table className="w-full text-sm text-start">
+                     <thead className="bg-slate-50 border-b">
+                        <tr className="font-black text-slate-500 uppercase text-[10px] tracking-widest">
+                           <th className="p-4 text-start">{isRtl ? 'نوع الإجازة' : 'Type'}</th>
+                           <th className="p-4 text-start">{isRtl ? 'الفترة' : 'Period'}</th>
+                           <th className="p-4 text-center">{isRtl ? 'أيام العمل' : 'Work Days'}</th>
+                           <th className="p-4 text-end pe-8">{isRtl ? 'الحالة' : 'Status'}</th>
+                        </tr>
+                     </thead>
+                     <tbody className="divide-y divide-slate-100">
+                        {approvedLeaves.length > 0 ? (
+                          approvedLeaves.map((l, i) => (
+                            <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                               <td className="p-4 font-black text-slate-800">{isRtl ? (l.type === 'annual' ? 'سنوية' : l.type === 'sick' ? 'مرضية' : 'اضطرارية') : l.type.toUpperCase()}</td>
+                               <td className="p-4 font-mono text-xs text-slate-500">{l.startDate} - {l.endDate}</td>
+                               <td className="p-4 text-center">
+                                  <span className="font-black text-slate-700 bg-slate-100 px-3 py-1 rounded-lg text-xs">{l.workingDays}</span>
+                               </td>
+                               <td className="p-4 text-end pe-8">
+                                  <Badge variant="outline" className="bg-emerald-50 text-emerald-600 border-0 font-black text-[9px] uppercase">{l.status}</Badge>
+                               </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr><td colSpan={4} className="p-10 text-center italic text-slate-300 font-bold">{isRtl ? 'لا يوجد إجازات مسجلة.' : 'No recorded leaves.'}</td></tr>
+                        )}
+                     </tbody>
+                  </table>
                </div>
             </div>
 
@@ -238,15 +265,36 @@ export default function EmployeeDossierPage() {
                </div>
             </div>
 
-            {/* Note about separate reports */}
-            <div className="p-6 rounded-2xl bg-primary/5 border border-primary/10 flex items-center justify-between print:hidden">
-               <div className="flex items-center gap-3">
-                  <Info className="h-5 w-5 text-primary" />
-                  <p className="text-xs font-bold text-slate-600">{isRtl ? 'للحصول على تفصيل دقيق لحركات رصيد الإجازات والاستحقاقات الشهرية، يرجى عرض التقرير المتخصص.' : 'For detailed leave balance movements and monthly accruals, please view the specialized report.'}</p>
+            {/* Assets Section */}
+            <div className="space-y-6 text-start">
+               <h3 className="text-lg font-black border-s-4 border-amber-500 ps-3 flex items-center gap-2">
+                  <Truck className="h-5 w-5 text-amber-500" /> {isRtl ? 'العهد والمعدات الميدانية' : 'Field Assets In Possession'}
+               </h3>
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {assets && assets.length > 0 ? (
+                    assets.map((asset: any) => (
+                      <div key={asset.id} className="p-5 rounded-2xl bg-white border-2 border-slate-50 shadow-sm flex items-center justify-between group">
+                        <div className="flex items-center gap-4">
+                           <div className="h-10 w-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-inner">
+                              <Package className="h-5 w-5" />
+                           </div>
+                           <div className="text-start">
+                              <p className="font-black text-sm text-slate-800">{asset.itemName}</p>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase">{asset.quantity} {isRtl ? 'وحدة' : 'Unit'}</p>
+                           </div>
+                        </div>
+                        <div className="text-end">
+                           <span className="text-[9px] font-mono font-bold text-slate-500">{asset.assignedAt?.toDate().toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="col-span-full py-12 text-center bg-slate-50 rounded-[2.5rem] border-2 border-dashed border-slate-100 flex flex-col items-center">
+                       <PackageCheck className="h-10 w-10 text-slate-200 mb-2" />
+                       <p className="text-xs font-bold text-slate-400 italic">{isRtl ? 'ذمة الموظف خالية من العهد حالياً.' : 'No active assets in possession.'}</p>
+                    </div>
+                  )}
                </div>
-               <Button variant="link" onClick={() => router.push(`/dashboard/hr/reports/leaves/statement/${empId}`)} className="text-xs font-black uppercase text-primary decoration-2 underline-offset-4">
-                  {isRtl ? 'عرض كشف الحساب' : 'Open Statement'} <ExternalLink className="ms-2 h-3 w-3" />
-               </Button>
             </div>
 
          </div>
