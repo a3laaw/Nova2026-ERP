@@ -16,7 +16,7 @@ import { doc, collection, query, orderBy, where } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
-import { Employee, AttendanceRecord, LeaveRequest, EmployeeAuditLog } from '@/types/hr';
+import { Employee, AttendanceRecord, LeaveRequest } from '@/types/hr';
 import { WorkHoursSettings } from '@/types/work-hours';
 import { WorkHoursService } from '@/services/work-hours-service';
 import { WorkingDaysService } from '@/services/working-days-service';
@@ -66,6 +66,7 @@ export default function EmployeeDossierPage() {
 
   const attendance = useMemo(() => [...rawAttendance].sort((a, b) => b.date.localeCompare(a.date)), [rawAttendance]);
 
+  // التحليل الشهري للحضور
   const monthlyAttendanceStats = useMemo(() => {
     const groups: Record<string, any> = {};
     attendance.forEach(rec => {
@@ -73,7 +74,6 @@ export default function EmployeeDossierPage() {
         const date = parseISO(rec.date);
         if (!isValid(date)) return;
 
-        // تصحيح السنة إذا كانت برقمين (مثل 0026 لتصبح 2026)
         if (date.getFullYear() < 100) {
             date.setFullYear(date.getFullYear() + 2000);
         }
@@ -83,7 +83,7 @@ export default function EmployeeDossierPage() {
           const labelText = format(date, 'MMMM yyyy', { locale: isRtl ? ar : enUS });
           groups[key] = {
             monthKey: key,
-            label: labelText.replace('0026', '2026'), // حماية للنص
+            label: labelText.replace('0026', '2026'), 
             present: 0,
             late: 0,
             absent: 0,
@@ -104,14 +104,20 @@ export default function EmployeeDossierPage() {
     return Object.values(groups).sort((a, b) => b.monthKey.localeCompare(a.monthKey));
   }, [attendance, isRtl]);
 
-  const leavesWithBalance = useMemo(() => {
-    if (!employee?.hireDate || !settings || !rawLeaves.length) {
-      return [...rawLeaves].sort((a, b) => b.startDate.localeCompare(a.startDate));
+  // حساب الرصيد التراكمي واللحظي للإجازات
+  const { leavesWithBalance, currentRealBalance } = useMemo(() => {
+    if (!employee?.hireDate || !settings) {
+      return { 
+        leavesWithBalance: [...rawLeaves].sort((a, b) => b.startDate.localeCompare(a.startDate)),
+        currentRealBalance: employee?.annualLeaveBalance || 0 
+      };
     }
     
     const wdService = new WorkingDaysService(settings);
+    
+    // 1. تصفية وترتيب الإجازات المعتمدة زمنياً
     const approvedSorted = [...rawLeaves]
-      .filter(l => l.status === 'approved')
+      .filter(l => ['approved', 'on-leave', 'returned'].includes(l.status))
       .sort((a, b) => a.startDate.localeCompare(b.startDate));
       
     let cumulativeTaken = 0;
@@ -124,10 +130,16 @@ export default function EmployeeDossierPage() {
       balancedMap.set(l.id, balanceAfter);
     });
 
-    return [...rawLeaves].map(l => ({
+    const leavesList = [...rawLeaves].map(l => ({
       ...l,
-      runningBalance: balancedMap.get(l.id) || null
+      runningBalance: balancedMap.has(l.id) ? balancedMap.get(l.id) : null
     })).sort((a, b) => b.startDate.localeCompare(a.startDate));
+
+    // 2. حساب الرصيد الحالي "الآن"
+    const nowAccrued = wdService.calculateAccruedLeave(employee.hireDate);
+    const finalBalance = Math.round((nowAccrued - cumulativeTaken) * 100) / 100;
+
+    return { leavesWithBalance: leavesList, currentRealBalance: finalBalance };
   }, [rawLeaves, employee, settings]);
 
   if (empLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
@@ -176,7 +188,7 @@ export default function EmployeeDossierPage() {
                </div>
                <div className="bg-slate-50 p-8 rounded-[2rem] border-2 border-slate-100 flex flex-col justify-center items-center text-center">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'الرصيد الحالي المستحق' : 'Current Accrued Balance'}</p>
-                  <p className="text-4xl font-black text-emerald-600 font-mono">{employee.annualLeaveBalance || 0} <span className="text-xs">{isRtl ? 'يوم' : 'Days'}</span></p>
+                  <p className="text-4xl font-black text-emerald-600 font-mono">{currentRealBalance} <span className="text-xs">{isRtl ? 'يوم' : 'Days'}</span></p>
                   <Badge className={cn("mt-4 font-black uppercase", employee.status === 'active' ? "bg-emerald-500 text-white" : "bg-rose-500 text-white")}>
                      {employee.status}
                   </Badge>
