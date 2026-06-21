@@ -10,7 +10,7 @@ import {
 import { paths } from '@/firebase/multi-tenant';
 import { AttendanceRecord, Employee } from '@/types/hr';
 import { WorkHoursSettings, DayOfWeek } from '@/types/work-hours';
-import { parse, differenceInMinutes, format, isValid, parseISO, getMonth, getYear } from 'date-fns';
+import { parse, differenceInMinutes, format, isValid, parseISO, getMonth, getYear, startOfYear, addYears } from 'date-fns';
 
 export interface RawAttendanceRow {
   employeeNumber: string;
@@ -39,31 +39,58 @@ export class AttendanceImportService {
 
   /**
    * تحويل النصوص والأرقام إلى تاريخ موحد بصيغة YYYY-MM-DD
+   * تم تحسينه لمعالجة السنوات المكونة من رقمين (مثل 26 لتصبح 2026)
    */
   private normalizeDate(input: string): string | null {
     if (!input) return null;
-    const clean = input.trim();
+    let clean = input.trim();
     
-    // 1. محاولة كونه تاريخ ISO (2026-01-01)
-    if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) return clean;
-    
-    // 2. محاولة كونه تنسيق إكسيل التسلسلي
+    // 1. معالجة تنسيق إكسيل التسلسلي (Excel Serial Number)
     const num = Number(clean);
-    if (!isNaN(num) && num > 0) {
-      const date = new Date(1899, 12, 30);
-      date.setDate(date.getDate() + num);
+    if (!isNaN(num) && num > 30000) { // التواريخ الحديثة في إكسيل تكون أرقاماً كبيرة
+      // إكسيل يبدأ من 30 ديسمبر 1899
+      const excelBaseDate = new Date(1899, 11, 30);
+      const date = new Date(excelBaseDate.getTime() + num * 86400000);
       if (isValid(date)) return format(date, 'yyyy-MM-dd');
     }
 
-    // 3. محاولة استخدام parseISO
-    const parsed = parseISO(clean);
-    if (isValid(parsed)) return format(parsed, 'yyyy-MM-dd');
+    // 2. معالجة التواريخ المكتوبة برقمين للسنة (مثل 01/01/26)
+    // نبحث عن نمط ينتهي بـ /26 أو -26
+    if (/(^|[/-])26$/.test(clean)) {
+        clean = clean.replace(/26$/, '2026');
+    }
 
-    // 4. محاولة التنسيقات الشائعة
-    const commonFormats = ['dd/MM/yyyy', 'MM/dd/yyyy', 'dd-MM-yyyy', 'yyyy/MM/dd'];
+    // 3. محاولة التنسيقات الشائعة
+    const commonFormats = [
+        'yyyy-MM-dd', 
+        'dd/MM/yyyy', 
+        'MM/dd/yyyy', 
+        'dd-MM-yyyy', 
+        'yyyy/MM/dd',
+        'd/M/yyyy',
+        'yyyy-M-d'
+    ];
+
     for (const f of commonFormats) {
-      const p = parse(clean, f, new Date());
-      if (isValid(p)) return format(p, 'yyyy-MM-dd');
+      try {
+        const p = parse(clean, f, new Date());
+        if (isValid(p)) {
+            // ضمان أن السنة ليست في القرن الأول (مثل 0026)
+            if (p.getFullYear() < 100) {
+                p.setFullYear(p.getFullYear() + 2000);
+            }
+            return format(p, 'yyyy-MM-dd');
+        }
+      } catch(e) {}
+    }
+
+    // 4. محاولة أخيرة باستخدام parseISO
+    const parsed = parseISO(clean);
+    if (isValid(parsed)) {
+        if (parsed.getFullYear() < 100) {
+            parsed.setFullYear(parsed.getFullYear() + 2000);
+        }
+        return format(parsed, 'yyyy-MM-dd');
     }
 
     return null;
@@ -73,8 +100,9 @@ export class AttendanceImportService {
     if (!timeStr || typeof timeStr !== 'string' || !timeStr.trim()) return null;
     const cleanTime = timeStr.trim();
     
+    // معالجة وقت إكسيل العشري (مثل 0.333 يعادل 08:00)
     const num = Number(cleanTime);
-    if (!isNaN(num) && num > 0 && num < 1) {
+    if (!isNaN(num) && num >= 0 && num < 1) {
       const totalSeconds = Math.round(num * 86400);
       const hours = Math.floor(totalSeconds / 3600);
       const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -83,10 +111,12 @@ export class AttendanceImportService {
       return date;
     }
 
-    const formats = ['HH:mm', 'H:mm', 'HH:mm:ss', 'H:mm:ss', 'hh:mm a', 'h:mm a'];
+    const formats = ['HH:mm', 'H:mm', 'HH:mm:ss', 'H:mm:ss', 'hh:mm a', 'h:mm a', 'hh:mm:ss a'];
     for (const f of formats) {
-      const parsed = parse(cleanTime, f, new Date());
-      if (isValid(parsed)) return parsed;
+      try {
+        const parsed = parse(cleanTime, f, new Date());
+        if (isValid(parsed)) return parsed;
+      } catch(e) {}
     }
     return null;
   }
@@ -106,27 +136,27 @@ export class AttendanceImportService {
       const normalizedDate = this.normalizeDate(row.date);
       
       if (!row.employeeNumber || !normalizedDate) {
-        errors.push({ row: index + 2, message: `بيانات ناقصة أو تاريخ غير صالح: ${row.date || '---'}` });
+        errors.push({ row: index + 2, message: `تاريخ غير صالح أو رقم موظف مفقود: ${row.date || '---'}` });
         summary.invalid++;
         return;
       }
 
       const dateObj = parseISO(normalizedDate);
       
-      // التحقق من مطابقة الفترة المختارة يدوياً
+      // التحقق من مطابقة الفترة المختارة
       if (targetMonth && targetYear) {
         const rowMonth = getMonth(dateObj) + 1;
         const rowYear = getYear(dateObj);
         if (rowMonth !== targetMonth || rowYear !== targetYear) {
-          errors.push({ row: index + 2, message: `التاريخ ${normalizedDate} لا يتبع الشهر/السنة المحددة.` });
+          errors.push({ row: index + 2, message: `التاريخ ${normalizedDate} خارج الفترة المحددة (${targetMonth}/${targetYear}).` });
           summary.invalid++;
           return;
         }
       }
 
-      const emp = employees.find(e => e.employeeNumber === row.employeeNumber);
+      const emp = employees.find(e => e.employeeNumber === String(row.employeeNumber).trim());
       if (!emp) {
-        errors.push({ row: index + 2, message: `موظف غير موجود: ${row.employeeNumber || '---'}` });
+        errors.push({ row: index + 2, message: `موظف غير معرف في النظام: ${row.employeeNumber}` });
         summary.invalid++;
         return;
       }
@@ -162,7 +192,6 @@ export class AttendanceImportService {
           }
           if (!actualIn1 && !actualIn2) status = 'absent';
         } else {
-          // نظام الفترة الواحدة: ابحث عن البصمة في أي عمود
           const bestEntry = actualIn1 || actualIn2;
           if (bestEntry) {
             const expectedIn = this.parseFlexibleTime(schedule.morningStartTime)!;

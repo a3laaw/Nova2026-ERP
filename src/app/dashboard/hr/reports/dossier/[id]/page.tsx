@@ -22,7 +22,7 @@ import { WorkHoursService } from '@/services/work-hours-service';
 import { WorkingDaysService } from '@/services/working-days-service';
 import { cn } from '@/lib/utils';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 
 export default function EmployeeDossierPage() {
@@ -36,7 +36,6 @@ export default function EmployeeDossierPage() {
 
   const [settings, setSettings] = useState<WorkHoursSettings | null>(null);
 
-  // جلب إعدادات العمل للحسابات القانونية
   useEffect(() => {
     if (db && companyId) {
       const whService = new WorkHoursService(db, companyId);
@@ -67,12 +66,18 @@ export default function EmployeeDossierPage() {
 
   const attendance = useMemo(() => [...rawAttendance].sort((a, b) => b.date.localeCompare(a.date)), [rawAttendance]);
 
-  // تجميع إحصائيات الحضور شهرياً
   const monthlyAttendanceStats = useMemo(() => {
     const groups: Record<string, any> = {};
     attendance.forEach(rec => {
       try {
         const date = parseISO(rec.date);
+        if (!isValid(date)) return;
+
+        // تصحيح السنة إذا كانت برقمين (مثل 0026 لتصبح 2026)
+        if (date.getFullYear() < 100) {
+            date.setFullYear(date.getFullYear() + 2000);
+        }
+
         const key = format(date, 'yyyy-MM');
         if (!groups[key]) {
           groups[key] = {
@@ -83,6 +88,7 @@ export default function EmployeeDossierPage() {
             absent: 0,
             lateMins: 0
           };
+        group[key].label = group[key].label.replace('0026', '2026'); // حماية إضافية للنص
         }
         if (rec.status === 'present') groups[key].present++;
         if (rec.status === 'late') {
@@ -97,7 +103,6 @@ export default function EmployeeDossierPage() {
     return Object.values(groups).sort((a, b) => b.monthKey.localeCompare(a.monthKey));
   }, [attendance, isRtl]);
 
-  // حساب رصيد الإجازات السنوية التراكمي (Running Balance)
   const leavesWithBalance = useMemo(() => {
     if (!employee?.hireDate || !settings || !rawLeaves.length) {
       return [...rawLeaves].sort((a, b) => b.startDate.localeCompare(a.startDate));
@@ -149,7 +154,6 @@ export default function EmployeeDossierPage() {
       <PrintWrapper title={isRtl ? "سجل تاريخي للموظف" : "Comprehensive Employee Record"}>
          <div className="space-y-12">
             
-            {/* Header / ID Section */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                <div className="md:col-span-2 space-y-6">
                   <div className="flex items-start gap-6">
@@ -178,7 +182,6 @@ export default function EmployeeDossierPage() {
                </div>
             </div>
 
-            {/* Assets Section */}
             <div className="space-y-6 text-start">
                <h3 className="text-lg font-black border-s-4 border-amber-500 ps-3 flex items-center gap-2">
                   <Truck className="h-5 w-5 text-amber-500" /> {isRtl ? 'العهد والمعدات الحالية (في عهدته)' : 'Current Assigned Assets'}
@@ -211,7 +214,6 @@ export default function EmployeeDossierPage() {
                </div>
             </div>
 
-            {/* Monthly Attendance Analysis Table */}
             <div className="space-y-6 text-start">
                <h3 className="text-lg font-black border-s-4 border-primary ps-3 flex items-center gap-2">
                   <Clock className="h-5 w-5 text-primary" /> {isRtl ? 'تحليل الحضور والغياب الشهري' : 'Monthly Attendance Analysis'}
@@ -258,7 +260,6 @@ export default function EmployeeDossierPage() {
                </div>
             </div>
 
-            {/* Leave History Table */}
             <div className="space-y-6 text-start">
                <h3 className="text-lg font-black border-s-4 border-blue-500 ps-3 flex items-center gap-2">
                   <Calendar className="h-5 w-5 text-blue-500" /> {isRtl ? 'تاريخ الإجازات السنوية والرصيد' : 'Leave History & Balances'}
