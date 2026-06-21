@@ -27,18 +27,18 @@ export default function AttendanceReportPage() {
     end: new Date().toISOString().split('T')[0]
   });
 
-  // تبسيط الاستعلام: إزالة orderBy لتجنب الحاجة لفهارس مركبة فورية
-  const attendanceQuery = useMemo(() => 
-    companyId && db ? query(
+  // تثبيت كائن الاستعلام (Query Stabilization)
+  const attendanceQuery = useMemo(() => {
+    if (!companyId || !db) return null;
+    return query(
       collection(db, paths.attendance(companyId)),
       where('date', '>=', filters.start),
       where('date', '<=', filters.end)
-    ) : null, 
-  [db, companyId, filters.start, filters.end]);
+    );
+  }, [db, companyId, filters.start, filters.end]);
 
   const { data: rawRecords, loading, error } = useCollection<AttendanceRecord>(attendanceQuery);
 
-  // فرز البيانات في الذاكرة لضمان العمل بدون أخطاء فهارس
   const records = useMemo(() => {
     return [...rawRecords].sort((a, b) => b.date.localeCompare(a.date));
   }, [rawRecords]);

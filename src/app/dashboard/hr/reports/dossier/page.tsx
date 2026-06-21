@@ -28,10 +28,11 @@ export default function DossierSearchPage() {
 
   const companyId = globalUser?.companyId;
 
-  // استعلام بسيط بدون orderBy لضمان العمل الفوري
-  const employeesQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.employees(companyId))) : null, 
-  [db, companyId]);
+  // تثبيت كائن الاستعلام
+  const employeesQuery = useMemo(() => {
+    if (!companyId || !db) return null;
+    return query(collection(db, paths.employees(companyId)));
+  }, [db, companyId]);
 
   const { data: rawEmployees, loading, error } = useCollection<Employee>(employeesQuery);
 

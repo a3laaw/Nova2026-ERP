@@ -6,43 +6,36 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 /**
- * خطاف محسن لجلب المجموعات يضمن عدم الدخول في حلقات تكرار لا نهائية.
- * يستخدم مقارنة Firestore العميقة لضمان استقرار الاستعلام.
+ * خطاف محسن لجلب المجموعات يعالج مشكلة "دائرة التحميل اللانهائية".
+ * يقوم بتثبيت مرجع الاستعلام (Stabilization) لضمان عدم إعادة تشغيل Effect 
+ * إلا إذا تغيرت محتويات الاستعلام فعلياً.
  */
 export function useCollection<T = DocumentData>(query: Query<T> | null) {
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(!!query);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
   
-  const queryRef = useRef<Query<T> | null>(null);
-  const unsubscribeRef = useRef<(() => void) | null>(null);
+  // تثبيت مرجع الاستعلام (Stabilization)
+  const memoQuery = useRef<Query<T> | null>(null);
+  if (query && (!memoQuery.current || !queryEqual(query, memoQuery.current))) {
+    memoQuery.current = query;
+  } else if (!query) {
+    memoQuery.current = null;
+  }
+  const stableQuery = memoQuery.current;
 
   useEffect(() => {
-    // التحقق مما إذا كان الاستعلام قد تغير فعلياً
-    const isSameQuery = query && queryRef.current && queryEqual(query, queryRef.current);
-    
-    // إذا لم يتغير الاستعلام، لا تفعل شيئاً
-    if (isSameQuery) return;
-
-    // تنظيف المراقب القديم إذا وجد
-    if (unsubscribeRef.current) {
-      unsubscribeRef.current();
-      unsubscribeRef.current = null;
-    }
-
-    if (!query) {
-      queryRef.current = null;
+    if (!stableQuery) {
       setData([]);
       setLoading(false);
       return;
     }
 
-    queryRef.current = query;
     setLoading(true);
     setError(null);
 
     const unsubscribe = onSnapshot(
-      query,
+      stableQuery,
       (snapshot) => {
         const items = snapshot.docs.map((doc) => ({
           id: doc.id,
@@ -64,15 +57,8 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
       }
     );
 
-    unsubscribeRef.current = unsubscribe;
-
-    return () => {
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-        unsubscribeRef.current = null;
-      }
-    };
-  }, [query]);
+    return () => unsubscribe();
+  }, [stableQuery]); // الاعتماد الآن على المرجع المستقر فقط
 
   return { data, loading, error };
 }

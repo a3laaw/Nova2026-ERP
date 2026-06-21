@@ -22,11 +22,17 @@ export default function LeaveBalanceReportPage() {
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
-  const empsQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.employees(companyId)), orderBy('employeeNumber')) : null, 
-  [db, companyId]);
+  // تثبيت كائن الاستعلام
+  const empsQuery = useMemo(() => {
+    if (!companyId || !db) return null;
+    return query(collection(db, paths.employees(companyId)));
+  }, [db, companyId]);
 
-  const { data: employees, loading, error } = useCollection<Employee>(empsQuery);
+  const { data: rawEmployees, loading, error } = useCollection<Employee>(empsQuery);
+
+  const employees = useMemo(() => {
+    return [...rawEmployees].sort((a, b) => a.employeeNumber.localeCompare(b.employeeNumber));
+  }, [rawEmployees]);
 
   return (
     <div className="space-y-8" dir={dir}>
@@ -85,7 +91,7 @@ export default function LeaveBalanceReportPage() {
                       <TableCell className="text-center">
                          <span className={cn(
                            "font-black text-lg",
-                           (emp.annualLeaveBalance || 24) < 5 ? "text-rose-600" : "text-emerald-600"
+                           (emp.annualLeaveBalance || 0) < 5 ? "text-rose-600" : "text-emerald-600"
                          )}>
                             {emp.annualLeaveBalance || 0}
                          </span>

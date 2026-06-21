@@ -22,14 +22,14 @@ export default function PayrollSummaryReportPage() {
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
-  // استعلام خام بدون ترتيب لتجنب طلب فهرس فوري
-  const payrollQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.payroll(companyId))) : null, 
-  [db, companyId]);
+  // تثبيت كائن الاستعلام
+  const payrollQuery = useMemo(() => {
+    if (!companyId || !db) return null;
+    return query(collection(db, paths.payroll(companyId)));
+  }, [db, companyId]);
 
   const { data: rawBatches, loading, error } = useCollection<PayrollBatch>(payrollQuery);
 
-  // الفرز والتلخيص في الذاكرة
   const batches = useMemo(() => {
     return [...rawBatches].sort((a, b) => {
         if (b.year !== a.year) return b.year - a.year;
