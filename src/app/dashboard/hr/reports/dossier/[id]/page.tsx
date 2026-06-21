@@ -22,6 +22,8 @@ import { WorkHoursService } from '@/services/work-hours-service';
 import { WorkingDaysService } from '@/services/working-days-service';
 import { cn } from '@/lib/utils';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
+import { format, parseISO } from 'date-fns';
+import { ar, enUS } from 'date-fns/locale';
 
 export default function EmployeeDossierPage() {
   const empId = useParams().id as string;
@@ -55,10 +57,6 @@ export default function EmployeeDossierPage() {
     companyId && db ? query(collection(db, paths.leaveRequests(companyId)), where('userId', '==', empId)) : null, 
   [db, companyId, empId]);
   
-  const auditQuery = useMemo(() => 
-    companyId && db ? query(collection(db, `${paths.employees(companyId)}/${empId}/auditLogs`)) : null, 
-  [db, companyId, empId]);
-  
   const assetsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.assetAssignments(companyId)), where('employeeId', '==', empId), where('status', '==', 'in-use')) : null, 
   [db, companyId, empId]);
@@ -69,15 +67,43 @@ export default function EmployeeDossierPage() {
 
   const attendance = useMemo(() => [...rawAttendance].sort((a, b) => b.date.localeCompare(a.date)), [rawAttendance]);
 
-  // حساب رصيد الإجازات التراكمي في كل نقطة زمنية
+  // تجميع إحصائيات الحضور شهرياً
+  const monthlyAttendanceStats = useMemo(() => {
+    const groups: Record<string, any> = {};
+    attendance.forEach(rec => {
+      try {
+        const date = parseISO(rec.date);
+        const key = format(date, 'yyyy-MM');
+        if (!groups[key]) {
+          groups[key] = {
+            monthKey: key,
+            label: format(date, 'MMMM yyyy', { locale: isRtl ? ar : enUS }),
+            present: 0,
+            late: 0,
+            absent: 0,
+            lateMins: 0
+          };
+        }
+        if (rec.status === 'present') groups[key].present++;
+        if (rec.status === 'late') {
+          groups[key].late++;
+          groups[key].lateMins += (rec.minutesLate || 0);
+        }
+        if (rec.status === 'absent') groups[key].absent++;
+      } catch (e) {
+        console.error("Date parsing error in dossier", e);
+      }
+    });
+    return Object.values(groups).sort((a, b) => b.monthKey.localeCompare(a.monthKey));
+  }, [attendance, isRtl]);
+
+  // حساب رصيد الإجازات السنوية التراكمي (Running Balance)
   const leavesWithBalance = useMemo(() => {
     if (!employee?.hireDate || !settings || !rawLeaves.length) {
       return [...rawLeaves].sort((a, b) => b.startDate.localeCompare(a.startDate));
     }
     
     const wdService = new WorkingDaysService(settings);
-    
-    // ترتيب تصاعدي للحساب التراكمي الصحيح
     const approvedSorted = [...rawLeaves]
       .filter(l => l.status === 'approved')
       .sort((a, b) => a.startDate.localeCompare(b.startDate));
@@ -92,7 +118,6 @@ export default function EmployeeDossierPage() {
       balancedMap.set(l.id, balanceAfter);
     });
 
-    // إعادة الترتيب للتنازلي للعرض في الجدول
     return [...rawLeaves].map(l => ({
       ...l,
       runningBalance: balancedMap.get(l.id) || null
@@ -124,6 +149,7 @@ export default function EmployeeDossierPage() {
       <PrintWrapper title={isRtl ? "سجل تاريخي للموظف" : "Comprehensive Employee Record"}>
          <div className="space-y-12">
             
+            {/* Header / ID Section */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                <div className="md:col-span-2 space-y-6">
                   <div className="flex items-start gap-6">
@@ -152,6 +178,7 @@ export default function EmployeeDossierPage() {
                </div>
             </div>
 
+            {/* Assets Section */}
             <div className="space-y-6 text-start">
                <h3 className="text-lg font-black border-s-4 border-amber-500 ps-3 flex items-center gap-2">
                   <Truck className="h-5 w-5 text-amber-500" /> {isRtl ? 'العهد والمعدات الحالية (في عهدته)' : 'Current Assigned Assets'}
@@ -184,33 +211,57 @@ export default function EmployeeDossierPage() {
                </div>
             </div>
 
+            {/* Monthly Attendance Analysis Table */}
             <div className="space-y-6 text-start">
                <h3 className="text-lg font-black border-s-4 border-primary ps-3 flex items-center gap-2">
-                  <Clock className="h-5 w-5" /> {isRtl ? 'ملخص الحضور والانصراف' : 'Attendance Summary'}
+                  <Clock className="h-5 w-5 text-primary" /> {isRtl ? 'تحليل الحضور والغياب الشهري' : 'Monthly Attendance Analysis'}
                </h3>
-               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="p-6 bg-white border-2 rounded-2xl text-center shadow-sm">
-                     <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{isRtl ? 'أيام الحضور' : 'Present Days'}</p>
-                     <p className="text-3xl font-black text-emerald-600">{attendance?.filter(a => a.status === 'present').length || 0}</p>
-                  </div>
-                  <div className="p-6 bg-white border-2 rounded-2xl text-center shadow-sm">
-                     <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{isRtl ? 'مرات التأخير' : 'Late Cases'}</p>
-                     <p className="text-3xl font-black text-amber-600">{attendance?.filter(a => a.status === 'late').length || 0}</p>
-                  </div>
-                  <div className="p-6 bg-white border-2 rounded-2xl text-center shadow-sm">
-                     <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{isRtl ? 'أيام الغياب' : 'Absences'}</p>
-                     <p className="text-3xl font-black text-rose-600">{attendance?.filter(a => a.status === 'absent').length || 0}</p>
-                  </div>
-                  <div className="p-6 bg-white border-2 rounded-2xl text-center shadow-sm">
-                     <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{isRtl ? 'إجمالي الدقائق' : 'Late Mins'}</p>
-                     <p className="text-3xl font-black text-slate-900">{attendance?.reduce((acc, a) => acc + (a.minutesLate || 0), 0)}</p>
-                  </div>
+               <div className="border-2 rounded-[2rem] overflow-hidden shadow-sm bg-white">
+                  <table className="w-full text-sm text-start">
+                     <thead className="bg-slate-50 border-b">
+                        <tr className="font-black text-slate-500 uppercase text-[10px] tracking-widest">
+                           <th className="p-6 text-start">{isRtl ? 'الشهر' : 'Month'}</th>
+                           <th className="p-6 text-center">{isRtl ? 'أيام الحضور' : 'Present'}</th>
+                           <th className="p-6 text-center">{isRtl ? 'حالات التأخير' : 'Late'}</th>
+                           <th className="p-6 text-center">{isRtl ? 'أيام الغياب' : 'Absent'}</th>
+                           <th className="p-6 text-center">{isRtl ? 'إجمالي التأخير (د)' : 'Total Late Mins'}</th>
+                        </tr>
+                     </thead>
+                     <tbody className="divide-y divide-slate-100">
+                        {monthlyAttendanceStats.map((m: any) => (
+                           <tr key={m.monthKey} className="hover:bg-slate-50/50 transition-colors">
+                              <td className="p-6 font-black text-slate-800">{m.label}</td>
+                              <td className="p-6 text-center">
+                                 <span className="font-black text-emerald-600 text-lg">{m.present}</span>
+                              </td>
+                              <td className="p-6 text-center">
+                                 <span className={cn("font-black text-lg", m.late > 0 ? "text-amber-600" : "text-slate-300")}>{m.late}</span>
+                              </td>
+                              <td className="p-6 text-center">
+                                 <span className={cn("font-black text-lg", m.absent > 0 ? "text-rose-600" : "text-slate-300")}>{m.absent}</span>
+                              </td>
+                              <td className="p-6 text-center">
+                                 <Badge variant="secondary" className={cn(
+                                   "font-mono font-black border-0",
+                                   m.lateMins > 0 ? "bg-rose-50 text-rose-600" : "bg-slate-50 text-slate-300"
+                                 )}>
+                                    {m.lateMins}
+                                 </Badge>
+                              </td>
+                           </tr>
+                        ))}
+                        {!monthlyAttendanceStats.length && 
+                          <tr><td colSpan={5} className="p-20 text-center italic text-slate-300 font-bold">{isRtl ? 'لا يوجد سجلات حضور مسجلة لهذا الموظف.' : 'No attendance records found.'}</td></tr>
+                        }
+                     </tbody>
+                  </table>
                </div>
             </div>
 
+            {/* Leave History Table */}
             <div className="space-y-6 text-start">
                <h3 className="text-lg font-black border-s-4 border-blue-500 ps-3 flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-blue-500" /> {isRtl ? 'تاريخ الإجازات السنوية' : 'Leave History'}
+                  <Calendar className="h-5 w-5 text-blue-500" /> {isRtl ? 'تاريخ الإجازات السنوية والرصيد' : 'Leave History & Balances'}
                </h3>
                <div className="border-2 rounded-[2rem] overflow-hidden shadow-sm bg-white">
                   <table className="w-full text-sm text-start">
