@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -9,7 +10,7 @@ import {
   Users, Plus, Loader2, Edit3, 
   Search, ShieldCheck, Mail, ArrowRight,
   UserCircle, Ban, CheckCircle2, UserCog,
-  ShieldAlert
+  ShieldAlert, UserPlus, Info
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +21,7 @@ import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
 import { UserService } from '@/services/user-service';
 import { Role } from '@/types/roles';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -35,6 +36,7 @@ export default function UsersManagementPage() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [editingUser, setEditingUser] = useState<any>(null);
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
 
   const userService = useMemo(() => 
@@ -97,11 +99,53 @@ export default function UsersManagementPage() {
           </p>
         </div>
 
-        <Button className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-2 opacity-50 cursor-not-allowed">
-           <Plus className="h-6 w-6" />
-           {isRtl ? 'دعوة مستخدم' : 'Invite User'}
+        <Button 
+          onClick={() => setIsInviteOpen(true)}
+          className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-2"
+        >
+           <UserPlus className="h-6 w-6" />
+           {isRtl ? 'إضافة مستخدم' : 'Add User'}
         </Button>
       </div>
+
+      {/* مودال شرح إضافة مستخدم */}
+      <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
+        <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden max-w-lg" dir={dir}>
+          <div className="bg-primary/5 p-8 border-b text-start">
+             <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3">
+                <UserPlus className="h-7 w-7 text-primary" />
+                {isRtl ? 'كيفية إضافة مستخدم جديد' : 'How to Add New User'}
+             </DialogTitle>
+          </div>
+          <div className="p-8 space-y-6 text-start">
+             <div className="p-6 rounded-2xl bg-blue-50 border border-blue-100 flex items-start gap-4">
+                <Info className="h-6 w-6 text-blue-600 shrink-0 mt-1" />
+                <div className="space-y-2">
+                   <p className="text-sm font-bold text-blue-900">
+                     {isRtl ? 'طريقة التسجيل الآمنة:' : 'Secure Registration Method:'}
+                   </p>
+                   <p className="text-xs text-blue-700 leading-relaxed">
+                     {isRtl 
+                       ? 'لأغراض الأمان، يرجى من المستخدم الجديد الدخول لصفحة "تسجيل شركة" واختيار حسابه الشخصي فقط، أو يمكنك تزويده برابط تسجيل خاص. بمجرد تسجيله، سيظهر في هذه القائمة لتتمكن من تعيين دوره وصلاحياته.' 
+                       : 'For security, new users should register through the portal. Once registered, they will appear here for you to assign roles and permissions.'}
+                   </p>
+                </div>
+             </div>
+             <div className="p-6 rounded-2xl bg-amber-50 border border-amber-100 space-y-3">
+                <p className="text-[10px] font-black text-amber-800 uppercase tracking-widest">{isRtl ? 'دليل المسؤول' : 'Admin Guide'}</p>
+                <p className="text-xs text-amber-700 font-bold">
+                   {isRtl ? '1. اطلب من الموظف إنشاء حساب بريد إلكتروني.' : '1. Ask employee to create an account.'}
+                </p>
+                <p className="text-xs text-amber-700 font-bold">
+                   {isRtl ? '2. ابحث عن بريده هنا وقم بتفعيله.' : '2. Find their email here and activate.'}
+                </p>
+             </div>
+          </div>
+          <DialogFooter className="p-8 bg-slate-50 border-t">
+             <Button variant="ghost" onClick={() => setIsInviteOpen(false)} className="w-full h-12 rounded-xl font-black">{isRtl ? 'فهمت' : 'Got it'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
          <Card className="border-0 shadow-lg rounded-[2rem] p-6 text-start bg-white">

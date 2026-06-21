@@ -68,7 +68,7 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip"
 
-// تم زيادة العرض هنا لاستيعاب الكبسولات العريضة
+// عرض الساي بار عند التصغير
 const SIDEBAR_WIDTH_ICON = "6rem"
 
 export function DashboardSidebar() {
@@ -156,6 +156,7 @@ export function DashboardSidebar() {
       url: "/dashboard/settings", 
       module: 'dashboard',
       subItems: [
+        { title: isRtl ? 'إدارة المستخدمين' : 'Users Management', url: "/dashboard/settings/users", icon: Users, permission: 'admin' },
         { title: t('companyIdentity'), url: "/dashboard/settings/company", icon: Building2, permission: 'admin' },
         { title: t('checklists'), url: "/dashboard/settings/checklists", icon: Database, permission: 'ref:view' },
         { title: t('rolesRef'), url: "/dashboard/settings/roles", icon: ShieldCheck, permission: 'admin' },
@@ -241,7 +242,6 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
     }, 200)
   }
 
-  // التدرج البرتقالي الملكي الخاص بـ NovaFlow
   const orangeGradient = "bg-gradient-to-br from-[#FFB000] to-[#e87c24] shadow-xl shadow-orange-500/20"
   const inactiveStyle = cn(orangeGradient, "text-white hover:scale-[1.02] active:scale-[0.98]")
 
