@@ -13,7 +13,8 @@ import {
   limit,
   getDocs,
   where,
-  increment
+  increment,
+  getDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { Client, ClientHistory, ClientStatus } from '@/types/client';
@@ -21,10 +22,6 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { ensureActionPermission } from '@/lib/permissions';
 
-/**
- * خدمة إدارة ملفات العملاء (Client Relationship Management Service).
- * تدعم عزل البيانات والتدقيق التاريخي للعمليات التجارية.
- */
 export class ClientService {
   constructor(
     private db: Firestore, 
@@ -32,11 +29,7 @@ export class ClientService {
     private permissions: string[] = []
   ) {}
 
-  /**
-   * إضافة عميل جديد مع تهيئة الملف التجاري
-   */
-  async addClient(data: Omit<Client, 'id' | 'createdAt' | 'updatedAt' | 'companyId' | 'transactionCounter' | 'isActive'>, userId: string, userName: string) {
-    // 1. التحقق من صلاحية الإضافة (Enforcement)
+  async addClient(data: Omit<Client, 'id' | 'createdAt' | 'updatedAt' | 'companyId' | 'transactionCounter' | 'isActive' | 'status'>, userId: string, userName: string) {
     ensureActionPermission(this.permissions, 'crm:create');
     
     const clientPath = paths.clients(this.companyId);
@@ -48,13 +41,12 @@ export class ClientService {
       companyId: this.companyId,
       transactionCounter: 0,
       isActive: true,
-      status: data.status || 'prospective',
+      status: 'new', // الحالة الابتدائية دائماً "جديد"
       createdBy: userId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
 
-    // تنفيذ الكتابة
     await setDoc(clientRef, clientData).catch((err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: clientRef.path,
@@ -64,10 +56,9 @@ export class ClientService {
       throw err;
     });
 
-    // تسجيل الحدث في السجل التاريخي للعميل
     await this.addHistory(clientRef.id, {
       type: 'system_log',
-      content: `تم فتح ملف تجاري جديد برقم: ${data.fileNumber}`,
+      content: `تم تسجيل العميل بنجاح بحالة: جديد`,
       userId,
       userName,
       companyId: this.companyId
@@ -77,85 +68,70 @@ export class ClientService {
   }
 
   /**
-   * تحديث بيانات ملف العميل مع رصد التغييرات الحساسة
+   * إضافة ملاحظة أو توثيق زيارة (يؤدي لتحويل الحالة لـ "فرصة")
    */
-  async updateClient(clientId: string, updates: Partial<Client>, userId: string, userName: string) {
-    ensureActionPermission(this.permissions, 'crm:edit');
-    
+  async logInteraction(clientId: string, content: string, userId: string, userName: string) {
     const clientRef = doc(this.db, paths.clients(this.companyId), clientId);
-    const updatePayload = {
-      ...updates,
-      updatedBy: userId,
-      updatedAt: serverTimestamp()
-    };
+    const clientSnap = await getDoc(clientRef);
+    
+    if (!clientSnap.exists()) return;
+    const clientData = clientSnap.data() as Client;
 
-    await updateDoc(clientRef, updatePayload).catch((err) => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: clientRef.path,
-        operation: 'update',
-        requestResourceData: updatePayload
-      }));
-      throw err;
+    // توثيق الحدث
+    await this.addHistory(clientId, {
+      type: 'visit_logged',
+      content,
+      userId,
+      userName,
+      companyId: this.companyId
     });
 
-    // إذا تغيرت الحالة التشغيلية، توثيق ذلك في السجل
-    if (updates.status) {
+    // تحديث الحالة لـ "فرصة" إذا كان جديداً
+    if (clientData.status === 'new') {
+      await updateDoc(clientRef, {
+        status: 'prospective',
+        updatedAt: serverTimestamp()
+      });
+      
       await this.addHistory(clientId, {
         type: 'status_change',
-        content: `تغيير الحالة التشغيلية إلى: ${updates.status}`,
-        userId,
-        userName,
-        companyId: this.companyId
-      });
-    }
-
-    // إذا تم تعيين مهندس جديد
-    if (updates.assignedEngineerId) {
-      await this.addHistory(clientId, {
-        type: 'engineer_assigned',
-        content: `تم تعيين المهندس: ${updates.assignedEngineerName} كمسؤول عن الملف`,
-        userId,
-        userName,
+        content: `تم تحويل حالة العميل آلياً إلى: فرصة (بناءً على تفاعل ميداني)`,
+        userId: 'system',
+        userName: 'Nova Intelligence',
         companyId: this.companyId
       });
     }
   }
 
   /**
-   * إضافة حدث لسجل النشاط (Timeline)
+   * ربط المعاملة (يؤدي لتحويل الحالة لـ "متعاقد")
    */
-  async addHistory(clientId: string, history: Omit<ClientHistory, 'id' | 'createdAt' | 'clientId'>) {
-    const historyPath = paths.clientHistory(this.companyId, clientId);
-    const historyData = {
-      ...history,
-      clientId,
-      createdAt: serverTimestamp()
-    };
-
-    return addDoc(collection(this.db, historyPath), historyData);
-  }
-
-  /**
-   * رفع عداد المعاملات عند فتح معاملة فنية جديدة للعميل
-   */
-  async incrementTransactionCounter(clientId: string) {
+  async markAsContracted(clientId: string, transactionId: string) {
     const clientRef = doc(this.db, paths.clients(this.companyId), clientId);
-    return updateDoc(clientRef, {
+    
+    await updateDoc(clientRef, {
+      status: 'contracted',
       transactionCounter: increment(1),
       updatedAt: serverTimestamp()
     });
+
+    await this.addHistory(clientId, {
+      type: 'status_change',
+      content: `تم تحويل العميل إلى: متعاقد (ارتباط بالمعاملة ${transactionId})`,
+      userId: 'system',
+      userName: 'Nova Intelligence',
+      companyId: this.companyId
+    });
   }
 
-  /**
-   * البحث عن عميل برقم الهاتف لمنع التكرار
-   */
-  async checkDuplicateMobile(mobile: string): Promise<boolean> {
-    const q = query(
-      collection(this.db, paths.clients(this.companyId)),
-      where('mobile', '==', mobile),
-      limit(1)
-    );
-    const snap = await getDocs(q);
-    return !snap.empty;
+  async updateClient(clientId: string, updates: Partial<Client>, userId: string, userName: string) {
+    ensureActionPermission(this.permissions, 'crm:edit');
+    const clientRef = doc(this.db, paths.clients(this.companyId), clientId);
+    await updateDoc(clientRef, { ...updates, updatedAt: serverTimestamp() });
+  }
+
+  async addHistory(clientId: string, history: Omit<ClientHistory, 'id' | 'createdAt' | 'clientId'>) {
+    const historyPath = paths.clientHistory(this.companyId, clientId);
+    await addDoc(collection(this.db, historyPath), { ...history, clientId, createdAt: serverTimestamp() });
   }
 }

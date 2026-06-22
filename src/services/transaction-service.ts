@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -19,6 +18,7 @@ import { Transaction, TransactionTimelineEvent, StageInstance, StageInstanceStat
 import { TechnicalStage } from '@/types/reference';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { ClientService } from './client-service';
 
 export class TransactionService {
   constructor(private db: Firestore, private companyId: string) {}
@@ -46,16 +46,22 @@ export class TransactionService {
       createdBy: userId,
     };
 
-    // تنفيذ غير محظور
-    setDoc(transactionRef, transactionData).catch((err) => {
+    // تنفيذ فتح المعاملة
+    await setDoc(transactionRef, transactionData).catch((err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: transactionRef.path,
         operation: 'create',
         requestResourceData: transactionData
       }));
+      throw err;
     });
 
-    // استنساخ المراحل
+    // --- الربط الذكي للحالة (HR/CRM Logic) ---
+    // بمجرد فتح معاملة، يتحول العميل تلقائياً لـ "متعاقد"
+    const clientService = new ClientService(this.db, this.companyId);
+    await clientService.markAsContracted(data.clientId, tId);
+
+    // استنساخ المراحل الفنية
     this.cloneTechnicalStages(tId, data);
     
     this.addTimelineEvent(tId, {
