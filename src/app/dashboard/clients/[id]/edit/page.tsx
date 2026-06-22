@@ -8,6 +8,7 @@ import { useFirestore, useDoc } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
+import { usePermissions } from '@/hooks/use-permissions'; // استيراد الصلاحيات
 import { ClientService } from '@/services/client-service';
 import { ClientForm } from '@/components/clients/client-form';
 import { paths } from '@/firebase/multi-tenant';
@@ -20,6 +21,7 @@ export default function EditClientPage() {
   const clientId = params.id as string;
   const { globalUser, user } = useAuthContext();
   const { t, lang, dir } = useLanguage();
+  const { permissions } = usePermissions(); // جلب مصفوفة الصلاحيات
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
@@ -34,12 +36,20 @@ export default function EditClientPage() {
     if (!db || !companyId || !user) return;
     setSaving(true);
     try {
-      const service = new ClientService(db, companyId, []);
+      // تمرير الصلاحيات للخدمة لضمان السماح بالإجراء
+      const service = new ClientService(db, companyId, permissions);
       await service.updateClient(clientId, data, user.uid, user.displayName || user.email || 'User');
       toast({ title: t('saved'), description: isRtl ? 'تم تحديث بيانات العميل بنجاح.' : 'Client data updated successfully.' });
       router.push(`/dashboard/clients/${clientId}`);
     } catch (e: any) {
-      toast({ variant: "destructive", title: t('error'), description: t('saveFailed') });
+      console.error("Update Client Error:", e);
+      toast({ 
+        variant: "destructive", 
+        title: t('error'), 
+        description: e.message.includes('UNAUTHORIZED') 
+          ? (isRtl ? 'لا تملك صلاحية تعديل بيانات العملاء.' : 'Unauthorized to edit clients.') 
+          : t('saveFailed') 
+      });
     } finally {
       setSaving(false);
     }

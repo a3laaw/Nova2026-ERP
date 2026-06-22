@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
-import { ArrowRight, UserPlus } from "lucide-react";
+import { ArrowRight, UserPlus, Loader2 } from "lucide-react";
 import { useFirestore } from '@/firebase';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
+import { usePermissions } from '@/hooks/use-permissions'; // استيراد الصلاحيات
 import { ClientService } from '@/services/client-service';
 import { ClientForm } from '@/components/clients/client-form';
 import { toast } from '@/hooks/use-toast';
@@ -15,6 +16,7 @@ import { cn } from '@/lib/utils';
 export default function NewClientPage() {
   const { globalUser, user } = useAuthContext();
   const { t, lang, dir } = useLanguage();
+  const { permissions } = usePermissions(); // جلب مصفوفة الصلاحيات الفعلية
   const db = useFirestore();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -26,12 +28,20 @@ export default function NewClientPage() {
     if (!db || !companyId || !user) return;
     setLoading(true);
     try {
-      const service = new ClientService(db, companyId, []); // Permissions logic can be expanded
+      // تمرير الصلاحيات للخدمة لضمان السماح بالإجراء
+      const service = new ClientService(db, companyId, permissions); 
       const clientId = await service.addClient(data, user.uid, user.displayName || user.email || 'User');
       toast({ title: t('saved'), description: isRtl ? 'تم إنشاء ملف العميل بنجاح.' : 'Client file created successfully.' });
       router.push(`/dashboard/clients/${clientId}`);
     } catch (e: any) {
-      toast({ variant: "destructive", title: t('error'), description: t('saveFailed') });
+      console.error("Save Client Error:", e);
+      toast({ 
+        variant: "destructive", 
+        title: t('error'), 
+        description: e.message.includes('UNAUTHORIZED') 
+          ? (isRtl ? 'لا تملك صلاحية إضافة عملاء.' : 'Unauthorized to add clients.') 
+          : t('saveFailed') 
+      });
     } finally {
       setLoading(false);
     }
