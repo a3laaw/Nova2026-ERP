@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Users, UserPlus, MoreHorizontal, Search, Loader2, Plus } from "lucide-react";
+import { Users, UserPlus, Search, Loader2, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
@@ -13,11 +13,10 @@ import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectValue, SelectTrigger } from "@/components/ui/select";
 import { toast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
+import { canPerformOnRecord } from '@/lib/permissions/engine';
 
 export default function CRMPage() {
   const { globalUser } = useAuthContext();
@@ -28,10 +27,9 @@ export default function CRMPage() {
   const [isAdding, setIsAdding] = useState(false);
   const [newLead, setNewLead] = useState({ name: '', company: '', status: 'new', value: '', email: '' });
 
-  // فحص الصلاحية: هل يحق له الإنشاء؟
-  const canCreate = check('crm', 'create').can;
-  // فحص الصلاحية: هل يرى بياناته فقط أم الجميع؟
-  const viewScope = check('crm', 'view').scope;
+  // 1. فحص الصلاحيات باستخدام المحرك الجديد
+  const viewAccess = check('crm', 'view');
+  const createAccess = check('crm', 'create');
 
   const companyId = globalUser?.companyId;
   const leadsRef = useMemo(() => companyId && db ? collection(db, paths.leads(companyId)) : null, [db, companyId]);
@@ -39,17 +37,23 @@ export default function CRMPage() {
 
   const { data: rawLeads, loading } = useCollection(leadsQuery);
 
-  // تطبيق النطاق (Scope Filtering) برمجياً
+  // 2. تطبيق منطق "فلترة السجلات" بناءً على النطاق (Scope Enforcement)
   const leads = useMemo(() => {
-    if (viewScope === 'all') return rawLeads;
-    if (viewScope === 'own') return rawLeads.filter(l => l.createdBy === globalUser?.uid);
-    // نطاق القسم (Dept) يتطلب وجود معرف القسم في السجل والمستخدم
-    if (viewScope === 'dept') return rawLeads.filter(l => (l as any).departmentId === (globalUser as any)?.departmentId);
-    return [];
-  }, [rawLeads, viewScope, globalUser]);
+    if (!viewAccess.can) return [];
+    
+    // إذا كان النطاق "المنشأة كاملة" (all) لا نفلتر شيئاً
+    if (viewAccess.scope === 'all') return rawLeads;
+
+    // فلترة السجلات برمجياً بناءً على الملكية أو القسم
+    return rawLeads.filter(lead => canPerformOnRecord(
+      viewAccess, 
+      { uid: globalUser?.uid || '', departmentId: (globalUser as any)?.departmentId },
+      lead as any
+    ));
+  }, [rawLeads, viewAccess, globalUser]);
 
   const handleAddLead = async () => {
-    if (!leadsRef || !newLead.name || !canCreate) return;
+    if (!leadsRef || !newLead.name || !createAccess.can) return;
     setIsAdding(true);
     try {
       await addDoc(leadsRef, {
@@ -82,12 +86,12 @@ export default function CRMPage() {
             {t('crm')}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-            {viewScope === 'all' ? (dir === 'rtl' ? 'عرض شامل للمنشأة' : 'Full Enterprise View') : (dir === 'rtl' ? 'عرض السجلات الخاصة بك' : 'Personal Records View')}
+            {viewAccess.scope === 'all' ? (dir === 'rtl' ? 'عرض شامل للمنشأة' : 'Full Enterprise View') : (dir === 'rtl' ? 'عرض السجلات المسموح بها' : 'Authorized View Only')}
           </p>
         </div>
         
-        {/* إخفاء زر الإضافة تماماً إذا لم يملك الموظف صلاحية create */}
-        {canCreate && (
+        {/* إخفاء زر الإضافة تماماً بناءً على نطاق Create */}
+        {createAccess.can && (
           <Dialog>
             <DialogTrigger asChild>
               <Button className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform">
@@ -133,6 +137,8 @@ export default function CRMPage() {
             <TableBody>
               {loading ? (
                 <TableRow><TableCell colSpan={3} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto" /></TableCell></TableRow>
+              ) : filteredLeads.length === 0 ? (
+                <TableRow><TableCell colSpan={3} className="text-center py-20 italic text-slate-400 font-bold">{t('noEmployees')}</TableCell></TableRow>
               ) : filteredLeads.map((lead: any) => (
                 <TableRow key={lead.id} className="hover:bg-muted/10 transition-colors">
                   <TableCell className="text-start font-black text-slate-800">{lead.name}</TableCell>

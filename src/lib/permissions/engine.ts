@@ -12,6 +12,7 @@ export interface AccessResult {
 
 /**
  * التحقق من صلاحية الوصول لمورد معين وفعل محدد
+ * هذا المحرك هو الذي يقرر: هل يظهر الزر؟ هل تفتح الشاشة؟
  */
 export function hasResourceAccess(
   role: RoleMatrix | null,
@@ -21,8 +22,8 @@ export function hasResourceAccess(
   
   if (!resourceId) return { can: false, scope: 'none' };
 
-  // 1. حالة الأدمن (Master Key)
-  if (role?.code?.toLowerCase() === 'admin' || role?.code?.toLowerCase() === 'system_admin') {
+  // 1. حالة الأدمن (Master Key) - يملك كل شيء دائماً
+  if (role?.code?.toUpperCase() === 'ADMIN' || role?.code?.toLowerCase() === 'system_admin') {
     return { can: true, scope: 'all' };
   }
 
@@ -30,12 +31,13 @@ export function hasResourceAccess(
     return { can: false, scope: 'none' };
   }
 
-  // 2. البحث في المصفوفة مع معالجة الأخطاء المحتملة
+  // 2. البحث في مصفوفة الصلاحيات (Resource-Action Match)
   const rule = role.matrix.find(m => 
     m?.resourceId?.toLowerCase() === resourceId.toLowerCase() && 
     m.action === action
   );
 
+  // إذا وجدنا القاعدة والنطاق ليس "None"، نسمح بالإجراء ونعيد النطاق
   if (rule && rule.scope !== 'none') {
     return { can: true, scope: rule.scope };
   }
@@ -48,38 +50,30 @@ export function hasResourceAccess(
  */
 export function canViewModule(role: RoleMatrix | null, resourceId: string): boolean {
   if (!resourceId) return false;
-
-  if (role?.code?.toLowerCase() === 'admin' || role?.code?.toLowerCase() === 'system_admin') {
-    return true;
-  }
-  
-  if (!role || !role.matrix) return false;
-
-  // يظهر الموديول إذا كان لديه أي صلاحية (View) بنطاق غير none
-  return role.matrix.some(m => 
-    m?.resourceId?.toLowerCase() === resourceId.toLowerCase() && 
-    m.action === 'view' &&
-    m.scope !== 'none'
-  );
+  const access = hasResourceAccess(role, resourceId, 'view');
+  return access.can;
 }
 
 /**
- * التحقق من ملكية السجل (Row Level Security)
+ * التحقق من ملكية السجل (Row Level Security - RLS)
+ * تستخدم هذه الدالة في الواجهة لفلترة المصفوفات: هل هذا السجل يخص قسمي؟ هل هو سجلي؟
  */
 export function canPerformOnRecord(
   access: AccessResult,
-  user: { uid: string; departmentId?: string },
-  record: { userId?: string; departmentId?: string }
+  currentUser: { uid: string; departmentId?: string },
+  record: { createdBy?: string; departmentId?: string }
 ): boolean {
   if (!access.can) return false;
-  if (access.scope === 'all') return true;
+  if (access.scope === 'all') return true; // المنشأة كاملة: يرى كل شيء
   
   if (access.scope === 'dept') {
-    return !!(user.departmentId && record.departmentId && user.departmentId === record.departmentId);
+    // نطاق القسم: يجب أن يتطابق قسم المستخدم مع قسم السجل
+    return !!(currentUser.departmentId && record.departmentId && currentUser.departmentId === record.departmentId);
   }
 
   if (access.scope === 'own') {
-    return !!(user.uid && record.userId && user.uid === record.userId);
+    // خاص بالموظف: يجب أن يكون هو من أنشأ السجل
+    return !!(currentUser.uid && record.createdBy && currentUser.uid === record.createdBy);
   }
 
   return false;
