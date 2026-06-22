@@ -37,8 +37,8 @@ export default function InventoryDashboard() {
 
   // فحص الصلاحيات الميدانية
   const viewAccess = check('inventory', 'view');
-  const canCreate = check('inventory', 'create').can; // لإدخال مخزني
-  const canTransfer = check('inventory', 'transfer').can; // لصرف واسترجاع العهد
+  const canCreate = check('inventory', 'create').can;
+  const canTransfer = check('inventory', 'transfer').can;
 
   // States
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
@@ -53,13 +53,11 @@ export default function InventoryDashboard() {
   // Data
   const itemsQuery = useMemo(() => companyId && db ? query(collection(db, paths.inventoryItems(companyId)), orderBy('name')) : null, [db, companyId]);
   const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active'), orderBy('fullName')) : null, [db, companyId]);
-  
-  // سجل التحركات: يخضع لفلترة النطاق (Scope)
   const assignmentsQuery = useMemo(() => companyId && db ? query(collection(db, paths.assetAssignments(companyId)), orderBy('assignedAt', 'desc'), limit(20)) : null, [db, companyId]);
 
   const { data: items, loading: iLoading } = useCollection<any>(itemsQuery);
   const { data: employees } = useCollection<Employee>(empsQuery);
-  const { data: rawAssignments, loading: logsLoading } = useCollection<any>(assignmentsQuery);
+  const { data: rawAssignments } = useCollection<any>(assignmentsQuery);
 
   // تصفية السجلات بناءً على الصلاحية (عزل البيانات)
   const assignments = useMemo(() => {
@@ -69,7 +67,7 @@ export default function InventoryDashboard() {
     return rawAssignments.filter(log => canPerformOnRecord(
       viewAccess,
       { uid: user?.uid || '', departmentId: globalUser?.departmentId },
-      { createdBy: log.employeeId, departmentId: log.departmentId } // العهد عادة تتبع الموظف
+      { createdBy: log.employeeId, departmentId: log.departmentId }
     ));
   }, [rawAssignments, viewAccess, globalUser, user]);
 
@@ -137,7 +135,6 @@ export default function InventoryDashboard() {
         </div>
 
         <div className="flex gap-4">
-           {/* صرف عهدة: تظهر فقط للمخولين بالتحويل */}
            {canTransfer && (
              <Dialog open={isAssignAssetOpen} onOpenChange={setIsAssignAssetOpen}>
                 <DialogTrigger asChild>
@@ -180,7 +177,6 @@ export default function InventoryDashboard() {
              </Dialog>
            )}
 
-           {/* إدخال مخزني: يظهر فقط لمن يملك صلاحية Create */}
            {canCreate && (
              <Dialog open={isAddItemOpen} onOpenChange={setIsAddItemOpen}>
                 <DialogTrigger asChild>
@@ -222,7 +218,7 @@ export default function InventoryDashboard() {
            { label: isRtl ? 'تم استرجاعها' : 'Returned', val: assignments?.filter((a: any) => a.status === 'returned').length || 0, icon: PackageCheck, color: 'text-emerald-600', bg: 'bg-emerald-50' },
            { label: isRtl ? 'تنبيهات النقص' : 'Low Stock', val: items?.filter(i => i.quantity < 3).length || 0, icon: AlertTriangle, color: 'text-rose-600', bg: 'bg-rose-50' },
          ].map((stat, i) => (
-           <Card key={i} className="border-0 shadow-lg rounded-[2.5rem] p-6 text-start bg-white group hover:shadow-xl transition-all">
+           <Card key={i} className="border-0 shadow-lg rounded-[2.5rem] p-6 text-start bg-white group hover:scale-[1.03] transition-all">
               <div className={cn("p-4 rounded-2xl w-fit mb-4", stat.bg, stat.color)}>
                  <stat.icon className="h-6 w-6" />
               </div>
@@ -233,11 +229,11 @@ export default function InventoryDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-         {/* قائمة الأصناف: تظهر للمدراء فقط أو لمن يملك صلاحية رؤية المستودع الشامل */}
+         {/* قائمة الأصناف */}
          {viewAccess.scope !== 'own' && (
            <Card className="lg:col-span-2 border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
-              <CardHeader className="bg-slate-50 border-b p-8 text-start flex flex-row items-center justify-between">
-                 <CardTitle className="text-xl font-black flex items-center gap-2">
+              <CardHeader className="bg-slate-50 border-b p-8 text-start">
+                 <CardTitle className="text-xl font-black flex items-center gap-3 text-slate-800">
                    <Boxes className="h-6 w-6 text-primary" /> {isRtl ? 'رصيد المستودع الحالي' : 'Stock Balance'}
                  </CardTitle>
               </CardHeader>
@@ -251,7 +247,7 @@ export default function InventoryDashboard() {
                        </tr>
                     </thead>
                     <tbody className="divide-y">
-                       {iLoading ? <tr><td colSpan={3} className="p-10 text-center"><Loader2 className="animate-spin mx-auto" /></td></tr> : 
+                       {iLoading ? <tr><td colSpan={3} className="p-10 text-center"><Loader2 className="animate-spin mx-auto text-primary/20" /></td></tr> : 
                           items?.map(item => (
                              <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
                                 <td className="p-6">
@@ -265,8 +261,8 @@ export default function InventoryDashboard() {
                                 </td>
                                 <td className="p-6">
                                    <Badge variant="outline" className={cn(
-                                     "font-black text-[9px] border-2",
-                                     item.quantity < 3 ? "text-rose-500 border-rose-100" : "text-emerald-600 border-emerald-100"
+                                     "font-black text-[9px] border-2 shadow-sm",
+                                     item.quantity < 3 ? "text-rose-500 border-rose-100 bg-rose-50/30" : "text-emerald-600 border-emerald-100 bg-emerald-50/30"
                                    )}>
                                       {item.quantity < 3 ? 'LOW STOCK' : 'AVAILABLE'}
                                    </Badge>
@@ -280,35 +276,40 @@ export default function InventoryDashboard() {
            </Card>
          )}
 
-         {/* سجل العهد: مفلتر آلياً للموظف أو شامل للمدير */}
-         <Card className={cn("border-0 shadow-2xl rounded-[3rem] bg-slate-900 text-white overflow-hidden", viewAccess.scope === 'own' ? "lg:col-span-3" : "lg:col-span-1")}>
-            <CardHeader className="bg-white/5 border-b border-white/5 p-8 text-start flex flex-row items-center justify-between">
-               <CardTitle className="text-lg font-black flex items-center gap-2">
-                 <History className="h-5 w-5 text-primary" /> {viewAccess.scope === 'own' ? (isRtl ? 'عهدي المسجلة' : 'My Registered Assets') : (isRtl ? 'آخر التحركات' : 'Recent Assignments')}
+         {/* سجل العهد الميدانية */}
+         <Card className={cn("border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5", viewAccess.scope === 'own' ? "lg:col-span-3" : "lg:col-span-1")}>
+            <CardHeader className="bg-slate-50 border-b p-8 text-start">
+               <CardTitle className="text-xl font-black flex items-center gap-3 text-slate-800">
+                 <History className="h-6 w-6 text-primary" /> {viewAccess.scope === 'own' ? (isRtl ? 'عهدي المسجلة' : 'My Registered Assets') : (isRtl ? 'آخر التحركات' : 'Recent Assignments')}
                </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-               <div className="divide-y divide-white/5 max-h-[600px] overflow-y-auto">
+               <div className="divide-y divide-slate-100 max-h-[600px] overflow-y-auto">
                   {assignments.length === 0 ? (
-                    <div className="p-20 text-center text-slate-500 italic font-bold">{isRtl ? 'لا يوجد عهد مسجلة.' : 'No records found.'}</div>
+                    <div className="p-32 text-center flex flex-col items-center gap-6 opacity-40">
+                       <div className="p-8 rounded-[2.5rem] bg-slate-50 border-2 border-dashed">
+                          <Package className="h-16 w-16 text-slate-300" />
+                       </div>
+                       <p className="text-sm font-black text-slate-400 italic">{isRtl ? 'لا يوجد عهد مسجلة.' : 'No records found.'}</p>
+                    </div>
                   ) : assignments.map((log: any) => (
-                    <div key={log.id} className="p-6 space-y-4 hover:bg-white/5 transition-all text-start">
+                    <div key={log.id} className="p-6 space-y-4 hover:bg-primary/5 transition-all text-start group">
                        <div className="flex justify-between items-start">
                           <div className="space-y-1">
-                             <p className="text-sm font-black text-white">{log.itemName}</p>
-                             <p className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
-                                <User className="h-2 w-2" /> {log.employeeName}
+                             <p className="text-sm font-black text-slate-800">{log.itemName}</p>
+                             <p className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1">
+                                <User className="h-2.5 w-2.5 text-primary" /> {log.employeeName}
                              </p>
                           </div>
-                          <Badge variant="outline" className={cn(
-                            "text-[8px] font-black uppercase",
-                            log.status === 'in-use' ? "border-amber-500 text-amber-400" : "border-emerald-500 text-emerald-400"
+                          <Badge className={cn(
+                            "font-black text-[8px] uppercase border-0 shadow-sm px-3 py-1",
+                            log.status === 'in-use' ? "bg-amber-500 text-white" : "bg-emerald-500 text-white"
                           )}>{log.status}</Badge>
                        </div>
                        
                        <div className="flex justify-between items-center pt-2">
-                          <span className="text-[9px] font-mono text-slate-600 flex items-center gap-1">
-                             <ArrowDownToLine className="h-3 w-3" /> {log.assignedAt?.toDate().toLocaleDateString()}
+                          <span className="text-[9px] font-mono text-slate-400 font-bold flex items-center gap-1">
+                             <ArrowDownToLine className="h-3 w-3 text-primary/40" /> {log.assignedAt?.toDate().toLocaleDateString()}
                           </span>
                           {log.status === 'in-use' && canTransfer && (
                              <Button 
@@ -318,7 +319,7 @@ export default function InventoryDashboard() {
                                className="h-8 rounded-lg bg-primary text-white font-black text-[9px] gap-1.5 shadow-lg shadow-primary/20 hover:scale-105 transition-all"
                              >
                                 {returningId === log.id ? <Loader2 className="animate-spin h-3 w-3" /> : <RotateCcw className="h-3 w-3" />}
-                                {isRtl ? 'استرجاع للمخزن' : 'Return'}
+                                {isRtl ? 'استرجاع للمخزن' : 'Return Asset'}
                              </Button>
                           )}
                        </div>
