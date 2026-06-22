@@ -37,7 +37,7 @@ import {
 export default function EmployeesPage() {
   const { globalUser } = useAuthContext();
   const { t, lang, dir } = useLanguage();
-  const { check, isAdmin } = usePermissions();
+  const { check } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
@@ -47,6 +47,13 @@ export default function EmployeesPage() {
   const isRtl = lang === 'ar';
 
   const companyId = globalUser?.companyId;
+
+  // فحص الصلاحيات الميدانية
+  const viewAccess = check('hr', 'view');
+  const createAccess = check('hr', 'create');
+  const deleteAccess = check('hr', 'delete');
+  const canSeeSalaries = check('hr', 'approve').can; // فقط من يعتمد الرواتب يراها
+
   const employeesQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.employees(companyId)), orderBy('employeeNumber')) : null, 
   [db, companyId]);
@@ -57,15 +64,25 @@ export default function EmployeesPage() {
     db && companyId ? new HRService(db, companyId) : null, 
   [db, companyId]);
 
-  // فحص صلاحية التوظيف (يجب أن يكون النطاق أكبر من 'own' للتمكن من توظيف آخرين)
-  const createAccess = check('hr', 'create');
-  const canHireNew = createAccess.can && createAccess.scope !== 'own';
+  // تطبيق منطق عزل البيانات (Data Isolation)
+  const filteredEmployees = useMemo(() => {
+    if (!viewAccess.can || !employees) return [];
 
-  const filteredEmployees = employees?.filter(emp => 
-    emp.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    emp.employeeNumber?.includes(searchTerm) ||
-    emp.civilId?.includes(searchTerm)
-  ) || [];
+    return employees.filter(emp => {
+      // 1. فلترة البحث النصي
+      const matchSearch = emp.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          emp.employeeNumber?.includes(searchTerm);
+      
+      if (!matchSearch) return false;
+
+      // 2. تطبيق نطاق الوصول (Scope)
+      if (viewAccess.scope === 'all') return true;
+      if (viewAccess.scope === 'dept') return emp.departmentId === globalUser?.departmentId;
+      if (viewAccess.scope === 'own') return emp.id === globalUser?.employeeId;
+
+      return false;
+    });
+  }, [employees, viewAccess, globalUser, searchTerm]);
 
   const handleDelete = async () => {
     if (!hrService || !deletingId) return;
@@ -87,15 +104,14 @@ export default function EmployeesPage() {
         <div className="text-start">
           <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
             <Users className="h-10 w-10 text-primary" />
-            {isRtl ? 'سجل الموظفين' : 'Employee Records'}
+            {viewAccess.scope === 'own' ? (isRtl ? 'ملفي الوظيفي' : 'My Profile') : (isRtl ? 'سجل الموظفين' : 'Employee Records')}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-            {isRtl ? 'إدارة القوى العاملة والبيانات الوظيفية' : 'Manage workforce and job profiles'}
+            {viewAccess.scope === 'own' ? (isRtl ? 'عرض بياناتك المسجلة في النظام' : 'View your recorded data') : (isRtl ? 'إدارة القوى العاملة والبيانات الوظيفية' : 'Manage workforce and job profiles')}
           </p>
         </div>
 
-        {/* زر التوظيف يختفي إذا كان الموظف يملك نطاق 'own' فقط (لأنه لا يوظف نفسه) */}
-        {canHireNew && (
+        {createAccess.can && createAccess.scope !== 'own' && (
           <Button 
             onClick={() => router.push('/dashboard/hr/employees/new')}
             className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform"
@@ -111,7 +127,7 @@ export default function EmployeesPage() {
           <div className="relative w-full max-w-md">
             <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input 
-              placeholder={isRtl ? 'بحث باسم الموظف، الرقم المدني، أو رقم الملف...' : 'Search by name, civil id, or number...'} 
+              placeholder={isRtl ? 'بحث باسم الموظف أو رقم الملف...' : 'Search by name or number...'} 
               className="ps-12 rounded-2xl h-14 bg-white text-start border-2 border-slate-100" 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -125,19 +141,21 @@ export default function EmployeesPage() {
                 <TableHead className="py-6 ps-8 text-start">{isRtl ? 'الموظف' : 'Employee'}</TableHead>
                 <TableHead className="text-start">{isRtl ? 'الوظيفة / القسم' : 'Job / Dept'}</TableHead>
                 <TableHead className="text-start">{isRtl ? 'الحالة' : 'Status'}</TableHead>
-                <TableHead className="text-end">
-                   <div className="flex items-center justify-end gap-2 group">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8 p-0 rounded-lg hover:bg-primary/10 text-primary transition-all"
-                        onClick={() => setShowSalaries(!showSalaries)}
-                      >
-                         {showSalaries ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </Button>
-                      <span className="font-black">{isRtl ? 'الراتب' : 'Salary'}</span>
-                   </div>
-                </TableHead>
+                {canSeeSalaries && (
+                  <TableHead className="text-end">
+                    <div className="flex items-center justify-end gap-2 group">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 p-0 rounded-lg hover:bg-primary/10 text-primary transition-all"
+                          onClick={() => setShowSalaries(!showSalaries)}
+                        >
+                          {showSalaries ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                        <span className="font-black">{isRtl ? 'الراتب' : 'Salary'}</span>
+                    </div>
+                  </TableHead>
+                )}
                 <TableHead className="text-center pe-8"></TableHead>
               </TableRow>
             </TableHeader>
@@ -179,12 +197,14 @@ export default function EmployeesPage() {
                           {isRtl ? (emp.status === 'active' ? 'نشط' : emp.status === 'on-leave' ? 'في إجازة' : 'منتهي') : emp.status.toUpperCase()}
                        </Badge>
                     </TableCell>
-                    <TableCell className="text-end font-mono font-black text-emerald-600 text-lg">
-                      {showSalaries ? emp.basicSalary?.toLocaleString() : '••••'}
-                    </TableCell>
+                    {canSeeSalaries && (
+                      <TableCell className="text-end font-mono font-black text-emerald-600 text-lg">
+                        {showSalaries ? emp.basicSalary?.toLocaleString() : '••••'}
+                      </TableCell>
+                    )}
                     <TableCell className="text-center pe-8" onClick={e => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-2">
-                         {check('hr', 'delete').can && (
+                         {deleteAccess.can && deleteAccess.scope !== 'own' && (
                            <Button 
                              variant="ghost" 
                              size="icon" 

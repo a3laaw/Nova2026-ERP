@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview القائمة الجانبية (Sidebar) الديناميكية.
  * تعتمد كلياً على مصفوفة الصلاحيات لإظهار أو إخفاء الموديولات بناءً على صلاحية 'view'.
@@ -39,7 +40,7 @@ export function DashboardSidebar() {
   const pathname = usePathname()
   const { state } = useSidebar()
   const { t, lang } = useLanguage()
-  const { canAccess } = usePermissions()
+  const { canAccess, check } = usePermissions()
   const isRtl = lang === 'ar'
   const isCollapsed = state === "collapsed"
 
@@ -82,9 +83,21 @@ export function DashboardSidebar() {
       url: "/dashboard/hr", 
       resource: 'hr',
       subItems: [
-        { title: t('employees'), url: "/dashboard/hr/employees", icon: Users },
+        { 
+          title: t('employees'), 
+          url: "/dashboard/hr/employees", 
+          icon: Users,
+          // إخفاء سجل الموظفين إذا كان النطاق 'شخصي' فقط لعدم تشتيت الموظف
+          hideIfOwnScope: true 
+        },
         { title: t('leaves'), url: "/dashboard/hr/leaves", icon: Calendar },
-        { title: t('payroll'), url: "/dashboard/hr/payroll", icon: Calculator },
+        { 
+          title: t('payroll'), 
+          url: "/dashboard/hr/payroll", 
+          icon: Calculator,
+          // الرواتب تظهر فقط لمن لديه صلاحية 'اعتماد' (Approve)
+          requiredAction: 'approve' as const
+        },
       ]
     },
     { 
@@ -120,8 +133,28 @@ export function DashboardSidebar() {
 
   // فلترة القوائم بناءً على نتيجة فحص المحرك
   const visibleItems = React.useMemo(() => {
-    return menuItems.filter(item => canAccess(item.resource));
-  }, [menuItems, canAccess]);
+    return menuItems.filter(item => {
+      if (!canAccess(item.resource)) return false;
+
+      // تصفية العناصر الفرعية بناءً على النطاق والأفعال
+      if (item.subItems) {
+        item.subItems = item.subItems.filter(sub => {
+          const access = check(item.resource, (sub as any).requiredAction || 'view');
+          if (!access.can) return false;
+          
+          // إذا كان العنصر يختفي في حالة النطاق الشخصي
+          if ((sub as any).hideIfOwnScope && access.scope === 'own') return false;
+          
+          return true;
+        });
+        
+        // إذا لم يتبق أي عنصر فرعي، نخفي القسم بالكامل (باستثناء الداشبورد)
+        if (item.subItems.length === 0 && item.resource !== 'dashboard') return false;
+      }
+
+      return true;
+    });
+  }, [menuItems, canAccess, check]);
 
   return (
     <Sidebar collapsible="icon" side={isRtl ? "right" : "left"} className="border-none bg-transparent">
