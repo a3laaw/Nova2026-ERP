@@ -1,13 +1,13 @@
 /**
  * @fileOverview خطاف الصلاحيات المطور.
- * يوفر دالة check المتطورة التي تعيد (can + scope).
+ * الجسر بين واجهة React ومحرك الصلاحيات.
  */
 
 'use client';
 
 import { useCallback, useMemo } from 'react';
 import { useAuthContext } from '@/context/auth-context';
-import { hasResourceAccess, canViewModule, canPerformOnRecord } from '@/lib/permissions/engine';
+import { hasResourceAccess, canViewModule } from '@/lib/permissions/engine';
 import { Action } from '@/lib/permissions/types';
 
 export function usePermissions() {
@@ -15,12 +15,6 @@ export function usePermissions() {
   
   const role = roleData as any;
   const isAdmin = globalUser?.role?.toLowerCase() === 'admin' || role?.code === 'ADMIN';
-
-  // قائمة الصلاحيات التقليدية (للتوافق مع الخدمات القديمة)
-  const permissions = useMemo(() => {
-    if (isAdmin) return ['*'];
-    return role?.permissions || [];
-  }, [isAdmin, role]);
 
   /**
    * الفحص الأساسي (هل يملك الفعل؟ وما هو النطاق؟)
@@ -31,14 +25,8 @@ export function usePermissions() {
   }, [role, isAdmin]);
 
   /**
-   * الفحص المتقدم (هل يحق له تنفيذ الفعل على هذا السجل المعين؟)
+   * دالة التحقق للسايدبار
    */
-  const checkRecord = useCallback((resourceId: string, action: Action, record: { userId?: string, departmentId?: string }) => {
-    if (isAdmin) return true;
-    const access = hasResourceAccess(role, resourceId, action);
-    return canPerformOnRecord(access, { uid: globalUser?.uid || '', departmentId: (globalUser as any)?.departmentId }, record);
-  }, [role, isAdmin, globalUser]);
-
   const canAccess = useCallback((resourceId: string) => {
     if (isAdmin) return true;
     return canViewModule(role, resourceId);
@@ -47,9 +35,7 @@ export function usePermissions() {
   return {
     isLoading: loading,
     isAdmin,
-    permissions,
     check,
-    checkRecord,
     canAccess,
     role
   };

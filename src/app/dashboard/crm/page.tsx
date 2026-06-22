@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -29,25 +28,41 @@ export default function CRMPage() {
   const [isAdding, setIsAdding] = useState(false);
   const [newLead, setNewLead] = useState({ name: '', company: '', status: 'new', value: '', email: '' });
 
+  // فحص الصلاحية: هل يحق له الإنشاء؟
+  const canCreate = check('crm', 'create').can;
+  // فحص الصلاحية: هل يرى بياناته فقط أم الجميع؟
+  const viewScope = check('crm', 'view').scope;
+
   const companyId = globalUser?.companyId;
   const leadsRef = useMemo(() => companyId && db ? collection(db, paths.leads(companyId)) : null, [db, companyId]);
   const leadsQuery = useMemo(() => leadsRef ? query(leadsRef, orderBy('createdAt', 'desc')) : null, [leadsRef]);
 
-  const { data: leads, loading } = useCollection(leadsQuery);
+  const { data: rawLeads, loading } = useCollection(leadsQuery);
+
+  // تطبيق النطاق (Scope Filtering) برمجياً
+  const leads = useMemo(() => {
+    if (viewScope === 'all') return rawLeads;
+    if (viewScope === 'own') return rawLeads.filter(l => l.createdBy === globalUser?.uid);
+    // نطاق القسم (Dept) يتطلب وجود معرف القسم في السجل والمستخدم
+    if (viewScope === 'dept') return rawLeads.filter(l => (l as any).departmentId === (globalUser as any)?.departmentId);
+    return [];
+  }, [rawLeads, viewScope, globalUser]);
 
   const handleAddLead = async () => {
-    if (!leadsRef || !newLead.name) return;
+    if (!leadsRef || !newLead.name || !canCreate) return;
     setIsAdding(true);
     try {
       await addDoc(leadsRef, {
         ...newLead,
         value: Number(newLead.value) || 0,
         createdAt: serverTimestamp(),
+        createdBy: globalUser?.uid,
+        departmentId: (globalUser as any)?.departmentId || 'general'
       });
-      toast({ title: t('saved'), description: t('entryAdded') });
+      toast({ title: t('saved') });
       setNewLead({ name: '', company: '', status: 'new', value: '', email: '' });
     } catch (error) {
-      toast({ variant: "destructive", title: t('error'), description: t('saveFailed') });
+      toast({ variant: "destructive", title: t('error') });
     } finally {
       setIsAdding(false);
     }
@@ -58,8 +73,6 @@ export default function CRMPage() {
     lead.company?.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
 
-  const totalValue = filteredLeads.reduce((acc, lead) => acc + (Number(lead.value) || 0), 0);
-
   return (
     <div className="space-y-8" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -69,12 +82,12 @@ export default function CRMPage() {
             {t('crm')}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-            {t('expectedValue')}: {totalValue.toLocaleString()} {dir === 'rtl' ? 'د.ك' : 'KWD'}
+            {viewScope === 'all' ? (dir === 'rtl' ? 'عرض شامل للمنشأة' : 'Full Enterprise View') : (dir === 'rtl' ? 'عرض السجلات الخاصة بك' : 'Personal Records View')}
           </p>
         </div>
         
-        {/* إخفاء زر الإضافة تماماً إذا لم يملك الموظف صلاحية create في موديول crm */}
-        {check('crm', 'create').can && (
+        {/* إخفاء زر الإضافة تماماً إذا لم يملك الموظف صلاحية create */}
+        {canCreate && (
           <Dialog>
             <DialogTrigger asChild>
               <Button className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform">
@@ -85,40 +98,13 @@ export default function CRMPage() {
             <DialogContent className="rounded-3xl border-0 shadow-2xl max-w-lg" dir={dir}>
               <DialogHeader>
                 <DialogTitle className="text-start font-headline font-black text-2xl">{t('addLead')}</DialogTitle>
-                <DialogDescription className="text-start">{t('addEntry')}</DialogDescription>
               </DialogHeader>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-6">
-                <div className="space-y-2 text-start">
-                  <Label>{t('name')}</Label>
-                  <Input value={newLead.name} onChange={e => setNewLead({...newLead, name: e.target.value})} placeholder={t('name')} className="h-14 rounded-2xl border-2" />
-                </div>
-                <div className="space-y-2 text-start">
-                  <Label>{t('company')}</Label>
-                  <Input value={newLead.company} onChange={e => setNewLead({...newLead, company: e.target.value})} placeholder={t('company')} className="h-14 rounded-2xl border-2" />
-                </div>
-                <div className="space-y-2 text-start">
-                  <Label>{t('email')}</Label>
-                  <Input value={newLead.email} type="email" onChange={e => setNewLead({...newLead, email: e.target.value})} placeholder="example@nova.com" className="h-14 rounded-2xl border-2 text-start" />
-                </div>
-                <div className="space-y-2 text-start">
-                  <Label>{t('value')}</Label>
-                  <Input value={newLead.value} type="number" onChange={e => setNewLead({...newLead, value: e.target.value})} placeholder="5000" className="h-14 rounded-2xl border-2" />
-                </div>
-                <div className="space-y-2 text-start md:col-span-2">
-                  <Label>{t('status')}</Label>
-                  <Select value={newLead.status} onValueChange={val => setNewLead({...newLead, status: val})}>
-                    <SelectTrigger className="h-14 rounded-2xl border-2"><SelectValue placeholder={t('status')} /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="new">{t('new')}</SelectItem>
-                      <SelectItem value="contacted">{t('contacted')}</SelectItem>
-                      <SelectItem value="qualified">{t('qualified')}</SelectItem>
-                      <SelectItem value="closed">{t('closed')}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-6 text-start">
+                <div className="space-y-2"><Label>{t('name')}</Label><Input value={newLead.name} onChange={e => setNewLead({...newLead, name: e.target.value})} className="h-14 rounded-2xl" /></div>
+                <div className="space-y-2"><Label>{t('company')}</Label><Input value={newLead.company} onChange={e => setNewLead({...newLead, company: e.target.value})} className="h-14 rounded-2xl" /></div>
               </div>
               <DialogFooter>
-                <Button onClick={handleAddLead} disabled={isAdding || !newLead.name} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">
+                <Button onClick={handleAddLead} disabled={isAdding} className="w-full h-14 rounded-2xl font-black text-lg bg-primary">
                   {isAdding ? <Loader2 className="animate-spin" /> : <Plus className="me-2 h-5 w-5" />}
                   {t('save')}
                 </Button>
@@ -128,35 +114,11 @@ export default function CRMPage() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="bg-white border-0 shadow-lg rounded-3xl p-6">
-          <p className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-2 text-start">{t('totalLeads')}</p>
-          <h3 className="text-4xl font-black font-headline text-start">{leads?.length || 0}</h3>
-        </Card>
-        <Card className="bg-white border-0 shadow-lg rounded-3xl p-6">
-          <p className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-2 text-start">{t('expectedValue')}</p>
-          <h3 className="text-2xl font-black font-headline text-emerald-600 text-start">{totalValue.toLocaleString()} {dir === 'rtl' ? 'د.ك' : 'KWD'}</h3>
-        </Card>
-        <Card className="bg-white border-0 shadow-lg rounded-3xl p-6">
-          <p className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-2 text-start">{t('activeNow')}</p>
-          <h3 className="text-4xl font-black font-headline text-blue-600 text-start">{filteredLeads.filter(l => l.status !== 'closed').length}</h3>
-        </Card>
-        <Card className="bg-white border-0 shadow-lg rounded-3xl p-6">
-          <p className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-2 text-start">{t('winRate')}</p>
-          <h3 className="text-4xl font-black font-headline text-purple-600 text-start">{filteredLeads.length > 0 ? ((filteredLeads.filter(l => l.status === 'qualified').length / filteredLeads.length) * 100).toFixed(0) : 0}%</h3>
-        </Card>
-      </div>
-
       <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
-        <CardHeader className="bg-slate-50 border-b p-6 flex flex-row items-center justify-between">
+        <CardHeader className="bg-slate-50 border-b p-6">
           <div className="relative w-full max-w-sm">
             <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder={t('search')} 
-              className="ps-10 rounded-xl h-12 bg-white text-start" 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+            <Input placeholder={t('search')} className="ps-10 rounded-xl h-12 bg-white" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
@@ -166,42 +128,20 @@ export default function CRMPage() {
                 <TableHead className="text-start font-black">{t('name')}</TableHead>
                 <TableHead className="text-start font-black">{t('company')}</TableHead>
                 <TableHead className="text-start font-black">{t('status')}</TableHead>
-                <TableHead className="text-end font-black">{t('value')}</TableHead>
-                <TableHead className="text-center font-black">{t('entryAdded')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
-              ) : filteredLeads.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-20 text-muted-foreground font-bold italic">{t('search')}</TableCell></TableRow>
-              ) : (
-                filteredLeads.map((lead: any) => (
-                  <TableRow key={lead.id} className="hover:bg-muted/10 transition-colors group">
-                    <TableCell className="text-start font-black text-slate-800">{lead.name}</TableCell>
-                    <TableCell className="text-start text-muted-foreground font-bold">{lead.company}</TableCell>
-                    <TableCell className="text-start">
-                      <Badge className={cn(
-                        "font-black px-3",
-                        lead.status === 'qualified' ? 'bg-emerald-500/10 text-emerald-600' :
-                        lead.status === 'new' ? 'bg-blue-500/10 text-blue-600' :
-                        'bg-slate-500/10 text-slate-600'
-                      )}>
-                        {t(lead.status)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-end font-mono font-black text-primary">
-                      {lead.value?.toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-center">
-                       {/* إخفاء زر الإجراءات الإضافية إذا لم يملك صلاحية edit أو delete */}
-                       {(check('crm', 'edit').can || check('crm', 'delete').can) ? (
-                          <Button variant="ghost" size="icon" className="rounded-xl"><MoreHorizontal className="h-5 w-5" /></Button>
-                       ) : null}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
+                <TableRow><TableCell colSpan={3} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto" /></TableCell></TableRow>
+              ) : filteredLeads.map((lead: any) => (
+                <TableRow key={lead.id} className="hover:bg-muted/10 transition-colors">
+                  <TableCell className="text-start font-black text-slate-800">{lead.name}</TableCell>
+                  <TableCell className="text-start text-muted-foreground font-bold">{lead.company}</TableCell>
+                  <TableCell className="text-start">
+                    <Badge className="bg-blue-500/10 text-blue-600 font-black">{t(lead.status)}</Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </CardContent>

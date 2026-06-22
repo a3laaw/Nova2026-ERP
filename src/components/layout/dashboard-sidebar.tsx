@@ -1,6 +1,6 @@
 /**
  * @fileOverview القائمة الجانبية (Sidebar) الديناميكية.
- * تعتمد كلياً على مصفوفة الصلاحيات لإظهار أو إخفاء الموديولات.
+ * تعتمد كلياً على مصفوفة الصلاحيات لإظهار أو إخفاء الموديولات بناءً على صلاحية 'view'.
  */
 
 "use client"
@@ -43,7 +43,7 @@ export function DashboardSidebar() {
   const isRtl = lang === 'ar'
   const isCollapsed = state === "collapsed"
 
-  // قائمة العناصر الموحدة مع الكتالوج المركزي
+  // قائمة العناصر الموحدة مع الكود البرمجي في catalog.ts
   const menuItems = React.useMemo(() => [
     { title: t('dashboard'), icon: LayoutDashboard, url: "/dashboard", resource: 'dashboard' },
     { 
@@ -74,7 +74,6 @@ export function DashboardSidebar() {
       subItems: [
         { title: t('suppliers'), url: "/dashboard/procurement/suppliers", icon: Truck },
         { title: t('supplierQuotes'), url: "/dashboard/ai", icon: FileSearch },
-        { title: t('purchaseOrders'), url: "/dashboard/procurement", icon: Package },
       ]
     },
     { 
@@ -85,10 +84,7 @@ export function DashboardSidebar() {
       subItems: [
         { title: t('employees'), url: "/dashboard/hr/employees", icon: Users },
         { title: t('leaves'), url: "/dashboard/hr/leaves", icon: Calendar },
-        { title: t('permissions'), url: "/dashboard/hr/permissions", icon: Clock },
-        { title: t('attendance'), url: "/dashboard/hr/attendance/import", icon: FileSpreadsheet },
         { title: t('payroll'), url: "/dashboard/hr/payroll", icon: Calculator },
-        { title: t('gratuity'), url: "/dashboard/hr/gratuity", icon: Scale },
       ]
     },
     { 
@@ -98,7 +94,6 @@ export function DashboardSidebar() {
       resource: 'accounting',
       subItems: [
         { title: t('smartReconciliation'), url: "/dashboard/accounting", icon: Sparkles },
-        { title: t('journalEntries'), url: "/dashboard/ai", icon: FileText },
       ]
     },
     { 
@@ -108,7 +103,6 @@ export function DashboardSidebar() {
       resource: 'inventory',
       subItems: [
         { title: t('warehouses'), url: "/dashboard/inventory", icon: Building2 },
-        { title: t('fieldAssets'), url: "/dashboard/inventory", icon: Truck },
       ]
     },
     { 
@@ -119,13 +113,12 @@ export function DashboardSidebar() {
       subItems: [
         { title: isRtl ? 'إدارة المستخدمين' : 'Users Management', url: "/dashboard/settings/users", icon: Users },
         { title: t('companyIdentity'), url: "/dashboard/settings/company", icon: Building2 },
-        { title: t('checklists'), url: "/dashboard/settings/checklists", icon: Database },
         { title: t('rolesRef'), url: "/dashboard/settings/roles", icon: ShieldCheck },
       ]
     }
   ], [t, isRtl]);
 
-  // فلترة القوائم بناءً على مصفوفة الصلاحيات
+  // فلترة القوائم بناءً على نتيجة فحص المحرك
   const visibleItems = React.useMemo(() => {
     return menuItems.filter(item => canAccess(item.resource));
   }, [menuItems, canAccess]);
@@ -142,13 +135,13 @@ export function DashboardSidebar() {
             </div>
           </div>
         ) : (
-          <div className="mx-auto h-16 w-20 rounded-[1.8rem] bg-gradient-to-br from-[#FFB000] to-[#e87c24] flex items-center justify-center text-white shadow-xl shadow-orange-500/30">
+          <div className="mx-auto h-16 w-20 rounded-[1.8rem] bg-gradient-to-br from-[#FFB000] to-[#e87c24] flex items-center justify-center text-white shadow-xl">
              <Sparkles className="h-10 w-10" />
           </div>
         )}
       </SidebarHeader>
       
-      <SidebarContent className="px-4 overflow-y-auto scrollbar-hide py-4">
+      <SidebarContent className="px-4 py-4 overflow-y-auto scrollbar-hide">
         <SidebarGroup className="p-0">
           <SidebarGroupContent>
             <SidebarMenu className="gap-5">
@@ -162,15 +155,12 @@ export function DashboardSidebar() {
       
       <SidebarFooter className="p-4 mt-auto">
         {!isCollapsed && (
-          <div className="p-4 rounded-[2rem] bg-white border-2 border-orange-50 shadow-2xl ring-1 ring-black/[0.02]">
+          <div className="p-4 rounded-[2rem] bg-white border-2 border-orange-50 shadow-2xl">
              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-2">
-                   <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                   <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">SaaS Cloud</span>
-                </div>
-                <Badge className="bg-[#e87c24] text-white text-[8px] font-black uppercase h-4 px-1.5 rounded-md">v2.0</Badge>
+                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">SaaS Core</span>
+                <Badge className="bg-[#e87c24] text-white text-[8px] font-black uppercase h-4 px-1.5 rounded-md">v2.1</Badge>
              </div>
-             <p className="text-[9px] font-black text-[#1e1b4b]/80 text-center uppercase tracking-tighter">Dynamic RBAC Active</p>
+             <p className="text-[9px] font-black text-[#1e1b4b]/80 text-center uppercase">Dynamic Engine Active</p>
           </div>
         )}
       </SidebarFooter>
@@ -179,94 +169,34 @@ export function DashboardSidebar() {
 }
 
 function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
-  const [isFlyoutOpen, setIsFlyoutOpen] = React.useState(false)
   const isGroupActive = item.subItems?.some((sub: any) => pathname === sub.url)
   const isSelfActive = pathname === item.url
   const isActive = isSelfActive || isGroupActive
   
   const [isExpanded, setIsExpanded] = React.useState(isActive)
-  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null)
-
-  const handlePointerEnter = () => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current)
-    if (isCollapsed && item.subItems) setIsFlyoutOpen(true)
-  }
-
-  const handlePointerLeave = () => {
-    timeoutRef.current = setTimeout(() => setIsFlyoutOpen(false), 200)
-  }
-
-  const orangeGradient = "bg-gradient-to-br from-[#FFB000] to-[#e87c24] shadow-xl shadow-orange-500/20"
-  const style = cn(orangeGradient, "text-white hover:scale-[1.02] active:scale-[0.98]")
+  const style = "bg-gradient-to-br from-[#FFB000] to-[#e87c24] text-white shadow-xl hover:scale-[1.02] transition-all"
 
   if (isCollapsed) {
     return (
       <SidebarMenuItem className="flex justify-center">
-        {item.subItems ? (
-          <DropdownMenu open={isFlyoutOpen} onOpenChange={setIsFlyoutOpen} modal={false}>
-            <DropdownMenuTrigger asChild>
-              <button
-                onPointerEnter={handlePointerEnter}
-                onPointerLeave={handlePointerLeave}
+        <TooltipProvider delayDuration={0}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link 
+                href={item.url}
                 className={cn(
-                  "flex h-14 w-20 items-center justify-center outline-none transition-all duration-300 rounded-full",
+                  "flex h-14 w-20 items-center justify-center transition-all duration-300 rounded-full",
                   isActive ? "bg-white text-[#e87c24] shadow-2xl border-2 border-orange-50" : style
                 )}
               >
                 <item.icon className="h-9 w-9" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              side={isRtl ? "left" : "right"}
-              sideOffset={10}
-              align="start"
-              dir={isRtl ? "rtl" : "ltr"}
-              className="w-64 p-3 bg-orange-50/95 backdrop-blur-xl border-2 border-orange-200/50 shadow-3xl rounded-[2.5rem] z-[9999]"
-              onPointerEnter={handlePointerEnter}
-              onPointerLeave={handlePointerLeave}
-            >
-              <DropdownMenuLabel className="font-black text-[#1e1b4b] px-4 py-3 text-xs border-b border-orange-100 mb-4 uppercase tracking-widest text-start flex items-center justify-between">
-                <span>{item.title}</span>
-                <item.icon className="h-4 w-4 text-orange-600" />
-              </DropdownMenuLabel>
-              <div className="space-y-2">
-                {item.subItems.map((sub: any) => (
-                  <DropdownMenuItem key={sub.title} asChild className="p-0 focus:bg-transparent">
-                    <Link 
-                      href={sub.url} 
-                      className={cn(
-                        "flex items-center justify-between h-12 rounded-[1.4rem] px-5 transition-all text-[11px] font-black",
-                        pathname === sub.url ? "bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-lg" : "bg-white/60 text-[#1e1b4b] hover:bg-white/80"
-                      )}
-                    >
-                      <span className="flex-1 text-start">{sub.title}</span>
-                      <sub.icon className="h-4 w-4 ml-3 opacity-30" />
-                    </Link>
-                  </DropdownMenuItem>
-                ))}
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : (
-          <TooltipProvider delayDuration={0}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Link 
-                  href={item.url}
-                  className={cn(
-                    "flex h-14 w-20 items-center justify-center transition-all duration-300 rounded-full",
-                    isActive ? "bg-white text-[#e87c24] shadow-2xl border-2 border-orange-50" : style
-                  )}
-                >
-                  <item.icon className="h-9 w-9" />
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent side={isRtl ? "left" : "right"} className="bg-[#1e1b4b] text-white font-black text-[10px] rounded-lg px-3 py-1.5">
-                {item.title}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent side={isRtl ? "left" : "right"} className="bg-[#1e1b4b] text-white font-black text-[10px]">
+              {item.title}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </SidebarMenuItem>
     )
   }
@@ -274,25 +204,24 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
   return (
     <SidebarMenuItem>
       {item.subItems ? (
-        <Collapsible open={isExpanded} onOpenChange={setIsExpanded} className="group/collapsible">
+        <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
           <CollapsibleTrigger asChild>
-            <button className={cn("flex items-center transition-all duration-300 rounded-[1.6rem] overflow-hidden w-full h-14 px-6", style)}>
+            <button className={cn("flex items-center transition-all duration-300 rounded-[1.6rem] w-full h-14 px-6", style)}>
               <div className={cn("flex items-center gap-4 w-full", isRtl ? "flex-row" : "flex-row-reverse")}>
                 <item.icon className="h-6 w-6 shrink-0" />
                 <span className="flex-1 text-start text-sm font-black tracking-tight">{item.title}</span>
               </div>
-              <ChevronLeft className={cn("h-4 w-4 transition-transform opacity-60", isExpanded ? (isRtl ? "-rotate-90" : "rotate(90deg)") : "rotate-0")} />
             </button>
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <div className="mt-3 space-y-2 px-2 animate-in slide-in-from-top-2 duration-400">
+            <div className="mt-3 space-y-2 px-2 animate-in slide-in-from-top-2 duration-300">
               {item.subItems.map((sub: any) => (
                 <Link 
                   key={sub.title} 
                   href={sub.url}
                   className={cn(
                     "flex items-center justify-between h-11 rounded-full px-6 transition-all text-[11px] font-black",
-                    pathname === sub.url ? "bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-xl scale-[1.03]" : "bg-orange-100/50 text-[#1e1b4b] hover:bg-orange-100/70 border border-orange-200/30"
+                    pathname === sub.url ? "bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-xl" : "bg-orange-100/50 text-[#1e1b4b] border border-orange-200/30"
                   )}
                 >
                   <span className="truncate text-start flex-1">{sub.title}</span>
@@ -303,7 +232,13 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
           </CollapsibleContent>
         </Collapsible>
       ) : (
-        <Link href={item.url} className={cn("flex items-center transition-all duration-300 rounded-[1.6rem] overflow-hidden h-14 px-6", isActive ? "bg-white text-[#e87c24] shadow-2xl border-2 border-orange-50" : style)}>
+        <Link 
+          href={item.url} 
+          className={cn(
+            "flex items-center transition-all duration-300 rounded-[1.6rem] h-14 px-6", 
+            isActive ? "bg-white text-[#e87c24] shadow-2xl border-2 border-orange-50" : style
+          )}
+        >
           <div className={cn("flex items-center gap-4 w-full", isRtl ? "flex-row" : "flex-row-reverse")}>
             <item.icon className="h-6 w-6 shrink-0" />
             <span className="flex-1 text-start text-sm font-black tracking-tight">{item.title}</span>
