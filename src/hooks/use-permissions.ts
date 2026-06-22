@@ -1,45 +1,33 @@
+/**
+ * @fileOverview خطاف الصلاحيات الموحد لاستهلاك المحرك في واجهة المستخدم.
+ */
+
 'use client';
 
-import { useMemo } from 'react';
+import { useCallback } from 'react';
 import { useAuthContext } from '@/context/auth-context';
-import { 
-  hasPermission, 
-  hasAnyPermission, 
-  hasAllPermissions, 
-  canAccessModule,
-  PermissionCode 
-} from '@/lib/permissions';
+import { hasResourceAccess, canViewModule } from '@/lib/permissions/engine';
+import { Action, Scope } from '@/lib/permissions/types';
 
-/**
- * Hook مخصص لاستهلاك نظام الصلاحيات داخل مكونات React.
- */
 export function usePermissions() {
-  const { globalUser, roleData, loading } = useAuthContext();
+  const { roleData, globalUser, loading } = useAuthContext();
 
-  const userContext = useMemo(() => ({
-    isDeveloper: globalUser?.isDeveloper,
-    globalRole: globalUser?.role,
-    roleData: roleData
-  }), [globalUser, roleData]);
+  // تحويل roleData إلى النوع المتوقع للمحرك
+  const role = roleData as any;
 
-  // مصفوفة الصلاحيات "الفعالة"
-  // إذا كان مديراً عالمياً، نمنحه '*' لضمان عدم توقف العمليات الإدارية
-  const effectivePermissions = useMemo(() => {
-    if (globalUser?.isDeveloper || globalUser?.role === 'admin' || globalUser?.role === 'Admin') {
-      return ['*'];
-    }
-    return roleData?.permissions || [];
-  }, [globalUser, roleData]);
+  const check = useCallback((resourceId: string, action: Action = 'view') => {
+    return hasResourceAccess(role, resourceId, action);
+  }, [role]);
+
+  const canAccess = useCallback((resourceId: string) => {
+    return canViewModule(role, resourceId);
+  }, [role]);
 
   return {
-    permissions: effectivePermissions,
     isLoading: loading,
-    // الدوال المساعدة
-    check: (code: PermissionCode) => hasPermission(userContext, code),
-    checkAny: (codes: PermissionCode[]) => hasAnyPermission(userContext, codes),
-    checkAll: (codes: PermissionCode[]) => hasAllPermissions(userContext, codes),
-    canAccess: (moduleKey: string) => canAccessModule(userContext, moduleKey),
-    // حالات خاصة
-    isAdmin: effectivePermissions.includes('*')
+    isAdmin: globalUser?.role === 'admin' || role?.code === 'ADMIN',
+    check,
+    canAccess,
+    role
   };
 }
