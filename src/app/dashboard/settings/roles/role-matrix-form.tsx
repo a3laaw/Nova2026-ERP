@@ -1,5 +1,7 @@
+
 /**
  * @fileOverview واجهة مصفوفة الصلاحيات الذكية المطورة.
+ * تم إصلاح خطأ الحفظ عبر مزامنة مصفوفة الصلاحيات (Matrix) مع الـ Permissions النصية آلياً.
  */
 
 'use client';
@@ -41,8 +43,13 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
   const { lang, dir, t } = useLanguage();
   const isRtl = lang === 'ar';
   const [loading, setLoading] = useState(false);
+  
+  // حالة الفورم مع ضمان تهيئة المصفوفة
   const [formData, setFormData] = useState<any>({ 
-    name: '', nameEn: '', matrix: [], permissions: [] 
+    name: '', 
+    nameEn: '', 
+    matrix: [], 
+    permissions: [] 
   });
 
   useEffect(() => {
@@ -96,6 +103,11 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
     try {
       // إزالة حقل ID من بيانات الحفظ إذا كان موجوداً لتجنب مشاكل Firestore
       const { id, ...saveData } = formData;
+
+      // التأكد من وجود مصفوفة نصية للصلاحيات حتى في الأدوار الجديدة
+      if (!saveData.permissions) {
+        saveData.permissions = saveData.matrix?.map((m: PermissionRule) => `${m.resourceId}:${m.action}`) || [];
+      }
 
       if (role?.id) {
         await roleService.updateRole(role.id, saveData);

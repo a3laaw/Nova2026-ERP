@@ -1,11 +1,12 @@
+
 /**
  * @fileOverview خطاف الصلاحيات المطور.
- * يقوم بتغذية المحرك ببيانات المستخدم الحالي (القسم والـ ID).
+ * تم تحسينه لضمان أن الأدمن يملك صلاحية النجمة (*) دائماً لتجنب أخطاء الحفظ.
  */
 
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useAuthContext } from '@/context/auth-context';
 import { hasResourceAccess, canViewModule } from '@/lib/permissions/engine';
 import { Action } from '@/lib/permissions/types';
@@ -14,12 +15,22 @@ export function usePermissions() {
   const { roleData, globalUser, loading } = useAuthContext();
   
   const role = roleData as any;
-  const isAdmin = globalUser?.role?.toLowerCase() === 'admin' || role?.code === 'ADMIN' || globalUser?.isDeveloper === true;
+  
+  // التحقق السيادي من هوية الأدمن أو المطور
+  const isAdmin = useMemo(() => {
+    return globalUser?.role?.toLowerCase() === 'admin' || 
+           globalUser?.roleCode === 'ADMIN' || 
+           globalUser?.isDeveloper === true;
+  }, [globalUser]);
 
   /**
-   * الصلاحيات الفعلية المستخلصة
+   * الصلاحيات الفعلية المستخلصة.
+   * للأدمن، نعيد دائماً النجمة لضمان تجاوز فحوصات الخدمة (Service checks).
    */
-  const effectivePermissions = isAdmin ? ['*'] : (role?.permissions || []);
+  const effectivePermissions = useMemo(() => {
+    if (isAdmin) return ['*'];
+    return role?.permissions || [];
+  }, [isAdmin, role]);
 
   /**
    * الفحص الأساسي مع تمرير سياق المستخدم (User Context)
