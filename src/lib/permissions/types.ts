@@ -7,7 +7,7 @@ export type Action =
   | 'post' | 'unpost' | 'approve' | 'archive' 
   | 'transfer' | 'print' | 'export' | 'seed';
 
-export type Scope = 'none' | 'own' | 'dept' | 'branch' | 'all';
+export type Scope = 'none' | 'own' | 'dept' | 'all';
 
 export interface PermissionRule {
   resourceId: string;

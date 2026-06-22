@@ -49,7 +49,7 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
     if (role) {
       setFormData({
         ...role,
-        matrix: role.matrix || []
+        matrix: (role as any).matrix || []
       });
     } else {
       setFormData({ name: '', nameEn: '', matrix: [] });
@@ -109,7 +109,6 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
   const SCOPES: { value: Scope; label: string; icon: any }[] = [
     { value: 'none', label: isRtl ? 'محجوب' : 'None', icon: X },
     { value: 'own', label: isRtl ? 'خاص بالموظف' : 'Own Records', icon: User },
-    { value: 'dept', label: isRtl ? 'القسم' : 'Department', icon: Users },
     { value: 'all', label: isRtl ? 'المنشأة كاملة' : 'Full Access', icon: Globe },
   ];
 
@@ -218,7 +217,7 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
                    disabled={loading}
                    className="flex-1 md:w-72 h-16 rounded-[1.5rem] bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
                  >
-                    {loading ? <Loader2 className="animate-spin me-2" /> : <Save className="me-2 h-6 w-6" />}
+                    {loading ? <Loader2 className="animate-spin me-2" /> : <Save className="me-2 h-5 w-5" />}
                     {isRtl ? 'حفظ الصلاحيات' : 'Commit Matrix'}
                  </Button>
               </div>

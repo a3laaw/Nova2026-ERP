@@ -26,8 +26,8 @@ export function usePermissions() {
   return {
     isLoading: loading,
     isAdmin: globalUser?.role === 'admin' || role?.code === 'ADMIN',
-    check, // الاستخدام: check('hr', 'approve').can
-    canAccess, // الاستخدام في السايدبار: canAccess('accounting')
+    check,
+    canAccess,
     role
   };
 }
