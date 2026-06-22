@@ -19,8 +19,6 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { LeaveRequest, Employee } from '@/types/hr';
 import { ensureActionPermission } from '@/lib/permissions';
 import { paths } from '@/firebase/multi-tenant';
-import { WorkingDaysService } from './working-days-service';
-import { WorkHoursService } from './work-hours-service';
 
 export class LeaveService {
   constructor(
@@ -53,8 +51,8 @@ export class LeaveService {
       ...data,
       status: 'pending',
       companyId: this.companyId,
-      departmentId: departmentId || '', // ربط القسم للفلترة
-      createdBy: data.userId, // توحيد الحقل لفلترة الـ Own Scope
+      departmentId: departmentId || '', 
+      createdBy: data.userId, 
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
@@ -80,7 +78,9 @@ export class LeaveService {
     
     if (!leaveSnap.exists()) return;
     const leaveData = leaveSnap.data() as LeaveRequest;
-    const empRef = doc(this.db, paths.employees(this.companyId), leaveData.userId);
+    
+    // تصحيح: استخدام employeeId المخزن في الطلب للوصول لملف الموظف الصحيح
+    const empRef = doc(this.db, paths.employees(this.companyId), leaveData.employeeId);
 
     const batch = writeBatch(this.db);
     const updateData: any = {
@@ -93,14 +93,13 @@ export class LeaveService {
       updateData.approvedAt = serverTimestamp();
       updateData.comment = payload.comment || '';
       
-      // السماح للأدمن بتصحيح التواريخ والأيام عند الاعتماد
       if (payload.startDate) updateData.startDate = payload.startDate;
       if (payload.endDate) updateData.endDate = payload.endDate;
       
       const finalWorkingDays = payload.workingDays !== undefined ? payload.workingDays : leaveData.workingDays;
       updateData.workingDays = finalWorkingDays;
 
-      // تحديث الأرصدة في ملف الموظف
+      // تحديث الأرصدة في ملف الموظف (الاستهداف الصحيح للملف)
       if (leaveData.type === 'annual') {
         batch.update(empRef, { annualLeaveBalance: increment(-finalWorkingDays) });
       } else if (leaveData.type === 'sick') {
@@ -126,6 +125,12 @@ export class LeaveService {
     }
 
     batch.update(leaveRef, updateData);
-    await batch.commit();
+    await batch.commit().catch(err => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: 'leave_approval_batch',
+            operation: 'write'
+        }));
+        throw err;
+    });
   }
 }

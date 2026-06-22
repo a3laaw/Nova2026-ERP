@@ -43,7 +43,7 @@ export interface Employee extends BaseReference {
 export interface LeaveRequest extends BaseReference {
   userId: string;
   userName: string;
-  employeeId?: string;
+  employeeId: string; // معرف الموظف المرجعي (إلزامي للخصم)
   type: LeaveType;
   startDate: string;
   endDate: string;

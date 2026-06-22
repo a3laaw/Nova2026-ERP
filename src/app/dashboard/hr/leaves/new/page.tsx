@@ -7,15 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   CalendarDays, 
-  Plane, Activity,
+  Activity,
   ShieldCheck,
   Send,
-  Clock,
   AlertTriangle,
-  ArrowRight,
-  Briefcase,
-  FileText,
-  CheckCircle2,
   Loader2
 } from "lucide-react";
 import { useFirestore, useDoc } from '@/firebase';
@@ -44,6 +39,7 @@ export default function NewLeaveRequestPage() {
   const router = useRouter();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
+  const employeeId = globalUser?.employeeId;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [workingDays, setWorkingDays] = useState(0);
@@ -59,9 +55,10 @@ export default function NewLeaveRequestPage() {
     quickReason: ''
   });
 
+  // جلب ملف الموظف باستخدام المعرف المربوط بالحساب لضمان دقة الرصيد
   const empRef = useMemo(() => 
-    companyId && db && user ? doc(db, paths.employees(companyId), user.uid) : null, 
-  [db, companyId, user]);
+    companyId && db && employeeId ? doc(db, paths.employees(companyId), employeeId) : null, 
+  [db, companyId, employeeId]);
   const { data: employee, loading: empLoading } = useDoc<Employee>(empRef);
 
   const leaveService = useMemo(() => 
@@ -102,7 +99,7 @@ export default function NewLeaveRequestPage() {
   }, [form.startDate, form.endDate, employee, db, companyId]);
 
   const handleSubmit = async () => {
-    if (!leaveService || !user || !form.startDate || !form.endDate) return;
+    if (!leaveService || !user || !employeeId || !form.startDate || !form.endDate) return;
 
     if (form.type === 'annual' && !eligibility.eligible) {
       toast({ 
@@ -119,6 +116,7 @@ export default function NewLeaveRequestPage() {
     try {
       await leaveService.submitRequest({
         userId: user.uid,
+        employeeId: employeeId, // إرسال معرف الموظف الصريح للربط المالي
         userName: user.displayName || user.email || 'User',
         type: form.type,
         startDate: form.startDate,
@@ -126,7 +124,7 @@ export default function NewLeaveRequestPage() {
         days: totalCalendarDays,
         workingDays: workingDays,
         reason: form.reason || form.quickReason
-      }, globalUser?.departmentId); // تمرير القسم آلياً من سياق المستخدم
+      }, globalUser?.departmentId); 
       
       toast({ title: t('saved') });
       router.push('/dashboard/hr');
