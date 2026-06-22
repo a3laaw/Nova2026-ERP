@@ -41,8 +41,20 @@ service cloud.firestore {
     // --- السجلات العالمية ---
     
     match /global_users/{uid} {
-      allow read: if isAuthenticated() && (request.auth.uid == uid || isDeveloper());
-      allow write: if isDeveloper() || (isAuthenticated() && request.auth.uid == uid);
+      // السماح بالقراءة للمستخدم نفسه، أو المطور، أو أدمن الشركة التي يتبع لها المستخدم
+      allow read: if isAuthenticated() && (
+        request.auth.uid == uid || 
+        isDeveloper() || 
+        (exists(/databases/$(database)/documents/global_users/$(uid)) && isAdmin(get(/databases/$(database)/documents/global_users/$(uid)).data.companyId))
+      );
+      
+      // السماح بالكتابة للمستخدم نفسه (لبياناته)، أو المطور، 
+      // أو أدمن الشركة بشرط أن يكون السجل الجديد تابعاً لنفس شركته
+      allow create, update: if isDeveloper() || 
+                             (isAuthenticated() && request.auth.uid == uid) ||
+                             (isAuthenticated() && isAdmin(request.resource.data.companyId));
+                             
+      allow delete: if isDeveloper();
     }
     
     match /company_requests/{reqId} {
