@@ -42,9 +42,11 @@ export default function DashboardLayout({
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-[#fdfaf3] overflow-x-hidden" dir={dir}>
-        <DashboardSidebar />
+        <div className="print:hidden">
+          <DashboardSidebar />
+        </div>
         <SidebarInset className="flex flex-col bg-transparent">
-          <header className="sticky top-0 z-30 flex h-20 items-center gap-6 border-b-0 bg-[#fdfaf3]/80 backdrop-blur-xl px-10">
+          <header className="sticky top-0 z-30 flex h-20 items-center gap-6 border-b-0 bg-[#fdfaf3]/80 backdrop-blur-xl px-10 print:hidden">
             <SidebarTrigger className={cn("transition-transform text-[#1e1b4b] hover:bg-orange-50", isRtl ? "rotate-0" : "rotate-180")} />
             
             <div className="flex-1 hidden md:flex items-center">
@@ -73,7 +75,7 @@ export default function DashboardLayout({
             </div>
           </header>
           
-          <main className="flex-1 p-10 lg:p-14 animate-in fade-in slide-in-from-bottom-4 duration-700" dir={dir}>
+          <main className="flex-1 p-10 lg:p-14 animate-in fade-in slide-in-from-bottom-4 duration-700 print:p-0" dir={dir}>
             {children}
           </main>
         </SidebarInset>
