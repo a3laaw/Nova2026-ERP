@@ -24,15 +24,17 @@ import {
   Boxes,
   HardHat,
   ShieldCheck,
-  FileText
+  FileText,
+  UserCheck
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
-import { doc, collection, query, orderBy } from 'firebase/firestore';
+import { doc, collection, query, orderBy, where } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
 import { Client } from '@/types/client';
 import { ActivityType, Service, SubService } from '@/types/reference';
+import { Employee } from '@/types/hr';
 import { TransactionService } from '@/services/transaction-service';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -80,24 +82,27 @@ export default function NewTransactionPage() {
   [db, companyId, form.activityTypeId, form.serviceId]);
   const { data: subServices } = useCollection<SubService>(subQuery);
 
-  // تحديث تلقائي للمهندس عند تحميل بيانات العميل
-  useEffect(() => {
-    if (client?.assignedEngineerId) {
-      setForm(prev => ({ ...prev, assignedEngineerId: client.assignedEngineerId! }));
-    }
-  }, [client]);
+  // 5. جلب قائمة المهندسين / الموظفين النشطين للتعيين
+  const empsQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active')) : null, 
+  [db, companyId]);
+  const { data: employees } = useCollection<Employee>(empsQuery);
 
   const handleCreate = async () => {
-    if (!db || !companyId || !user || !form.subServiceId) return;
+    if (!db || !companyId || !user || !form.subServiceId || !form.assignedEngineerId) {
+      toast({ variant: "destructive", title: isRtl ? "بيانات ناقصة" : "Missing Data", description: isRtl ? "يرجى اختيار المسار والمهندس المسؤول." : "Please select path and engineer." });
+      return;
+    }
     
     setLoading(true);
     try {
       const selectedAct = activities?.find(a => a.id === form.activityTypeId);
       const selectedSrv = services?.find(s => s.id === form.serviceId);
       const selectedSub = subServices?.find(ss => ss.id === form.subServiceId);
+      const selectedEng = employees?.find(e => e.id === form.assignedEngineerId);
 
       const service = new TransactionService(db, companyId);
-      const tId = await service.createTransaction({
+      await service.createTransaction({
         clientId,
         clientName: client?.nameAr,
         activityTypeId: form.activityTypeId,
@@ -107,11 +112,11 @@ export default function NewTransactionPage() {
         subServiceId: form.subServiceId,
         subServiceName: isRtl ? selectedSub?.name : selectedSub?.nameEn,
         assignedEngineerId: form.assignedEngineerId,
-        assignedEngineerName: client?.assignedEngineerName,
+        assignedEngineerName: selectedEng?.fullName,
         description: form.description
       }, user.uid, user.displayName || 'System');
 
-      toast({ title: isRtl ? 'تم فتح المعاملة' : 'Transaction Opened' });
+      toast({ title: isRtl ? 'تم فتح المعاملة بنجاح' : 'Transaction Opened' });
       router.push(`/dashboard/clients/${clientId}`);
     } catch (e) {
       toast({ variant: "destructive", title: t('error'), description: t('saveFailed') });
@@ -216,19 +221,32 @@ export default function NewTransactionPage() {
               <div className="pt-8 border-t border-slate-50 space-y-4">
                  <div className="flex items-center gap-3 text-slate-800">
                     <HardHat className="h-5 w-5 text-primary" />
-                    <h4 className="font-black text-lg">{isRtl ? 'إعدادات التشغيل' : 'Operational Settings'}</h4>
+                    <h4 className="font-black text-lg">{isRtl ? 'إعدادات التشغيل والتعيين' : 'Operational Assignment'}</h4>
                  </div>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div className="space-y-3">
-                       <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'المهندس المسؤول (تلقائي)' : 'Assigned Engineer'}</Label>
-                       <div className="h-14 rounded-2xl border-2 flex items-center px-4 bg-slate-50 text-slate-600 font-bold gap-3">
-                          <ShieldCheck className="h-5 w-5 text-emerald-500" />
-                          {client?.assignedEngineerName || (isRtl ? 'لم يتم تعيين مهندس للعميل' : 'No engineer assigned to client')}
-                       </div>
+                       <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                          <UserCheck className="h-3 w-3" /> {isRtl ? 'المهندس المسؤول عن المعاملة' : 'Assigned Engineer'}
+                       </Label>
+                       <Select value={form.assignedEngineerId} onValueChange={(v) => setForm({...form, assignedEngineerId: v})}>
+                          <SelectTrigger className="h-14 rounded-2xl border-2 font-bold bg-slate-50">
+                             <SelectValue placeholder={isRtl ? "اختر مهندس التنفيذ..." : "Assign Engineer..."} />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-2xl">
+                             {employees?.map(emp => (
+                               <SelectItem key={emp.id} value={emp.id!} className="font-bold">
+                                  <div className="flex flex-col text-start">
+                                     <span>{emp.fullName}</span>
+                                     <span className="text-[8px] text-muted-foreground uppercase">{emp.jobTitle}</span>
+                                  </div>
+                               </SelectItem>
+                             ))}
+                          </SelectContent>
+                       </Select>
                     </div>
                     <div className="space-y-3">
                        <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'حالة المعاملة عند الافتتاح' : 'Opening Status'}</Label>
-                       <div className="h-14 rounded-2xl border-2 flex items-center px-4 bg-slate-50 text-slate-600 font-black uppercase">
+                       <div className="h-14 rounded-2xl border-2 flex items-center px-4 bg-slate-50 text-slate-400 font-black uppercase">
                           NEW / {isRtl ? 'جديدة' : 'NEW'}
                        </div>
                     </div>
@@ -260,11 +278,11 @@ export default function NewTransactionPage() {
            </Button>
            <Button 
              onClick={handleCreate}
-             disabled={loading || !form.subServiceId}
+             disabled={loading || !form.subServiceId || !form.assignedEngineerId}
              className="h-20 rounded-[2.5rem] px-16 bg-primary text-white font-black text-2xl shadow-2xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all gap-4 border-b-8 border-orange-700"
            >
               {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : <CheckCircle2 className="h-8 w-8" />}
-              {isRtl ? 'فتح المعاملة الآن' : 'Confirm & Open Path'}
+              {isRtl ? 'فتح المسار الفني' : 'Confirm & Open Path'}
            </Button>
         </div>
 
@@ -276,7 +294,7 @@ export default function NewTransactionPage() {
            <div className="text-start">
               <h5 className="font-black text-amber-800 text-sm">{isRtl ? 'ملاحظة تشغيلية' : 'Operational Note'}</h5>
               <p className="text-[10px] text-amber-700/70 font-bold leading-relaxed mt-1">
-                 {isRtl ? 'عند تأكيد فتح المعاملة، سيقوم النظام آلياً بإنشاء "خطة زمنية" تعتمد على المراحل الفنية المحددة مسبقاً في مركز المراجع لهذا المسار الفرعي.' : 'Upon confirmation, the system will automatically generate a timeline based on predefined technical stages in the Reference Hub.'}
+                 {isRtl ? 'بمجرد اختيار المهندس وفتح المعاملة، ستظهر هذه المهمة في "لوحة تحكم المهندس" المختار لمتابعة مراحل الإنجاز الميدانية.' : 'Once the engineer is assigned and transaction is opened, it will appear in their dashboard for field execution tracking.'}
               </p>
            </div>
         </div>
