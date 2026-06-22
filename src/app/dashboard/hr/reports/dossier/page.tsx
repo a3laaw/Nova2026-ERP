@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -33,8 +34,8 @@ export default function DossierSearchPage() {
 
   // توجيه ذكي: إذا كان الموظف يملك صلاحية رؤية نفسه فقط، نوجهه فوراً لملفه
   useEffect(() => {
-    if (hrView.scope === 'own' && globalUser?.employeeId) {
-      router.push(`/dashboard/hr/reports/dossier/${globalUser.employeeId}`);
+    if (hrView.can && hrView.scope === 'own' && globalUser?.employeeId) {
+      router.replace(`/dashboard/hr/reports/dossier/${globalUser.employeeId}`);
     }
   }, [hrView, globalUser, router]);
 
@@ -47,7 +48,6 @@ export default function DossierSearchPage() {
 
   const filteredEmployees = useMemo(() => {
     const term = searchTerm.toLowerCase();
-    // الفلترة بناءً على النطاق المسموح به
     return rawEmployees
       .filter(emp => {
         const matchSearch = emp.fullName?.toLowerCase().includes(term) || 
@@ -55,6 +55,7 @@ export default function DossierSearchPage() {
         
         if (!matchSearch) return false;
         
+        // تطبيق النطاق المسموح به في مصفوفة الصلاحيات
         if (hrView.scope === 'all') return true;
         if (hrView.scope === 'dept') return emp.departmentId === globalUser?.departmentId;
         if (hrView.scope === 'own') return emp.id === globalUser?.employeeId;
@@ -64,7 +65,23 @@ export default function DossierSearchPage() {
       .sort((a, b) => a.employeeNumber.localeCompare(b.employeeNumber));
   }, [rawEmployees, searchTerm, hrView, globalUser]);
 
-  if (hrView.scope === 'own') return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
+  // إذا لم يكن لديه صلاحية العرض إطلاقاً
+  if (!hrView.can && !loading) {
+    return (
+      <div className="h-[60vh] flex flex-col items-center justify-center space-y-4 text-center">
+         <div className="h-20 w-20 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center"><AlertCircle className="h-10 w-10" /></div>
+         <h2 className="text-xl font-black">{isRtl ? 'لا تملك صلاحية عرض التقارير' : 'No Permission for Reports'}</h2>
+         <p className="text-sm text-slate-400 font-bold max-w-xs">{isRtl ? 'يرجى مراجعة الإدارة لتفعيل صلاحية (HR -> View) في ملف دورك الوظيفي.' : 'Please ask Admin to enable (HR -> View) in your role matrix.'}</p>
+      </div>
+    );
+  }
+
+  if (hrView.scope === 'own') return (
+    <div className="h-[60vh] flex flex-col items-center justify-center gap-4">
+      <Loader2 className="animate-spin h-10 w-10 text-primary/30" />
+      <p className="text-xs font-bold text-slate-400">{isRtl ? 'جاري توجيهك لملفك الشخصي...' : 'Redirecting to your dossier...'}</p>
+    </div>
+  );
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto" dir={dir}>

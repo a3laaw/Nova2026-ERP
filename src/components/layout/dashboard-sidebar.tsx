@@ -14,11 +14,13 @@ import {
   ShoppingCart, Sparkles, Clock, ShieldCheck,
   Calendar, FileSpreadsheet, FileText, Package,
   Layers, FileSearch, Truck, Scale,
-  Building2, Database, ChevronLeft, Settings2
+  Building2, Database, ChevronLeft, Settings2,
+  Dna
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
 import { usePermissions } from "@/hooks/use-permissions"
+import { useAuthContext } from "@/context/auth-context"
 import { Badge } from "@/components/ui/badge"
 import {
   Sidebar, SidebarHeader, SidebarContent, SidebarGroup,
@@ -41,6 +43,7 @@ export function DashboardSidebar() {
   const { state } = useSidebar()
   const { t, lang } = useLanguage()
   const { canAccess, check } = usePermissions()
+  const { globalUser } = useAuthContext()
   const isRtl = lang === 'ar'
   const isCollapsed = state === "collapsed"
 
@@ -84,10 +87,14 @@ export function DashboardSidebar() {
       resource: 'hr',
       subItems: [
         { 
+          title: isRtl ? 'ملفي الوظيفي (Dossier)' : 'My Full Dossier', 
+          url: globalUser?.employeeId ? `/dashboard/hr/reports/dossier/${globalUser.employeeId}` : '/dashboard/hr', 
+          icon: ShieldCheck 
+        },
+        { 
           title: t('employees'), 
           url: "/dashboard/hr/employees", 
           icon: Users,
-          // إخفاء سجل الموظفين إذا كان النطاق 'شخصي' فقط لعدم تشتيت الموظف
           hideIfOwnScope: true 
         },
         { title: t('leaves'), url: "/dashboard/hr/leaves", icon: Calendar },
@@ -95,7 +102,6 @@ export function DashboardSidebar() {
           title: t('payroll'), 
           url: "/dashboard/hr/payroll", 
           icon: Calculator,
-          // الرواتب تظهر فقط لمن لديه صلاحية 'اعتماد' (Approve)
           requiredAction: 'approve' as const
         },
       ]
@@ -129,7 +135,7 @@ export function DashboardSidebar() {
         { title: t('rolesRef'), url: "/dashboard/settings/roles", icon: ShieldCheck },
       ]
     }
-  ], [t, isRtl]);
+  ], [t, isRtl, globalUser]);
 
   // فلترة القوائم بناءً على نتيجة فحص المحرك
   const visibleItems = React.useMemo(() => {

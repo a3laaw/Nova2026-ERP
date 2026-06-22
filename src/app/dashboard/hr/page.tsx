@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -7,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   UserCircle, FileText, ShieldAlert, Sparkles, 
   Users, Calendar, UserPlus, ArrowUpRight, Clock,
-  FileSpreadsheet, Calculator, ShieldCheck
+  FileSpreadsheet, Calculator, ShieldCheck, BarChart3
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useRouter } from 'next/navigation';
@@ -99,18 +100,20 @@ export default function HRDashboard() {
 
         <TabsContent value="overview" className="space-y-8 animate-in fade-in duration-500">
            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-              {/* الموظف يرى ملفه الشامل فوراً */}
-              {hrView.scope === 'own' && globalUser?.employeeId && (
+              {/* الموظف يرى ملفه الشامل فوراً كبطاقة رئيسية فخمة */}
+              {globalUser?.employeeId && (
                 <Card 
                   onClick={() => router.push(`/dashboard/hr/reports/dossier/${globalUser.employeeId}`)}
-                  className="border-0 shadow-lg hover:shadow-2xl transition-all cursor-pointer rounded-[2.5rem] bg-slate-900 text-white group overflow-hidden"
+                  className="border-0 shadow-lg hover:shadow-2xl transition-all cursor-pointer rounded-[2.5rem] bg-slate-900 text-white group overflow-hidden border-b-8 border-primary"
                 >
                    <CardHeader className="p-8 pb-4 text-start">
                       <div className="w-14 h-14 rounded-2xl bg-primary/20 text-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                          <ShieldCheck className="h-7 w-7" />
                       </div>
                       <CardTitle className="text-xl font-black">{isRtl ? 'ملفي الوظيفي الشامل' : 'My Full Dossier'}</CardTitle>
-                      <CardDescription className="font-bold text-slate-400">عرض رصيد الإجازات، الرواتب، والعهد.</CardDescription>
+                      <CardDescription className="font-bold text-slate-400">
+                         {isRtl ? 'عرض رصيد الإجازات، الرواتب، والعهد.' : 'View leave balance, payroll, and assets.'}
+                      </CardDescription>
                    </CardHeader>
                    <CardContent className="p-8 pt-0 text-start">
                       <div className="flex items-center gap-2 text-primary font-black text-xs">
@@ -161,27 +164,6 @@ export default function HRDashboard() {
                  </CardContent>
               </Card>
 
-              {canImportAttendance && (
-                <Card 
-                  onClick={() => router.push('/dashboard/hr/attendance/import')}
-                  className="border-0 shadow-lg hover:shadow-2xl transition-all cursor-pointer rounded-[2.5rem] bg-white group overflow-hidden"
-                >
-                   <CardHeader className="p-8 pb-4 text-start">
-                      <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                         <FileSpreadsheet className="h-7 w-7" />
-                      </div>
-                      <CardTitle className="text-xl font-black">{isRtl ? 'استيراد الحضور' : 'Attendance Import'}</CardTitle>
-                      <CardDescription className="font-bold">رفع ملفات البصمة وحساب التأخير آلياً.</CardDescription>
-                   </CardHeader>
-                   <CardContent className="p-8 pt-0 text-start">
-                      <div className="flex items-center gap-2 text-emerald-600 font-black text-xs">
-                         {isRtl ? 'رفع ملفات CSV' : 'Upload CSV Files'}
-                         <ArrowUpRight className="h-4 w-4" />
-                      </div>
-                   </CardContent>
-                </Card>
-              )}
-
               {canSeePayroll && (
                 <Card 
                   onClick={() => router.push('/dashboard/hr/payroll')}
@@ -203,6 +185,24 @@ export default function HRDashboard() {
                 </Card>
               )}
            </div>
+
+           {/* روابط سريعة للتقارير العالمية (فقط للموظف) */}
+           {hrView.scope === 'own' && globalUser?.employeeId && (
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6">
+                <Card onClick={() => router.push(`/dashboard/hr/reports/attendance/individual/${globalUser.employeeId}`)} className="p-6 cursor-pointer hover:bg-slate-50 transition-all rounded-3xl border-2 border-dashed flex items-center gap-4">
+                   <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl"><BarChart3 className="h-5 w-5" /></div>
+                   <div className="text-start"><p className="font-black text-sm">{isRtl ? 'تحليل الانضباط' : 'Discipline Analysis'}</p></div>
+                </Card>
+                <Card onClick={() => router.push(`/dashboard/hr/reports/leaves/statement/${globalUser.employeeId}`)} className="p-6 cursor-pointer hover:bg-slate-50 transition-all rounded-3xl border-2 border-dashed flex items-center gap-4">
+                   <div className="p-3 bg-blue-50 text-blue-600 rounded-xl"><Calculator className="h-5 w-5" /></div>
+                   <div className="text-start"><p className="font-black text-sm">{isRtl ? 'كشف حركة الرصيد' : 'Leave Statement'}</p></div>
+                </Card>
+                <Card onClick={() => router.push(`/dashboard/hr/reports/payroll/individual/${globalUser.employeeId}`)} className="p-6 cursor-pointer hover:bg-slate-50 transition-all rounded-3xl border-2 border-dashed flex items-center gap-4">
+                   <div className="p-3 bg-amber-50 text-amber-600 rounded-xl"><FileText className="h-5 w-5" /></div>
+                   <div className="text-start"><p className="font-black text-sm">{isRtl ? 'سجل الرواتب' : 'Payroll Ledger'}</p></div>
+                </Card>
+             </div>
+           )}
         </TabsContent>
 
         <TabsContent value="leaves" className="animate-in fade-in duration-500">
