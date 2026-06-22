@@ -22,7 +22,7 @@ export function hasResourceAccess(
   if (!resourceId) return { can: false, scope: 'none' };
 
   // 1. حالة الأدمن (Master Key) - تجاوز كامل لكافة القيود
-  if (role?.code?.toUpperCase() === 'ADMIN' || role?.code?.toLowerCase() === 'system_admin') {
+  if (role?.code?.toUpperCase() === 'ADMIN' || role?.code?.toLowerCase() === 'system_admin' || role?.permissions?.includes('*')) {
     return { can: true, scope: 'all' };
   }
 

@@ -38,14 +38,15 @@ export default function CRMPage() {
 
   const { data: rawLeads, loading } = useCollection(leadsQuery);
 
-  // 2. تطبيق الفلترة بناءً على الـ IDs المرجعية (Reference IDs)
+  // 2. تطبيق الفلترة الميدانية (Runtime Filtering)
+  // هنا يتم عزل البيانات بناءً على كود القسم الموجود في المراجع
   const leads = useMemo(() => {
     if (!viewAccess.can) return [];
     
-    // إذا كان النطاق 'all' يرى الجميع
+    // إذا كان النطاق 'all' (المنشأة كاملة) يرى الجميع
     if (viewAccess.scope === 'all') return rawLeads;
 
-    // الفلترة بناءً على departmentId أو createdBy
+    // الفلترة بناءً على ID القسم المرجعي (Dept) أو ID الموظف (Own)
     return rawLeads.filter(lead => canPerformOnRecord(
       viewAccess, 
       { uid: globalUser?.uid || '', departmentId: globalUser?.departmentId },
@@ -62,7 +63,7 @@ export default function CRMPage() {
         value: Number(newLead.value) || 0,
         createdAt: serverTimestamp(),
         createdBy: globalUser?.uid,
-        departmentId: globalUser?.departmentId || 'general' // ربط السجل بقسم المنشئ من المراجع
+        departmentId: globalUser?.departmentId || 'general' // ربط السجل آلياً بقسم الموظف
       });
       toast({ title: t('saved') });
       setNewLead({ name: '', company: '', status: 'new', value: '', email: '' });
@@ -89,7 +90,7 @@ export default function CRMPage() {
           <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
             {viewAccess.scope === 'all' 
               ? (isRtl ? 'عرض شامل للمنشأة' : 'Full Enterprise View') 
-              : (isRtl ? `عرض سجلات قسم: ${globalUser?.departmentId || '---'}` : `Department: ${globalUser?.departmentId}`)}
+              : (isRtl ? `فلترة مرجعية نشطة للقسم: ${globalUser?.departmentId || '---'}` : `Filtering by Dept ID: ${globalUser?.departmentId}`)}
           </p>
         </div>
         
@@ -120,7 +121,7 @@ export default function CRMPage() {
         )}
       </div>
 
-      <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
+      <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
         <CardHeader className="bg-slate-50 border-b p-6">
           <div className="relative w-full max-w-sm">
             <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

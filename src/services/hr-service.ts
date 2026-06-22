@@ -4,7 +4,6 @@ import {
   Firestore, 
   collection, 
   doc, 
-  addDoc, 
   updateDoc, 
   deleteDoc,
   setDoc,
@@ -14,7 +13,8 @@ import {
   getDocs,
   getDoc,
   orderBy,
-  limit
+  limit,
+  addDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { Employee, EmployeeAuditLog } from '@/types/hr';
@@ -46,7 +46,7 @@ export class HRService {
   }
 
   /**
-   * إضافة موظف جديد وربط بياناته بالهيكل المرجعي
+   * إضافة موظف جديد وربط بياناته بالهيكل المرجعي (ID-based)
    */
   async addEmployee(data: Omit<Employee, 'id' | 'createdAt' | 'updatedAt' | 'companyId'>) {
     ensureActionPermission(this.permissions, 'hr:create');
@@ -61,7 +61,6 @@ export class HRService {
       updatedAt: serverTimestamp(),
     };
 
-    // كتابة غير محظورة
     await setDoc(empRef, docData).catch((err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: empRef.path,
@@ -70,7 +69,7 @@ export class HRService {
       }));
     });
 
-    // المزامنة العالمية: الموظف يحمل الآن كود القسم وكود الدور
+    // مزامنة ID القسم والدور في السجل العالمي فوراً
     if (data.email) {
       await this.syncGlobalUserData(data.email, data.roleId, data.departmentId);
     }
@@ -79,7 +78,7 @@ export class HRService {
   }
 
   /**
-   * تحديث بيانات الموظف ومزامنة الهوية الأمنية
+   * تحديث بيانات الموظف ومزامنة الصلاحيات المرجعية
    */
   async updateEmployee(id: string, newData: Partial<Employee>, currentUser: { uid: string, name: string }) {
     ensureActionPermission(this.permissions, 'hr:edit');
@@ -100,7 +99,7 @@ export class HRService {
       }));
     });
 
-    // مزامنة التغييرات في القسم أو الدور فوراً
+    // إعادة المزامنة في حال تغير القسم أو الدور
     if ((newData.roleId && newData.roleId !== oldData.roleId) || 
         (newData.departmentId && newData.departmentId !== oldData.departmentId)) {
       await this.syncGlobalUserData(
@@ -126,8 +125,7 @@ export class HRService {
   }
 
   /**
-   * وظيفة المزامنة السيادية:
-   * تضمن أن "محرك الصلاحيات" يعرف القسم المرجعي والدور الأمني للموظف عند تسجيل الدخول.
+   * المزامنة السيادية: حقن المعرفات المرجعية في جيب الموظف (Global Context)
    */
   private async syncGlobalUserData(email: string, roleId?: string, departmentId?: string) {
     try {
@@ -138,12 +136,12 @@ export class HRService {
         const globalUserRef = doc(this.db, 'global_users', snap.docs[0].id);
         await updateDoc(globalUserRef, {
           roleId: roleId || '',
-          departmentId: departmentId || '', // تخزين ID القسم المرجعي (من مراجعك)
+          departmentId: departmentId || '', // الربط المرجعي هنا
           updatedAt: serverTimestamp()
         });
       }
     } catch (e) {
-      console.warn("Global security sync failed:", e);
+      console.warn("Security sync bypass:", e);
     }
   }
 
