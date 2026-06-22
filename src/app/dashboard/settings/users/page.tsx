@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,8 @@ import {
   Search, ShieldCheck, Mail, ArrowRight,
   UserCircle, Ban, CheckCircle2, UserCog,
   ShieldAlert, UserPlus, Info, Save,
-  LayoutGrid, Copy, Key, Eye, EyeOff
+  LayoutGrid, Copy, Key, Eye, EyeOff,
+  Pencil
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,7 +42,7 @@ export default function UsersManagementPage() {
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [showPassMap, setShowPassMap] = useState<Record<string, boolean>>({});
 
-  // فورم الإنشاء المباشر
+  // فورم الإنشاء
   const [createForm, setCreateForm] = useState({
     employeeId: '',
     roleId: '',
@@ -50,11 +51,17 @@ export default function UsersManagementPage() {
     email: ''
   });
 
+  // فورم التعديل
+  const [editForm, setEditForm] = useState({
+    displayName: '',
+    username: '',
+    roleId: '',
+  });
+
   const userService = useMemo(() => 
     db && companyId ? new UserService(db, companyId) : null, 
   [db, companyId]);
 
-  // داتا
   const usersQuery = useMemo(() => companyId && db ? query(collection(db, 'companies', companyId, 'users')) : null, [db, companyId]);
   const rolesQuery = useMemo(() => companyId && db ? query(collection(db, paths.roles(companyId)), orderBy('order')) : null, [db, companyId]);
   const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
@@ -62,6 +69,17 @@ export default function UsersManagementPage() {
   const { data: users, loading: usersLoading } = useCollection(usersQuery);
   const { data: roles } = useCollection<Role>(rolesQuery);
   const { data: employees } = useCollection<Employee>(empsQuery);
+
+  // تحديث فورم التعديل عند اختيار مستخدم
+  useEffect(() => {
+    if (editingUser) {
+      setEditForm({
+        displayName: editingUser.displayName || '',
+        username: editingUser.username || '',
+        roleId: editingUser.roleId || ''
+      });
+    }
+  }, [editingUser]);
 
   const handleCreateAccount = async () => {
     if (!userService || !createForm.employeeId || !createForm.password) return;
@@ -92,17 +110,24 @@ export default function UsersManagementPage() {
     }
   };
 
-  const handleUpdateRole = async (uid: string, roleId: string) => {
-    if (!userService) return;
-    setLoadingAction(uid);
+  const handleUpdateAccount = async () => {
+    if (!userService || !editingUser) return;
+    setLoadingAction(editingUser.id);
     try {
-      const role = roles?.find(r => r.id === roleId);
+      const role = roles?.find(r => r.id === editForm.roleId);
       if (!role) return;
-      await userService.updateUserRole(uid, role.id!, role.code || role.nameEn);
+
+      await userService.updateUserAccount(editingUser.id, {
+        displayName: editForm.displayName,
+        username: editForm.username,
+        roleId: role.id!,
+        roleCode: role.code
+      });
+
       toast({ title: t('saved') });
       setEditingUser(null);
-    } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
       setLoadingAction(null);
     }
@@ -155,7 +180,6 @@ export default function UsersManagementPage() {
                   <Key className="h-9 w-9 text-primary" />
                   {isRtl ? 'إعداد حساب دخول جديد' : 'Setup Login Account'}
                </DialogTitle>
-               <p className="text-slate-400 font-bold mt-2">{isRtl ? 'أدخل بيانات الدخول لتسليمها للموظف يدوياً.' : 'Enter login details to hand over to employee.'}</p>
             </div>
 
             <div className="p-10 space-y-6 text-start bg-white">
@@ -198,30 +222,14 @@ export default function UsersManagementPage() {
                 <div className="space-y-2">
                    <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'كلمة المرور' : 'Password'}</Label>
                    <Input value={createForm.password} onChange={e => setCreateForm({...createForm, password: e.target.value})} className="h-14 rounded-xl border-2 font-mono text-lg text-primary" placeholder="P@ssw0rd123" />
-                   <p className="text-[9px] text-slate-400 font-bold italic">{isRtl ? '* سيتم حفظ هذه الكلمة لتمكنك من مراجعتها لاحقاً.' : '* This password will be saved for your later review.'}</p>
                 </div>
 
-                <Button onClick={handleCreateAccount} disabled={loadingAction === 'creating' || !createForm.employeeId || !createForm.password} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 mt-4">
+                <Button onClick={handleCreateAccount} disabled={loadingAction === 'creating'} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 mt-4">
                    {loadingAction === 'creating' ? <Loader2 className="animate-spin h-6 w-6" /> : (isRtl ? 'إنشاء الحساب الآن' : 'Create Account Now')}
                 </Button>
             </div>
           </DialogContent>
         </Dialog>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-         <Card className="border-0 shadow-lg rounded-[2rem] p-6 text-start bg-white group">
-            <p className="text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">{isRtl ? 'إجمالي الحسابات' : 'Total Users'}</p>
-            <h3 className="text-4xl font-black font-headline text-slate-900">{users?.length || 0}</h3>
-         </Card>
-         <Card className="border-0 shadow-lg rounded-[2rem] p-6 text-start bg-white border-b-4 border-primary">
-            <p className="text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">{isRtl ? 'الأدوار المعرفة' : 'System Roles'}</p>
-            <h3 className="text-4xl font-black font-headline text-primary">{roles?.length || 0}</h3>
-         </Card>
-         <Card className="border-0 shadow-lg rounded-[2rem] p-6 text-start bg-white">
-            <p className="text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">{isRtl ? 'نشط حالياً' : 'Active Accounts'}</p>
-            <h3 className="text-4xl font-black font-headline text-emerald-600">{users?.filter((u: any) => u.isActive !== false).length || 0}</h3>
-         </Card>
       </div>
 
       <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
@@ -290,7 +298,9 @@ export default function UsersManagementPage() {
                   </TableCell>
                   <TableCell className="pe-8 text-end">
                      <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="icon" className="rounded-xl h-10 w-10" onClick={() => setEditingUser(u)}><UserCog className="h-5 w-5" /></Button>
+                        <Button variant="outline" size="icon" className="rounded-xl h-10 w-10 text-primary hover:bg-primary hover:text-white" onClick={() => setEditingUser(u)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
                         <Button 
                           variant="ghost" 
                           size="icon" 
@@ -309,30 +319,57 @@ export default function UsersManagementPage() {
         </CardContent>
       </Card>
 
-      {/* مودال تعديل الصلاحيات */}
+      {/* مودال التعديل الشامل */}
       <Dialog open={!!editingUser} onOpenChange={open => !open && setEditingUser(null)}>
          <DialogContent className="rounded-[3rem] p-0 overflow-hidden max-w-xl border-0 shadow-3xl" dir={dir}>
             <div className="bg-primary p-10 text-white text-start">
-               <DialogTitle className="text-3xl font-black font-headline">{isRtl ? 'تعديل الدور الأمني' : 'Change Security Role'}</DialogTitle>
-               <p className="text-white/80 font-bold mt-2">{editingUser?.displayName}</p>
+               <DialogTitle className="text-3xl font-black font-headline flex items-center gap-3">
+                  <UserCog className="h-9 w-9" />
+                  {isRtl ? 'تعديل حساب المستخدم' : 'Edit User Account'}
+               </DialogTitle>
+               <p className="text-white/80 font-bold mt-2">{editingUser?.email}</p>
             </div>
+            
             <div className="p-10 space-y-6 text-start bg-white">
-               <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'اختر القالب الجديد' : 'Select New Template'}</Label>
-               <div className="grid grid-cols-1 gap-4 max-h-[300px] overflow-y-auto">
-                  {roles?.map(role => (
-                    <div 
-                      key={role.id}
-                      onClick={() => handleUpdateRole(editingUser.id, role.id!, role.code || role.nameEn)}
-                      className={cn(
-                        "p-5 rounded-2xl border-2 cursor-pointer transition-all flex items-center justify-between",
-                        editingUser?.roleId === role.id ? "bg-primary/5 border-primary" : "bg-white border-slate-100 hover:border-primary/20"
-                      )}
-                    >
-                       <span className="font-black">{isRtl ? role.name : role.nameEn}</span>
-                       {loadingAction === editingUser?.id ? <Loader2 className="animate-spin h-5 w-5" /> : <ArrowRight className="h-5 w-5 text-slate-200" />}
-                    </div>
-                  ))}
+               <div className="space-y-2">
+                  <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'الاسم المعروض' : 'Display Name'}</Label>
+                  <Input value={editForm.displayName} onChange={e => setEditForm({...editForm, displayName: e.target.value})} className="h-12 rounded-xl border-2 font-bold" />
                </div>
+
+               <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                     <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'اسم المستخدم' : 'Username'}</Label>
+                     <Input value={editForm.username} onChange={e => setEditForm({...editForm, username: e.target.value})} className="h-12 rounded-xl border-2 font-mono" />
+                  </div>
+                  <div className="space-y-2">
+                     <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'الدور الأمني' : 'Role'}</Label>
+                     <Select value={editForm.roleId} onValueChange={v => setEditForm({...editForm, roleId: v})}>
+                        <SelectTrigger className="h-12 rounded-xl border-2 font-bold">
+                           <SelectValue placeholder="..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                           {roles?.map(role => (
+                             <SelectItem key={role.id} value={role.id!} className="font-bold">{isRtl ? role.name : role.nameEn}</SelectItem>
+                           ))}
+                        </SelectContent>
+                     </Select>
+                  </div>
+               </div>
+
+               <div className="pt-6 border-t flex items-start gap-3 bg-amber-50 p-4 rounded-2xl">
+                  <Info className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                  <p className="text-[10px] font-bold text-amber-800 leading-relaxed">
+                     {isRtl ? 'تنبيه: تغيير اليوزر أو الدور سيؤثر فوراً على صلاحيات الدخول ونطاق رؤية البيانات لهذا الموظف.' : 'Warning: Changing username or role immediately affects login permissions and data scope.'}
+                  </p>
+               </div>
+
+               <Button 
+                onClick={handleUpdateAccount} 
+                disabled={loadingAction === editingUser?.id} 
+                className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20"
+               >
+                  {loadingAction === editingUser?.id ? <Loader2 className="animate-spin h-6 w-6" /> : (isRtl ? 'حفظ التغييرات' : 'Save Changes')}
+               </Button>
             </div>
          </DialogContent>
       </Dialog>

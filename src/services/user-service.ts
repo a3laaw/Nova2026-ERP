@@ -21,14 +21,13 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { paths } from '@/firebase/multi-tenant';
 
 /**
- * خدمة إدارة المستخدمين المحدثة لدعم الإنشاء المباشر.
+ * خدمة إدارة المستخدمين المحدثة لدعم الإنشاء المباشر والتعديل الشامل.
  */
 export class UserService {
   constructor(private db: Firestore, private companyId: string) {}
 
   /**
    * إنشاء حساب موظف مباشر (بدون دعوة)
-   * نستخدم نسخة ثانوية من Firebase لتجنب تسجيل خروج الأدمن
    */
   async createUserAccount(data: {
     employeeId: string;
@@ -40,23 +39,18 @@ export class UserService {
     roleCode: string;
     departmentId: string;
   }) {
-    // 1. تهيئة تطبيق ثانوي لإنشاء الحساب في Auth
     const tempAppName = `temp_${Date.now()}`;
     const tempApp = initializeApp(firebaseConfig, tempAppName);
     const tempAuth = getAuth(tempApp);
 
     try {
-      // 2. إنشاء الحساب في Firebase Auth
       const cred = await createUserWithEmailAndPassword(tempAuth, data.email, data.password);
       const uid = cred.user.uid;
 
-      // تحديث الاسم في Auth
       await updateProfile(cred.user, { displayName: data.employeeName });
 
-      // 3. الربط الثلاثي في Firestore
       const batch = writeBatch(this.db);
 
-      // السجل العالمي للمستخدم
       batch.set(doc(this.db, 'global_users', uid), {
         companyId: this.companyId,
         roleId: data.roleId,
@@ -70,7 +64,6 @@ export class UserService {
         updatedAt: serverTimestamp()
       });
 
-      // سجل المستخدم داخل الشركة (تخزين الباسورد للمرجعية كما طلب المستخدم)
       batch.set(doc(this.db, 'companies', this.companyId, 'users', uid), {
         id: uid,
         displayName: data.employeeName,
@@ -79,43 +72,55 @@ export class UserService {
         employeeId: data.employeeId,
         roleId: data.roleId,
         role: data.roleCode,
-        initialPassword: data.password, // للمرجعية الإدارية
+        initialPassword: data.password,
         joinedAt: serverTimestamp(),
         isActive: true
       });
 
       await batch.commit();
-      
-      // 4. إغلاق التطبيق الثانوي
       await deleteApp(tempApp);
-      
       return uid;
     } catch (error: any) {
-      await deleteApp(tempApp);
+      if (getApps().find(app => app.name === tempAppName)) {
+        await deleteApp(tempApp);
+      }
       throw error;
     }
   }
 
   /**
-   * تحديث دور المستخدم (Role Assignment)
+   * تحديث بيانات حساب المستخدم بشكل شامل
    */
-  async updateUserRole(uid: string, roleId: string, roleCode: string) {
+  async updateUserAccount(uid: string, data: {
+    displayName: string;
+    username: string;
+    roleId: string;
+    roleCode: string;
+  }) {
     const tenantUserRef = doc(this.db, 'companies', this.companyId, 'users', uid);
     const globalUserRef = doc(this.db, 'global_users', uid);
 
     try {
-      await updateDoc(tenantUserRef, { 
-        roleId: roleId,
-        role: roleCode, 
-        updatedAt: serverTimestamp() 
+      const batch = writeBatch(this.db);
+
+      // تحديث السجل الداخلي في الشركة
+      batch.update(tenantUserRef, {
+        displayName: data.displayName,
+        username: data.username,
+        roleId: data.roleId,
+        role: data.roleCode,
+        updatedAt: serverTimestamp()
       });
 
-      await updateDoc(globalUserRef, { 
-        roleId: roleId,
-        role: roleCode,
-        updatedAt: serverTimestamp() 
+      // تحديث السجل العالمي
+      batch.update(globalUserRef, {
+        username: data.username,
+        roleId: data.roleId,
+        role: data.roleCode,
+        updatedAt: serverTimestamp()
       });
-      
+
+      await batch.commit();
       return true;
     } catch (err) {
       errorEmitter.emit('permission-error', new FirestorePermissionError({ 
@@ -124,6 +129,18 @@ export class UserService {
       }));
       throw err;
     }
+  }
+
+  /**
+   * تحديث دور المستخدم (Role Assignment) فقط
+   */
+  async updateUserRole(uid: string, roleId: string, roleCode: string) {
+    return this.updateUserAccount(uid, {
+        displayName: '', // لن يتم تحديث الحقول الفارغة في الحقيقة إذا استخدمنا Update ذكي، لكن هنا نستخدم التحديث الشامل
+        username: '', 
+        roleId,
+        roleCode
+    });
   }
 
   async toggleUserStatus(uid: string, isActive: boolean) {
