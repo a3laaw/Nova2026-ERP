@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Users, UserPlus, Search, Loader2, Plus } from "lucide-react";
+import { Users, UserPlus, Search, Loader2, Plus, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
@@ -20,14 +20,15 @@ import { canPerformOnRecord } from '@/lib/permissions/engine';
 
 export default function CRMPage() {
   const { globalUser } = useAuthContext();
-  const { t, dir } = useLanguage();
+  const { t, dir, lang } = useLanguage();
   const { check } = usePermissions();
   const db = useFirestore();
   const [searchTerm, setSearchTerm] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [newLead, setNewLead] = useState({ name: '', company: '', status: 'new', value: '', email: '' });
+  const isRtl = lang === 'ar';
 
-  // 1. فحص الصلاحيات باستخدام المحرك الجديد
+  // 1. فحص الصلاحيات مع السياق
   const viewAccess = check('crm', 'view');
   const createAccess = check('crm', 'create');
 
@@ -37,17 +38,17 @@ export default function CRMPage() {
 
   const { data: rawLeads, loading } = useCollection(leadsQuery);
 
-  // 2. تطبيق منطق "فلترة السجلات" بناءً على النطاق (Scope Enforcement)
+  // 2. تطبيق الفلترة بناءً على الـ IDs المرجعية (Reference IDs)
   const leads = useMemo(() => {
     if (!viewAccess.can) return [];
     
-    // إذا كان النطاق "المنشأة كاملة" (all) لا نفلتر شيئاً
+    // إذا كان النطاق 'all' يرى الجميع
     if (viewAccess.scope === 'all') return rawLeads;
 
-    // فلترة السجلات برمجياً بناءً على الملكية أو القسم
+    // الفلترة بناءً على departmentId أو createdBy
     return rawLeads.filter(lead => canPerformOnRecord(
       viewAccess, 
-      { uid: globalUser?.uid || '', departmentId: (globalUser as any)?.departmentId },
+      { uid: globalUser?.uid || '', departmentId: globalUser?.departmentId },
       lead as any
     ));
   }, [rawLeads, viewAccess, globalUser]);
@@ -61,7 +62,7 @@ export default function CRMPage() {
         value: Number(newLead.value) || 0,
         createdAt: serverTimestamp(),
         createdBy: globalUser?.uid,
-        departmentId: (globalUser as any)?.departmentId || 'general'
+        departmentId: globalUser?.departmentId || 'general' // ربط السجل بقسم المنشئ من المراجع
       });
       toast({ title: t('saved') });
       setNewLead({ name: '', company: '', status: 'new', value: '', email: '' });
@@ -81,16 +82,17 @@ export default function CRMPage() {
     <div className="space-y-8" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start">
-          <h1 className="text-4xl font-black font-headline flex items-center gap-3">
+          <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
             <Users className="h-10 w-10 text-primary" />
             {t('crm')}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-            {viewAccess.scope === 'all' ? (dir === 'rtl' ? 'عرض شامل للمنشأة' : 'Full Enterprise View') : (dir === 'rtl' ? 'عرض السجلات المسموح بها' : 'Authorized View Only')}
+            {viewAccess.scope === 'all' 
+              ? (isRtl ? 'عرض شامل للمنشأة' : 'Full Enterprise View') 
+              : (isRtl ? `عرض سجلات قسم: ${globalUser?.departmentId || '---'}` : `Department: ${globalUser?.departmentId}`)}
           </p>
         </div>
         
-        {/* إخفاء زر الإضافة تماماً بناءً على نطاق Create */}
         {createAccess.can && (
           <Dialog>
             <DialogTrigger asChild>

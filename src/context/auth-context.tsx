@@ -11,6 +11,7 @@ interface GlobalUserData {
   role: string;
   roleId?: string;
   roleCode?: string;
+  departmentId?: string; // إضافة معرف القسم للتحقق من الصلاحيات
   isDeveloper?: boolean;
   username: string;
 }
@@ -35,7 +36,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 1. مراقبة حالة المصادقة (Auth State)
   useEffect(() => {
     if (!auth) return;
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
@@ -49,7 +49,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, [auth]);
 
-  // 2. مراقبة بيانات المستخدم العالمي (Global User Data)
   useEffect(() => {
     if (!db || !user) return;
 
@@ -58,9 +57,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         companyId: 'dev_hq',
         role: 'developer',
         isDeveloper: true,
-        username: 'super_dev'
+        username: 'super_dev',
+        departmentId: 'HQ'
       });
-      setRoleData({ permissions: ['*'] } as any);
+      setRoleData({ permissions: ['*'], code: 'ADMIN' } as any);
       setLoading(false);
       return;
     }
@@ -70,7 +70,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (snap.exists()) {
         const data = snap.data() as GlobalUserData;
         setGlobalUser(data);
-        // إذا لم يكن هناك دور محدد، نتوقف عن التحميل هنا
         if (!data.roleId) setLoading(false);
       } else {
         setGlobalUser(null);
@@ -84,11 +83,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, [db, user]);
 
-  // 3. مراقبة بيانات الدور (Role Data) - تنفذ فقط عند توفر roleId
   useEffect(() => {
     if (!db || !globalUser?.companyId || !globalUser?.roleId) {
       setRoleData(null);
-      // إذا كنا في حالة مستخدم مسجل ولكن بدون صلاحيات دور، ننهي التحميل
       if (globalUser && !globalUser.roleId) setLoading(false);
       return;
     }

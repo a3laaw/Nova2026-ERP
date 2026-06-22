@@ -1,11 +1,11 @@
 /**
  * @fileOverview خطاف الصلاحيات المطور.
- * الجسر بين واجهة React ومحرك الصلاحيات.
+ * يقوم بتغذية المحرك ببيانات المستخدم الحالي (القسم والـ ID).
  */
 
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 import { useAuthContext } from '@/context/auth-context';
 import { hasResourceAccess, canViewModule } from '@/lib/permissions/engine';
 import { Action } from '@/lib/permissions/types';
@@ -17,16 +17,23 @@ export function usePermissions() {
   const isAdmin = globalUser?.role?.toLowerCase() === 'admin' || role?.code === 'ADMIN';
 
   /**
-   * الفحص الأساسي (هل يملك الفعل؟ وما هو النطاق؟)
+   * الفحص الأساسي مع تمرير سياق المستخدم (User Context)
    */
   const check = useCallback((resourceId: string, action: Action = 'view') => {
     if (isAdmin) return { can: true, scope: 'all' as const };
-    return hasResourceAccess(role, resourceId, action);
-  }, [role, isAdmin]);
+    
+    const access = hasResourceAccess(role, resourceId, action);
+    
+    // إرجاع الصلاحية مع تزويد الواجهة ببيانات الموظف للفلترة
+    return {
+      ...access,
+      userContext: {
+        uid: globalUser?.uid || '',
+        departmentId: globalUser?.departmentId || '' // القسم القادم من المراجع
+      }
+    };
+  }, [role, isAdmin, globalUser]);
 
-  /**
-   * دالة التحقق للسايدبار
-   */
   const canAccess = useCallback((resourceId: string) => {
     if (isAdmin) return true;
     return canViewModule(role, resourceId);
@@ -37,6 +44,10 @@ export function usePermissions() {
     isAdmin,
     check,
     canAccess,
+    userContext: {
+      uid: globalUser?.uid,
+      departmentId: globalUser?.departmentId
+    },
     role
   };
 }
