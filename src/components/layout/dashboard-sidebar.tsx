@@ -158,7 +158,7 @@ export function DashboardSidebar() {
             </div>
           </div>
         ) : (
-          <div className="mx-auto h-11 w-16 rounded-[1.2rem] bg-gradient-to-br from-[#FFB000] to-[#e87c24] flex items-center justify-center text-white shadow-xl">
+          <div className="mx-auto h-11 w-24 rounded-[1.2rem] bg-gradient-to-br from-[#FFB000] to-[#e87c24] flex items-center justify-center text-white shadow-xl transition-all">
              <Sparkles className="h-6 w-6" />
           </div>
         )}
@@ -208,7 +208,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
               <Link 
                 href={item.url}
                 className={cn(
-                  "flex h-11 w-16 items-center justify-center transition-all duration-300 rounded-2xl",
+                  "flex h-11 w-24 items-center justify-center transition-all duration-300 rounded-2xl",
                   isActive ? "bg-white text-[#e87c24] shadow-xl border-2 border-orange-50" : style
                 )}
               >
