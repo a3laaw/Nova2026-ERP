@@ -4,25 +4,29 @@ import {
   Firestore, 
   doc, 
   getDoc, 
+  getDocs,
   writeBatch, 
   serverTimestamp, 
   increment, 
-  collection 
+  collection,
+  query,
+  orderBy
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
-import { Transaction } from '@/types/transaction';
+import { Transaction, TransactionTimelineEvent, StageInstance } from '@/types/transaction';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { TechnicalStage } from '@/types/reference';
 
 /**
  * خدمة إدارة المعاملات الفنية (Technical Transactions Service).
- * مسؤولة عن الدورة المستندية لفتح المسارات الفنية والربط مع سجل العميل والجدول الزمني.
+ * مسؤولة عن الدورة المستندية لفتح المسارات الفنية، استنساخ المراحل، والربط الزمني.
  */
 export class TransactionService {
   constructor(private db: Firestore, private companyId: string) {}
 
   /**
-   * إنشاء معاملة فنية جديدة مع توثيق الأحداث في السجل الزمني وسجل العميل
+   * إنشاء معاملة فنية جديدة مع استنساخ كافة المراحل المرجعية وتوثيق الأحداث.
    */
   async createTransaction(data: {
     clientId: string;
@@ -46,18 +50,22 @@ export class TransactionService {
     }
 
     const client = clientSnap.data();
+
+    // 2. جلب المراحل الفنية المرجعية (Reference Technical Stages)
+    const stagesPath = paths.technicalStages(this.companyId, data.activityTypeId, data.serviceId, data.subServiceId);
+    const stagesSnap = await getDocs(query(collection(this.db, stagesPath), orderBy('order')));
     
-    // 2. توليد الرقم المتسلسل المهني (رقم الملف - تسلسل المعاملة)
+    // 3. توليد الرقم المتسلسل المهني (رقم الملف - تسلسل المعاملة)
     const currentCounter = client.transactionCounter || 0;
     const nextCounter = currentCounter + 1;
     const transactionNumber = `${client.fileNumber}-${nextCounter.toString().padStart(2, '0')}`;
 
-    // 3. تجهيز مراجع المستندات
+    // 4. تجهيز الـ Batch لإجراء عملية ذرية (Atomic)
     const batch = writeBatch(this.db);
     const transRef = doc(collection(this.db, paths.transactions(this.companyId)));
     const transactionId = transRef.id;
 
-    // أ. بيانات المعاملة الأساسية
+    // أ. إنشاء سجل المعاملة الأساسي
     const transactionData: Transaction = {
       id: transactionId,
       transactionNumber,
@@ -79,12 +87,11 @@ export class TransactionService {
       createdBy: userId,
       updatedBy: userId
     };
-
     batch.set(transRef, transactionData);
 
-    // ب. إضافة حدث في الجدول الزمني للمعاملة (Timeline Event)
-    const timelineRef = doc(collection(this.db, `${paths.transactions(this.companyId)}/${transactionId}/timeline`));
-    batch.set(timelineRef, {
+    // ب. إضافة حدث افتتاح المعاملة في الجدول الزمني (Timeline)
+    const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
+    const timelineData: Omit<TransactionTimelineEvent, 'id'> = {
       transactionId,
       type: 'system',
       content: `تم افتتاح المعاملة الفنية بنجاح وبدء المسار التشغيلي لخدمة: ${data.subServiceName}`,
@@ -92,7 +99,8 @@ export class TransactionService {
       userName,
       companyId: this.companyId,
       createdAt: serverTimestamp()
-    });
+    };
+    batch.set(timelineRef, timelineData);
 
     // ج. إضافة حدث في سجل تاريخ العميل (Client History)
     const historyRef = doc(collection(this.db, paths.clientHistory(this.companyId, data.clientId)));
@@ -112,7 +120,43 @@ export class TransactionService {
       updatedAt: serverTimestamp()
     });
 
-    // 4. تنفيذ العملية بشكل ذري (Atomic Transaction)
+    // هـ. استنساخ المراحل الفنية إلى نسخ تنفيذية (Stage Instances)
+    if (!stagesSnap.empty) {
+      const instancesCollRef = collection(this.db, paths.transactionStages(this.companyId, transactionId));
+      
+      stagesSnap.docs.forEach((stageDoc) => {
+        const refStage = stageDoc.data() as TechnicalStage;
+        const instanceRef = doc(instancesCollRef);
+        
+        const instanceData: Omit<StageInstance, 'id'> = {
+          transactionId,
+          technicalStageId: stageDoc.id,
+          code: refStage.code,
+          name: refStage.name,
+          description: refStage.description || '',
+          order: refStage.order,
+          isNumeric: refStage.isNumeric,
+          numericTarget: refStage.numericTarget,
+          currentCount: 0,
+          isTimed: refStage.isTimed,
+          timeTargetDays: refStage.timeTargetDays,
+          isRequired: refStage.isRequired,
+          isEditable: refStage.isEditable,
+          nextStageIds: refStage.nextStageIds || [],
+          status: 'pending',
+          activityTypeId: data.activityTypeId,
+          serviceId: data.serviceId,
+          subServiceId: data.subServiceId,
+          companyId: this.companyId,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        };
+        
+        batch.set(instanceRef, instanceData);
+      });
+    }
+
+    // 5. تنفيذ العملية الجماعية
     return batch.commit().catch((err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: transRef.path,

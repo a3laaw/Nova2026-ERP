@@ -25,9 +25,32 @@ export interface Transaction extends BaseReference {
 }
 
 export interface TransactionTimelineEvent extends BaseReference {
+  id?: string;
   transactionId: string;
   type: 'system' | 'stage_start' | 'stage_complete' | 'comment';
   content: string;
   userId: string;
   userName: string;
+}
+
+export interface StageInstance extends BaseReference {
+  id?: string;
+  transactionId: string;
+  technicalStageId: string;
+  code: string;
+  name: string;
+  description?: string;
+  order: number;
+  isNumeric: boolean;
+  numericTarget?: number | null;
+  currentCount: number;
+  isTimed: boolean;
+  timeTargetDays?: number | null;
+  isRequired: boolean;
+  isEditable: boolean;
+  nextStageIds: string[];
+  status: 'pending' | 'in-progress' | 'completed' | 'skipped';
+  activityTypeId: string;
+  serviceId: string;
+  subServiceId: string;
 }
