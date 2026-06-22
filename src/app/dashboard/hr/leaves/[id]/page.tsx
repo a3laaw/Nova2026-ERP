@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -39,7 +38,11 @@ export default function LeaveDetailsPage() {
   const isRtl = lang === 'ar';
 
   const [processing, setProcessing] = useState(false);
+  
+  // تواريخ مرنة للعمليات
+  const [actualDepartureDate, setActualDepartureDate] = useState(new Date().toISOString().split('T')[0]);
   const [actualReturnDate, setActualReturnDate] = useState(new Date().toISOString().split('T')[0]);
+  
   const [editForm, setEditForm] = useState({
     comment: '',
     startDate: '',
@@ -66,6 +69,10 @@ export default function LeaveDetailsPage() {
         endDate: leave.endDate,
         workingDays: leave.workingDays
       });
+      // تهيئة تواريخ العمليات بتاريخ اليوم كافتراضي
+      const today = new Date().toISOString().split('T')[0];
+      setActualDepartureDate(today);
+      setActualReturnDate(today);
     }
   }, [leave]);
 
@@ -78,7 +85,8 @@ export default function LeaveDetailsPage() {
         startDate: editForm.startDate,
         endDate: editForm.endDate,
         workingDays: editForm.workingDays,
-        actualReturnDate: actualReturnDate
+        actualReturnDate: actualReturnDate,
+        actualDepartureDate: actualDepartureDate
       });
       toast({ title: t('saved') });
     } catch (e) {
@@ -223,36 +231,47 @@ export default function LeaveDetailsPage() {
                     {/* إجراءات المسار الزمني (خدمة ذاتية ورقابة) */}
                     <div className="pt-8 border-t space-y-6 print:hidden">
                        <h3 className="font-black text-lg flex items-center gap-2 text-slate-800">
-                          <History className="h-5 w-5 text-primary" /> {isRtl ? 'إجراءات المسار الزمني' : 'Timeline Actions'}
+                          <History className="h-5 w-5 text-primary" /> {isRtl ? 'إجراءات المسار الزمني (التتبع الفعلي)' : 'Timeline Actions'}
                        </h3>
 
-                       <div className="grid grid-cols-1 gap-4">
-                          {/* 1. تأكيد المغادرة: متاح للموظف وصاحب الصلاحية */}
+                       <div className="grid grid-cols-1 gap-6">
+                          {/* 1. تأكيد المغادرة: مع مرونة التاريخ */}
                           {leave.status === 'approved' && (isOwner || isAdmin) && (
-                            <div className="p-6 rounded-3xl bg-blue-50 border-2 border-blue-100 flex items-center justify-between animate-in zoom-in-95">
+                            <div className="p-8 rounded-[2.5rem] bg-blue-50 border-2 border-blue-100 space-y-6 animate-in zoom-in-95">
                                <div className="text-start">
-                                  <h4 className="font-black text-blue-900">{isRtl ? 'تأكيد المغادرة في إجازة' : 'Confirm Departure'}</h4>
-                                  <p className="text-xs font-bold text-blue-700 opacity-70">{isRtl ? 'يضغط الموظف هنا عند بدء إجازته فعلياً.' : 'Employee clicks when starting leave.'}</p>
+                                  <h4 className="font-black text-xl text-blue-900 flex items-center gap-2">
+                                     <PlaneTakeoff className="h-6 w-6" /> {isRtl ? 'تأكيد المغادرة في إجازة' : 'Confirm Departure'}
+                                  </h4>
+                                  <p className="text-sm font-bold text-blue-700/60 mt-1">{isRtl ? 'سجل تاريخ خروج الموظف الفعلي لبدء تتبع الحالة.' : 'Record actual departure date to start tracking.'}</p>
                                </div>
-                               <Button onClick={() => handleAction('on-leave')} disabled={processing} className="bg-blue-600 text-white font-black rounded-xl h-12 px-8">
-                                  {processing ? <Loader2 className="animate-spin h-5 w-5" /> : <PlaneTakeoff className="me-2 h-5 w-5" />}
-                                  {isRtl ? 'تأكيد المغادرة' : 'Confirm'}
-                                </Button>
+                               <div className="flex flex-col md:flex-row items-end gap-4 bg-white/50 p-6 rounded-3xl border border-blue-100">
+                                  <div className="flex-1 space-y-2 w-full">
+                                     <Label className="text-[10px] font-black text-blue-400 uppercase">{isRtl ? 'تاريخ الخروج الفعلي' : 'Actual Departure Date'}</Label>
+                                     <SmartDateInput value={actualDepartureDate} onChange={setActualDepartureDate} />
+                                  </div>
+                                  <Button onClick={() => handleAction('on-leave')} disabled={processing} className="w-full md:w-48 h-12 rounded-xl bg-blue-600 text-white font-black shadow-lg">
+                                     {processing ? <Loader2 className="animate-spin h-5 w-5" /> : isRtl ? 'تأكيد الخروج' : 'Confirm'}
+                                  </Button>
+                               </div>
                             </div>
                           )}
 
-                          {/* 2. تسجيل العودة: متاح للموظف وصاحب الصلاحية */}
+                          {/* 2. تسجيل العودة: مع مرونة التاريخ (الحالة الأهم في النسيان) */}
                           {leave.status === 'on-leave' && (isOwner || isAdmin) && (
-                            <div className="p-6 rounded-3xl bg-purple-50 border-2 border-purple-100 space-y-4 animate-in zoom-in-95">
+                            <div className="p-8 rounded-[2.5rem] bg-purple-50 border-2 border-purple-100 space-y-6 animate-in zoom-in-95">
                                <div className="text-start">
-                                  <h4 className="font-black text-purple-900">{isRtl ? 'تسجيل العودة من الإجازة' : 'Record Return'}</h4>
-                                  <p className="text-xs font-bold text-purple-700 opacity-70">{isRtl ? 'أدخل تاريخ وصولك الفعلي للمنشأة.' : 'Enter your actual return date.'}</p>
+                                  <h4 className="font-black text-xl text-purple-900 flex items-center gap-2">
+                                     <PlaneLanding className="h-6 w-6" /> {isRtl ? 'تسجيل العودة من الإجازة' : 'Record Return'}
+                                  </h4>
+                                  <p className="text-sm font-bold text-purple-700/60 mt-1">{isRtl ? 'في حال نسيان التسجيل فوراً، يرجى اختيار التاريخ الصحيح لعودتك.' : 'If you forgot to register, please select your actual return date.'}</p>
                                </div>
-                               <div className="flex items-center gap-4">
-                                  <div className="flex-1"><SmartDateInput value={actualReturnDate} onChange={setActualReturnDate} /></div>
-                                  <Button onClick={() => handleAction('returned')} disabled={processing} className="bg-purple-600 text-white font-black rounded-xl h-12 px-8">
-                                     {processing ? <Loader2 className="animate-spin h-5 w-5" /> : <PlaneLanding className="me-2 h-5 w-5" />}
-                                     {isRtl ? 'تسجيل العودة' : 'Record'}
+                               <div className="flex flex-col md:flex-row items-end gap-4 bg-white/50 p-6 rounded-3xl border border-purple-100">
+                                  <div className="flex-1 space-y-2 w-full">
+                                     <Label className="text-[10px] font-black text-purple-400 uppercase">{isRtl ? 'تاريخ الوصول الفعلي' : 'Actual Return Date'}</Label>
+                                     <SmartDateInput value={actualReturnDate} onChange={setActualReturnDate} />
+                                  </div>
+                                  <Button onClick={() => handleAction('returned')} disabled={processing} className="w-full md:w-48 h-12 rounded-xl bg-purple-600 text-white font-black shadow-lg">
+                                     {processing ? <Loader2 className="animate-spin h-5 w-5" /> : isRtl ? 'تسجيل العودة' : 'Record'}
                                   </Button>
                                </div>
                             </div>
@@ -260,14 +279,20 @@ export default function LeaveDetailsPage() {
 
                           {/* 3. اعتماد المباشرة: متاح للمسؤول/HR فقط (رقابة) */}
                           {leave.status === 'returned' && isAdmin && (
-                            <div className="p-6 rounded-3xl bg-emerald-50 border-2 border-emerald-100 flex items-center justify-between animate-in zoom-in-95">
+                            <div className="p-8 rounded-[2.5rem] bg-emerald-50 border-2 border-emerald-100 flex items-center justify-between animate-in zoom-in-95">
                                <div className="text-start">
-                                  <h4 className="font-black text-emerald-900">{isRtl ? 'اعتماد مباشرة العمل' : 'Confirm Work Commencement'}</h4>
-                                  <p className="text-xs font-bold text-emerald-700 opacity-70">{isRtl ? 'إقرار إداري بأن الموظف استلم مهامه ميدانياً.' : 'Admin confirmation that the employee is on duty.'}</p>
+                                  <h4 className="font-black text-emerald-900 flex items-center gap-2">
+                                     <Briefcase className="h-6 w-6" /> {isRtl ? 'اعتماد مباشرة العمل' : 'Confirm Work Commencement'}
+                                  </h4>
+                                  <p className="text-xs font-bold text-emerald-700 opacity-70">{isRtl ? 'إقرار إداري بأن الموظف استلم مهامه ميدانياً بناءً على تاريخ العودة المسجل.' : 'Admin confirmation that the employee is on duty.'}</p>
+                                  {leave.actualReturnDate && (
+                                     <Badge className="mt-3 bg-white text-emerald-600 border-emerald-100 font-mono">
+                                        {isRtl ? 'تاريخ العودة المسجل:' : 'Return Date:'} {leave.actualReturnDate}
+                                     </Badge>
+                                  )}
                                </div>
-                               <Button onClick={() => handleAction('commenced')} disabled={processing} className="bg-emerald-600 text-white font-black rounded-xl h-12 px-8">
-                                  {processing ? <Loader2 className="animate-spin h-5 w-5" /> : <Briefcase className="me-2 h-5 w-5" />}
-                                  {isRtl ? 'مباشرة عمل' : 'Commence'}
+                               <Button onClick={() => handleAction('commenced')} disabled={processing} className="bg-emerald-600 text-white font-black rounded-xl h-14 px-10 shadow-xl shadow-emerald-100">
+                                  {processing ? <Loader2 className="animate-spin h-5 w-5" /> : isRtl ? 'اعتماد المباشرة' : 'Commence'}
                                </Button>
                             </div>
                           )}
@@ -279,7 +304,7 @@ export default function LeaveDetailsPage() {
 
            <div className="space-y-6">
               <Card className="border-0 shadow-lg rounded-[2.5rem] bg-slate-900 text-white p-8 text-start space-y-6">
-                 <h3 className="font-black text-sm uppercase tracking-widest text-primary">{isRtl ? 'سجل التدقيق' : 'Audit Trail'}</h3>
+                 <h3 className="font-black text-sm uppercase tracking-widest text-primary">{isRtl ? 'سجل التدقيق الزمني' : 'Audit Trail'}</h3>
                  <div className="space-y-6">
                     <div className="flex gap-4 items-start">
                        <div className="h-2 w-2 rounded-full bg-slate-400 mt-1.5" />
@@ -297,8 +322,27 @@ export default function LeaveDetailsPage() {
                          </div>
                       </div>
                     )}
+                    {leave.actualReturnDate && (
+                      <div className="flex gap-4 items-start border-t border-white/5 pt-4">
+                         <div className="h-2 w-2 rounded-full bg-purple-500 mt-1.5" />
+                         <div className="text-start">
+                            <p className="text-xs font-black">{isRtl ? 'تاريخ العودة الفعلي' : 'Actual Return'}</p>
+                            <p className="text-[10px] text-purple-400 font-black">{leave.actualReturnDate}</p>
+                         </div>
+                      </div>
+                    )}
                  </div>
               </Card>
+
+              <div className="p-6 rounded-[2rem] bg-amber-50 border-2 border-dashed border-amber-200 space-y-2">
+                 <div className="flex items-center gap-2 text-amber-600">
+                    <Info className="h-4 w-4" />
+                    <span className="text-[10px] font-black uppercase">{isRtl ? 'تنبيه التدقيق' : 'Audit Note'}</span>
+                 </div>
+                 <p className="text-[10px] text-slate-600 font-bold leading-relaxed text-start">
+                    {isRtl ? 'يتم حفظ "وقت ضغطة الزر" و "التاريخ الفعلي المختار" بشكل منفصل لضمان أعلى مستويات التدقيق الإداري ومنع التلاعب.' : 'System saves both button-click time and actual selected date for audit integrity.'}
+                 </p>
+              </div>
            </div>
         </div>
       </PrintWrapper>

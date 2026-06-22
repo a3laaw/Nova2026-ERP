@@ -30,7 +30,6 @@ export class LeaveService {
   async submitRequest(data: Omit<LeaveRequest, 'id' | 'createdAt' | 'updatedAt' | 'companyId' | 'status'>, departmentId?: string) {
     const path = paths.leaveRequests(this.companyId);
     
-    // فحص التداخل الزمني
     const overlapQuery = query(
       collection(this.db, path),
       where('userId', '==', data.userId)
@@ -71,7 +70,14 @@ export class LeaveService {
     leaveId: string, 
     status: LeaveRequest['status'], 
     adminId: string, 
-    payload: { comment?: string, startDate?: string, endDate?: string, workingDays?: number, actualReturnDate?: string } = {}
+    payload: { 
+      comment?: string, 
+      startDate?: string, 
+      endDate?: string, 
+      workingDays?: number, 
+      actualReturnDate?: string,
+      actualDepartureDate?: string 
+    } = {}
   ) {
     const leaveRef = doc(this.db, paths.leaveRequests(this.companyId), leaveId);
     const leaveSnap = await getDoc(leaveRef);
@@ -79,7 +85,6 @@ export class LeaveService {
     if (!leaveSnap.exists()) return;
     const leaveData = leaveSnap.data() as LeaveRequest;
     
-    // تصحيح: استخدام employeeId المخزن في الطلب للوصول لملف الموظف الصحيح
     const empRef = doc(this.db, paths.employees(this.companyId), leaveData.employeeId);
 
     const batch = writeBatch(this.db);
@@ -99,7 +104,6 @@ export class LeaveService {
       const finalWorkingDays = payload.workingDays !== undefined ? payload.workingDays : leaveData.workingDays;
       updateData.workingDays = finalWorkingDays;
 
-      // تحديث الأرصدة في ملف الموظف (الاستهداف الصحيح للملف)
       if (leaveData.type === 'annual') {
         batch.update(empRef, { annualLeaveBalance: increment(-finalWorkingDays) });
       } else if (leaveData.type === 'sick') {
@@ -113,6 +117,7 @@ export class LeaveService {
     }
     else if (status === 'on-leave') {
       updateData.departureConfirmedAt = serverTimestamp();
+      updateData.actualDepartureDate = payload.actualDepartureDate || new Date().toISOString().split('T')[0];
       batch.update(empRef, { status: 'on-leave' });
     }
     else if (status === 'returned') {
