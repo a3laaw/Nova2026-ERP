@@ -5,10 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Calculator, RefreshCw, CheckCircle2, AlertTriangle, Sparkles } from "lucide-react";
+import { Calculator, RefreshCw, CheckCircle2, AlertTriangle, Sparkles, Send } from "lucide-react";
 import { reconcileBankStatement } from "@/ai/flows/reconcile-bank-statement-flow";
 import { toast } from "@/hooks/use-toast";
 import { useLanguage } from '@/context/language-context';
+import { usePermissions } from '@/hooks/use-permissions';
 import { cn } from '@/lib/utils';
 
 const initialBankEntries = [
@@ -25,6 +26,7 @@ const initialLedgerEntries = [
 
 export default function AccountingPage() {
   const { t, dir } = useLanguage();
+  const { check } = usePermissions();
   const [reconciling, setReconciling] = useState(false);
   const [reconResult, setReconResult] = useState<any>(null);
 
@@ -53,12 +55,21 @@ export default function AccountingPage() {
 
   return (
     <div className="space-y-8" dir={dir}>
-      <div className="text-start">
-        <h1 className="text-4xl font-black font-headline flex items-center gap-3">
-          <Calculator className="h-10 w-10 text-primary" />
-          {t('accounting')}
-        </h1>
-        <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">{t('smartReconciliation')}</p>
+      <div className="flex justify-between items-center">
+        <div className="text-start">
+          <h1 className="text-4xl font-black font-headline flex items-center gap-3">
+            <Calculator className="h-10 w-10 text-primary" />
+            {t('accounting')}
+          </h1>
+          <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">{t('smartReconciliation')}</p>
+        </div>
+        
+        {/* زر الترحيل النهائي يظهر فقط إذا كان يملك صلاحية post بنطاق all */}
+        {check('accounting', 'post').can && (
+           <Button className="bg-emerald-600 text-white font-black rounded-xl h-12 px-6 gap-2 shadow-xl shadow-emerald-100">
+              <Send className="h-4 w-4" /> {t('post') || 'Post All'}
+           </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -165,23 +176,6 @@ export default function AccountingPage() {
                     <p className="text-base font-bold text-secondary-foreground leading-relaxed">{match.reason}</p>
                   </div>
                 ))}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6">
-              <div className="p-6 rounded-[2rem] bg-amber-50 border-2 border-amber-200 space-y-4">
-                <div className={cn("flex items-center gap-3 text-amber-800 font-black", dir === 'rtl' ? 'flex-row-reverse' : 'flex-row')}>
-                  <AlertTriangle className="h-6 w-6" />
-                  <h5 className="text-lg">{t('bankStatement')}</h5>
-                </div>
-                <p className="text-sm font-bold text-amber-700">{reconResult.unmatchedBankEntries?.length || 0} {t('closed')}</p>
-              </div>
-              <div className="p-6 rounded-[2rem] bg-blue-50 border-2 border-blue-200 space-y-4">
-                <div className={cn("flex items-center gap-3 text-blue-800 font-black", dir === 'rtl' ? 'flex-row-reverse' : 'flex-row')}>
-                  <CheckCircle2 className="h-6 w-6" />
-                  <h5 className="text-lg">{t('ledger')}</h5>
-                </div>
-                <p className="text-sm font-bold text-blue-700">{reconResult.unmatchedLedgerEntries?.length || 0} {t('closed')}</p>
               </div>
             </div>
           </CardContent>

@@ -1,8 +1,17 @@
 /**
  * @fileOverview محرك اتخاذ القرار الأمني (The Sovereign Auth Engine).
+ * يدعم التحقق من الصلاحية مع النطاق (Scope) ومعطيات السجل (Record Data).
  */
 
 import { RoleMatrix, Action, Scope } from './types';
+
+/**
+ * النتيجة التفصيلية لعملية التحقق
+ */
+export interface AccessResult {
+  can: boolean;
+  scope: Scope;
+}
 
 /**
  * التحقق من صلاحية الوصول لمورد معين وفعل محدد
@@ -11,7 +20,7 @@ export function hasResourceAccess(
   role: RoleMatrix | null,
   resourceId: string,
   action: Action = 'view'
-): { can: boolean; scope: Scope } {
+): AccessResult {
   
   if (!resourceId) return { can: false, scope: 'none' };
 
@@ -24,7 +33,7 @@ export function hasResourceAccess(
     return { can: false, scope: 'none' };
   }
 
-  // 2. البحث الدقيق في المصفوفة (Case-insensitive)
+  // 2. البحث الدقيق في المصفوفة
   const rule = role.matrix.find(m => 
     m?.resourceId?.toLowerCase() === resourceId.toLowerCase() && 
     m.action === action
@@ -38,19 +47,42 @@ export function hasResourceAccess(
 }
 
 /**
+ * دالة التحقق "الميداني" (Field Validation):
+ * هل يحق لهذا المستخدم تنفيذ هذا الفعل على هذا السجل (Record) تحديداً؟
+ */
+export function canPerformOnRecord(
+  access: AccessResult,
+  user: { uid: string; departmentId?: string },
+  record: { userId?: string; departmentId?: string }
+): boolean {
+  if (!access.can) return false;
+  if (access.scope === 'all') return true; // يرى كل شيء في المنشأة
+  
+  if (access.scope === 'dept') {
+    // يحق له إذا كان السجل يخص قسمه
+    return !!(user.departmentId && record.departmentId && user.departmentId === record.departmentId);
+  }
+
+  if (access.scope === 'own') {
+    // يحق له إذا كان هو صاحب السجل
+    return !!(user.uid && record.userId && user.uid === record.userId);
+  }
+
+  return false;
+}
+
+/**
  * دالة السايدبار: هل الموظف مخول برؤية هذا الموديول؟
  */
 export function canViewModule(role: RoleMatrix | null, resourceId: string): boolean {
   if (!resourceId) return false;
 
-  // الأدمن يرى كل شيء
   if (role?.code?.toLowerCase() === 'admin' || role?.code?.toLowerCase() === 'system_admin') {
     return true;
   }
   
   if (!role || !role.matrix) return false;
 
-  // يرى الموديول إذا كان يملك أي صلاحية بداخله (حتى لو عرض فقط)
   return role.matrix.some(m => 
     m?.resourceId?.toLowerCase() === resourceId.toLowerCase() && 
     m.scope !== 'none'
