@@ -1,5 +1,6 @@
 /**
  * @fileOverview تعريف الأنواع الأساسية لنظام الصلاحيات المطور.
+ * تم تحديث النطاقات لتشمل مستويات أكثر دقة.
  */
 
 export type Action = 
@@ -7,6 +8,13 @@ export type Action =
   | 'post' | 'unpost' | 'approve' | 'archive' 
   | 'transfer' | 'print' | 'export' | 'seed';
 
+/**
+ * نطاقات الوصول (Access Scopes):
+ * - none: لا يوجد وصول
+ * - own: السجلات الخاصة بالمستخدم فقط
+ * - dept: سجلات القسم التابع له المستخدم
+ * - all: كافة سجلات المنشأة
+ */
 export type Scope = 'none' | 'own' | 'dept' | 'all';
 
 export interface PermissionRule {
@@ -16,11 +24,11 @@ export interface PermissionRule {
 }
 
 export interface SystemResource {
-  id: string; // المعرف الموحد للموديول (e.g. 'accounting')
+  id: string;
   labelAr: string;
   labelEn: string;
-  module: string; // تصنيف وظيفي
-  allowedActions: Action[]; // الأفعال المخصصة لطبيعة هذا المورد
+  module: string;
+  allowedActions: Action[];
 }
 
 export interface RoleMatrix {

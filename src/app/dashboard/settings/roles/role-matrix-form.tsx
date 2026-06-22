@@ -1,6 +1,6 @@
 /**
- * @fileOverview واجهة مصفوفة الصلاحيات الديناميكية.
- * تولد الأعمدة والأفعال بناءً على كتالوج الموارد المحدث.
+ * @fileOverview واجهة مصفوفة الصلاحيات الديناميكية المطورة.
+ * تم إضافة خيار "القسم" لنطاقات الوصول.
  */
 
 'use client';
@@ -14,7 +14,8 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   ShieldCheck, Save, X, Loader2, 
-  Settings2, LayoutGrid, Globe, User, Users
+  Settings2, LayoutGrid, Globe, User, Users,
+  Building2
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { Role } from '@/types/roles';
@@ -106,10 +107,12 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
     }
   };
 
-  const SCOPES: { value: Scope; label: string; icon: any }[] = [
-    { value: 'none', label: isRtl ? 'محجوب' : 'None', icon: X },
-    { value: 'own', label: isRtl ? 'خاص بالموظف' : 'Own Records', icon: User },
-    { value: 'all', label: isRtl ? 'المنشأة كاملة' : 'Full Access', icon: Globe },
+  // تعريف النطاقات (Scopes) المتاحة للاختيار
+  const SCOPES: { value: Scope; label: string; icon: any; color: string }[] = [
+    { value: 'none', label: isRtl ? 'محجوب' : 'None', icon: X, color: 'text-slate-400' },
+    { value: 'own', label: isRtl ? 'خاص بالموظف' : 'Own Only', icon: User, color: 'text-blue-500' },
+    { value: 'dept', label: isRtl ? 'نطاق القسم' : 'Department', icon: Users, color: 'text-orange-500' },
+    { value: 'all', label: isRtl ? 'المنشأة كاملة' : 'Full Access', icon: Globe, color: 'text-emerald-500' },
   ];
 
   return (
@@ -150,7 +153,7 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
                  </TableHeader>
                  <TableBody>
                     {SYSTEM_RESOURCES.map((resource) => (
-                       <TableRow key={resource.id} className="hover:bg-slate-50/50 transition-colors">
+                       <TableRow key={resource.id} className="hover:bg-slate-50/50 transition-colors border-b-slate-100">
                           <TableCell className="py-8 ps-8">
                              <div className="flex items-center gap-3">
                                 <div className="h-10 w-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary shadow-sm border border-primary/10">
@@ -166,33 +169,43 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
                           </TableCell>
                           <TableCell>
                              <div className="flex flex-wrap gap-6">
-                                {resource.allowedActions.map((action) => (
-                                   <div key={action} className="flex flex-col gap-2 min-w-[140px] text-start">
-                                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                         {isRtl ? ACTION_LABELS[action].ar : ACTION_LABELS[action].en}
-                                      </span>
-                                      <Select 
-                                        value={getScope(resource.id, action)} 
-                                        onValueChange={(v: Scope) => setScope(resource.id, action, v)}
-                                      >
-                                         <SelectTrigger className={cn(
-                                           "h-10 rounded-xl border-2 text-[10px] font-black transition-all",
-                                           getScope(resource.id, action) !== 'none' ? "border-primary/30 bg-primary/5 text-primary shadow-sm" : "bg-white border-slate-100"
-                                         )}>
-                                            <SelectValue />
-                                         </SelectTrigger>
-                                         <SelectContent className="rounded-2xl">
-                                            {SCOPES.map(s => (
-                                               <SelectItem key={s.value} value={s.value} className="font-bold text-xs">
-                                                  <div className="flex items-center gap-2">
-                                                     <s.icon className="h-3.5 w-3.5" /> {s.label}
-                                                  </div>
-                                               </SelectItem>
-                                            ))}
-                                         </SelectContent>
-                                      </Select>
-                                   </div>
-                                ))}
+                                {resource.allowedActions.map((action) => {
+                                   const currentScope = getScope(resource.id, action);
+                                   const scopeInfo = SCOPES.find(s => s.value === currentScope);
+
+                                   return (
+                                     <div key={action} className="flex flex-col gap-2 min-w-[150px] text-start">
+                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                           {isRtl ? ACTION_LABELS[action].ar : ACTION_LABELS[action].en}
+                                        </span>
+                                        <Select 
+                                          value={currentScope} 
+                                          onValueChange={(v: Scope) => setScope(resource.id, action, v)}
+                                        >
+                                           <SelectTrigger className={cn(
+                                             "h-11 rounded-xl border-2 text-[10px] font-black transition-all",
+                                             currentScope !== 'none' ? "border-primary/30 bg-primary/5 text-primary shadow-sm" : "bg-white border-slate-100"
+                                           )}>
+                                              <SelectValue>
+                                                 <div className="flex items-center gap-2">
+                                                    {scopeInfo?.icon && <scopeInfo.icon className={cn("h-3.5 w-3.5", scopeInfo.color)} />}
+                                                    {scopeInfo?.label}
+                                                 </div>
+                                              </SelectValue>
+                                           </SelectTrigger>
+                                           <SelectContent className="rounded-2xl">
+                                              {SCOPES.map(s => (
+                                                 <SelectItem key={s.value} value={s.value} className="font-bold text-xs py-3">
+                                                    <div className="flex items-center gap-2">
+                                                       <s.icon className={cn("h-4 w-4", s.color)} /> {s.label}
+                                                    </div>
+                                                 </SelectItem>
+                                              ))}
+                                           </SelectContent>
+                                        </Select>
+                                     </div>
+                                   );
+                                })}
                              </div>
                           </TableCell>
                        </TableRow>
@@ -202,13 +215,16 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
            </div>
 
            <div className="p-10 bg-slate-50 border-t flex flex-col md:flex-row justify-between items-center gap-6">
-              <div className="flex items-start gap-3 max-w-md text-start">
-                 <Settings2 className="h-5 w-5 text-slate-300 shrink-0 mt-1" />
-                 <p className="text-[10px] font-bold text-slate-400 leading-relaxed italic">
-                    * {isRtl 
-                      ? 'يتم تطبيق الصلاحيات ديناميكياً بناءً على نوع المورد. الأفعال الظاهرة أعلاه هي فقط ما يدعمه الموديول برمجياً.' 
-                      : 'Permissions are applied dynamically per resource. Actions shown are only those supported by the module logic.'}
-                 </p>
+              <div className="flex items-start gap-4 max-w-md text-start">
+                 <Building2 className="h-6 w-6 text-slate-300 shrink-0 mt-1" />
+                 <div>
+                    <h5 className="text-xs font-black text-slate-700 uppercase tracking-widest">{isRtl ? 'دليل النطاقات' : 'Scopes Guide'}</h5>
+                    <p className="text-[10px] font-bold text-slate-400 leading-relaxed mt-1 italic">
+                       {isRtl 
+                         ? 'القسم: يخول الموظف رؤية سجلات زملائه في نفس القسم. المنشأة: وصول سيادي لكافة البيانات.' 
+                         : 'Department: Access records of colleagues in the same dept. Full: Access to all company data.'}
+                    </p>
+                 </div>
               </div>
               <div className="flex gap-4 w-full md:w-auto">
                  <Button variant="outline" onClick={onClose} className="flex-1 md:w-32 h-16 rounded-[1.5rem] font-black border-2">{isRtl ? 'إلغاء' : 'Cancel'}</Button>
@@ -218,7 +234,7 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
                    className="flex-1 md:w-72 h-16 rounded-[1.5rem] bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
                  >
                     {loading ? <Loader2 className="animate-spin me-2" /> : <Save className="me-2 h-5 w-5" />}
-                    {isRtl ? 'حفظ الصلاحيات' : 'Commit Matrix'}
+                    {isRtl ? 'اعتماد الصلاحيات' : 'Commit Matrix'}
                  </Button>
               </div>
            </div>
