@@ -46,7 +46,7 @@ export class HRService {
   }
 
   /**
-   * إضافة موظف جديد وربط بياناته بنظام الصلاحيات العالمي
+   * إضافة موظف جديد وربط بياناته بالهيكل المرجعي
    */
   async addEmployee(data: Omit<Employee, 'id' | 'createdAt' | 'updatedAt' | 'companyId'>) {
     ensureActionPermission(this.permissions, 'hr:create');
@@ -61,7 +61,8 @@ export class HRService {
       updatedAt: serverTimestamp(),
     };
 
-    setDoc(empRef, docData).catch((err) => {
+    // كتابة غير محظورة
+    await setDoc(empRef, docData).catch((err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: empRef.path,
         operation: 'create',
@@ -69,16 +70,16 @@ export class HRService {
       }));
     });
 
-    // مزامنة القسم والدور مع السجل العالمي للمستخدم (لأغراض الصلاحيات)
+    // المزامنة العالمية: الموظف يحمل الآن كود القسم وكود الدور
     if (data.email) {
-      this.syncGlobalUserData(data.email, data.roleId, data.departmentId);
+      await this.syncGlobalUserData(data.email, data.roleId, data.departmentId);
     }
 
     return empRef.id;
   }
 
   /**
-   * تحديث بيانات الموظف مع مزامنة صلاحياته
+   * تحديث بيانات الموظف ومزامنة الهوية الأمنية
    */
   async updateEmployee(id: string, newData: Partial<Employee>, currentUser: { uid: string, name: string }) {
     ensureActionPermission(this.permissions, 'hr:edit');
@@ -91,7 +92,7 @@ export class HRService {
 
     const updates = { ...newData, updatedAt: serverTimestamp() };
     
-    updateDoc(empRef, updates).catch((err) => {
+    await updateDoc(empRef, updates).catch((err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: empRef.path,
         operation: 'update',
@@ -99,10 +100,14 @@ export class HRService {
       }));
     });
 
-    // تحديث السجل العالمي إذا تغير الدور أو القسم
+    // مزامنة التغييرات في القسم أو الدور فوراً
     if ((newData.roleId && newData.roleId !== oldData.roleId) || 
         (newData.departmentId && newData.departmentId !== oldData.departmentId)) {
-      this.syncGlobalUserData(newData.email || oldData.email!, newData.roleId || oldData.roleId, newData.departmentId || oldData.departmentId);
+      await this.syncGlobalUserData(
+        newData.email || oldData.email!, 
+        newData.roleId || oldData.roleId, 
+        newData.departmentId || oldData.departmentId
+      );
     }
 
     const criticalFields: (keyof Employee)[] = ['basicSalary', 'jobTitle', 'departmentName', 'status', 'roleId'];
@@ -120,14 +125,9 @@ export class HRService {
     }
   }
 
-  async deleteEmployee(id: string) {
-    ensureActionPermission(this.permissions, 'hr:delete');
-    const empRef = doc(this.db, paths.employees(this.companyId), id);
-    return deleteDoc(empRef);
-  }
-
   /**
-   * وظيفة حيوية: مزامنة بيانات "من أين يحصل المحرك على القسم"
+   * وظيفة المزامنة السيادية:
+   * تضمن أن "محرك الصلاحيات" يعرف القسم المرجعي والدور الأمني للموظف عند تسجيل الدخول.
    */
   private async syncGlobalUserData(email: string, roleId?: string, departmentId?: string) {
     try {
@@ -136,22 +136,28 @@ export class HRService {
 
       if (!snap.empty) {
         const globalUserRef = doc(this.db, 'global_users', snap.docs[0].id);
-        updateDoc(globalUserRef, {
+        await updateDoc(globalUserRef, {
           roleId: roleId || '',
-          departmentId: departmentId || '', // تخزين ID القسم من المراجع
+          departmentId: departmentId || '', // تخزين ID القسم المرجعي (من مراجعك)
           updatedAt: serverTimestamp()
-        }).catch((err) => console.warn("Sync failed:", err.message));
+        });
       }
     } catch (e) {
-      console.warn("Global sync error:", e);
+      console.warn("Global security sync failed:", e);
     }
+  }
+
+  async deleteEmployee(id: string) {
+    ensureActionPermission(this.permissions, 'hr:delete');
+    const empRef = doc(this.db, paths.employees(this.companyId), id);
+    return deleteDoc(empRef);
   }
 
   async terminateEmployee(id: string, reason: string, date: string, currentUser: { uid: string, name: string }) {
     ensureActionPermission(this.permissions, 'hr:edit');
     const empRef = doc(this.db, paths.employees(this.companyId), id);
     const updateData = { status: 'terminated' as const, isActive: false, terminationReason: reason, terminationDate: date, updatedAt: serverTimestamp() };
-    updateDoc(empRef, updateData);
+    await updateDoc(empRef, updateData);
     this.addAuditLog(id, { action: 'terminate', field: 'status', oldValue: 'active', newValue: 'terminated', changedBy: currentUser.uid, changedByName: currentUser.name });
   }
 

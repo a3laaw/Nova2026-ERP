@@ -1,6 +1,7 @@
 /**
- * @fileOverview واجهة مصفوفة الصلاحيات الديناميكية المطورة.
- * تم إضافة خيار "القسم" لنطاقات الوصول.
+ * @fileOverview واجهة مصفوفة الصلاحيات الذكية.
+ * تم تصميمها لتوضيح أن الصلاحيات تعمل كقالب (Template) يتم تخصيصه ميدانياً 
+ * عبر ربطه بالوظائف والأقسام المرجعية.
  */
 
 'use client';
@@ -15,7 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { 
   ShieldCheck, Save, X, Loader2, 
   Settings2, LayoutGrid, Globe, User, Users,
-  Building2
+  Building2, Info
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { Role } from '@/types/roles';
@@ -107,16 +108,15 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
     }
   };
 
-  // تعريف النطاقات (Scopes) المتاحة للاختيار
-  const SCOPES: { value: Scope; label: string; icon: any; color: string }[] = [
-    { value: 'none', label: isRtl ? 'محجوب' : 'None', icon: X, color: 'text-slate-400' },
-    { value: 'own', label: isRtl ? 'خاص بالموظف' : 'Own Only', icon: User, color: 'text-blue-500' },
-    { value: 'dept', label: isRtl ? 'نطاق القسم' : 'Department', icon: Users, color: 'text-orange-500' },
-    { value: 'all', label: isRtl ? 'المنشأة كاملة' : 'Full Access', icon: Globe, color: 'text-emerald-500' },
+  const SCOPES: { value: Scope; label: string; icon: any; color: string; desc: string }[] = [
+    { value: 'none', label: isRtl ? 'محجوب' : 'None', icon: X, color: 'text-slate-400', desc: isRtl ? 'لا يمكنه رؤية أو إجراء هذا الفعل نهائياً.' : 'No access at all.' },
+    { value: 'own', label: isRtl ? 'خاص بالموظف' : 'Own Only', icon: User, color: 'text-blue-500', desc: isRtl ? 'يتعامل فقط مع السجلات التي أنشأها هو.' : 'Only records created by the user.' },
+    { value: 'dept', label: isRtl ? 'نطاق القسم' : 'Department', icon: Users, color: 'text-orange-500', desc: isRtl ? 'يتعامل مع كافة سجلات زملائه في نفس القسم المرجعي.' : 'Access records within the same reference department.' },
+    { value: 'all', label: isRtl ? 'المنشأة كاملة' : 'Full Access', icon: Globe, color: 'text-emerald-500', desc: isRtl ? 'سلطة كاملة على مستوى كافة الأقسام والمنشأة.' : 'Access to all company data regardless of department.' },
   ];
 
   return (
-    <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500 pb-20">
       <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
         <CardHeader className="bg-primary/5 p-8 border-b flex flex-row items-center justify-between">
            <div className="text-start">
@@ -132,14 +132,27 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
         </CardHeader>
         
         <CardContent className="p-0">
+           {/* تعليمات الربط المرجعي */}
+           <div className="p-6 bg-blue-50 border-b border-blue-100 flex items-start gap-4 text-start">
+              <Info className="h-6 w-6 text-blue-600 shrink-0 mt-1" />
+              <div>
+                 <h5 className="font-black text-blue-900 text-sm">{isRtl ? 'تنبيه الربط المرجعي (Reference Link)' : 'Reference Link Warning'}</h5>
+                 <p className="text-xs text-blue-700/70 leading-relaxed font-bold">
+                    {isRtl 
+                      ? 'هذا الدور يعمل كـ "قالب". عند اختيار نطاق "القسم"، سيعتمد النظام آلياً على كود القسم المرجعي الذي تمنحه للموظف عند التوظيف لفلترة البيانات.' 
+                      : 'This role acts as a template. When choosing "Department" scope, the system uses the reference department ID assigned to the employee during hiring to filter data.'}
+                 </p>
+              </div>
+           </div>
+
            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-8 bg-slate-50/30 border-b">
               <div className="space-y-2 text-start">
                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اسم الدور (Ar)' : 'Role Name (AR)'}</Label>
-                 <Input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="h-14 rounded-2xl border-2 font-bold" placeholder="مثال: مدير محاسبة" />
+                 <Input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="h-14 rounded-2xl border-2 font-bold shadow-inner" placeholder="مثال: مدير محاسبة" />
               </div>
               <div className="space-y-2 text-start">
                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اسم الدور (En)' : 'Role Name (EN)'}</Label>
-                 <Input value={formData.nameEn} onChange={e => setFormData({...formData, nameEn: e.target.value})} className="h-14 rounded-2xl border-2 font-bold text-start" dir="ltr" placeholder="e.g. Accounting Manager" />
+                 <Input value={formData.nameEn} onChange={e => setFormData({...formData, nameEn: e.target.value})} className="h-14 rounded-2xl border-2 font-bold text-start shadow-inner" dir="ltr" placeholder="e.g. Accounting Manager" />
               </div>
            </div>
 
@@ -174,7 +187,7 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
                                    const scopeInfo = SCOPES.find(s => s.value === currentScope);
 
                                    return (
-                                     <div key={action} className="flex flex-col gap-2 min-w-[150px] text-start">
+                                     <div key={action} className="flex flex-col gap-2 min-w-[160px] text-start">
                                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
                                            {isRtl ? ACTION_LABELS[action].ar : ACTION_LABELS[action].en}
                                         </span>
@@ -196,8 +209,11 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
                                            <SelectContent className="rounded-2xl">
                                               {SCOPES.map(s => (
                                                  <SelectItem key={s.value} value={s.value} className="font-bold text-xs py-3">
-                                                    <div className="flex items-center gap-2">
-                                                       <s.icon className={cn("h-4 w-4", s.color)} /> {s.label}
+                                                    <div className="flex flex-col gap-1">
+                                                       <div className="flex items-center gap-2">
+                                                          <s.icon className={cn("h-4 w-4", s.color)} /> {s.label}
+                                                       </div>
+                                                       <p className="text-[8px] text-slate-400 font-normal ps-6">{s.desc}</p>
                                                     </div>
                                                  </SelectItem>
                                               ))}
@@ -218,11 +234,11 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
               <div className="flex items-start gap-4 max-w-md text-start">
                  <Building2 className="h-6 w-6 text-slate-300 shrink-0 mt-1" />
                  <div>
-                    <h5 className="text-xs font-black text-slate-700 uppercase tracking-widest">{isRtl ? 'دليل النطاقات' : 'Scopes Guide'}</h5>
+                    <h5 className="text-xs font-black text-slate-700 uppercase tracking-widest">{isRtl ? 'دليل النطاقات (Scopes Guide)' : 'Scopes Guide'}</h5>
                     <p className="text-[10px] font-bold text-slate-400 leading-relaxed mt-1 italic">
                        {isRtl 
-                         ? 'القسم: يخول الموظف رؤية سجلات زملائه في نفس القسم. المنشأة: وصول سيادي لكافة البيانات.' 
-                         : 'Department: Access records of colleagues in the same dept. Full: Access to all company data.'}
+                         ? 'نطاق القسم (Dept) هو الأمان المرجعي؛ يمنع الموظف من رؤية بيانات أي قسم آخر بخلاف القسم المذكور في ملفه الوظيفي.' 
+                         : 'Department scope is your safety net; it prevents employees from accessing data belonging to any other reference department.'}
                     </p>
                  </div>
               </div>
@@ -234,7 +250,7 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
                    className="flex-1 md:w-72 h-16 rounded-[1.5rem] bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
                  >
                     {loading ? <Loader2 className="animate-spin me-2" /> : <Save className="me-2 h-5 w-5" />}
-                    {isRtl ? 'اعتماد الصلاحيات' : 'Commit Matrix'}
+                    {isRtl ? 'حفظ قالب الصلاحيات' : 'Commit Template'}
                  </Button>
               </div>
            </div>
