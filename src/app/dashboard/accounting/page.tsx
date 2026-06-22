@@ -30,6 +30,9 @@ export default function AccountingPage() {
   const [reconciling, setReconciling] = useState(false);
   const [reconResult, setReconResult] = useState<any>(null);
 
+  // فحص صلاحية الترحيل
+  const canPost = check('accounting', 'post').can;
+
   const handleSmartReconciliation = async () => {
     setReconciling(true);
     try {
@@ -64,8 +67,8 @@ export default function AccountingPage() {
           <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">{t('smartReconciliation')}</p>
         </div>
         
-        {/* زر الترحيل النهائي يظهر فقط إذا كان يملك صلاحية post بنطاق all */}
-        {check('accounting', 'post').can && (
+        {/* زر الترحيل يختفي إذا لم يملك المستخدم صلاحية post */}
+        {canPost && (
            <Button className="bg-emerald-600 text-white font-black rounded-xl h-12 px-6 gap-2 shadow-xl shadow-emerald-100">
               <Send className="h-4 w-4" /> {t('post') || 'Post All'}
            </Button>

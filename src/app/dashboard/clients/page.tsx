@@ -15,6 +15,7 @@ import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
+import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { Client } from '@/types/client';
 import { cn } from '@/lib/utils';
@@ -22,11 +23,15 @@ import { cn } from '@/lib/utils';
 export default function ClientsListPage() {
   const { globalUser } = useAuthContext();
   const { t, lang, dir } = useLanguage();
+  const { check } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
+
+  // فحص صلاحيات العمليات
+  const canCreate = check('crm', 'create').can;
 
   const clientsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.clients(companyId)), orderBy('createdAt', 'desc')) : null, 
@@ -53,13 +58,16 @@ export default function ClientsListPage() {
           </p>
         </div>
 
-        <Button 
-          onClick={() => router.push('/dashboard/clients/new')}
-          className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-[1.05] transition-all gap-2"
-        >
-          <UserPlus className="h-6 w-6" />
-          {isRtl ? 'عميل جديد' : 'New Client'}
-        </Button>
+        {/* يختفي زر الإضافة إذا لم يملك المحاسب أو الموظف صلاحية Create */}
+        {canCreate && (
+          <Button 
+            onClick={() => router.push('/dashboard/clients/new')}
+            className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-[1.05] transition-all gap-2"
+          >
+            <UserPlus className="h-6 w-6" />
+            {isRtl ? 'عميل جديد' : 'New Client'}
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -134,7 +142,7 @@ export default function ClientsListPage() {
                          "font-black px-4 py-1.5 rounded-lg border-0 shadow-sm uppercase text-[9px]",
                          client.status === 'contracted' ? 'bg-emerald-500 text-white' :
                          client.status === 'registered' ? 'bg-blue-500 text-white' :
-                         client.status === 'prospective' ? 'bg-amber-500 text-white' :
+                         client.status === 'prospective' ? 'bg-amber-50 text-white' :
                          'bg-slate-200 text-slate-600'
                        )}>
                           {client.status}
