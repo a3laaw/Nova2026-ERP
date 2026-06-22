@@ -126,13 +126,31 @@ export class LeaveService {
     }
     else if (status === 'commenced') {
       updateData.commencementConfirmedAt = serverTimestamp();
+      updateData.commencementConfirmedBy = adminId;
+      
+      // تحديث التواريخ الفعلية النهائية لو قام المدير بتعديلها عند المباشرة
+      if (payload.actualDepartureDate) updateData.actualDepartureDate = payload.actualDepartureDate;
+      if (payload.actualReturnDate) updateData.actualReturnDate = payload.actualReturnDate;
+      
+      // لو عدل المدير "أيام العمل" نتيجة التلاعب بالتواريخ، يتم تحديثها هنا
+      if (payload.workingDays !== undefined) {
+         const diff = payload.workingDays - (leaveData.workingDays || 0);
+         if (diff !== 0) {
+            updateData.workingDays = payload.workingDays;
+            // تسوية الرصيد: لو زادت أيام الإجازة نخصم الزيادة، ولو نقصت نرد الفرق
+            if (leaveData.type === 'annual') {
+               batch.update(empRef, { annualLeaveBalance: increment(-diff) });
+            }
+         }
+      }
+
       batch.update(empRef, { status: 'active' });
     }
 
     batch.update(leaveRef, updateData);
     await batch.commit().catch(err => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: 'leave_approval_batch',
+            path: 'leave_status_batch',
             operation: 'write'
         }));
         throw err;
