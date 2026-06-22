@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -31,7 +32,7 @@ export default function EmployeeDetailsPage() {
   const empId = params.id as string;
   const { user, globalUser } = useAuthContext();
   const { t, lang, dir } = useLanguage();
-  const { permissions } = usePermissions();
+  const { check, isAdmin } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
@@ -41,10 +42,17 @@ export default function EmployeeDetailsPage() {
   const [termForm, setTermForm] = useState({ reason: '', date: new Date().toISOString().split('T')[0] });
   const [isTerminateOpen, setIsTerminateOpen] = useState(false);
 
+  // فحص الصلاحيات الميدانية
+  const canEdit = check('hr', 'edit').can;
+  const isViewingSelf = globalUser?.employeeId === empId;
+  
+  // القاعدة: الموظف لا يعدل ملفه الوظيفي الرسمي أبداً، فقط الأدمن يفعل ذلك
+  const isReadOnly = !canEdit || (isViewingSelf && !isAdmin);
+
   const companyId = globalUser?.companyId;
   const hrService = useMemo(() => 
-    db && companyId ? new HRService(db, companyId, permissions) : null, 
-  [db, companyId, permissions]);
+    db && companyId ? new HRService(db, companyId) : null, 
+  [db, companyId]);
 
   const empRef = useMemo(() => companyId && db ? doc(db, paths.employees(companyId), empId) : null, [db, companyId, empId]);
   const logsQuery = useMemo(() => companyId && db ? query(collection(db, `${paths.employees(companyId)}/${empId}/auditLogs`), orderBy('createdAt', 'desc')) : null, [db, companyId, empId]);
@@ -53,20 +61,20 @@ export default function EmployeeDetailsPage() {
   const { data: logs, loading: logsLoading } = useCollection<EmployeeAuditLog>(logsQuery);
 
   const handleUpdate = async (data: any) => {
-    if (!hrService || !user) return;
+    if (!hrService || !user || isReadOnly) return;
     setSaving(true);
     try {
       await hrService.updateEmployee(empId, data, { uid: user.uid, name: user.displayName || 'Admin' });
-      toast({ title: t('saved'), description: t('entryAdded') });
+      toast({ title: t('saved') });
     } catch (e) {
-      toast({ variant: "destructive", title: t('error'), description: t('saveFailed') });
+      toast({ variant: "destructive", title: t('error') });
     } finally {
       setSaving(false);
     }
   };
 
   const handleTerminate = async () => {
-    if (!hrService || !user || !termForm.reason) return;
+    if (!hrService || !user || !termForm.reason || isReadOnly) return;
     setTerminating(true);
     try {
       await hrService.terminateEmployee(empId, termForm.reason, termForm.date, { uid: user.uid, name: user.displayName || 'Admin' });
@@ -87,7 +95,7 @@ export default function EmployeeDetailsPage() {
     <div className="space-y-8" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" onClick={() => router.push('/dashboard/hr/employees')} className="h-12 w-12 p-0 rounded-2xl bg-white shadow-sm border hover:bg-slate-50">
+          <Button variant="ghost" onClick={() => router.back()} className="h-12 w-12 p-0 rounded-2xl bg-white shadow-sm border hover:bg-slate-50">
             <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-180")} />
           </Button>
           <div className="text-start">
@@ -109,7 +117,8 @@ export default function EmployeeDetailsPage() {
           </div>
         </div>
 
-        {employee.status === 'active' && (
+        {/* إنهاء الخدمة: يظهر فقط للأدمن أو من يملك صلاحية Edit كاملة */}
+        {!isReadOnly && employee.status === 'active' && (
           <Dialog open={isTerminateOpen} onOpenChange={setIsTerminateOpen}>
              <DialogTrigger asChild>
                 <Button variant="destructive" className="rounded-xl font-bold h-12 gap-2 shadow-lg shadow-rose-200">
@@ -117,11 +126,11 @@ export default function EmployeeDetailsPage() {
                 </Button>
              </DialogTrigger>
              <DialogContent className="rounded-[2rem] max-w-lg p-0 overflow-hidden" dir={dir}>
-                <div className="bg-rose-50 p-8 border-b">
-                   <DialogTitle className="text-start font-black text-rose-800 flex items-center gap-2">
+                <div className="bg-rose-50 p-8 border-b text-start">
+                   <DialogTitle className="font-black text-rose-800 flex items-center gap-2">
                       <AlertTriangle className="h-6 w-6" /> {isRtl ? 'تأكيد إنهاء الخدمة' : 'Confirm Termination'}
                    </DialogTitle>
-                   <DialogDescription className="text-start mt-1 font-bold text-rose-600/70">
+                   <DialogDescription className="mt-1 font-bold text-rose-600/70">
                       {isRtl ? 'تنبيه: سيتم إيقاف صرف الرواتب وتعطيل وصول الموظف للنظام فوراً.' : 'Warning: Payroll and system access will be disabled immediately.'}
                    </DialogDescription>
                 </div>
@@ -147,61 +156,67 @@ export default function EmployeeDetailsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
-          <EmployeeForm initialData={employee} onSubmit={handleUpdate} loading={saving} />
+          <EmployeeForm 
+            initialData={employee} 
+            onSubmit={handleUpdate} 
+            loading={saving} 
+            readOnly={isReadOnly}
+          />
         </div>
 
         <div className="space-y-6">
-           {/* Audit Log Card */}
-           <Card className="border-0 shadow-xl rounded-[2.5rem] bg-slate-900 text-white overflow-hidden ring-1 ring-white/5">
-              <CardHeader className="bg-white/5 border-b border-white/5 p-8 text-start">
-                 <CardTitle className="text-lg font-black flex items-center gap-3">
-                    <History className="h-5 w-5 text-primary" />
-                    {isRtl ? 'سجل التدقيق (Audit)' : 'Audit History'}
-                 </CardTitle>
-                 <CardDescription className="text-slate-400 font-bold">تتبع التغييرات المالية والوظيفية</CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                 <div className="max-h-[600px] overflow-y-auto">
-                    {logsLoading ? <div className="p-10 text-center"><Loader2 className="animate-spin mx-auto text-primary/30" /></div> : (
-                      <div className="divide-y divide-white/5">
-                         {logs?.length === 0 ? (
-                           <div className="p-10 text-center text-slate-500 italic text-xs">{isRtl ? 'لا يوجد تغييرات مسجلة.' : 'No audit logs found.'}</div>
-                         ) : (
-                           logs?.map((log) => (
-                             <div key={log.id} className="p-6 space-y-3 hover:bg-white/5 transition-colors text-start">
-                                <div className="flex justify-between items-start">
-                                   <Badge variant="outline" className={cn(
-                                     "text-[9px] font-black uppercase",
-                                     log.action === 'terminate' ? "border-rose-500 text-rose-400" : "border-primary/50 text-primary"
-                                   )}>
-                                      {log.action}
-                                   </Badge>
-                                   <span className="text-[10px] font-mono text-slate-500">{log.createdAt?.toDate().toLocaleDateString()}</span>
-                                </div>
-                                <div>
-                                   <p className="text-xs font-bold text-slate-300">
-                                      {isRtl ? 'تغيير في' : 'Changed'} <span className="text-white">{log.field}</span>
-                                   </p>
-                                   <div className="flex items-center gap-2 mt-1 text-[10px]">
-                                      <span className="text-slate-500 line-through">{log.oldValue?.toString()}</span>
-                                      <ArrowRight className={cn("h-2 w-2 text-primary", !isRtl && "rotate-0", isRtl && "rotate-180")} />
-                                      <span className="text-emerald-400 font-black">{log.newValue?.toString()}</span>
-                                   </div>
-                                </div>
-                                <div className="flex items-center gap-2 pt-2 border-t border-white/5">
-                                   <div className="h-5 w-5 rounded-full bg-white/10 flex items-center justify-center text-[8px] font-black uppercase">
-                                      {log.changedByName?.charAt(0)}
-                                   </div>
-                                   <span className="text-[9px] font-bold text-slate-400">{isRtl ? 'بواسطة:' : 'By:'} {log.changedByName}</span>
-                                </div>
-                             </div>
-                           ))
-                         )}
-                      </div>
-                    )}
-                 </div>
-              </CardContent>
-           </Card>
+           {/* سجل التدقيق: يظهر فقط للمدراء */}
+           {canEdit && (
+              <Card className="border-0 shadow-xl rounded-[2.5rem] bg-slate-900 text-white overflow-hidden ring-1 ring-white/5">
+                <CardHeader className="bg-white/5 border-b border-white/5 p-8 text-start">
+                   <CardTitle className="text-lg font-black flex items-center gap-3">
+                      <History className="h-5 w-5 text-primary" />
+                      {isRtl ? 'سجل التدقيق (Audit)' : 'Audit History'}
+                   </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                   <div className="max-h-[600px] overflow-y-auto">
+                      {logsLoading ? <div className="p-10 text-center"><Loader2 className="animate-spin mx-auto text-primary/30" /></div> : (
+                        <div className="divide-y divide-white/5">
+                           {logs?.length === 0 ? (
+                             <div className="p-10 text-center text-slate-500 italic text-xs">{isRtl ? 'لا يوجد تغييرات مسجلة.' : 'No audit logs found.'}</div>
+                           ) : (
+                             logs?.map((log) => (
+                               <div key={log.id} className="p-6 space-y-3 hover:bg-white/5 transition-colors text-start">
+                                  <div className="flex justify-between items-start">
+                                     <Badge variant="outline" className={cn(
+                                       "text-[9px] font-black uppercase",
+                                       log.action === 'terminate' ? "border-rose-500 text-rose-400" : "border-primary/50 text-primary"
+                                     )}>
+                                        {log.action}
+                                     </Badge>
+                                     <span className="text-[10px] font-mono text-slate-500">{log.createdAt?.toDate().toLocaleDateString()}</span>
+                                  </div>
+                                  <div>
+                                     <p className="text-xs font-bold text-slate-300">
+                                        {isRtl ? 'تغيير في' : 'Changed'} <span className="text-white">{log.field}</span>
+                                     </p>
+                                     <div className="flex items-center gap-2 mt-1 text-[10px]">
+                                        <span className="text-slate-500 line-through">{log.oldValue?.toString()}</span>
+                                        <ArrowRight className={cn("h-2 w-2 text-primary", !isRtl && "rotate-0", isRtl && "rotate-180")} />
+                                        <span className="text-emerald-400 font-black">{log.newValue?.toString()}</span>
+                                     </div>
+                                  </div>
+                                  <div className="flex items-center gap-2 pt-2 border-t border-white/5">
+                                     <div className="h-5 w-5 rounded-full bg-white/10 flex items-center justify-center text-[8px] font-black uppercase">
+                                        {log.changedByName?.charAt(0)}
+                                     </div>
+                                     <span className="text-[9px] font-bold text-slate-400">{isRtl ? 'بواسطة:' : 'By:'} {log.changedByName}</span>
+                                  </div>
+                               </div>
+                             ))
+                           )}
+                        </div>
+                      )}
+                   </div>
+                </CardContent>
+              </Card>
+           )}
 
            <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
               <CardHeader className="bg-slate-50 border-b p-6 text-start">
@@ -209,8 +224,8 @@ export default function EmployeeDetailsPage() {
                    <FileText className="h-4 w-4 text-primary" /> {isRtl ? 'المستندات القانونية' : 'Documents'}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-6 space-y-4">
-                 <div className="p-4 rounded-2xl bg-muted/30 border-2 border-dashed space-y-1 text-start">
+              <CardContent className="p-6 space-y-4 text-start">
+                 <div className="p-4 rounded-2xl bg-muted/30 border-2 border-dashed space-y-1">
                     <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{isRtl ? 'حالة الإقامة' : 'Residency Status'}</p>
                     <div className="flex items-center justify-between">
                        <p className="text-sm font-black text-slate-800">{employee.residencyExpiry || '---'}</p>
@@ -218,7 +233,7 @@ export default function EmployeeDetailsPage() {
                     </div>
                  </div>
                  <Button variant="outline" className="w-full rounded-xl font-bold h-10 text-xs border-2 border-slate-100">
-                    {isRtl ? 'إدارة المرفقات' : 'Manage Attachments'}
+                    {isRtl ? 'عرض المرفقات' : 'View Attachments'}
                  </Button>
               </CardContent>
            </Card>
