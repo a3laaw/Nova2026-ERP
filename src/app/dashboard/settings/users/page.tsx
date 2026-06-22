@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -10,7 +9,8 @@ import {
   Users, Plus, Loader2, Edit3, 
   Search, ShieldCheck, Mail, ArrowRight,
   UserCircle, Ban, CheckCircle2, UserCog,
-  ShieldAlert, UserPlus, Info, Save
+  ShieldAlert, UserPlus, Info, Save,
+  LayoutGrid
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
