@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -36,7 +37,7 @@ import {
 export default function EmployeesPage() {
   const { globalUser } = useAuthContext();
   const { t, lang, dir } = useLanguage();
-  const { permissions, check, isAdmin } = usePermissions();
+  const { check, isAdmin } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
@@ -53,8 +54,8 @@ export default function EmployeesPage() {
   const { data: employees, loading } = useCollection<Employee>(employeesQuery);
 
   const hrService = useMemo(() => 
-    db && companyId ? new HRService(db, companyId, permissions) : null, 
-  [db, companyId, permissions]);
+    db && companyId ? new HRService(db, companyId) : null, 
+  [db, companyId]);
 
   const filteredEmployees = employees?.filter(emp => 
     emp.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -80,7 +81,7 @@ export default function EmployeesPage() {
     <div className="space-y-8" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start">
-          <h1 className="text-4xl font-black font-headline flex items-center gap-3">
+          <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
             <Users className="h-10 w-10 text-primary" />
             {isRtl ? 'سجل الموظفين' : 'Employee Records'}
           </h1>
@@ -89,7 +90,8 @@ export default function EmployeesPage() {
           </p>
         </div>
 
-        {check('hr:create') && (
+        {/* إخفاء زر التوظيف الجديد بناءً على صلاحية hr:create */}
+        {check('hr', 'create').can && (
           <Button 
             onClick={() => router.push('/dashboard/hr/employees/new')}
             className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform"
@@ -183,7 +185,8 @@ export default function EmployeesPage() {
                     </TableCell>
                     <TableCell className="text-center pe-8" onClick={e => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-2">
-                         {isAdmin && (
+                         {/* إخفاء زر الحذف تماماً بناءً على صلاحية hr:delete أو كون المستخدم أدمن */}
+                         {(check('hr', 'delete').can || isAdmin) && (
                            <Button 
                              variant="ghost" 
                              size="icon" 

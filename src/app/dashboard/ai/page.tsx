@@ -8,8 +8,10 @@ import { Textarea } from "@/components/ui/textarea"
 import { Sparkles, FileSearch, TrendingUp, Calculator, Wand2, Loader2, Send } from "lucide-react"
 import { useAccountingAssistant } from "@/ai/flows/accounting-assistant-flow"
 import { toast } from "@/hooks/use-toast"
+import { usePermissions } from "@/hooks/use-permissions"
 
 export default function AIPage() {
+  const { check } = usePermissions();
   const [query, setQuery] = useState("")
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<any>(null)
@@ -150,8 +152,15 @@ export default function AIPage() {
                       </table>
                     </div>
                     <div className="flex gap-4">
-                      <Button className="flex-1 bg-primary text-white py-6 rounded-2xl font-bold">Post to Ledger</Button>
-                      <Button variant="outline" className="flex-1 py-6 rounded-2xl font-bold bg-white">Save as Draft</Button>
+                      {/* اختفاء زر الترحيل بناءً على صلاحية الترحيل المحددة في المحاسبة */}
+                      {check('accounting', 'post').can && (
+                        <Button className="flex-1 bg-primary text-white py-6 rounded-2xl font-bold">Post to Ledger</Button>
+                      )}
+                      
+                      {/* اختفاء زر المسودة بناءً على صلاحية الإضافة */}
+                      {check('accounting', 'create').can && (
+                        <Button variant="outline" className="flex-1 py-6 rounded-2xl font-bold bg-white">Save as Draft</Button>
+                      )}
                     </div>
                   </div>
                 )}

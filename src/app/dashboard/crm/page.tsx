@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -11,6 +12,7 @@ import { useFirestore, useCollection } from '@/firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
+import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -21,6 +23,7 @@ import { cn } from '@/lib/utils';
 export default function CRMPage() {
   const { globalUser } = useAuthContext();
   const { t, dir } = useLanguage();
+  const { check } = usePermissions();
   const db = useFirestore();
   const [searchTerm, setSearchTerm] = useState("");
   const [isAdding, setIsAdding] = useState(false);
@@ -70,56 +73,59 @@ export default function CRMPage() {
           </p>
         </div>
         
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform">
-              <UserPlus className="me-2 h-6 w-6" />
-              {t('addLead')}
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="rounded-3xl border-0 shadow-2xl max-w-lg" dir={dir}>
-            <DialogHeader>
-              <DialogTitle className="text-start font-headline font-black text-2xl">{t('addLead')}</DialogTitle>
-              <DialogDescription className="text-start">{t('addEntry')}</DialogDescription>
-            </DialogHeader>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-6">
-              <div className="space-y-2 text-start">
-                <Label>{t('name')}</Label>
-                <Input value={newLead.name} onChange={e => setNewLead({...newLead, name: e.target.value})} placeholder={t('name')} className="h-14 rounded-2xl border-2" />
-              </div>
-              <div className="space-y-2 text-start">
-                <Label>{t('company')}</Label>
-                <Input value={newLead.company} onChange={e => setNewLead({...newLead, company: e.target.value})} placeholder={t('company')} className="h-14 rounded-2xl border-2" />
-              </div>
-              <div className="space-y-2 text-start">
-                <Label>{t('email')}</Label>
-                <Input value={newLead.email} type="email" onChange={e => setNewLead({...newLead, email: e.target.value})} placeholder="example@nova.com" className="h-14 rounded-2xl border-2 text-start" />
-              </div>
-              <div className="space-y-2 text-start">
-                <Label>{t('value')}</Label>
-                <Input value={newLead.value} type="number" onChange={e => setNewLead({...newLead, value: e.target.value})} placeholder="5000" className="h-14 rounded-2xl border-2" />
-              </div>
-              <div className="space-y-2 text-start md:col-span-2">
-                <Label>{t('status')}</Label>
-                <Select value={newLead.status} onValueChange={val => setNewLead({...newLead, status: val})}>
-                  <SelectTrigger className="h-14 rounded-2xl border-2"><SelectValue placeholder={t('status')} /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="new">{t('new')}</SelectItem>
-                    <SelectItem value="contacted">{t('contacted')}</SelectItem>
-                    <SelectItem value="qualified">{t('qualified')}</SelectItem>
-                    <SelectItem value="closed">{t('closed')}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button onClick={handleAddLead} disabled={isAdding || !newLead.name} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">
-                {isAdding ? <Loader2 className="animate-spin" /> : <Plus className="me-2 h-5 w-5" />}
-                {t('save')}
+        {/* إخفاء زر الإضافة تماماً إذا لم يملك الموظف صلاحية create في موديول crm */}
+        {check('crm', 'create').can && (
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform">
+                <UserPlus className="me-2 h-6 w-6" />
+                {t('addLead')}
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent className="rounded-3xl border-0 shadow-2xl max-w-lg" dir={dir}>
+              <DialogHeader>
+                <DialogTitle className="text-start font-headline font-black text-2xl">{t('addLead')}</DialogTitle>
+                <DialogDescription className="text-start">{t('addEntry')}</DialogDescription>
+              </DialogHeader>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-6">
+                <div className="space-y-2 text-start">
+                  <Label>{t('name')}</Label>
+                  <Input value={newLead.name} onChange={e => setNewLead({...newLead, name: e.target.value})} placeholder={t('name')} className="h-14 rounded-2xl border-2" />
+                </div>
+                <div className="space-y-2 text-start">
+                  <Label>{t('company')}</Label>
+                  <Input value={newLead.company} onChange={e => setNewLead({...newLead, company: e.target.value})} placeholder={t('company')} className="h-14 rounded-2xl border-2" />
+                </div>
+                <div className="space-y-2 text-start">
+                  <Label>{t('email')}</Label>
+                  <Input value={newLead.email} type="email" onChange={e => setNewLead({...newLead, email: e.target.value})} placeholder="example@nova.com" className="h-14 rounded-2xl border-2 text-start" />
+                </div>
+                <div className="space-y-2 text-start">
+                  <Label>{t('value')}</Label>
+                  <Input value={newLead.value} type="number" onChange={e => setNewLead({...newLead, value: e.target.value})} placeholder="5000" className="h-14 rounded-2xl border-2" />
+                </div>
+                <div className="space-y-2 text-start md:col-span-2">
+                  <Label>{t('status')}</Label>
+                  <Select value={newLead.status} onValueChange={val => setNewLead({...newLead, status: val})}>
+                    <SelectTrigger className="h-14 rounded-2xl border-2"><SelectValue placeholder={t('status')} /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="new">{t('new')}</SelectItem>
+                      <SelectItem value="contacted">{t('contacted')}</SelectItem>
+                      <SelectItem value="qualified">{t('qualified')}</SelectItem>
+                      <SelectItem value="closed">{t('closed')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={handleAddLead} disabled={isAdding || !newLead.name} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl shadow-primary/20">
+                  {isAdding ? <Loader2 className="animate-spin" /> : <Plus className="me-2 h-5 w-5" />}
+                  {t('save')}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -188,7 +194,10 @@ export default function CRMPage() {
                       {lead.value?.toLocaleString()}
                     </TableCell>
                     <TableCell className="text-center">
-                      <Button variant="ghost" size="icon" className="rounded-xl"><MoreHorizontal className="h-5 w-5" /></Button>
+                       {/* إخفاء زر الإجراءات الإضافية إذا لم يملك صلاحية edit أو delete */}
+                       {(check('crm', 'edit').can || check('crm', 'delete').can) ? (
+                          <Button variant="ghost" size="icon" className="rounded-xl"><MoreHorizontal className="h-5 w-5" /></Button>
+                       ) : null}
                     </TableCell>
                   </TableRow>
                 ))
