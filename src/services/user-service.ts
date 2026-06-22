@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -96,6 +97,7 @@ export class UserService {
     username: string;
     roleId: string;
     roleCode: string;
+    initialPassword?: string;
   }) {
     const tenantUserRef = doc(this.db, 'companies', this.companyId, 'users', uid);
     const globalUserRef = doc(this.db, 'global_users', uid);
@@ -104,13 +106,19 @@ export class UserService {
       const batch = writeBatch(this.db);
 
       // تحديث السجل الداخلي في الشركة
-      batch.update(tenantUserRef, {
+      const internalUpdates: any = {
         displayName: data.displayName,
         username: data.username,
         roleId: data.roleId,
         role: data.roleCode,
         updatedAt: serverTimestamp()
-      });
+      };
+
+      if (data.initialPassword) {
+        internalUpdates.initialPassword = data.initialPassword;
+      }
+
+      batch.update(tenantUserRef, internalUpdates);
 
       // تحديث السجل العالمي
       batch.update(globalUserRef, {
@@ -135,9 +143,13 @@ export class UserService {
    * تحديث دور المستخدم (Role Assignment) فقط
    */
   async updateUserRole(uid: string, roleId: string, roleCode: string) {
+    const userSnap = await getDoc(doc(this.db, 'companies', this.companyId, 'users', uid));
+    if (!userSnap.exists()) return;
+    const userData = userSnap.data();
+
     return this.updateUserAccount(uid, {
-        displayName: '', // لن يتم تحديث الحقول الفارغة في الحقيقة إذا استخدمنا Update ذكي، لكن هنا نستخدم التحديث الشامل
-        username: '', 
+        displayName: userData.displayName || '',
+        username: userData.username || '', 
         roleId,
         roleCode
     });

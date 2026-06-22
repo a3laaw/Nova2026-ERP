@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -11,7 +12,7 @@ import {
   UserCircle, Ban, CheckCircle2, UserCog,
   ShieldAlert, UserPlus, Info, Save,
   LayoutGrid, Copy, Key, Eye, EyeOff,
-  Pencil
+  Pencil, Lock, RefreshCcw
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -56,6 +57,7 @@ export default function UsersManagementPage() {
     displayName: '',
     username: '',
     roleId: '',
+    newPassword: ''
   });
 
   const userService = useMemo(() => 
@@ -76,7 +78,8 @@ export default function UsersManagementPage() {
       setEditForm({
         displayName: editingUser.displayName || '',
         username: editingUser.username || '',
-        roleId: editingUser.roleId || ''
+        roleId: editingUser.roleId || '',
+        newPassword: ''
       });
     }
   }, [editingUser]);
@@ -121,7 +124,8 @@ export default function UsersManagementPage() {
         displayName: editForm.displayName,
         username: editForm.username,
         roleId: role.id!,
-        roleCode: role.code
+        roleCode: role.code,
+        initialPassword: editForm.newPassword || editingUser.initialPassword
       });
 
       toast({ title: t('saved') });
@@ -201,7 +205,7 @@ export default function UsersManagementPage() {
                 <div className="grid grid-cols-2 gap-4">
                    <div className="space-y-2">
                       <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'اسم المستخدم' : 'Username'}</Label>
-                      <Input value={createForm.username} onChange={e => setCreateForm({...createForm, username: e.target.value})} className="h-12 rounded-xl border-2 font-mono" />
+                      <Input value={createForm.username} onChange={e => setCreateForm({...createForm, username: e.target.value})} className="h-12 rounded-xl border-2 font-mono" placeholder={isRtl ? "اختياري (الافتراضي الرقم الوظيفي)" : "Optional (Default Emp #)"} />
                    </div>
                    <div className="space-y-2">
                       <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'الدور الأمني' : 'Role'}</Label>
@@ -220,7 +224,7 @@ export default function UsersManagementPage() {
                 </div>
 
                 <div className="space-y-2">
-                   <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'كلمة المرور' : 'Password'}</Label>
+                   <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'كلمة المرور المبدئية' : 'Initial Password'}</Label>
                    <Input value={createForm.password} onChange={e => setCreateForm({...createForm, password: e.target.value})} className="h-14 rounded-xl border-2 font-mono text-lg text-primary" placeholder="P@ssw0rd123" />
                 </div>
 
@@ -250,7 +254,7 @@ export default function UsersManagementPage() {
               <TableRow>
                 <TableHead className="py-6 ps-8 text-start">{isRtl ? 'المستخدم' : 'User'}</TableHead>
                 <TableHead className="text-start">{isRtl ? 'الدور' : 'Role'}</TableHead>
-                <TableHead className="text-start">{isRtl ? 'كلمة المرور المبدئية' : 'Initial Pass'}</TableHead>
+                <TableHead className="text-start">{isRtl ? 'كلمة المرور الحالية' : 'Managed Pass'}</TableHead>
                 <TableHead className="text-center">{isRtl ? 'الحالة' : 'Status'}</TableHead>
                 <TableHead className="pe-8 text-end">{isRtl ? 'إجراءات' : 'Actions'}</TableHead>
               </TableRow>
@@ -269,6 +273,7 @@ export default function UsersManagementPage() {
                         <div className="text-start">
                            <p className="font-black text-slate-800 text-base">{u.displayName}</p>
                            <p className="text-[10px] text-slate-400 font-bold flex items-center gap-1"><Mail className="h-2.5 w-2.5" /> {u.email}</p>
+                           <p className="text-[9px] font-mono text-primary/60 font-bold mt-0.5">@{u.username}</p>
                         </div>
                      </div>
                   </TableCell>
@@ -332,17 +337,17 @@ export default function UsersManagementPage() {
             
             <div className="p-10 space-y-6 text-start bg-white">
                <div className="space-y-2">
-                  <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'الاسم المعروض' : 'Display Name'}</Label>
+                  <Label className="text-xs font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'الاسم المعروض' : 'Display Name'}</Label>
                   <Input value={editForm.displayName} onChange={e => setEditForm({...editForm, displayName: e.target.value})} className="h-12 rounded-xl border-2 font-bold" />
                </div>
 
                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                     <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'اسم المستخدم' : 'Username'}</Label>
+                     <Label className="text-xs font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اسم المستخدم (معرف الدخول)' : 'Username'}</Label>
                      <Input value={editForm.username} onChange={e => setEditForm({...editForm, username: e.target.value})} className="h-12 rounded-xl border-2 font-mono" />
                   </div>
                   <div className="space-y-2">
-                     <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'الدور الأمني' : 'Role'}</Label>
+                     <Label className="text-xs font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'الدور الأمني (الصلاحيات)' : 'Role'}</Label>
                      <Select value={editForm.roleId} onValueChange={v => setEditForm({...editForm, roleId: v})}>
                         <SelectTrigger className="h-12 rounded-xl border-2 font-bold">
                            <SelectValue placeholder="..." />
@@ -356,10 +361,31 @@ export default function UsersManagementPage() {
                   </div>
                </div>
 
-               <div className="pt-6 border-t flex items-start gap-3 bg-amber-50 p-4 rounded-2xl">
+               <div className="space-y-4 pt-4 border-t">
+                  <div className="flex items-center gap-2 text-primary font-black text-xs uppercase tracking-widest">
+                     <Lock className="h-4 w-4" /> {isRtl ? 'تحديث كلمة المرور الإدارية' : 'Manage Password'}
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-bold text-slate-400">{isRtl ? 'كلمة مرور جديدة (اتركه فارغاً للإبقاء على الحالية)' : 'New Password (Leave blank to keep current)'}</Label>
+                    <div className="relative">
+                      <Input 
+                        type="text" 
+                        value={editForm.newPassword} 
+                        onChange={e => setEditForm({...editForm, newPassword: e.target.value})}
+                        className="h-12 rounded-xl border-2 font-mono text-primary bg-slate-50"
+                        placeholder="••••••••"
+                      />
+                      <RefreshCcw className="absolute end-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-200" />
+                    </div>
+                  </div>
+               </div>
+
+               <div className="pt-4 flex items-start gap-3 bg-amber-50 p-4 rounded-2xl border border-amber-100">
                   <Info className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-                  <p className="text-[10px] font-bold text-amber-800 leading-relaxed">
-                     {isRtl ? 'تنبيه: تغيير اليوزر أو الدور سيؤثر فوراً على صلاحيات الدخول ونطاق رؤية البيانات لهذا الموظف.' : 'Warning: Changing username or role immediately affects login permissions and data scope.'}
+                  <p className="text-[9px] font-bold text-amber-800 leading-relaxed">
+                     {isRtl 
+                       ? 'تنبيه: تغيير كلمة المرور هنا هو "تعديل إداري" للسجل. سيظهر للموظف في حسابه ليتمكن من استخدامه، وتأكد من إبلاغه بالبيانات الجديدة.' 
+                       : 'Warning: Changing password here is an administrative update. The employee will see it in their record for login purposes.'}
                   </p>
                </div>
 
