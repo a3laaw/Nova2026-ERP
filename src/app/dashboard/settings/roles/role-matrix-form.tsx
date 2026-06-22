@@ -1,7 +1,6 @@
 /**
- * @fileOverview واجهة مصفوفة الصلاحيات الذكية.
- * تم تصميمها لتوضيح أن الصلاحيات تعمل كقالب (Template) يتم تخصيصه ميدانياً 
- * عبر ربطه بالوظائف والأقسام المرجعية.
+ * @fileOverview واجهة مصفوفة الصلاحيات الذكية المطورة.
+ * تم تحسين التنسيق ليكون أفقياً (Side-by-side) لتسهيل المراجعة وتوفير المساحة.
  */
 
 'use client';
@@ -16,7 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { 
   ShieldCheck, Save, X, Loader2, 
   Settings2, LayoutGrid, Globe, User, Users,
-  Building2, Info
+  Building2, Info, Lock
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { Role } from '@/types/roles';
@@ -109,10 +108,10 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
   };
 
   const SCOPES: { value: Scope; label: string; icon: any; color: string; desc: string }[] = [
-    { value: 'none', label: isRtl ? 'محجوب' : 'None', icon: X, color: 'text-slate-400', desc: isRtl ? 'لا يمكنه رؤية أو إجراء هذا الفعل نهائياً.' : 'No access at all.' },
-    { value: 'own', label: isRtl ? 'خاص بالموظف' : 'Own Only', icon: User, color: 'text-blue-500', desc: isRtl ? 'يتعامل فقط مع السجلات التي أنشأها هو.' : 'Only records created by the user.' },
-    { value: 'dept', label: isRtl ? 'نطاق القسم' : 'Department', icon: Users, color: 'text-orange-500', desc: isRtl ? 'يتعامل مع كافة سجلات زملائه في نفس القسم المرجعي.' : 'Access records within the same reference department.' },
-    { value: 'all', label: isRtl ? 'المنشأة كاملة' : 'Full Access', icon: Globe, color: 'text-emerald-500', desc: isRtl ? 'سلطة كاملة على مستوى كافة الأقسام والمنشأة.' : 'Access to all company data regardless of department.' },
+    { value: 'none', label: isRtl ? 'محجوب' : 'None', icon: X, color: 'text-slate-400', desc: isRtl ? 'لا يوجد وصول نهائياً.' : 'No access at all.' },
+    { value: 'own', label: isRtl ? 'الموظف فقط' : 'Own Only', icon: User, color: 'text-blue-500', desc: isRtl ? 'سجلاته الشخصية فقط.' : 'Only records created by the user.' },
+    { value: 'dept', label: isRtl ? 'نطاق القسم' : 'Department', icon: Users, color: 'text-orange-500', desc: isRtl ? 'سجلات قسمه فقط.' : 'Access records within the same department.' },
+    { value: 'all', label: isRtl ? 'المنشأة كاملة' : 'Full Access', icon: Globe, color: 'text-emerald-500', desc: isRtl ? 'كافة بيانات المنشأة.' : 'Access to all company data.' },
   ];
 
   return (
@@ -122,98 +121,103 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
            <div className="text-start">
               <CardTitle className="text-2xl font-black font-headline flex items-center gap-3">
                  <ShieldCheck className="h-8 w-8 text-primary" />
-                 {isRtl ? 'مصفوفة الصلاحيات الذكية' : 'Intelligent Permission Matrix'}
+                 {isRtl ? 'مصفوفة الصلاحيات الميدانية' : 'Field Permission Matrix'}
               </CardTitle>
               <p className="text-xs font-bold text-muted-foreground mt-1 opacity-70">
-                {isRtl ? 'تخصيص نطاق الوصول لكل عملية ومورد في النظام' : 'Customizing granular access scope per action and module'}
+                {isRtl ? 'تحكم دقيق في الأفعال ونطاق الوصول لكل موديول' : 'Granular control over actions and scopes per module'}
               </p>
            </div>
-           <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full"><X className="h-6 w-6" /></Button>
+           <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-10 w-10 hover:bg-white"><X className="h-6 w-6" /></Button>
         </CardHeader>
         
         <CardContent className="p-0">
-           {/* تعليمات الربط المرجعي */}
-           <div className="p-6 bg-blue-50 border-b border-blue-100 flex items-start gap-4 text-start">
-              <Info className="h-6 w-6 text-blue-600 shrink-0 mt-1" />
-              <div>
-                 <h5 className="font-black text-blue-900 text-sm">{isRtl ? 'تنبيه الربط المرجعي (Reference Link)' : 'Reference Link Warning'}</h5>
-                 <p className="text-xs text-blue-700/70 leading-relaxed font-bold">
-                    {isRtl 
-                      ? 'هذا الدور يعمل كـ "قالب". عند اختيار نطاق "القسم"، سيعتمد النظام آلياً على كود القسم المرجعي الذي تمنحه للموظف عند التوظيف لفلترة البيانات.' 
-                      : 'This role acts as a template. When choosing "Department" scope, the system uses the reference department ID assigned to the employee during hiring to filter data.'}
-                 </p>
+           {/* Header inputs aligned side-by-side */}
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-10 bg-slate-50/50 border-b">
+              <div className="space-y-3 text-start">
+                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">{isRtl ? 'اسم الدور (AR)' : 'Role Name (AR)'}</Label>
+                 <Input 
+                   value={formData.name} 
+                   onChange={e => setFormData({...formData, name: e.target.value})} 
+                   className="h-14 rounded-2xl border-2 font-black text-lg bg-white focus:ring-4 focus:ring-primary/5 transition-all px-6" 
+                   placeholder="مثلاً: مدير مشاريع"
+                 />
               </div>
-           </div>
-
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-8 bg-slate-50/30 border-b">
-              <div className="space-y-2 text-start">
-                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اسم الدور (Ar)' : 'Role Name (AR)'}</Label>
-                 <Input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="h-14 rounded-2xl border-2 font-bold shadow-inner" placeholder="مثال: مدير محاسبة" />
-              </div>
-              <div className="space-y-2 text-start">
-                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اسم الدور (En)' : 'Role Name (EN)'}</Label>
-                 <Input value={formData.nameEn} onChange={e => setFormData({...formData, nameEn: e.target.value})} className="h-14 rounded-2xl border-2 font-bold text-start shadow-inner" dir="ltr" placeholder="e.g. Accounting Manager" />
+              <div className="space-y-3 text-start">
+                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">{isRtl ? 'اسم الدور (EN)' : 'Role Name (EN)'}</Label>
+                 <Input 
+                   value={formData.nameEn} 
+                   onChange={e => setFormData({...formData, nameEn: e.target.value})} 
+                   className="h-14 rounded-2xl border-2 font-black text-lg bg-white text-start focus:ring-4 focus:ring-primary/5 transition-all px-6" 
+                   dir="ltr" 
+                   placeholder="e.g. Project Manager"
+                 />
               </div>
            </div>
 
            <div className="overflow-x-auto">
               <Table>
-                 <TableHeader className="bg-slate-50">
+                 <TableHeader className="bg-slate-50/80">
                     <TableRow>
-                       <TableHead className="py-6 ps-8 w-[280px] text-start font-black">{isRtl ? 'المورد / الشاشة' : 'Module / Screen'}</TableHead>
-                       <TableHead className="text-start font-black">{isRtl ? 'العمليات المتاحة والنطاق' : 'Granular Actions & Scopes'}</TableHead>
+                       <TableHead className="py-6 ps-10 w-[240px] text-start font-black text-[#1e1b4b] uppercase text-[10px] tracking-widest">{isRtl ? 'المورد / الشاشة' : 'Module / Screen'}</TableHead>
+                       <TableHead className="text-start font-black text-[#1e1b4b] uppercase text-[10px] tracking-widest">{isRtl ? 'العمليات المتاحة والنطاق (Actions & Scopes)' : 'Available Actions & Scopes'}</TableHead>
                     </TableRow>
                  </TableHeader>
                  <TableBody>
                     {SYSTEM_RESOURCES.map((resource) => (
-                       <TableRow key={resource.id} className="hover:bg-slate-50/50 transition-colors border-b-slate-100">
-                          <TableCell className="py-8 ps-8">
-                             <div className="flex items-center gap-3">
-                                <div className="h-10 w-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary shadow-sm border border-primary/10">
-                                   <LayoutGrid className="h-5 w-5" />
+                       <TableRow key={resource.id} className="hover:bg-primary/[0.02] transition-colors border-b-slate-100 group">
+                          <TableCell className="py-8 ps-10 align-top">
+                             <div className="flex items-center gap-4">
+                                <div className="h-12 w-12 rounded-2xl bg-white border-2 border-slate-100 flex items-center justify-center text-primary shadow-sm group-hover:border-primary/20 transition-all">
+                                   <LayoutGrid className="h-6 w-6" />
                                 </div>
                                 <div className="text-start">
-                                   <p className="font-black text-slate-800 text-sm">{isRtl ? resource.labelAr : resource.labelEn}</p>
-                                   <Badge variant="outline" className="text-[8px] font-bold uppercase tracking-tighter border-slate-200 text-slate-400">
+                                   <p className="font-black text-slate-900 text-base">{isRtl ? resource.labelAr : resource.labelEn}</p>
+                                   <Badge variant="secondary" className="text-[8px] font-black uppercase tracking-tighter bg-slate-100 text-slate-400 border-0 mt-1">
                                       {resource.module}
                                    </Badge>
                                 </div>
                              </div>
                           </TableCell>
-                          <TableCell>
-                             <div className="flex flex-wrap gap-6">
+                          <TableCell className="py-8 pe-10">
+                             {/* Grid of actions displayed side-by-side */}
+                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {resource.allowedActions.map((action) => {
                                    const currentScope = getScope(resource.id, action);
                                    const scopeInfo = SCOPES.find(s => s.value === currentScope);
 
                                    return (
-                                     <div key={action} className="flex flex-col gap-2 min-w-[160px] text-start">
-                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                           {isRtl ? ACTION_LABELS[action].ar : ACTION_LABELS[action].en}
-                                        </span>
+                                     <div key={action} className="flex items-center gap-3 bg-white p-2.5 rounded-2xl border-2 border-slate-50 shadow-sm hover:border-primary/10 transition-all">
+                                        <div className="min-w-[50px] text-start">
+                                           <span className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">
+                                              {isRtl ? ACTION_LABELS[action].ar : ACTION_LABELS[action].en}
+                                           </span>
+                                        </div>
                                         <Select 
                                           value={currentScope} 
                                           onValueChange={(v: Scope) => setScope(resource.id, action, v)}
                                         >
                                            <SelectTrigger className={cn(
-                                             "h-11 rounded-xl border-2 text-[10px] font-black transition-all",
-                                             currentScope !== 'none' ? "border-primary/30 bg-primary/5 text-primary shadow-sm" : "bg-white border-slate-100"
+                                             "h-10 rounded-xl border-2 text-[10px] font-black transition-all flex-1",
+                                             currentScope !== 'none' ? "border-primary/30 bg-primary/5 text-primary" : "bg-white border-slate-100 text-slate-400"
                                            )}>
                                               <SelectValue>
                                                  <div className="flex items-center gap-2">
-                                                    {scopeInfo?.icon && <scopeInfo.icon className={cn("h-3.5 w-3.5", scopeInfo.color)} />}
-                                                    {scopeInfo?.label}
+                                                    {scopeInfo?.icon && <scopeInfo.icon className={cn("h-3 w-3", scopeInfo.color)} />}
+                                                    <span className="truncate">{scopeInfo?.label}</span>
                                                  </div>
                                               </SelectValue>
                                            </SelectTrigger>
-                                           <SelectContent className="rounded-2xl">
+                                           <SelectContent className="rounded-2xl border-0 shadow-2xl">
                                               {SCOPES.map(s => (
-                                                 <SelectItem key={s.value} value={s.value} className="font-bold text-xs py-3">
-                                                    <div className="flex flex-col gap-1">
-                                                       <div className="flex items-center gap-2">
-                                                          <s.icon className={cn("h-4 w-4", s.color)} /> {s.label}
+                                                 <SelectItem key={s.value} value={s.value} className="font-bold text-xs py-3 px-4">
+                                                    <div className="flex items-center gap-3">
+                                                       <div className={cn("p-1.5 rounded-lg bg-slate-50", s.color)}>
+                                                          <s.icon className="h-3.5 w-3.5" />
                                                        </div>
-                                                       <p className="text-[8px] text-slate-400 font-normal ps-6">{s.desc}</p>
+                                                       <div className="flex flex-col">
+                                                          <span className="font-black">{s.label}</span>
+                                                          <span className="text-[8px] text-slate-400 font-normal">{s.desc}</span>
+                                                       </div>
                                                     </div>
                                                  </SelectItem>
                                               ))}
@@ -230,27 +234,29 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
               </Table>
            </div>
 
-           <div className="p-10 bg-slate-50 border-t flex flex-col md:flex-row justify-between items-center gap-6">
-              <div className="flex items-start gap-4 max-w-md text-start">
-                 <Building2 className="h-6 w-6 text-slate-300 shrink-0 mt-1" />
-                 <div>
-                    <h5 className="text-xs font-black text-slate-700 uppercase tracking-widest">{isRtl ? 'دليل النطاقات (Scopes Guide)' : 'Scopes Guide'}</h5>
-                    <p className="text-[10px] font-bold text-slate-400 leading-relaxed mt-1 italic">
+           <div className="p-10 bg-slate-50 border-t flex flex-col md:flex-row justify-between items-center gap-8">
+              <div className="flex items-start gap-4 max-w-lg text-start">
+                 <div className="h-10 w-10 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center shrink-0 mt-1 shadow-sm border border-blue-100">
+                    <Info className="h-5 w-5" />
+                 </div>
+                 <div className="space-y-1">
+                    <h5 className="text-xs font-black text-slate-800 uppercase tracking-widest">{isRtl ? 'دليل نطاق البيانات (Scope)' : 'Data Scope Guide'}</h5>
+                    <p className="text-[10px] font-bold text-slate-500 leading-relaxed italic">
                        {isRtl 
-                         ? 'نطاق القسم (Dept) هو الأمان المرجعي؛ يمنع الموظف من رؤية بيانات أي قسم آخر بخلاف القسم المذكور في ملفه الوظيفي.' 
-                         : 'Department scope is your safety net; it prevents employees from accessing data belonging to any other reference department.'}
+                         ? 'نطاق "القسم" يعني أن الموظف لن يرى إلا السجلات المربوطة بكود قسمه المرجعي، بينما نطاق "الموظف" يحبسه داخل سجلاته الشخصية فقط.' 
+                         : 'Choosing "Department" scope ensures the employee only sees records linked to their reference department ID.'}
                     </p>
                  </div>
               </div>
               <div className="flex gap-4 w-full md:w-auto">
-                 <Button variant="outline" onClick={onClose} className="flex-1 md:w-32 h-16 rounded-[1.5rem] font-black border-2">{isRtl ? 'إلغاء' : 'Cancel'}</Button>
+                 <Button variant="outline" onClick={onClose} className="flex-1 md:w-40 h-16 rounded-[1.5rem] font-black border-2 border-slate-200 bg-white hover:bg-slate-50 transition-all">{isRtl ? 'إلغاء' : 'Cancel'}</Button>
                  <Button 
                    onClick={handleSave} 
                    disabled={loading}
-                   className="flex-1 md:w-72 h-16 rounded-[1.5rem] bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                   className="flex-1 md:w-80 h-16 rounded-[1.5rem] bg-primary text-white font-black text-2xl shadow-2xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all gap-3 border-b-8 border-orange-700"
                  >
-                    {loading ? <Loader2 className="animate-spin me-2" /> : <Save className="me-2 h-5 w-5" />}
-                    {isRtl ? 'حفظ قالب الصلاحيات' : 'Commit Template'}
+                    {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
+                    {isRtl ? 'حفظ إعدادات الصلاحيات' : 'Commit Changes'}
                  </Button>
               </div>
            </div>
