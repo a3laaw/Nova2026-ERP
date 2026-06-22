@@ -34,26 +34,15 @@ service cloud.firestore {
         isDeveloper() ||
         (exists(/databases/$(database)/documents/global_users/$(request.auth.uid)) && 
          getUserData().companyId == companyId && 
-         (getUserData().role == 'admin' || getUserData().role == 'Admin' || getUserData().roleCode == 'Admin'))
+         (getUserData().role == 'admin' || getUserData().role == 'Admin' || getUserData().roleCode == 'ADMIN'))
       );
     }
 
     // --- السجلات العالمية ---
     
     match /global_users/{uid} {
-      // السماح بالقراءة للمستخدم نفسه، أو المطور، أو أدمن الشركة التي يتبع لها المستخدم
-      allow read: if isAuthenticated() && (
-        request.auth.uid == uid || 
-        isDeveloper() || 
-        (exists(/databases/$(database)/documents/global_users/$(uid)) && isAdmin(get(/databases/$(database)/documents/global_users/$(uid)).data.companyId))
-      );
-      
-      // السماح بالكتابة للمستخدم نفسه (لبياناته)، أو المطور، 
-      // أو أدمن الشركة بشرط أن يكون السجل الجديد تابعاً لنفس شركته
-      allow create, update: if isDeveloper() || 
-                             (isAuthenticated() && request.auth.uid == uid) ||
-                             (isAuthenticated() && isAdmin(request.resource.data.companyId));
-                             
+      allow read: if isAuthenticated() && (request.auth.uid == uid || isDeveloper() || isAdmin(get(/databases/$(database)/documents/global_users/$(uid)).data.companyId));
+      allow create, update: if isDeveloper() || (isAuthenticated() && request.auth.uid == uid) || (isAuthenticated() && isAdmin(request.resource.data.companyId));
       allow delete: if isDeveloper();
     }
     
@@ -66,9 +55,32 @@ service cloud.firestore {
     
     match /companies/{companyId} {
       allow read: if belongsToCompany(companyId);
-      allow write: if isAdmin(companyId);
+      
+      // 1. قواعد مخصصة للطلبات التشغيلية (يسمح للموظف بالإرسال)
+      match /leaveRequests/{id} {
+        allow create: if belongsToCompany(companyId);
+        allow read: if belongsToCompany(companyId);
+        allow update, delete: if isAdmin(companyId);
+      }
 
-      // السماح بالوصول الكامل للأدمن على كافة المجموعات الفرعية
+      match /permissionRequests/{id} {
+        allow create: if belongsToCompany(companyId);
+        allow read: if belongsToCompany(companyId);
+        allow update, delete: if isAdmin(companyId);
+      }
+
+      match /leads/{id} {
+        allow create, update: if belongsToCompany(companyId);
+        allow read: if belongsToCompany(companyId);
+        allow delete: if isAdmin(companyId);
+      }
+
+      match /attendance/{id} {
+        allow read: if belongsToCompany(companyId);
+        allow create, update: if isAdmin(companyId);
+      }
+
+      // 2. الوصول العام للمدير على كافة المجموعات الأخرى
       match /{allSubCollections=**} {
         allow read: if belongsToCompany(companyId);
         allow write: if isAdmin(companyId);
