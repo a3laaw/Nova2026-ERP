@@ -1,12 +1,11 @@
 /**
- * @fileOverview محرك اتخاذ القرار (The Authorization Engine).
- * تم تعزيزه بفحوصات دفاعية ضد قيم undefined.
+ * @fileOverview محرك اتخاذ القرار الأمني (The Sovereign Auth Engine).
  */
 
 import { RoleMatrix, Action, Scope } from './types';
 
 /**
- * التحقق من صلاحية الوصول لمورد معين وفعل محدد مع النطاق
+ * التحقق من صلاحية الوصول لمورد معين وفعل محدد
  */
 export function hasResourceAccess(
   role: RoleMatrix | null,
@@ -16,7 +15,7 @@ export function hasResourceAccess(
   
   if (!resourceId) return { can: false, scope: 'none' };
 
-  // 1. حالة الأدمن (Master Key)
+  // 1. حالة الأدمن (Master Key) - يتجاوز المصفوفة تماماً
   if (role?.code?.toLowerCase() === 'admin' || role?.code?.toLowerCase() === 'system_admin') {
     return { can: true, scope: 'all' };
   }
@@ -25,10 +24,9 @@ export function hasResourceAccess(
     return { can: false, scope: 'none' };
   }
 
-  // 2. البحث في المصفوفة مع فحص الأمان
+  // 2. البحث الدقيق في المصفوفة (Case-insensitive)
   const rule = role.matrix.find(m => 
-    m?.resourceId && 
-    m.resourceId.toLowerCase() === resourceId.toLowerCase() && 
+    m?.resourceId?.toLowerCase() === resourceId.toLowerCase() && 
     m.action === action
   );
 
@@ -40,23 +38,21 @@ export function hasResourceAccess(
 }
 
 /**
- * دالة مبسطة للسايدبار: هل يرى الموظف هذا المورد أصلاً؟
- * يراه إذا كان يملك أي صلاحية (حتى لو عرض فقط) داخل المورد بنطاق غير "none"
+ * دالة السايدبار: هل الموظف مخول برؤية هذا الموديول؟
  */
 export function canViewModule(role: RoleMatrix | null, resourceId: string): boolean {
   if (!resourceId) return false;
 
-  // الأدمن يرى كل شيء دائماً
+  // الأدمن يرى كل شيء
   if (role?.code?.toLowerCase() === 'admin' || role?.code?.toLowerCase() === 'system_admin') {
     return true;
   }
   
   if (!role || !role.matrix) return false;
 
-  // البحث عن أي قاعدة تسمح بالوصول لهذا المورد
+  // يرى الموديول إذا كان يملك أي صلاحية بداخله (حتى لو عرض فقط)
   return role.matrix.some(m => 
-    m?.resourceId && 
-    m.resourceId.toLowerCase() === resourceId.toLowerCase() && 
+    m?.resourceId?.toLowerCase() === resourceId.toLowerCase() && 
     m.scope !== 'none'
   );
 }

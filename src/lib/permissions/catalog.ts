@@ -1,9 +1,9 @@
 /**
- * @fileOverview القاموس المركزي للموارد (The Source of Truth).
- * هذا الملف هو الذي يحقق "السحب الديناميكي للموارد".
+ * @fileOverview القاموس المركزي للموارد (Single Source of Truth).
+ * أي موديول يضاف هنا يظهر تلقائياً في الإعدادات وفي السايدبار.
  */
 
-import { SystemResource, ResourceActionDefinition, Action } from './types';
+import { SystemResource, Action } from './types';
 
 export const ACTION_LABELS: Record<Action, { ar: string; en: string }> = {
   view: { ar: 'عرض', en: 'View' },
@@ -14,7 +14,7 @@ export const ACTION_LABELS: Record<Action, { ar: string; en: string }> = {
   unpost: { ar: 'إلغاء ترحيل', en: 'Unpost' },
   approve: { ar: 'اعتماد', en: 'Approve' },
   archive: { ar: 'أرشفة', en: 'Archive' },
-  transfer: { ar: 'تحويل', en: 'Transfer' },
+  transfer: { ar: 'تحويل مخزني', en: 'Transfer' },
   print: { ar: 'طباعة', en: 'Print' },
   export: { ar: 'تصدير', en: 'Export' },
   seed: { ar: 'تهيئة', en: 'Seed' },

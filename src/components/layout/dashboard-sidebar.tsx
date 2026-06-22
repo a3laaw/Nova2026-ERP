@@ -1,6 +1,6 @@
 /**
- * @fileOverview القائمة الجانبية (Sidebar).
- * تم إصلاح خطأ استيراد Link وتوحيد الأكواد مع محرك الصلاحيات.
+ * @fileOverview القائمة الجانبية (Sidebar) الديناميكية.
+ * تعتمد كلياً على مصفوفة الصلاحيات لإظهار أو إخفاء الموديولات.
  */
 
 "use client"
@@ -43,7 +43,7 @@ export function DashboardSidebar() {
   const isRtl = lang === 'ar'
   const isCollapsed = state === "collapsed"
 
-  // قائمة العناصر الموحدة مع الأكواد المركزية
+  // قائمة العناصر الموحدة مع الكتالوج المركزي
   const menuItems = React.useMemo(() => [
     { title: t('dashboard'), icon: LayoutDashboard, url: "/dashboard", resource: 'dashboard' },
     { 
@@ -125,6 +125,7 @@ export function DashboardSidebar() {
     }
   ], [t, isRtl]);
 
+  // فلترة القوائم بناءً على مصفوفة الصلاحيات
   const visibleItems = React.useMemo(() => {
     return menuItems.filter(item => canAccess(item.resource));
   }, [menuItems, canAccess]);
@@ -280,7 +281,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                 <item.icon className="h-6 w-6 shrink-0" />
                 <span className="flex-1 text-start text-sm font-black tracking-tight">{item.title}</span>
               </div>
-              <ChevronLeft className={cn("h-4 w-4 transition-transform opacity-60", isExpanded ? (isRtl ? "-rotate-90" : "rotate-90") : "rotate-0")} />
+              <ChevronLeft className={cn("h-4 w-4 transition-transform opacity-60", isExpanded ? (isRtl ? "-rotate-90" : "rotate(90deg)") : "rotate-0")} />
             </button>
           </CollapsibleTrigger>
           <CollapsibleContent>

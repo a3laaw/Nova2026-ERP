@@ -15,23 +15,21 @@ export interface PermissionRule {
   scope: Scope;
 }
 
-export interface ResourceActionDefinition {
-  action: Action;
-  labelAr: string;
-  labelEn: string;
-}
-
 export interface SystemResource {
-  id: string; // المعرف الموحد (مثل 'crm', 'hr')
+  id: string; // المعرف الموحد للموديول (e.g. 'accounting')
   labelAr: string;
   labelEn: string;
-  module: string;
-  allowedActions: Action[]; // الأفعال المخصصة لهذا المورد
+  module: string; // تصنيف وظيفي
+  allowedActions: Action[]; // الأفعال المخصصة لطبيعة هذا المورد
 }
 
 export interface RoleMatrix {
-  matrix: PermissionRule[];
+  id?: string;
   code: string;
   name: string;
   nameEn: string;
+  matrix: PermissionRule[];
+  isActive: boolean;
+  isSystemRole: boolean;
+  order: number;
 }

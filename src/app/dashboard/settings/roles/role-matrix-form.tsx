@@ -1,6 +1,6 @@
 /**
  * @fileOverview واجهة مصفوفة الصلاحيات الديناميكية.
- * تولد الأعمدة (Actions) بناءً على ما هو مسموح لكل مورد في الكتالوج.
+ * تولد الأعمدة والأفعال بناءً على كتالوج الموارد المحدث.
  */
 
 'use client';
@@ -14,13 +14,13 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   ShieldCheck, Save, X, Loader2, 
-  Settings2, LayoutGrid, Globe, User, Users, Building2
+  Settings2, LayoutGrid, Globe, User, Users
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { Role } from '@/types/roles';
 import { RoleService } from '@/services/role-service';
 import { SYSTEM_RESOURCES, ACTION_LABELS } from '@/lib/permissions/catalog';
-import { Action, Scope, PermissionRule } from '@/lib/permissions/types';
+import { Action, Scope } from '@/lib/permissions/types';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { 
@@ -51,6 +51,8 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
         ...role,
         matrix: role.matrix || []
       });
+    } else {
+      setFormData({ name: '', nameEn: '', matrix: [] });
     }
   }, [role]);
 
@@ -77,14 +79,23 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
   };
 
   const handleSave = async () => {
-    if (!formData.name || !formData.nameEn) return;
+    if (!formData.name || !formData.nameEn) {
+      toast({ variant: "destructive", title: isRtl ? "اسم الدور مطلوب" : "Role name is required" });
+      return;
+    }
     setLoading(true);
     try {
       if (role?.id) {
         await roleService.updateRole(role.id, formData);
       } else {
         const code = formData.nameEn.toUpperCase().replace(/\s+/g, '_');
-        await roleService.addRole({ ...formData, code, isActive: true, isSystemRole: false, order: 10 });
+        await roleService.addRole({ 
+          ...formData, 
+          code, 
+          isActive: true, 
+          isSystemRole: false, 
+          order: 10 
+        });
       }
       toast({ title: t('saved') });
       onClose();
@@ -97,9 +108,9 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
 
   const SCOPES: { value: Scope; label: string; icon: any }[] = [
     { value: 'none', label: isRtl ? 'محجوب' : 'None', icon: X },
-    { value: 'own', label: isRtl ? 'خاص' : 'Own', icon: User },
-    { value: 'dept', label: isRtl ? 'قسم' : 'Dept', icon: Users },
-    { value: 'all', label: isRtl ? 'الكل' : 'All', icon: Globe },
+    { value: 'own', label: isRtl ? 'خاص بالموظف' : 'Own Records', icon: User },
+    { value: 'dept', label: isRtl ? 'القسم' : 'Department', icon: Users },
+    { value: 'all', label: isRtl ? 'المنشأة كاملة' : 'Full Access', icon: Globe },
   ];
 
   return (
@@ -109,10 +120,10 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
            <div className="text-start">
               <CardTitle className="text-2xl font-black font-headline flex items-center gap-3">
                  <ShieldCheck className="h-8 w-8 text-primary" />
-                 {isRtl ? 'مصفوفة الصلاحيات الذكية' : 'Intelligent Matrix Control'}
+                 {isRtl ? 'مصفوفة الصلاحيات الذكية' : 'Intelligent Permission Matrix'}
               </CardTitle>
               <p className="text-xs font-bold text-muted-foreground mt-1 opacity-70">
-                {isRtl ? 'تخصيص نطاق الوصول لكل عملية ومورد' : 'Customizing access scope per action and resource'}
+                {isRtl ? 'تخصيص نطاق الوصول لكل عملية ومورد في النظام' : 'Customizing granular access scope per action and module'}
               </p>
            </div>
            <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full"><X className="h-6 w-6" /></Button>
@@ -122,11 +133,11 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-8 bg-slate-50/30 border-b">
               <div className="space-y-2 text-start">
                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اسم الدور (Ar)' : 'Role Name (AR)'}</Label>
-                 <Input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="h-12 rounded-xl border-2 font-bold" />
+                 <Input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="h-14 rounded-2xl border-2 font-bold" placeholder="مثال: مدير محاسبة" />
               </div>
               <div className="space-y-2 text-start">
                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اسم الدور (En)' : 'Role Name (EN)'}</Label>
-                 <Input value={formData.nameEn} onChange={e => setFormData({...formData, nameEn: e.target.value})} className="h-12 rounded-xl border-2 font-bold text-start" dir="ltr" />
+                 <Input value={formData.nameEn} onChange={e => setFormData({...formData, nameEn: e.target.value})} className="h-14 rounded-2xl border-2 font-bold text-start" dir="ltr" placeholder="e.g. Accounting Manager" />
               </div>
            </div>
 
@@ -134,8 +145,8 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
               <Table>
                  <TableHeader className="bg-slate-50">
                     <TableRow>
-                       <TableHead className="py-6 ps-8 w-[250px] text-start font-black">{isRtl ? 'المورد / الشاشة' : 'Resource'}</TableHead>
-                       <TableHead className="text-start font-black">{isRtl ? 'الصلاحيات المتاحة والنطاق' : 'Available Permissions & Scopes'}</TableHead>
+                       <TableHead className="py-6 ps-8 w-[280px] text-start font-black">{isRtl ? 'المورد / الشاشة' : 'Module / Screen'}</TableHead>
+                       <TableHead className="text-start font-black">{isRtl ? 'العمليات المتاحة والنطاق' : 'Granular Actions & Scopes'}</TableHead>
                     </TableRow>
                  </TableHeader>
                  <TableBody>
@@ -155,9 +166,9 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
                              </div>
                           </TableCell>
                           <TableCell>
-                             <div className="flex flex-wrap gap-4">
+                             <div className="flex flex-wrap gap-6">
                                 {resource.allowedActions.map((action) => (
-                                   <div key={action} className="flex flex-col gap-1.5 min-w-[120px]">
+                                   <div key={action} className="flex flex-col gap-2 min-w-[140px] text-start">
                                       <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
                                          {isRtl ? ACTION_LABELS[action].ar : ACTION_LABELS[action].en}
                                       </span>
@@ -166,16 +177,16 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
                                         onValueChange={(v: Scope) => setScope(resource.id, action, v)}
                                       >
                                          <SelectTrigger className={cn(
-                                           "h-9 rounded-lg border-2 text-[10px] font-black transition-all",
-                                           getScope(resource.id, action) !== 'none' ? "border-primary/30 bg-primary/5 text-primary" : "bg-white border-slate-100"
+                                           "h-10 rounded-xl border-2 text-[10px] font-black transition-all",
+                                           getScope(resource.id, action) !== 'none' ? "border-primary/30 bg-primary/5 text-primary shadow-sm" : "bg-white border-slate-100"
                                          )}>
                                             <SelectValue />
                                          </SelectTrigger>
-                                         <SelectContent className="rounded-xl">
+                                         <SelectContent className="rounded-2xl">
                                             {SCOPES.map(s => (
                                                <SelectItem key={s.value} value={s.value} className="font-bold text-xs">
                                                   <div className="flex items-center gap-2">
-                                                     <s.icon className="h-3 w-3" /> {s.label}
+                                                     <s.icon className="h-3.5 w-3.5" /> {s.label}
                                                   </div>
                                                </SelectItem>
                                             ))}
@@ -196,19 +207,19 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
                  <Settings2 className="h-5 w-5 text-slate-300 shrink-0 mt-1" />
                  <p className="text-[10px] font-bold text-slate-400 leading-relaxed italic">
                     * {isRtl 
-                      ? 'النظام يطبق مبدأ الصلاحيات المخصصة للمورد؛ تظهر فقط العمليات التي تدعمها طبيعة الشاشة برمجياً.' 
-                      : 'The system applies resource-specific permissions; only actions supported by the screen logic are shown.'}
+                      ? 'يتم تطبيق الصلاحيات ديناميكياً بناءً على نوع المورد. الأفعال الظاهرة أعلاه هي فقط ما يدعمه الموديول برمجياً.' 
+                      : 'Permissions are applied dynamically per resource. Actions shown are only those supported by the module logic.'}
                  </p>
               </div>
               <div className="flex gap-4 w-full md:w-auto">
-                 <Button variant="outline" onClick={onClose} className="flex-1 md:w-32 h-14 rounded-2xl font-black border-2">{isRtl ? 'إلغاء' : 'Cancel'}</Button>
+                 <Button variant="outline" onClick={onClose} className="flex-1 md:w-32 h-16 rounded-[1.5rem] font-black border-2">{isRtl ? 'إلغاء' : 'Cancel'}</Button>
                  <Button 
                    onClick={handleSave} 
                    disabled={loading}
-                   className="flex-1 md:w-64 h-14 rounded-2xl bg-primary text-white font-black text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                   className="flex-1 md:w-72 h-16 rounded-[1.5rem] bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
                  >
-                    {loading ? <Loader2 className="animate-spin me-2" /> : <Save className="me-2 h-5 w-5" />}
-                    {isRtl ? 'حفظ الصلاحيات' : 'Commit Changes'}
+                    {loading ? <Loader2 className="animate-spin me-2" /> : <Save className="me-2 h-6 w-6" />}
+                    {isRtl ? 'حفظ الصلاحيات' : 'Commit Matrix'}
                  </Button>
               </div>
            </div>
