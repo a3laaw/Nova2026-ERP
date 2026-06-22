@@ -17,17 +17,12 @@ import {
   getDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
-import { Client, ClientHistory, ClientStatus } from '@/types/client';
+import { Client, ClientHistory } from '@/types/client';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { ensureActionPermission } from '@/lib/permissions';
 
 export class ClientService {
-  constructor(
-    private db: Firestore, 
-    private companyId: string,
-    private permissions: string[] = []
-  ) {}
+  constructor(private db: Firestore, private companyId: string) {}
 
   /**
    * توليد رقم الملف التلقائي التالي بصيغة C-0001/2026
@@ -48,9 +43,7 @@ export class ClientService {
       
       const snap = await getDocs(q);
       
-      if (snap.empty) {
-        return `${prefix}0001${suffix}`;
-      }
+      if (snap.empty) return `${prefix}0001${suffix}`;
       
       const lastNumStr = snap.docs[0].data().fileNumber;
       const match = lastNumStr.match(/C-(\d+)\//);
@@ -58,21 +51,15 @@ export class ClientService {
         const nextNum = parseInt(match[1]) + 1;
         return `${prefix}${nextNum.toString().padStart(4, '0')}${suffix}`;
       }
-      
       return `${prefix}0001${suffix}`;
     } catch (e) {
-      console.error("Error generating file number:", e);
       return `${prefix}0001${suffix}`;
     }
   }
 
-  async addClient(data: Omit<Client, 'id' | 'createdAt' | 'updatedAt' | 'companyId' | 'transactionCounter' | 'isActive' | 'status'>, userId: string, userName: string) {
-    ensureActionPermission(this.permissions, 'crm:create');
-    
-    const clientPath = paths.clients(this.companyId);
-    const clientRef = doc(collection(this.db, clientPath));
-    
-    const clientData: Client = {
+  async addClient(data: Partial<Client>, userId: string, userName: string) {
+    const clientRef = doc(collection(this.db, paths.clients(this.companyId)));
+    const clientData = {
       ...data,
       id: clientRef.id,
       companyId: this.companyId,
@@ -86,19 +73,15 @@ export class ClientService {
 
     await setDoc(clientRef, clientData).catch((err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: clientRef.path,
-        operation: 'create',
-        requestResourceData: clientData
+        path: clientRef.path, operation: 'create', requestResourceData: clientData
       }));
       throw err;
     });
 
     await this.addHistory(clientRef.id, {
       type: 'system_log',
-      content: `تم تسجيل العميل بنجاح بحالة: جديد برقم ملف: ${data.fileNumber}`,
-      userId,
-      userName,
-      companyId: this.companyId
+      content: `تم فتح ملف عميل جديد برقم: ${data.fileNumber}`,
+      userId, userName, companyId: this.companyId
     });
 
     return clientRef.id;
@@ -107,60 +90,15 @@ export class ClientService {
   async logInteraction(clientId: string, content: string, userId: string, userName: string) {
     const clientRef = doc(this.db, paths.clients(this.companyId), clientId);
     const clientSnap = await getDoc(clientRef);
-    
     if (!clientSnap.exists()) return;
-    const clientData = clientSnap.data() as Client;
 
     await this.addHistory(clientId, {
-      type: 'visit_logged',
-      content,
-      userId,
-      userName,
-      companyId: this.companyId
+      type: 'visit_logged', content, userId, userName, companyId: this.companyId
     });
 
-    if (clientData.status === 'new') {
-      await updateDoc(clientRef, {
-        status: 'prospective',
-        updatedAt: serverTimestamp()
-      });
-      
-      await this.addHistory(clientId, {
-        type: 'status_change',
-        content: `تم تحويل حالة العميل آلياً إلى: فرصة (بناءً على تفاعل ميداني)`,
-        userId: 'system',
-        userName: 'Nova Intelligence',
-        companyId: this.companyId
-      });
+    if (clientSnap.data().status === 'new') {
+      await updateDoc(clientRef, { status: 'prospective', updatedAt: serverTimestamp() });
     }
-  }
-
-  /**
-   * تحديث سجل العميل عند فتح معاملة جديدة.
-   * تم تعديل الوظيفة لتستقبل رقم المعاملة المهني بدلاً من المعرف التقني لضمان نظافة السجلات.
-   */
-  async markAsContracted(clientId: string, transactionNumber: string) {
-    const clientRef = doc(this.db, paths.clients(this.companyId), clientId);
-    
-    await updateDoc(clientRef, {
-      status: 'contracted',
-      transactionCounter: increment(1),
-      updatedAt: serverTimestamp()
-    });
-
-    await this.addHistory(clientId, {
-      type: 'status_change',
-      content: `تم تحويل العميل إلى: متعاقد (ارتباط بالمعاملة ${transactionNumber})`,
-      userId: 'system',
-      userName: 'Nova Intelligence',
-      companyId: this.companyId
-    });
-  }
-
-  async updateClient(clientId: string, updates: Partial<Client>, userId: string, userName: string) {
-    ensureActionPermission(this.permissions, 'crm:edit');
-    const clientRef = doc(this.db, paths.clients(this.companyId), clientId);
-    await updateDoc(clientRef, { ...updates, updatedAt: serverTimestamp() });
   }
 
   async addHistory(clientId: string, history: Omit<ClientHistory, 'id' | 'createdAt' | 'clientId'>) {
