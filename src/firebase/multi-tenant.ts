@@ -1,4 +1,3 @@
-
 'use client';
 
 import { getTenantPath } from '@/lib/utils';
@@ -10,6 +9,9 @@ export const paths = {
   // الحسابات العالمية
   globalUser: (uid: string) => `global_users/${uid}`,
   company: (companyId: string) => `companies/${companyId}`,
+  
+  // نظام الدعوات (Invites)
+  invitations: (companyId: string) => getTenantPath(companyId, 'invitations'),
   
   // الهيكل التنظيمي
   departments: (companyId: string) => getTenantPath(companyId, 'departments'),

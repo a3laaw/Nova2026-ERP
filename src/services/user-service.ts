@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -10,52 +9,65 @@ import {
   updateDoc, 
   serverTimestamp,
   query,
-  where
+  where,
+  setDoc,
+  addDoc
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { paths } from '@/firebase/multi-tenant';
 
 /**
- * خدمة إدارة المستخدمين (User Management Service).
- * مسؤولة عن مزامنة الأدوار بين السجل العالمي وسجل المنشأة.
+ * خدمة إدارة المستخدمين والدعوات.
  */
 export class UserService {
   constructor(private db: Firestore, private companyId: string) {}
 
   /**
-   * جلب كافة الموظفين التابعين للشركة
+   * إنشاء دعوة لموظف موجود
    */
-  async getCompanyUsers() {
-    const usersRef = collection(this.db, 'companies', this.companyId, 'users');
-    try {
-      const snap = await getDocs(usersRef);
-      return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    } catch (err) {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ 
-        path: usersRef.path, 
-        operation: 'list' 
-      }));
-      return [];
-    }
+  async createInvitation(data: {
+    employeeId: string;
+    employeeName: string;
+    email: string;
+    roleId: string;
+    roleCode: string;
+    departmentId: string;
+  }) {
+    const inviteRef = doc(collection(this.db, paths.invitations(this.companyId)));
+    const inviteData = {
+      ...data,
+      id: inviteRef.id,
+      companyId: this.companyId,
+      status: 'pending',
+      createdAt: serverTimestamp(),
+      expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString() // صالحة لـ 48 ساعة
+    };
+
+    await setDoc(inviteRef, inviteData);
+    return inviteRef.id;
+  }
+
+  async getInvitation(inviteId: string) {
+    const docRef = doc(this.db, paths.invitations(this.companyId), inviteId);
+    const snap = await getDoc(docRef);
+    return snap.exists() ? snap.data() : null;
   }
 
   /**
    * تحديث دور المستخدم (Role Assignment)
-   * يتم التحديث في مكانين لضمان عمل الصلاحيات وقواعد الحماية (Security Rules)
    */
   async updateUserRole(uid: string, roleId: string, roleCode: string) {
     const tenantUserRef = doc(this.db, 'companies', this.companyId, 'users', uid);
     const globalUserRef = doc(this.db, 'global_users', uid);
 
     try {
-      // 1. تحديث في سجل الشركة الداخلي
       await updateDoc(tenantUserRef, { 
         roleId: roleId,
         role: roleCode, 
         updatedAt: serverTimestamp() 
       });
 
-      // 2. تحديث في السجل العالمي (هذا ما تراه الـ Security Rules)
       await updateDoc(globalUserRef, { 
         roleId: roleId,
         role: roleCode,
@@ -72,21 +84,14 @@ export class UserService {
     }
   }
 
-  /**
-   * تجميد أو تنشيط حساب موظف
-   */
   async toggleUserStatus(uid: string, isActive: boolean) {
     const userRef = doc(this.db, 'companies', this.companyId, 'users', uid);
     const globalRef = doc(this.db, 'global_users', uid);
-
     try {
       await updateDoc(userRef, { isActive, updatedAt: serverTimestamp() });
       await updateDoc(globalRef, { isActive, updatedAt: serverTimestamp() });
     } catch (err) {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ 
-        path: userRef.path, 
-        operation: 'update' 
-      }));
+      console.error(err);
     }
   }
 }

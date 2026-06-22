@@ -10,18 +10,20 @@ import {
   Search, ShieldCheck, Mail, ArrowRight,
   UserCircle, Ban, CheckCircle2, UserCog,
   ShieldAlert, UserPlus, Info, Save,
-  LayoutGrid
+  LayoutGrid, Copy, Link as LinkIcon
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, where } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
 import { UserService } from '@/services/user-service';
 import { Role } from '@/types/roles';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Employee } from '@/types/hr';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -37,21 +39,51 @@ export default function UsersManagementPage() {
   const [editingUser, setEditingUser] = useState<any>(null);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  const [generatedLink, setGeneratedLink] = useState<string | null>(null);
+
+  // فورم الدعوة
+  const [inviteForm, setInviteForm] = useState({
+    employeeId: '',
+    roleId: ''
+  });
 
   const userService = useMemo(() => 
     db && companyId ? new UserService(db, companyId) : null, 
   [db, companyId]);
 
-  const usersQuery = useMemo(() => 
-    companyId && db ? query(collection(db, 'companies', companyId, 'users')) : null, 
-  [db, companyId]);
-  
-  const rolesQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.roles(companyId)), orderBy('order')) : null, 
-  [db, companyId]);
+  // داتا
+  const usersQuery = useMemo(() => companyId && db ? query(collection(db, 'companies', companyId, 'users')) : null, [db, companyId]);
+  const rolesQuery = useMemo(() => companyId && db ? query(collection(db, paths.roles(companyId)), orderBy('order')) : null, [db, companyId]);
+  const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
 
   const { data: users, loading: usersLoading } = useCollection(usersQuery);
   const { data: roles } = useCollection<Role>(rolesQuery);
+  const { data: employees } = useCollection<Employee>(empsQuery);
+
+  const handleCreateInvite = async () => {
+    if (!userService || !inviteForm.employeeId || !inviteForm.roleId) return;
+    setLoadingAction('create_invite');
+    try {
+      const emp = employees?.find(e => e.id === inviteForm.employeeId);
+      const role = roles?.find(r => r.id === inviteForm.roleId);
+      if (!emp || !role) return;
+
+      const inviteId = await userService.createInvitation({
+        employeeId: emp.id!,
+        employeeName: emp.fullName,
+        email: emp.email || '',
+        roleId: role.id!,
+        roleCode: role.code,
+        departmentId: emp.departmentId
+      });
+
+      const link = `${window.location.origin}/join/${companyId}/${inviteId}`;
+      setGeneratedLink(link);
+      toast({ title: isRtl ? "تم توليد رابط الدعوة" : "Invite Link Generated" });
+    } finally {
+      setLoadingAction(null);
+    }
+  };
 
   const handleUpdateRole = async (uid: string, roleId: string) => {
     if (!userService) return;
@@ -59,7 +91,6 @@ export default function UsersManagementPage() {
     try {
       const role = roles?.find(r => r.id === roleId);
       if (!role) return;
-      // مزامنة الدور عبر الخدمة المحدثة
       await userService.updateUserRole(uid, role.id!, role.code || role.nameEn);
       toast({ title: t('saved') });
       setEditingUser(null);
@@ -99,13 +130,72 @@ export default function UsersManagementPage() {
           </p>
         </div>
 
-        <Button 
-          onClick={() => setIsInviteOpen(true)}
-          className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-2"
-        >
-           <UserPlus className="h-6 w-6" />
-           {isRtl ? 'إضافة مستخدم' : 'Add User'}
-        </Button>
+        <Dialog open={isInviteOpen} onOpenChange={(v) => { setIsInviteOpen(v); if(!v) setGeneratedLink(null); }}>
+          <DialogTrigger asChild>
+            <Button className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-2">
+               <UserPlus className="h-6 w-6" />
+               {isRtl ? 'تفعيل حساب موظف' : 'Activate Employee'}
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="rounded-[3rem] p-0 overflow-hidden max-w-xl border-0 shadow-3xl" dir={dir}>
+            <div className="bg-slate-900 p-10 text-white text-start">
+               <DialogTitle className="text-3xl font-black font-headline flex items-center gap-3">
+                  <UserPlus className="h-9 w-9 text-primary" />
+                  {isRtl ? 'دعوة موظف للنظام' : 'Invite Employee'}
+               </DialogTitle>
+               <p className="text-slate-400 font-bold mt-2">{isRtl ? 'قم بربط ملف الموظف بحساب دخول جديد.' : 'Link employee profile to a new login account.'}</p>
+            </div>
+
+            <div className="p-10 space-y-8 text-start bg-white">
+               {!generatedLink ? (
+                 <div className="space-y-6">
+                    <div className="space-y-2">
+                       <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'اختر الموظف (من سجلات HR)' : 'Select Employee'}</Label>
+                       <Select value={inviteForm.employeeId} onValueChange={v => setInviteForm({...inviteForm, employeeId: v})}>
+                          <SelectTrigger className="h-14 rounded-2xl border-2 font-black">
+                             <SelectValue placeholder="..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                             {employees?.map(e => <SelectItem key={e.id} value={e.id!} className="font-bold">{e.fullName}</SelectItem>)}
+                          </SelectContent>
+                       </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                       <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'تعيين الدور الأمني' : 'Assign Role'}</Label>
+                       <Select value={inviteForm.roleId} onValueChange={v => setInviteForm({...inviteForm, roleId: v})}>
+                          <SelectTrigger className="h-14 rounded-2xl border-2 font-black">
+                             <SelectValue placeholder="..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                             {roles?.map(r => <SelectItem key={r.id} value={r.id!} className="font-bold">{isRtl ? r.name : r.nameEn}</SelectItem>)}
+                          </SelectContent>
+                       </Select>
+                    </div>
+
+                    <Button onClick={handleCreateInvite} disabled={loadingAction === 'create_invite' || !inviteForm.employeeId} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20">
+                       {loadingAction === 'create_invite' ? <Loader2 className="animate-spin h-6 w-6" /> : (isRtl ? 'توليد رابط التفعيل' : 'Generate Activation Link')}
+                    </Button>
+                 </div>
+               ) : (
+                 <div className="space-y-6 animate-in zoom-in-95">
+                    <div className="p-8 rounded-[2rem] bg-emerald-50 border-2 border-emerald-100 flex flex-col items-center text-center gap-4">
+                       <div className="h-16 w-16 bg-emerald-500 text-white rounded-2xl flex items-center justify-center shadow-lg"><CheckCircle2 className="h-8 w-8" /></div>
+                       <div className="space-y-1">
+                          <h4 className="font-black text-emerald-900 text-xl">{isRtl ? 'رابط التفعيل جاهز' : 'Link Ready'}</h4>
+                          <p className="text-xs font-bold text-emerald-700/70">{isRtl ? 'أرسل هذا الرابط للموظف ليكمل إعداد كلمة مروره.' : 'Send this link to the employee to set their password.'}</p>
+                       </div>
+                    </div>
+                    <div className="flex gap-2">
+                       <Input readOnly value={generatedLink} className="h-14 rounded-xl font-mono text-[10px] bg-slate-50" dir="ltr" />
+                       <Button onClick={() => { navigator.clipboard.writeText(generatedLink); toast({title: "Copied"}); }} className="bg-slate-900 h-14 px-6 rounded-xl font-black"><Copy className="h-5 w-5" /></Button>
+                    </div>
+                    <p className="text-[10px] text-center text-slate-400 font-bold italic">{isRtl ? '* الرابط صالح للاستخدام مرة واحدة فقط ولمدة 48 ساعة.' : '* Link is valid for one use and expires in 48 hours.'}</p>
+                 </div>
+               )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -257,79 +347,8 @@ export default function UsersManagementPage() {
                      ))}
                   </div>
                </div>
-
-               <div className="p-6 rounded-[1.5rem] bg-amber-50 border-2 border-amber-100/50 flex items-start gap-4">
-                  <ShieldAlert className="h-6 w-6 text-amber-600 shrink-0 mt-0.5" />
-                  <div className="space-y-1">
-                     <p className="text-xs font-black text-amber-800 uppercase tracking-tight">{isRtl ? 'الأثر الأمني' : 'Security Impact'}</p>
-                     <p className="text-[10px] font-bold text-amber-700/70 leading-relaxed">
-                        {isRtl 
-                          ? 'تغيير الدور سيؤدي لتعديل صلاحيات الموظف على كافة موديولات النظام والتقارير فور حفظ البيانات.' 
-                          : 'Changing the role will immediately update the user\'s access to all modules and reports.'}
-                     </p>
-                  </div>
-               </div>
             </div>
-
-            <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row justify-end gap-4">
-               <Button variant="ghost" onClick={() => setEditingUser(null)} className="h-14 px-8 rounded-xl font-black text-slate-500">{isRtl ? 'إلغاء' : 'Cancel'}</Button>
-            </DialogFooter>
          </DialogContent>
-      </Dialog>
-
-      {/* مودال دعوة مستخدم جديد */}
-      <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
-        <DialogContent className="rounded-[3rem] p-0 overflow-hidden max-w-lg border-0 shadow-3xl" dir={dir}>
-          <div className="bg-slate-900 p-10 border-b text-white text-start">
-             <div className="flex justify-between items-center">
-                <div className="space-y-1">
-                   <DialogTitle className="text-3xl font-black font-headline flex items-center gap-3 text-primary">
-                      <UserPlus className="h-9 w-9" />
-                      {isRtl ? 'إضافة موظف للنظام' : 'Add New User'}
-                   </DialogTitle>
-                   <p className="text-slate-400 font-bold mt-1 uppercase tracking-widest text-[10px]">Invite to Enterprise Account</p>
-                </div>
-             </div>
-          </div>
-          <div className="p-10 space-y-8 text-start bg-white">
-             <div className="space-y-6">
-                <div className="p-8 rounded-[2rem] bg-blue-50/50 border-2 border-blue-100 flex items-start gap-5">
-                   <div className="h-12 w-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-lg shadow-blue-200">
-                      <Info className="h-6 w-6" />
-                   </div>
-                   <div className="space-y-2">
-                      <p className="text-base font-black text-blue-900">{isRtl ? 'كيف يتم التسجيل؟' : 'Registration Protocol'}</p>
-                      <p className="text-xs font-bold text-blue-700/70 leading-relaxed">
-                        {isRtl 
-                          ? 'لأغراض أمن المعلومات، يرجى تزويد الموظف برابط النظام. بمجرد تسجيله بحسابه الرسمي، سيظهر اسمه في هذه القائمة تلقائياً بحالة "مستخدم عادي". يمكنك بعد ذلك الضغط على أيقونة التعديل لتعيين دوره وصلاحياته.' 
-                          : 'Provide the employee with the portal link. Once they register, they will appear here as a "Basic User". You can then assign their specific role and permissions.'}
-                      </p>
-                   </div>
-                </div>
-
-                <div className="bg-slate-50 p-6 rounded-[1.5rem] border-2 border-dashed space-y-4">
-                   <div className="flex items-center gap-3">
-                      <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-                      <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{isRtl ? 'رابط التسجيل السريع' : 'Quick Access Link'}</p>
-                   </div>
-                   <div className="flex gap-2">
-                      <Input readOnly value={typeof window !== 'undefined' ? `${window.location.origin}/register` : ''} className="bg-white rounded-xl h-12 font-mono text-[10px]" dir="ltr" />
-                      <Button onClick={() => {
-                        if (typeof window !== 'undefined') {
-                          navigator.clipboard.writeText(`${window.location.origin}/register`);
-                          toast({ title: isRtl ? "تم نسخ الرابط" : "Link Copied" });
-                        }
-                      }} className="bg-primary h-12 px-4 rounded-xl font-black">Copy</Button>
-                   </div>
-                </div>
-             </div>
-          </div>
-          <DialogFooter className="p-10 bg-slate-50 border-t">
-             <Button onClick={() => setIsInviteOpen(false)} className="w-full h-16 rounded-2xl font-black text-xl bg-slate-900 text-white hover:bg-slate-800 shadow-xl shadow-slate-200">
-                {isRtl ? 'حسناً، فهمت' : 'Understood'}
-             </Button>
-          </DialogFooter>
-        </DialogContent>
       </Dialog>
     </div>
   );
