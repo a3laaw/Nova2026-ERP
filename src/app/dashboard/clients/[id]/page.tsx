@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -12,7 +11,7 @@ import {
   ShieldCheck, History, Clock, Loader2, AlertCircle,
   HardHat, FileText, ChevronRight, Activity, Plus,
   MessageSquare, UserCog, ExternalLink, Globe,
-  Navigation, Map as MapIcon
+  Navigation, Map as MapIcon, Compass, LocateFixed
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy } from 'firebase/firestore';
@@ -115,66 +114,97 @@ export default function ClientDetailsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
            
-           {/* Location Card - Interactive Display */}
-           <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
-              <CardHeader className="bg-slate-50/50 border-b p-8 text-start flex flex-row items-center justify-between">
-                 <CardTitle className="text-xl font-black flex items-center gap-3">
-                    <MapPin className="h-6 w-6 text-primary" />
-                    {isRtl ? 'الموقع الجغرافي والعنوان' : 'Location & Address'}
-                 </CardTitle>
+           {/* High-End Location Visualization Card */}
+           <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5 group">
+              <div className="h-2 bg-gradient-to-r from-blue-500 to-indigo-600 w-full" />
+              <CardHeader className="bg-slate-50/30 border-b p-8 text-start flex flex-row items-center justify-between">
+                 <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-sm">
+                       <Compass className="h-6 w-6" />
+                    </div>
+                    <div>
+                       <CardTitle className="text-xl font-black">{isRtl ? 'الرادار الجغرافي للعنوان' : 'Geographic Title Radar'}</CardTitle>
+                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{isRtl ? 'إحداثيات القسيمة والمنطقة' : 'Plot Coordinates & Sector'}</p>
+                    </div>
+                 </div>
                  {client.locationUrl && (
                     <Button 
                       asChild 
-                      className="bg-blue-600 text-white font-black rounded-xl h-10 px-6 gap-2 shadow-lg shadow-blue-100 hover:scale-105 transition-all"
+                      className="bg-blue-600 text-white font-black rounded-2xl h-12 px-8 gap-3 shadow-2xl shadow-blue-200 hover:scale-110 active:scale-95 transition-all"
                     >
                        <a href={client.locationUrl} target="_blank" rel="noopener noreferrer">
-                          <Navigation className="h-4 w-4" /> {isRtl ? 'فتح في خرائط جوجل' : 'Open in Maps'}
+                          <Navigation className="h-5 w-5 animate-pulse" /> {isRtl ? 'ملاحة ميدانية' : 'Field Navigation'}
                        </a>
                     </Button>
                  )}
               </CardHeader>
-              <CardContent className="p-8 text-start">
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                    <div className="space-y-6">
-                       <div className="p-6 rounded-[2rem] bg-slate-50 border-2 border-white shadow-inner">
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'المحافظة والمنطقة' : 'Gov & Area'}</p>
-                          <p className="text-lg font-black text-slate-900">{client.governorateName || '---'} - {client.areaName || '---'}</p>
-                       </div>
-                       <div className="grid grid-cols-3 gap-3">
-                          <div className="p-4 rounded-2xl bg-slate-50 border text-center">
-                             <p className="text-[8px] font-black text-slate-400 uppercase">{isRtl ? 'قطعة' : 'Block'}</p>
-                             <p className="font-black text-slate-800">{client.block || '-'}</p>
+              
+              <CardContent className="p-0">
+                 <div className="grid grid-cols-1 md:grid-cols-2">
+                    {/* Visual Navigation Display */}
+                    <div className="p-10 space-y-8 text-start border-e border-slate-50">
+                       <div className="space-y-4">
+                          <div className="p-6 rounded-[2.5rem] bg-slate-50 border-2 border-white shadow-inner relative overflow-hidden">
+                             <div className="absolute top-0 right-0 p-4 opacity-5">
+                                <Globe className="h-16 w-16" />
+                             </div>
+                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">{isRtl ? 'الموقع العام' : 'General Location'}</p>
+                             <p className="text-2xl font-black text-slate-900 tracking-tighter">
+                                {client.governorateName || '---'}
+                                <span className="mx-2 text-primary opacity-30">/</span>
+                                {client.areaName || '---'}
+                             </p>
                           </div>
-                          <div className="p-4 rounded-2xl bg-slate-50 border text-center">
-                             <p className="text-[8px] font-black text-slate-400 uppercase">{isRtl ? 'شارع' : 'Street'}</p>
-                             <p className="font-black text-slate-800">{client.street || '-'}</p>
-                          </div>
-                          <div className="p-4 rounded-2xl bg-slate-50 border text-center">
-                             <p className="text-[8px] font-black text-slate-400 uppercase">{isRtl ? 'منزل' : 'House'}</p>
-                             <p className="font-black text-slate-800">{client.houseNumber || '-'}</p>
+
+                          <div className="grid grid-cols-3 gap-4">
+                             {[
+                               { label: isRtl ? 'قطعة' : 'Block', val: client.block },
+                               { label: isRtl ? 'شارع' : 'Street', val: client.street },
+                               { label: isRtl ? 'قسيمة' : 'Plot', val: client.houseNumber }
+                             ].map((item, i) => (
+                               <div key={i} className="p-5 rounded-3xl bg-white border-2 border-slate-50 shadow-sm text-center group-hover:border-blue-100 transition-colors">
+                                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{item.label}</p>
+                                  <p className="text-lg font-black text-slate-800">{item.val || '-'}</p>
+                               </div>
+                             ))}
                           </div>
                        </div>
                     </div>
 
-                    <div className="relative group overflow-hidden rounded-[2.5rem]">
-                       <div className="absolute inset-0 bg-blue-500/5 rounded-[2rem] blur-xl group-hover:bg-blue-500/10 transition-all" />
+                    {/* Interactive Asset Preview Look */}
+                    <div className="relative p-10 bg-slate-50/50 flex flex-col items-center justify-center min-h-[300px]">
+                       <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#1e1b4b 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
+                       
                        <div className={cn(
-                          "relative h-full min-h-[200px] rounded-[2.5rem] border-2 border-dashed flex flex-col items-center justify-center p-8 transition-all",
-                          client.locationUrl ? "border-blue-200 bg-blue-50/30" : "border-slate-200 bg-slate-50/50"
+                          "relative h-48 w-48 rounded-[3.5rem] flex flex-col items-center justify-center transition-all duration-500 shadow-2xl",
+                          client.locationUrl 
+                            ? "bg-white border-4 border-blue-500/20 scale-105" 
+                            : "bg-white/50 border-4 border-dashed border-slate-200 opacity-50"
                        )}>
-                          <div className={cn("h-16 w-16 rounded-3xl flex items-center justify-center mb-4 shadow-sm", client.locationUrl ? "bg-blue-600 text-white" : "bg-white text-slate-200")}>
-                             <MapIcon className="h-8 w-8" />
+                          <div className={cn(
+                            "h-20 w-20 rounded-3xl flex items-center justify-center mb-4 transition-transform group-hover:rotate-12",
+                            client.locationUrl ? "bg-blue-600 text-white shadow-xl shadow-blue-200" : "bg-slate-100 text-slate-300"
+                          )}>
+                             {client.locationUrl ? <LocateFixed className="h-10 w-10" /> : <MapIcon className="h-10 w-10" />}
                           </div>
-                          {client.locationUrl ? (
-                            <div className="text-center">
-                               <p className="text-xs font-black text-blue-900">{isRtl ? 'رابط الموقع مفعل' : 'Location Active'}</p>
-                               <p className="text-[9px] font-bold text-blue-500/70 mt-1">{isRtl ? 'جاهز للملاحة الميدانية' : 'Ready for navigation'}</p>
-                            </div>
-                          ) : (
-                            <div className="text-center">
-                               <p className="text-xs font-bold text-slate-300 italic">{isRtl ? 'لا يوجد رابط خرائط' : 'No Location Link'}</p>
-                               <Button variant="link" size="sm" onClick={() => router.push(`/dashboard/clients/${clientId}/edit`)} className="text-primary text-[10px] font-black uppercase">{isRtl ? 'إضافة الآن' : 'Set Location'}</Button>
-                            </div>
+                          
+                          <div className="text-center px-4">
+                             {client.locationUrl ? (
+                               <>
+                                  <p className="text-xs font-black text-blue-900 uppercase tracking-tighter">{isRtl ? 'الإحداثيات نشطة' : 'GPS LOCKED'}</p>
+                                  <Badge variant="secondary" className="bg-blue-50 text-blue-600 font-bold text-[8px] mt-1 border-0">VERIFIED LOCATION</Badge>
+                               </>
+                             ) : (
+                               <>
+                                  <p className="text-xs font-bold text-slate-300 italic">{isRtl ? 'لا توجد بيانات موقع' : 'NO GPS DATA'}</p>
+                                  <Button variant="link" size="sm" onClick={() => router.push(`/dashboard/clients/${clientId}/edit`)} className="text-primary text-[10px] font-black uppercase mt-1">Add Location</Button>
+                               </>
+                             )}
+                          </div>
+
+                          {/* Decorative Radar Ring */}
+                          {client.locationUrl && (
+                             <div className="absolute -inset-4 border-2 border-blue-500/10 rounded-full animate-ping opacity-20" />
                           )}
                        </div>
                     </div>

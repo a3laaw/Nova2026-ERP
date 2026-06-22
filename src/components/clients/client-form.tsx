@@ -28,10 +28,12 @@ import {
   Map as MapIcon,
   CheckCircle2,
   Search,
-  RefreshCw
+  RefreshCw,
+  Compass,
+  LocateFixed,
+  Link as LinkIcon
 } from "lucide-react";
 import { Client } from '@/types/client';
-import { Employee } from '@/types/hr';
 import { Governorate, Area } from '@/types/reference';
 import { useLanguage } from '@/context/language-context';
 import { useFirestore, useCollection } from '@/firebase';
@@ -116,7 +118,8 @@ export function ClientForm({ initialData, onSubmit, loading }: Props) {
     }
   });
 
-  // توليد رقم الملف تلقائياً عند تحميل الصفحة لعميل جديد
+  const locationUrl = form.watch('locationUrl');
+
   useEffect(() => {
     async function autoGen() {
       if (!initialData && db && companyId && !form.getValues('fileNumber')) {
@@ -239,7 +242,7 @@ export function ClientForm({ initialData, onSubmit, loading }: Props) {
         </CardContent>
       </Card>
 
-      <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
+      <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
         <div className="bg-blue-50/50 p-8 border-b flex items-center justify-between">
            <div className="text-start">
               <h3 className="text-xl font-black font-headline text-slate-800">{isRtl ? 'الموقع الجغرافي والعنوان' : 'Geographic Location'}</h3>
@@ -251,91 +254,107 @@ export function ClientForm({ initialData, onSubmit, loading }: Props) {
         </div>
         <CardContent className="p-10 space-y-10 text-start">
            
-           <div className="p-8 rounded-[2rem] bg-slate-50 border-2 border-white shadow-inner space-y-6">
-              <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-                 <div className="flex-1 space-y-2 w-full">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                       <Navigation className="h-3 w-3 text-primary" /> {isRtl ? 'رابط خرائط جوجل' : 'Google Maps Link'}
-                    </Label>
-                    <Input 
-                      {...form.register('locationUrl')} 
-                      className="h-14 rounded-2xl border-2 font-mono text-xs text-blue-600 bg-white" 
-                      placeholder="https://maps.google.com/..." 
-                    />
-                 </div>
-                 
-                 <div className="flex items-center gap-3 w-full md:w-auto">
-                    <span className="text-[10px] font-black text-slate-400 uppercase hidden md:block">{isRtl ? 'أو' : 'OR'}</span>
+           {/* Smart Location Input Area */}
+           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+              <div className="lg:col-span-8">
+                 <div className={cn(
+                   "relative p-6 rounded-[2.5rem] transition-all border-2 flex items-center gap-6 group overflow-hidden shadow-inner",
+                   locationUrl ? "bg-blue-50/50 border-blue-200" : "bg-slate-50 border-slate-100"
+                 )}>
+                    <div className={cn(
+                      "h-16 w-16 rounded-3xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110",
+                      locationUrl ? "bg-blue-600 text-white shadow-xl shadow-blue-200" : "bg-white text-slate-300 shadow-sm border"
+                    )}>
+                       {locationUrl ? <LocateFixed className="h-8 w-8 animate-pulse" /> : <Compass className="h-8 w-8" />}
+                    </div>
                     
-                    <Dialog open={isMapOpen} onOpenChange={setIsMapOpen}>
-                       <DialogTrigger asChild>
-                          <Button type="button" className="h-14 rounded-2xl bg-slate-900 text-white font-black px-8 gap-3 shadow-xl hover:scale-105 transition-all w-full md:w-auto">
-                             <MapIcon className="h-5 w-5 text-primary" />
-                             {isRtl ? 'تحديد من الخريطة' : 'Pick on Map'}
-                          </Button>
-                       </DialogTrigger>
-                       <DialogContent className="max-w-4xl rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl">
-                          <div className="bg-slate-900 p-8 text-white text-start">
-                             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                                <div>
-                                   <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3">
-                                      <MapIcon className="h-7 w-7 text-primary" />
-                                      {isRtl ? 'محدد المواقع التفاعلي' : 'Interactive Map Picker'}
-                                   </DialogTitle>
-                                   <p className="text-slate-400 font-bold mt-1">{isRtl ? 'ابحث عن العنوان أو اضغط على الخريطة.' : 'Search address or click on map.'}</p>
-                                </div>
-                                
-                                <div className="relative w-full md:w-80">
-                                   <Input 
-                                     value={searchQuery}
-                                     onChange={e => setSearchQuery(e.target.value)}
-                                     onKeyDown={e => e.key === 'Enter' && handleMapSearch()}
-                                     placeholder={isRtl ? "ابحث عن منطقة، قطعة..." : "Search area, block..."}
-                                     className="h-12 rounded-xl bg-white/10 border-white/20 text-white ps-10 font-bold"
-                                   />
-                                   <button 
-                                     onClick={handleMapSearch}
-                                     disabled={searching}
-                                     className="absolute start-3 top-1/2 -translate-y-1/2 text-primary"
-                                   >
-                                      {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                                   </button>
-                                </div>
+                    <div className="flex-1 space-y-2">
+                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                          <LinkIcon className="h-3 w-3" /> {isRtl ? 'رابط الموقع المستهدف' : 'Target Location URL'}
+                       </Label>
+                       <Input 
+                         {...form.register('locationUrl')} 
+                         className="h-10 border-0 bg-transparent p-0 font-mono text-xs text-blue-700 font-bold focus-visible:ring-0 focus-visible:ring-offset-0 truncate" 
+                         placeholder={isRtl ? "الصق الرابط هنا أو حدد من الخريطة..." : "Paste URL or use picker..."} 
+                       />
+                       {locationUrl && (
+                         <div className="flex items-center gap-2 text-[9px] font-black text-emerald-600 uppercase tracking-tighter">
+                            <CheckCircle2 className="h-3 w-3" /> {isRtl ? 'تم التقاط الإحداثيات بنجاح' : 'Coordinates Locked'}
+                         </div>
+                       )}
+                    </div>
+                 </div>
+              </div>
+
+              <div className="lg:col-span-4">
+                 <Dialog open={isMapOpen} onOpenChange={setIsMapOpen}>
+                    <DialogTrigger asChild>
+                       <Button type="button" className="w-full h-20 rounded-[2rem] bg-slate-900 text-white font-black text-xl shadow-2xl shadow-slate-200 hover:scale-[1.02] active:scale-[0.98] transition-all gap-4">
+                          <MapIcon className="h-8 w-8 text-primary" />
+                          {isRtl ? 'تحديد من الخريطة' : 'Map Picker'}
+                       </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-4xl rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl">
+                       <div className="bg-slate-900 p-8 text-white text-start">
+                          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                             <div>
+                                <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3">
+                                   <MapIcon className="h-7 w-7 text-primary" />
+                                   {isRtl ? 'محدد المواقع التفاعلي' : 'Interactive Map Picker'}
+                                </DialogTitle>
+                                <p className="text-slate-400 font-bold mt-1">{isRtl ? 'ابحث عن العنوان أو اضغط على الخريطة.' : 'Search address or click on map.'}</p>
+                             </div>
+                             
+                             <div className="relative w-full md:w-80">
+                                <Input 
+                                  value={searchQuery}
+                                  onChange={e => setSearchQuery(e.target.value)}
+                                  onKeyDown={e => e.key === 'Enter' && handleMapSearch()}
+                                  placeholder={isRtl ? "ابحث عن منطقة، قطعة..." : "Search area, block..."}
+                                  className="h-12 rounded-xl bg-white/10 border-white/20 text-white ps-10 font-bold"
+                                />
+                                <button 
+                                  onClick={handleMapSearch}
+                                  disabled={searching}
+                                  className="absolute start-3 top-1/2 -translate-y-1/2 text-primary"
+                                >
+                                   {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                                </button>
                              </div>
                           </div>
-                          
-                          <div className="h-[500px] w-full bg-slate-100 relative">
-                             {typeof window !== 'undefined' && (
-                               <MapContainer 
-                                 center={mapCenter} 
-                                 zoom={12} 
-                                 style={{ height: '100%', width: '100%' }}
-                               >
-                                 <TileLayer
-                                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                 />
-                                 <MapUpdater center={mapCenter} />
-                                 <LocationMarker />
-                               </MapContainer>
-                             )}
-                          </div>
+                       </div>
+                       
+                       <div className="h-[500px] w-full bg-slate-100 relative">
+                          {typeof window !== 'undefined' && (
+                            <MapContainer 
+                              center={mapCenter} 
+                              zoom={12} 
+                              style={{ height: '100%', width: '100%' }}
+                            >
+                              <TileLayer
+                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                              />
+                              <MapUpdater center={mapCenter} />
+                              <LocationMarker />
+                            </MapContainer>
+                          )}
+                       </div>
 
-                          <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4">
-                             <Button type="button" variant="outline" onClick={() => setIsMapOpen(false)} className="flex-1 h-14 rounded-xl border-2 font-bold">{isRtl ? 'إلغاء' : 'Cancel'}</Button>
-                             <Button 
-                               type="button" 
-                               onClick={applyMapSelection} 
-                               disabled={!selectedCoords}
-                               className="flex-[2] h-14 rounded-xl bg-primary text-white font-black gap-2 shadow-lg"
-                             >
-                                <CheckCircle2 className="h-5 w-5" />
-                                {isRtl ? 'اعتماد الموقع المختار' : 'Confirm Location'}
-                             </Button>
-                          </DialogFooter>
-                       </DialogContent>
-                    </Dialog>
-                 </div>
+                       <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4">
+                          <Button type="button" variant="outline" onClick={() => setIsMapOpen(false)} className="flex-1 h-14 rounded-xl border-2 font-bold">{isRtl ? 'إلغاء' : 'Cancel'}</Button>
+                          <Button 
+                            type="button" 
+                            onClick={applyMapSelection} 
+                            disabled={!selectedCoords}
+                            className="flex-[2] h-14 rounded-xl bg-primary text-white font-black gap-2 shadow-lg"
+                          >
+                             <CheckCircle2 className="h-5 w-5" />
+                             {isRtl ? 'اعتماد الموقع المختار' : 'Confirm Location'}
+                          </Button>
+                       </DialogFooter>
+                    </DialogContent>
+                 </Dialog>
               </div>
            </div>
 
