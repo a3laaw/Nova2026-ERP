@@ -17,7 +17,7 @@ import {
   UserPlus, MapPin, Save, Loader2, 
   RefreshCw, Link as LinkIcon, Mail, 
   Fingerprint, MapPinned, Building2,
-  Navigation
+  Navigation, Search, Globe
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useFirestore, useCollection } from '@/firebase';
@@ -26,6 +26,7 @@ import { useAuthContext } from '@/context/auth-context';
 import { ClientService } from '@/services/client-service';
 import { paths } from '@/firebase/multi-tenant';
 import { Governorate, Area } from '@/types/reference';
+import { LocationPickerDialog } from './location-picker-dialog';
 import { cn } from '@/lib/utils';
 
 export function ClientForm({ initialData, onSubmit, loading }: { initialData?: any, onSubmit: (data: any) => void, loading?: boolean }) {
@@ -55,11 +56,12 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
   });
 
   const [generating, setGenerating] = useState(false);
+  const [isMapOpen, setIsMapOpen] = useState(false);
   const selectedGovId = form.watch('governorateId');
 
   // جلب البيانات المرجعية للجغرافيا
-  const govsQuery = useMemo(() => companyId && db ? query(collection(db, paths.governorates(companyId)), orderBy('name')) : null, [db, companyId]);
-  const areasQuery = useMemo(() => companyId && db && selectedGovId ? query(collection(db, paths.areas(companyId, selectedGovId)), orderBy('name')) : null, [db, companyId, selectedGovId]);
+  const govsQuery = useMemo(() => companyId && db ? query(collection(db, paths.governorates(companyId)), orderBy('order')) : null, [db, companyId]);
+  const areasQuery = useMemo(() => companyId && db && selectedGovId ? query(collection(db, paths.areas(companyId, selectedGovId)), orderBy('order')) : null, [db, companyId, selectedGovId]);
 
   const { data: governorates } = useCollection<Governorate>(govsQuery);
   const { data: areas } = useCollection<Area>(areasQuery);
@@ -91,6 +93,10 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
       if (area) form.setValue('areaName', isRtl ? area.name : area.nameEn);
     }
   }, [selectedAreaId, areas, isRtl, form]);
+
+  const handleLocationSelect = (url: string) => {
+    form.setValue('locationUrl', url);
+  };
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 text-start pb-20">
@@ -143,14 +149,38 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
         </CardContent>
       </Card>
 
-      {/* القسم الثاني: الموقع الجغرافي والعنوان */}
+      {/* القسم الثاني: الموقع الجغرافي والعنوان (مُحدث بمحرك الخرائط) */}
       <Card className="border-0 shadow-lg rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/[0.02]">
         <div className="bg-blue-50/50 p-5 border-b flex items-center justify-between">
-           <h3 className="text-sm font-black font-headline text-slate-800">{isRtl ? 'رادار الموقع والعنوان' : 'Location & Address'}</h3>
+           <h3 className="text-sm font-black font-headline text-slate-800">{isRtl ? 'رادار الموقع والعنوان الذكي' : 'Smart Location Radar'}</h3>
            <MapPinned className="h-4 w-4 text-blue-600" />
         </div>
         <CardContent className="p-6 space-y-6">
-           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+           {/* حقل البحث السريع والخرائط */}
+           <div className="space-y-3 p-4 bg-slate-50/50 rounded-2xl border-2 border-dashed border-blue-100">
+              <Label className="text-[10px] font-black uppercase text-blue-400 tracking-[0.2em]">{isRtl ? 'رابط الموقع (GOOGLE MAPS)' : 'Google Maps Link'}</Label>
+              <div className="flex gap-3">
+                 <div className="relative flex-1">
+                    <Globe className="absolute start-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+                    <Input 
+                      {...form.register('locationUrl')} 
+                      placeholder=".../https://maps.google.com" 
+                      className="h-12 rounded-xl border-2 ps-11 font-mono text-[10px] bg-white" 
+                      dir="ltr"
+                    />
+                 </div>
+                 <Button 
+                   type="button"
+                   onClick={() => setIsMapOpen(true)}
+                   className="h-12 px-6 rounded-xl bg-slate-900 text-white font-black text-xs gap-2 hover:scale-[1.02] transition-all"
+                 >
+                    <Search className="h-4 w-4 text-primary" />
+                    {isRtl ? 'فتح الخريطة والبحث' : 'Open Map'}
+                 </Button>
+              </div>
+           </div>
+
+           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 pt-4 border-t border-slate-50">
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase text-slate-400">المحافظة</Label>
                 <Select value={selectedGovId} onValueChange={(v) => { form.setValue('governorateId', v); form.setValue('areaId', ''); }}>
@@ -183,13 +213,6 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
                     <Input {...form.register('houseNumber')} className="h-10 rounded-xl border-2 font-bold text-center" />
                  </div>
               </div>
-              <div className="md:col-span-4 space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400">رابط الموقع (Google Maps)</Label>
-                <div className="relative">
-                   <Navigation className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
-                   <Input {...form.register('locationUrl')} placeholder="https://maps.google.com/..." className="h-11 rounded-xl border-2 ps-10 font-mono text-xs bg-slate-50/30" />
-                </div>
-              </div>
            </div>
         </CardContent>
       </Card>
@@ -204,6 +227,14 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
           {initialData ? (isRtl ? 'تحديث الملف' : 'Update File') : (isRtl ? 'حفظ ملف العميل' : 'Save Client')}
         </Button>
       </div>
+
+      {/* مودال الخريطة الذكي */}
+      <LocationPickerDialog 
+        isOpen={isMapOpen} 
+        onClose={() => setIsMapOpen(false)}
+        onSelect={handleLocationSelect}
+        initialUrl={form.watch('locationUrl')}
+      />
     </form>
   );
 }
