@@ -60,15 +60,15 @@ export function LeavesManager() {
   
   const { data: rawLeaves, loading } = useCollection<LeaveRequest>(leavesQuery);
 
-  // تصفية السجلات بناءً على الصلاحيات
+  // تصفية السجلات بناءً على الصلاحيات مع ضمان دقة الـ UID
   const leaves = useMemo(() => {
     if (!viewAccess.can) return [];
     return rawLeaves.filter(leave => canPerformOnRecord(
       viewAccess,
-      { uid: globalUser?.uid || '', departmentId: globalUser?.departmentId },
+      { uid: user?.uid || '', departmentId: globalUser?.departmentId },
       { createdBy: leave.userId || (leave as any).createdBy, departmentId: (leave as any).departmentId }
     ));
-  }, [rawLeaves, viewAccess, globalUser]);
+  }, [rawLeaves, viewAccess, globalUser, user]);
 
   useEffect(() => {
     if (processingLeave) {
@@ -109,7 +109,7 @@ export function LeavesManager() {
              {isRtl ? 'إجازات الموظفين' : 'Employee Leaves'}
            </h3>
            <p className="text-[10px] font-bold text-muted-foreground mt-1 opacity-70 italic">
-             {viewAccess.scope === 'own' ? (isRtl ? 'عرض سجلاتك الشخصية المعتمدة' : 'View your own records') : (isRtl ? 'إدارة واعتماد إجازات فريق العمل' : 'Manage and approve team leaves')}
+             {viewAccess.scope === 'own' ? (isRtl ? 'عرض سجلاتك الشخصية وحالة طلباتك' : 'View your own requests and status') : (isRtl ? 'إدارة واعتماد إجازات فريق العمل' : 'Manage and approve team leaves')}
            </p>
         </div>
 
@@ -121,7 +121,7 @@ export function LeavesManager() {
         </Button>
       </div>
 
-      <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
+      <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
          <CardContent className="p-0 overflow-x-auto">
             <Table>
                <TableHeader className="bg-muted/30">
@@ -151,7 +151,7 @@ export function LeavesManager() {
                          <TableCell className="text-start">
                             <Badge className={cn(
                               "font-black px-3 py-1 border-0 shadow-sm",
-                              leave.status === 'approved' || leave.status === 'commenced' ? 'bg-emerald-500 text-white' :
+                              leave.status === 'approved' || leave.status === 'commenced' || leave.status === 'on-leave' || leave.status === 'returned' ? 'bg-emerald-500 text-white' :
                               leave.status === 'rejected' ? 'bg-rose-500 text-white' :
                               'bg-amber-50 text-amber-600'
                             )}>
@@ -183,7 +183,7 @@ export function LeavesManager() {
       </Card>
 
       <Dialog open={!!processingLeave} onOpenChange={(open) => !open && setProcessingLeave(null)}>
-        <DialogContent className="rounded-[3rem] max-w-2xl p-0 overflow-hidden border-0 shadow-3xl" dir={dir}>
+        <DialogContent className="rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl" dir={dir}>
            <div className="bg-slate-900 p-10 text-white text-start">
               <DialogTitle className="text-3xl font-black font-headline flex items-center gap-3">
                  <Clock className="h-9 w-9 text-primary" />

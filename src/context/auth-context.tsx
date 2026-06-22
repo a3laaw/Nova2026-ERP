@@ -7,11 +7,12 @@ import { useAuth, useFirestore } from '@/firebase';
 import { Role } from '@/types/roles';
 
 interface GlobalUserData {
+  uid: string; // إضافة UID للسجل العالمي لسهولة الوصول
   companyId: string;
   role: string;
   roleId?: string;
   roleCode?: string;
-  departmentId?: string; // إضافة معرف القسم للتحقق من الصلاحيات
+  departmentId?: string;
   isDeveloper?: boolean;
   username: string;
 }
@@ -54,6 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (user.email === 'admin@novaflow.com') {
       setGlobalUser({
+        uid: user.uid,
         companyId: 'dev_hq',
         role: 'developer',
         isDeveloper: true,
@@ -69,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onSnapshot(docRef, (snap) => {
       if (snap.exists()) {
         const data = snap.data() as GlobalUserData;
-        setGlobalUser(data);
+        setGlobalUser({ ...data, uid: user.uid }); // دمج الـ UID
         if (!data.roleId) setLoading(false);
       } else {
         setGlobalUser(null);
