@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -9,7 +8,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { 
   Select, 
   SelectContent, 
@@ -28,7 +26,9 @@ import {
   Globe,
   Navigation,
   Map as MapIcon,
-  CheckCircle2
+  CheckCircle2,
+  Search,
+  RefreshCw
 } from "lucide-react";
 import { Client } from '@/types/client';
 import { Employee } from '@/types/hr';
@@ -40,6 +40,8 @@ import { useAuthContext } from '@/context/auth-context';
 import { paths } from '@/firebase/multi-tenant';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { ClientService } from '@/services/client-service';
+import { toast } from '@/hooks/use-toast';
 
 // استيراد الخريطة ديناميكياً لتجنب مشاكل الـ SSR
 import dynamic from 'next/dynamic';
@@ -47,6 +49,15 @@ const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapCo
 const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false });
 const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false });
 const useMapEvents = dynamic(() => import('react-leaflet').then(mod => mod.useMapEvents), { ssr: false });
+const MapUpdater = dynamic(() => import('react-leaflet').then(mod => {
+  return function Updater({ center }: { center: [number, number] }) {
+    const map = mod.useMap();
+    useEffect(() => {
+      map.setView(center, map.getZoom());
+    }, [center, map]);
+    return null;
+  };
+}), { ssr: false });
 
 const clientSchema = z.object({
   fileNumber: z.string().min(1, "رقم الملف مطلوب"),
@@ -84,17 +95,16 @@ export function ClientForm({ initialData, onSubmit, loading }: Props) {
 
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [selectedCoords, setSelectedCoords] = useState<[number, number] | null>(null);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([29.3759, 47.9774]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [generatingNum, setGeneratingNum] = useState(false);
 
   const govsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.governorates(companyId)), orderBy('name')) : null, 
   [db, companyId]);
   
-  const empsQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.employees(companyId)), orderBy('fullName')) : null, 
-  [db, companyId]);
-  
   const { data: governorates } = useCollection<Governorate>(govsQuery);
-  const { data: employees } = useCollection<Employee>(empsQuery);
 
   const form = useForm({
     resolver: zodResolver(clientSchema),
@@ -105,6 +115,20 @@ export function ClientForm({ initialData, onSubmit, loading }: Props) {
       assignedEngineerId: '', assignedEngineerName: '', source: '', notes: '',
     }
   });
+
+  // توليد رقم الملف تلقائياً عند تحميل الصفحة لعميل جديد
+  useEffect(() => {
+    async function autoGen() {
+      if (!initialData && db && companyId && !form.getValues('fileNumber')) {
+        setGeneratingNum(true);
+        const service = new ClientService(db, companyId);
+        const nextNum = await service.getNextFileNumber();
+        form.setValue('fileNumber', nextNum);
+        setGeneratingNum(false);
+      }
+    }
+    autoGen();
+  }, [db, companyId, initialData, form]);
 
   const selectedGovId = form.watch('governorateId');
   const areasQuery = useMemo(() => 
@@ -126,7 +150,6 @@ export function ClientForm({ initialData, onSubmit, loading }: Props) {
     form.setValue('areaName', area ? (isRtl ? area.name : area.nameEn) : '');
   };
 
-  // مكون التقاط الإحداثيات من الخريطة
   const LocationMarker = () => {
     useMapEvents({
       click(e) {
@@ -142,6 +165,27 @@ export function ClientForm({ initialData, onSubmit, loading }: Props) {
       const url = `https://www.google.com/maps?q=${lat},${lng}`;
       form.setValue('locationUrl', url);
       setIsMapOpen(false);
+    }
+  };
+
+  const handleMapSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setSearching(true);
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery + ", Kuwait")}`);
+      const data = await response.json();
+      if (data && data.length > 0) {
+        const { lat, lon } = data[0];
+        const newCoords: [number, number] = [parseFloat(lat), parseFloat(lon)];
+        setMapCenter(newCoords);
+        setSelectedCoords(newCoords);
+      } else {
+        toast({ variant: "destructive", title: isRtl ? "لم يتم العثور على الموقع" : "Location not found" });
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSearching(false);
     }
   };
 
@@ -161,8 +205,16 @@ export function ClientForm({ initialData, onSubmit, loading }: Props) {
         <CardContent className="p-10 space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-start">
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'رقم الملف' : 'File Number'}</Label>
-              <Input {...form.register('fileNumber')} className="h-14 rounded-2xl border-2 font-mono text-lg font-black" placeholder="C-1001" />
+              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'رقم الملف (تلقائي)' : 'File Number (Auto)'}</Label>
+              <div className="relative">
+                 <Input 
+                   {...form.register('fileNumber')} 
+                   readOnly 
+                   className="h-14 rounded-2xl border-2 font-mono text-lg font-black bg-slate-50 cursor-not-allowed text-primary" 
+                   placeholder="C-0001/2026" 
+                 />
+                 {generatingNum && <RefreshCw className="absolute end-4 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-primary/30" />}
+              </div>
             </div>
             <div className="md:col-span-2 space-y-2">
               <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'الاسم بالكامل' : 'Full Name'}</Label>
@@ -224,25 +276,46 @@ export function ClientForm({ initialData, onSubmit, loading }: Props) {
                        </DialogTrigger>
                        <DialogContent className="max-w-4xl rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl">
                           <div className="bg-slate-900 p-8 text-white text-start">
-                             <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3">
-                                <MapIcon className="h-7 w-7 text-primary" />
-                                {isRtl ? 'محدد المواقع التفاعلي' : 'Interactive Map Picker'}
-                             </DialogTitle>
-                             <p className="text-slate-400 font-bold mt-1">{isRtl ? 'اضغط على الموقع في الخريطة لتحديده آلياً.' : 'Click anywhere on the map to set location.'}</p>
+                             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                <div>
+                                   <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3">
+                                      <MapIcon className="h-7 w-7 text-primary" />
+                                      {isRtl ? 'محدد المواقع التفاعلي' : 'Interactive Map Picker'}
+                                   </DialogTitle>
+                                   <p className="text-slate-400 font-bold mt-1">{isRtl ? 'ابحث عن العنوان أو اضغط على الخريطة.' : 'Search address or click on map.'}</p>
+                                </div>
+                                
+                                <div className="relative w-full md:w-80">
+                                   <Input 
+                                     value={searchQuery}
+                                     onChange={e => setSearchQuery(e.target.value)}
+                                     onKeyDown={e => e.key === 'Enter' && handleMapSearch()}
+                                     placeholder={isRtl ? "ابحث عن منطقة، قطعة..." : "Search area, block..."}
+                                     className="h-12 rounded-xl bg-white/10 border-white/20 text-white ps-10 font-bold"
+                                   />
+                                   <button 
+                                     onClick={handleMapSearch}
+                                     disabled={searching}
+                                     className="absolute start-3 top-1/2 -translate-y-1/2 text-primary"
+                                   >
+                                      {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                                   </button>
+                                </div>
+                             </div>
                           </div>
                           
                           <div className="h-[500px] w-full bg-slate-100 relative">
-                             {/* عرض الخريطة فقط في بيئة المتصفح */}
                              {typeof window !== 'undefined' && (
                                <MapContainer 
-                                 center={[29.3759, 47.9774]} 
-                                 zoom={11} 
+                                 center={mapCenter} 
+                                 zoom={12} 
                                  style={{ height: '100%', width: '100%' }}
                                >
                                  <TileLayer
                                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                                  />
+                                 <MapUpdater center={mapCenter} />
                                  <LocationMarker />
                                </MapContainer>
                              )}
@@ -264,7 +337,6 @@ export function ClientForm({ initialData, onSubmit, loading }: Props) {
                     </Dialog>
                  </div>
               </div>
-              <p className="text-[9px] text-slate-400 font-bold italic">{isRtl ? '* يمكنك لصق الرابط يدوياً أو استخدام الخريطة لتوليد الرابط آلياً.' : '* Paste link manually or use the interactive picker.'}</p>
            </div>
 
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
@@ -304,7 +376,7 @@ export function ClientForm({ initialData, onSubmit, loading }: Props) {
       <div className="flex justify-end">
         <Button 
           type="submit" 
-          disabled={loading}
+          disabled={loading || generatingNum}
           className="h-20 rounded-[2.5rem] px-16 bg-primary text-white font-black text-2xl shadow-2xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all gap-4 border-b-8 border-orange-700"
         >
           {loading ? <Loader2 className="animate-spin h-8 w-8" /> : <Save className="h-8 w-8" />}
