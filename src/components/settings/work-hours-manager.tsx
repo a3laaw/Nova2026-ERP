@@ -8,13 +8,15 @@ import { Input } from "@/components/ui/input";
 import { 
   Clock, Calendar, MoonStar, 
   Loader2, Save, Sun, HardHat,
-  Trash2, Info, Zap
+  Trash2, Info, Zap, Sparkles,
+  CheckCircle2
 } from "lucide-react";
 import { useFirestore } from '@/firebase';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { WorkHoursService } from '@/services/work-hours-service';
 import { WorkHoursSettings, DayOfWeek, DailySchedule } from '@/types/work-hours';
+import { fetchPublicHolidays } from '@/ai/flows/fetch-holidays-flow';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -26,6 +28,7 @@ export function WorkHoursManager() {
   const db = useFirestore();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [fetchingHolidays, setFetchingHolidays] = useState(false);
   const [settings, setSettings] = useState<WorkHoursSettings | null>(null);
 
   const service = useMemo(() => 
@@ -61,6 +64,22 @@ export function WorkHoursManager() {
       toast({ variant: "destructive", title: t('error'), description: t('saveFailed') });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAIFetchHolidays = async () => {
+    if (!settings) return;
+    setFetchingHolidays(true);
+    try {
+      const response = await fetchPublicHolidays({ country: 'الكويت', year: 2026 });
+      if (response.holidays) {
+        setSettings({ ...settings, publicHolidays: response.holidays });
+        toast({ title: lang === 'ar' ? "تم تحديث العطلات" : "Holidays Updated", description: lang === 'ar' ? "تم جلب عطلات 2026 آلياً بالذكاء الاصطناعي." : "2026 holidays fetched via AI." });
+      }
+    } catch (e) {
+      toast({ variant: "destructive", title: t('error') });
+    } finally {
+      setFetchingHolidays(false);
     }
   };
 
@@ -109,7 +128,6 @@ export function WorkHoursManager() {
         </CardHeader>
         <CardContent className="p-8 space-y-8 text-start">
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* الفترة الأولى */}
               <div className="p-6 rounded-[2rem] bg-slate-50 border-2 border-white shadow-sm space-y-4">
                  <div className="flex items-center gap-2 text-primary font-black">
                     <Sun className="h-4 w-4" />
@@ -127,7 +145,6 @@ export function WorkHoursManager() {
                  </div>
               </div>
 
-              {/* الفترة الثانية */}
               <div className="p-6 rounded-[2rem] bg-blue-50/50 border-2 border-white shadow-sm space-y-4">
                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-blue-600 font-black">
@@ -185,10 +202,21 @@ export function WorkHoursManager() {
              {lang === 'ar' ? 'تحديد نظام الفترات والورديات للمنظمة.' : 'Define shifts and work system for the org.'}
            </p>
         </div>
-        <Button onClick={handleSave} disabled={saving} className="bg-primary text-white font-black rounded-2xl px-10 h-16 text-lg shadow-xl shadow-primary/20 hover:scale-105 transition-all">
-          {saving ? <Loader2 className="animate-spin me-2" /> : <Save className="me-2 h-5 w-5" />}
-          {t('saveAllRules')}
-        </Button>
+        <div className="flex gap-4">
+           <Button 
+             variant="outline"
+             onClick={handleAIFetchHolidays}
+             disabled={fetchingHolidays}
+             className="h-16 rounded-2xl border-2 font-black gap-3 px-8 shadow-sm hover:bg-slate-50 transition-all text-blue-600"
+           >
+              {fetchingHolidays ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
+              {lang === 'ar' ? 'جلب عطلات 2026 بالـ AI' : 'Fetch 2026 Holidays'}
+           </Button>
+           <Button onClick={handleSave} disabled={saving} className="bg-primary text-white font-black rounded-2xl px-10 h-16 text-lg shadow-xl shadow-primary/20 hover:scale-105 transition-all">
+             {saving ? <Loader2 className="animate-spin me-2" /> : <Save className="me-2 h-5 w-5" />}
+             {t('saveAllRules')}
+           </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-1 gap-8">
@@ -211,28 +239,50 @@ export function WorkHoursManager() {
           <CardHeader className="bg-amber-50/50 border-b p-8 text-start flex flex-row items-center justify-between">
              <div className="flex items-center gap-3">
                 <div className="p-3 bg-white rounded-2xl shadow-sm text-amber-600"><Calendar className="h-6 w-6" /></div>
-                <div><CardTitle className="text-xl font-black">{t('holidays')}</CardTitle></div>
+                <div>
+                   <CardTitle className="text-xl font-black">{t('holidays')}</CardTitle>
+                   <CardDescription className="font-bold">{lang === 'ar' ? 'إدارة العطلات الأسبوعية والرسمية.' : 'Manage weekly and public holidays.'}</CardDescription>
+                </div>
              </div>
           </CardHeader>
-          <CardContent className="p-8 text-start">
-             <p className="text-xs font-bold text-slate-400 mb-6 uppercase tracking-widest">{lang === 'ar' ? 'حدد أيام العطلة الأسبوعية (سيتم استبعادها من حساب التأخير والخصم)' : 'Select weekly holidays (Excluded from lateness/deduction)'}</p>
-             <div className="flex flex-wrap gap-3">
-                {DAYS.map(day => (
-                   <div 
-                     key={day} 
-                     onClick={() => toggleHoliday(day)}
-                     className={cn(
-                       "cursor-pointer px-8 py-4 rounded-2xl border-2 font-black transition-all flex items-center gap-2",
-                       settings?.holidays.includes(day) 
-                         ? "bg-amber-500 text-white border-amber-500 shadow-lg scale-105" 
-                         : "bg-white text-slate-400 border-slate-100 hover:border-amber-200"
-                     )}
-                   >
-                      <Calendar className="h-4 w-4" />
-                      {t(day)}
-                   </div>
-                ))}
+          <CardContent className="p-8 space-y-10 text-start">
+             <div>
+                <p className="text-[10px] font-black text-slate-400 mb-6 uppercase tracking-widest">{lang === 'ar' ? 'أيام الراحة الأسبوعية (ثابتة)' : 'Weekly Holidays (Static)'}</p>
+                <div className="flex flex-wrap gap-3">
+                   {DAYS.map(day => (
+                      <div 
+                        key={day} 
+                        onClick={() => toggleHoliday(day)}
+                        className={cn(
+                          "cursor-pointer px-8 py-4 rounded-2xl border-2 font-black transition-all flex items-center gap-2",
+                          settings?.holidays.includes(day) 
+                            ? "bg-amber-500 text-white border-amber-500 shadow-lg scale-105" 
+                            : "bg-white text-slate-400 border-slate-100 hover:border-amber-200"
+                        )}
+                      >
+                         <Calendar className="h-4 w-4" />
+                         {t(day)}
+                      </div>
+                   ))}
+                </div>
              </div>
+
+             {settings?.publicHolidays && settings.publicHolidays.length > 0 && (
+               <div className="pt-8 border-t">
+                  <p className="text-[10px] font-black text-slate-400 mb-6 uppercase tracking-widest">{lang === 'ar' ? 'العطلات الرسمية المجدولة (2026)' : 'Scheduled Public Holidays (2026)'}</p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                     {settings.publicHolidays.map((ph, idx) => (
+                        <div key={idx} className="p-4 rounded-2xl bg-slate-50 border-2 border-white shadow-inner flex justify-between items-center group hover:bg-emerald-50 transition-all">
+                           <div className="text-start">
+                              <p className="text-xs font-black text-slate-800 group-hover:text-emerald-700">{lang === 'ar' ? ph.name : ph.nameEn}</p>
+                              <p className="text-[9px] font-mono font-bold text-slate-400">{ph.date}</p>
+                           </div>
+                           <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                        </div>
+                     ))}
+                  </div>
+               </div>
+             )}
           </CardContent>
         </Card>
       </div>

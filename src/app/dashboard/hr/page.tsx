@@ -1,36 +1,61 @@
-
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   UserCircle, FileText, ShieldAlert, Sparkles, 
   Users, Calendar, UserPlus, ArrowUpRight, Clock,
-  FileSpreadsheet, Calculator, ShieldCheck, BarChart3
+  FileSpreadsheet, Calculator, ShieldCheck, BarChart3,
+  AlertTriangle, History, ExternalLink
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useAuthContext } from '@/context/auth-context';
+import { useCollection, useFirestore } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
+import { paths } from '@/firebase/multi-tenant';
 import { LeavesManager } from './leaves-manager';
+import { Employee } from '@/types/hr';
+import { cn } from '@/lib/utils';
+import { format, addDays, isBefore, parseISO } from 'date-fns';
 
 export default function HRDashboard() {
   const { t, lang, dir } = useLanguage();
   const router = useRouter();
   const { check } = usePermissions();
   const { globalUser } = useAuthContext();
+  const db = useFirestore();
   const isRtl = lang === 'ar';
   const [activeTab, setActiveTab] = useState("overview");
 
-  // فحص الصلاحيات للتحكم في عناصر الواجهة
-  // تعديل: التوظيف يتطلب صلاحية Create بنطاق أعلى من 'own'
+  const companyId = globalUser?.companyId;
+
+  // فحص الصلاحيات
   const canHire = check('hr', 'create').can && check('hr', 'create').scope !== 'own';
   const canSeePayroll = check('hr', 'approve').can;
   const canImportAttendance = check('hr', 'create').can && check('hr', 'create').scope === 'all';
   const canSeeCompliance = check('hr', 'edit').can && check('hr', 'edit').scope !== 'own';
   const hrView = check('hr', 'view');
+
+  // جلب كافة الموظفين لفحص الامتثال
+  const empsQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.employees(companyId))) : null, 
+  [db, companyId]);
+  const { data: employees } = useCollection<Employee>(empsQuery);
+
+  // رادار انتهاء الوثائق (Compliance Radar)
+  const expiringDocs = useMemo(() => {
+    if (!employees) return [];
+    const next30Days = addDays(new Date(), 30);
+    return employees.filter(emp => {
+      if (!emp.residencyExpiry) return false;
+      const expiry = parseISO(emp.residencyExpiry);
+      return isBefore(expiry, next30Days);
+    }).sort((a, b) => (a.residencyExpiry || '').localeCompare(b.residencyExpiry || ''));
+  }, [employees]);
 
   return (
     <div className="space-y-8" dir={dir}>
@@ -94,6 +119,7 @@ export default function HRDashboard() {
             {canSeeCompliance && (
               <TabsTrigger value="compliance" className="rounded-xl font-black gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md transition-all px-6">
                 <ShieldAlert className="h-4 w-4" /> {isRtl ? 'الامتثال' : 'Compliance'}
+                {expiringDocs.length > 0 && <span className="h-2 w-2 rounded-full bg-rose-500 ml-1 animate-pulse" />}
               </TabsTrigger>
             )}
           </TabsList>
@@ -101,7 +127,6 @@ export default function HRDashboard() {
 
         <TabsContent value="overview" className="space-y-8 animate-in fade-in duration-500">
            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-              {/* الموظف يرى ملفه الشامل فوراً كبطاقة رئيسية فخمة */}
               {globalUser?.employeeId && (
                 <Card 
                   onClick={() => router.push(`/dashboard/hr/reports/dossier/${globalUser.employeeId}`)}
@@ -187,22 +212,47 @@ export default function HRDashboard() {
               )}
            </div>
 
-           {/* روابط سريعة للتقارير العالمية (فقط للموظف) */}
-           {hrView.scope === 'own' && globalUser?.employeeId && (
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6">
-                <Card onClick={() => router.push(`/dashboard/hr/reports/attendance/individual/${globalUser.employeeId}`)} className="p-6 cursor-pointer hover:bg-slate-50 transition-all rounded-3xl border-2 border-dashed flex items-center gap-4">
-                   <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl"><BarChart3 className="h-5 w-5" /></div>
-                   <div className="text-start"><p className="font-black text-sm">{isRtl ? 'تحليل الانضباط' : 'Discipline Analysis'}</p></div>
-                </Card>
-                <Card onClick={() => router.push(`/dashboard/hr/reports/leaves/statement/${globalUser.employeeId}`)} className="p-6 cursor-pointer hover:bg-slate-50 transition-all rounded-3xl border-2 border-dashed flex items-center gap-4">
-                   <div className="p-3 bg-blue-50 text-blue-600 rounded-xl"><Calculator className="h-5 w-5" /></div>
-                   <div className="text-start"><p className="font-black text-sm">{isRtl ? 'كشف حركة الرصيد' : 'Leave Statement'}</p></div>
-                </Card>
-                <Card onClick={() => router.push(`/dashboard/hr/reports/payroll/individual/${globalUser.employeeId}`)} className="p-6 cursor-pointer hover:bg-slate-50 transition-all rounded-3xl border-2 border-dashed flex items-center gap-4">
-                   <div className="p-3 bg-amber-50 text-amber-600 rounded-xl"><FileText className="h-5 w-5" /></div>
-                   <div className="text-start"><p className="font-black text-sm">{isRtl ? 'سجل الرواتب' : 'Payroll Ledger'}</p></div>
-                </Card>
-             </div>
+           {/* رادار الامتثال في النظرة العامة للمدراء */}
+           {canSeeCompliance && expiringDocs.length > 0 && (
+             <Card className="border-2 border-rose-100 bg-rose-50/30 rounded-[2.5rem] overflow-hidden animate-in slide-in-from-bottom-4">
+                <CardHeader className="p-8 border-b border-rose-100 text-start flex flex-row items-center justify-between">
+                   <div className="flex items-center gap-3">
+                      <div className="p-2 bg-rose-100 text-rose-600 rounded-xl"><AlertTriangle className="h-6 w-6" /></div>
+                      <div>
+                         <CardTitle className="text-lg font-black text-rose-900">{isRtl ? 'تنبيهات انتهاء الوثائق (30 يوم)' : 'Document Expiry Radar'}</CardTitle>
+                         <CardDescription className="font-bold text-rose-600/70">{isRtl ? 'يوجد موظفين شارفت وثائقهم القانونية على الانتهاء.' : 'Employees with upcoming residency/ID expiries.'}</CardDescription>
+                      </div>
+                   </div>
+                   <Badge className="bg-rose-500 text-white font-black">{expiringDocs.length}</Badge>
+                </CardHeader>
+                <CardContent className="p-0">
+                   <div className="divide-y divide-rose-100">
+                      {expiringDocs.map(emp => (
+                        <div key={emp.id} className="p-6 flex items-center justify-between hover:bg-rose-100/30 transition-colors">
+                           <div className="flex items-center gap-4 text-start">
+                              <div className="h-10 w-10 rounded-full bg-white flex items-center justify-center font-black text-rose-400 text-xs shadow-sm">
+                                 {emp.employeeNumber}
+                              </div>
+                              <div>
+                                 <p className="font-black text-slate-800 text-sm">{emp.fullName}</p>
+                                 <p className="text-[10px] font-bold text-rose-600 uppercase flex items-center gap-1">
+                                    <ShieldAlert className="h-3 w-3" /> {isRtl ? 'انتهاء الإقامة:' : 'Residency Expiry:'} {emp.residencyExpiry}
+                                 </p>
+                              </div>
+                           </div>
+                           <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => router.push(`/dashboard/hr/employees/${emp.id}`)}
+                            className="rounded-xl hover:bg-rose-100 text-rose-600 font-bold text-xs"
+                           >
+                              {isRtl ? 'تحديث الملف' : 'Update'} <ExternalLink className="ms-2 h-3 w-3" />
+                           </Button>
+                        </div>
+                      ))}
+                   </div>
+                </CardContent>
+             </Card>
            )}
         </TabsContent>
 
@@ -238,9 +288,38 @@ export default function HRDashboard() {
               </Card>
 
               <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white lg:col-span-2 overflow-hidden ring-1 ring-black/5">
-                 <CardContent className="py-32 text-center text-muted-foreground italic font-bold">
-                    <FileText className="h-20 w-20 mx-auto opacity-10 mb-4" />
-                    {isRtl ? 'بانتظار تحليل مستندات الامتثال...' : 'Waiting for compliance document analysis...'}
+                 <CardHeader className="p-8 border-b bg-slate-50/50">
+                    <CardTitle className="text-lg font-black flex items-center gap-3">
+                       <ShieldCheck className="h-6 w-6 text-emerald-600" />
+                       {isRtl ? 'تقرير الامتثال والوثائق' : 'Compliance & Docs Audit'}
+                    </CardTitle>
+                 </CardHeader>
+                 <CardContent className="p-0">
+                    {expiringDocs.length === 0 ? (
+                      <div className="py-32 text-center text-muted-foreground italic font-bold">
+                        <CheckCircle2 className="h-20 w-20 mx-auto text-emerald-100 mb-4" />
+                        {isRtl ? 'كافة وثائق الموظفين سليمة ومحدثة.' : 'All employee documents are valid and up to date.'}
+                      </div>
+                    ) : (
+                       <div className="divide-y">
+                          {expiringDocs.map(emp => (
+                             <div key={emp.id} className="p-8 flex items-center justify-between hover:bg-slate-50 transition-all">
+                                <div className="text-start">
+                                   <p className="font-black text-slate-800">{emp.fullName}</p>
+                                   <div className="flex gap-4 mt-1">
+                                      <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-lg border border-rose-100">
+                                         {isRtl ? 'انتهاء إقامة:' : 'Residency:'} {emp.residencyExpiry}
+                                      </span>
+                                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{emp.jobTitle}</span>
+                                   </div>
+                                </div>
+                                <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/hr/employees/${emp.id}`)} className="rounded-xl">
+                                   {isRtl ? 'تجديد' : 'Renew'}
+                                </Button>
+                             </div>
+                          ))}
+                       </div>
+                    )}
                  </CardContent>
               </Card>
             </div>
