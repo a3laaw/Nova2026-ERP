@@ -7,25 +7,28 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   UserCircle, FileText, ShieldAlert, Sparkles, 
   Users, Calendar, UserPlus, ArrowUpRight, Clock,
-  FileSpreadsheet, Calculator
+  FileSpreadsheet, Calculator, ShieldCheck
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
+import { useAuthContext } from '@/context/auth-context';
 import { LeavesManager } from './leaves-manager';
 
 export default function HRDashboard() {
   const { t, lang, dir } = useLanguage();
   const router = useRouter();
   const { check } = usePermissions();
+  const { globalUser } = useAuthContext();
   const isRtl = lang === 'ar';
   const [activeTab, setActiveTab] = useState("overview");
 
   // فحص الصلاحيات للتحكم في عناصر الواجهة
   const canHire = check('hr', 'create').can && check('hr', 'create').scope !== 'own';
-  const canSeePayroll = check('hr', 'approve').can; // ربط الرواتب بصلاحية الاعتماد
+  const canSeePayroll = check('hr', 'approve').can;
   const canImportAttendance = check('hr', 'create').can && check('hr', 'create').scope === 'all';
   const canSeeCompliance = check('hr', 'edit').can && check('hr', 'edit').scope !== 'own';
+  const hrView = check('hr', 'view');
 
   return (
     <div className="space-y-8" dir={dir}>
@@ -41,7 +44,6 @@ export default function HRDashboard() {
         </div>
         
         <div className="flex gap-4">
-           {/* استيراد البصمة: يظهر فقط لمن يملك صلاحية إضافة بنطاق المنشأة */}
            {canImportAttendance && (
              <Button 
                variant="outline"
@@ -53,7 +55,6 @@ export default function HRDashboard() {
              </Button>
            )}
 
-           {/* الرواتب: تظهر فقط للمحاسبين أو المدراء (صلاحية Approve) */}
            {canSeePayroll && (
              <Button 
                onClick={() => router.push('/dashboard/hr/payroll')}
@@ -64,7 +65,6 @@ export default function HRDashboard() {
              </Button>
            )}
 
-           {/* توظيف جديد: يظهر فقط لمن يملك صلاحية Create بنطاق أكبر من Own */}
            {canHire && (
              <Button 
                onClick={() => router.push('/dashboard/hr/employees/new')}
@@ -99,8 +99,29 @@ export default function HRDashboard() {
 
         <TabsContent value="overview" className="space-y-8 animate-in fade-in duration-500">
            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-              {/* بطاقة سجل الموظفين: تظهر لمن يملك نطاق عرض أكبر من Own */}
-              {check('hr', 'view').scope !== 'own' && (
+              {/* الموظف يرى ملفه الشامل فوراً */}
+              {hrView.scope === 'own' && globalUser?.employeeId && (
+                <Card 
+                  onClick={() => router.push(`/dashboard/hr/reports/dossier/${globalUser.employeeId}`)}
+                  className="border-0 shadow-lg hover:shadow-2xl transition-all cursor-pointer rounded-[2.5rem] bg-slate-900 text-white group overflow-hidden"
+                >
+                   <CardHeader className="p-8 pb-4 text-start">
+                      <div className="w-14 h-14 rounded-2xl bg-primary/20 text-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                         <ShieldCheck className="h-7 w-7" />
+                      </div>
+                      <CardTitle className="text-xl font-black">{isRtl ? 'ملفي الوظيفي الشامل' : 'My Full Dossier'}</CardTitle>
+                      <CardDescription className="font-bold text-slate-400">عرض رصيد الإجازات، الرواتب، والعهد.</CardDescription>
+                   </CardHeader>
+                   <CardContent className="p-8 pt-0 text-start">
+                      <div className="flex items-center gap-2 text-primary font-black text-xs">
+                         {isRtl ? 'فتح مركز التقارير الشخصي' : 'Open My Reports'}
+                         <ArrowUpRight className="h-4 w-4" />
+                      </div>
+                   </CardContent>
+                </Card>
+              )}
+
+              {hrView.scope !== 'own' && (
                 <Card 
                   onClick={() => router.push('/dashboard/hr/employees')}
                   className="border-0 shadow-lg hover:shadow-2xl transition-all cursor-pointer rounded-[2.5rem] bg-white group overflow-hidden"
@@ -140,7 +161,6 @@ export default function HRDashboard() {
                  </CardContent>
               </Card>
 
-              {/* بطاقة الاستيراد: تظهر فقط للمدراء */}
               {canImportAttendance && (
                 <Card 
                   onClick={() => router.push('/dashboard/hr/attendance/import')}
@@ -162,7 +182,6 @@ export default function HRDashboard() {
                 </Card>
               )}
 
-              {/* بطاقة الرواتب: تظهر فقط للمدراء والمحاسبين */}
               {canSeePayroll && (
                 <Card 
                   onClick={() => router.push('/dashboard/hr/payroll')}

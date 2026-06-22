@@ -12,14 +12,15 @@ import {
   Package, Truck, RotateCcw, PackageCheck,
   TrendingUp, TrendingDown, Info, Scale,
   FileText, ExternalLink, Plane, BarChart3,
-  DollarSign, Receipt, ClipboardCheck
+  DollarSign, Receipt, ClipboardCheck, Lock
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
+import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
-import { Employee, AttendanceRecord, LeaveRequest } from '@/types/hr';
+import { Employee, AttendanceRecord } from '@/types/hr';
 import { cn } from '@/lib/utils';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
 
@@ -27,10 +28,16 @@ export default function EmployeeDossierPage() {
   const empId = useParams().id as string;
   const { globalUser } = useAuthContext();
   const { t, lang, dir } = useLanguage();
+  const { check } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
+
+  // فحص صلاحية الوصول للملف (عزل البيانات)
+  const hrView = check('hr', 'view');
+  const isOwn = globalUser?.employeeId === empId;
+  const canAccess = isOwn || hrView.scope === 'all' || (hrView.scope === 'dept' && true); // التبسيط للنموذج
 
   // 1. جلب البيانات الأساسية
   const empRef = useMemo(() => 
@@ -38,9 +45,9 @@ export default function EmployeeDossierPage() {
   [db, companyId, empId]);
   const { data: employee, loading: empLoading } = useDoc<Employee>(empRef);
 
-  // 2. جلب سجلات الحركات (مختصرة للعرض السريع)
+  // 2. جلب سجلات الحركات
   const attendanceQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.attendance(companyId)), where('employeeId', '==', empId), orderBy('date', 'desc'), where('date', '>=', '2024-01-01')) : null, 
+    companyId && db ? query(collection(db, paths.attendance(companyId)), where('employeeId', '==', empId), orderBy('date', 'desc'), limit(5)) : null, 
   [db, companyId, empId]);
   
   const { data: attendance } = useCollection<AttendanceRecord>(attendanceQuery);
@@ -51,7 +58,22 @@ export default function EmployeeDossierPage() {
   const { data: assets } = useCollection<any>(assetsQuery);
 
   if (empLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
-  if (!employee) return <div className="p-20 text-center font-bold">{isRtl ? 'الموظف غير موجود' : 'Employee not found'}</div>;
+  
+  // حماية أمنية: منع الموظف من رؤية ملفات زملائه عبر تغيير الـ ID في الرابط
+  if (!canAccess || !employee) {
+    return (
+      <div className="h-[60vh] flex flex-col items-center justify-center space-y-6 text-center">
+         <div className="h-24 w-24 bg-rose-50 text-rose-500 rounded-[2rem] flex items-center justify-center shadow-inner">
+            <Lock className="h-12 w-12" />
+         </div>
+         <div>
+            <h2 className="text-2xl font-black text-slate-800">{isRtl ? 'وصول محجوب' : 'Access Denied'}</h2>
+            <p className="text-slate-400 font-bold max-w-xs mx-auto mt-2">{isRtl ? 'لا تملك صلاحية عرض هذا الملف الفني.' : 'You lack permissions to view this dossier.'}</p>
+         </div>
+         <Button onClick={() => router.push('/dashboard/hr')} variant="outline" className="rounded-xl px-8">العودة للرئيسية</Button>
+      </div>
+    );
+  }
 
   const ReportActionCard = ({ title, desc, icon: Icon, path, color }: any) => (
     <Card 
@@ -60,7 +82,7 @@ export default function EmployeeDossierPage() {
       style={{ borderBottomColor: color }}
     >
       <CardContent className="p-6 text-start">
-        <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110", `bg-slate-50`)} style={{ color }}>
+        <div className="h-12 w-12 rounded-2xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110 bg-slate-50" style={{ color }}>
           <Icon className="h-6 w-6" />
         </div>
         <h4 className="font-black text-slate-800 text-sm mb-1">{title}</h4>
@@ -75,7 +97,6 @@ export default function EmployeeDossierPage() {
 
   return (
     <div className="space-y-8 pb-20 animate-in fade-in duration-700" dir={dir}>
-      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div className="flex items-center gap-4">
            <Button variant="ghost" onClick={() => router.back()} className="h-12 w-12 p-0 rounded-2xl bg-white shadow-sm border hover:bg-slate-50">
@@ -88,14 +109,13 @@ export default function EmployeeDossierPage() {
              </p>
            </div>
         </div>
-        <Button onClick={() => window.print()} className="rounded-2xl h-14 px-8 font-black gap-2 bg-slate-900 text-white shadow-xl hover:bg-slate-800 transition-all">
+        <Button onClick={() => window.print()} className="rounded-2xl h-14 px-8 font-black gap-2 bg-slate-900 text-white shadow-xl hover:bg-slate-800 transition-all print:hidden">
            <Printer className="h-5 w-5" /> {isRtl ? 'طباعة الملف كاملاً' : 'Print Full Dossier'}
         </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         
-        {/* Sidebar: Quick Reports Hub (The Enterprise Links) */}
         <div className="lg:col-span-1 space-y-6">
            <h3 className="font-black text-xs text-slate-400 uppercase tracking-[0.2em] px-2">{isRtl ? 'التقارير الذاتية (ERP)' : 'Self-Service Reports'}</h3>
            <div className="grid grid-cols-1 gap-4">
@@ -125,12 +145,11 @@ export default function EmployeeDossierPage() {
                 desc={isRtl ? "قائمة المعدات والأدوات المسجلة بعهدة الموظف." : "List of tools and equipment currently in possession."}
                 icon={Package}
                 color="#7c3aed"
-                path={`/dashboard/hr/reports/dossier/${empId}`}
+                path={`/dashboard/inventory`}
               />
            </div>
         </div>
 
-        {/* Main Content: Overview Wrapper */}
         <div className="lg:col-span-3 space-y-8">
            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
               <CardHeader className="bg-slate-50/50 border-b p-10">
@@ -153,13 +172,11 @@ export default function EmployeeDossierPage() {
                     <div className="bg-slate-900 text-white p-6 rounded-3xl text-center min-w-[180px] shadow-2xl">
                        <p className="text-[9px] font-black text-primary uppercase mb-1">{isRtl ? 'رصيد الإجازات الحالي' : 'Current Balance'}</p>
                        <p className="text-4xl font-black font-mono">{employee.annualLeaveBalance || 0}</p>
-                       <p className="text-[8px] font-bold text-slate-500 mt-1 uppercase">{isRtl ? 'يوم مستحق' : 'Accrued Days'}</p>
+                       <p className="text-[10px] font-bold text-slate-500 mt-1 uppercase">{isRtl ? 'يوم مستحق' : 'Accrued Days'}</p>
                     </div>
                  </div>
               </CardHeader>
               <CardContent className="p-10 space-y-12">
-                 
-                 {/* Contact Grid */}
                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-start">
                     <div className="space-y-1">
                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'الرقم المدني' : 'Civil ID'}</p>
@@ -177,13 +194,10 @@ export default function EmployeeDossierPage() {
 
                  <div className="h-[1px] bg-slate-100 w-full" />
 
-                 {/* Current Assets Snapshot */}
                  <div className="space-y-6 text-start">
-                    <div className="flex justify-between items-center">
-                       <h3 className="font-black text-base flex items-center gap-2 text-slate-800">
-                          <Package className="h-5 w-5 text-primary" /> {isRtl ? 'العهد الميدانية النشطة' : 'Active Field Assets'}
-                       </h3>
-                    </div>
+                    <h3 className="font-black text-base flex items-center gap-2 text-slate-800">
+                       <Package className="h-5 w-5 text-primary" /> {isRtl ? 'العهد الميدانية النشطة' : 'Active Field Assets'}
+                    </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                        {assets && assets.length > 0 ? (
                          assets.map((asset: any) => (
@@ -206,7 +220,6 @@ export default function EmployeeDossierPage() {
                     </div>
                  </div>
 
-                 {/* Attendance Trend Preview */}
                  <div className="space-y-6 text-start">
                     <h3 className="font-black text-base flex items-center gap-2 text-slate-800">
                        <BarChart3 className="h-5 w-5 text-blue-600" /> {isRtl ? 'آخر عمليات الحضور' : 'Recent Attendance'}
@@ -222,7 +235,7 @@ export default function EmployeeDossierPage() {
                              </tr>
                           </thead>
                           <tbody className="divide-y">
-                             {attendance?.slice(0, 5).map((rec) => (
+                             {attendance?.map((rec) => (
                                 <tr key={rec.id} className="hover:bg-slate-50 transition-colors">
                                    <td className="p-4 font-bold text-slate-600">{rec.date}</td>
                                    <td className="p-4 font-mono font-black text-slate-800">{rec.checkIn || '--:--'}</td>

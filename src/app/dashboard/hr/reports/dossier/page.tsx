@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { useFirestore, useCollection } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
+import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { Employee } from '@/types/hr';
 import { cn } from '@/lib/utils';
@@ -21,14 +22,22 @@ import { cn } from '@/lib/utils';
 export default function DossierSearchPage() {
   const { globalUser } = useAuthContext();
   const { lang, dir } = useLanguage();
+  const { check } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const isRtl = lang === 'ar';
 
   const companyId = globalUser?.companyId;
+  const hrView = check('hr', 'view');
 
-  // تثبيت كائن الاستعلام
+  // توجيه ذكي: إذا كان الموظف يملك صلاحية رؤية نفسه فقط، نوجهه فوراً لملفه
+  useEffect(() => {
+    if (hrView.scope === 'own' && globalUser?.employeeId) {
+      router.push(`/dashboard/hr/reports/dossier/${globalUser.employeeId}`);
+    }
+  }, [hrView, globalUser, router]);
+
   const employeesQuery = useMemo(() => {
     if (!companyId || !db) return null;
     return query(collection(db, paths.employees(companyId)));
@@ -38,14 +47,24 @@ export default function DossierSearchPage() {
 
   const filteredEmployees = useMemo(() => {
     const term = searchTerm.toLowerCase();
+    // الفلترة بناءً على النطاق المسموح به
     return rawEmployees
-      .filter(emp => 
-        emp.fullName?.toLowerCase().includes(term) || 
-        emp.employeeNumber?.includes(term) ||
-        emp.civilId?.includes(term)
-      )
+      .filter(emp => {
+        const matchSearch = emp.fullName?.toLowerCase().includes(term) || 
+                            emp.employeeNumber?.includes(term);
+        
+        if (!matchSearch) return false;
+        
+        if (hrView.scope === 'all') return true;
+        if (hrView.scope === 'dept') return emp.departmentId === globalUser?.departmentId;
+        if (hrView.scope === 'own') return emp.id === globalUser?.employeeId;
+        
+        return false;
+      })
       .sort((a, b) => a.employeeNumber.localeCompare(b.employeeNumber));
-  }, [rawEmployees, searchTerm]);
+  }, [rawEmployees, searchTerm, hrView, globalUser]);
+
+  if (hrView.scope === 'own') return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto" dir={dir}>
@@ -77,7 +96,7 @@ export default function DossierSearchPage() {
             {loading ? (
               <div className="py-20 text-center flex flex-col items-center gap-4">
                 <Loader2 className="animate-spin h-10 w-10 text-primary/30" />
-                <p className="text-xs font-bold text-slate-400 animate-pulse">{isRtl ? 'جاري جلب سجل الموظفين...' : 'Fetching employees...'}</p>
+                <p className="text-xs font-bold text-slate-400">{isRtl ? 'جاري جلب سجل الموظفين...' : 'Fetching employees...'}</p>
               </div>
             ) : error ? (
               <div className="py-16 text-center space-y-4">
@@ -88,13 +107,6 @@ export default function DossierSearchPage() {
                    <h3 className="font-black text-rose-900">{isRtl ? 'حدث خطأ أثناء جلب البيانات' : 'Error Fetching Data'}</h3>
                    <p className="text-xs text-rose-600 font-bold">{(error as any).message}</p>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="rounded-xl h-10 px-6 gap-2">
-                   <RefreshCw className="h-4 w-4" /> {isRtl ? 'إعادة المحاولة' : 'Retry'}
-                </Button>
-              </div>
-            ) : filteredEmployees.length === 0 ? (
-              <div className="py-20 text-center text-slate-400 font-bold italic">
-                {searchTerm ? (isRtl ? 'لا توجد نتائج مطابقة لبحثك.' : 'No matching results.') : (isRtl ? 'لا يوجد موظفين مسجلين حالياً.' : 'No employees registered.')}
               </div>
             ) : (
               filteredEmployees.map((emp) => (
