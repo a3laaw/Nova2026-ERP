@@ -32,20 +32,18 @@ export class RoleService {
       const snap = await getDocs(q);
       return snap.docs.map(d => ({ id: d.id, ...d.data() } as Role));
     } catch (e) {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: paths.roles(this.companyId),
-        operation: 'list'
-      }));
       return [];
     }
   }
 
   /**
-   * إضافة دور جديد - تم جعلها Async لانتظار النتيجة
+   * إضافة دور جديد
    */
   async addRole(data: Omit<Role, 'id' | 'createdAt' | 'updatedAt' | 'companyId'>) {
-    // للأدوار، نشترط الصلاحية المطلقة فقط (*)
-    ensureActionPermission(this.userPermissions, '*');
+    // التحقق من صلاحية الإدارة
+    if (!this.userPermissions.includes('*')) {
+       throw new Error("UNAUTHORIZED: Missing Admin Permission (*)");
+    }
 
     const path = paths.roles(this.companyId);
     const docData = {
@@ -56,13 +54,14 @@ export class RoleService {
     };
     
     try {
-      return await addDoc(collection(this.db, path), docData);
+      const docRef = await addDoc(collection(this.db, path), docData);
+      return docRef.id;
     } catch (error) {
       errorEmitter.emit('permission-error', new FirestorePermissionError({ 
         path, 
         operation: 'create', 
         requestResourceData: docData 
-      } satisfies SecurityRuleContext));
+      }));
       throw error;
     }
   }
@@ -71,44 +70,47 @@ export class RoleService {
    * تحديث دور موجود
    */
   async updateRole(id: string, data: Partial<Role>) {
-    ensureActionPermission(this.userPermissions, '*');
+    if (!this.userPermissions.includes('*')) {
+       throw new Error("UNAUTHORIZED: Missing Admin Permission (*)");
+    }
 
     const path = paths.roles(this.companyId);
     const docRef = doc(this.db, path, id);
     
     try {
       const updateData = { ...data, updatedAt: serverTimestamp() };
-      return await updateDoc(docRef, updateData);
+      await updateDoc(docRef, updateData);
+      return true;
     } catch (error) {
       errorEmitter.emit('permission-error', new FirestorePermissionError({ 
         path: docRef.path, 
         operation: 'update', 
         requestResourceData: data 
-      } satisfies SecurityRuleContext));
+      }));
       throw error;
     }
   }
 
   async deleteRole(id: string) {
-    ensureActionPermission(this.userPermissions, '*');
+    if (!this.userPermissions.includes('*')) {
+       throw new Error("UNAUTHORIZED");
+    }
 
     const path = paths.roles(this.companyId);
     const docRef = doc(this.db, path, id);
     
     try {
-      return await deleteDoc(docRef);
+      await deleteDoc(docRef);
+      return true;
     } catch (error) {
       errorEmitter.emit('permission-error', new FirestorePermissionError({ 
         path: docRef.path, 
         operation: 'delete' 
-      } satisfies SecurityRuleContext));
+      }));
       throw error;
     }
   }
 
-  /**
-   * ضخ الأدوار الافتراضية للشركات الجديدة
-   */
   async seedInitialRoles() {
     const batch = writeBatch(this.db);
     const rolesRef = collection(this.db, paths.roles(this.companyId));

@@ -14,7 +14,12 @@ export function usePermissions() {
   const { roleData, globalUser, loading } = useAuthContext();
   
   const role = roleData as any;
-  const isAdmin = globalUser?.role?.toLowerCase() === 'admin' || role?.code === 'ADMIN';
+  const isAdmin = globalUser?.role?.toLowerCase() === 'admin' || role?.code === 'ADMIN' || globalUser?.isDeveloper === true;
+
+  /**
+   * الصلاحيات الفعلية المستخلصة
+   */
+  const effectivePermissions = isAdmin ? ['*'] : (role?.permissions || []);
 
   /**
    * الفحص الأساسي مع تمرير سياق المستخدم (User Context)
@@ -24,12 +29,11 @@ export function usePermissions() {
     
     const access = hasResourceAccess(role, resourceId, action);
     
-    // إرجاع الصلاحية مع تزويد الواجهة ببيانات الموظف للفلترة
     return {
       ...access,
       userContext: {
         uid: globalUser?.uid || '',
-        departmentId: globalUser?.departmentId || '' // القسم القادم من المراجع
+        departmentId: globalUser?.departmentId || ''
       }
     };
   }, [role, isAdmin, globalUser]);
@@ -42,6 +46,7 @@ export function usePermissions() {
   return {
     isLoading: loading,
     isAdmin,
+    permissions: effectivePermissions,
     check,
     canAccess,
     userContext: {

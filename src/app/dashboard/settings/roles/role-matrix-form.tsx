@@ -1,6 +1,5 @@
 /**
  * @fileOverview واجهة مصفوفة الصلاحيات الذكية المطورة.
- * تم تحسين التنسيق ليكون أفقياً (Side-by-side) لتسهيل المراجعة وتوفير المساحة.
  */
 
 'use client';
@@ -14,14 +13,14 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   ShieldCheck, Save, X, Loader2, 
-  Settings2, LayoutGrid, Globe, User, Users,
-  Building2, Info, Lock
+  LayoutGrid, Globe, User, Users,
+  Info
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { Role } from '@/types/roles';
 import { RoleService } from '@/services/role-service';
 import { SYSTEM_RESOURCES, ACTION_LABELS } from '@/lib/permissions/catalog';
-import { Action, Scope } from '@/lib/permissions/types';
+import { Action, Scope, PermissionRule } from '@/lib/permissions/types';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { 
@@ -43,17 +42,18 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
   const isRtl = lang === 'ar';
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<any>({ 
-    name: '', nameEn: '', matrix: [] 
+    name: '', nameEn: '', matrix: [], permissions: [] 
   });
 
   useEffect(() => {
     if (role) {
       setFormData({
         ...role,
-        matrix: (role as any).matrix || []
+        matrix: (role as any).matrix || [],
+        permissions: role.permissions || []
       });
     } else {
-      setFormData({ name: '', nameEn: '', matrix: [] });
+      setFormData({ name: '', nameEn: '', matrix: [], permissions: [] });
     }
   }, [role]);
 
@@ -76,7 +76,14 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
       currentMatrix.push({ resourceId, action, scope });
     }
 
-    setFormData({ ...formData, matrix: currentMatrix });
+    // توليد مصفوفة الصلاحيات الكلاسيكية (String-based) لضمان توافق الخدمات القديمة
+    const generatedPerms = currentMatrix.map((m: PermissionRule) => `${m.resourceId}:${m.action}`);
+    
+    setFormData({ 
+      ...formData, 
+      matrix: currentMatrix,
+      permissions: Array.from(new Set(generatedPerms)) 
+    });
   };
 
   const handleSave = async () => {
@@ -84,14 +91,18 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
       toast({ variant: "destructive", title: isRtl ? "اسم الدور مطلوب" : "Role name is required" });
       return;
     }
+    
     setLoading(true);
     try {
+      // إزالة حقل ID من بيانات الحفظ إذا كان موجوداً لتجنب مشاكل Firestore
+      const { id, ...saveData } = formData;
+
       if (role?.id) {
-        await roleService.updateRole(role.id, formData);
+        await roleService.updateRole(role.id, saveData);
       } else {
         const code = formData.nameEn.toUpperCase().replace(/\s+/g, '_');
         await roleService.addRole({ 
-          ...formData, 
+          ...saveData, 
           code, 
           isActive: true, 
           isSystemRole: false, 
@@ -100,18 +111,19 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
       }
       toast({ title: t('saved') });
       onClose();
-    } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
+    } catch (e: any) {
+      console.error("Save Error:", e);
+      toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
       setLoading(false);
     }
   };
 
   const SCOPES: { value: Scope; label: string; icon: any; color: string; desc: string }[] = [
-    { value: 'none', label: isRtl ? 'محجوب' : 'None', icon: X, color: 'text-slate-400', desc: isRtl ? 'لا يوجد وصول نهائياً.' : 'No access at all.' },
-    { value: 'own', label: isRtl ? 'الموظف فقط' : 'Own Only', icon: User, color: 'text-blue-500', desc: isRtl ? 'سجلاته الشخصية فقط.' : 'Only records created by the user.' },
-    { value: 'dept', label: isRtl ? 'نطاق القسم' : 'Department', icon: Users, color: 'text-orange-500', desc: isRtl ? 'سجلات قسمه فقط.' : 'Access records within the same department.' },
-    { value: 'all', label: isRtl ? 'المنشأة كاملة' : 'Full Access', icon: Globe, color: 'text-emerald-500', desc: isRtl ? 'كافة بيانات المنشأة.' : 'Access to all company data.' },
+    { value: 'none', label: isRtl ? 'محجوب' : 'None', icon: X, color: 'text-slate-400', desc: isRtl ? 'لا يوجد وصول.' : 'No access.' },
+    { value: 'own', label: isRtl ? 'الموظف' : 'Own', icon: User, color: 'text-blue-500', desc: isRtl ? 'سجلاته فقط.' : 'Own records.' },
+    { value: 'dept', label: isRtl ? 'القسم' : 'Dept', icon: Users, color: 'text-orange-500', desc: isRtl ? 'سجلات قسمه.' : 'Dept records.' },
+    { value: 'all', label: isRtl ? 'المنشأة' : 'All', icon: Globe, color: 'text-emerald-500', desc: isRtl ? 'كل البيانات.' : 'All data.' },
   ];
 
   return (
@@ -124,32 +136,29 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
                  {isRtl ? 'مصفوفة الصلاحيات الميدانية' : 'Field Permission Matrix'}
               </CardTitle>
               <p className="text-xs font-bold text-muted-foreground mt-1 opacity-70">
-                {isRtl ? 'تحكم دقيق في الأفعال ونطاق الوصول لكل موديول' : 'Granular control over actions and scopes per module'}
+                {isRtl ? 'تحكم في الأفعال ونطاق الوصول لكل موديول' : 'Control actions and scopes per module'}
               </p>
            </div>
            <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-10 w-10 hover:bg-white"><X className="h-6 w-6" /></Button>
         </CardHeader>
         
         <CardContent className="p-0">
-           {/* Header inputs aligned side-by-side */}
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-10 bg-slate-50/50 border-b">
               <div className="space-y-3 text-start">
-                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">{isRtl ? 'اسم الدور (AR)' : 'Role Name (AR)'}</Label>
+                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اسم الدور (AR)' : 'Role Name (AR)'}</Label>
                  <Input 
                    value={formData.name} 
                    onChange={e => setFormData({...formData, name: e.target.value})} 
-                   className="h-14 rounded-2xl border-2 font-black text-lg bg-white focus:ring-4 focus:ring-primary/5 transition-all px-6" 
-                   placeholder="مثلاً: مدير مشاريع"
+                   className="h-14 rounded-2xl border-2 font-black text-lg bg-white" 
                  />
               </div>
               <div className="space-y-3 text-start">
-                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">{isRtl ? 'اسم الدور (EN)' : 'Role Name (EN)'}</Label>
+                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اسم الدور (EN)' : 'Role Name (EN)'}</Label>
                  <Input 
                    value={formData.nameEn} 
                    onChange={e => setFormData({...formData, nameEn: e.target.value})} 
-                   className="h-14 rounded-2xl border-2 font-black text-lg bg-white text-start focus:ring-4 focus:ring-primary/5 transition-all px-6" 
+                   className="h-14 rounded-2xl border-2 font-black text-lg bg-white text-start" 
                    dir="ltr" 
-                   placeholder="e.g. Project Manager"
                  />
               </div>
            </div>
@@ -159,7 +168,7 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
                  <TableHeader className="bg-slate-50/80">
                     <TableRow>
                        <TableHead className="py-6 ps-10 w-[240px] text-start font-black text-[#1e1b4b] uppercase text-[10px] tracking-widest">{isRtl ? 'المورد / الشاشة' : 'Module / Screen'}</TableHead>
-                       <TableHead className="text-start font-black text-[#1e1b4b] uppercase text-[10px] tracking-widest">{isRtl ? 'العمليات المتاحة والنطاق (Actions & Scopes)' : 'Available Actions & Scopes'}</TableHead>
+                       <TableHead className="text-start font-black text-[#1e1b4b] uppercase text-[10px] tracking-widest">{isRtl ? 'العمليات المتاحة والنطاق' : 'Available Actions & Scopes'}</TableHead>
                     </TableRow>
                  </TableHeader>
                  <TableBody>
@@ -179,7 +188,6 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
                              </div>
                           </TableCell>
                           <TableCell className="py-8 pe-10">
-                             {/* Grid of actions displayed side-by-side */}
                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {resource.allowedActions.map((action) => {
                                    const currentScope = getScope(resource.id, action);
@@ -243,13 +251,15 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
                     <h5 className="text-xs font-black text-slate-800 uppercase tracking-widest">{isRtl ? 'دليل نطاق البيانات (Scope)' : 'Data Scope Guide'}</h5>
                     <p className="text-[10px] font-bold text-slate-500 leading-relaxed italic">
                        {isRtl 
-                         ? 'نطاق "القسم" يعني أن الموظف لن يرى إلا السجلات المربوطة بكود قسمه المرجعي، بينما نطاق "الموظف" يحبسه داخل سجلاته الشخصية فقط.' 
-                         : 'Choosing "Department" scope ensures the employee only sees records linked to their reference department ID.'}
+                         ? 'يتم ربط الصلاحيات آلياً بمعرفات الأقسام والموظفين القادمة من مركز المراجع لضمان عزل البيانات.' 
+                         : 'Permissions are automatically linked to Dept and Emp IDs from Reference Hub.'}
                     </p>
                  </div>
               </div>
               <div className="flex gap-4 w-full md:w-auto">
-                 <Button variant="outline" onClick={onClose} className="flex-1 md:w-40 h-16 rounded-[1.5rem] font-black border-2 border-slate-200 bg-white hover:bg-slate-50 transition-all">{isRtl ? 'إلغاء' : 'Cancel'}</Button>
+                 <Button variant="outline" onClick={onClose} className="flex-1 md:w-40 h-16 rounded-[1.5rem] font-black border-2 border-slate-200 bg-white">
+                    {isRtl ? 'إلغاء' : 'Cancel'}
+                 </Button>
                  <Button 
                    onClick={handleSave} 
                    disabled={loading}
