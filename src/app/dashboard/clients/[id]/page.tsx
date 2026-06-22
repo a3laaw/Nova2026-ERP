@@ -50,12 +50,12 @@ export default function ClientDetailsPage() {
     companyId && db ? doc(db, paths.clients(companyId), clientId) : null, 
   [db, companyId, clientId]);
 
-  // 2. جلب سجل العمليات (بسيط لتجنب أخطاء الفهرسة)
+  // 2. جلب سجل العمليات
   const historyQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.clientHistory(companyId, clientId))) : null, 
   [db, companyId, clientId]);
 
-  // 3. جلب المعاملات الفنية (استعلام بسيط لا يتطلب فهرس مركب)
+  // 3. جلب المعاملات الفنية (تبسيط الاستعلام لتجنب مشاكل الفهرسة)
   const transactionsQuery = useMemo(() => 
     companyId && db ? query(
       collection(db, paths.transactions(companyId)), 
@@ -67,7 +67,7 @@ export default function ClientDetailsPage() {
   const { data: rawHistory, loading: historyLoading } = useCollection<ClientHistory>(historyQuery);
   const { data: rawTransactions, loading: transLoading } = useCollection<Transaction>(transactionsQuery);
 
-  // ترتيب البيانات برمجياً لتجنب الحاجة للفهارس (Client-side Sorting)
+  // ترتيب البيانات برمجياً (Client-side Sorting)
   const transactions = useMemo(() => {
     return [...rawTransactions].sort((a, b) => {
       const dateA = a.createdAt?.toMillis?.() || 0;
@@ -84,7 +84,6 @@ export default function ClientDetailsPage() {
     });
   }, [rawHistory]);
 
-  // دالة ذكية لاستخراج الإحداثيات من رابط جوجل ماب
   const coordinates = useMemo(() => {
     if (!client?.locationUrl) return null;
     try {
@@ -180,7 +179,7 @@ export default function ClientDetailsPage() {
                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{isRtl ? 'تتبع مسارات التنفيذ المفتوحة' : 'Execution Pipeline Tracking'}</p>
                     </div>
                  </div>
-                 <Badge className="bg-slate-900 text-white font-black rounded-full h-8 px-4 flex items-center justify-center">{transactions?.length || 0}</Badge>
+                 <Badge className="bg-[#1e1b4b] text-white font-black rounded-full h-8 px-4 flex items-center justify-center text-lg">{transactions?.length || 0}</Badge>
               </CardHeader>
               <CardContent className="p-4 space-y-3">
                  {transLoading ? (
@@ -212,7 +211,7 @@ export default function ClientDetailsPage() {
                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{trans.transactionNumber}</p>
                                 <h4 className="font-black text-lg text-slate-800 leading-tight">{trans.subServiceName}</h4>
                                 <div className="flex items-center gap-3 mt-1.5">
-                                   <Badge variant="secondary" className="bg-white border text-[8px] font-black uppercase px-2">{trans.activityTypeName}</Badge>
+                                   <Badge variant="secondary" className="bg-primary/10 text-primary border-0 text-[8px] font-black uppercase px-2">{trans.activityTypeName}</Badge>
                                    <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1.5">
                                       <HardHat className="h-3 w-3 text-primary" /> {trans.assignedEngineerName}
                                    </span>
@@ -421,3 +420,4 @@ export default function ClientDetailsPage() {
     </div>
   );
 }
+
