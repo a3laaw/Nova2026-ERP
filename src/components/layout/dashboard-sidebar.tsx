@@ -1,20 +1,19 @@
 /**
  * @fileOverview القائمة الجانبية (Sidebar).
- * تم تحديثها لتعمل بمحرك الصلاحيات الموحد (Resource Access).
+ * تم إصلاح خطأ استيراد Link وتوحيد الأكواد مع محرك الصلاحيات.
  */
 
 "use client"
 
 import * as React from "react"
-import Link from "next/navigation"
+import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   LayoutDashboard, Users, HardHat, Calculator, UserCircle,
-  ShoppingCart, BarChart3, Sparkles, Clock, ShieldCheck,
-  Calendar, FileSpreadsheet, FileText, DollarSign, Package,
-  Layers, FileSearch, BookOpen, TrendingUp, Truck, Scale,
-  Building2, UserCog, Database, ChevronLeft, Settings2,
-  BookMarked, UserPlus
+  ShoppingCart, Sparkles, Clock, ShieldCheck,
+  Calendar, FileSpreadsheet, FileText, Package,
+  Layers, FileSearch, Truck, Scale,
+  Building2, Database, ChevronLeft, Settings2
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
@@ -44,7 +43,7 @@ export function DashboardSidebar() {
   const isRtl = lang === 'ar'
   const isCollapsed = state === "collapsed"
 
-  // قائمة العناصر مع "كود المورد" المطابق للكتالوج
+  // قائمة العناصر الموحدة مع الأكواد المركزية
   const menuItems = React.useMemo(() => [
     { title: t('dashboard'), icon: LayoutDashboard, url: "/dashboard", resource: 'dashboard' },
     { 
@@ -126,7 +125,6 @@ export function DashboardSidebar() {
     }
   ], [t, isRtl]);
 
-  // الفلترة الذكية بناءً على الصلاحيات
   const visibleItems = React.useMemo(() => {
     return menuItems.filter(item => canAccess(item.resource));
   }, [menuItems, canAccess]);
