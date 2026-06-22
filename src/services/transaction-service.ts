@@ -16,13 +16,13 @@ import { FirestorePermissionError } from '@/firebase/errors';
 
 /**
  * خدمة إدارة المعاملات الفنية (Technical Transactions Service).
- * مسؤولة عن الدورة المستندية لفتح المسارات الفنية والربط مع سجل العميل.
+ * مسؤولة عن الدورة المستندية لفتح المسارات الفنية والربط مع سجل العميل والجدول الزمني.
  */
 export class TransactionService {
   constructor(private db: Firestore, private companyId: string) {}
 
   /**
-   * إنشاء معاملة فنية جديدة برقم متسلسل مهني
+   * إنشاء معاملة فنية جديدة مع توثيق الأحداث في السجل الزمني وسجل العميل
    */
   async createTransaction(data: {
     clientId: string;
@@ -35,7 +35,7 @@ export class TransactionService {
     assignedEngineerId: string;
     assignedEngineerName: string;
     description?: string;
-  }, userId: string) {
+  }, userId: string, userName: string) {
     
     // 1. قراءة بيانات العميل لاستخراج العداد ورقم الملف
     const clientRef = doc(this.db, paths.clients(this.companyId), data.clientId);
@@ -52,12 +52,14 @@ export class TransactionService {
     const nextCounter = currentCounter + 1;
     const transactionNumber = `${client.fileNumber}-${nextCounter.toString().padStart(2, '0')}`;
 
-    // 3. تجهيز بيانات المعاملة
-    const transColl = collection(this.db, paths.transactions(this.companyId));
-    const transRef = doc(transColl);
-    
+    // 3. تجهيز مراجع المستندات
+    const batch = writeBatch(this.db);
+    const transRef = doc(collection(this.db, paths.transactions(this.companyId)));
+    const transactionId = transRef.id;
+
+    // أ. بيانات المعاملة الأساسية
     const transactionData: Transaction = {
-      id: transRef.id,
+      id: transactionId,
       transactionNumber,
       clientId: data.clientId,
       clientName: client.nameAr || '',
@@ -78,19 +80,40 @@ export class TransactionService {
       updatedBy: userId
     };
 
-    // 4. تنفيذ العملية بشكل ذري (Atomic Transaction)
-    // نستخدم الـ Batch لضمان تزامن إنشاء المعاملة مع تحديث عداد العميل
-    const batch = writeBatch(this.db);
-    
     batch.set(transRef, transactionData);
-    
+
+    // ب. إضافة حدث في الجدول الزمني للمعاملة (Timeline Event)
+    const timelineRef = doc(collection(this.db, `${paths.transactions(this.companyId)}/${transactionId}/timeline`));
+    batch.set(timelineRef, {
+      transactionId,
+      type: 'system',
+      content: `تم افتتاح المعاملة الفنية بنجاح وبدء المسار التشغيلي لخدمة: ${data.subServiceName}`,
+      userId,
+      userName,
+      companyId: this.companyId,
+      createdAt: serverTimestamp()
+    });
+
+    // ج. إضافة حدث في سجل تاريخ العميل (Client History)
+    const historyRef = doc(collection(this.db, paths.clientHistory(this.companyId, data.clientId)));
+    batch.set(historyRef, {
+      clientId: data.clientId,
+      type: 'transaction_created',
+      content: `تم فتح معاملة فنية جديدة برقم: ${transactionNumber}`,
+      userId,
+      userName,
+      companyId: this.companyId,
+      createdAt: serverTimestamp()
+    });
+
+    // د. تحديث عداد المعاملات في ملف العميل
     batch.update(clientRef, {
       transactionCounter: increment(1),
       updatedAt: serverTimestamp()
     });
 
+    // 4. تنفيذ العملية بشكل ذري (Atomic Transaction)
     return batch.commit().catch((err) => {
-      // إرسال خطأ الصلاحيات للمحرك المركزي في حال فشل العملية
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: transRef.path,
         operation: 'create',

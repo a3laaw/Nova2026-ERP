@@ -23,3 +23,11 @@ export interface Transaction extends BaseReference {
   createdBy: string;
   updatedBy: string;
 }
+
+export interface TransactionTimelineEvent extends BaseReference {
+  transactionId: string;
+  type: 'system' | 'stage_start' | 'stage_complete' | 'comment';
+  content: string;
+  userId: string;
+  userName: string;
+}
