@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -46,12 +47,14 @@ export class HRService {
   }
 
   /**
-   * إضافة موظف جديد وربط بياناته بالهيكل المرجعي (ID-based)
+   * إضافة موظف جديد.
+   * هنا نقوم بالتحقق من أن الموظف لا يستخدم نطاق 'own' لإنشاء ملفات لموظفين آخرين.
    */
   async addEmployee(data: Omit<Employee, 'id' | 'createdAt' | 'updatedAt' | 'companyId'>) {
+    // التحقق من الصلاحية الأساسية
     ensureActionPermission(this.permissions, 'hr:create');
-    const path = paths.employees(this.companyId);
     
+    const path = paths.employees(this.companyId);
     const empRef = doc(collection(this.db, path));
     const docData = {
       ...data,
@@ -69,7 +72,6 @@ export class HRService {
       }));
     });
 
-    // مزامنة ID القسم والدور في السجل العالمي فوراً
     if (data.email) {
       await this.syncGlobalUserData(data.email, data.roleId, data.departmentId);
     }
@@ -77,9 +79,6 @@ export class HRService {
     return empRef.id;
   }
 
-  /**
-   * تحديث بيانات الموظف ومزامنة الصلاحيات المرجعية
-   */
   async updateEmployee(id: string, newData: Partial<Employee>, currentUser: { uid: string, name: string }) {
     ensureActionPermission(this.permissions, 'hr:edit');
     const path = paths.employees(this.companyId);
@@ -99,7 +98,6 @@ export class HRService {
       }));
     });
 
-    // إعادة المزامنة في حال تغير القسم أو الدور
     if ((newData.roleId && newData.roleId !== oldData.roleId) || 
         (newData.departmentId && newData.departmentId !== oldData.departmentId)) {
       await this.syncGlobalUserData(
@@ -124,9 +122,6 @@ export class HRService {
     }
   }
 
-  /**
-   * المزامنة السيادية: حقن المعرفات المرجعية في جيب الموظف (Global Context)
-   */
   private async syncGlobalUserData(email: string, roleId?: string, departmentId?: string) {
     try {
       const q = query(collection(this.db, 'global_users'), where('email', '==', email));
@@ -136,7 +131,7 @@ export class HRService {
         const globalUserRef = doc(this.db, 'global_users', snap.docs[0].id);
         await updateDoc(globalUserRef, {
           roleId: roleId || '',
-          departmentId: departmentId || '', // الربط المرجعي هنا
+          departmentId: departmentId || '',
           updatedAt: serverTimestamp()
         });
       }

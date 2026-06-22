@@ -57,6 +57,10 @@ export default function EmployeesPage() {
     db && companyId ? new HRService(db, companyId) : null, 
   [db, companyId]);
 
+  // فحص صلاحية التوظيف (يجب أن يكون النطاق أكبر من 'own' للتمكن من توظيف آخرين)
+  const createAccess = check('hr', 'create');
+  const canHireNew = createAccess.can && createAccess.scope !== 'own';
+
   const filteredEmployees = employees?.filter(emp => 
     emp.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
     emp.employeeNumber?.includes(searchTerm) ||
@@ -90,14 +94,14 @@ export default function EmployeesPage() {
           </p>
         </div>
 
-        {/* إخفاء زر التوظيف الجديد بناءً على صلاحية hr:create */}
-        {check('hr', 'create').can && (
+        {/* زر التوظيف يختفي إذا كان الموظف يملك نطاق 'own' فقط (لأنه لا يوظف نفسه) */}
+        {canHireNew && (
           <Button 
             onClick={() => router.push('/dashboard/hr/employees/new')}
             className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform"
           >
             <UserPlus className="me-2 h-6 w-6" />
-            {isRtl ? 'موظف جديد' : 'New Employee'}
+            {isRtl ? 'توظيف جديد' : 'New Hire'}
           </Button>
         )}
       </div>
@@ -112,11 +116,6 @@ export default function EmployeesPage() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-          </div>
-          <div className="flex gap-2">
-             <Badge variant="outline" className="h-12 px-6 rounded-xl font-black bg-white shadow-sm">
-                {filteredEmployees.length} {isRtl ? 'سجل' : 'Records'}
-             </Badge>
           </div>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
@@ -185,8 +184,7 @@ export default function EmployeesPage() {
                     </TableCell>
                     <TableCell className="text-center pe-8" onClick={e => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-2">
-                         {/* إخفاء زر الحذف تماماً بناءً على صلاحية hr:delete أو كون المستخدم أدمن */}
-                         {(check('hr', 'delete').can || isAdmin) && (
+                         {check('hr', 'delete').can && (
                            <Button 
                              variant="ghost" 
                              size="icon" 
