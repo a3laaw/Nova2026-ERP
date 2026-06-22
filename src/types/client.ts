@@ -25,6 +25,8 @@ export interface Client extends BaseReference {
   isActive: boolean;          // حالة التفعيل
   createdBy?: string;         // معرف منشئ السجل
   updatedBy?: string;         // معرف آخر من قام بالتحديث
+  departmentId?: string;      // القسم المرجعي للسجل (لأغراض عزل البيانات)
+  leadId?: string;            // مرجع للفرصة البيعية الأصلية (في حال التحويل)
 }
 
 export interface ClientHistory extends BaseReference {
