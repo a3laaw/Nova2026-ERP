@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -66,8 +67,8 @@ export default function ClientsListPage() {
     <div className="space-y-6 animate-in fade-in duration-500" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start space-y-1">
-           <div className="flex items-center gap-2 text-primary font-black text-[9px] uppercase tracking-widest bg-primary/5 px-3 py-1 rounded-full w-fit">
-              <ShieldCheck className="h-3 w-3" /> {isRtl ? 'إدارة الأصول التجارية' : 'CRM Engine'}
+           <div className="flex items-center gap-2 text-primary font-black text-[8px] uppercase tracking-widest bg-primary/5 px-2.5 py-0.5 rounded-full w-fit border border-primary/10">
+              <ShieldCheck className="h-2.5 w-2.5" /> {isRtl ? 'إدارة الأصول التجارية' : 'CRM Engine'}
            </div>
            <h1 className="text-2xl font-black font-headline text-slate-900 tracking-tight">
              {isRtl ? 'قاعدة بيانات العملاء' : 'Clients Database'}
@@ -77,7 +78,7 @@ export default function ClientsListPage() {
         {canCreate && (
           <Button 
             onClick={() => router.push('/dashboard/clients/new')}
-            className="bg-primary text-white font-black rounded-xl h-12 px-6 shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all gap-2"
+            className="bg-primary text-white font-black rounded-xl h-11 px-5 shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all gap-2"
           >
             <UserPlus className="h-4 w-4" />
             {isRtl ? 'تسجيل عميل جديد' : 'Register'}
@@ -108,7 +109,7 @@ export default function ClientsListPage() {
               <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input 
                 placeholder={isRtl ? 'بحث باسم العميل، الهاتف...' : 'Search...'} 
-                className="w-full ps-11 pe-4 rounded-xl h-10 bg-white border border-slate-200 focus:border-primary/40 text-sm font-bold outline-none transition-all" 
+                className="w-full ps-11 pe-4 rounded-xl h-10 bg-white border border-slate-200 focus:border-primary/40 text-sm font-bold outline-none transition-all shadow-inner" 
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
               />
@@ -119,51 +120,51 @@ export default function ClientsListPage() {
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
           <Table>
-            <TableHeader>
+            <TableHeader className="bg-muted/30">
               <TableRow>
-                <TableHead className="ps-6">{isRtl ? 'رقم الملف / العميل' : 'File / Client'}</TableHead>
+                <TableHead className="ps-8 py-4">{isRtl ? 'رقم الملف / العميل' : 'File / Client'}</TableHead>
                 <TableHead>{isRtl ? 'الاتصال' : 'Contact'}</TableHead>
                 <TableHead>{isRtl ? 'الحالة' : 'Status'}</TableHead>
                 <TableHead className="text-center">{isRtl ? 'المعاملات' : 'Trans'}</TableHead>
-                <TableHead className="pe-6"></TableHead>
+                <TableHead className="pe-8"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-10"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></TableCell></TableRow>
               ) : clients.map((client) => (
                 <TableRow key={client.id} className="hover:bg-primary/[0.02] transition-colors group cursor-pointer" onClick={() => router.push(`/dashboard/clients/${client.id}`)}>
-                  <TableCell className="ps-6">
+                  <TableCell className="ps-8 py-3">
                      <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center font-black text-[10px] text-slate-500 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                        <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center font-black text-[9px] text-slate-500 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
                            {client.fileNumber.split('-')[1]?.split('/')[0] || '??'}
                         </div>
                         <div className="text-start">
-                           <p className="font-black text-sm text-slate-900">{isRtl ? client.nameAr : client.nameEn || client.nameAr}</p>
-                           <p className="text-[9px] text-slate-400 font-bold uppercase">{client.fileNumber}</p>
+                           <p className="font-black text-sm text-slate-900 leading-none">{isRtl ? client.nameAr : client.nameEn || client.nameAr}</p>
+                           <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">{client.fileNumber}</p>
                         </div>
                      </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="py-3">
                      <div className="flex flex-col">
-                        <span className="font-bold text-xs text-slate-700">{client.mobile}</span>
-                        <span className="text-[9px] text-slate-400 font-mono">{client.areaName || '---'}</span>
+                        <span className="font-black text-xs text-slate-700">{client.mobile}</span>
+                        <span className="text-[9px] text-slate-400 font-bold">{client.areaName || '---'}</span>
                      </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="py-3">
                      <Badge className={cn(
-                       "font-black px-2 py-0.5 rounded-lg border-0 shadow-sm uppercase text-[8px]",
+                       "font-black px-2.5 py-0.5 rounded-lg border-0 shadow-sm uppercase text-[8px]",
                        client.status === 'contracted' ? 'bg-emerald-500 text-white' : 'bg-blue-500 text-white'
                      )}>{client.status}</Badge>
                   </TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="py-3 text-center">
                      <span className="h-7 w-7 rounded-lg bg-slate-50 border border-white shadow-inner inline-flex items-center justify-center font-black text-slate-900 text-xs">
                         {client.transactionCounter || 0}
                      </span>
                   </TableCell>
-                  <TableCell className="pe-6 text-end">
+                  <TableCell className="pe-8 py-3 text-end">
                      <Button variant="ghost" size="icon" className="rounded-lg group-hover:bg-primary group-hover:text-white transition-all h-8 w-8">
-                        <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-0", isRtl && "rotate-180")} />
+                        <ArrowRight className={cn("h-4 w-4", isRtl ? "rotate-180" : "rotate-0")} />
                      </Button>
                   </TableCell>
                 </TableRow>
