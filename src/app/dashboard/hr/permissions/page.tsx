@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -8,37 +9,52 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   Clock, Plus, Loader2, Search, 
-  ArrowRight, CheckCircle2, XCircle,
-  Timer, Calendar, AlertCircle
+  ArrowRight, Timer
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
+import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { PermissionRequest } from '@/types/hr';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
+import { canPerformOnRecord } from '@/lib/permissions/engine';
 
 export default function PermissionRequestsPage() {
   const { globalUser } = useAuthContext();
   const { t, lang, dir } = useLanguage();
+  const { check } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const isRtl = lang === 'ar';
+
+  // 1. فحص صلاحية العرض والنطاق
+  const viewAccess = check('hr', 'view');
 
   const companyId = globalUser?.companyId;
   const permsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.permissionRequests(companyId)), orderBy('createdAt', 'desc')) : null, 
   [db, companyId]);
 
-  const { data: permissions, loading } = useCollection<PermissionRequest>(permsQuery);
+  const { data: rawPermissions, loading } = useCollection<PermissionRequest>(permsQuery);
 
-  const filtered = permissions?.filter(p => 
+  // 2. الفلترة الميدانية
+  const permissions = useMemo(() => {
+    if (!viewAccess.can) return [];
+    return rawPermissions.filter(req => canPerformOnRecord(
+      viewAccess,
+      { uid: globalUser?.uid || '', departmentId: globalUser?.departmentId },
+      { createdBy: req.userId, departmentId: (req as any).departmentId }
+    ));
+  }, [rawPermissions, viewAccess, globalUser]);
+
+  const filtered = permissions.filter(p => 
     p.userName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
     p.type?.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+  );
 
   return (
     <div className="space-y-8" dir={dir}>
@@ -49,7 +65,7 @@ export default function PermissionRequestsPage() {
             {isRtl ? 'طلبات الاستئذان' : 'Permission Requests'}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-            {isRtl ? 'إدارة التأخيرات والانصراف المبكر' : 'Manage late arrivals and early departures'}
+            {viewAccess.scope === 'own' ? (isRtl ? 'عرض سجلاتك الشخصية فقط' : 'Viewing your own records only') : (isRtl ? 'إدارة التأخيرات والانصراف المبكر' : 'Manage late arrivals and early departures')}
           </p>
         </div>
 

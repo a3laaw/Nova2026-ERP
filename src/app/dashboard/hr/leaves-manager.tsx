@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -7,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   CalendarDays, Plus, Loader2, CheckCircle2, 
-  XCircle, ArrowRight, MessageSquare, Save, Clock,
+  XCircle, ArrowRight, MessageSquare, Clock,
   Calendar, Hash
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
@@ -26,11 +27,12 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SmartDateInput } from '@/components/ui/smart-date-input';
+import { canPerformOnRecord } from '@/lib/permissions/engine';
 
 export function LeavesManager() {
   const { globalUser, user } = useAuthContext();
   const { t, lang, dir } = useLanguage();
-  const { permissions } = usePermissions();
+  const { permissions, check } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
@@ -39,13 +41,14 @@ export function LeavesManager() {
   const [processingLeave, setProcessingLeave] = useState<LeaveRequest | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   
-  // نموذج التعديل السريع للمدير
   const [editForm, setEditForm] = useState({
     comment: '',
     startDate: '',
     endDate: '',
     workingDays: 0
   });
+
+  const viewAccess = check('hr', 'view');
 
   const leaveService = useMemo(() => 
     db && companyId ? new LeaveService(db, companyId, permissions) : null, 
@@ -54,9 +57,18 @@ export function LeavesManager() {
   const leavesQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.leaveRequests(companyId)), orderBy('createdAt', 'desc')) : null, 
   [db, companyId]);
-  const { data: leaves, loading } = useCollection<LeaveRequest>(leavesQuery);
+  
+  const { data: rawLeaves, loading } = useCollection<LeaveRequest>(leavesQuery);
 
-  // تحديث النموذج عند اختيار طلب معالجة
+  const leaves = useMemo(() => {
+    if (!viewAccess.can) return [];
+    return rawLeaves.filter(leave => canPerformOnRecord(
+      viewAccess,
+      { uid: globalUser?.uid || '', departmentId: globalUser?.departmentId },
+      { createdBy: leave.userId, departmentId: (leave as any).departmentId }
+    ));
+  }, [rawLeaves, viewAccess, globalUser]);
+
   useEffect(() => {
     if (processingLeave) {
       setEditForm({
@@ -96,7 +108,7 @@ export function LeavesManager() {
              {isRtl ? 'إجازات الموظفين' : 'Employee Leaves'}
            </h3>
            <p className="text-xs font-bold text-muted-foreground mt-1 opacity-70">
-             {isRtl ? 'نظام الحساب الآلي للإجازات والغياب' : 'Automated leave and absence calculation system'}
+             {viewAccess.scope === 'own' ? (isRtl ? 'عرض ومتابعة طلباتك الشخصية' : 'Track your personal requests') : (isRtl ? 'نظام الحساب الآلي للإجازات والغياب' : 'Automated leave calculation system')}
            </p>
         </div>
 
@@ -182,7 +194,6 @@ export function LeavesManager() {
          </CardContent>
       </Card>
 
-      {/* نافذة معالجة الطلب السريعة (Quick Process) */}
       <Dialog open={!!processingLeave} onOpenChange={(open) => !open && setProcessingLeave(null)}>
         <DialogContent className="rounded-[2.5rem] max-w-2xl p-0 overflow-hidden" dir={dir}>
            <div className="bg-primary/5 p-8 border-b">
@@ -196,7 +207,6 @@ export function LeavesManager() {
            </div>
            
            <div className="p-8 space-y-6 text-start">
-              {/* قسم التعديل السريع للمدير */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-6 rounded-3xl border-2 border-dashed border-primary/10">
                  <div className="space-y-2">
                     <Label className="text-[10px] font-black text-slate-400 uppercase flex items-center gap-2">
@@ -220,9 +230,6 @@ export function LeavesManager() {
                       onChange={e => setEditForm({...editForm, workingDays: Number(e.target.value)})}
                       className="h-12 rounded-xl border-2 font-black text-primary"
                     />
-                    <p className="text-[9px] text-muted-foreground font-bold italic">
-                       {isRtl ? '* ملاحظة: يمكنك تغيير عدد الأيام يدوياً لتجاوز حساب النظام التلقائي.' : '* Note: You can manually override days to bypass auto-calculation.'}
-                    </p>
                  </div>
               </div>
 

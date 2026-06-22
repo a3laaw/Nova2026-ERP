@@ -9,37 +9,53 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   CalendarDays, Plus, Loader2, Search, 
-  Filter, ArrowRight, CheckCircle2, XCircle,
-  Clock, Plane, AlertCircle
+  ArrowRight, Plane
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
+import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { LeaveRequest } from '@/types/hr';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
+import { canPerformOnRecord } from '@/lib/permissions/engine';
 
 export default function LeaveRequestsPage() {
   const { globalUser } = useAuthContext();
   const { t, lang, dir } = useLanguage();
+  const { check } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const isRtl = lang === 'ar';
+
+  // 1. فحص صلاحية العرض والنطاق (Scope)
+  const viewAccess = check('hr', 'view');
 
   const companyId = globalUser?.companyId;
   const leavesQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.leaveRequests(companyId)), orderBy('createdAt', 'desc')) : null, 
   [db, companyId]);
 
-  const { data: leaves, loading } = useCollection<LeaveRequest>(leavesQuery);
+  const { data: rawLeaves, loading } = useCollection<LeaveRequest>(leavesQuery);
 
-  const filteredLeaves = leaves?.filter(l => 
+  // 2. تطبيق الفلترة الميدانية بناءً على النطاق (own, dept, all)
+  const leaves = useMemo(() => {
+    if (!viewAccess.can) return [];
+    
+    return rawLeaves.filter(leave => canPerformOnRecord(
+      viewAccess,
+      { uid: globalUser?.uid || '', departmentId: globalUser?.departmentId },
+      { createdBy: leave.userId, departmentId: (leave as any).departmentId }
+    ));
+  }, [rawLeaves, viewAccess, globalUser]);
+
+  const filteredLeaves = leaves.filter(l => 
     l.userName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
     l.type?.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+  );
 
   return (
     <div className="space-y-8" dir={dir}>
@@ -50,7 +66,7 @@ export default function LeaveRequestsPage() {
             {isRtl ? 'طلبات الإجازات' : 'Leave Requests'}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-            {isRtl ? 'إدارة الغيابات، الأرصدة، والامتثال لقانون العمل' : 'Manage absences, balances, and labor law compliance'}
+            {viewAccess.scope === 'own' ? (isRtl ? 'عرض سجلاتك الشخصية فقط' : 'Viewing your own records only') : (isRtl ? 'إدارة الغيابات والأرصدة' : 'Manage absences and balances')}
           </p>
         </div>
 
