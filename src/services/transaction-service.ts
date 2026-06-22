@@ -12,7 +12,8 @@ import {
   getDocs,
   writeBatch,
   updateDoc,
-  getDoc
+  getDoc,
+  increment
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { Transaction, TransactionTimelineEvent, StageInstance, StageInstanceStatus } from '@/types/transaction';
@@ -32,12 +33,12 @@ export class TransactionService {
     const transactionRef = doc(collection(this.db, paths.transactions(this.companyId)));
     const tId = transactionRef.id;
 
-    // --- محرك الترقيم الاحترافي الجديد ---
-    // جلب بيانات العميل للحصول على رقم الملف والعداد الحالي لضمان التسلسل الهرمي
+    // 1. جلب بيانات العميل لتوليد الرقم المتسلسل المهني
     const clientRef = doc(this.db, paths.clients(this.companyId), data.clientId);
     const clientSnap = await getDoc(clientRef);
     const clientInfo = clientSnap.data();
     
+    // الترقيم الهرمي الذكي: رقم العميل + تسلسل المعاملة
     const sequence = (clientInfo?.transactionCounter || 0) + 1;
     const transactionNumber = `${clientInfo?.fileNumber || 'TR'}-${sequence.toString().padStart(2, '0')}`;
 
@@ -52,30 +53,30 @@ export class TransactionService {
       createdBy: userId,
     };
 
-    // تنفيذ فتح المعاملة في السحاب
+    // 2. حفظ المعاملة
     await setDoc(transactionRef, transactionData).catch((err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: transactionRef.path,
-        operation: 'create',
-        requestResourceData: transactionData
+        path: transactionRef.path, operation: 'create', requestResourceData: transactionData
       }));
       throw err;
     });
 
-    // --- الربط الذكي للحالة (HR/CRM Logic) ---
-    // تم التعديل لإرسال "رقم المعاملة المهني" للسجل التاريخي بدلاً من الـ ID التقني
-    const clientService = new ClientService(this.db, this.companyId);
-    await clientService.markAsContracted(data.clientId, transactionNumber);
+    // 3. تحديث عداد المعاملات وحالة العميل
+    await updateDoc(clientRef, { 
+      transactionCounter: increment(1),
+      status: 'contracted',
+      updatedAt: serverTimestamp()
+    });
 
-    // استنساخ المراحل الفنية من القالب المرجعي
+    // 4. استنساخ المراحل الفنية من القالب المرجعي
     await this.cloneTechnicalStages(tId, data);
     
-    this.addTimelineEvent(tId, {
-      type: 'system',
-      content: `تم فتح المسار الفني للمهمة: ${data.subServiceName}`,
-      userId,
-      userName,
-      companyId: this.companyId
+    // 5. توثيق الحدث في السجل التاريخي للعميل (بدون كود عشوائي)
+    const clientService = new ClientService(this.db, this.companyId);
+    await clientService.addHistory(data.clientId, {
+      type: 'transaction_created',
+      content: `فتح مسار فني جديد: ${data.subServiceName} (رقم: ${transactionNumber})`,
+      userId, userName, companyId: this.companyId
     });
 
     return tId;
@@ -91,16 +92,9 @@ export class TransactionService {
     const batch = writeBatch(this.db);
     const instancesRef = collection(this.db, paths.transactionStages(this.companyId, transactionId));
 
-    const allNextIds = new Set<string>();
-    templateSnap.docs.forEach(docSnap => {
-      const stage = docSnap.data() as TechnicalStage;
-      stage.nextStageIds?.forEach(id => allNextIds.add(id));
-    });
-
     templateSnap.docs.forEach(docSnap => {
       const template = docSnap.data() as TechnicalStage;
       const instanceRef = doc(instancesRef);
-      const isStartStage = !allNextIds.has(docSnap.id);
       
       batch.set(instanceRef, {
         transactionId,
@@ -113,7 +107,7 @@ export class TransactionService {
         currentCount: 0,
         isTimed: template.isTimed,
         timeTargetDays: template.timeTargetDays,
-        status: isStartStage ? 'pending' : 'blocked',
+        status: 'pending',
         companyId: this.companyId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
@@ -124,65 +118,27 @@ export class TransactionService {
 
   async startStage(transactionId: string, instanceId: string, stageName: string, userId: string, userName: string) {
     const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), instanceId);
-    await updateDoc(stageRef, {
-      status: 'in-progress' as StageInstanceStatus,
-      startedAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
+    await updateDoc(stageRef, { status: 'in-progress', startedAt: serverTimestamp(), updatedAt: serverTimestamp() });
 
     this.addTimelineEvent(transactionId, {
-      type: 'stage_start',
-      content: `بدء العمل في المرحلة: ${stageName}`,
-      userId,
-      userName,
-      companyId: this.companyId
+      type: 'stage_start', content: `بدء العمل في المرحلة: ${stageName}`, userId, userName, companyId: this.companyId
     });
   }
 
   async completeStage(transactionId: string, instanceId: string, stageName: string, userId: string, userName: string) {
     const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), instanceId);
-    await updateDoc(stageRef, {
-      status: 'completed' as StageInstanceStatus,
-      completedAt: serverTimestamp(),
-      completedBy: userId,
-      updatedAt: serverTimestamp()
-    });
+    await updateDoc(stageRef, { status: 'completed', completedAt: serverTimestamp(), completedBy: userId, updatedAt: serverTimestamp() });
 
     this.addTimelineEvent(transactionId, {
-      type: 'stage_complete',
-      content: `تم إنجاز المرحلة بنجاح: ${stageName}`,
-      userId,
-      userName,
-      companyId: this.companyId
+      type: 'stage_complete', content: `تم إنجاز المرحلة بنجاح: ${stageName}`, userId, userName, companyId: this.companyId
     });
 
     const transactionRef = doc(this.db, paths.transactions(this.companyId), transactionId);
     await updateDoc(transactionRef, { status: 'in-progress', updatedAt: serverTimestamp() });
   }
 
-  async updateStageNumeric(transactionId: string, instanceId: string, stageName: string, value: number, userId: string, userName: string) {
-    const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), instanceId);
-    await updateDoc(stageRef, {
-      currentCount: value,
-      updatedAt: serverTimestamp()
-    });
-
-    this.addTimelineEvent(transactionId, {
-      type: 'numeric_update',
-      content: `تحديث الإنجاز في مرحلة ${stageName} إلى: ${value}`,
-      userId,
-      userName,
-      companyId: this.companyId
-    });
-  }
-
-  addTimelineEvent(transactionId: string, event: Omit<TransactionTimelineEvent, 'id' | 'createdAt' | 'transactionId'>) {
+  private addTimelineEvent(transactionId: string, event: Omit<TransactionTimelineEvent, 'id' | 'createdAt' | 'transactionId'>) {
     const path = paths.transactionTimeline(this.companyId, transactionId);
-    const eventData = {
-      ...event,
-      transactionId,
-      createdAt: serverTimestamp()
-    };
-    addDoc(collection(this.db, path), eventData).catch(() => {});
+    addDoc(collection(this.db, path), { ...event, transactionId, createdAt: serverTimestamp() }).catch(() => {});
   }
 }

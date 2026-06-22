@@ -5,7 +5,11 @@ import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Edit3, MapPin, Phone, History, Loader2, Activity, PlayCircle, Compass, Map as MapIcon, Target, Layers } from "lucide-react";
+import { 
+  ArrowRight, Edit3, MapPin, Phone, 
+  History, Loader2, Activity, PlayCircle, 
+  Compass, Map as MapIcon, Target, Layers 
+} from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, where } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
@@ -48,36 +52,57 @@ export default function ClientDetailsPage() {
 
   return (
     <div className="space-y-6" dir={dir}>
+      {/* Header - Compact */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" onClick={() => router.push('/dashboard/clients')} className="h-9 w-9 p-0 rounded-xl bg-white shadow-sm border border-slate-200"><ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} /></Button>
+          <Button variant="ghost" onClick={() => router.push('/dashboard/clients')} className="h-9 w-9 p-0 rounded-xl bg-white shadow-sm border border-slate-200">
+            <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
+          </Button>
           <div className="text-start">
-             <div className="flex items-center gap-3">
-                <div className="px-3 h-8 rounded-lg bg-primary/5 flex items-center justify-center text-primary font-black text-xs border border-primary/10">{client.fileNumber}</div>
+             <div className="flex items-center gap-3 flex-wrap">
+                <div className="px-3 h-8 rounded-lg bg-primary/5 flex items-center justify-center text-primary font-black text-xs border border-primary/10 w-fit min-w-fit">
+                   {client.fileNumber}
+                </div>
                 <h1 className="text-lg font-black font-headline text-slate-900">{client.nameAr}</h1>
                 <Badge variant="outline" className="text-[8px] font-black uppercase px-2 py-0.5">{client.status}</Badge>
              </div>
           </div>
         </div>
         <div className="flex gap-2">
-           <Button onClick={() => router.push(`/dashboard/clients/${clientId}/edit`)} variant="outline" className="h-9 px-4 rounded-lg font-bold text-[10px] gap-2"><Edit3 className="h-3.5 w-3.5" /> {isRtl ? 'تعديل' : 'Edit'}</Button>
-           <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/new`)} className="h-9 px-4 rounded-lg bg-primary text-white font-black text-[10px] gap-2 shadow-lg shadow-primary/10"><Activity className="h-3.5 w-3.5" /> {isRtl ? 'فتح معاملة' : 'New Trans'}</Button>
+           <Button onClick={() => router.push(`/dashboard/clients/${clientId}/edit`)} variant="outline" className="h-9 px-4 rounded-lg font-bold text-[10px] gap-2">
+             <Edit3 className="h-3.5 w-3.5" /> {isRtl ? 'تعديل' : 'Edit'}
+           </Button>
+           <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/new`)} className="h-9 px-4 rounded-lg bg-primary text-white font-black text-[10px] gap-2 shadow-lg shadow-primary/10">
+             <Activity className="h-3.5 w-3.5" /> {isRtl ? 'فتح معاملة' : 'New Trans'}
+           </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Content: Transactions & Map */}
         <div className="lg:col-span-2 space-y-6">
            <Card className="border-0 shadow-lg rounded-2xl bg-white overflow-hidden ring-1 ring-black/5">
               <CardHeader className="bg-slate-50/50 border-b p-4 text-start flex flex-row items-center justify-between">
-                 <div className="flex items-center gap-3"><Layers className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">{isRtl ? 'المعاملات الفنية' : 'Technical Transactions'}</CardTitle></div>
-                 <Badge className="bg-slate-900 text-white font-black rounded-full h-5 px-2.5 flex items-center justify-center text-[9px]">{transactions?.length || 0}</Badge>
+                 <div className="flex items-center gap-3">
+                    <Layers className="h-4 w-4 text-primary" />
+                    <CardTitle className="text-xs font-black uppercase tracking-widest">{isRtl ? 'المعاملات الفنية' : 'Technical Transactions'}</CardTitle>
+                 </div>
+                 <Badge className="bg-slate-900 text-white font-black rounded-full h-5 px-2.5 flex items-center justify-center text-[9px]">
+                    {transactions?.length || 0}
+                 </Badge>
               </CardHeader>
               <CardContent className="p-3 space-y-2">
                  {transactions?.map((t) => (
                     <div key={t.id} onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${t.id}`)} className="p-3 rounded-xl border border-slate-100 hover:border-primary/20 hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-between group">
                        <div className="flex items-center gap-3">
-                          <div className={cn("h-9 w-9 rounded-lg flex items-center justify-center shadow-sm", t.status === 'completed' ? "bg-emerald-50 text-emerald-600" : "bg-blue-50 text-blue-600")}><PlayCircle className="h-5 w-5" /></div>
-                          <div className="text-start"><p className="text-[8px] font-black text-slate-400 uppercase tracking-tighter">{t.transactionNumber}</p><h4 className="font-black text-[12px] text-slate-800 leading-tight">{t.subServiceName}</h4><p className="text-[9px] font-bold text-primary mt-0.5">{t.activityTypeName}</p></div>
+                          <div className={cn("h-9 w-9 rounded-lg flex items-center justify-center shadow-sm", t.status === 'completed' ? "bg-emerald-50 text-emerald-600" : "bg-blue-50 text-blue-600")}>
+                             <PlayCircle className="h-5 w-5" />
+                          </div>
+                          <div className="text-start">
+                             <p className="text-[8px] font-black text-slate-400 uppercase tracking-tighter">{t.transactionNumber}</p>
+                             <h4 className="font-black text-[12px] text-slate-800 leading-tight">{t.subServiceName}</h4>
+                             <p className="text-[9px] font-bold text-primary mt-0.5">{t.activityTypeName}</p>
+                          </div>
                        </div>
                        <ArrowRight className={cn("h-4 w-4 text-slate-200 group-hover:text-primary transition-all", isRtl && "rotate-180")} />
                     </div>
@@ -110,8 +135,12 @@ export default function ClientDetailsPage() {
            </Card>
         </div>
 
+        {/* Timeline Log */}
         <Card className="border-0 shadow-lg rounded-2xl bg-white overflow-hidden flex flex-col min-h-[400px]">
-           <CardHeader className="bg-slate-50/50 border-b p-4 flex items-center gap-2"><History className="h-4 w-4 text-primary" /><CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-500">{isRtl ? 'سجل الأحداث' : 'History Log'}</CardTitle></CardHeader>
+           <CardHeader className="bg-slate-50/50 border-b p-4 flex items-center gap-2">
+              <History className="h-4 w-4 text-primary" />
+              <CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-500">{isRtl ? 'سجل الأحداث' : 'History Log'}</CardTitle>
+           </CardHeader>
            <CardContent className="p-0 flex-1 overflow-y-auto max-h-[500px] scrollbar-hide text-start">
               <div className="relative p-5">
                  <div className={cn("absolute top-0 bottom-0 w-[1px] bg-slate-100", isRtl ? "right-8" : "left-8")} />

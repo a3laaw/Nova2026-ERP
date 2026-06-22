@@ -1,4 +1,3 @@
-
 import { BaseReference } from './reference';
 
 export type TransactionStatus = 'new' | 'in-progress' | 'completed' | 'on-hold' | 'cancelled';
@@ -49,8 +48,6 @@ export interface StageInstance extends BaseReference {
   activityTypeId: string;
   serviceId: string;
   subServiceId: string;
-  startDate?: any;
-  endDate?: any;
   startedAt?: any;
   completedAt?: any;
   completedBy?: string;
