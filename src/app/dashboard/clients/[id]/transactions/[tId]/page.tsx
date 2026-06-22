@@ -11,7 +11,7 @@ import {
   ArrowRight, Activity, Clock, Loader2, 
   History, ShieldCheck, HardHat, ListChecks, 
   Timer, LayoutGrid, Info, CheckCircle2,
-  AlertCircle, Lock, User
+  AlertCircle, Lock, User, Printer
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy } from 'firebase/firestore';
@@ -148,7 +148,7 @@ export default function TransactionDetailsPage() {
                     <p className="text-xs font-bold text-slate-400">{isRtl ? 'تتبع مراحل العمل الميدانية والتحصيلية' : 'Tracking field and billing stages'}</p>
                  </div>
                  <div className="text-end">
-                    <span className="text-3xl font-black font-headline text-primary">{progressPercent}%</span>
+                    <span className="text-4xl font-black font-headline text-primary">{progressPercent}%</span>
                  </div>
               </div>
               
