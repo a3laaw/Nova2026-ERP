@@ -82,7 +82,8 @@ export default function LeaveDetailsPage() {
       });
       toast({ title: t('saved') });
     } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
+      console.error(e);
+      toast({ variant: "destructive", title: t('error'), description: isRtl ? "فشل التحديث، يرجى مراجعة الصلاحيات." : "Update failed, check permissions." });
     } finally {
       setProcessing(false);
     }
@@ -234,8 +235,9 @@ export default function LeaveDetailsPage() {
                                   <p className="text-xs font-bold text-blue-700 opacity-70">{isRtl ? 'يضغط الموظف هنا عند بدء إجازته فعلياً.' : 'Employee clicks when starting leave.'}</p>
                                </div>
                                <Button onClick={() => handleAction('on-leave')} disabled={processing} className="bg-blue-600 text-white font-black rounded-xl h-12 px-8">
-                                  <PlaneTakeoff className="me-2 h-5 w-5" /> {isRtl ? 'تأكيد المغادرة' : 'Confirm'}
-                               </Button>
+                                  {processing ? <Loader2 className="animate-spin h-5 w-5" /> : <PlaneTakeoff className="me-2 h-5 w-5" />}
+                                  {isRtl ? 'تأكيد المغادرة' : 'Confirm'}
+                                </Button>
                             </div>
                           )}
 
@@ -249,7 +251,8 @@ export default function LeaveDetailsPage() {
                                <div className="flex items-center gap-4">
                                   <div className="flex-1"><SmartDateInput value={actualReturnDate} onChange={setActualReturnDate} /></div>
                                   <Button onClick={() => handleAction('returned')} disabled={processing} className="bg-purple-600 text-white font-black rounded-xl h-12 px-8">
-                                     <PlaneLanding className="me-2 h-5 w-5" /> {isRtl ? 'تسجيل العودة' : 'Record'}
+                                     {processing ? <Loader2 className="animate-spin h-5 w-5" /> : <PlaneLanding className="me-2 h-5 w-5" />}
+                                     {isRtl ? 'تسجيل العودة' : 'Record'}
                                   </Button>
                                </div>
                             </div>
@@ -263,7 +266,8 @@ export default function LeaveDetailsPage() {
                                   <p className="text-xs font-bold text-emerald-700 opacity-70">{isRtl ? 'إقرار إداري بأن الموظف استلم مهامه ميدانياً.' : 'Admin confirmation that the employee is on duty.'}</p>
                                </div>
                                <Button onClick={() => handleAction('commenced')} disabled={processing} className="bg-emerald-600 text-white font-black rounded-xl h-12 px-8">
-                                  <Briefcase className="me-2 h-5 w-5" /> {isRtl ? 'مباشرة عمل' : 'Commence'}
+                                  {processing ? <Loader2 className="animate-spin h-5 w-5" /> : <Briefcase className="me-2 h-5 w-5" />}
+                                  {isRtl ? 'مباشرة عمل' : 'Commence'}
                                </Button>
                             </div>
                           )}
@@ -281,7 +285,7 @@ export default function LeaveDetailsPage() {
                        <div className="h-2 w-2 rounded-full bg-slate-400 mt-1.5" />
                        <div className="text-start">
                           <p className="text-xs font-black">{isRtl ? 'تقديم الطلب' : 'Submitted'}</p>
-                          <p className="text-[10px] text-slate-400">{new Date(leave.createdAt.toDate()).toLocaleString()}</p>
+                          <p className="text-[10px] text-slate-400">{leave.createdAt ? new Date(leave.createdAt.toDate()).toLocaleString() : '...'}</p>
                        </div>
                     </div>
                     {leave.approvedAt && (

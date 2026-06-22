@@ -56,11 +56,17 @@ service cloud.firestore {
     match /companies/{companyId} {
       allow read: if belongsToCompany(companyId);
       
-      // 1. قواعد مخصصة للطلبات التشغيلية
+      // قواعد الموظفين: السماح للموظف بتحديث حالته الشخصية (للمغادرة والعودة)
+      match /employees/{empId} {
+        allow read: if belongsToCompany(companyId);
+        allow create, delete: if isAdmin(companyId);
+        allow update: if isAdmin(companyId) || (isAuthenticated() && getUserData().employeeId == empId);
+      }
+
+      // قواعد الإجازات: السماح للموظف بإدارة دورة حياة طلبه الشخصي
       match /leaveRequests/{id} {
         allow create: if belongsToCompany(companyId);
         allow read: if belongsToCompany(companyId);
-        // السماح للموظف بتحديث طلبه الشخصي (للمغادرة والعودة) أو للأدمن للقرار
         allow update: if isAdmin(companyId) || (belongsToCompany(companyId) && request.auth.uid == resource.data.createdBy);
         allow delete: if isAdmin(companyId);
       }
@@ -73,8 +79,8 @@ service cloud.firestore {
       }
 
       match /leads/{id} {
-        allow create, update: if belongsToCompany(companyId);
-        allow read: if belongsToCompany(companyId);
+        allow create: if belongsToCompany(companyId);
+        allow read, update: if belongsToCompany(companyId);
         allow delete: if isAdmin(companyId);
       }
 
@@ -83,7 +89,7 @@ service cloud.firestore {
         allow create, update: if isAdmin(companyId);
       }
 
-      // 2. الوصول العام للمدير على كافة المجموعات الأخرى
+      // الوصول العام للمدير على كافة المجموعات الأخرى
       match /{allSubCollections=**} {
         allow read: if belongsToCompany(companyId);
         allow write: if isAdmin(companyId);
