@@ -1,4 +1,4 @@
-'use client';
+'use server';
 
 import { 
   Firestore, 
@@ -14,9 +14,9 @@ import {
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { Transaction, TransactionTimelineEvent, StageInstance } from '@/types/transaction';
+import { TechnicalStage } from '@/types/reference';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { TechnicalStage } from '@/types/reference';
 
 /**
  * خدمة إدارة المعاملات الفنية (Technical Transactions Service).
