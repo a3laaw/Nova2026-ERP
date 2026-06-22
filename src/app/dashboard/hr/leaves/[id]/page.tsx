@@ -9,7 +9,8 @@ import {
   ArrowRight, Loader2, CheckCircle2, XCircle,
   Calendar, User, FileText, AlertTriangle,
   History, ShieldCheck, MessageSquare, Hash,
-  Scale, Info, PlaneTakeoff, PlaneLanding, Briefcase
+  Scale, Info, PlaneTakeoff, PlaneLanding, Briefcase,
+  Timer, Pencil, Save, Clock
 } from "lucide-react";
 import { useFirestore, useDoc } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -25,13 +26,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { SmartDateInput } from '@/components/ui/smart-date-input';
-import { LeaveTiersDisplay } from '@/components/hr/leave-tiers-display';
 
 export default function LeaveDetailsPage() {
   const leaveId = useParams().id as string;
   const { user, globalUser } = useAuthContext();
   const { t, lang, dir } = useLanguage();
-  const { permissions, isAdmin } = usePermissions();
+  const { isAdmin } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
@@ -47,8 +47,8 @@ export default function LeaveDetailsPage() {
 
   const companyId = globalUser?.companyId;
   const leaveService = useMemo(() => 
-    db && companyId ? new LeaveService(db, companyId, permissions) : null, 
-  [db, companyId, permissions]);
+    db && companyId ? new LeaveService(db, companyId) : null, 
+  [db, companyId]);
 
   const leaveRef = useMemo(() => 
     companyId && db ? doc(db, paths.leaveRequests(companyId), leaveId) : null, 
@@ -89,8 +89,6 @@ export default function LeaveDetailsPage() {
   if (loading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
   if (!leave) return <div className="p-20 text-center text-slate-400 font-bold">{isRtl ? 'الطلب غير موجود' : 'Request not found'}</div>;
 
-  const isOwner = user?.uid === leave.userId;
-
   return (
     <div className="space-y-8 max-w-5xl mx-auto pb-20 animate-in fade-in duration-500" dir={dir}>
       <div className="flex items-center justify-between">
@@ -119,7 +117,81 @@ export default function LeaveDetailsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
          <div className="lg:col-span-2 space-y-8">
-            {/* Main Info */}
+            
+            {/* Main Decision Area for Admin */}
+            {isAdmin && leave.status === 'pending' && (
+              <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-2 ring-primary/20">
+                 <div className="bg-slate-900 p-8 text-white text-start">
+                    <h3 className="text-2xl font-black font-headline flex items-center gap-3">
+                       <Clock className="h-7 w-7 text-primary" />
+                       {isRtl ? 'قرار الإدارة وتصحيح البيانات' : 'Admin Decision & Correction'}
+                    </h3>
+                    <p className="text-slate-400 font-bold mt-1">{isRtl ? 'بإمكانك تعديل التواريخ أو الأيام قبل الاعتماد.' : 'You can adjust dates or days before approval.'}</p>
+                 </div>
+                 <CardContent className="p-8 space-y-8 text-start">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-slate-50 rounded-[2rem] border-2 border-dashed border-primary/10">
+                       <div className="space-y-2">
+                          <Label className="text-[10px] font-black text-slate-400 uppercase flex items-center gap-2">
+                             <Calendar className="h-3.5 w-3.5" /> {isRtl ? 'تاريخ البدء المعتمد' : 'Approve Start Date'}
+                          </Label>
+                          <SmartDateInput value={editForm.startDate} onChange={v => setEditForm({...editForm, startDate: v})} />
+                       </div>
+                       <div className="space-y-2">
+                          <Label className="text-[10px] font-black text-slate-400 uppercase flex items-center gap-2">
+                             <Calendar className="h-3.5 w-3.5" /> {isRtl ? 'تاريخ العودة المعتمد' : 'Approve Return Date'}
+                          </Label>
+                          <SmartDateInput value={editForm.endDate} onChange={v => setEditForm({...editForm, endDate: v})} />
+                       </div>
+                       <div className="space-y-2 md:col-span-2 pt-2">
+                          <Label className="text-[10px] font-black text-slate-400 uppercase flex items-center gap-2">
+                             <Hash className="h-3.5 w-3.5" /> {isRtl ? 'أيام الخصم الفعلي (بعد المراجعة القانونية)' : 'Actual Days to Deduct'}
+                          </Label>
+                          <Input 
+                            type="number" 
+                            value={editForm.workingDays} 
+                            onChange={e => setEditForm({...editForm, workingDays: Number(e.target.value)})}
+                            className="h-14 rounded-2xl border-2 font-black text-primary text-xl"
+                          />
+                       </div>
+                    </div>
+
+                    <div className="space-y-3">
+                       <Label className="font-black text-xs uppercase text-slate-500 flex items-center gap-2">
+                          <MessageSquare className="h-3.5 w-3.5" />
+                          {isRtl ? 'ملاحظات الإدارة أو سبب الرفض' : 'Internal Notes / Reason'}
+                       </Label>
+                       <Textarea 
+                         value={editForm.comment} 
+                         onChange={(e) => setEditForm({...editForm, comment: e.target.value})}
+                         className="min-h-[100px] rounded-2xl border-2 p-6 text-base focus:bg-slate-50 transition-all shadow-inner"
+                         placeholder={isRtl ? "اكتب هنا ملاحظاتك للموظف..." : "Enter feedback..."}
+                       />
+                    </div>
+
+                    <div className="flex gap-4 pt-4">
+                       <Button 
+                         onClick={() => handleAction('rejected')}
+                         disabled={processing}
+                         variant="outline"
+                         className="flex-1 h-16 rounded-2xl border-2 border-rose-100 text-rose-600 font-black text-lg hover:bg-rose-50 transition-all"
+                       >
+                          {processing ? <Loader2 className="animate-spin h-5 w-5" /> : <XCircle className="me-2 h-6 w-6" />}
+                          {isRtl ? 'رفض الطلب' : 'Reject'}
+                       </Button>
+                       <Button 
+                         onClick={() => handleAction('approved')}
+                         disabled={processing}
+                         className="flex-1 h-16 rounded-2xl bg-emerald-600 text-white font-black text-lg hover:bg-emerald-700 shadow-xl shadow-emerald-100 transition-all gap-2"
+                       >
+                          {processing ? <Loader2 className="animate-spin h-5 w-5" /> : <CheckCircle2 className="me-2 h-6 w-6" />}
+                          {isRtl ? 'اعتماد وصرف' : 'Approve'}
+                       </Button>
+                    </div>
+                 </CardContent>
+              </Card>
+            )}
+
+            {/* Request Info Summary (Always Visible) */}
             <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden text-start">
                <CardHeader className="bg-slate-50/50 border-b p-8">
                   <CardTitle className="text-xl font-black flex items-center gap-3">
@@ -129,23 +201,22 @@ export default function LeaveDetailsPage() {
                <CardContent className="p-8 space-y-8">
                   <div className="grid grid-cols-2 gap-8">
                      <div className="p-6 rounded-3xl bg-slate-50 border space-y-1">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'بداية الإجازة' : 'Start Date'}</Label>
+                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'بداية الإجازة (طلب الموظف)' : 'Requested Start'}</Label>
                         <p className="text-xl font-black text-slate-800">{leave.startDate}</p>
                      </div>
                      <div className="p-6 rounded-3xl bg-slate-50 border space-y-1">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'نهاية الإجازة' : 'End Date'}</Label>
+                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'نهاية الإجازة (طلب الموظف)' : 'Requested End'}</Label>
                         <p className="text-xl font-black text-slate-800">{leave.endDate}</p>
                      </div>
                   </div>
 
-                  {/* Actions Section */}
+                  {/* Other Post-Approval Actions */}
                   <div className="pt-8 border-t space-y-6">
                      <h3 className="font-black text-lg flex items-center gap-2">
                         <History className="h-5 w-5 text-primary" /> {isRtl ? 'إجراءات المسار الزمني' : 'Timeline Actions'}
                      </h3>
 
                      <div className="grid grid-cols-1 gap-4">
-                        {/* 1. تأكيد المغادرة */}
                         {leave.status === 'approved' && (
                           <div className="p-6 rounded-3xl bg-blue-50 border-2 border-blue-100 flex items-center justify-between animate-in zoom-in-95">
                              <div className="text-start">
@@ -158,7 +229,6 @@ export default function LeaveDetailsPage() {
                           </div>
                         )}
 
-                        {/* 2. تسجيل العودة */}
                         {leave.status === 'on-leave' && (
                           <div className="p-6 rounded-3xl bg-purple-50 border-2 border-purple-100 space-y-4 animate-in zoom-in-95">
                              <div className="text-start">
@@ -176,7 +246,6 @@ export default function LeaveDetailsPage() {
                           </div>
                         )}
 
-                        {/* 3. مباشرة العمل */}
                         {leave.status === 'returned' && isAdmin && (
                           <div className="p-6 rounded-3xl bg-emerald-50 border-2 border-emerald-100 flex items-center justify-between animate-in zoom-in-95">
                              <div className="text-start">
@@ -189,13 +258,20 @@ export default function LeaveDetailsPage() {
                           </div>
                         )}
 
-                        {/* الحالة النهائية */}
                         {leave.status === 'commenced' && (
                           <div className="p-10 text-center bg-slate-50 rounded-[2rem] border-2 border-dashed border-emerald-200">
                              <CheckCircle2 className="h-12 w-12 text-emerald-500 mx-auto mb-2" />
                              <h4 className="font-black text-emerald-900">{isRtl ? 'تمت مباشرة العمل' : 'Work Commenced'}</h4>
                              <p className="text-xs font-bold text-slate-400 mt-1">{isRtl ? 'تم إغلاق ملف الإجازة والموظف حالياً "نشط".' : 'Leave file closed, employee is now "Active".'}</p>
                           </div>
+                        )}
+                        
+                        {leave.status === 'pending' && !isAdmin && (
+                           <div className="p-10 text-center bg-slate-50 rounded-[2rem] border-2 border-dashed border-amber-200">
+                              <Timer className="h-12 w-12 text-amber-500 mx-auto mb-2" />
+                              <h4 className="font-black text-amber-900">{isRtl ? 'الطلب قيد المراجعة' : 'Pending Review'}</h4>
+                              <p className="text-xs font-bold text-slate-400 mt-1">{isRtl ? 'بانتظار قرار الإدارة لاعتماد التواريخ وأيام الخصم.' : 'Waiting for admin decision on dates and deduction days.'}</p>
+                           </div>
                         )}
                      </div>
                   </div>
@@ -207,8 +283,15 @@ export default function LeaveDetailsPage() {
             <Card className="border-0 shadow-lg rounded-[2.5rem] bg-slate-900 text-white p-8 text-start space-y-6">
                <h3 className="font-black text-sm uppercase tracking-widest text-primary">{isRtl ? 'سجل التدقيق الزمني' : 'Audit Trail'}</h3>
                <div className="space-y-6">
+                  <div className="flex gap-4 items-start">
+                     <div className="h-2 w-2 rounded-full bg-slate-400 mt-1.5 shrink-0" />
+                     <div className="text-start">
+                        <p className="text-xs font-black">{isRtl ? 'تقديم الطلب' : 'Submitted'}</p>
+                        <p className="text-[10px] text-slate-400">{new Date(leave.createdAt.toDate()).toLocaleString()}</p>
+                     </div>
+                  </div>
                   {leave.approvedAt && (
-                    <div className="flex gap-4 items-start">
+                    <div className="flex gap-4 items-start border-t border-white/5 pt-4">
                        <div className="h-2 w-2 rounded-full bg-blue-500 mt-1.5 shrink-0" />
                        <div className="text-start">
                           <p className="text-xs font-black">{isRtl ? 'تم الاعتماد' : 'Approved'}</p>
@@ -217,7 +300,7 @@ export default function LeaveDetailsPage() {
                     </div>
                   )}
                   {leave.departureConfirmedAt && (
-                    <div className="flex gap-4 items-start">
+                    <div className="flex gap-4 items-start border-t border-white/5 pt-4">
                        <div className="h-2 w-2 rounded-full bg-amber-500 mt-1.5 shrink-0" />
                        <div className="text-start">
                           <p className="text-xs font-black">{isRtl ? 'تأكيد المغادرة' : 'Departure'}</p>
@@ -226,7 +309,7 @@ export default function LeaveDetailsPage() {
                     </div>
                   )}
                   {leave.returnRecordedAt && (
-                    <div className="flex gap-4 items-start">
+                    <div className="flex gap-4 items-start border-t border-white/5 pt-4">
                        <div className="h-2 w-2 rounded-full bg-purple-500 mt-1.5 shrink-0" />
                        <div className="text-start">
                           <p className="text-xs font-black">{isRtl ? 'تسجيل العودة' : 'Return'}</p>
@@ -235,7 +318,7 @@ export default function LeaveDetailsPage() {
                     </div>
                   )}
                   {leave.commencementConfirmedAt && (
-                    <div className="flex gap-4 items-start">
+                    <div className="flex gap-4 items-start border-t border-white/5 pt-4">
                        <div className="h-2 w-2 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
                        <div className="text-start">
                           <p className="text-xs font-black">{isRtl ? 'مباشرة العمل' : 'Commencement'}</p>
@@ -244,6 +327,15 @@ export default function LeaveDetailsPage() {
                     </div>
                   )}
                </div>
+            </Card>
+
+            <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white p-8 text-start space-y-4">
+               <div className="flex items-center gap-2 text-primary font-black text-xs uppercase tracking-widest">
+                  <Info className="h-4 w-4" /> {isRtl ? 'ملاحظات الإدارة' : 'Admin Notes'}
+               </div>
+               <p className="text-sm font-bold text-slate-600 leading-relaxed italic">
+                  {leave.comment || (isRtl ? 'لا يوجد ملاحظات مسجلة بعد.' : 'No notes recorded yet.')}
+               </p>
             </Card>
          </div>
       </div>
