@@ -88,21 +88,6 @@ export default function DepartmentsPage() {
     }
   };
 
-  const handleDeleteDept = async (id: string) => {
-    if (!deptService) return;
-    setLoadingAction(`delete_dept_${id}`);
-    try {
-      await deptService.deleteDepartment(id);
-      if (selectedDept?.id === id) setSelectedDept(null);
-      toast({ title: t('deleted') });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoadingAction(null);
-      setDeletingId(null);
-    }
-  };
-
   const handleSaveJob = async () => {
     if (!deptService || !selectedDept?.id || !jobForm.name) return;
     setLoadingAction('save_job');
@@ -124,20 +109,6 @@ export default function DepartmentsPage() {
       toast({ variant: "destructive", title: t('error') });
     } finally {
       setLoadingAction(null);
-    }
-  };
-
-  const handleDeleteJob = async (jobId: string) => {
-    if (!deptService || !selectedDept?.id) return;
-    setLoadingAction(`delete_job_${jobId}`);
-    try {
-      await deptService.deleteJob(selectedDept.id, jobId);
-      toast({ title: t('deleted') });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoadingAction(null);
-      setDeletingId(null);
     }
   };
 
@@ -193,25 +164,9 @@ export default function DepartmentsPage() {
                   >
                     <span className="text-sm font-black">{isRtl ? dept.name : dept.nameEn}</span>
                     <div className="flex items-center gap-1 z-20">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8 text-blue-600"
-                        onClick={e => { e.preventDefault(); e.stopPropagation(); setDeptForm(dept); setIsDeptOpen(true); }} 
-                      >
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDeptForm(dept); setIsDeptOpen(true); }}>
                         <Edit3 className="h-4 w-4" />
                       </Button>
-                      
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8 text-destructive"
-                        disabled={loadingAction === `delete_dept_${dept.id}`}
-                        onClick={e => { e.preventDefault(); e.stopPropagation(); setDeletingId(dept.id!); }} 
-                      >
-                        {loadingAction === `delete_dept_${dept.id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                      </Button>
-                      
                       <ChevronRight className={cn("h-4 w-4 ms-2", isRtl && 'rotate-180', selectedDept?.id === dept.id && 'text-primary')} />
                     </div>
                   </div>
@@ -268,7 +223,7 @@ export default function DepartmentsPage() {
               {!selectedDept ? (
                 <div className="py-20 text-center italic text-muted-foreground flex flex-col items-center gap-2">
                   <ChevronRight className={cn("h-10 w-10 opacity-10", !isRtl && "rotate-180")} />
-                  {isRtl ? 'يرجى اختيار قسم من القائمة اليمنى لعرض الوظائف' : 'Please select a department to view jobs'}
+                  {isRtl ? 'يرجى اختيار قسم لعرض الوظائف' : 'Select a department to view jobs'}
                 </div>
               ) : (
                 jobsLoading ? <div className="py-10 text-center"><Loader2 className="animate-spin mx-auto text-primary/30" /></div> : (
@@ -282,22 +237,8 @@ export default function DepartmentsPage() {
                            </span>
                         </div>
                         <div className="flex gap-1 z-20">
-                           <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 text-blue-600" 
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setJobForm(job); setIsJobOpen(true); }}
-                           >
-                            <Edit3 className="h-4 w-4" />
-                           </Button>
-                           <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 text-destructive"
-                            disabled={loadingAction === `delete_job_${job.id}`}
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDeletingId(job.id!); }}
-                           >
-                            {loadingAction === `delete_job_${job.id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                           <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setJobForm(job); setIsJobOpen(true); }}>
+                             <Edit3 className="h-4 w-4" />
                            </Button>
                         </div>
                       </div>
@@ -309,37 +250,6 @@ export default function DepartmentsPage() {
           </Card>
         </div>
       </div>
-
-      {/* حوار تأكيد الحذف الموحد */}
-      <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
-        <AlertDialogContent className="rounded-[2rem] p-8" dir={dir}>
-          <AlertDialogHeader>
-            <div className="mx-auto w-16 h-16 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mb-4">
-               <AlertTriangle className="h-8 w-8" />
-            </div>
-            <AlertDialogTitle className="text-start font-black text-2xl">{t('confirmDelete')}</AlertDialogTitle>
-            <AlertDialogDescription className="text-start font-bold">
-              {isRtl ? 'هل أنت متأكد؟ لا يمكن التراجع عن هذا الإجراء وسوف يتم حذف كافة البيانات المرتبطة بهذا العنصر فوراً.' : 'Are you sure? This action cannot be undone and will delete all associated data immediately.'}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="mt-8 gap-4">
-            <AlertDialogCancel className="rounded-xl h-12 font-bold border-2">{isRtl ? 'إلغاء' : 'Cancel'}</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={() => {
-                if (deletingId) {
-                  // تحديد ما إذا كان الحذف لقسم أم لوظيفة بناءً على السياق
-                  const isDept = departments?.some(d => d.id === deletingId);
-                  if (isDept) handleDeleteDept(deletingId);
-                  else handleDeleteJob(deletingId);
-                }
-              }}
-              className="rounded-xl h-12 font-black bg-rose-600 hover:bg-rose-700 text-white px-8"
-            >
-              {isRtl ? 'نعم، احذف الآن' : 'Yes, Delete Now'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

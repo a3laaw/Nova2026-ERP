@@ -121,7 +121,6 @@ export function EmployeeForm({ initialData, onSubmit, loading }: Props) {
 
   const { data: jobs } = useCollection<Job>(jobsQuery);
 
-  // توليد رقم الموظف تلقائياً للموظف الجديد
   useEffect(() => {
     if (!initialData && hrService && !form.getValues('employeeNumber')) {
       setGeneratingNum(true);
