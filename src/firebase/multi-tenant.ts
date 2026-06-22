@@ -4,6 +4,7 @@ import { getTenantPath } from '@/lib/utils';
 
 /**
  * محرك المسارات الموحد لنظام Nova ERP.
+ * يحتوي على كافة مراجع مجموعات Firestore المعزولة لكل منشأة.
  */
 export const paths = {
   // الحسابات العالمية
@@ -39,7 +40,19 @@ export const paths = {
   inventoryItems: (companyId: string) => getTenantPath(companyId, 'inventoryItems'),
   assetAssignments: (companyId: string) => getTenantPath(companyId, 'assetAssignments'),
 
+  // المسارات الفنية والتشغيلية (The Technical Core)
+  activityTypes: (companyId: string) => getTenantPath(companyId, 'activityTypes'),
+  services: (companyId: string, actId: string) => `${getTenantPath(companyId, 'activityTypes')}/${actId}/services`,
+  subServices: (companyId: string, actId: string, srvId: string) => `${getTenantPath(companyId, 'activityTypes')}/${actId}/services/${srvId}/subServices`,
+  technicalStages: (companyId: string, actId: string, srvId: string, subId: string) => `${getTenantPath(companyId, 'activityTypes')}/${actId}/services/${srvId}/subServices/${subId}/stages`,
+
+  // المعاملات الفنية (Technical Transactions)
+  transactions: (companyId: string) => getTenantPath(companyId, 'transactions'),
+  transactionStages: (companyId: string, tId: string) => `${getTenantPath(companyId, 'transactions')}/${tId}/stages`,
+  transactionTimeline: (companyId: string, tId: string) => `${getTenantPath(companyId, 'transactions')}/${tId}/timeline`,
+
   // المشاريع والفرص
   projects: (companyId: string) => getTenantPath(companyId, 'projects'),
+  stageInstances: (companyId: string, projectId: string) => `${getTenantPath(companyId, 'projects')}/${projectId}/instances`,
   leads: (companyId: string) => getTenantPath(companyId, 'leads'),
 };
