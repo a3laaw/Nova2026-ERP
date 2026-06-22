@@ -29,9 +29,10 @@ export class LeaveService {
     private permissions: string[] = []
   ) {}
 
-  async submitRequest(data: Omit<LeaveRequest, 'id' | 'createdAt' | 'updatedAt' | 'companyId' | 'status'>) {
+  async submitRequest(data: Omit<LeaveRequest, 'id' | 'createdAt' | 'updatedAt' | 'companyId' | 'status'>, departmentId?: string) {
     const path = paths.leaveRequests(this.companyId);
     
+    // فحص التداخل الزمني
     const overlapQuery = query(
       collection(this.db, path),
       where('userId', '==', data.userId)
@@ -52,16 +53,19 @@ export class LeaveService {
       ...data,
       status: 'pending',
       companyId: this.companyId,
+      departmentId: departmentId || '', // ربط القسم للفلترة
+      createdBy: data.userId, // توحيد الحقل لفلترة الـ Own Scope
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
 
-    addDoc(collection(this.db, path), docData).catch(async (err) => {
+    return addDoc(collection(this.db, path), docData).catch(async (err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path,
         operation: 'create',
         requestResourceData: docData
       }));
+      throw err;
     });
   }
 
@@ -84,55 +88,44 @@ export class LeaveService {
       updatedAt: serverTimestamp()
     };
 
-    // 1. معالجة الحالات المختلفة
     if (status === 'approved') {
-      ensureActionPermission(this.permissions, 'hr:edit');
       updateData.approvedBy = adminId;
       updateData.approvedAt = serverTimestamp();
       updateData.comment = payload.comment || '';
+      
+      // السماح للأدمن بتصحيح التواريخ والأيام عند الاعتماد
       if (payload.startDate) updateData.startDate = payload.startDate;
       if (payload.endDate) updateData.endDate = payload.endDate;
+      
       const finalWorkingDays = payload.workingDays !== undefined ? payload.workingDays : leaveData.workingDays;
       updateData.workingDays = finalWorkingDays;
 
-      // تحديث رصيد الموظف
+      // تحديث الأرصدة في ملف الموظف
       if (leaveData.type === 'annual') {
         batch.update(empRef, { annualLeaveBalance: increment(-finalWorkingDays) });
       } else if (leaveData.type === 'sick') {
         batch.update(empRef, { sickLeaveBalance: increment(-finalWorkingDays) });
-        // تحليل شرائح المرضية
-        const whService = new WorkHoursService(this.db, this.companyId);
-        const settings = await whService.getSettings();
-        if (settings) {
-          const wdService = new WorkingDaysService(settings);
-          updateData.sickLeaveTiers = wdService.calculateSickLeaveBreakdown(finalWorkingDays, 0); // Simplified for now
-        }
       }
     } 
+    else if (status === 'rejected') {
+      updateData.rejectedBy = adminId;
+      updateData.rejectedAt = serverTimestamp();
+      updateData.comment = payload.comment || '';
+    }
     else if (status === 'on-leave') {
-      // تأكيد المغادرة
       updateData.departureConfirmedAt = serverTimestamp();
       batch.update(empRef, { status: 'on-leave' });
     }
     else if (status === 'returned') {
-      // تسجيل العودة
       updateData.returnRecordedAt = serverTimestamp();
       updateData.actualReturnDate = payload.actualReturnDate || new Date().toISOString().split('T')[0];
     }
     else if (status === 'commenced') {
-      // مباشرة العمل
-      ensureActionPermission(this.permissions, 'hr:edit');
       updateData.commencementConfirmedAt = serverTimestamp();
       batch.update(empRef, { status: 'active' });
     }
 
     batch.update(leaveRef, updateData);
-
-    await batch.commit().catch(async (err) => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: leaveRef.path,
-        operation: 'update'
-      }));
-    });
+    await batch.commit();
   }
 }

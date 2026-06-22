@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -9,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { 
   CalendarDays, Plus, Loader2, CheckCircle2, 
   XCircle, ArrowRight, MessageSquare, Clock,
-  Calendar, Hash
+  Calendar, Hash, Pencil
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -32,7 +31,7 @@ import { canPerformOnRecord } from '@/lib/permissions/engine';
 export function LeavesManager() {
   const { globalUser, user } = useAuthContext();
   const { t, lang, dir } = useLanguage();
-  const { permissions, check } = usePermissions();
+  const { check } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
@@ -49,10 +48,11 @@ export function LeavesManager() {
   });
 
   const viewAccess = check('hr', 'view');
+  const canApprove = check('hr', 'approve').can;
 
   const leaveService = useMemo(() => 
-    db && companyId ? new LeaveService(db, companyId, permissions) : null, 
-  [db, companyId, permissions]);
+    db && companyId ? new LeaveService(db, companyId) : null, 
+  [db, companyId]);
 
   const leavesQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.leaveRequests(companyId)), orderBy('createdAt', 'desc')) : null, 
@@ -60,12 +60,13 @@ export function LeavesManager() {
   
   const { data: rawLeaves, loading } = useCollection<LeaveRequest>(leavesQuery);
 
+  // تصفية السجلات بناءً على الصلاحيات
   const leaves = useMemo(() => {
     if (!viewAccess.can) return [];
     return rawLeaves.filter(leave => canPerformOnRecord(
       viewAccess,
       { uid: globalUser?.uid || '', departmentId: globalUser?.departmentId },
-      { createdBy: leave.userId, departmentId: (leave as any).departmentId }
+      { createdBy: leave.userId || (leave as any).createdBy, departmentId: (leave as any).departmentId }
     ));
   }, [rawLeaves, viewAccess, globalUser]);
 
@@ -90,7 +91,7 @@ export function LeavesManager() {
         endDate: editForm.endDate,
         workingDays: editForm.workingDays
       });
-      toast({ title: t('saved') });
+      toast({ title: isRtl ? "تمت معالجة الطلب" : "Request Processed" });
       setProcessingLeave(null);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error') });
@@ -107,20 +108,20 @@ export function LeavesManager() {
              <CalendarDays className="h-6 w-6 text-primary" />
              {isRtl ? 'إجازات الموظفين' : 'Employee Leaves'}
            </h3>
-           <p className="text-xs font-bold text-muted-foreground mt-1 opacity-70">
-             {viewAccess.scope === 'own' ? (isRtl ? 'عرض ومتابعة طلباتك الشخصية' : 'Track your personal requests') : (isRtl ? 'نظام الحساب الآلي للإجازات والغياب' : 'Automated leave calculation system')}
+           <p className="text-[10px] font-bold text-muted-foreground mt-1 opacity-70 italic">
+             {viewAccess.scope === 'own' ? (isRtl ? 'عرض سجلاتك الشخصية المعتمدة' : 'View your own records') : (isRtl ? 'إدارة واعتماد إجازات فريق العمل' : 'Manage and approve team leaves')}
            </p>
         </div>
 
         <Button 
           onClick={() => router.push('/dashboard/hr/leaves/new')}
-          className="rounded-xl font-bold bg-primary text-white shadow-lg shadow-primary/20 h-12 px-6 hover:scale-[1.02] transition-transform"
+          className="rounded-xl font-bold bg-primary text-white shadow-lg h-12 px-6 hover:scale-[1.02] transition-all"
         >
-          <Plus className="me-2 h-4 w-4" /> {isRtl ? 'تقديم إجازة' : 'Apply for Leave'}
+          <Plus className="me-2 h-4 w-4" /> {isRtl ? 'تقديم إجازة' : 'Apply'}
         </Button>
       </div>
 
-      <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5" dir={dir}>
+      <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
          <CardContent className="p-0 overflow-x-auto">
             <Table>
                <TableHeader className="bg-muted/30">
@@ -137,33 +138,21 @@ export function LeavesManager() {
                   {loading ? (
                     <TableRow><TableCell colSpan={6} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
                   ) : leaves?.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="text-center py-20 italic text-muted-foreground font-bold">{isRtl ? 'لا توجد طلبات إجازة مسجلة.' : 'No leave requests found.'}</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="text-center py-20 italic text-muted-foreground font-bold">{isRtl ? 'لا توجد طلبات لعرضها حالياً.' : 'No leaves to display.'}</TableCell></TableRow>
                   ) : (
                     leaves?.map((leave) => (
                       <TableRow key={leave.id} className="hover:bg-slate-50 transition-colors group">
-                         <TableCell className="py-6 ps-8 text-start">
-                            <span className="font-black text-slate-800">{leave.userName}</span>
-                         </TableCell>
+                         <TableCell className="py-6 ps-8 text-start font-black text-slate-800">{leave.userName}</TableCell>
                          <TableCell className="text-start">
-                            <Badge variant="outline" className="bg-white font-black uppercase text-[9px] px-3 border-slate-200">
-                               {leave.type}
-                            </Badge>
+                            <Badge variant="outline" className="bg-white font-black uppercase text-[9px] px-3">{leave.type}</Badge>
                          </TableCell>
-                         <TableCell className="text-start">
-                            <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground">
-                               <span>{leave.startDate}</span>
-                               <ArrowRight className={cn("h-2 w-2 opacity-30", isRtl && "rotate-180")} />
-                               <span>{leave.endDate}</span>
-                            </div>
-                         </TableCell>
-                         <TableCell className="text-center">
-                            <span className="font-black text-slate-700 bg-slate-100 px-3 py-1 rounded-lg text-xs">{leave.workingDays}</span>
-                         </TableCell>
+                         <TableCell className="text-start font-mono text-[10px] text-slate-500">{leave.startDate} → {leave.endDate}</TableCell>
+                         <TableCell className="text-center"><span className="font-black text-slate-700 bg-slate-100 px-3 py-1 rounded-lg text-xs">{leave.workingDays}</span></TableCell>
                          <TableCell className="text-start">
                             <Badge className={cn(
                               "font-black px-3 py-1 border-0 shadow-sm",
-                              leave.status === 'approved' ? 'bg-emerald-500 text-white' :
-                              leave.status === 'rejected' ? 'bg-destructive text-white' :
+                              leave.status === 'approved' || leave.status === 'commenced' ? 'bg-emerald-500 text-white' :
+                              leave.status === 'rejected' ? 'bg-rose-500 text-white' :
                               'bg-amber-50 text-amber-600'
                             )}>
                                {leave.status.toUpperCase()}
@@ -171,16 +160,15 @@ export function LeavesManager() {
                          </TableCell>
                          <TableCell className="pe-8">
                             <div className="flex justify-end gap-2">
-                               {leave.status === 'pending' && (globalUser?.role === 'admin' || globalUser?.role === 'Admin') ? (
+                               {leave.status === 'pending' && canApprove ? (
                                   <Button 
                                     onClick={() => setProcessingLeave(leave)} 
-                                    size="sm" 
-                                    className="h-10 px-4 rounded-xl bg-primary/10 text-primary hover:bg-primary hover:text-white font-bold text-xs"
+                                    className="h-10 px-4 rounded-xl bg-primary text-white font-black text-xs gap-2 shadow-lg"
                                   >
-                                     {isRtl ? 'معالجة الطلب' : 'Process'}
+                                     <Pencil className="h-3.5 w-3.5" /> {isRtl ? 'معالجة' : 'Process'}
                                   </Button>
                                ) : (
-                                  <Button variant="ghost" size="icon" onClick={() => router.push(`/dashboard/hr/leaves/${leave.id}`)} className="rounded-xl h-10 w-10">
+                                  <Button variant="ghost" size="icon" onClick={() => router.push(`/dashboard/hr/leaves/${leave.id}`)} className="rounded-xl">
                                      <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
                                   </Button>
                                )}
@@ -195,75 +183,73 @@ export function LeavesManager() {
       </Card>
 
       <Dialog open={!!processingLeave} onOpenChange={(open) => !open && setProcessingLeave(null)}>
-        <DialogContent className="rounded-[2.5rem] max-w-2xl p-0 overflow-hidden" dir={dir}>
-           <div className="bg-primary/5 p-8 border-b">
-              <DialogTitle className="text-start font-black text-2xl flex items-center gap-3">
-                 <Clock className="h-7 w-7 text-primary" />
-                 {isRtl ? 'اتخاذ قرار مع إمكانية التعديل' : 'Process with Edit Capability'}
+        <DialogContent className="rounded-[3rem] max-w-2xl p-0 overflow-hidden border-0 shadow-3xl" dir={dir}>
+           <div className="bg-slate-900 p-10 text-white text-start">
+              <DialogTitle className="text-3xl font-black font-headline flex items-center gap-3">
+                 <Clock className="h-9 w-9 text-primary" />
+                 {isRtl ? 'قرار الإدارة وتصحيح البيانات' : 'Admin Decision & Correction'}
               </DialogTitle>
-              <DialogDescription className="text-start font-bold mt-2">
-                 {isRtl ? `موظف: ${processingLeave?.userName}` : `Employee: ${processingLeave?.userName}`}
-              </DialogDescription>
+              <p className="text-slate-400 font-bold mt-2">{isRtl ? `طلب الموظف: ${processingLeave?.userName}` : `Employee: ${processingLeave?.userName}`}</p>
            </div>
            
-           <div className="p-8 space-y-6 text-start">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-6 rounded-3xl border-2 border-dashed border-primary/10">
+           <div className="p-10 space-y-8 text-start bg-white">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-slate-50 rounded-[2rem] border-2 border-dashed border-primary/10">
                  <div className="space-y-2">
                     <Label className="text-[10px] font-black text-slate-400 uppercase flex items-center gap-2">
-                       <Calendar className="h-3 w-3" /> {isRtl ? 'تعديل تاريخ البدء' : 'Edit Start Date'}
+                       <Calendar className="h-3.5 w-3.5" /> {isRtl ? 'تاريخ البدء المعتمد' : 'Approve Start Date'}
                     </Label>
                     <SmartDateInput value={editForm.startDate} onChange={v => setEditForm({...editForm, startDate: v})} />
                  </div>
                  <div className="space-y-2">
                     <Label className="text-[10px] font-black text-slate-400 uppercase flex items-center gap-2">
-                       <Calendar className="h-3 w-3" /> {isRtl ? 'تعديل تاريخ العودة' : 'Edit Return Date'}
+                       <Calendar className="h-3.5 w-3.5" /> {isRtl ? 'تاريخ العودة المعتمد' : 'Approve Return Date'}
                     </Label>
                     <SmartDateInput value={editForm.endDate} onChange={v => setEditForm({...editForm, endDate: v})} />
                  </div>
-                 <div className="space-y-2 md:col-span-2">
+                 <div className="space-y-2 md:col-span-2 pt-2">
                     <Label className="text-[10px] font-black text-slate-400 uppercase flex items-center gap-2">
-                       <Hash className="h-3 w-3" /> {isRtl ? 'أيام العمل الصافية (المخصومة)' : 'Net Working Days (Deducted)'}
+                       <Hash className="h-3.5 w-3.5" /> {isRtl ? 'أيام الخصم الفعلي (بعد المراجعة)' : 'Actual Days to Deduct'}
                     </Label>
                     <Input 
                       type="number" 
                       value={editForm.workingDays} 
                       onChange={e => setEditForm({...editForm, workingDays: Number(e.target.value)})}
-                      className="h-12 rounded-xl border-2 font-black text-primary"
+                      className="h-14 rounded-2xl border-2 font-black text-primary text-lg"
                     />
                  </div>
               </div>
 
               <div className="space-y-3">
                  <Label className="font-black text-xs uppercase text-slate-500 flex items-center gap-2">
-                    <MessageSquare className="h-3 w-3" />
-                    {isRtl ? 'ملاحظات الإدارة / سبب الرفض' : 'Admin Notes / Reason'}
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    {isRtl ? 'ملاحظات الإدارة أو سبب الرفض' : 'Internal Notes / Reason'}
                  </Label>
                  <Textarea 
                    value={editForm.comment} 
                    onChange={(e) => setEditForm({...editForm, comment: e.target.value})}
-                   className="min-h-[100px] rounded-2xl border-2 p-4 text-sm"
-                   placeholder={isRtl ? "اكتب هنا أي ملاحظات تود إبلاغ الموظف بها..." : "Enter any notes for the employee..."}
+                   className="min-h-[100px] rounded-2xl border-2 p-6 text-base focus:bg-slate-50 transition-all shadow-inner"
+                   placeholder={isRtl ? "اكتب هنا ملاحظاتك للموظف..." : "Enter feedback..."}
                  />
               </div>
            </div>
 
-           <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4">
+           <DialogFooter className="p-10 bg-slate-50 border-t flex flex-row gap-4">
               <Button 
                 onClick={() => handleAction('rejected')}
                 disabled={isProcessing}
                 variant="outline"
-                className="flex-1 h-14 rounded-xl border-2 border-rose-100 text-rose-600 font-black hover:bg-rose-50"
+                className="flex-1 h-16 rounded-2xl border-2 border-rose-100 text-rose-600 font-black text-lg hover:bg-rose-50 transition-all"
               >
-                 {isProcessing ? <Loader2 className="animate-spin" /> : <XCircle className="me-2 h-5 w-5" />}
+                 {isProcessing ? <Loader2 className="animate-spin h-5 w-5" /> : <XCircle className="me-2 h-6 w-6" />}
                  {isRtl ? 'رفض الطلب' : 'Reject'}
               </Button>
               <Button 
                 onClick={() => handleAction('approved')}
                 disabled={isProcessing}
-                className="flex-1 h-14 rounded-xl bg-emerald-600 text-white font-black hover:bg-emerald-700 shadow-xl shadow-emerald-100"
+                className="flex-1 h-16 rounded-2xl bg-emerald-600 text-white font-black text-lg hover:bg-emerald-700 shadow-xl shadow-emerald-100 transition-all gap-2"
               >
-                 {isProcessing ? <Loader2 className="animate-spin" /> : <CheckCircle2 className="me-2 h-5 w-5" />}
-                 {isRtl ? 'اعتماد الإجازة' : 'Approve'}
+                 {isProcessing ? <Loader2 className="animate-spin h-5 w-5" /> : <CheckCircle2 className="me-2 h-6 w-6" />}
+                 {isRtl ? 'اعتماد وصرف' : 'Approve'}
               </Button>
            </DialogFooter>
         </DialogContent>
