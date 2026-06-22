@@ -6,19 +6,26 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   UserCircle, FileText, ShieldAlert, Sparkles, 
-  UploadCloud, Loader2, Users, Search, 
-  Calendar, UserPlus, ArrowUpRight, Clock,
+  Users, Calendar, UserPlus, ArrowUpRight, Clock,
   FileSpreadsheet, Calculator
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useRouter } from 'next/navigation';
+import { usePermissions } from '@/hooks/use-permissions';
 import { LeavesManager } from './leaves-manager';
 
 export default function HRDashboard() {
   const { t, lang, dir } = useLanguage();
   const router = useRouter();
+  const { check } = usePermissions();
   const isRtl = lang === 'ar';
   const [activeTab, setActiveTab] = useState("overview");
+
+  // فحص الصلاحيات للتحكم في عناصر الواجهة
+  const canHire = check('hr', 'create').can && check('hr', 'create').scope !== 'own';
+  const canSeePayroll = check('hr', 'approve').can; // ربط الرواتب بصلاحية الاعتماد
+  const canImportAttendance = check('hr', 'create').can && check('hr', 'create').scope === 'all';
+  const canSeeCompliance = check('hr', 'edit').can && check('hr', 'edit').scope !== 'own';
 
   return (
     <div className="space-y-8" dir={dir}>
@@ -34,28 +41,39 @@ export default function HRDashboard() {
         </div>
         
         <div className="flex gap-4">
-           <Button 
-             variant="outline"
-             onClick={() => router.push('/dashboard/hr/attendance/import')}
-             className="border-2 rounded-2xl px-6 py-7 text-lg font-bold gap-2 hover:bg-slate-50 transition-all"
-           >
-             <FileSpreadsheet className="h-6 w-6 text-emerald-600" />
-             {isRtl ? 'استيراد البصمة' : 'Import Attendance'}
-           </Button>
-           <Button 
-             onClick={() => router.push('/dashboard/hr/payroll')}
-             className="bg-emerald-600 text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-emerald-100 hover:scale-[1.02] transition-transform"
-           >
-             <Calculator className="me-2 h-6 w-6" />
-             {isRtl ? 'الرواتب' : 'Payroll'}
-           </Button>
-           <Button 
-             onClick={() => router.push('/dashboard/hr/employees/new')}
-             className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform"
-           >
-             <UserPlus className="me-2 h-6 w-6" />
-             {isRtl ? 'توظيف جديد' : 'New Hire'}
-           </Button>
+           {/* استيراد البصمة: يظهر فقط لمن يملك صلاحية إضافة بنطاق المنشأة */}
+           {canImportAttendance && (
+             <Button 
+               variant="outline"
+               onClick={() => router.push('/dashboard/hr/attendance/import')}
+               className="border-2 rounded-2xl px-6 py-7 text-lg font-bold gap-2 hover:bg-slate-50 transition-all"
+             >
+               <FileSpreadsheet className="h-6 w-6 text-emerald-600" />
+               {isRtl ? 'استيراد البصمة' : 'Import Attendance'}
+             </Button>
+           )}
+
+           {/* الرواتب: تظهر فقط للمحاسبين أو المدراء (صلاحية Approve) */}
+           {canSeePayroll && (
+             <Button 
+               onClick={() => router.push('/dashboard/hr/payroll')}
+               className="bg-emerald-600 text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-emerald-100 hover:scale-[1.02] transition-transform"
+             >
+               <Calculator className="me-2 h-6 w-6" />
+               {isRtl ? 'الرواتب' : 'Payroll'}
+             </Button>
+           )}
+
+           {/* توظيف جديد: يظهر فقط لمن يملك صلاحية Create بنطاق أكبر من Own */}
+           {canHire && (
+             <Button 
+               onClick={() => router.push('/dashboard/hr/employees/new')}
+               className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform"
+             >
+               <UserPlus className="me-2 h-6 w-6" />
+               {isRtl ? 'توظيف جديد' : 'New Hire'}
+             </Button>
+           )}
         </div>
       </div>
 
@@ -71,32 +89,37 @@ export default function HRDashboard() {
             <TabsTrigger value="permissions" className="rounded-xl font-black gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md transition-all px-6">
               <Clock className="h-4 w-4" /> {isRtl ? 'الاستئذانات' : 'Permissions'}
             </TabsTrigger>
-            <TabsTrigger value="compliance" className="rounded-xl font-black gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md transition-all px-6">
-              <ShieldAlert className="h-4 w-4" /> {isRtl ? 'الامتثال' : 'Compliance'}
-            </TabsTrigger>
+            {canSeeCompliance && (
+              <TabsTrigger value="compliance" className="rounded-xl font-black gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md transition-all px-6">
+                <ShieldAlert className="h-4 w-4" /> {isRtl ? 'الامتثال' : 'Compliance'}
+              </TabsTrigger>
+            )}
           </TabsList>
         </div>
 
         <TabsContent value="overview" className="space-y-8 animate-in fade-in duration-500">
            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-              <Card 
-                onClick={() => router.push('/dashboard/hr/employees')}
-                className="border-0 shadow-lg hover:shadow-2xl transition-all cursor-pointer rounded-[2.5rem] bg-white group overflow-hidden"
-              >
-                 <CardHeader className="p-8 pb-4 text-start">
-                    <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                       <Users className="h-7 w-7" />
-                    </div>
-                    <CardTitle className="text-xl font-black">{isRtl ? 'سجل الموظفين' : 'Employees List'}</CardTitle>
-                    <CardDescription className="font-bold">إدارة الملفات، الرواتب، وسجل التدقيق.</CardDescription>
-                 </CardHeader>
-                 <CardContent className="p-8 pt-0 text-start">
-                    <div className="flex items-center gap-2 text-primary font-black text-xs">
-                       {isRtl ? 'عرض كافة الموظفين' : 'View All Employees'}
-                       <ArrowUpRight className="h-4 w-4" />
-                    </div>
-                 </CardContent>
-              </Card>
+              {/* بطاقة سجل الموظفين: تظهر لمن يملك نطاق عرض أكبر من Own */}
+              {check('hr', 'view').scope !== 'own' && (
+                <Card 
+                  onClick={() => router.push('/dashboard/hr/employees')}
+                  className="border-0 shadow-lg hover:shadow-2xl transition-all cursor-pointer rounded-[2.5rem] bg-white group overflow-hidden"
+                >
+                   <CardHeader className="p-8 pb-4 text-start">
+                      <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                         <Users className="h-7 w-7" />
+                      </div>
+                      <CardTitle className="text-xl font-black">{isRtl ? 'سجل الموظفين' : 'Employees List'}</CardTitle>
+                      <CardDescription className="font-bold">إدارة الملفات، الرواتب، وسجل التدقيق.</CardDescription>
+                   </CardHeader>
+                   <CardContent className="p-8 pt-0 text-start">
+                      <div className="flex items-center gap-2 text-primary font-black text-xs">
+                         {isRtl ? 'عرض كافة الموظفين' : 'View All Employees'}
+                         <ArrowUpRight className="h-4 w-4" />
+                      </div>
+                   </CardContent>
+                </Card>
+              )}
 
               <Card 
                 onClick={() => setActiveTab('leaves')}
@@ -117,43 +140,49 @@ export default function HRDashboard() {
                  </CardContent>
               </Card>
 
-              <Card 
-                onClick={() => router.push('/dashboard/hr/attendance/import')}
-                className="border-0 shadow-lg hover:shadow-2xl transition-all cursor-pointer rounded-[2.5rem] bg-white group overflow-hidden"
-              >
-                 <CardHeader className="p-8 pb-4 text-start">
-                    <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                       <FileSpreadsheet className="h-7 w-7" />
-                    </div>
-                    <CardTitle className="text-xl font-black">{isRtl ? 'استيراد الحضور' : 'Attendance Import'}</CardTitle>
-                    <CardDescription className="font-bold">رفع ملفات البصمة وحساب التأخير آلياً.</CardDescription>
-                 </CardHeader>
-                 <CardContent className="p-8 pt-0 text-start">
-                    <div className="flex items-center gap-2 text-emerald-600 font-black text-xs">
-                       {isRtl ? 'رفع ملفات CSV' : 'Upload CSV Files'}
-                       <ArrowUpRight className="h-4 w-4" />
-                    </div>
-                 </CardContent>
-              </Card>
+              {/* بطاقة الاستيراد: تظهر فقط للمدراء */}
+              {canImportAttendance && (
+                <Card 
+                  onClick={() => router.push('/dashboard/hr/attendance/import')}
+                  className="border-0 shadow-lg hover:shadow-2xl transition-all cursor-pointer rounded-[2.5rem] bg-white group overflow-hidden"
+                >
+                   <CardHeader className="p-8 pb-4 text-start">
+                      <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                         <FileSpreadsheet className="h-7 w-7" />
+                      </div>
+                      <CardTitle className="text-xl font-black">{isRtl ? 'استيراد الحضور' : 'Attendance Import'}</CardTitle>
+                      <CardDescription className="font-bold">رفع ملفات البصمة وحساب التأخير آلياً.</CardDescription>
+                   </CardHeader>
+                   <CardContent className="p-8 pt-0 text-start">
+                      <div className="flex items-center gap-2 text-emerald-600 font-black text-xs">
+                         {isRtl ? 'رفع ملفات CSV' : 'Upload CSV Files'}
+                         <ArrowUpRight className="h-4 w-4" />
+                      </div>
+                   </CardContent>
+                </Card>
+              )}
 
-              <Card 
-                onClick={() => router.push('/dashboard/hr/payroll')}
-                className="border-0 shadow-lg hover:shadow-2xl transition-all cursor-pointer rounded-[2.5rem] bg-white group overflow-hidden"
-              >
-                 <CardHeader className="p-8 pb-4 text-start">
-                    <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                       <Calculator className="h-7 w-7" />
-                    </div>
-                    <CardTitle className="text-xl font-black">{isRtl ? 'كشوف الرواتب' : 'Payroll Center'}</CardTitle>
-                    <CardDescription className="font-bold">حساب الرواتب والخصومات الميدانية.</CardDescription>
-                 </CardHeader>
-                 <CardContent className="p-8 pt-0 text-start">
-                    <div className="flex items-center gap-2 text-amber-600 font-black text-xs">
-                       {isRtl ? 'إدارة الرواتب' : 'Manage Payroll'}
-                       <ArrowUpRight className="h-4 w-4" />
-                    </div>
-                 </CardContent>
-              </Card>
+              {/* بطاقة الرواتب: تظهر فقط للمدراء والمحاسبين */}
+              {canSeePayroll && (
+                <Card 
+                  onClick={() => router.push('/dashboard/hr/payroll')}
+                  className="border-0 shadow-lg hover:shadow-2xl transition-all cursor-pointer rounded-[2.5rem] bg-white group overflow-hidden"
+                >
+                   <CardHeader className="p-8 pb-4 text-start">
+                      <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                         <Calculator className="h-7 w-7" />
+                      </div>
+                      <CardTitle className="text-xl font-black">{isRtl ? 'كشوف الرواتب' : 'Payroll Center'}</CardTitle>
+                      <CardDescription className="font-bold">حساب الرواتب والخصومات الميدانية.</CardDescription>
+                   </CardHeader>
+                   <CardContent className="p-8 pt-0 text-start">
+                      <div className="flex items-center gap-2 text-amber-600 font-black text-xs">
+                         {isRtl ? 'إدارة الرواتب' : 'Manage Payroll'}
+                         <ArrowUpRight className="h-4 w-4" />
+                      </div>
+                   </CardContent>
+                </Card>
+              )}
            </div>
         </TabsContent>
 
@@ -169,32 +198,34 @@ export default function HRDashboard() {
           </div>
         </TabsContent>
 
-        <TabsContent value="compliance">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white lg:col-span-1 overflow-hidden ring-1 ring-black/5">
-              <CardHeader className="text-start bg-slate-50 border-b p-8">
-                <CardTitle className="text-lg font-black">{t('docAnalysis')}</CardTitle>
-                <CardDescription className="font-bold">{isRtl ? 'تحليل عقود العمل والهويات آلياً' : 'Automated analysis for contracts and IDs'}</CardDescription>
-              </CardHeader>
-              <CardContent className="p-8 space-y-6 text-start">
-                <div className="border-4 border-dashed border-muted rounded-[2rem] p-12 text-center bg-muted/10 hover:bg-muted/20 transition-all cursor-pointer group">
-                  <UploadCloud className="h-16 w-16 text-muted-foreground mx-auto group-hover:scale-110 transition-transform mb-4" />
-                  <p className="text-base font-black text-slate-700">{t('uploadDoc')}</p>
-                </div>
-                <Button className="w-full bg-primary text-white font-black py-8 rounded-2xl shadow-xl shadow-primary/20 text-lg hover:scale-[1.02] transition-transform">
-                  <Sparkles className="me-3 h-6 w-6" /> {t('analyzeNow')}
-                </Button>
-              </CardContent>
-            </Card>
+        {canSeeCompliance && (
+          <TabsContent value="compliance">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white lg:col-span-1 overflow-hidden ring-1 ring-black/5">
+                <CardHeader className="text-start bg-slate-50 border-b p-8">
+                  <CardTitle className="text-lg font-black">{t('docAnalysis')}</CardTitle>
+                  <CardDescription className="font-bold">{isRtl ? 'تحليل عقود العمل والهويات آلياً' : 'Automated analysis for contracts and IDs'}</CardDescription>
+                </CardHeader>
+                <CardContent className="p-8 space-y-6 text-start">
+                  <div className="border-4 border-dashed border-muted rounded-[2rem] p-12 text-center bg-muted/10 hover:bg-muted/20 transition-all cursor-pointer group">
+                    <FileText className="h-16 w-16 text-muted-foreground mx-auto group-hover:scale-110 transition-transform mb-4" />
+                    <p className="text-base font-black text-slate-700">{t('uploadDoc')}</p>
+                  </div>
+                  <Button className="w-full bg-primary text-white font-black py-8 rounded-2xl shadow-xl shadow-primary/20 text-lg hover:scale-[1.02] transition-transform">
+                    <Sparkles className="me-3 h-6 w-6" /> {t('analyzeNow')}
+                  </Button>
+                </CardContent>
+              </Card>
 
-            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white lg:col-span-2 overflow-hidden ring-1 ring-black/5">
-               <CardContent className="py-32 text-center text-muted-foreground italic font-bold">
-                  <FileText className="h-20 w-20 mx-auto opacity-10 mb-4" />
-                  {isRtl ? 'بانتظار تحليل مستندات الامتثال...' : 'Waiting for compliance document analysis...'}
-               </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
+              <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white lg:col-span-2 overflow-hidden ring-1 ring-black/5">
+                 <CardContent className="py-32 text-center text-muted-foreground italic font-bold">
+                    <FileText className="h-20 w-20 mx-auto opacity-10 mb-4" />
+                    {isRtl ? 'بانتظار تحليل مستندات الامتثال...' : 'Waiting for compliance document analysis...'}
+                 </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
