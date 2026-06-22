@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -98,37 +97,42 @@ export default function TransactionExecutionPage() {
       
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4 md:gap-8 flex-wrap">
           <Button 
             variant="ghost" 
             onClick={() => router.push(`/dashboard/clients/${clientId}`)} 
-            className="h-14 w-14 p-0 rounded-2xl bg-white shadow-sm border-2 hover:bg-slate-50 transition-all"
+            className="h-14 w-14 p-0 rounded-2xl bg-white shadow-sm border-2 hover:bg-slate-50 transition-all shrink-0"
           >
             <ArrowRight className={cn("h-6 w-6", !isRtl && "rotate-180")} />
           </Button>
           <div className="text-start">
-             <div className="flex items-center gap-3">
-                <h1 className="text-4xl font-black font-headline text-slate-900 tracking-tight">{transaction.transactionNumber}</h1>
-                <Badge className={cn(
-                  "font-black px-4 py-1.5 rounded-xl border-0 shadow-sm uppercase text-[10px]",
-                  transaction.status === 'completed' ? 'bg-emerald-500 text-white' : 
-                  transaction.status === 'in-progress' ? 'bg-blue-500 text-white' : 'bg-amber-500 text-white'
-                )}>
-                   {transaction.status.replace('-', ' ')}
-                </Badge>
+             <div className="flex items-center gap-4 flex-wrap">
+                <div className="h-16 px-6 w-fit min-w-[4rem] rounded-3xl bg-primary/10 flex items-center justify-center text-primary font-black text-2xl border-2 border-primary/20 shadow-inner">
+                   {transaction.transactionNumber}
+                </div>
+                <div className="min-w-[200px]">
+                   <Badge className={cn(
+                      "font-black px-4 py-1.5 rounded-xl border-0 shadow-sm uppercase text-[10px] mb-2",
+                      transaction.status === 'completed' ? 'bg-emerald-500 text-white' : 
+                      transaction.status === 'in-progress' ? 'bg-blue-500 text-white' : 'bg-amber-500 text-white'
+                   )}>
+                      {transaction.status.replace('-', ' ')}
+                   </Badge>
+                   <h1 className="text-4xl font-black font-headline text-slate-900 tracking-tight leading-tight">{transaction.subServiceName}</h1>
+                </div>
              </div>
-             <p className="text-sm font-bold text-slate-400 mt-1 flex items-center gap-2 italic">
+             <p className="text-sm font-bold text-slate-400 mt-2 flex items-center gap-2 italic">
                 <Activity className="h-4 w-4 text-primary" /> 
-                {transaction.subServiceName} | {transaction.activityTypeName}
+                {transaction.activityTypeName} | {transaction.clientName}
              </p>
           </div>
         </div>
 
-        <div className="flex gap-4">
-           <Button variant="outline" className="h-14 px-8 rounded-2xl bg-white border-2 font-black gap-2">
+        <div className="flex gap-4 w-full md:w-auto">
+           <Button variant="outline" className="flex-1 md:flex-none h-14 px-8 rounded-2xl bg-white border-2 font-black gap-2">
               <HardHat className="h-5 w-5 text-primary" /> {isRtl ? 'الفريق الفني' : 'Workforce'}
            </Button>
-           <Button className="h-14 px-8 rounded-2xl bg-primary text-white font-black shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-2">
+           <Button className="flex-1 md:flex-none h-14 px-8 rounded-2xl bg-primary text-white font-black shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-2">
               <ShieldCheck className="h-5 w-5" /> {isRtl ? 'اعتماد نهائي' : 'Final Approval'}
            </Button>
         </div>

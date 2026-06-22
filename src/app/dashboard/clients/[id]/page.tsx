@@ -57,7 +57,6 @@ export default function ClientDetailsPage() {
   const coordinates = useMemo(() => {
     if (!client?.locationUrl) return null;
     try {
-      // البحث عن نمط q=lat,lng أو @lat,lng
       const url = client.locationUrl;
       const match = url.match(/q=([-+]?\d+\.\d+),([-+]?\d+\.\d+)/) || 
                     url.match(/@([-+]?\d+\.\d+),([-+]?\d+\.\d+)/);
@@ -99,17 +98,17 @@ export default function ClientDetailsPage() {
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-20" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        <div className="flex items-center gap-6">
-          <Button variant="ghost" onClick={() => router.push('/dashboard/clients')} className="h-14 w-14 p-0 rounded-2xl bg-white shadow-sm border-2 hover:bg-slate-50 transition-all">
+        <div className="flex items-center gap-4 md:gap-8 flex-wrap">
+          <Button variant="ghost" onClick={() => router.push('/dashboard/clients')} className="h-14 w-14 p-0 rounded-2xl bg-white shadow-sm border-2 hover:bg-slate-50 transition-all shrink-0">
             <ArrowRight className={cn("h-6 w-6", !isRtl && "rotate-180")} />
           </Button>
           <div className="text-start">
-             <div className="flex items-center gap-4">
-                <div className="h-16 w-16 rounded-3xl bg-primary/5 flex items-center justify-center text-primary font-black text-2xl border-2 border-primary/10 shadow-inner">
+             <div className="flex items-center gap-4 flex-wrap">
+                <div className="h-16 px-6 w-fit min-w-[4rem] rounded-3xl bg-primary/5 flex items-center justify-center text-primary font-black text-2xl border-2 border-primary/10 shadow-inner">
                    {client.fileNumber}
                 </div>
-                <div>
-                   <h1 className="text-4xl font-black font-headline text-slate-900 tracking-tight">{client.nameAr}</h1>
+                <div className="min-w-[200px]">
+                   <h1 className="text-4xl font-black font-headline text-slate-900 tracking-tight leading-tight">{client.nameAr}</h1>
                    <Badge className={cn(
                       "font-black px-4 py-1.5 rounded-xl border-0 shadow-sm uppercase text-[10px] mt-2",
                       client.status === 'contracted' ? 'bg-emerald-500 text-white' : 
@@ -121,13 +120,13 @@ export default function ClientDetailsPage() {
           </div>
         </div>
 
-        <div className="flex gap-4">
-           <Button onClick={() => router.push(`/dashboard/clients/${clientId}/edit`)} className="h-14 px-8 rounded-2xl bg-white border-2 text-slate-800 font-black gap-2 hover:bg-slate-50 transition-all">
+        <div className="flex gap-4 w-full md:w-auto">
+           <Button onClick={() => router.push(`/dashboard/clients/${clientId}/edit`)} className="flex-1 md:flex-none h-14 px-8 rounded-2xl bg-white border-2 text-slate-800 font-black gap-2 hover:bg-slate-50 transition-all">
               <Edit3 className="h-5 w-5 text-primary" /> {isRtl ? 'تعديل الملف' : 'Edit'}
            </Button>
            <Button 
              onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/new`)}
-             className="h-14 px-8 rounded-2xl bg-primary text-white font-black shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-2"
+             className="flex-1 md:flex-none h-14 px-8 rounded-2xl bg-primary text-white font-black shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-2"
            >
               <Activity className="h-5 w-5" /> {isRtl ? 'فتح معاملة فنية' : 'Open Transaction'}
            </Button>
@@ -137,7 +136,6 @@ export default function ClientDetailsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
            
-           {/* High-End Location Visualization Card - Updated with Real Map */}
            <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5 group">
               <div className="h-2 bg-gradient-to-r from-blue-500 to-indigo-600 w-full" />
               <CardHeader className="bg-slate-50/30 border-b p-8 text-start flex flex-row items-center justify-between">
@@ -164,7 +162,6 @@ export default function ClientDetailsPage() {
               
               <CardContent className="p-0">
                  <div className="grid grid-cols-1 md:grid-cols-2">
-                    {/* Visual Navigation Display */}
                     <div className="p-10 space-y-8 text-start border-e border-slate-50">
                        <div className="space-y-4">
                           <div className="p-6 rounded-[2.5rem] bg-slate-50 border-2 border-white shadow-inner relative overflow-hidden">
@@ -194,7 +191,6 @@ export default function ClientDetailsPage() {
                        </div>
                     </div>
 
-                    {/* Live Map Preview Section - Now Clickable */}
                     <div className="relative p-10 bg-slate-50/50 flex flex-col items-center justify-center min-h-[350px] overflow-hidden">
                        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#1e1b4b 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
                        
@@ -240,7 +236,6 @@ export default function ClientDetailsPage() {
               </CardContent>
            </Card>
 
-           {/* Interaction Logger */}
            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
               <CardHeader className="bg-amber-50/50 border-b p-8 text-start">
                  <CardTitle className="text-xl font-black flex items-center gap-3">
@@ -269,7 +264,6 @@ export default function ClientDetailsPage() {
            </Card>
         </div>
 
-        {/* Sidebar History */}
         <div className="space-y-8">
            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 flex flex-col h-full min-h-[600px]">
               <CardHeader className="bg-slate-50 border-b p-8 text-start flex flex-row items-center justify-between">
