@@ -1,14 +1,14 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   ShieldCheck, Plus, Loader2, Edit3, 
   Search, Wand2, Users, ChevronLeft, ChevronRight,
-  MoreVertical, Briefcase, Eye, Trash2, Info
+  MoreVertical, Briefcase, Eye, Trash2, Info, Lock
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useFirestore, useCollection } from '@/firebase';
@@ -21,12 +21,14 @@ import { RoleService } from '@/services/role-service';
 import { cn } from '@/lib/utils';
 import { Role } from '@/types/roles';
 import { RoleMatrixForm } from './role-matrix-form';
+import { useRouter } from 'next/navigation';
 
 export default function RolesManagerPage() {
   const { globalUser } = useAuthContext();
   const { t, lang, dir } = useLanguage();
-  const { permissions } = usePermissions(); 
+  const { permissions, isAdmin, isLoading } = usePermissions(); 
   const db = useFirestore();
+  const router = useRouter();
   const companyId = globalUser?.companyId;
   const isRtl = lang === 'ar';
 
@@ -34,6 +36,14 @@ export default function RolesManagerPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [seeding, setSeeding] = useState(false);
+
+  // حارس أمني داخلي (Strict Page Guard)
+  // إذا اكتمل التحميل ولم يكن المستخدم أدمن، نمنع عرض المحتوى تماماً
+  useEffect(() => {
+    if (!isLoading && !isAdmin) {
+      // يمكن التوجيه أو ترك المكون يعرض واجهة "وصول محجوب"
+    }
+  }, [isLoading, isAdmin, router]);
 
   const roleService = useMemo(() => 
     db && companyId ? new RoleService(db, companyId, permissions) : null, 
@@ -56,6 +66,27 @@ export default function RolesManagerPage() {
       setSeeding(false);
     }
   };
+
+  if (isLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary/30" /></div>;
+
+  if (!isAdmin) {
+    return (
+      <div className="h-[60vh] flex flex-col items-center justify-center space-y-6 text-center">
+         <div className="h-24 w-24 bg-rose-50 text-rose-500 rounded-[2.5rem] flex items-center justify-center shadow-inner">
+            <Lock className="h-12 w-12" />
+         </div>
+         <div>
+            <h2 className="text-2xl font-black text-slate-800">{isRtl ? 'صلاحيات إدارية مطلوبة' : 'Administrative Access Required'}</h2>
+            <p className="text-slate-400 font-bold max-w-xs mx-auto mt-2">
+              {isRtl ? 'لا تملك تصريحاً كافياً للتحكم في مصفوفة الأدوار الأمنية.' : 'You lack sufficient permissions to manage security role matrices.'}
+            </p>
+         </div>
+         <Button onClick={() => router.push('/dashboard')} variant="outline" className="rounded-xl px-10">
+           {isRtl ? 'العودة للرئيسية' : 'Back to Dashboard'}
+         </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500" dir={dir}>
