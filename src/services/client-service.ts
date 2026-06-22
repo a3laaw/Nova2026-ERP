@@ -38,7 +38,6 @@ export class ClientService {
     const suffix = `/${year}`;
     
     try {
-      // البحث عن آخر ملف تم إنشاؤه في هذه السنة
       const q = query(
         collection(this.db, paths.clients(this.companyId)),
         where('fileNumber', '>=', `${prefix}0000${suffix}`),
@@ -54,7 +53,6 @@ export class ClientService {
       }
       
       const lastNumStr = snap.docs[0].data().fileNumber;
-      // استخراج الرقم من النص (مثلاً 0001 من C-0001/2026)
       const match = lastNumStr.match(/C-(\d+)\//);
       if (match) {
         const nextNum = parseInt(match[1]) + 1;
@@ -137,7 +135,11 @@ export class ClientService {
     }
   }
 
-  async markAsContracted(clientId: string, transactionId: string) {
+  /**
+   * تحديث سجل العميل عند فتح معاملة جديدة
+   * تم تعديل الوظيفة لتستقبل رقم المعاملة المهني بدلاً من المعرف التقني
+   */
+  async markAsContracted(clientId: string, transactionNumber: string) {
     const clientRef = doc(this.db, paths.clients(this.companyId), clientId);
     
     await updateDoc(clientRef, {
@@ -148,7 +150,7 @@ export class ClientService {
 
     await this.addHistory(clientId, {
       type: 'status_change',
-      content: `تم تحويل العميل إلى: متعاقد (ارتباط بالمعاملة ${transactionId})`,
+      content: `تم تحويل العميل إلى: متعاقد (ارتباط بالمعاملة ${transactionNumber})`,
       userId: 'system',
       userName: 'Nova Intelligence',
       companyId: this.companyId

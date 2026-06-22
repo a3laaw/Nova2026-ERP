@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -12,7 +11,8 @@ import {
   orderBy,
   getDocs,
   writeBatch,
-  updateDoc
+  updateDoc,
+  getDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { Transaction, TransactionTimelineEvent, StageInstance, StageInstanceStatus } from '@/types/transaction';
@@ -32,9 +32,14 @@ export class TransactionService {
     const transactionRef = doc(collection(this.db, paths.transactions(this.companyId)));
     const tId = transactionRef.id;
 
-    const yearMonth = new Date().toISOString().slice(0, 7).replace('-', '');
-    const rand = Math.floor(1000 + Math.random() * 9000);
-    const transactionNumber = `TR-${yearMonth}-${rand}`;
+    // --- محرك الترقيم الاحترافي الجديد ---
+    // جلب بيانات العميل للحصول على رقم الملف والعداد الحالي
+    const clientRef = doc(this.db, paths.clients(this.companyId), data.clientId);
+    const clientSnap = await getDoc(clientRef);
+    const clientInfo = clientSnap.data();
+    
+    const sequence = (clientInfo?.transactionCounter || 0) + 1;
+    const transactionNumber = `${clientInfo?.fileNumber || 'TR'}-${sequence.toString().padStart(2, '0')}`;
 
     const transactionData: Transaction = {
       ...data,
@@ -58,9 +63,9 @@ export class TransactionService {
     });
 
     // --- الربط الذكي للحالة (HR/CRM Logic) ---
-    // بمجرد فتح معاملة، يتحول العميل تلقائياً لـ "متعاقد"
+    // تمرير رقم المعاملة المهني بدلاً من الـ ID التقني للسجل التاريخي
     const clientService = new ClientService(this.db, this.companyId);
-    await clientService.markAsContracted(data.clientId, tId);
+    await clientService.markAsContracted(data.clientId, transactionNumber);
 
     // استنساخ المراحل الفنية
     await this.cloneTechnicalStages(tId, data);
@@ -95,7 +100,6 @@ export class TransactionService {
     templateSnap.docs.forEach(docSnap => {
       const template = docSnap.data() as TechnicalStage;
       const instanceRef = doc(instancesRef);
-      // المرحلة تكون متاحة (pending) إذا لم تكن مذكورة كـ "مرحلة تالية" لأي مرحلة أخرى
       const isStartStage = !allNextIds.has(docSnap.id);
       
       batch.set(instanceRef, {
