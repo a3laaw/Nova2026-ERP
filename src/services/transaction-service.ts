@@ -48,7 +48,8 @@ export class TransactionService {
     description?: string;
   }, userId: string, userName: string) {
     
-    // 1. إنفاذ الصلاحيات الميدانية
+    // 1. إنفاذ الصلاحيات الميدانية (Security Enforcement)
+    // نستخدم مصفوفة الصلاحيات الممرة للتأكد من أحقية الموظف
     ensureActionPermission(this.permissions, 'projects:create');
 
     // 2. التحقق من وجود العميل واستخراج العداد
@@ -64,9 +65,9 @@ export class TransactionService {
     const stagesQuery = query(collection(this.db, stagesPath), orderBy('order'));
     const stagesSnap = await getDocs(stagesQuery);
 
-    // معالجة واضحة في حال عدم وجود مراحل
+    // معالجة واضحة في حال عدم وجود مراحل (Process Guard)
     if (stagesSnap.empty) {
-      throw new Error('NO_STAGES_DEFINED: لا يمكن فتح المعاملة لأن المسار الفني المختار لا يحتوي على مراحل عمل معرفة في مركز المراجع.');
+      throw new Error('لا يمكن فتح المعاملة لعدم وجود مراحل عمل معرّفة لهذا المسار في مركز المراجع.');
     }
 
     const clientData = clientSnap.data();
@@ -143,12 +144,12 @@ export class TransactionService {
       batch.set(instanceRef, instanceData);
     });
 
-    // د. توثيق الجدول الزمني للمعاملة
+    // د. توثيق الجدول الزمني للمعاملة (Timeline)
     const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
     const timelineEvent: TransactionTimelineEvent = {
       transactionId,
       type: 'system',
-      content: `تم افتتاح المعاملة الفنية برقم ${transactionNumber} واستنساخ ${stagesSnap.size} مراحل تنفيذية.`,
+      content: `تم افتتاح المعاملة الفنية برقم ${transactionNumber} واستنساخ ${stagesSnap.size} مراحل تنفيذية من المسار المرجعي.`,
       userId,
       userName,
       companyId: this.companyId,
@@ -156,7 +157,7 @@ export class TransactionService {
     };
     batch.set(timelineRef, timelineEvent);
 
-    // هـ. توثيق سجل تاريخ العميل
+    // هـ. توثيق سجل تاريخ العميل (History)
     const historyRef = doc(collection(this.db, paths.clientHistory(this.companyId, data.clientId)));
     const historyEvent: ClientHistory = {
       clientId: data.clientId,
@@ -170,13 +171,20 @@ export class TransactionService {
     batch.set(historyRef, historyEvent);
 
     // 6. تنفيذ الـ Batch النهائي وإعادة المعرف
-    return batch.commit().then(() => transactionId).catch((err) => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: transRef.path,
-        operation: 'write',
-        requestResourceData: transactionData
-      }));
+    try {
+      await batch.commit();
+      return transactionId;
+    } catch (err: any) {
+      console.error("Batch Commit Error:", err);
+      // في حال وجود خطأ في الصلاحيات على مستوى Firestore
+      if (err.code === 'permission-denied') {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: transRef.path,
+          operation: 'write',
+          requestResourceData: transactionData
+        }));
+      }
       throw err;
-    });
+    }
   }
 }
