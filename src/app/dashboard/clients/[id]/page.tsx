@@ -1,11 +1,10 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Label } from "@/components/ui/label";
 import { 
   ArrowRight, Edit3, User, MapPin, Phone, Mail, 
   ShieldCheck, History, Clock, Loader2, AlertCircle,
@@ -23,6 +22,12 @@ import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 import { ClientService } from '@/services/client-service';
 import { toast } from '@/hooks/use-toast';
+
+// استيراد الخرائط ديناميكياً لمعاينة الموقع في صفحة التفاصيل
+import dynamic from 'next/dynamic';
+const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false });
+const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false });
+const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false });
 
 export default function ClientDetailsPage() {
   const params = useParams();
@@ -47,6 +52,24 @@ export default function ClientDetailsPage() {
 
   const { data: client, loading: clientLoading } = useDoc<Client>(clientRef);
   const { data: history, loading: historyLoading } = useCollection<ClientHistory>(historyQuery);
+
+  // دالة ذكية لاستخراج الإحداثيات من رابط جوجل ماب
+  const coordinates = useMemo(() => {
+    if (!client?.locationUrl) return null;
+    try {
+      // البحث عن نمط q=lat,lng أو @lat,lng
+      const url = client.locationUrl;
+      const match = url.match(/q=([-+]?\d+\.\d+),([-+]?\d+\.\d+)/) || 
+                    url.match(/@([-+]?\d+\.\d+),([-+]?\d+\.\d+)/);
+      
+      if (match) {
+        return [parseFloat(match[1]), parseFloat(match[2])] as [number, number];
+      }
+    } catch (e) {
+      console.error("Failed to parse coordinates", e);
+    }
+    return null;
+  }, [client?.locationUrl]);
 
   const handleLogVisit = async () => {
     if (!db || !companyId || !user || !interaction.trim()) return;
@@ -114,7 +137,7 @@ export default function ClientDetailsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
            
-           {/* High-End Location Visualization Card */}
+           {/* High-End Location Visualization Card - Updated with Real Map */}
            <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5 group">
               <div className="h-2 bg-gradient-to-r from-blue-500 to-indigo-600 w-full" />
               <CardHeader className="bg-slate-50/30 border-b p-8 text-start flex flex-row items-center justify-between">
@@ -171,40 +194,38 @@ export default function ClientDetailsPage() {
                        </div>
                     </div>
 
-                    {/* Interactive Asset Preview Look */}
-                    <div className="relative p-10 bg-slate-50/50 flex flex-col items-center justify-center min-h-[300px]">
+                    {/* Live Map Preview Section */}
+                    <div className="relative p-10 bg-slate-50/50 flex flex-col items-center justify-center min-h-[350px] overflow-hidden">
                        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#1e1b4b 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
                        
                        <div className={cn(
-                          "relative h-48 w-48 rounded-[3.5rem] flex flex-col items-center justify-center transition-all duration-500 shadow-2xl",
-                          client.locationUrl 
-                            ? "bg-white border-4 border-blue-500/20 scale-105" 
-                            : "bg-white/50 border-4 border-dashed border-slate-200 opacity-50"
+                          "relative h-64 w-full md:w-64 rounded-[3.5rem] overflow-hidden transition-all duration-500 shadow-2xl border-4",
+                          coordinates 
+                            ? "bg-white border-blue-500/20 scale-105" 
+                            : "bg-white/50 border-4 border-dashed border-slate-200 opacity-50 flex flex-col items-center justify-center"
                        )}>
-                          <div className={cn(
-                            "h-20 w-20 rounded-3xl flex items-center justify-center mb-4 transition-transform group-hover:rotate-12",
-                            client.locationUrl ? "bg-blue-600 text-white shadow-xl shadow-blue-200" : "bg-slate-100 text-slate-300"
-                          )}>
-                             {client.locationUrl ? <LocateFixed className="h-10 w-10" /> : <MapIcon className="h-10 w-10" />}
-                          </div>
-                          
-                          <div className="text-center px-4">
-                             {client.locationUrl ? (
-                               <>
-                                  <p className="text-xs font-black text-blue-900 uppercase tracking-tighter">{isRtl ? 'الإحداثيات نشطة' : 'GPS LOCKED'}</p>
-                                  <Badge variant="secondary" className="bg-blue-50 text-blue-600 font-bold text-[8px] mt-1 border-0">VERIFIED LOCATION</Badge>
-                               </>
-                             ) : (
-                               <>
-                                  <p className="text-xs font-bold text-slate-300 italic">{isRtl ? 'لا توجد بيانات موقع' : 'NO GPS DATA'}</p>
-                                  <Button variant="link" size="sm" onClick={() => router.push(`/dashboard/clients/${clientId}/edit`)} className="text-primary text-[10px] font-black uppercase mt-1">Add Location</Button>
-                               </>
-                             )}
-                          </div>
-
-                          {/* Decorative Radar Ring */}
-                          {client.locationUrl && (
-                             <div className="absolute -inset-4 border-2 border-blue-500/10 rounded-full animate-ping opacity-20" />
+                          {coordinates ? (
+                             <div className="h-full w-full pointer-events-none">
+                                <MapContainer center={coordinates} zoom={15} style={{ height: '100%', width: '100%', borderRadius: '3.5rem' }} zoomControl={false} dragging={false} scrollWheelZoom={false}>
+                                   <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                                   <Marker position={coordinates} />
+                                </MapContainer>
+                                <div className="absolute bottom-4 left-0 right-0 px-4 z-20">
+                                   <Badge className="w-full bg-blue-600 text-white font-black text-[8px] uppercase py-1 border-0 shadow-xl opacity-90 backdrop-blur-sm">
+                                      GPS Locked: {coordinates[0].toFixed(4)}, {coordinates[1].toFixed(4)}
+                                   </Badge>
+                                </div>
+                             </div>
+                          ) : (
+                             <>
+                                <div className="h-20 w-20 rounded-3xl bg-slate-100 flex items-center justify-center mb-4 text-slate-300">
+                                   <MapIcon className="h-10 w-10" />
+                                </div>
+                                <div className="text-center px-4">
+                                   <p className="text-xs font-bold text-slate-300 italic">{isRtl ? 'لا توجد بيانات موقع' : 'NO GPS DATA'}</p>
+                                   <Button variant="link" size="sm" onClick={() => router.push(`/dashboard/clients/${clientId}/edit`)} className="text-primary text-[10px] font-black uppercase mt-1">Add Location</Button>
+                                </div>
+                             </>
                           )}
                        </div>
                     </div>
