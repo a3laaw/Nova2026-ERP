@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -44,7 +45,6 @@ export default function DepartmentsPage() {
   const [selectedDept, setSelectedDept] = useState<Department | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
   
   const [isDeptOpen, setIsDeptOpen] = useState(false);
   const [isJobOpen, setIsJobOpen] = useState(false);
@@ -64,6 +64,7 @@ export default function DepartmentsPage() {
     companyId && db && selectedDept?.id ? query(collection(db, paths.jobs(companyId, selectedDept.id)), orderBy('order')) : null, 
   [db, companyId, selectedDept]);
 
+  // استعلام جلب الأدوار (Roles) للربط مع الوظائف
   const rolesQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.roles(companyId)), orderBy('order')) : null, 
   [db, companyId]);
@@ -81,8 +82,6 @@ export default function DepartmentsPage() {
       else await deptService.addDepartment(data as any);
       toast({ title: t('saved') });
       setIsDeptOpen(false);
-    } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
     } finally {
       setLoadingAction(null);
     }
@@ -105,8 +104,6 @@ export default function DepartmentsPage() {
       else await deptService.addJob(selectedDept.id, data as any);
       toast({ title: t('saved') });
       setIsJobOpen(false);
-    } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
     } finally {
       setLoadingAction(null);
     }
@@ -194,20 +191,25 @@ export default function DepartmentsPage() {
                         <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={jobForm.name || ''} onChange={e => setJobForm({...jobForm, name: e.target.value})} /></div>
                         <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={jobForm.nameEn || ''} onChange={e => setJobForm({...jobForm, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
                       </div>
+                      
+                      {/* ميزة الربط الجديدة: ربط الوظيفة بدور أمني */}
                       <div className="p-6 bg-primary/5 rounded-2xl border-2 border-primary/10 space-y-4">
                          <div className="flex items-center gap-2 text-primary font-black text-xs uppercase tracking-widest">
-                            <ShieldCheck className="h-4 w-4" /> {isRtl ? 'ربط الصلاحيات (الدور)' : 'Permission Binding (Role)'}
+                            <ShieldCheck className="h-4 w-4" /> {isRtl ? 'ربط الصلاحيات (الدور الأمني)' : 'Security Permissions Link'}
                          </div>
                          <Select value={jobForm.roleId} onValueChange={v => setJobForm({...jobForm, roleId: v})}>
-                            <SelectTrigger className="h-12 rounded-xl bg-white border-2">
-                               <SelectValue placeholder={isRtl ? "اختر الدور المرتبط بهذه الوظيفة" : "Select Linked Role"} />
+                            <SelectTrigger className="h-12 rounded-xl bg-white border-2 font-black">
+                               <SelectValue placeholder={isRtl ? "اختر قالب الصلاحيات لهذا المسمى" : "Select Permission Template"} />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="rounded-2xl">
                                {roles?.map(r => (
                                  <SelectItem key={r.id} value={r.id!} className="font-bold">{isRtl ? r.name : r.nameEn}</SelectItem>
                                ))}
                             </SelectContent>
                          </Select>
+                         <p className="text-[9px] text-slate-400 font-bold italic">
+                            {isRtl ? '* ملاحظة: أي موظف يتم تعيينه في هذه الوظيفة سيرث هذه الصلاحيات تلقائياً.' : '* Any employee hired for this job will automatically inherit these permissions.'}
+                         </p>
                       </div>
                     </div>
                     <DialogFooter className="mt-6">
@@ -233,7 +235,7 @@ export default function DepartmentsPage() {
                         <div className="text-start">
                            <span className="text-sm font-black block">{isRtl ? job.name : job.nameEn}</span>
                            <span className="text-[9px] font-bold text-primary flex items-center gap-1 mt-1">
-                              <ShieldCheck className="h-2.5 w-2.5" /> {job.roleName || (isRtl ? 'بدون دور' : 'No Role')}
+                              <ShieldCheck className="h-2.5 w-2.5" /> {job.roleName || (isRtl ? 'بدون دور محدد' : 'No Role Assigned')}
                            </span>
                         </div>
                         <div className="flex gap-1 z-20">

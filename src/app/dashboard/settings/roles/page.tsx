@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -7,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { 
   ShieldCheck, Plus, Loader2, Edit3, 
   Search, Wand2, Users, ChevronLeft, ChevronRight,
-  MoreVertical, Briefcase, Eye, Trash2
+  MoreVertical, Briefcase, Eye, Trash2, Info
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useFirestore, useCollection } from '@/firebase';
@@ -24,7 +25,7 @@ import { RoleMatrixForm } from './role-matrix-form';
 export default function RolesManagerPage() {
   const { globalUser } = useAuthContext();
   const { t, lang, dir } = useLanguage();
-  const { permissions } = usePermissions(); // الآن أصبحت تعيد ['*'] للأدمن بشكل صحيح
+  const { permissions } = usePermissions(); 
   const db = useFirestore();
   const companyId = globalUser?.companyId;
   const isRtl = lang === 'ar';
@@ -75,7 +76,7 @@ export default function RolesManagerPage() {
         <div className="lg:col-span-3 space-y-6">
           <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
              <CardHeader className="bg-slate-50/50 border-b p-6 text-start">
-                <CardTitle className="text-lg font-black">{isRtl ? 'الأدوار الحالية' : 'Current Roles'}</CardTitle>
+                <CardTitle className="text-lg font-black">{isRtl ? 'قوالب الصلاحيات' : 'Permission Templates'}</CardTitle>
                 <div className="relative mt-4">
                    <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                    <Input 
@@ -127,11 +128,23 @@ export default function RolesManagerPage() {
                       onClick={() => { setSelectedRole(null); setIsAddingNew(true); }}
                       className="w-full mt-4 h-12 rounded-2xl border-2 border-dashed border-slate-200 text-slate-400 hover:border-primary/40 hover:text-primary hover:bg-primary/5 font-black text-xs gap-2"
                     >
-                       <Plus className="h-4 w-4" /> {isRtl ? 'إضافة دور جديد' : 'Add New Role'}
+                       <Plus className="h-4 w-4" /> {isRtl ? 'إضافة قالب جديد' : 'Add New Role'}
                     </Button>
                   </>
                 )}
              </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-lg rounded-[2rem] bg-blue-50 p-6 text-start">
+             <div className="flex items-center gap-3 mb-3 text-blue-600">
+                <Info className="h-5 w-5" />
+                <h4 className="font-black text-xs uppercase tracking-widest">{isRtl ? 'دليل الربط' : 'Linking Guide'}</h4>
+             </div>
+             <p className="text-[10px] font-bold text-blue-700/70 leading-relaxed">
+                {isRtl 
+                  ? 'أنت هنا تنشئ "قالب الصلاحيات". لربطه بوظيفة معينة، اذهب لمركز المراجع -> الهيكل التنظيمي -> تعديل الوظيفة، واختيار هذا القالب.' 
+                  : 'You are creating a "Permission Template" here. To link it, go to Reference Hub -> Org Structure -> Edit Job, and select this template.'}
+             </p>
           </Card>
 
           {!roles?.length && !loading && (
