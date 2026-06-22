@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Dialog, 
   DialogContent, 
@@ -13,64 +13,44 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { 
-  MapPin, 
   Search, 
   Loader2, 
-  Navigation, 
-  CheckCircle2, 
   Crosshair,
-  Map as MapIcon
+  Map as MapIcon,
+  CheckCircle2
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
-import { cn } from '@/lib/utils';
-
-// جلب Leaflet ديناميكياً لتجنب أخطاء SSR في Next.js
 import dynamic from 'next/dynamic';
 
-const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false });
-const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false });
-const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false });
-const useMap = dynamic(() => import('react-leaflet').then(mod => mod.useMap), { ssr: false });
-const useMapEvents = dynamic(() => import('react-leaflet').then(mod => mod.useMapEvents), { ssr: false });
+// استيراد مكون الخريطة بشكل ديناميكي لتجنب مشاكل التصيير في جهة الخادم (SSR)
+const MapView = dynamic(() => import('./map-view'), { 
+  ssr: false,
+  loading: () => (
+    <div className="h-[400px] w-full rounded-[2rem] bg-slate-50 flex items-center justify-center border-4 border-slate-100">
+      <Loader2 className="h-10 w-10 animate-spin text-primary/20" />
+    </div>
+  )
+});
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onSelect: (url: string, lat: number, lng: number) => void;
+  onSelect: (url: string) => void;
   initialUrl?: string;
-}
-
-// مكون داخلي للتحكم في حركة الخريطة
-function ChangeView({ center }: { center: [number, number] }) {
-  const map = (useMap as any)();
-  useEffect(() => {
-    if (center) map.setView(center, 15);
-  }, [center, map]);
-  return null;
-}
-
-// مكون داخلي لالتقاط النقرات على الخريطة
-function MapEvents({ onClick }: { onClick: (lat: number, lng: number) => void }) {
-  (useMapEvents as any)({
-    click: (e: any) => {
-      onClick(e.latlng.lat, e.latlng.lng);
-    },
-  });
-  return null;
 }
 
 export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: Props) {
   const { lang, dir } = useLanguage();
   const isRtl = lang === 'ar';
   
-  const [position, setPosition] = useState<[number, number]>([29.3759, 47.9774]); // إحداثيات الكويت الافتراضية
+  const [position, setPosition] = useState<[number, number]>([29.3759, 47.9774]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
 
-  // تحليل الرابط الأولي إذا وجد
+  // تحليل الرابط الأولي لاستخراج الإحداثيات إن وجدت
   useEffect(() => {
-    if (initialUrl) {
+    if (initialUrl && isOpen) {
       const match = initialUrl.match(/q=([-+]?\d+\.\d+),([-+]?\d+\.\d+)/) || initialUrl.match(/@([-+]?\d+\.\d+),([-+]?\d+\.\d+)/);
       if (match) {
         setPosition([parseFloat(match[1]), parseFloat(match[2])]);
@@ -78,7 +58,6 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
     }
   }, [initialUrl, isOpen]);
 
-  // وظيفة البحث عن مكان (Nominatim API)
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
     setIsSearching(true);
@@ -95,7 +74,6 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
     }
   };
 
-  // وظيفة تحديد الموقع الحالي (GPS)
   const handleLocateMe = () => {
     if (!navigator.geolocation) return;
     setIsLocating(true);
@@ -110,7 +88,7 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
 
   const handleConfirm = () => {
     const googleUrl = `https://www.google.com/maps?q=${position[0]},${position[1]}`;
-    onSelect(googleUrl, position[0], position[1]);
+    onSelect(googleUrl);
     onClose();
   };
 
@@ -130,7 +108,7 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
         </div>
 
         <div className="p-6 space-y-4">
-           {/* Search Bar */}
+           {/* شريط البحث والتحكم */}
            <div className="flex gap-2">
               <div className="relative flex-1">
                  <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -154,14 +132,9 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
               </Button>
            </div>
 
-           {/* Map Area */}
+           {/* منطقة الخريطة (MapView المستورد ديناميكياً) */}
            <div className="h-[400px] w-full rounded-[2rem] overflow-hidden border-4 border-slate-100 shadow-inner relative">
-              <MapContainer center={position} zoom={15} style={{ height: '100%', width: '100%' }}>
-                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                 <ChangeView center={position} />
-                 <MapEvents onClick={(lat, lng) => setPosition([lat, lng])} />
-                 <Marker position={position} />
-              </MapContainer>
+              {isOpen && <MapView position={position} setPosition={setPosition} />}
               <div className="absolute bottom-4 left-4 right-4 z-[1000] pointer-events-none flex justify-center">
                  <Badge className="bg-slate-900/90 text-white backdrop-blur-md border-0 px-4 py-2 rounded-full font-mono text-[10px] shadow-2xl pointer-events-auto">
                     GPS: {position[0].toFixed(6)}, {position[1].toFixed(6)}
