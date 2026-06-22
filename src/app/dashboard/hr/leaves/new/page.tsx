@@ -27,7 +27,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { parseISO, isValid } from 'date-fns';
+import { parseISO, isValid, differenceInDays } from 'date-fns';
 import { SmartDateInput } from '@/components/ui/smart-date-input';
 import { paths } from '@/firebase/multi-tenant';
 
@@ -55,7 +55,7 @@ export default function NewLeaveRequestPage() {
     quickReason: ''
   });
 
-  // جلب ملف الموظف باستخدام المعرف المربوط بالحساب لضمان دقة الرصيد
+  // جلب ملف الموظف
   const empRef = useMemo(() => 
     companyId && db && employeeId ? doc(db, paths.employees(companyId), employeeId) : null, 
   [db, companyId, employeeId]);
@@ -65,36 +65,48 @@ export default function NewLeaveRequestPage() {
     db && companyId ? new LeaveService(db, companyId, permissions) : null, 
   [db, companyId, permissions]);
 
+  // محرك الحساب اللحظي
   useEffect(() => {
     async function calculateMetrics() {
-      if (!db || !companyId || !employee?.hireDate) return;
+      if (!db || !companyId) return;
 
-      const whService = new WorkHoursService(db, companyId);
-      const settings = await whService.getSettings();
-      if (!settings) return;
-
-      const wdService = new WorkingDaysService(settings);
-      const balance = wdService.calculateAccruedLeave(employee.hireDate);
-      setAccruedBalance(balance);
-
-      if (form.startDate) {
-        setEligibility(wdService.isEligibleForLeave(employee.hireDate, form.startDate));
-      }
-
+      // 1. حساب أيام التقويم (لا يعتمد على أي إعدادات)
       if (form.startDate && form.endDate) {
         const start = parseISO(form.startDate);
         const end = parseISO(form.endDate);
-        
         if (isValid(start) && isValid(end) && end >= start) {
-          const diffTime = Math.abs(end.getTime() - start.getTime());
-          setTotalCalendarDays(Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1);
-          setWorkingDays(wdService.calculateWorkingDays(form.startDate, form.endDate));
+          setTotalCalendarDays(differenceInDays(end, start) + 1);
         } else {
-          setWorkingDays(0);
           setTotalCalendarDays(0);
         }
       }
+
+      // 2. جلب إعدادات ساعات العمل (أو استخدام الافتراضية)
+      const whService = new WorkHoursService(db, companyId);
+      let settings = await whService.getSettings();
+      if (!settings) {
+        settings = whService.getDefaultSettings() as any;
+      }
+
+      const wdService = new WorkingDaysService(settings!);
+
+      // 3. حساب الأرصدة والأهلية إذا توفر ملف الموظف
+      if (employee?.hireDate) {
+        const balance = wdService.calculateAccruedLeave(employee.hireDate);
+        setAccruedBalance(balance);
+
+        if (form.startDate) {
+          setEligibility(wdService.isEligibleForLeave(employee.hireDate, form.startDate));
+        }
+      }
+
+      // 4. حساب أيام العمل الفعلية (خصم الرصيد)
+      if (form.startDate && form.endDate) {
+        const working = wdService.calculateWorkingDays(form.startDate, form.endDate);
+        setWorkingDays(working);
+      }
     }
+
     calculateMetrics();
   }, [form.startDate, form.endDate, employee, db, companyId]);
 
@@ -116,7 +128,7 @@ export default function NewLeaveRequestPage() {
     try {
       await leaveService.submitRequest({
         userId: user.uid,
-        employeeId: employeeId, // إرسال معرف الموظف الصريح للربط المالي
+        employeeId: employeeId,
         userName: user.displayName || user.email || 'User',
         type: form.type,
         startDate: form.startDate,
@@ -169,11 +181,11 @@ export default function NewLeaveRequestPage() {
                  <div className="space-y-4">
                     <div className="flex justify-between items-center text-sm font-bold">
                        <span className="text-slate-500">{isRtl ? 'أيام التقويم:' : 'Calendar Days:'}</span>
-                       <span className="font-black">{totalCalendarDays}</span>
+                       <span className="font-black text-lg">{totalCalendarDays}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm font-bold">
                        <span className="text-slate-500">{isRtl ? 'خصم الرصيد (أيام عمل):' : 'Net Deduction:'}</span>
-                       <Badge className="bg-emerald-50 text-emerald-600 font-black border-0">{workingDays}</Badge>
+                       <Badge className="bg-emerald-50 text-emerald-600 font-black border-0 px-4 py-1.5 text-base">{workingDays}</Badge>
                     </div>
                  </div>
                  
