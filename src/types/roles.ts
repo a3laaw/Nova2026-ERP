@@ -1,17 +1,19 @@
 /**
- * @fileOverview تعريف واجهات البيانات لنظام الصلاحيات والأدوار.
+ * @fileOverview تعريف واجهات البيانات لنظام الصلاحيات والأدوار المطور.
  */
 
 import { BaseReference } from './reference';
+import { PermissionRule } from '@/lib/permissions/types';
 
 export interface Role extends BaseReference {
-  code?: string; // اختياري للمنطق الداخلي فقط
+  code: string;
   name: string;
-  nameEn: string; // إضافة الاسم الإنجليزي
+  nameEn: string;
   description?: string;
-  permissions: string[];
-  isSystemRole: boolean;
+  permissions: string[]; // الصلاحيات الكلاسيكية (للتوافق)
+  matrix: PermissionRule[]; // المصفوفة الذكية الجديدة
   isActive: boolean;
+  isSystemRole: boolean;
   order: number;
 }
 
@@ -26,11 +28,4 @@ export interface PermissionItem {
   code: string;
   label: string;
   labelEn: string;
-}
-
-export interface UserRoleBinding {
-  roleId: string;
-  roleCode: string;
-  isActive: boolean;
-  companyId: string;
 }

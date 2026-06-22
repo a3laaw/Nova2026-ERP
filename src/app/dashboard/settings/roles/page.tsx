@@ -24,7 +24,7 @@ import { RoleMatrixForm } from './role-matrix-form';
 export default function RolesManagerPage() {
   const { globalUser } = useAuthContext();
   const { t, lang, dir } = useLanguage();
-  const { permissions } = usePermissions();
+  const { permissions } = usePermissions(); // الآن أصبحت تعيد ['*'] للأدمن بشكل صحيح
   const db = useFirestore();
   const companyId = globalUser?.companyId;
   const isRtl = lang === 'ar';
@@ -60,7 +60,7 @@ export default function RolesManagerPage() {
     <div className="space-y-8 animate-in fade-in duration-500" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start">
-          <h1 className="text-4xl font-black font-headline flex items-center gap-3">
+          <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
             <ShieldCheck className="h-10 w-10 text-primary" />
             {isRtl ? 'إدارة الأدوار والصلاحيات' : 'Roles & Permissions Management'}
           </h1>
@@ -106,10 +106,10 @@ export default function RolesManagerPage() {
                             </p>
                             <div className="flex items-center gap-2 mt-1">
                                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-tighter">
-                                  {isRtl ? role.nameEn : role.name}
+                                  {role.code}
                                </span>
                                <Badge variant="outline" className="h-4 px-1.5 text-[8px] border-slate-200 text-slate-400 font-bold">
-                                  {role.permissions.includes('*') ? 'Admin' : `${role.permissions.length} perms`}
+                                  {role.permissions?.includes('*') ? 'Admin' : `${role.matrix?.length || 0} rules`}
                                 </Badge>
                             </div>
                          </div>

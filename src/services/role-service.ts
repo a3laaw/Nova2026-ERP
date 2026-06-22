@@ -23,10 +23,10 @@ export class RoleService {
   constructor(
     private db: Firestore, 
     private companyId: string,
-    private permissions: string[] = []
+    private userPermissions: string[] = []
   ) {}
 
-  async getRoles() {
+  async getRoles(): Promise<Role[]> {
     const q = query(collection(this.db, paths.roles(this.companyId)), orderBy('order'));
     try {
       const snap = await getDocs(q);
@@ -40,9 +40,12 @@ export class RoleService {
     }
   }
 
-  addRole(data: Omit<Role, 'id' | 'createdAt' | 'updatedAt' | 'companyId'>) {
-    // للأدوار، نشترط الصلاحية المطلقة فقط
-    ensureActionPermission(this.permissions, '*');
+  /**
+   * إضافة دور جديد - تم جعلها Async لانتظار النتيجة
+   */
+  async addRole(data: Omit<Role, 'id' | 'createdAt' | 'updatedAt' | 'companyId'>) {
+    // للأدوار، نشترط الصلاحية المطلقة فقط (*)
+    ensureActionPermission(this.userPermissions, '*');
 
     const path = paths.roles(this.companyId);
     const docData = {
@@ -52,54 +55,68 @@ export class RoleService {
       updatedAt: serverTimestamp()
     };
     
-    addDoc(collection(this.db, path), docData).catch(async () => {
+    try {
+      return await addDoc(collection(this.db, path), docData);
+    } catch (error) {
       errorEmitter.emit('permission-error', new FirestorePermissionError({ 
         path, 
         operation: 'create', 
         requestResourceData: docData 
       } satisfies SecurityRuleContext));
-    });
+      throw error;
+    }
   }
 
-  updateRole(id: string, data: Partial<Role>) {
-    ensureActionPermission(this.permissions, '*');
+  /**
+   * تحديث دور موجود
+   */
+  async updateRole(id: string, data: Partial<Role>) {
+    ensureActionPermission(this.userPermissions, '*');
 
     const path = paths.roles(this.companyId);
     const docRef = doc(this.db, path, id);
     
-    updateDoc(docRef, { ...data, updatedAt: serverTimestamp() }).catch(async () => {
+    try {
+      const updateData = { ...data, updatedAt: serverTimestamp() };
+      return await updateDoc(docRef, updateData);
+    } catch (error) {
       errorEmitter.emit('permission-error', new FirestorePermissionError({ 
         path: docRef.path, 
         operation: 'update', 
         requestResourceData: data 
       } satisfies SecurityRuleContext));
-    });
+      throw error;
+    }
   }
 
-  deleteRole(id: string) {
-    ensureActionPermission(this.permissions, '*');
+  async deleteRole(id: string) {
+    ensureActionPermission(this.userPermissions, '*');
 
     const path = paths.roles(this.companyId);
     const docRef = doc(this.db, path, id);
     
-    deleteDoc(docRef).catch(async () => {
+    try {
+      return await deleteDoc(docRef);
+    } catch (error) {
       errorEmitter.emit('permission-error', new FirestorePermissionError({ 
         path: docRef.path, 
         operation: 'delete' 
       } satisfies SecurityRuleContext));
-    });
+      throw error;
+    }
   }
 
+  /**
+   * ضخ الأدوار الافتراضية للشركات الجديدة
+   */
   async seedInitialRoles() {
-    ensureActionPermission(this.permissions, '*');
-
     const batch = writeBatch(this.db);
     const rolesRef = collection(this.db, paths.roles(this.companyId));
     
     const initialRoles = [
-      { code: 'Admin', name: 'مدير النظام', nameEn: 'System Admin', permissions: ['*'], order: 1 },
-      { code: 'Engineer', name: 'مهندس تنفيذ', nameEn: 'Project Engineer', permissions: ['projects:view', 'projects:edit'], order: 2 },
-      { code: 'Accountant', name: 'محاسب', nameEn: 'Accountant', permissions: ['accounting:view', 'accounting:create'], order: 3 },
+      { code: 'ADMIN', name: 'مدير النظام', nameEn: 'System Admin', permissions: ['*'], matrix: [], order: 1 },
+      { code: 'ENGINEER', name: 'مهندس تنفيذ', nameEn: 'Project Engineer', permissions: [], matrix: [], order: 2 },
+      { code: 'ACCOUNTANT', name: 'محاسب', nameEn: 'Accountant', permissions: [], matrix: [], order: 3 },
     ];
 
     initialRoles.forEach(r => {
