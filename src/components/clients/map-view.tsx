@@ -23,7 +23,7 @@ interface MapViewProps {
 function ChangeView({ center }: { center: [number, number] }) {
   const map = useMap();
   useEffect(() => {
-    if (center) {
+    if (center && map) {
       map.setView(center, 15, { animate: true });
     }
   }, [center, map]);
