@@ -194,28 +194,35 @@ export default function ClientDetailsPage() {
                        </div>
                     </div>
 
-                    {/* Live Map Preview Section */}
+                    {/* Live Map Preview Section - Now Clickable */}
                     <div className="relative p-10 bg-slate-50/50 flex flex-col items-center justify-center min-h-[350px] overflow-hidden">
                        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#1e1b4b 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
                        
                        <div className={cn(
                           "relative h-64 w-full md:w-64 rounded-[3.5rem] overflow-hidden transition-all duration-500 shadow-2xl border-4",
                           coordinates 
-                            ? "bg-white border-blue-500/20 scale-105" 
+                            ? "bg-white border-blue-500/20 scale-105 hover:ring-8 hover:ring-blue-100 cursor-pointer" 
                             : "bg-white/50 border-4 border-dashed border-slate-200 opacity-50 flex flex-col items-center justify-center"
                        )}>
                           {coordinates ? (
-                             <div className="h-full w-full pointer-events-none">
-                                <MapContainer center={coordinates} zoom={15} style={{ height: '100%', width: '100%', borderRadius: '3.5rem' }} zoomControl={false} dragging={false} scrollWheelZoom={false}>
-                                   <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                                   <Marker position={coordinates} />
-                                </MapContainer>
-                                <div className="absolute bottom-4 left-0 right-0 px-4 z-20">
-                                   <Badge className="w-full bg-blue-600 text-white font-black text-[8px] uppercase py-1 border-0 shadow-xl opacity-90 backdrop-blur-sm">
-                                      GPS Locked: {coordinates[0].toFixed(4)}, {coordinates[1].toFixed(4)}
-                                   </Badge>
+                             <a 
+                               href={client.locationUrl} 
+                               target="_blank" 
+                               rel="noopener noreferrer"
+                               className="h-full w-full block"
+                             >
+                                <div className="h-full w-full pointer-events-none">
+                                   <MapContainer center={coordinates} zoom={15} style={{ height: '100%', width: '100%', borderRadius: '3.5rem' }} zoomControl={false} dragging={false} scrollWheelZoom={false}>
+                                      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                                      <Marker position={coordinates} />
+                                   </MapContainer>
+                                   <div className="absolute bottom-4 left-0 right-0 px-4 z-20">
+                                      <Badge className="w-full bg-blue-600 text-white font-black text-[8px] uppercase py-1 border-0 shadow-xl opacity-90 backdrop-blur-sm">
+                                         {isRtl ? 'اضغط للملاحة الخارجية' : 'Click to Open Google Maps'}
+                                      </Badge>
+                                   </div>
                                 </div>
-                             </div>
+                             </a>
                           ) : (
                              <>
                                 <div className="h-20 w-20 rounded-3xl bg-slate-100 flex items-center justify-center mb-4 text-slate-300">
