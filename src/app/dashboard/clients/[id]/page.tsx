@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -11,7 +12,7 @@ import {
   ShieldCheck, History, Clock, Loader2, AlertCircle,
   HardHat, FileText, ChevronRight, Activity, Plus,
   MessageSquare, UserCog, ExternalLink, Globe,
-  Navigation
+  Navigation, Map as MapIcon
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy } from 'firebase/firestore';
@@ -114,7 +115,7 @@ export default function ClientDetailsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
            
-           {/* Location Card - PRO UI */}
+           {/* Location Card - Interactive Display */}
            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
               <CardHeader className="bg-slate-50/50 border-b p-8 text-start flex flex-row items-center justify-between">
                  <CardTitle className="text-xl font-black flex items-center gap-3">
@@ -155,22 +156,25 @@ export default function ClientDetailsPage() {
                        </div>
                     </div>
 
-                    <div className="relative group">
+                    <div className="relative group overflow-hidden rounded-[2.5rem]">
                        <div className="absolute inset-0 bg-blue-500/5 rounded-[2rem] blur-xl group-hover:bg-blue-500/10 transition-all" />
                        <div className={cn(
-                          "relative h-full min-h-[150px] rounded-[2.5rem] border-2 border-dashed flex flex-col items-center justify-center p-8 transition-all",
+                          "relative h-full min-h-[200px] rounded-[2.5rem] border-2 border-dashed flex flex-col items-center justify-center p-8 transition-all",
                           client.locationUrl ? "border-blue-200 bg-blue-50/30" : "border-slate-200 bg-slate-50/50"
                        )}>
                           <div className={cn("h-16 w-16 rounded-3xl flex items-center justify-center mb-4 shadow-sm", client.locationUrl ? "bg-blue-600 text-white" : "bg-white text-slate-200")}>
-                             <Globe className="h-8 w-8" />
+                             <MapIcon className="h-8 w-8" />
                           </div>
                           {client.locationUrl ? (
                             <div className="text-center">
-                               <p className="text-xs font-black text-blue-900">{isRtl ? 'رابط الموقع مفعل' : 'Location Link Active'}</p>
-                               <p className="text-[9px] font-bold text-blue-500/70 mt-1">جاهز للملاحة الميدانية</p>
+                               <p className="text-xs font-black text-blue-900">{isRtl ? 'رابط الموقع مفعل' : 'Location Active'}</p>
+                               <p className="text-[9px] font-bold text-blue-500/70 mt-1">{isRtl ? 'جاهز للملاحة الميدانية' : 'Ready for navigation'}</p>
                             </div>
                           ) : (
-                            <p className="text-xs font-bold text-slate-300 italic">{isRtl ? 'لا يوجد رابط خرائط' : 'No Maps Link'}</p>
+                            <div className="text-center">
+                               <p className="text-xs font-bold text-slate-300 italic">{isRtl ? 'لا يوجد رابط خرائط' : 'No Location Link'}</p>
+                               <Button variant="link" size="sm" onClick={() => router.push(`/dashboard/clients/${clientId}/edit`)} className="text-primary text-[10px] font-black uppercase">{isRtl ? 'إضافة الآن' : 'Set Location'}</Button>
+                            </div>
                           )}
                        </div>
                     </div>
@@ -186,7 +190,7 @@ export default function ClientDetailsPage() {
                     {isRtl ? 'توثيق متابعة / زيارة ميدانية' : 'Log Visit / Interaction'}
                  </CardTitle>
               </CardHeader>
-              <CardContent className="p-8 space-y-4">
+              <CardContent className="p-8 space-y-4 text-start">
                  <Textarea 
                    value={interaction} 
                    onChange={e => setInteraction(e.target.value)}
@@ -218,7 +222,7 @@ export default function ClientDetailsPage() {
                     <CardTitle className="text-lg font-black">{isRtl ? 'سجل العمليات' : 'History Log'}</CardTitle>
                  </div>
               </CardHeader>
-              <CardContent className="p-0 flex-1 overflow-y-auto max-h-[750px] scrollbar-hide">
+              <CardContent className="p-0 flex-1 overflow-y-auto max-h-[750px] scrollbar-hide text-start">
                  {historyLoading ? (
                    <div className="p-20 text-center"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></div>
                  ) : (
@@ -226,7 +230,7 @@ export default function ClientDetailsPage() {
                       <div className={cn("absolute top-0 bottom-0 w-[2px] bg-slate-100", isRtl ? "right-10" : "left-10")} />
                       <div className="divide-y divide-slate-50">
                         {history?.map((event) => (
-                          <div key={event.id} className="p-8 relative group hover:bg-slate-50/50 transition-colors text-start">
+                          <div key={event.id} className="p-8 relative group hover:bg-slate-50/50 transition-colors">
                              <div className={cn(
                                "absolute top-10 h-4 w-4 rounded-full border-4 border-white shadow-md z-10 transition-transform group-hover:scale-125",
                                event.type === 'status_change' ? "bg-blue-500" : 

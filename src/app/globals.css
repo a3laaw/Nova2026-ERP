@@ -1,6 +1,10 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* استيراد أنماط الخرائط */
+@import "leaflet/dist/leaflet.css";
 
 @layer base {
   :root {
@@ -64,6 +68,11 @@
 /* تحسينات البطاقات */
 .card-nova {
   @apply bg-white/95 backdrop-blur-sm border-0 shadow-2xl rounded-[2.5rem] ring-1 ring-black/[0.02];
+}
+
+/* إصلاح أيقونات Leaflet */
+.leaflet-container {
+  @apply rounded-[1.5rem] overflow-hidden;
 }
 
 /* إخفاء مؤشرات الإدخال للأرقام */
