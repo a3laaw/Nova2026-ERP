@@ -25,6 +25,7 @@ export default function HRDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
 
   // فحص الصلاحيات للتحكم في عناصر الواجهة
+  // تعديل: التوظيف يتطلب صلاحية Create بنطاق أعلى من 'own'
   const canHire = check('hr', 'create').can && check('hr', 'create').scope !== 'own';
   const canSeePayroll = check('hr', 'approve').can;
   const canImportAttendance = check('hr', 'create').can && check('hr', 'create').scope === 'all';
@@ -35,7 +36,7 @@ export default function HRDashboard() {
     <div className="space-y-8" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start">
-          <h1 className="text-4xl font-black font-headline flex items-center gap-3">
+          <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
             <UserCircle className="h-10 w-10 text-primary" />
             {t('hr')}
           </h1>
