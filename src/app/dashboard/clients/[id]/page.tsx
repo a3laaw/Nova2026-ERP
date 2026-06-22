@@ -10,14 +10,16 @@ import {
   ShieldCheck, History, Clock, Loader2, AlertCircle,
   HardHat, FileText, ChevronRight, Activity, Plus,
   MessageSquare, UserCog, ExternalLink, Globe,
-  Navigation, Map as MapIcon, Compass, LocateFixed
+  Navigation, Map as MapIcon, Compass, LocateFixed,
+  Layers, CheckCircle2, PlayCircle
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
-import { doc, collection, query, orderBy } from 'firebase/firestore';
+import { doc, collection, query, orderBy, where } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
 import { Client, ClientHistory } from '@/types/client';
+import { Transaction } from '@/types/transaction';
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 import { ClientService } from '@/services/client-service';
@@ -42,16 +44,28 @@ export default function ClientDetailsPage() {
   const [interaction, setInteraction] = useState('');
   const [logging, setLogging] = useState(false);
 
+  // 1. جلب بيانات العميل
   const clientRef = useMemo(() => 
     companyId && db ? doc(db, paths.clients(companyId), clientId) : null, 
   [db, companyId, clientId]);
 
+  // 2. جلب سجل العمليات
   const historyQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.clientHistory(companyId, clientId)), orderBy('createdAt', 'desc')) : null, 
   [db, companyId, clientId]);
 
+  // 3. جلب المعاملات الفنية المرتبطة بهذا العميل
+  const transactionsQuery = useMemo(() => 
+    companyId && db ? query(
+      collection(db, paths.transactions(companyId)), 
+      where('clientId', '==', clientId),
+      orderBy('createdAt', 'desc')
+    ) : null, 
+  [db, companyId, clientId]);
+
   const { data: client, loading: clientLoading } = useDoc<Client>(clientRef);
   const { data: history, loading: historyLoading } = useCollection<ClientHistory>(historyQuery);
+  const { data: transactions, loading: transLoading } = useCollection<Transaction>(transactionsQuery);
 
   // دالة ذكية لاستخراج الإحداثيات من رابط جوجل ماب
   const coordinates = useMemo(() => {
@@ -97,6 +111,7 @@ export default function ClientDetailsPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-20" dir={dir}>
+      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div className="flex items-center gap-4 md:gap-8 flex-wrap">
           <Button variant="ghost" onClick={() => router.push('/dashboard/clients')} className="h-14 w-14 p-0 rounded-2xl bg-white shadow-sm border-2 hover:bg-slate-50 transition-all shrink-0">
@@ -135,6 +150,76 @@ export default function ClientDetailsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
+           
+           {/* Section: Technical Transactions List - NEW */}
+           <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
+              <CardHeader className="bg-slate-50/50 border-b p-8 text-start flex flex-row items-center justify-between">
+                 <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shadow-sm">
+                       <Layers className="h-6 w-6" />
+                    </div>
+                    <div>
+                       <CardTitle className="text-xl font-black">{isRtl ? 'المعاملات الفنية والتعاقدات' : 'Technical Transactions'}</CardTitle>
+                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{isRtl ? 'تتبع مسارات التنفيذ المفتوحة' : 'Execution Pipeline Tracking'}</p>
+                    </div>
+                 </div>
+                 <Badge className="bg-slate-900 text-white font-black rounded-full h-8 px-4 flex items-center justify-center">{transactions?.length || 0}</Badge>
+              </CardHeader>
+              <CardContent className="p-4 space-y-3">
+                 {transLoading ? (
+                    <div className="p-10 text-center"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></div>
+                 ) : transactions?.length === 0 ? (
+                    <div className="p-16 text-center flex flex-col items-center gap-4 opacity-40">
+                       <div className="p-6 rounded-[2rem] bg-slate-50 border-2 border-dashed">
+                          <Activity className="h-12 w-12 text-slate-300" />
+                       </div>
+                       <p className="text-sm font-black text-slate-400 italic">{isRtl ? 'لا توجد معاملات فنية مفتوحة حالياً.' : 'No active transactions found.'}</p>
+                       <Button variant="link" onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/new`)} className="text-primary font-black uppercase text-xs">Open First Transaction</Button>
+                    </div>
+                 ) : (
+                    transactions?.map((trans) => (
+                       <div 
+                         key={trans.id} 
+                         onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${trans.id}`)}
+                         className="p-6 rounded-[2.5rem] border-2 border-slate-50 hover:border-primary/20 hover:bg-primary/5 transition-all cursor-pointer group flex items-center justify-between"
+                       >
+                          <div className="flex items-center gap-6">
+                             <div className={cn(
+                               "h-14 w-14 rounded-2xl flex items-center justify-center font-black text-xs shadow-sm transition-colors",
+                               trans.status === 'completed' ? "bg-emerald-50 text-emerald-600" :
+                               trans.status === 'in-progress' ? "bg-blue-50 text-blue-600" : "bg-amber-50 text-amber-600"
+                             )}>
+                                {trans.status === 'completed' ? <CheckCircle2 className="h-7 w-7" /> : <PlayCircle className="h-7 w-7" />}
+                             </div>
+                             <div className="text-start">
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{trans.transactionNumber}</p>
+                                <h4 className="font-black text-lg text-slate-800 leading-tight">{trans.subServiceName}</h4>
+                                <div className="flex items-center gap-3 mt-1.5">
+                                   <Badge variant="secondary" className="bg-white border text-[8px] font-black uppercase px-2">{trans.activityTypeName}</Badge>
+                                   <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1.5">
+                                      <HardHat className="h-3 w-3 text-primary" /> {trans.assignedEngineerName}
+                                   </span>
+                                </div>
+                             </div>
+                          </div>
+                          <div className="flex items-center gap-4">
+                             <div className="hidden md:block text-end">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{isRtl ? 'حالة المسار' : 'Path Status'}</p>
+                                <p className={cn(
+                                   "text-xs font-black uppercase",
+                                   trans.status === 'completed' ? "text-emerald-600" : 
+                                   trans.status === 'in-progress' ? "text-blue-600" : "text-amber-600"
+                                )}>{trans.status}</p>
+                             </div>
+                             <Button variant="ghost" size="icon" className="rounded-xl group-hover:bg-primary group-hover:text-white transition-all h-10 w-10">
+                                <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-0", isRtl && "rotate-180")} />
+                             </Button>
+                          </div>
+                       </div>
+                    ))
+                 )}
+              </CardContent>
+           </Card>
            
            <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5 group">
               <div className="h-2 bg-gradient-to-r from-blue-500 to-indigo-600 w-full" />
