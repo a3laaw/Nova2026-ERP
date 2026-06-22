@@ -34,28 +34,23 @@ export default function TransactionDetailsPage() {
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
-  // 1. فحص الصلاحيات الميدانية
   const viewAccess = check('projects', 'view');
 
-  // 2. جلب بيانات المعاملة الأساسية
   const transRef = useMemo(() => 
     companyId && db ? doc(db, paths.transactions(companyId), transactionId) : null, 
   [db, companyId, transactionId]);
   const { data: transaction, loading: transLoading } = useDoc<Transaction>(transRef);
 
-  // 3. جلب مراحل العمل التنفيذية (Stage Instances) مرتبة حسب Order
   const stagesQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.transactionStages(companyId, transactionId)), orderBy('order')) : null, 
   [db, companyId, transactionId]);
   const { data: stages, loading: stagesLoading } = useCollection<StageInstance>(stagesQuery);
 
-  // 4. جلب السجل الزمني للأحداث (Timeline)
   const timelineQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.transactionTimeline(companyId, transactionId)), orderBy('createdAt', 'desc')) : null, 
   [db, companyId, transactionId]);
   const { data: timeline, loading: timelineLoading } = useCollection<TransactionTimelineEvent>(timelineQuery);
 
-  // حماية أمنية: إذا لم تتوفر الصلاحية أو البيانات
   if (!viewAccess.can) return <div className="h-[60vh] flex flex-col items-center justify-center space-y-4"><Lock className="h-12 w-12 text-rose-500" /><p className="font-black">{isRtl ? 'وصول محجوب' : 'Access Denied'}</p></div>;
   if (transLoading || stagesLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
   if (!transaction) return <div className="p-20 text-center font-black text-slate-400">{isRtl ? 'المعاملة غير موجودة' : 'Transaction not found'}</div>;
@@ -65,7 +60,6 @@ export default function TransactionDetailsPage() {
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-20" dir={dir}>
       
-      {/* Header - Transaction Identity */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-6">
         <div className="flex items-center gap-4">
           <Button 
@@ -110,10 +104,8 @@ export default function TransactionDetailsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
-        {/* Main Column: Technical Path & Pipeline */}
         <div className="lg:col-span-8 space-y-8">
            
-           {/* Detailed Information Card */}
            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
               <div className="bg-slate-50/50 p-8 border-b grid grid-cols-1 md:grid-cols-3 gap-8">
                  <div className="text-start">
@@ -137,7 +129,6 @@ export default function TransactionDetailsPage() {
               </CardContent>
            </Card>
 
-           {/* Progress Section */}
            <div className="space-y-6">
               <div className="flex justify-between items-end px-2">
                  <div className="text-start">
@@ -201,28 +192,25 @@ export default function TransactionDetailsPage() {
            </div>
         </div>
 
-        {/* Sidebar Column: Timeline & History */}
         <div className="lg:col-span-4 space-y-8">
            
-           {/* Quick Stats Summary */}
-           <Card className="border-0 shadow-xl rounded-[2.5rem] bg-slate-900 text-white p-8 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
-                 <ShieldCheck className="h-24 w-24" />
+           <Card className="border-2 border-primary/10 shadow-xl rounded-[2.5rem] bg-white p-8 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform">
+                 <ShieldCheck className="h-24 w-24 text-primary" />
               </div>
               <div className="text-start relative z-10 space-y-6">
                  <h3 className="text-primary font-black uppercase text-xs tracking-[0.2em]">{isRtl ? 'رادار الإنجاز اللحظي' : 'Completion Radar'}</h3>
                  <div className="space-y-2">
-                    <p className="text-5xl font-black font-headline text-white">{progressPercent}%</p>
+                    <p className="text-5xl font-black font-headline text-slate-900">{progressPercent}%</p>
                     <p className="text-xs font-bold text-slate-400">{isRtl ? 'معدل إنجاز المسار الفني' : 'Pipeline completion rate'}</p>
                  </div>
-                 <div className="pt-6 border-t border-white/10 flex justify-between items-center text-[10px] font-black uppercase text-slate-400">
+                 <div className="pt-6 border-t border-slate-100 flex justify-between items-center text-[10px] font-black uppercase text-slate-400">
                     <span>{isRtl ? 'المراحل:' : 'Stages:'} {stages?.length || 0}</span>
-                    <span className="text-emerald-400">{isRtl ? 'مكتمل:' : 'Done:'} {stages?.filter(s => s.status === 'completed').length || 0}</span>
+                    <span className="text-emerald-500">{isRtl ? 'مكتمل:' : 'Done:'} {stages?.filter(s => s.status === 'completed').length || 0}</span>
                  </div>
               </div>
            </Card>
 
-           {/* Timeline Log */}
            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden flex flex-col min-h-[500px]">
               <CardHeader className="bg-slate-50 border-b p-6 flex items-center gap-3">
                  <History className="h-5 w-5 text-primary" />
@@ -230,14 +218,12 @@ export default function TransactionDetailsPage() {
               </CardHeader>
               <CardContent className="p-0 flex-1 overflow-y-auto max-h-[600px] scrollbar-hide text-start">
                  <div className="relative p-6">
-                    {/* Vertical Line */}
                     <div className={cn("absolute top-0 bottom-0 w-[1.5px] bg-slate-100", isRtl ? "right-9" : "left-9")} />
                     
                     <div className="space-y-8">
                        {timelineLoading ? <div className="p-10 text-center"><Loader2 className="animate-spin h-6 w-6 mx-auto opacity-20" /></div> : (
                          timeline?.map((event) => (
                            <div key={event.id} className="relative ps-10">
-                              {/* Indicator Circle */}
                               <div className={cn(
                                 "absolute top-1 h-3 w-3 rounded-full border-2 border-white shadow-md z-10",
                                 event.type === 'system' ? 'bg-primary' : 

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -33,20 +34,17 @@ export default function HRDashboard() {
 
   const companyId = globalUser?.companyId;
 
-  // فحص الصلاحيات
   const canHire = check('hr', 'create').can && check('hr', 'create').scope !== 'own';
   const canSeePayroll = check('hr', 'approve').can;
   const canImportAttendance = check('hr', 'create').can && check('hr', 'create').scope === 'all';
   const canSeeCompliance = check('hr', 'edit').can && check('hr', 'edit').scope !== 'own';
   const hrView = check('hr', 'view');
 
-  // جلب كافة الموظفين لفحص الامتثال
   const empsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.employees(companyId))) : null, 
   [db, companyId]);
   const { data: employees } = useCollection<Employee>(empsQuery);
 
-  // رادار انتهاء الوثائق (Compliance Radar)
   const expiringDocs = useMemo(() => {
     if (!employees) return [];
     const next30Days = addDays(new Date(), 30);
@@ -130,13 +128,13 @@ export default function HRDashboard() {
               {globalUser?.employeeId && (
                 <Card 
                   onClick={() => router.push(`/dashboard/hr/reports/dossier/${globalUser.employeeId}`)}
-                  className="border-0 shadow-lg hover:shadow-2xl transition-all cursor-pointer rounded-[2.5rem] bg-slate-900 text-white group overflow-hidden border-b-8 border-primary"
+                  className="border-0 shadow-lg hover:shadow-2xl transition-all cursor-pointer rounded-[2.5rem] bg-white group overflow-hidden border-b-8 border-primary"
                 >
                    <CardHeader className="p-8 pb-4 text-start">
-                      <div className="w-14 h-14 rounded-2xl bg-primary/20 text-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                          <ShieldCheck className="h-7 w-7" />
                       </div>
-                      <CardTitle className="text-xl font-black">{isRtl ? 'ملفي الوظيفي الشامل' : 'My Full Dossier'}</CardTitle>
+                      <CardTitle className="text-xl font-black text-slate-900">{isRtl ? 'ملفي الوظيفي الشامل' : 'My Full Dossier'}</CardTitle>
                       <CardDescription className="font-bold text-slate-400">
                          {isRtl ? 'عرض رصيد الإجازات، الرواتب، والعهد.' : 'View leave balance, payroll, and assets.'}
                       </CardDescription>
@@ -212,7 +210,6 @@ export default function HRDashboard() {
               )}
            </div>
 
-           {/* رادار الامتثال في النظرة العامة للمدراء */}
            {canSeeCompliance && expiringDocs.length > 0 && (
              <Card className="border-2 border-rose-100 bg-rose-50/30 rounded-[2.5rem] overflow-hidden animate-in slide-in-from-bottom-4">
                 <CardHeader className="p-8 border-b border-rose-100 text-start flex flex-row items-center justify-between">

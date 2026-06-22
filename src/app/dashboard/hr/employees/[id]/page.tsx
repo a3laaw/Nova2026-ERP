@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { 
   ArrowRight, Loader2, AlertCircle, Trash2, 
   History, ShieldCheck, FileText, Ban,
-  CheckCircle2, AlertTriangle, Calendar
+  CheckCircle2, AlertTriangle, Calendar, Lock
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy } from 'firebase/firestore';
@@ -42,11 +42,8 @@ export default function EmployeeDetailsPage() {
   const [termForm, setTermForm] = useState({ reason: '', date: new Date().toISOString().split('T')[0] });
   const [isTerminateOpen, setIsTerminateOpen] = useState(false);
 
-  // فحص الصلاحيات الميدانية
   const canEdit = check('hr', 'edit').can;
   const isViewingSelf = globalUser?.employeeId === empId;
-  
-  // القاعدة: الموظف لا يعدل ملفه الوظيفي الرسمي أبداً، فقط الأدمن يفعل ذلك
   const isReadOnly = !canEdit || (isViewingSelf && !isAdmin);
 
   const companyId = globalUser?.companyId;
@@ -117,7 +114,6 @@ export default function EmployeeDetailsPage() {
           </div>
         </div>
 
-        {/* إنهاء الخدمة: يظهر فقط للأدمن أو من يملك صلاحية Edit كاملة */}
         {!isReadOnly && employee.status === 'active' && (
           <Dialog open={isTerminateOpen} onOpenChange={setIsTerminateOpen}>
              <DialogTrigger asChild>
@@ -165,11 +161,10 @@ export default function EmployeeDetailsPage() {
         </div>
 
         <div className="space-y-6">
-           {/* سجل التدقيق: يظهر فقط للمدراء */}
            {canEdit && (
-              <Card className="border-0 shadow-xl rounded-[2.5rem] bg-slate-900 text-white overflow-hidden ring-1 ring-white/5">
-                <CardHeader className="bg-white/5 border-b border-white/5 p-8 text-start">
-                   <CardTitle className="text-lg font-black flex items-center gap-3">
+              <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
+                <CardHeader className="bg-slate-50 border-b p-8 text-start">
+                   <CardTitle className="text-lg font-black flex items-center gap-3 text-slate-900">
                       <History className="h-5 w-5 text-primary" />
                       {isRtl ? 'سجل التدقيق (Audit)' : 'Audit History'}
                    </CardTitle>
@@ -177,33 +172,33 @@ export default function EmployeeDetailsPage() {
                 <CardContent className="p-0">
                    <div className="max-h-[600px] overflow-y-auto">
                       {logsLoading ? <div className="p-10 text-center"><Loader2 className="animate-spin mx-auto text-primary/30" /></div> : (
-                        <div className="divide-y divide-white/5">
+                        <div className="divide-y divide-slate-100">
                            {logs?.length === 0 ? (
                              <div className="p-10 text-center text-slate-500 italic text-xs">{isRtl ? 'لا يوجد تغييرات مسجلة.' : 'No audit logs found.'}</div>
                            ) : (
                              logs?.map((log) => (
-                               <div key={log.id} className="p-6 space-y-3 hover:bg-white/5 transition-colors text-start">
+                               <div key={log.id} className="p-6 space-y-3 hover:bg-slate-50 transition-colors text-start">
                                   <div className="flex justify-between items-start">
                                      <Badge variant="outline" className={cn(
                                        "text-[9px] font-black uppercase",
-                                       log.action === 'terminate' ? "border-rose-500 text-rose-400" : "border-primary/50 text-primary"
+                                       log.action === 'terminate' ? "border-rose-500 text-rose-500" : "border-primary/50 text-primary"
                                      )}>
                                         {log.action}
                                      </Badge>
-                                     <span className="text-[10px] font-mono text-slate-500">{log.createdAt?.toDate().toLocaleDateString()}</span>
+                                     <span className="text-[10px] font-mono text-slate-400">{log.createdAt?.toDate().toLocaleDateString()}</span>
                                   </div>
                                   <div>
-                                     <p className="text-xs font-bold text-slate-300">
-                                        {isRtl ? 'تغيير في' : 'Changed'} <span className="text-white">{log.field}</span>
+                                     <p className="text-xs font-bold text-slate-600">
+                                        {isRtl ? 'تغيير في' : 'Changed'} <span className="text-slate-900 font-black">{log.field}</span>
                                      </p>
                                      <div className="flex items-center gap-2 mt-1 text-[10px]">
-                                        <span className="text-slate-500 line-through">{log.oldValue?.toString()}</span>
+                                        <span className="text-slate-400 line-through">{log.oldValue?.toString()}</span>
                                         <ArrowRight className={cn("h-2 w-2 text-primary", !isRtl && "rotate-0", isRtl && "rotate-180")} />
-                                        <span className="text-emerald-400 font-black">{log.newValue?.toString()}</span>
+                                        <span className="text-emerald-600 font-black">{log.newValue?.toString()}</span>
                                      </div>
                                   </div>
-                                  <div className="flex items-center gap-2 pt-2 border-t border-white/5">
-                                     <div className="h-5 w-5 rounded-full bg-white/10 flex items-center justify-center text-[8px] font-black uppercase">
+                                  <div className="flex items-center gap-2 pt-2 border-t border-slate-50">
+                                     <div className="h-5 w-5 rounded-full bg-slate-100 flex items-center justify-center text-[8px] font-black uppercase text-slate-400">
                                         {log.changedByName?.charAt(0)}
                                      </div>
                                      <span className="text-[9px] font-bold text-slate-400">{isRtl ? 'بواسطة:' : 'By:'} {log.changedByName}</span>

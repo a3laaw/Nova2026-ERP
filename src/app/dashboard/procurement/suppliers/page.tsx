@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -9,7 +10,7 @@ import {
   Truck, Plus, Search, Loader2, ArrowRight,
   Filter, MoreHorizontal, Phone, Mail,
   Star, ShieldCheck, ExternalLink, MapPin,
-  Building2, ShoppingBag, Send
+  Building2, ShoppingBag, Send, Sparkles, Save
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -21,11 +22,13 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 
 export default function SuppliersPage() {
   const { globalUser } = useAuthContext();
   const { t, lang, dir } = useLanguage();
   const db = useFirestore();
+  const router = useRouter();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
@@ -65,14 +68,13 @@ export default function SuppliersPage() {
 
   return (
     <div className="space-y-12" dir={dir}>
-      {/* Hero Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
         <div className="text-start space-y-3">
           <div className="flex items-center gap-3 bg-orange-50 text-[#e87c24] px-4 py-1.5 rounded-full w-fit border border-orange-100/50">
              <ShieldCheck className="h-4 w-4" />
              <span className="text-[10px] font-black uppercase tracking-[0.2em]">{isRtl ? 'سلسلة التوريد المعتمدة' : 'Verified Supply Chain'}</span>
           </div>
-          <h1 className="text-5xl font-black font-headline text-[#1e1b4b] tracking-tight flex items-center gap-4">
+          <h1 className="text-5xl font-black font-headline text-slate-900 tracking-tight flex items-center gap-4">
             <Truck className="h-12 w-12 text-[#e87c24]" />
             {t('suppliers')}
           </h1>
@@ -88,8 +90,8 @@ export default function SuppliersPage() {
               {isRtl ? 'مورد جديد' : 'New Supplier'}
             </Button>
           </DialogTrigger>
-          <DialogContent className="rounded-[3rem] border-0 shadow-3xl max-w-lg p-0 overflow-hidden bg-white/95 backdrop-blur-xl" dir={dir}>
-             <div className="bg-gradient-to-r from-[#e87c24] to-[#FFB000] p-10 text-white">
+          <DialogContent className="rounded-[3rem] border-0 shadow-3xl max-w-lg p-0 overflow-hidden bg-white" dir={dir}>
+             <div className="bg-primary p-10 text-white">
                 <DialogTitle className="text-3xl font-black font-headline">{isRtl ? 'إضافة مورد معتمد' : 'Add New Supplier'}</DialogTitle>
                 <p className="text-white/80 font-bold mt-2">{isRtl ? 'أدخل بيانات المورد لإضافته في سلسلة التوريد.' : 'Enter supplier details to add them to chain.'}</p>
              </div>
@@ -114,7 +116,7 @@ export default function SuppliersPage() {
                 </div>
              </div>
              <DialogFooter className="p-10 bg-slate-50 border-t">
-                <Button onClick={handleAdd} disabled={isAdding} className="w-full h-16 rounded-2xl bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white font-black text-xl shadow-xl shadow-orange-500/20">
+                <Button onClick={handleAdd} disabled={isAdding} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-orange-500/20">
                    {isAdding ? <Loader2 className="animate-spin" /> : <Save className="me-2 h-6 w-6" />}
                    {isRtl ? 'اعتماد المورد' : 'Register Supplier'}
                 </Button>
@@ -123,26 +125,24 @@ export default function SuppliersPage() {
         </Dialog>
       </div>
 
-      {/* Stats Quick Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
          {[
            { label: isRtl ? 'إجمالي الموردين' : 'Total Suppliers', val: suppliers?.length || 0, icon: Building2, color: 'text-orange-600', bg: 'bg-orange-50' },
            { label: isRtl ? 'طلبات نشطة' : 'Active Orders', val: 12, icon: ShoppingBag, color: 'text-blue-600', bg: 'bg-blue-50' },
            { label: isRtl ? 'تقييم الجودة' : 'Quality Rate', val: '4.8/5', icon: Star, color: 'text-amber-600', bg: 'bg-amber-50' },
-           { label: isRtl ? 'عروض معالجة' : 'Quotes Processed', val: 84, icon: FileSearch, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+           { label: isRtl ? 'عروض معالجة' : 'Quotes Processed', val: 84, icon: FileSearch, icon2: FileSearch, color: 'text-emerald-600', bg: 'bg-emerald-50' },
          ].map((stat, i) => (
-           <Card key={i} className="border-0 shadow-xl rounded-[2rem] p-8 text-start bg-white/95 group hover:scale-[1.03] transition-all">
+           <Card key={i} className="border-0 shadow-xl rounded-[2rem] p-8 text-start bg-white group hover:scale-[1.03] transition-all">
               <div className={cn("p-4 rounded-2xl w-fit mb-6 transition-transform group-hover:rotate-6", stat.bg, stat.color)}>
                  <stat.icon className="h-8 w-8" />
               </div>
               <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">{stat.label}</p>
-              <h3 className="text-4xl font-black font-headline text-[#1e1b4b]">{stat.val}</h3>
+              <h3 className="text-4xl font-black font-headline text-slate-900">{stat.val}</h3>
            </Card>
          ))}
       </div>
 
-      {/* Main Content Card */}
-      <Card className="border-0 shadow-3xl rounded-[3rem] bg-white/95 overflow-hidden ring-1 ring-black/[0.02]">
+      <Card className="border-0 shadow-3xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/[0.02]">
         <CardHeader className="bg-slate-50/50 border-b p-10 flex flex-row items-center justify-between">
            <div className="relative w-full max-w-md">
               <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
@@ -161,11 +161,11 @@ export default function SuppliersPage() {
           <Table>
             <TableHeader className="bg-orange-50/30">
               <TableRow>
-                <TableHead className="py-8 ps-10 text-start font-black text-[#1e1b4b] uppercase text-xs tracking-widest">{isRtl ? 'اسم المورد / الشركة' : 'Supplier Name'}</TableHead>
-                <TableHead className="text-start font-black text-[#1e1b4b] uppercase text-xs tracking-widest">{isRtl ? 'التصنيف الرئيسي' : 'Category'}</TableHead>
-                <TableHead className="text-start font-black text-[#1e1b4b] uppercase text-xs tracking-widest">{isRtl ? 'الاتصال' : 'Contact'}</TableHead>
-                <TableHead className="text-center font-black text-[#1e1b4b] uppercase text-xs tracking-widest">{isRtl ? 'التقييم' : 'Rating'}</TableHead>
-                <TableHead className="text-start font-black text-[#1e1b4b] uppercase text-xs tracking-widest">{t('status')}</TableHead>
+                <TableHead className="py-8 ps-10 text-start font-black text-slate-900 uppercase text-xs tracking-widest">{isRtl ? 'اسم المورد / الشركة' : 'Supplier Name'}</TableHead>
+                <TableHead className="text-start font-black text-slate-900 uppercase text-xs tracking-widest">{isRtl ? 'التصنيف الرئيسي' : 'Category'}</TableHead>
+                <TableHead className="text-start font-black text-slate-900 uppercase text-xs tracking-widest">{isRtl ? 'الاتصال' : 'Contact'}</TableHead>
+                <TableHead className="text-center font-black text-slate-900 uppercase text-xs tracking-widest">{isRtl ? 'التقييم' : 'Rating'}</TableHead>
+                <TableHead className="text-start font-black text-slate-900 uppercase text-xs tracking-widest">{t('status')}</TableHead>
                 <TableHead className="pe-10"></TableHead>
               </TableRow>
             </TableHeader>
@@ -183,7 +183,7 @@ export default function SuppliersPage() {
                              {supplier.name?.charAt(0)}
                           </div>
                           <div className="text-start">
-                             <p className="font-black text-xl text-[#1e1b4b] tracking-tight">{supplier.name}</p>
+                             <p className="font-black text-xl text-slate-900 tracking-tight">{supplier.name}</p>
                              <div className="flex items-center gap-2 text-[10px] text-slate-400 font-black uppercase mt-1">
                                 <MapPin className="h-2.5 w-2.5" /> {isRtl ? 'مدينة الكويت' : 'Kuwait City'}
                              </div>
@@ -204,7 +204,7 @@ export default function SuppliersPage() {
                     <TableCell className="text-center">
                        <div className="flex items-center justify-center gap-1">
                           <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                          <span className="font-black text-lg text-[#1e1b4b]">{supplier.rating || '5.0'}</span>
+                          <span className="font-black text-lg text-slate-900">{supplier.rating || '5.0'}</span>
                        </div>
                     </TableCell>
                     <TableCell className="text-start">
@@ -226,19 +226,18 @@ export default function SuppliersPage() {
         </CardContent>
       </Card>
 
-      {/* AI Procurement Assistant Hook */}
-      <div className="bg-gradient-to-r from-[#1e1b4b] to-[#2d2a6e] rounded-[3rem] p-12 text-white flex flex-col md:flex-row justify-between items-center gap-10 shadow-3xl relative overflow-hidden group">
+      <div className="bg-white border-4 border-orange-100/50 rounded-[3rem] p-12 flex flex-col md:flex-row justify-between items-center gap-10 shadow-3xl relative overflow-hidden group">
          <div className="absolute top-0 right-0 p-12 opacity-5 group-hover:scale-110 transition-transform">
-            <Sparkles className="h-48 w-48" />
+            <Sparkles className="h-48 w-48 text-primary" />
          </div>
          <div className="text-start space-y-4 relative z-10">
-            <h2 className="text-4xl font-black font-headline tracking-tight">{isRtl ? 'ذكاء المشتريات (AI Procurement)' : 'AI Procurement Assistant'}</h2>
-            <p className="text-white/60 text-lg font-bold max-w-xl leading-relaxed">
+            <h2 className="text-4xl font-black font-headline tracking-tight text-slate-900">{isRtl ? 'ذكاء المشتريات (AI Procurement)' : 'AI Procurement Assistant'}</h2>
+            <p className="text-slate-500 text-lg font-bold max-w-xl leading-relaxed">
                {isRtl ? 'قم برفع عروض أسعار الموردين وسنقوم آلياً باستخراج البنود ومقارنتها واقتراح المورد الأفضل بناءً على معاييرك.' : 'Upload supplier quotes and let AI extract items, compare prices, and recommend the best option.'}
             </p>
          </div>
          <Button 
-            className="h-20 px-12 rounded-[2.5rem] bg-white text-[#1e1b4b] font-black text-2xl shadow-2xl hover:scale-105 transition-all gap-4 relative z-10"
+            className="h-20 px-12 rounded-[2.5rem] bg-primary text-white font-black text-2xl shadow-2xl hover:scale-105 transition-all gap-4 relative z-10"
             onClick={() => router.push('/dashboard/ai')}
          >
             <Send className="h-8 w-8" />
@@ -248,5 +247,3 @@ export default function SuppliersPage() {
     </div>
   );
 }
-
-// Re-using the same types and paths from previous modules

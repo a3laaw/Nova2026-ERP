@@ -16,6 +16,7 @@ import { useLanguage } from '@/context/language-context';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 
 export default function SmartQuoteAnalyzerPage() {
   const { t, lang, dir } = useLanguage();
@@ -64,7 +65,7 @@ export default function SmartQuoteAnalyzerPage() {
            <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-primary/5 px-4 py-1.5 rounded-full w-fit">
               <Sparkles className="h-3 w-3" /> {isRtl ? 'ذكاء اصطناعي توليدي' : 'Generative AI Intelligence'}
            </div>
-           <h1 className="text-4xl font-black font-headline text-[#1e1b4b]">{isRtl ? 'محلل عروض الأسعار الذكي' : 'Smart Quote Analyzer'}</h1>
+           <h1 className="text-4xl font-black font-headline text-slate-900">{isRtl ? 'محلل عروض الأسعار الذكي' : 'Smart Quote Analyzer'}</h1>
            <p className="text-muted-foreground font-bold text-sm opacity-70 italic">
              {isRtl ? 'استخدم الذكاء الاصطناعي لاستخراج البنود ومقارنة الموردين واختيار الأفضل.' : 'Compare supplier quotes and identify the best value using AI.'}
            </p>
@@ -73,7 +74,6 @@ export default function SmartQuoteAnalyzerPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
-        {/* Left: Input Area */}
         <div className="lg:col-span-5 space-y-6">
            <div className="space-y-4">
               {quotes.map((quote, idx) => (
@@ -131,52 +131,49 @@ export default function SmartQuoteAnalyzerPage() {
            </div>
         </div>
 
-        {/* Right: Results Analysis */}
         <div className="lg:col-span-7">
            {result ? (
              <div className="space-y-8 animate-in slide-in-from-right-6 duration-500">
                 
-                {/* AI Recommendation Banner */}
-                <Card className="border-0 shadow-2xl rounded-[3rem] bg-slate-900 text-white overflow-hidden group">
-                   <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:rotate-12 transition-transform duration-500">
-                      <Sparkles className="h-32 w-32" />
+                <Card className="border-4 border-orange-100 shadow-2xl rounded-[3rem] bg-white overflow-hidden group">
+                   <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:rotate-12 transition-transform duration-500">
+                      <Sparkles className="h-32 w-32 text-primary" />
                    </div>
-                   <CardHeader className="bg-white/5 border-b border-white/5 p-10 text-start">
+                   <CardHeader className="bg-primary/5 border-b p-10 text-start">
                       <div className="flex items-center gap-4">
                          <div className="h-12 w-12 bg-primary rounded-2xl flex items-center justify-center shadow-lg">
                             <ShieldCheck className="h-6 w-6 text-white" />
                          </div>
                          <div>
-                            <CardTitle className="text-2xl font-black font-headline">{isRtl ? 'توصية Nova AI' : 'AI Recommendation'}</CardTitle>
+                            <CardTitle className="text-2xl font-black font-headline text-slate-900">{isRtl ? 'توصية Nova AI' : 'AI Recommendation'}</CardTitle>
                             <CardDescription className="text-primary font-bold">{isRtl ? 'المورد المفضل بناءً على التحليل' : 'Preferred supplier based on multi-criteria analysis'}</CardDescription>
                          </div>
                       </div>
                    </CardHeader>
                    <CardContent className="p-10 text-start space-y-6 relative z-10">
-                      <div className="p-6 bg-white/5 rounded-3xl border border-white/10 space-y-4">
+                      <div className="p-6 bg-slate-50 rounded-3xl border-2 border-white shadow-inner space-y-4">
                          <div className="flex justify-between items-center">
                             <Badge className="bg-emerald-500 text-white font-black px-4 py-1 rounded-lg border-0 uppercase">Best Overall</Badge>
-                            <h3 className="text-3xl font-black text-white">{result.comparisonSummary.bestOverallSupplier}</h3>
+                            <h3 className="text-3xl font-black text-slate-900">{result.comparisonSummary.bestOverallSupplier}</h3>
                          </div>
-                         <p className="text-slate-300 font-bold leading-relaxed">{result.comparisonSummary.recommendation}</p>
+                         <p className="text-slate-600 font-bold leading-relaxed">{result.comparisonSummary.recommendation}</p>
                       </div>
                       <div className="space-y-3">
-                         <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest">{isRtl ? 'الاختلافات الجوهرية' : 'Key Differences'}</h4>
-                         <p className="text-sm text-slate-400 leading-relaxed italic">{result.comparisonSummary.keyDifferences}</p>
+                         <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'الاختلافات الجوهرية' : 'Key Differences'}</h4>
+                         <p className="text-sm text-slate-500 leading-relaxed italic">{result.comparisonSummary.keyDifferences}</p>
                       </div>
                    </CardContent>
                 </Card>
 
-                {/* Per Quote Extraction */}
-                <div className="space-y-6">
-                   <h3 className="text-xl font-black text-[#1e1b4b] flex items-center gap-2">
+                <div className="space-y-6 text-start">
+                   <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
                       <FileSearch className="h-6 w-6 text-primary" />
                       {isRtl ? 'البنود المستخرجة آلياً' : 'Extracted Line Items'}
                    </h3>
                    {result.analysisPerQuote.map((analysis, i) => (
                       <Card key={i} className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
                          <CardHeader className="bg-slate-50 border-b p-6 flex flex-row items-center justify-between">
-                            <CardTitle className="text-lg font-black text-[#1e1b4b]">{analysis.supplierName}</CardTitle>
+                            <CardTitle className="text-lg font-black text-slate-900">{analysis.supplierName}</CardTitle>
                             <Badge variant="outline" className="font-bold">{analysis.extractedDetails.length} {isRtl ? 'بند' : 'Items'}</Badge>
                          </CardHeader>
                          <CardContent className="p-0 overflow-x-auto">
