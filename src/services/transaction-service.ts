@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -62,7 +63,7 @@ export class TransactionService {
     await clientService.markAsContracted(data.clientId, tId);
 
     // استنساخ المراحل الفنية
-    this.cloneTechnicalStages(tId, data);
+    await this.cloneTechnicalStages(tId, data);
     
     this.addTimelineEvent(tId, {
       type: 'system',
@@ -94,6 +95,7 @@ export class TransactionService {
     templateSnap.docs.forEach(docSnap => {
       const template = docSnap.data() as TechnicalStage;
       const instanceRef = doc(instancesRef);
+      // المرحلة تكون متاحة (pending) إذا لم تكن مذكورة كـ "مرحلة تالية" لأي مرحلة أخرى
       const isStartStage = !allNextIds.has(docSnap.id);
       
       batch.set(instanceRef, {
@@ -113,12 +115,12 @@ export class TransactionService {
         updatedAt: serverTimestamp()
       });
     });
-    batch.commit();
+    return await batch.commit();
   }
 
   async startStage(transactionId: string, instanceId: string, stageName: string, userId: string, userName: string) {
     const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), instanceId);
-    updateDoc(stageRef, {
+    await updateDoc(stageRef, {
       status: 'in-progress' as StageInstanceStatus,
       startedAt: serverTimestamp(),
       updatedAt: serverTimestamp()
@@ -135,7 +137,7 @@ export class TransactionService {
 
   async completeStage(transactionId: string, instanceId: string, stageName: string, userId: string, userName: string) {
     const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), instanceId);
-    updateDoc(stageRef, {
+    await updateDoc(stageRef, {
       status: 'completed' as StageInstanceStatus,
       completedAt: serverTimestamp(),
       completedBy: userId,
@@ -151,12 +153,12 @@ export class TransactionService {
     });
 
     const transactionRef = doc(this.db, paths.transactions(this.companyId), transactionId);
-    updateDoc(transactionRef, { status: 'in-progress', updatedAt: serverTimestamp() });
+    await updateDoc(transactionRef, { status: 'in-progress', updatedAt: serverTimestamp() });
   }
 
   async updateStageNumeric(transactionId: string, instanceId: string, stageName: string, value: number, userId: string, userName: string) {
     const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), instanceId);
-    updateDoc(stageRef, {
+    await updateDoc(stageRef, {
       currentCount: value,
       updatedAt: serverTimestamp()
     });

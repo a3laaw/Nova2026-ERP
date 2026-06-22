@@ -1,20 +1,21 @@
+
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
-  ArrowRight, Edit3, User, MapPin, Phone, Mail, 
-  ShieldCheck, History, Clock, Loader2, AlertCircle,
-  HardHat, FileText, ChevronRight, Activity, Plus,
-  MessageSquare, UserCog, ExternalLink, Globe,
-  Navigation, Map as MapIcon, Compass, LocateFixed,
+  ArrowRight, Edit3, MapPin, Phone, Mail, 
+  History, Loader2, AlertCircle,
+  HardHat, Activity, Plus,
+  MessageSquare, Globe,
+  Navigation, Map as MapIcon, Compass,
   Layers, CheckCircle2, PlayCircle
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
-import { doc, collection, query, orderBy, where } from 'firebase/firestore';
+import { doc, collection, query, where } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
@@ -49,23 +50,39 @@ export default function ClientDetailsPage() {
     companyId && db ? doc(db, paths.clients(companyId), clientId) : null, 
   [db, companyId, clientId]);
 
-  // 2. جلب سجل العمليات
+  // 2. جلب سجل العمليات (بسيط لتجنب أخطاء الفهرسة)
   const historyQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.clientHistory(companyId, clientId)), orderBy('createdAt', 'desc')) : null, 
+    companyId && db ? query(collection(db, paths.clientHistory(companyId, clientId))) : null, 
   [db, companyId, clientId]);
 
-  // 3. جلب المعاملات الفنية المرتبطة بهذا العميل
+  // 3. جلب المعاملات الفنية (استعلام بسيط لا يتطلب فهرس مركب)
   const transactionsQuery = useMemo(() => 
     companyId && db ? query(
       collection(db, paths.transactions(companyId)), 
-      where('clientId', '==', clientId),
-      orderBy('createdAt', 'desc')
+      where('clientId', '==', clientId)
     ) : null, 
   [db, companyId, clientId]);
 
   const { data: client, loading: clientLoading } = useDoc<Client>(clientRef);
-  const { data: history, loading: historyLoading } = useCollection<ClientHistory>(historyQuery);
-  const { data: transactions, loading: transLoading } = useCollection<Transaction>(transactionsQuery);
+  const { data: rawHistory, loading: historyLoading } = useCollection<ClientHistory>(historyQuery);
+  const { data: rawTransactions, loading: transLoading } = useCollection<Transaction>(transactionsQuery);
+
+  // ترتيب البيانات برمجياً لتجنب الحاجة للفهارس (Client-side Sorting)
+  const transactions = useMemo(() => {
+    return [...rawTransactions].sort((a, b) => {
+      const dateA = a.createdAt?.toMillis?.() || 0;
+      const dateB = b.createdAt?.toMillis?.() || 0;
+      return dateB - dateA;
+    });
+  }, [rawTransactions]);
+
+  const history = useMemo(() => {
+    return [...rawHistory].sort((a, b) => {
+      const dateA = a.createdAt?.toMillis?.() || 0;
+      const dateB = b.createdAt?.toMillis?.() || 0;
+      return dateB - dateA;
+    });
+  }, [rawHistory]);
 
   // دالة ذكية لاستخراج الإحداثيات من رابط جوجل ماب
   const coordinates = useMemo(() => {
@@ -151,7 +168,7 @@ export default function ClientDetailsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
            
-           {/* Section: Technical Transactions List - NEW */}
+           {/* Section: Technical Transactions List */}
            <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
               <CardHeader className="bg-slate-50/50 border-b p-8 text-start flex flex-row items-center justify-between">
                  <div className="flex items-center gap-4">
