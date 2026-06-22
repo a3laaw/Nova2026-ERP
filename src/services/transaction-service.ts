@@ -33,7 +33,7 @@ export class TransactionService {
     const tId = transactionRef.id;
 
     // --- محرك الترقيم الاحترافي الجديد ---
-    // جلب بيانات العميل للحصول على رقم الملف والعداد الحالي
+    // جلب بيانات العميل للحصول على رقم الملف والعداد الحالي لضمان التسلسل الهرمي
     const clientRef = doc(this.db, paths.clients(this.companyId), data.clientId);
     const clientSnap = await getDoc(clientRef);
     const clientInfo = clientSnap.data();
@@ -52,7 +52,7 @@ export class TransactionService {
       createdBy: userId,
     };
 
-    // تنفيذ فتح المعاملة
+    // تنفيذ فتح المعاملة في السحاب
     await setDoc(transactionRef, transactionData).catch((err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: transactionRef.path,
@@ -63,16 +63,16 @@ export class TransactionService {
     });
 
     // --- الربط الذكي للحالة (HR/CRM Logic) ---
-    // تمرير رقم المعاملة المهني بدلاً من الـ ID التقني للسجل التاريخي
+    // تم التعديل لإرسال "رقم المعاملة المهني" للسجل التاريخي بدلاً من الـ ID التقني
     const clientService = new ClientService(this.db, this.companyId);
     await clientService.markAsContracted(data.clientId, transactionNumber);
 
-    // استنساخ المراحل الفنية
+    // استنساخ المراحل الفنية من القالب المرجعي
     await this.cloneTechnicalStages(tId, data);
     
     this.addTimelineEvent(tId, {
       type: 'system',
-      content: `تم فتح المسار الفني للمعاملة لـ ${data.subServiceName}`,
+      content: `تم فتح المسار الفني للمهمة: ${data.subServiceName}`,
       userId,
       userName,
       companyId: this.companyId

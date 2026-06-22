@@ -9,10 +9,10 @@ import {
   updateDoc, 
   serverTimestamp,
   query,
+  where,
   orderBy,
   limit,
   getDocs,
-  where,
   increment,
   getDoc
 } from 'firebase/firestore';
@@ -136,8 +136,8 @@ export class ClientService {
   }
 
   /**
-   * تحديث سجل العميل عند فتح معاملة جديدة
-   * تم تعديل الوظيفة لتستقبل رقم المعاملة المهني بدلاً من المعرف التقني
+   * تحديث سجل العميل عند فتح معاملة جديدة.
+   * تم تعديل الوظيفة لتستقبل رقم المعاملة المهني بدلاً من المعرف التقني لضمان نظافة السجلات.
    */
   async markAsContracted(clientId: string, transactionNumber: string) {
     const clientRef = doc(this.db, paths.clients(this.companyId), clientId);
