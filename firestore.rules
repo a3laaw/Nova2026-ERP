@@ -56,17 +56,20 @@ service cloud.firestore {
     match /companies/{companyId} {
       allow read: if belongsToCompany(companyId);
       
-      // 1. قواعد مخصصة للطلبات التشغيلية (يسمح للموظف بالإرسال)
+      // 1. قواعد مخصصة للطلبات التشغيلية
       match /leaveRequests/{id} {
         allow create: if belongsToCompany(companyId);
         allow read: if belongsToCompany(companyId);
-        allow update, delete: if isAdmin(companyId);
+        // السماح للموظف بتحديث طلبه الشخصي (للمغادرة والعودة) أو للأدمن للقرار
+        allow update: if isAdmin(companyId) || (belongsToCompany(companyId) && request.auth.uid == resource.data.createdBy);
+        allow delete: if isAdmin(companyId);
       }
 
       match /permissionRequests/{id} {
         allow create: if belongsToCompany(companyId);
         allow read: if belongsToCompany(companyId);
-        allow update, delete: if isAdmin(companyId);
+        allow update: if isAdmin(companyId) || (belongsToCompany(companyId) && request.auth.uid == resource.data.createdBy);
+        allow delete: if isAdmin(companyId);
       }
 
       match /leads/{id} {
