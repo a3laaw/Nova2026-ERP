@@ -2,13 +2,13 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   ArrowRight, Loader2, ShieldCheck, Printer,
   Scale, Info, TrendingUp, TrendingDown, History,
-  CalendarDays, Calculator, ArrowLeft
+  CalendarDays, Calculator, ArrowLeft, Landmark
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, where } from 'firebase/firestore';
@@ -20,7 +20,7 @@ import { WorkHoursSettings } from '@/types/work-hours';
 import { WorkHoursService } from '@/services/work-hours-service';
 import { cn } from '@/lib/utils';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
-import { format, parseISO, addMonths, startOfMonth, isBefore } from 'date-fns';
+import { format, parseISO, addMonths, startOfMonth, isBefore, isValid } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 
 export default function LeaveStatementPage() {
@@ -47,12 +47,13 @@ export default function LeaveStatementPage() {
   const { data: employee, loading: empLoading } = useDoc<Employee>(empRef);
 
   const leavesQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.leaveRequests(companyId)), where('userId', '==', empId)) : null, 
+    companyId && db ? query(collection(db, paths.leaveRequests(companyId)), where('employeeId', '==', empId)) : null, 
   [db, companyId, empId]);
   const { data: rawLeaves } = useCollection<LeaveRequest>(leavesQuery);
 
   /**
-   * محرك بناء "كشف حساب رصيد الإجازات" (Leave Ledger)
+   * محرك بناء "كشف حركة رصيد الإجازات" (Leave Ledger)
+   * يحاكي الحركات التاريخية منذ تاريخ التعيين وحتى اليوم
    */
   const leaveLedger = useMemo(() => {
     if (!employee?.hireDate || !settings) return [];
@@ -60,40 +61,40 @@ export default function LeaveStatementPage() {
     const ledger: any[] = [];
     let runningBalance = 0;
     const hireDate = parseISO(employee.hireDate);
-    if (hireDate.getFullYear() < 100) hireDate.setFullYear(hireDate.getFullYear() + 2000);
-
+    if (!isValid(hireDate)) return [];
+    
     const today = new Date();
     const approvedLeaves = rawLeaves
-      .filter(l => ['approved', 'on-leave', 'returned'].includes(l.status))
+      .filter(l => ['approved', 'on-leave', 'returned', 'commenced'].includes(l.status))
       .sort((a, b) => a.startDate.localeCompare(b.startDate));
 
     let currentMonth = startOfMonth(hireDate);
     
-    // محاكاة الاستحقاقات الشهرية والخصومات
+    // محاكاة الاستحقاقات الشهرية والخصومات الميدانية
     while (isBefore(currentMonth, today) || format(currentMonth, 'yyyy-MM') === format(today, 'yyyy-MM')) {
       const monthKey = format(currentMonth, 'yyyy-MM');
-      const monthLabel = format(currentMonth, 'MMMM yyyy', { locale: isRtl ? ar : enUS }).replace('0026', '2026');
+      const monthLabel = format(currentMonth, 'MMMM yyyy', { locale: isRtl ? ar : enUS });
 
-      // إضافة الاستحقاق الشهري (ائتمان)
+      // 1. إضافة الاستحقاق الشهري القانوني (المادة 70)
       runningBalance += 2.5;
       ledger.push({
         date: format(currentMonth, 'yyyy-MM-01'),
         type: 'accrual',
-        description: isRtl ? `استحقاق شهري (${monthLabel})` : `Monthly Accrual (${monthLabel})`,
+        description: isRtl ? `استحقاق رصيد شهري (${monthLabel})` : `Monthly Accrual (${monthLabel})`,
         basis: isRtl ? 'المادة 70 (2.5 يوم/شهر)' : 'Art. 70 (2.5d/mo)',
         change: 2.5,
         balance: Math.round(runningBalance * 100) / 100
       });
 
-      // معالجة الإجازات التي بدأت في هذا الشهر (خصم)
+      // 2. معالجة الإجازات التي بدأت في هذا الشهر (الخصومات)
       const monthsLeaves = approvedLeaves.filter(l => l.startDate.startsWith(monthKey));
       monthsLeaves.forEach(l => {
         runningBalance -= (l.workingDays || 0);
         ledger.push({
           date: l.startDate,
           type: 'deduction',
-          description: isRtl ? `إجازة ${l.type}` : `${l.type} Leave`,
-          basis: isRtl ? `فترة: ${l.startDate} إلى ${l.endDate}` : `Period: ${l.startDate} to ${l.endDate}`,
+          description: isRtl ? `إجازة ${l.type} معتمدة` : `Approved ${l.type} Leave`,
+          basis: isRtl ? `من ${l.startDate} إلى ${l.endDate}` : `From ${l.startDate} to ${l.endDate}`,
           change: -(l.workingDays || 0),
           balance: Math.round(runningBalance * 100) / 100
         });
@@ -106,7 +107,7 @@ export default function LeaveStatementPage() {
   }, [employee, rawLeaves, settings, isRtl]);
 
   if (empLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
-  if (!employee) return <div className="p-20 text-center">{isRtl ? 'الموظف غير موجود' : 'Employee not found'}</div>;
+  if (!employee) return <div className="p-20 text-center font-black">{isRtl ? 'الموظف غير موجود' : 'Employee not found'}</div>;
 
   return (
     <div className="space-y-8 pb-20 animate-in fade-in duration-700" dir={dir}>
@@ -129,48 +130,51 @@ export default function LeaveStatementPage() {
 
       <PrintWrapper title={isRtl ? "كشف حساب رصيد الإجازات السنوية" : "Statement of Annual Leave Balance"}>
          <div className="space-y-10">
-            {/* Employee Banner */}
-            <div className="p-10 rounded-[2.5rem] bg-slate-900 text-white flex flex-col md:flex-row justify-between items-center gap-8 shadow-2xl">
-               <div className="text-start flex items-center gap-6">
+            {/* بطاقة تعريف الموظف */}
+            <div className="p-10 rounded-[2.5rem] bg-slate-900 text-white flex flex-col md:flex-row justify-between items-center gap-8 shadow-2xl relative overflow-hidden">
+               <div className="absolute top-0 right-0 p-8 opacity-5">
+                  <Landmark className="h-32 w-32" />
+               </div>
+               <div className="text-start flex items-center gap-6 relative z-10">
                   <div className="h-20 w-20 rounded-2xl bg-white/10 flex items-center justify-center text-primary font-black text-2xl border border-white/10">
                      {employee.employeeNumber}
                   </div>
                   <div>
                      <h2 className="text-3xl font-black">{employee.fullName}</h2>
                      <p className="text-slate-400 font-bold mt-1 uppercase tracking-widest text-xs">{employee.jobTitle} | {employee.departmentName}</p>
-                     <div className="flex items-center gap-2 mt-4 text-[10px] font-black text-primary bg-primary/10 px-3 py-1 rounded-full w-fit">
+                     <div className="flex items-center gap-2 mt-4 text-[10px] font-black text-primary bg-primary/10 px-3 py-1 rounded-full w-fit border border-primary/20">
                         <CalendarDays className="h-3 w-3" /> {isRtl ? 'تاريخ التعيين:' : 'Hire Date:'} {employee.hireDate}
                      </div>
                   </div>
                </div>
-               <div className="bg-white/5 p-8 rounded-3xl border border-white/10 text-center min-w-[200px]">
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">{isRtl ? 'الرصيد الختامي الحالي' : 'Net Final Balance'}</p>
-                  <p className="text-5xl font-black text-emerald-400 font-mono">{leaveLedger.length > 0 ? leaveLedger[0].balance : 0}</p>
-                  <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase">{isRtl ? 'يوم مستحق' : 'Accrued Days'}</p>
+               <div className="bg-white/5 p-8 rounded-3xl border border-white/10 text-center min-w-[220px] relative z-10">
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">{isRtl ? 'الرصيد المتاح حالياً' : 'Current Available Balance'}</p>
+                  <p className="text-6xl font-black text-emerald-400 font-mono">{leaveLedger.length > 0 ? leaveLedger[0].balance : 0}</p>
+                  <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase">{isRtl ? 'يوم مستحق' : 'Accrued Days'}</p>
                </div>
             </div>
 
-            {/* Explanatory Note */}
+            {/* ملاحظة منهجية الحساب */}
             <div className="p-6 rounded-3xl bg-blue-50 border-2 border-blue-100 flex items-start gap-4 text-start">
                <Info className="h-6 w-6 text-blue-600 shrink-0 mt-1" />
                <div className="space-y-1">
-                  <h5 className="font-black text-blue-800 text-sm">{isRtl ? 'منهجية الحساب (المادة 70)' : 'Calculation Methodology (Art. 70)'}</h5>
+                  <h5 className="font-black text-blue-800 text-sm">{isRtl ? 'منهجية الحساب الرسمية' : 'Calculation Methodology'}</h5>
                   <p className="text-xs text-blue-700/70 leading-relaxed font-bold">
                     {isRtl 
-                      ? 'يتم إضافة 2.5 يوم رصيد لكل شهر عمل فعلي منذ تاريخ التعيين. الخصم يتم فقط عند القيام بإجازات معتمدة وبناءً على "أيام العمل الصافية" (باستبعاد الجمعة والعطلات الرسمية) وفق نص القانون.' 
+                      ? 'يتم إضافة 2.5 يوم رصيد لكل شهر عمل فعلي منذ تاريخ التعيين (المادة 70). الخصم يتم بناءً على "أيام العمل الصافية" (باستبعاد الجمعة والعطلات الرسمية) وفق نص القانون الكويتي المعتمد في نظام NovaFlow.' 
                       : '2.5 days are added for each full month of service. Deductions are made only for approved leaves based on "Net Working Days" (excluding weekends/holidays) per Kuwait Labor Law.'}
                   </p>
                </div>
             </div>
 
-            {/* Ledger Table */}
+            {/* جدول حركات الكشف */}
             <div className="border-2 rounded-[2.5rem] overflow-hidden shadow-sm bg-white">
                <table className="w-full text-sm text-start">
                   <thead className="bg-slate-50 border-b">
                      <tr className="font-black text-slate-500 uppercase text-[10px] tracking-widest">
                         <th className="p-6 text-start">{isRtl ? 'التاريخ' : 'Date'}</th>
-                        <th className="p-6 text-start">{isRtl ? 'نوع العملية / الملاحظة' : 'Transaction'}</th>
-                        <th className="p-6 text-start">{isRtl ? 'الأساس / المرجعية' : 'Legal Basis'}</th>
+                        <th className="p-6 text-start">{isRtl ? 'نوع العملية / الوصف' : 'Transaction'}</th>
+                        <th className="p-6 text-start">{isRtl ? 'المرجعية / الملاحظة' : 'Reference'}</th>
                         <th className="p-6 text-center">{isRtl ? 'الحركة' : 'Change'}</th>
                         <th className="p-6 text-center">{isRtl ? 'الرصيد التراكمي' : 'Balance'}</th>
                      </tr>
@@ -181,7 +185,7 @@ export default function LeaveStatementPage() {
                            <td className="p-6 font-mono text-xs text-slate-500">{row.date}</td>
                            <td className="p-6 font-black text-slate-800">
                               <div className="flex items-center gap-2">
-                                 {row.type === 'accrual' ? <TrendingUp className="h-3 w-3 text-emerald-500" /> : <TrendingDown className="h-3 w-3 text-rose-500" />}
+                                 {row.change > 0 ? <TrendingUp className="h-3 w-3 text-emerald-500" /> : <TrendingDown className="h-3 w-3 text-rose-500" />}
                                  {row.description}
                               </div>
                            </td>
@@ -208,7 +212,7 @@ export default function LeaveStatementPage() {
                </table>
             </div>
 
-            {/* Validation Footer */}
+            {/* تذييل الاعتماد والتدقيق */}
             <div className="flex justify-between items-end pt-12 mt-12 border-t-2 border-dashed border-slate-100">
                <div className="text-start space-y-8">
                   <div className="space-y-1">

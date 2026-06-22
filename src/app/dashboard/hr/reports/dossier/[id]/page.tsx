@@ -54,7 +54,7 @@ export default function EmployeeDossierPage() {
   [db, companyId, empId]);
   
   const leavesQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.leaveRequests(companyId)), where('userId', '==', empId)) : null, 
+    companyId && db ? query(collection(db, paths.leaveRequests(companyId)), where('employeeId', '==', empId)) : null, 
   [db, companyId, empId]);
 
   const assetsQuery = useMemo(() => 
@@ -67,7 +67,7 @@ export default function EmployeeDossierPage() {
 
   const attendance = useMemo(() => [...rawAttendance].sort((a, b) => b.date.localeCompare(a.date)), [rawAttendance]);
   const approvedLeaves = useMemo(() => 
-    rawLeaves.filter(l => ['approved', 'on-leave', 'returned'].includes(l.status))
+    rawLeaves.filter(l => ['approved', 'on-leave', 'returned', 'commenced'].includes(l.status))
       .sort((a, b) => b.startDate.localeCompare(a.startDate)), 
   [rawLeaves]);
 
@@ -76,6 +76,8 @@ export default function EmployeeDossierPage() {
     if (!employee?.hireDate) return 0;
     const hireDate = parseISO(employee.hireDate);
     const today = new Date();
+    if (!isValid(hireDate)) return 0;
+    
     const totalDaysServed = Math.max(0, differenceInDays(today, hireDate));
     const accrued = (totalDaysServed / 365.25) * 30;
     const totalDeducted = approvedLeaves.reduce((sum, l) => sum + (l.workingDays || 0), 0);
@@ -89,14 +91,12 @@ export default function EmployeeDossierPage() {
       try {
         const date = parseISO(rec.date);
         if (!isValid(date)) return;
-        if (date.getFullYear() < 100) date.setFullYear(date.getFullYear() + 2000);
-
         const key = format(date, 'yyyy-MM');
         if (!groups[key]) {
           const labelText = format(date, 'MMMM yyyy', { locale: isRtl ? ar : enUS });
           groups[key] = {
             monthKey: key,
-            label: labelText.replace('0026', '2026'), 
+            label: labelText,
             present: 0,
             late: 0,
             absent: 0,
@@ -120,7 +120,6 @@ export default function EmployeeDossierPage() {
 
   return (
     <div className="space-y-8 pb-20 animate-in fade-in duration-700" dir={dir}>
-      {/* Action Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 print:hidden">
         <div className="flex items-center gap-4">
            <Button variant="ghost" onClick={() => router.push('/dashboard/hr/reports/dossier')} className="h-12 w-12 p-0 rounded-2xl bg-white shadow-sm border hover:bg-slate-50">
@@ -139,7 +138,7 @@ export default function EmployeeDossierPage() {
              onClick={() => router.push(`/dashboard/hr/reports/leaves/statement/${empId}`)}
              className="rounded-2xl h-14 px-6 font-black gap-2 border-2 hover:bg-slate-50"
            >
-             <FileText className="h-5 w-5 text-primary" /> {isRtl ? 'كشف الحساب التفصيلي' : 'Full Ledger'}
+             <FileText className="h-5 w-5 text-primary" /> {isRtl ? 'كشف حركة الرصيد' : 'Leave Statement'}
            </Button>
            <Button onClick={() => window.print()} className="rounded-2xl h-14 px-8 font-black gap-2 bg-primary text-white shadow-xl shadow-primary/20 hover:scale-105 transition-all">
               <Printer className="h-5 w-5" /> {isRtl ? 'طباعة التقرير' : 'Print Report'}
@@ -150,7 +149,7 @@ export default function EmployeeDossierPage() {
       <PrintWrapper title={isRtl ? "سجل تاريخي للموظف" : "Employee Historical Record"}>
          <div className="space-y-12">
             
-            {/* Identity Card */}
+            {/* بطاقة الهوية */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                <div className="md:col-span-2 space-y-6">
                   <div className="flex items-start gap-6">
@@ -179,11 +178,11 @@ export default function EmployeeDossierPage() {
                </div>
             </div>
 
-            {/* Leave Summary (Mini Report) */}
+            {/* ملخص الإجازات */}
             <div className="space-y-6 text-start">
                <div className="flex justify-between items-center">
                   <h3 className="text-lg font-black border-s-4 border-emerald-500 ps-3 flex items-center gap-2">
-                     <Plane className="h-5 w-5 text-emerald-500" /> {isRtl ? 'ملخص الإجازات المعتمدة' : 'Approved Leave History'}
+                     <Plane className="h-5 w-5 text-emerald-500" /> {isRtl ? 'سجل الإجازات المعتمدة' : 'Approved Leave History'}
                   </h3>
                </div>
                <div className="border-2 rounded-[2rem] overflow-hidden shadow-sm bg-white">
@@ -218,10 +217,10 @@ export default function EmployeeDossierPage() {
                </div>
             </div>
 
-            {/* Attendance Monthly Analysis */}
+            {/* تحليل الحضور */}
             <div className="space-y-6 text-start">
                <h3 className="text-lg font-black border-s-4 border-primary ps-3 flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-primary" /> {isRtl ? 'تحليل الحضور والالتزام الشهري' : 'Monthly Attendance Analytics'}
+                  <Clock className="h-5 w-5 text-primary" /> {isRtl ? 'تحليل الانضباط الشهري' : 'Monthly Discipline Analysis'}
                </h3>
                <div className="border-2 rounded-[2rem] overflow-hidden shadow-sm bg-white">
                   <table className="w-full text-sm text-start">
@@ -265,7 +264,7 @@ export default function EmployeeDossierPage() {
                </div>
             </div>
 
-            {/* Assets Section */}
+            {/* العهد الميدانية */}
             <div className="space-y-6 text-start">
                <h3 className="text-lg font-black border-s-4 border-amber-500 ps-3 flex items-center gap-2">
                   <Truck className="h-5 w-5 text-amber-500" /> {isRtl ? 'العهد والمعدات الميدانية' : 'Field Assets In Possession'}
