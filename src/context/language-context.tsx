@@ -95,7 +95,7 @@ const translations: Record<Language, Record<string, string>> = {
     fixed: 'مقطوع',
     itemized: 'بنود',
     percentage: 'نسبة مئوية',
-    share: 'الحصة (%)',
+    share: 'الحصة',
     amount: 'المبلغ',
     
     // العروض
@@ -107,7 +107,8 @@ const translations: Record<Language, Record<string, string>> = {
     quotationFor: 'موجه إلى',
     subject: 'الموضوع',
     estimatedTotal: 'القيمة التقديرية',
-    totalQuoteValue: 'إجمالي العرض',
+    totalQuoteValue: 'إجمالي قيمة البنود',
+    totalQuoteShare: 'إجمالي حصص العقد',
     addQuotationItem: 'إضافة بند مالي',
     quoteAnalysis: 'تحليل العروض',
     
@@ -249,7 +250,7 @@ const translations: Record<Language, Record<string, string>> = {
     fixed: 'Fixed',
     itemized: 'Itemized',
     percentage: 'Percentage',
-    share: 'Share (%)',
+    share: 'Share',
     amount: 'Amount',
     
     introText: 'Introduction',
@@ -260,7 +261,8 @@ const translations: Record<Language, Record<string, string>> = {
     quotationFor: 'Quotation For',
     subject: 'Subject',
     estimatedTotal: 'Estimated Total',
-    totalQuoteValue: 'Total Value',
+    totalQuoteValue: 'Total Items Value',
+    totalQuoteShare: 'Total Contract Share',
     addQuotationItem: 'Add Item',
     quoteAnalysis: 'Quote Analysis',
 

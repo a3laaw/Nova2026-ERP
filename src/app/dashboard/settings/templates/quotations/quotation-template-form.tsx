@@ -90,9 +90,19 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
   const { data: subServices } = useCollection<SubService>(subQuery);
   const { data: stages } = useCollection<TechnicalStage>(stagesQuery);
 
+  // حسابات محرك التدقيق المالي
   const totalPercentage = useMemo(() => {
     return formData.items?.reduce((acc, item) => acc + (item.percentage || 0), 0) || 0;
   }, [formData.items]);
+
+  const totalItemizedAmount = useMemo(() => {
+    return formData.items?.reduce((acc, item) => acc + ((item.unitPrice || 0) * (item.quantity || 1)), 0) || 0;
+  }, [formData.items]);
+
+  const isPercentageMode = formData.pricingMode === 'percentage';
+  const isMathValid = isPercentageMode 
+    ? totalPercentage === 100 
+    : totalItemizedAmount === (formData.baseAmount || 0);
 
   const addItem = () => {
     const nextIndex = (formData.items?.length || 0) + 1;
@@ -143,11 +153,13 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
       return;
     }
 
-    if (formData.pricingMode === 'percentage' && totalPercentage !== 100) {
+    if (!isMathValid) {
       toast({ 
         variant: "destructive", 
-        title: t('error'), 
-        description: isRtl ? "يجب أن يكون مجموع النسب المئوية 100% لتغطية كامل قيمة العقد." : "Total percentage must be 100%."
+        title: isRtl ? "تنبيه مالي" : "Financial Alert", 
+        description: isPercentageMode 
+          ? (isRtl ? "يجب أن يكون مجموع النسب 100%." : "Total percentage must be 100%.")
+          : (isRtl ? "مجموع المبالغ لا يطابق إجمالي العقد المحدد." : "Items sum does not match base amount.")
       });
       return;
     }
@@ -366,16 +378,16 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
 
                              <div className="md:col-span-3 space-y-2">
                                 <Label className="text-[10px] font-black text-slate-400 uppercase">
-                                  {formData.pricingMode === 'percentage' ? t('share') : t('amount')}
+                                  {isPercentageMode ? t('share') : t('amount')}
                                 </Label>
                                 <div className="relative">
                                    <Input 
                                      type="number" 
-                                     value={formData.pricingMode === 'percentage' ? (item.percentage || 0) : (item.unitPrice || 0)} 
-                                     onChange={e => updateItem(idx, formData.pricingMode === 'percentage' ? 'percentage' : 'unitPrice', Number(e.target.value))}
+                                     value={isPercentageMode ? (item.percentage || 0) : (item.unitPrice || 0)} 
+                                     onChange={e => updateItem(idx, isPercentageMode ? 'percentage' : 'unitPrice', Number(e.target.value))}
                                      className="h-12 rounded-xl border-2 font-black text-lg text-emerald-600 text-center"
                                    />
-                                   {formData.pricingMode === 'percentage' && (
+                                   {isPercentageMode && (
                                      <div className="absolute -bottom-6 left-0 right-0 text-center">
                                         <span className="text-[10px] font-black text-emerald-500">≈ {calculatedAmount.toLocaleString()} KWD</span>
                                      </div>
@@ -397,23 +409,26 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                   );
                })}
 
-               {formData.pricingMode === 'percentage' && (
-                 <div className={cn(
-                   "p-8 rounded-[2rem] border-4 border-dashed flex items-center justify-between",
-                   totalPercentage === 100 ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-rose-50 border-rose-200 text-rose-800"
-                 )}>
-                    <div className="flex items-center gap-3">
-                       <Calculator className="h-8 w-8" />
-                       <div className="text-start">
-                          <p className="font-black text-lg">{isRtl ? 'إجمالي حصص العقد' : 'Total Contract Share'}</p>
-                       </div>
-                    </div>
-                    <div className="text-center">
-                       <span className="text-4xl font-black">{totalPercentage}%</span>
-                       {totalPercentage !== 100 && <AlertTriangle className="h-5 w-5 mx-auto mt-1 animate-pulse" />}
-                    </div>
-                 </div>
-               )}
+               {/* خانة التحقق من إجمالي المبلغ/الحصص - مطابقة للصورة */}
+               <div className={cn(
+                 "p-8 rounded-[2.5rem] border-4 border-dashed flex items-center justify-between transition-all",
+                 isMathValid ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-rose-50 border-rose-200 text-rose-800"
+               )}>
+                  <div className="text-center">
+                     <span className="text-4xl font-black">
+                       {isPercentageMode ? `${totalPercentage}%` : `${totalItemizedAmount.toLocaleString()} KWD`}
+                     </span>
+                     {!isMathValid && <AlertTriangle className="h-5 w-5 mx-auto mt-1 animate-pulse" />}
+                  </div>
+                  <div className="flex items-center gap-3">
+                     <div className="text-end">
+                        <p className="font-black text-lg">
+                          {isPercentageMode ? t('totalQuoteShare') : t('totalQuoteValue')}
+                        </p>
+                     </div>
+                     <Calculator className="h-8 w-8" />
+                  </div>
+               </div>
 
                <Button 
                  variant="outline" 

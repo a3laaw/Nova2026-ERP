@@ -85,6 +85,15 @@ export function ContractTemplateForm({ template, onClose }: Props) {
     return formData.defaultMilestones?.reduce((acc, m) => acc + (m.percentage || 0), 0) || 0;
   }, [formData.defaultMilestones]);
 
+  const totalMilestoneAmount = useMemo(() => {
+    return formData.defaultMilestones?.reduce((acc, m) => {
+      const amount = ((formData.baseAmount || 0) * (m.percentage || 0)) / 100;
+      return acc + amount;
+    }, 0) || 0;
+  }, [formData.defaultMilestones, formData.baseAmount]);
+
+  const isMathValid = totalPercentage === 100;
+
   const addMilestone = () => {
     setFormData({
       ...formData,
@@ -230,7 +239,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                   </Button>
                </CardHeader>
                <CardContent className="p-8 space-y-6">
-                  <div className="p-8 bg-primary/5 rounded-[2.5rem] border-2 border-primary/10 animate-in fade-in zoom-in-95">
+                  <div className="p-8 bg-primary/5 rounded-[2.5rem] border-2 border-primary/10 animate-in fade-in zoom-in-95 text-start">
                      <div className="max-w-md space-y-2">
                         <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
                            <DollarSign className="h-3 w-3" /> {isRtl ? 'إجمالي قيمة العقد التقديرية (KWD)' : 'Estimated Contract Value (KWD)'}
@@ -253,7 +262,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                         "p-8 rounded-[2.5rem] bg-slate-50 border-2 transition-all space-y-6 animate-in fade-in slide-in-from-top-2",
                         isFirst ? "border-s-8 border-s-primary" : "border-s-8 border-s-blue-500"
                       )}>
-                        <div className="flex justify-between items-start gap-6">
+                        <div className="flex justify-between items-start gap-6 text-start">
                             <div className="w-40 space-y-2">
                                <Label className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'مسمى الدفعة' : 'Milestone Label'}</Label>
                                <Input 
@@ -267,7 +276,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                   <div className="space-y-2">
                                      <Label className="text-[10px] font-black text-primary uppercase flex items-center gap-1">
-                                        <Clock className="h-3 w-3" /> {t('milestoneTiming')}
+                                        <Clock className="h-3 w-3 text-primary" /> {t('milestoneTiming')}
                                      </Label>
                                      <Select value={milestone.timing || 'after'} onValueChange={v => updateMilestone(idx, 'timing', v)}>
                                         <SelectTrigger className="h-12 rounded-xl border-2 bg-white font-black">
@@ -287,7 +296,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                      </Label>
                                      {isFirst ? (
                                        <Select value={milestone.contractualEvent || 'SIGNING'} onValueChange={v => updateMilestone(idx, 'contractualEvent', v)}>
-                                          <SelectTrigger className="h-12 rounded-xl border-2 bg-white font-black">
+                                          <SelectTrigger className="h-12 rounded-xl border-2 bg-white font-black text-blue-600">
                                              <SelectValue />
                                           </SelectTrigger>
                                           <SelectContent>
@@ -330,14 +339,21 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                     );
                   })}
 
+                  {/* خانة التحقق من إجمالي الحصص - مطابقة للصورة */}
                   <div className={cn(
-                    "p-8 rounded-[2rem] border-4 border-dashed flex items-center justify-between",
-                    totalPercentage === 100 ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-rose-50 border-rose-200 text-rose-800"
+                    "p-8 rounded-[2.5rem] border-4 border-dashed flex items-center justify-between transition-all",
+                    isMathValid ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-rose-50 border-rose-200 text-rose-800"
                   )}>
-                     <div className="text-start">
-                        <p className="font-black text-lg">{isRtl ? 'إجمالي الدفعات' : 'Total Payment Distribution'}</p>
+                     <div className="text-center">
+                        <span className="text-4xl font-black">{totalPercentage}%</span>
+                        {!isMathValid && <AlertTriangle className="h-5 w-5 mx-auto mt-1 animate-pulse" />}
                      </div>
-                     <span className="text-4xl font-black">{totalPercentage}%</span>
+                     <div className="flex items-center gap-3">
+                        <div className="text-end">
+                           <p className="font-black text-lg">{t('totalQuoteShare')}</p>
+                        </div>
+                        <Calculator className="h-8 w-8" />
+                     </div>
                   </div>
                </CardContent>
             </Card>
