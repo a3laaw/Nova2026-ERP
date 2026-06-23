@@ -40,6 +40,9 @@ export const paths = {
   inventoryItems: (companyId: string) => getTenantPath(companyId, 'inventoryItems'),
   assetAssignments: (companyId: string) => getTenantPath(companyId, 'assetAssignments'),
 
+  // الموردين (المشتريات)
+  suppliers: (companyId: string) => getTenantPath(companyId, 'suppliers'),
+
   // المسارات الفنية والتشغيلية (The Technical Core)
   activityTypes: (companyId: string) => getTenantPath(companyId, 'activityTypes'),
   services: (companyId: string, actId: string) => `${getTenantPath(companyId, 'activityTypes')}/${actId}/services`,
