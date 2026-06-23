@@ -203,7 +203,14 @@ const translations: Record<Language, Record<string, string>> = {
     quantity: 'الكمية',
     unit: 'الوحدة',
     items: 'البنود',
-    defaultTemplate: 'قالب افتراضي'
+    defaultTemplate: 'قالب افتراضي',
+    legalText: 'النص القانوني',
+    closingText: 'خاتمة المستند',
+    clauses: 'بنود العقد',
+    addClause: 'إضافة مادة قانونية',
+    milestones: 'دفعات التعاقد',
+    addMilestone: 'إضافة دفعة مالية',
+    condition: 'شرط الاستحقاق'
   },
   en: {
     dashboard: 'Dashboard',
@@ -396,7 +403,14 @@ const translations: Record<Language, Record<string, string>> = {
     quantity: 'Qty',
     unit: 'Unit',
     items: 'Line Items',
-    defaultTemplate: 'Default Template'
+    defaultTemplate: 'Default Template',
+    legalText: 'Legal Text',
+    closingText: 'Document Closing',
+    clauses: 'Contract Clauses',
+    addClause: 'Add Clause',
+    milestones: 'Payment Milestones',
+    addMilestone: 'Add Milestone',
+    condition: 'Requirement Condition'
   }
 };
 

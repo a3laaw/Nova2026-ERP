@@ -18,6 +18,7 @@ export interface QuotationItem {
 }
 
 export interface BaseTemplate extends BaseReference {
+  id?: string;
   code: string;
   name: string;
   description?: string;
@@ -42,10 +43,22 @@ export interface QuotationTemplate extends BaseTemplate {
   items: QuotationItem[];
 }
 
+export interface ContractMilestone {
+  name: string;
+  percentage?: number;
+  amount?: number;
+  conditionText?: string;
+  technicalStageId?: string; // الربط مع مرحلة فنية من المراجع
+}
+
 export interface ContractTemplate extends BaseTemplate {
-  legalText: string;
-  paymentTerms?: string;
-  penaltyClause?: string;
+  introText?: string;
+  legalText?: string;
+  closingText?: string;
+  clauses: string[];
+  defaultMilestones: ContractMilestone[];
+  contractType?: string;
+  durationNotes?: string;
 }
 
 export interface BOQTemplate extends BaseTemplate {
