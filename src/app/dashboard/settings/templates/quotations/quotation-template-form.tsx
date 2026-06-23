@@ -16,7 +16,7 @@ import {
 import { 
   Save, X, Plus, Trash2, Loader2, ArrowRight,
   LayoutGrid, Boxes, Layers, Calculator,
-  ShieldCheck, Info, Sparkles
+  ShieldCheck, Info, Sparkles, FileText
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
