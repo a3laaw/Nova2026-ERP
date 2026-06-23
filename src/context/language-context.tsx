@@ -16,11 +16,16 @@ const translations: Record<Language, Record<string, string>> = {
     // القائمة الرئيسية (Odoo Style)
     dashboard: 'الرئيسية',
     crm: 'العملاء',
+    leads: 'الفرص',
+    clients: 'قاعدة العملاء',
     projects: 'المشاريع',
+    activeProjects: 'المشاريع الجارية',
     accounting: 'الحسابات',
     hr: 'الموظفين',
     procurement: 'المشتريات',
-    inventory: 'المخزون',
+    suppliers: 'الموردين',
+    inventory: 'المخزن',
+    warehouses: 'المستودعات',
     checklists: 'الإعدادات الفنية',
     reports: 'التقارير',
     ai: 'ذكاء Nova',
@@ -30,6 +35,9 @@ const translations: Record<Language, Record<string, string>> = {
     switchLang: 'English',
     logout: 'خروج',
     profile: 'حسابي',
+    myProfile: 'ملفي الشخصي',
+    staffRecords: 'سجل الموظفين',
+    users: 'المستخدمين',
     billing: 'الاشتراك',
     save: 'حفظ',
     saved: 'تم الحفظ',
@@ -48,6 +56,7 @@ const translations: Record<Language, Record<string, string>> = {
     name: 'الاسم',
     value: 'القيمة',
     summary: 'الملخص',
+    reconciliation: 'المطابقة البنكية',
 
     // الإعدادات والهيكل
     orgRef: 'الهيكل الوظيفي',
@@ -68,16 +77,14 @@ const translations: Record<Language, Record<string, string>> = {
     operationalPath: 'مسار التنفيذ',
     totalStages: 'عدد المراحل',
     
-    // العملاء (Sales/CRM)
+    // العملاء
     addLead: 'إضافة فرصة',
-    leads: 'الفرص البيعية',
-    clients: 'قاعدة العملاء',
     fileNumber: 'رقم الملف',
     civilId: 'الرقم المدني',
     mobile: 'الهاتف',
     email: 'البريد',
 
-    // القوالب (Templates)
+    // القوالب
     templateLibrary: 'القوالب',
     quotationTemplates: 'قوالب العروض',
     contractTemplates: 'قوالب العقود',
@@ -88,8 +95,10 @@ const translations: Record<Language, Record<string, string>> = {
     fixed: 'مقطوع',
     itemized: 'بنود',
     percentage: 'نسبة مئوية',
+    share: 'الحصة (%)',
+    amount: 'المبلغ',
     
-    // العروض (Quotations)
+    // العروض
     introText: 'المقدمة',
     defaultTerms: 'الشروط والالتزامات',
     validDays: 'صلاحية العرض (أيام)',
@@ -100,8 +109,9 @@ const translations: Record<Language, Record<string, string>> = {
     estimatedTotal: 'القيمة التقديرية',
     totalQuoteValue: 'إجمالي العرض',
     addQuotationItem: 'إضافة بند مالي',
+    quoteAnalysis: 'تحليل العروض',
     
-    // العقود (Contracts)
+    // العقود
     legalText: 'النصوص القانونية',
     closingText: 'الخاتمة',
     clauses: 'بنود العقد',
@@ -116,7 +126,7 @@ const translations: Record<Language, Record<string, string>> = {
     during: 'أثناء',
     after: 'بعد',
 
-    // الموظفين (HR)
+    // الموظفين
     employees: 'سجل الموظفين',
     newHire: 'تعيين جديد',
     payroll: 'الرواتب',
@@ -128,6 +138,20 @@ const translations: Record<Language, Record<string, string>> = {
     hireDate: 'تاريخ التعيين',
     workHours: 'مواعيد العمل',
     holidays: 'العطلات الرسمية',
+    lastLogin: 'آخر دخول',
+    personalInfo: 'البيانات الشخصية',
+    displayName: 'الاسم المعروض',
+    username: 'اسم المستخدم',
+    currentRole: 'الدور الحالي',
+    accountSecurity: 'أمان الحساب',
+    changePassword: 'تغيير كلمة المرور',
+    passwordDesc: 'تحديث بيانات الدخول لضمان حماية حسابك.',
+
+    // المشاريع
+    project: 'المشروع',
+    newProject: 'مشروع جديد',
+    startProject: 'بدء المشروع',
+    budget: 'الميزانية',
 
     // التقارير والطباعة
     print: 'طباعة',
@@ -138,17 +162,28 @@ const translations: Record<Language, Record<string, string>> = {
     licenseExpiry: 'انتهاء الترخيص',
     laborExpiry: 'اعتماد الشؤون',
     address: 'العنوان',
-    saveAllRules: 'حفظ القواعد',
-    backToSettings: 'رجوع'
+    saveAllRules: 'حفظ كافة القواعد',
+    backToSettings: 'رجوع للإعدادات',
+
+    // نطاقات الوصول
+    scopeNone: 'محجوب',
+    scopeOwn: 'سجلاتي فقط',
+    scopeDept: 'سجلات القسم',
+    scopeAll: 'كل المنشأة'
   },
   en: {
     dashboard: 'Dashboard',
     crm: 'CRM',
+    leads: 'Leads',
+    clients: 'Clients',
     projects: 'Projects',
+    activeProjects: 'Active Projects',
     accounting: 'Accounting',
     hr: 'Employees',
     procurement: 'Purchasing',
+    suppliers: 'Suppliers',
     inventory: 'Inventory',
+    warehouses: 'Warehouses',
     checklists: 'Technical Setup',
     reports: 'Reports',
     ai: 'Nova AI',
@@ -157,6 +192,9 @@ const translations: Record<Language, Record<string, string>> = {
     switchLang: 'العربية',
     logout: 'Logout',
     profile: 'Profile',
+    myProfile: 'My Profile',
+    staffRecords: 'Staff Records',
+    users: 'Users',
     billing: 'Subscription',
     save: 'Save',
     saved: 'Saved',
@@ -175,6 +213,7 @@ const translations: Record<Language, Record<string, string>> = {
     name: 'Name',
     value: 'Value',
     summary: 'Summary',
+    reconciliation: 'Reconciliation',
 
     orgRef: 'Org Structure',
     techRef: 'Workflows',
@@ -195,8 +234,6 @@ const translations: Record<Language, Record<string, string>> = {
     totalStages: 'Total Stages',
 
     addLead: 'Add Opportunity',
-    leads: 'Opportunities',
-    clients: 'Clients',
     fileNumber: 'File No.',
     civilId: 'Civil ID',
     mobile: 'Mobile',
@@ -212,6 +249,8 @@ const translations: Record<Language, Record<string, string>> = {
     fixed: 'Fixed',
     itemized: 'Itemized',
     percentage: 'Percentage',
+    share: 'Share (%)',
+    amount: 'Amount',
     
     introText: 'Introduction',
     defaultTerms: 'Terms & Conditions',
@@ -223,6 +262,7 @@ const translations: Record<Language, Record<string, string>> = {
     estimatedTotal: 'Estimated Total',
     totalQuoteValue: 'Total Value',
     addQuotationItem: 'Add Item',
+    quoteAnalysis: 'Quote Analysis',
 
     legalText: 'Legal Text',
     closingText: 'Closing',
@@ -249,6 +289,19 @@ const translations: Record<Language, Record<string, string>> = {
     hireDate: 'Hire Date',
     workHours: 'Schedules',
     holidays: 'Holidays',
+    lastLogin: 'Last Login',
+    personalInfo: 'Personal Info',
+    displayName: 'Display Name',
+    username: 'Username',
+    currentRole: 'Current Role',
+    accountSecurity: 'Account Security',
+    changePassword: 'Change Password',
+    passwordDesc: 'Update your login details to ensure account protection.',
+
+    project: 'Project',
+    newProject: 'New Project',
+    startProject: 'Start Project',
+    budget: 'Budget',
 
     print: 'Print',
     download: 'Download',
@@ -259,7 +312,12 @@ const translations: Record<Language, Record<string, string>> = {
     laborExpiry: 'HR Authorization',
     address: 'Address',
     saveAllRules: 'Save Rules',
-    backToSettings: 'Back'
+    backToSettings: 'Back',
+
+    scopeNone: 'None',
+    scopeOwn: 'Own Records',
+    scopeDept: 'Department',
+    scopeAll: 'All Enterprise'
   }
 };
 

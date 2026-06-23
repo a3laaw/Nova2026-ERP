@@ -58,7 +58,7 @@ export function DashboardSidebar() {
       url: "/dashboard/projects", 
       resource: 'projects',
       subItems: [
-        { title: isRtl ? 'المشاريع الجارية' : 'Active Projects', url: "/dashboard/projects", icon: Layers },
+        { title: t('activeProjects'), url: "/dashboard/projects", icon: Layers },
         { title: t('reports'), url: "/dashboard/reports", icon: FileText },
       ]
     },
@@ -69,7 +69,7 @@ export function DashboardSidebar() {
       resource: 'procurement',
       subItems: [
         { title: t('suppliers'), url: "/dashboard/procurement/suppliers", icon: Truck },
-        { title: isRtl ? 'تحليل العروض' : 'Quote Analysis', url: "/dashboard/ai", icon: FileSearch },
+        { title: t('quoteAnalysis'), url: "/dashboard/ai", icon: FileSearch },
       ]
     },
     { 
@@ -79,12 +79,12 @@ export function DashboardSidebar() {
       resource: 'hr',
       subItems: [
         { 
-          title: isRtl ? 'ملفي الشخصي' : 'My Profile', 
+          title: t('myProfile'), 
           url: globalUser?.employeeId ? `/dashboard/hr/reports/dossier/${globalUser.employeeId}` : '/dashboard/hr', 
           icon: ShieldCheck 
         },
         { 
-          title: isRtl ? 'سجل الموظفين' : 'Staff Records', 
+          title: t('staffRecords'), 
           url: "/dashboard/hr/employees", 
           icon: Users,
           hideIfOwnScope: true 
@@ -104,7 +104,7 @@ export function DashboardSidebar() {
       url: "/dashboard/accounting", 
       resource: 'accounting',
       subItems: [
-        { title: isRtl ? 'المطابقة البنكية' : 'Reconciliation', url: "/dashboard/accounting", icon: Sparkles },
+        { title: t('reconciliation'), url: "/dashboard/accounting", icon: Sparkles },
       ]
     },
     { 
@@ -113,7 +113,7 @@ export function DashboardSidebar() {
       url: "/dashboard/inventory", 
       resource: 'inventory',
       subItems: [
-        { title: isRtl ? 'المستودعات' : 'Warehouses', url: "/dashboard/inventory", icon: Building2 },
+        { title: t('warehouses'), url: "/dashboard/inventory", icon: Building2 },
       ]
     },
     { 
@@ -122,7 +122,7 @@ export function DashboardSidebar() {
       url: "/dashboard/settings", 
       resource: 'settings',
       subItems: [
-        { title: isRtl ? 'المستخدمين' : 'Users', url: "/dashboard/settings/users", icon: Users },
+        { title: t('users'), url: "/dashboard/settings/users", icon: Users },
         { title: t('companyIdentity'), url: "/dashboard/settings/company", icon: Building2 },
         { title: t('rolesRef'), url: "/dashboard/settings/roles", icon: ShieldCheck },
       ]

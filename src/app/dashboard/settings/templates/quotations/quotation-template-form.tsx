@@ -194,7 +194,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
           </Button>
           <div className="text-start">
             <h1 className="text-2xl font-black font-headline">
-               {template ? (isRtl ? 'تعديل قالب عرض السعر' : 'Edit Quote Template') : (isRtl ? 'إنشاء قالب عرض سعر جديد' : 'New Quote Template')}
+               {template ? t('edit') : t('newTemplate')}
             </h1>
             <p className="text-xs font-bold text-muted-foreground opacity-70">
                {isRtl ? 'تحديد الدفعات المالية وربطها بالمسار الفني' : 'Define payment installments and link to technical path'}
@@ -215,7 +215,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
          <div className="lg:col-span-2 space-y-8">
             <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
                <CardHeader className="bg-primary/5 p-8 border-b text-start">
-                  <CardTitle className="text-lg font-black flex items-center gap-2"><Info className="h-5 w-5 text-primary" /> {isRtl ? 'الارتباط التشغيلي' : 'Operational Link'}</CardTitle>
+                  <CardTitle className="text-lg font-black flex items-center gap-2"><Info className="h-5 w-5 text-primary" /> {t('operationalPath')}</CardTitle>
                </CardHeader>
                <CardContent className="p-8 space-y-6 text-start">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -262,7 +262,6 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                         <Calculator className="h-8 w-8 text-primary" />
                         {isRtl ? 'هيكلة بنود الدفعات الذكية' : 'Payment Items Structure'}
                      </h3>
-                     <p className="text-xs font-bold text-slate-400 mt-1">{isRtl ? 'اربط كل دفعة مادية بتوقيت فني من المسار.' : 'Link each payment to a technical timing in the path.'}</p>
                   </div>
                   <div className="flex items-center gap-3">
                      <Label className="text-[10px] font-black uppercase tracking-widest">{t('pricingMode')}</Label>
@@ -282,7 +281,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                <div className="p-8 bg-emerald-50/30 rounded-[2.5rem] border-2 border-emerald-100/50 text-start animate-in fade-in zoom-in-95">
                   <div className="max-w-md space-y-2">
                      <Label className="text-[10px] font-black uppercase text-emerald-600 tracking-widest flex items-center gap-2">
-                        <DollarSign className="h-3 w-3" /> {isRtl ? 'إجمالي قيمة العقد التقديرية (KWD)' : 'Estimated Contract Value (KWD)'}
+                        <DollarSign className="h-3 w-3" /> {t('estimatedTotal')} (KWD)
                      </Label>
                      <Input 
                         type="number" 
@@ -291,7 +290,6 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                         className="h-14 rounded-2xl border-2 border-emerald-200 font-black text-2xl text-emerald-700 bg-white shadow-inner text-center"
                         placeholder="0.000"
                      />
-                     <p className="text-[9px] font-bold text-emerald-600/70 mt-1 italic">{isRtl ? '* سيتم استخدام هذه القيمة كمرجع لحساب الدفعات المئوية.' : '* Used as reference for percentage calculations.'}</p>
                   </div>
                </div>
 
@@ -313,7 +311,6 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                value={item.label || ''} 
                                onChange={e => updateItem(idx, 'label', e.target.value)}
                                className="bg-transparent border-0 border-b border-slate-200 rounded-none h-10 text-xl font-black text-slate-800 focus-visible:ring-0 w-64"
-                               placeholder={isRtl ? "مسمى الدفعة..." : "Payment Label..."}
                              />
                           </div>
                           {!isFirst && (
@@ -327,7 +324,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                              
                              <div className="md:col-span-3 space-y-2">
                                 <Label className="text-[10px] font-black text-slate-400 uppercase flex items-center gap-1">
-                                   <Clock className="h-3 w-3 text-primary" /> {isRtl ? 'التوقيت' : 'Timing'}
+                                   <Clock className="h-3 w-3 text-primary" /> {t('milestoneTiming')}
                                 </Label>
                                 <Select value={item.timing || 'at'} onValueChange={v => updateItem(idx, 'timing', v)}>
                                    <SelectTrigger className="h-12 rounded-xl border-2 font-black">
@@ -353,17 +350,15 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                       <SelectContent>
                                          <SelectItem value="SIGNING" className="font-bold">{t('contractSigning')}</SelectItem>
                                          <SelectItem value="CONTRACTING" className="font-bold">{t('contracting')}</SelectItem>
-                                         <SelectItem value="MANUAL" className="font-bold">{isRtl ? 'حدث مخصص' : 'Custom Event'}</SelectItem>
                                       </SelectContent>
                                    </Select>
                                 ) : (
                                    <Select value={item.technicalStageId || ''} onValueChange={v => updateItem(idx, 'technicalStageId', v)}>
                                       <SelectTrigger className="h-12 rounded-xl border-2 font-black text-xs">
-                                         <SelectValue placeholder={isRtl ? "اختر مرحلة..." : "Select stage..."} />
+                                         <SelectValue placeholder={t('search')} />
                                       </SelectTrigger>
                                       <SelectContent className="rounded-xl">
                                          {stages?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold">{isRtl ? s.name : s.nameEn}</SelectItem>)}
-                                         {!stages?.length && <SelectItem value="none" disabled>{isRtl ? 'يرجى ربط المسار أولاً' : 'Link path first'}</SelectItem>}
                                       </SelectContent>
                                    </Select>
                                 )}
@@ -371,7 +366,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
 
                              <div className="md:col-span-3 space-y-2">
                                 <Label className="text-[10px] font-black text-slate-400 uppercase">
-                                  {formData.pricingMode === 'percentage' ? (isRtl ? 'الحصة (%)' : 'Share (%)') : (isRtl ? 'القيمة / السعر' : 'Amount')}
+                                  {formData.pricingMode === 'percentage' ? t('share') : t('amount')}
                                 </Label>
                                 <div className="relative">
                                    <Input 
@@ -394,7 +389,6 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                   value={item.description || ''} 
                                   onChange={e => updateItem(idx, 'description', e.target.value)}
                                   className="min-h-[60px] rounded-2xl bg-slate-50/50 border-dashed border-2"
-                                  placeholder="..."
                                 />
                              </div>
                           </div>
@@ -412,7 +406,6 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                        <Calculator className="h-8 w-8" />
                        <div className="text-start">
                           <p className="font-black text-lg">{isRtl ? 'إجمالي حصص العقد' : 'Total Contract Share'}</p>
-                          <p className="text-xs font-bold opacity-70">{isRtl ? 'يجب أن يكون المجموع 100% من إجمالي قيمة العقد.' : 'Must sum up to 100% of contract total.'}</p>
                        </div>
                     </div>
                     <div className="text-center">
@@ -427,7 +420,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                  onClick={addItem}
                  className="w-full h-20 rounded-[2.5rem] border-2 border-dashed border-primary/30 text-primary font-black text-lg hover:bg-primary/5 transition-all gap-4"
                >
-                  <Plus className="h-7 w-7" /> {isRtl ? 'إضافة بند مالي جديد' : 'Add New Installment'}
+                  <Plus className="h-7 w-7" /> {t('addQuotationItem')}
                </Button>
             </div>
          </div>
@@ -435,13 +428,12 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
          <div className="space-y-8">
             <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
                <CardHeader className="bg-slate-50 border-b p-6 text-start">
-                  <CardTitle className="text-sm font-black flex items-center gap-2 text-slate-800"><FileText className="h-4 w-4 text-primary" /> {isRtl ? 'نص مقدمة العرض' : 'Quotation Intro'}</CardTitle>
+                  <CardTitle className="text-sm font-black flex items-center gap-2 text-slate-800"><FileText className="h-4 w-4 text-primary" /> {t('introText')}</CardTitle>
                </CardHeader>
                <CardContent className="p-6 text-start">
                   <Textarea 
                     value={formData.introText || ''} 
                     onChange={e => setFormData({...formData, introText: e.target.value})}
-                    placeholder={isRtl ? "نص مقدمة عرض السعر..." : "Introduction text..."}
                     className="min-h-[150px] rounded-2xl bg-slate-50/50 p-4 border-2"
                   />
                </CardContent>
@@ -449,37 +441,20 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
 
             <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
                <CardHeader className="bg-slate-50 border-b p-6 text-start">
-                  <CardTitle className="text-sm font-black flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> {isRtl ? 'الشروط والأحكام' : 'Terms & Conditions'}</CardTitle>
+                  <CardTitle className="text-sm font-black flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> {t('defaultTerms')}</CardTitle>
                </CardHeader>
                <CardContent className="p-6 space-y-6 text-start">
                   <Textarea 
                     value={formData.defaultTerms || ''} 
                     onChange={e => setFormData({...formData, defaultTerms: e.target.value})}
-                    placeholder={isRtl ? "الشروط والأحكام الخاصة بالعرض..." : "Terms and conditions..."}
                     className="min-h-[150px] rounded-2xl bg-slate-50/50 p-4 border-2"
                   />
                   <div className="space-y-2">
-                     <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'صلاحية العرض (أيام)' : 'Validity (Days)'}</Label>
+                     <Label className="text-[10px] font-black uppercase text-slate-400">{t('validDays')}</Label>
                      <Input type="number" value={formData.validDays || 30} onChange={e => setFormData({...formData, validDays: Number(e.target.value)})} className="h-11 rounded-xl border-2 font-black" />
                   </div>
                </CardContent>
             </Card>
-
-            <div className="p-8 rounded-[2.5rem] bg-slate-900 text-white space-y-6 shadow-2xl relative overflow-hidden group">
-               <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform">
-                  <LayoutGrid className="h-32 w-32 text-primary" />
-               </div>
-               <div className="flex items-center justify-between relative z-10">
-                  <div className="text-start">
-                     <h4 className="font-black text-lg text-primary">{isRtl ? 'القالب الافتراضي' : 'Default Template'}</h4>
-                     <p className="text-white/60 text-[10px] font-bold">{isRtl ? 'اعتماد كنموذج رئيسي لهذه الخدمة.' : 'Set as primary template.'}</p>
-                  </div>
-                  <Switch 
-                    checked={formData.isDefault || false} 
-                    onCheckedChange={v => setFormData({...formData, isDefault: v})} 
-                  />
-               </div>
-            </div>
          </div>
       </div>
     </div>
