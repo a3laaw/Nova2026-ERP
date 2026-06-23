@@ -6,13 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Input } from "@/components/ui/input";
 import { 
   ArrowRight, Activity, Clock, Loader2, 
   History, ShieldCheck, HardHat, ListChecks, 
   Timer, LayoutGrid, CheckCircle2,
   AlertCircle, Lock, User, Printer, Play, Check, Save,
-  RotateCcw
+  RotateCcw, Plus
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy } from 'firebase/firestore';
@@ -38,7 +37,6 @@ export default function TransactionDetailsPage() {
   const companyId = globalUser?.companyId;
 
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [counts, setCounts] = useState<Record<string, number>>({});
 
   const viewAccess = check('projects', 'view');
   const canEdit = check('projects', 'edit').can;
@@ -65,7 +63,6 @@ export default function TransactionDetailsPage() {
   // --- محرك الاعتمادية (Dependency Engine) ---
   const isStageBlocked = (stage: StageInstance) => {
     if (!stages) return false;
-    // المرحلة محظورة إذا وجد أي مرحلة أخرى تعتبر هذه المرحلة "خطوة تالية" ولم تكتمل بعد
     return stages.some(other => 
       other.nextStageIds?.includes(stage.technicalStageId) && 
       other.status !== 'completed'
@@ -125,11 +122,11 @@ export default function TransactionDetailsPage() {
     }
   };
 
-  const handleUpdateCount = async (stageId: string) => {
-    if (!transactionService || !user || counts[stageId] === undefined) return;
+  const handleUpdateCount = async (stageId: string, newVal: number) => {
+    if (!transactionService || !user) return;
     setProcessingId(`count_${stageId}`);
     try {
-      await transactionService.updateStageCount(transactionId, stageId, counts[stageId], user.uid, user.displayName || 'User');
+      await transactionService.updateStageCount(transactionId, stageId, newVal, user.uid, user.displayName || 'User');
       toast({ title: isRtl ? "تم تحديث الإنجاز" : "Count Updated" });
     } catch (e) {
       toast({ variant: "destructive", title: t('error') });
@@ -264,27 +261,21 @@ export default function TransactionDetailsPage() {
 
                                  <div className="flex flex-wrap gap-3 mt-1">
                                     {stage.isNumeric && (
-                                       <div className="flex items-center gap-2">
-                                          <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 text-[10px] font-black border-emerald-100 border gap-1">
+                                       <div className="flex items-center gap-3">
+                                          <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 text-[10px] font-black border-emerald-100 border gap-1 px-3 py-1">
                                              <ListChecks className="h-3 w-3" /> {isRtl ? 'الإنجاز:' : 'Qty:'} {stage.currentCount} / {stage.numericTarget}
                                           </Badge>
                                           {canEdit && stage.status === 'in-progress' && (
-                                            <div className="flex items-center gap-1 animate-in fade-in">
-                                               <Input 
-                                                 type="number" 
-                                                 className="h-7 w-16 text-[10px] font-bold px-2 rounded-lg"
-                                                 defaultValue={stage.currentCount}
-                                                 onChange={(e) => setCounts({...counts, [stage.id!]: Number(e.target.value)})}
-                                               />
-                                               <Button 
-                                                 size="icon" 
-                                                 className="h-7 w-7 rounded-lg" 
-                                                 disabled={processingId === `count_${stage.id}`}
-                                                 onClick={() => handleUpdateCount(stage.id!)}
-                                               >
-                                                  {processingId === `count_${stage.id}` ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                                               </Button>
-                                            </div>
+                                            <Button 
+                                              size="sm" 
+                                              variant="outline"
+                                              className="h-8 rounded-xl px-4 border-2 font-black text-[10px] gap-2 hover:bg-emerald-50 hover:text-emerald-600 transition-all shadow-sm bg-white"
+                                              onClick={() => handleUpdateCount(stage.id!, (stage.currentCount || 0) + 1)}
+                                              disabled={processingId === `count_${stage.id}`}
+                                            >
+                                               {processingId === `count_${stage.id}` ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                                               {isRtl ? 'تعديل' : 'Modify'}
+                                            </Button>
                                           )}
                                        </div>
                                     )}
