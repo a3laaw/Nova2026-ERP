@@ -10,7 +10,8 @@ import {
   increment, 
   collection,
   query,
-  orderBy
+  orderBy,
+  updateDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { Transaction, TransactionTimelineEvent, StageInstance } from '@/types/transaction';
@@ -56,6 +57,7 @@ export class TransactionService {
       throw new Error('CLIENT_NOT_FOUND: العميل غير موجود في النظام.');
     }
 
+    // جلب القوالب المرجعية للمراحل
     const stagesPath = paths.technicalStages(this.companyId, data.activityTypeId, data.serviceId, data.subServiceId);
     const stagesSnap = await getDocs(collection(this.db, stagesPath));
 
@@ -63,6 +65,7 @@ export class TransactionService {
       throw new Error('لا يمكن فتح المعاملة لعدم وجود مراحل عمل معرّفة لهذا المسار في مركز المراجع. يرجى إضافة مراحل للخدمة الفرعية أولاً.');
     }
 
+    // ترتيب برمجياً لضمان الدقة في حال غياب حقل الترتيب في بعض السجلات
     const sortedStages = stagesSnap.docs
       .map(d => ({ id: d.id, ...d.data() } as TechnicalStage))
       .sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -71,6 +74,7 @@ export class TransactionService {
     const currentCounter = clientData.transactionCounter || 0;
     const nextCounter = currentCounter + 1;
 
+    // الترقيم المهني المعتمد في NovaFlow
     const transactionNumber = `${clientData.fileNumber}-${nextCounter.toString().padStart(2, '0')}`;
 
     const batch = writeBatch(this.db);
@@ -101,16 +105,19 @@ export class TransactionService {
 
     batch.set(transRef, transactionData);
 
+    // تحديث عداد العميل
     batch.update(clientRef, {
       transactionCounter: increment(1),
       updatedAt: serverTimestamp()
     });
 
+    // استنساخ مراحل العمل (Instantiation) مع تطهير البيانات
     sortedStages.forEach(stage => {
       const instanceRef = doc(collection(this.db, paths.transactionStages(this.companyId, transactionId)));
       const instanceData: StageInstance = {
         transactionId,
         technicalStageId: stage.id!,
+        // ضمان عدم وجود قيم undefined المسببة لمشاكل Firebase
         code: stage.code || (stage.nameEn || stage.name || 'STAGE').toUpperCase().replace(/\s+/g, '_'),
         name: stage.name || '',
         description: stage.description || '',
@@ -134,6 +141,7 @@ export class TransactionService {
       batch.set(instanceRef, instanceData);
     });
 
+    // توثيق الافتتاح في سجل الجدول الزمني
     const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
     batch.set(timelineRef, {
       transactionId,
@@ -145,6 +153,7 @@ export class TransactionService {
       createdAt: serverTimestamp()
     });
 
+    // توثيق في سجل تاريخ العميل
     const historyRef = doc(collection(this.db, paths.clientHistory(this.companyId, data.clientId)));
     batch.set(historyRef, {
       clientId: data.clientId,
@@ -160,13 +169,11 @@ export class TransactionService {
       await batch.commit();
       return transactionId;
     } catch (err: any) {
-      if (err.code === 'permission-denied') {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: transRef.path,
-          operation: 'write',
-          requestResourceData: transactionData
-        }));
-      }
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: transRef.path,
+        operation: 'write',
+        requestResourceData: transactionData
+      }));
       throw err;
     }
   }
@@ -227,6 +234,40 @@ export class TransactionService {
       transactionId,
       type: 'stage_complete',
       content: `إنجاز المرحلة بالكامل: ${stageData.name}`,
+      userId,
+      userName,
+      companyId: this.companyId,
+      createdAt: serverTimestamp()
+    });
+
+    await batch.commit();
+  }
+
+  /**
+   * إعادة فتح مرحلة مكتملة
+   */
+  async reopenStage(transactionId: string, stageId: string, userId: string, userName: string) {
+    ensureActionPermission(this.permissions, 'projects:edit');
+    const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
+    const stageSnap = await getDoc(stageRef);
+    if (!stageSnap.exists()) return;
+    const stageData = stageSnap.data() as StageInstance;
+
+    const batch = writeBatch(this.db);
+    // التراجع يعيد الحالة إلى قيد التنفيذ لمراجعة البيانات
+    batch.update(stageRef, {
+      status: 'in-progress',
+      completedAt: null,
+      completedBy: null,
+      updatedAt: serverTimestamp(),
+      updatedBy: userId
+    });
+
+    const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
+    batch.set(timelineRef, {
+      transactionId,
+      type: 'stage_reopen',
+      content: `إعادة فتح المرحلة للمراجعة: ${stageData.name}`,
       userId,
       userName,
       companyId: this.companyId,

@@ -10,8 +10,9 @@ import { Input } from "@/components/ui/input";
 import { 
   ArrowRight, Activity, Clock, Loader2, 
   History, ShieldCheck, HardHat, ListChecks, 
-  Timer, LayoutGrid, Info, CheckCircle2,
-  AlertCircle, Lock, User, Printer, Play, Check, Save
+  Timer, LayoutGrid, CheckCircle2,
+  AlertCircle, Lock, User, Printer, Play, Check, Save,
+  RotateCcw
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy } from 'firebase/firestore';
@@ -61,6 +62,24 @@ export default function TransactionDetailsPage() {
     db && companyId ? new TransactionService(db, companyId, permissions) : null, 
   [db, companyId, permissions]);
 
+  // --- محرك الاعتمادية (Dependency Engine) ---
+  const isStageBlocked = (stage: StageInstance) => {
+    if (!stages) return false;
+    // المرحلة محظورة إذا وجد أي مرحلة أخرى تعتبر هذه المرحلة "خطوة تالية" ولم تكتمل بعد
+    return stages.some(other => 
+      other.nextStageIds?.includes(stage.technicalStageId) && 
+      other.status !== 'completed'
+    );
+  };
+
+  const getRequiredPredecessors = (stage: StageInstance) => {
+    if (!stages) return [];
+    return stages.filter(other => 
+      other.nextStageIds?.includes(stage.technicalStageId) && 
+      other.status !== 'completed'
+    );
+  };
+
   const progressPercent = useMemo(() => {
     if (!stages?.length) return 0;
     const completed = stages.filter(s => s.status === 'completed').length;
@@ -85,7 +104,20 @@ export default function TransactionDetailsPage() {
     setProcessingId(stageId);
     try {
       await transactionService.completeStage(transactionId, stageId, user.uid, user.displayName || 'User');
-      toast({ title: isRtl ? "تم إنجاز المرحلة" : "Stage Completed" });
+      toast({ title: isRtl ? "تم إنجاز المرحلة بنجاح" : "Stage Completed" });
+    } catch (e) {
+      toast({ variant: "destructive", title: t('error') });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleReopenStage = async (stageId: string) => {
+    if (!transactionService || !user) return;
+    setProcessingId(stageId);
+    try {
+      await transactionService.reopenStage(transactionId, stageId, user.uid, user.displayName || 'User');
+      toast({ title: isRtl ? "تم إعادة فتح المرحلة للمراجعة" : "Stage Reopened" });
     } catch (e) {
       toast({ variant: "destructive", title: t('error') });
     } finally {
@@ -187,9 +219,9 @@ export default function TransactionDetailsPage() {
                  <div className="text-start">
                     <h3 className="text-xl font-black font-headline text-slate-800 flex items-center gap-2">
                        <LayoutGrid className="h-6 w-6 text-primary" />
-                       {isRtl ? 'مسار التنفيذ الفني' : 'Technical Work Pipeline'}
+                       {isRtl ? 'مسار التنفيذ الميداني الذكي' : 'Smart Execution Pipeline'}
                     </h3>
-                    <p className="text-xs font-bold text-slate-400">{isRtl ? 'تتبع مراحل العمل الميدانية والتحصيلية' : 'Tracking field and billing stages'}</p>
+                    <p className="text-xs font-bold text-slate-400">{isRtl ? 'تتبع المراحل مع تطبيق قيود الاعتمادية' : 'Tracking stages with dependency constraints'}</p>
                  </div>
                  <div className="text-end">
                     <span className="text-4xl font-black font-headline text-primary">{progressPercent}%</span>
@@ -197,94 +229,129 @@ export default function TransactionDetailsPage() {
               </div>
               
               <div className="space-y-4">
-                 {stages?.map((stage, idx) => (
-                    <Card key={stage.id} className={cn(
-                      "border-0 shadow-lg rounded-[2rem] bg-white transition-all overflow-hidden border-s-8",
-                      stage.status === 'completed' ? 'border-s-emerald-500 opacity-80' : 
-                      stage.status === 'in-progress' ? 'border-s-blue-500 ring-4 ring-blue-500/5' : 'border-s-slate-100'
-                    )}>
-                      <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-6">
-                         <div className="flex items-center gap-6 flex-1 text-start">
-                            <div className={cn(
-                               "h-12 w-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-sm border",
-                               stage.status === 'completed' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-slate-50 border-slate-100 text-slate-400'
-                            )}>
-                               {stage.status === 'completed' ? <CheckCircle2 className="h-6 w-6" /> : (idx + 1)}
-                            </div>
-                            <div className="space-y-1">
-                               <h4 className="font-black text-lg text-slate-900 tracking-tight">{stage.name}</h4>
-                               <div className="flex flex-wrap gap-3">
-                                  {stage.isNumeric && (
-                                     <div className="flex items-center gap-2">
-                                        <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 text-[10px] font-black border-emerald-100 border gap-1">
-                                           <ListChecks className="h-3 w-3" /> {isRtl ? 'الإنجاز الحالي:' : 'Current:'} {stage.currentCount} / {stage.numericTarget}
-                                        </Badge>
-                                        {canEdit && stage.status !== 'completed' && (
-                                          <div className="flex items-center gap-1 animate-in fade-in">
-                                             <Input 
-                                               type="number" 
-                                               className="h-7 w-16 text-[10px] font-bold px-2 rounded-lg"
-                                               defaultValue={stage.currentCount}
-                                               onChange={(e) => setCounts({...counts, [stage.id!]: Number(e.target.value)})}
-                                             />
-                                             <Button 
-                                               size="icon" 
-                                               className="h-7 w-7 rounded-lg" 
-                                               disabled={processingId === `count_${stage.id}`}
-                                               onClick={() => handleUpdateCount(stage.id!)}
-                                             >
-                                                {processingId === `count_${stage.id}` ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                                             </Button>
-                                          </div>
-                                        )}
-                                     </div>
-                                  )}
-                                  {stage.isTimed && (
-                                     <Badge variant="secondary" className="bg-blue-50 text-blue-700 text-[10px] font-black border-blue-100 border gap-1">
-                                        <Timer className="h-3 w-3" /> {isRtl ? 'المدة:' : 'Duration:'} {stage.timeTargetDays} {isRtl ? 'يوم' : 'Days'}
-                                     </Badge>
-                                  )}
-                                  {stage.isRequired && <span className="text-[9px] font-black text-rose-500 uppercase tracking-widest flex items-center gap-1"><AlertCircle className="h-2 w-2" /> Required</span>}
-                               </div>
-                            </div>
-                         </div>
+                 {stages?.map((stage, idx) => {
+                    const blocked = isStageBlocked(stage);
+                    const predecessors = getRequiredPredecessors(stage);
 
-                         <div className="flex items-center gap-3">
-                            {canEdit && stage.status === 'pending' && (
-                               <Button 
-                                 size="sm" 
-                                 onClick={() => handleStartStage(stage.id!)}
-                                 disabled={processingId === stage.id}
-                                 className="rounded-xl h-10 px-5 bg-blue-600 text-white font-black gap-2 shadow-lg shadow-blue-200"
-                               >
-                                  {processingId === stage.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-                                  {isRtl ? 'بدء العمل' : 'Start'}
-                               </Button>
-                            )}
-                            
-                            {canEdit && stage.status === 'in-progress' && (
-                               <Button 
-                                 size="sm" 
-                                 onClick={() => handleCompleteStage(stage.id!)}
-                                 disabled={processingId === stage.id}
-                                 className="rounded-xl h-10 px-5 bg-emerald-600 text-white font-black gap-2 shadow-lg shadow-emerald-200"
-                               >
-                                  {processingId === stage.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                                  {isRtl ? 'إنهاء المرحلة' : 'Complete'}
-                               </Button>
-                            )}
+                    return (
+                      <Card key={stage.id} className={cn(
+                        "border-0 shadow-lg rounded-[2rem] bg-white transition-all overflow-hidden border-s-8",
+                        stage.status === 'completed' ? 'border-s-emerald-500 opacity-80' : 
+                        stage.status === 'in-progress' ? 'border-s-blue-500 ring-4 ring-blue-500/5' : 
+                        blocked ? 'border-s-slate-100 opacity-60 bg-slate-50/50' : 'border-s-orange-300'
+                      )}>
+                        <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-6">
+                           <div className="flex items-center gap-6 flex-1 text-start">
+                              <div className={cn(
+                                 "h-12 w-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-sm border",
+                                 stage.status === 'completed' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 
+                                 blocked ? 'bg-slate-100 text-slate-300 border-slate-100' : 'bg-slate-50 border-slate-100 text-slate-400'
+                              )}>
+                                 {stage.status === 'completed' ? <CheckCircle2 className="h-6 w-6" /> : (idx + 1)}
+                              </div>
+                              <div className="space-y-1">
+                                 <div className="flex items-center gap-2">
+                                    <h4 className="font-black text-lg text-slate-900 tracking-tight">{stage.name}</h4>
+                                    {blocked && <Badge variant="outline" className="text-[7px] font-black bg-slate-100 text-slate-400 border-0 uppercase">Locked</Badge>}
+                                 </div>
 
-                            <Badge className={cn(
-                               "font-black px-4 py-1.5 rounded-xl border-0 shadow-inner text-[10px] uppercase",
-                               stage.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 
-                               stage.status === 'in-progress' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'
-                            )}>
-                               {stage.status}
-                            </Badge>
-                         </div>
-                      </CardContent>
-                    </Card>
-                 ))}
+                                 {blocked && predecessors.length > 0 && (
+                                   <div className="flex items-center gap-1.5 text-[9px] font-bold text-rose-400 bg-rose-50 px-2 py-0.5 rounded-lg w-fit">
+                                      <Lock className="h-2 w-2" />
+                                      {isRtl ? 'بانتظار:' : 'Requires:'} {predecessors.map(p => p.name).join(', ')}
+                                   </div>
+                                 )}
+
+                                 <div className="flex flex-wrap gap-3 mt-1">
+                                    {stage.isNumeric && (
+                                       <div className="flex items-center gap-2">
+                                          <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 text-[10px] font-black border-emerald-100 border gap-1">
+                                             <ListChecks className="h-3 w-3" /> {isRtl ? 'الإنجاز:' : 'Qty:'} {stage.currentCount} / {stage.numericTarget}
+                                          </Badge>
+                                          {canEdit && stage.status === 'in-progress' && (
+                                            <div className="flex items-center gap-1 animate-in fade-in">
+                                               <Input 
+                                                 type="number" 
+                                                 className="h-7 w-16 text-[10px] font-bold px-2 rounded-lg"
+                                                 defaultValue={stage.currentCount}
+                                                 onChange={(e) => setCounts({...counts, [stage.id!]: Number(e.target.value)})}
+                                               />
+                                               <Button 
+                                                 size="icon" 
+                                                 className="h-7 w-7 rounded-lg" 
+                                                 disabled={processingId === `count_${stage.id}`}
+                                                 onClick={() => handleUpdateCount(stage.id!)}
+                                               >
+                                                  {processingId === `count_${stage.id}` ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                               </Button>
+                                            </div>
+                                          )}
+                                       </div>
+                                    )}
+                                    {stage.isTimed && (
+                                       <Badge variant="secondary" className="bg-blue-50 text-blue-700 text-[10px] font-black border-blue-100 border gap-1">
+                                          <Timer className="h-3 w-3" /> {isRtl ? 'المستهدف:' : 'Goal:'} {stage.timeTargetDays} {isRtl ? 'يوم' : 'Days'}
+                                       </Badge>
+                                    )}
+                                 </div>
+                              </div>
+                           </div>
+
+                           <div className="flex items-center gap-3">
+                              {canEdit && (
+                                <>
+                                  {stage.status === 'pending' && !blocked && (
+                                     <Button 
+                                       size="sm" 
+                                       onClick={() => handleStartStage(stage.id!)}
+                                       disabled={processingId === stage.id}
+                                       className="rounded-xl h-10 px-5 bg-blue-600 text-white font-black gap-2 shadow-lg shadow-blue-200"
+                                     >
+                                        {processingId === stage.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                                        {isRtl ? 'بدء العمل' : 'Start'}
+                                     </Button>
+                                  )}
+                                  
+                                  {stage.status === 'in-progress' && (
+                                     <Button 
+                                       size="sm" 
+                                       onClick={() => handleCompleteStage(stage.id!)}
+                                       disabled={processingId === stage.id}
+                                       className="rounded-xl h-10 px-5 bg-emerald-600 text-white font-black gap-2 shadow-lg shadow-emerald-200"
+                                     >
+                                        {processingId === stage.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                                        {isRtl ? 'إنهاء المرحلة' : 'Complete'}
+                                     </Button>
+                                  )}
+
+                                  {stage.status === 'completed' && (
+                                     <Button 
+                                       size="sm" 
+                                       variant="outline"
+                                       onClick={() => handleReopenStage(stage.id!)}
+                                       disabled={processingId === stage.id}
+                                       className="rounded-xl h-10 px-4 border-2 font-black gap-2 text-rose-500 hover:bg-rose-50"
+                                     >
+                                        {processingId === stage.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                                        {isRtl ? 'تراجع' : 'Undo'}
+                                     </Button>
+                                  )}
+                                </>
+                              )}
+
+                              <Badge className={cn(
+                                 "font-black px-4 py-1.5 rounded-xl border-0 shadow-inner text-[10px] uppercase",
+                                 stage.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 
+                                 stage.status === 'in-progress' ? 'bg-blue-100 text-blue-700' : 
+                                 blocked ? 'bg-slate-200 text-slate-400' : 'bg-orange-100 text-orange-700'
+                              )}>
+                                 {isRtl ? (blocked ? 'مقفلة' : stage.status) : (blocked ? 'Blocked' : stage.status)}
+                              </Badge>
+                           </div>
+                        </CardContent>
+                      </Card>
+                    );
+                 })}
               </div>
            </div>
         </div>
@@ -325,6 +392,7 @@ export default function TransactionDetailsPage() {
                                 "absolute top-1 h-3 w-3 rounded-full border-2 border-white shadow-md z-10",
                                 event.type === 'system' ? 'bg-primary' : 
                                 event.type === 'stage_complete' ? 'bg-emerald-500' : 
+                                event.type === 'stage_reopen' ? 'bg-rose-500' :
                                 event.type === 'stage_start' ? 'bg-blue-500' : 'bg-slate-500',
                                 isRtl ? "right-0" : "left-0"
                               )} />
