@@ -65,7 +65,7 @@ export class TransactionService {
       throw new Error('لا يمكن فتح المعاملة لعدم وجود مراحل عمل معرّفة لهذا المسار في مركز المراجع. يرجى إضافة مراحل للخدمة الفرعية أولاً.');
     }
 
-    // ترتيب برمجياً لضمان الدقة في حال غياب حقل الترتيب في بعض السجلات
+    // ترتيب برمجياً لضمان الدقة المطلقة (ترتيب هندسي وليس أبجدي)
     const sortedStages = stagesSnap.docs
       .map(d => ({ id: d.id, ...d.data() } as TechnicalStage))
       .sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -74,7 +74,7 @@ export class TransactionService {
     const currentCounter = clientData.transactionCounter || 0;
     const nextCounter = currentCounter + 1;
 
-    // الترقيم المهني المعتمد في NovaFlow
+    // الترقيم المهني المعتمد في NovaFlow (C-FileNum-01)
     const transactionNumber = `${clientData.fileNumber}-${nextCounter.toString().padStart(2, '0')}`;
 
     const batch = writeBatch(this.db);
@@ -111,17 +111,16 @@ export class TransactionService {
       updatedAt: serverTimestamp()
     });
 
-    // استنساخ مراحل العمل (Instantiation) مع تطهير البيانات
-    sortedStages.forEach(stage => {
+    // استنساخ مراحل العمل (Instantiation) مع تطهير البيانات والحفاظ على الترتيب
+    sortedStages.forEach((stage, idx) => {
       const instanceRef = doc(collection(this.db, paths.transactionStages(this.companyId, transactionId)));
       const instanceData: StageInstance = {
         transactionId,
         technicalStageId: stage.id!,
-        // ضمان عدم وجود قيم undefined المسببة لمشاكل Firebase
         code: stage.code || (stage.nameEn || stage.name || 'STAGE').toUpperCase().replace(/\s+/g, '_'),
         name: stage.name || '',
         description: stage.description || '',
-        order: stage.order || 0,
+        order: stage.order !== undefined ? stage.order : idx,
         isNumeric: !!stage.isNumeric,
         numericTarget: stage.numericTarget || 0,
         currentCount: 0,
@@ -146,19 +145,7 @@ export class TransactionService {
     batch.set(timelineRef, {
       transactionId,
       type: 'system',
-      content: `تم افتتاح المعاملة الفنية بنجاح واستنساخ ${sortedStages.length} مراحل تنفيذية من المسار المرجعي.`,
-      userId,
-      userName,
-      companyId: this.companyId,
-      createdAt: serverTimestamp()
-    });
-
-    // توثيق في سجل تاريخ العميل
-    const historyRef = doc(collection(this.db, paths.clientHistory(this.companyId, data.clientId)));
-    batch.set(historyRef, {
-      clientId: data.clientId,
-      type: 'transaction_created',
-      content: `تم فتح معاملة فنية جديدة برقم ${transactionNumber}`,
+      content: `تم افتتاح المسار الفني بنجاح واستنساخ ${sortedStages.length} مراحل تنفيذية مرتبة.`,
       userId,
       userName,
       companyId: this.companyId,
@@ -200,7 +187,7 @@ export class TransactionService {
     batch.set(timelineRef, {
       transactionId,
       type: 'stage_start',
-      content: `بدء العمل الميداني على المرحلة: ${stageData.name}`,
+      content: `بدء التنفيذ الميداني لمرحلة: ${stageData.name}`,
       userId,
       userName,
       companyId: this.companyId,
@@ -233,7 +220,7 @@ export class TransactionService {
     batch.set(timelineRef, {
       transactionId,
       type: 'stage_complete',
-      content: `إنجاز المرحلة بالكامل: ${stageData.name}`,
+      content: `تم إنجاز مرحلة "${stageData.name}" بالكامل.`,
       userId,
       userName,
       companyId: this.companyId,
@@ -244,7 +231,7 @@ export class TransactionService {
   }
 
   /**
-   * إعادة فتح مرحلة مكتملة
+   * إعادة فتح مرحلة
    */
   async reopenStage(transactionId: string, stageId: string, userId: string, userName: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
@@ -254,7 +241,6 @@ export class TransactionService {
     const stageData = stageSnap.data() as StageInstance;
 
     const batch = writeBatch(this.db);
-    // التراجع يعيد الحالة إلى قيد التنفيذ لمراجعة البيانات
     batch.update(stageRef, {
       status: 'in-progress',
       completedAt: null,
@@ -267,7 +253,7 @@ export class TransactionService {
     batch.set(timelineRef, {
       transactionId,
       type: 'stage_reopen',
-      content: `إعادة فتح المرحلة للمراجعة: ${stageData.name}`,
+      content: `إعادة فتح مرحلة "${stageData.name}" لمراجعة البيانات الميدانية.`,
       userId,
       userName,
       companyId: this.companyId,
@@ -278,7 +264,7 @@ export class TransactionService {
   }
 
   /**
-   * تحديث العداد الرقمي للمرحلة
+   * تحديث العداد الرقمي (+1)
    */
   async updateStageCount(transactionId: string, stageId: string, newCount: number, userId: string, userName: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
@@ -298,7 +284,7 @@ export class TransactionService {
     batch.set(timelineRef, {
       transactionId,
       type: 'numeric_update',
-      content: `تحديث الإنجاز في مرحلة ${stageData.name}: تم رصد ${newCount} من أصل ${stageData.numericTarget}`,
+      content: `تحديث الإنجاز في "${stageData.name}": تم رصد ${newCount} من إجمالي ${stageData.numericTarget}`,
       userId,
       userName,
       companyId: this.companyId,

@@ -46,10 +46,16 @@ export default function TransactionDetailsPage() {
   [db, companyId, transactionId]);
   const { data: transaction, loading: transLoading } = useDoc<Transaction>(transRef);
 
+  // جلب المراحل مع ضمان الترتيب
   const stagesQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.transactionStages(companyId, transactionId)), orderBy('order')) : null, 
   [db, companyId, transactionId]);
-  const { data: stages, loading: stagesLoading } = useCollection<StageInstance>(stagesQuery);
+  const { data: rawStages, loading: stagesLoading } = useCollection<StageInstance>(stagesQuery);
+
+  // ترتيب إضافي برمجي لضمان استقرار الواجهة (Extra Safety)
+  const stages = useMemo(() => {
+    return [...rawStages].sort((a, b) => (a.order || 0) - (b.order || 0));
+  }, [rawStages]);
 
   const timelineQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.transactionTimeline(companyId, transactionId)), orderBy('createdAt', 'desc')) : null, 
@@ -60,7 +66,7 @@ export default function TransactionDetailsPage() {
     db && companyId ? new TransactionService(db, companyId, permissions) : null, 
   [db, companyId, permissions]);
 
-  // --- محرك الاعتمادية (Dependency Engine) ---
+  // --- محرك الاعتمادية الذكي ---
   const isStageBlocked = (stage: StageInstance) => {
     if (!stages) return false;
     return stages.some(other => 
@@ -122,11 +128,12 @@ export default function TransactionDetailsPage() {
     }
   };
 
-  const handleUpdateCount = async (stageId: string, newVal: number) => {
+  const handleUpdateCount = async (stage: StageInstance) => {
     if (!transactionService || !user) return;
-    setProcessingId(`count_${stageId}`);
+    const newCount = (stage.currentCount || 0) + 1;
+    setProcessingId(`count_${stage.id}`);
     try {
-      await transactionService.updateStageCount(transactionId, stageId, newVal, user.uid, user.displayName || 'User');
+      await transactionService.updateStageCount(transactionId, stage.id!, newCount, user.uid, user.displayName || 'User');
       toast({ title: isRtl ? "تم تحديث الإنجاز" : "Count Updated" });
     } catch (e) {
       toast({ variant: "destructive", title: t('error') });
@@ -216,9 +223,9 @@ export default function TransactionDetailsPage() {
                  <div className="text-start">
                     <h3 className="text-xl font-black font-headline text-slate-800 flex items-center gap-2">
                        <LayoutGrid className="h-6 w-6 text-primary" />
-                       {isRtl ? 'مسار التنفيذ الميداني الذكي' : 'Smart Execution Pipeline'}
+                       {isRtl ? 'مسار التنفيذ الميداني المعتمد' : 'Execution Pipeline'}
                     </h3>
-                    <p className="text-xs font-bold text-slate-400">{isRtl ? 'تتبع المراحل مع تطبيق قيود الاعتمادية' : 'Tracking stages with dependency constraints'}</p>
+                    <p className="text-xs font-bold text-slate-400">{isRtl ? 'متابعة مراحل العمل بالتسلسل الهندسي' : 'Tracking stages in strict sequence'}</p>
                  </div>
                  <div className="text-end">
                     <span className="text-4xl font-black font-headline text-primary">{progressPercent}%</span>
@@ -270,7 +277,7 @@ export default function TransactionDetailsPage() {
                                               size="sm" 
                                               variant="outline"
                                               className="h-8 rounded-xl px-4 border-2 font-black text-[10px] gap-2 hover:bg-emerald-50 hover:text-emerald-600 transition-all shadow-sm bg-white"
-                                              onClick={() => handleUpdateCount(stage.id!, (stage.currentCount || 0) + 1)}
+                                              onClick={() => handleUpdateCount(stage)}
                                               disabled={processingId === `count_${stage.id}`}
                                             >
                                                {processingId === `count_${stage.id}` ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
