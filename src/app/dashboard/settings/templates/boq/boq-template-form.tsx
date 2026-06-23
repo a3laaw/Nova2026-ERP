@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
+import { usePermissions } from '@/hooks/use-permissions';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
@@ -39,6 +40,7 @@ interface Props {
 export function BOQTemplateForm({ template, onClose }: Props) {
   const { globalUser, user } = useAuthContext();
   const { t, lang, dir } = useLanguage();
+  const { permissions } = usePermissions();
   const db = useFirestore();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
@@ -135,7 +137,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
 
     setLoading(true);
     try {
-      const service = new TemplateService(db, companyId);
+      const service = new TemplateService(db, companyId, permissions);
       
       const activity = activities?.find(a => a.id === formData.activityTypeId);
       const srv = services?.find(s => s.id === formData.serviceId);
@@ -157,8 +159,12 @@ export function BOQTemplateForm({ template, onClose }: Props) {
 
       toast({ title: t('saved') });
       onClose();
-    } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
+    } catch (e: any) {
+      toast({ 
+        variant: "destructive", 
+        title: t('error'),
+        description: e.message || (isRtl ? "خطأ في الاتصال بالسحاب." : "Cloud connection error.")
+      });
     } finally {
       setLoading(false);
     }
@@ -195,7 +201,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                      <CardTitle className="text-lg font-black flex items-center gap-3"><Info className="h-5 w-5 text-primary" /> {isRtl ? 'البيانات الأساسية والربط' : 'Basic Identity & Link'}</CardTitle>
                      <div className="flex items-center gap-4 bg-white p-2 rounded-xl border-2">
                         <Label className="text-[10px] font-black uppercase text-slate-400 px-2">{isRtl ? 'نمط الحساب' : 'Measurement Mode'}</Label>
-                        <Select value={formData.measurementMode} onValueChange={(v: MeasurementMode) => setFormData({...formData, measurementMode: v})}>
+                        <Select value={formData.measurementMode || 'quantity'} onValueChange={(v: MeasurementMode) => setFormData({...formData, measurementMode: v})}>
                            <SelectTrigger className="h-9 w-40 border-0 font-black text-xs shadow-none"><SelectValue /></SelectTrigger>
                            <SelectContent>
                               <SelectItem value="quantity" className="font-bold">{isRtl ? 'كميات (Units)' : 'Unit Quantity'}</SelectItem>
@@ -210,36 +216,36 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                      <div className="md:col-span-2 space-y-2">
                         <Label className="text-[10px] font-black uppercase text-slate-400">{t('name')}</Label>
-                        <Input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="h-12 rounded-xl border-2 font-bold" />
+                        <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-12 rounded-xl border-2 font-bold" />
                      </div>
                      <div className="space-y-2">
                         <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الكود المرجعي' : 'Ref Code'}</Label>
-                        <Input value={formData.code} onChange={e => setFormData({...formData, code: e.target.value})} className="h-12 rounded-xl border-2 font-mono" placeholder="BOQ_STD_01" />
+                        <Input value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value})} className="h-12 rounded-xl border-2 font-mono" placeholder="BOQ_STD_01" />
                      </div>
                      <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border-2 border-white shadow-inner">
                         <div className="text-start"><p className="text-[10px] font-black text-slate-400 uppercase">{t('defaultTemplate')}</p></div>
-                        <Switch checked={formData.isDefault} onCheckedChange={v => setFormData({...formData, isDefault: v})} />
+                        <Switch checked={formData.isDefault || false} onCheckedChange={v => setFormData({...formData, isDefault: v})} />
                      </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8 pt-8 border-t border-slate-50">
                      <div className="space-y-2">
                         <Label className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{t('orgRef')}</Label>
-                        <Select value={formData.activityTypeId} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: ''})}>
+                        <Select value={formData.activityTypeId || ''} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: ''})}>
                            <SelectTrigger className="h-11 rounded-xl border-2"><SelectValue placeholder="..." /></SelectTrigger>
                            <SelectContent>{activities?.map(a => <SelectItem key={a.id} value={a.id!}>{isRtl ? a.name : a.nameEn}</SelectItem>)}</SelectContent>
                         </Select>
                      </div>
                      <div className="space-y-2">
                         <Label className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{t('techRef')}</Label>
-                        <Select disabled={!formData.activityTypeId} value={formData.serviceId} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: ''})}>
+                        <Select disabled={!formData.activityTypeId} value={formData.serviceId || ''} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: ''})}>
                            <SelectTrigger className="h-11 rounded-xl border-2"><SelectValue placeholder="..." /></SelectTrigger>
                            <SelectContent>{services?.map(s => <SelectItem key={s.id} value={s.id!}>{isRtl ? s.name : s.nameEn}</SelectItem>)}</SelectContent>
                         </Select>
                      </div>
                      <div className="space-y-2">
                         <Label className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{t('newPath')}</Label>
-                        <Select disabled={!formData.serviceId} value={formData.subServiceId} onValueChange={v => setFormData({...formData, subServiceId: v})}>
+                        <Select disabled={!formData.serviceId} value={formData.subServiceId || ''} onValueChange={v => setFormData({...formData, subServiceId: v})}>
                            <SelectTrigger className="h-11 rounded-xl border-2"><SelectValue placeholder="..." /></SelectTrigger>
                            <SelectContent>{subServices?.map(ss => <SelectItem key={ss.id} value={ss.id!}>{isRtl ? ss.name : ss.nameEn}</SelectItem>)}</SelectContent>
                         </Select>
@@ -271,7 +277,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                                 {sIdx + 1}
                              </div>
                              <Input 
-                               value={section.name} 
+                               value={section.name || ''} 
                                onChange={e => updateSection(sIdx, e.target.value)}
                                placeholder={isRtl ? "اسم القسم (مثلاً: الأعمال الكهربائية)..." : "Section Name..."}
                                className="bg-transparent border-0 border-b border-white/20 rounded-none h-10 text-xl font-black text-white focus-visible:ring-0 w-full max-w-md"
@@ -308,7 +314,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                                         <td className="p-6 text-center font-bold text-slate-300">{iIdx + 1}</td>
                                         <td className="p-6">
                                            <Textarea 
-                                             value={item.description} 
+                                             value={item.description || ''} 
                                              onChange={e => updateItem(realIdx!, 'description', e.target.value)}
                                              placeholder={isRtl ? "توصيف البند..." : "Description..."}
                                              className="min-h-[40px] border-0 bg-transparent p-0 resize-none font-bold text-slate-700 shadow-none focus-visible:ring-0"
@@ -316,7 +322,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                                         </td>
                                         <td className="p-6">
                                            <Input 
-                                             value={item.unit} 
+                                             value={item.unit || ''} 
                                              onChange={e => updateItem(realIdx!, 'unit', e.target.value)}
                                              className="h-10 text-center font-bold rounded-lg border-slate-100"
                                            />
@@ -324,7 +330,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                                         <td className="p-6">
                                            <Input 
                                              type="number"
-                                             value={item.quantity} 
+                                             value={item.quantity || 0} 
                                              onChange={e => updateItem(realIdx!, 'quantity', Number(e.target.value))}
                                              className="h-10 text-center font-black rounded-lg border-slate-100"
                                            />
@@ -333,7 +339,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                                            <Input 
                                              type="number"
                                              step="0.001"
-                                             value={item.rate} 
+                                             value={item.rate || 0} 
                                              onChange={e => updateItem(realIdx!, 'rate', Number(e.target.value))}
                                              className="h-10 text-center font-black text-emerald-600 rounded-lg border-slate-100 bg-emerald-50/10"
                                            />

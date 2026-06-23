@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
+import { usePermissions } from '@/hooks/use-permissions';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
@@ -40,6 +41,7 @@ interface Props {
 export function ContractTemplateForm({ template, onClose }: Props) {
   const { globalUser, user } = useAuthContext();
   const { t, lang, dir } = useLanguage();
+  const { permissions } = usePermissions();
   const db = useFirestore();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
@@ -124,7 +126,8 @@ export function ContractTemplateForm({ template, onClose }: Props) {
 
     setLoading(true);
     try {
-      const service = new TemplateService(db, companyId);
+      // تمرير الصلاحيات للخدمة
+      const service = new TemplateService(db, companyId, permissions);
       const activity = activities?.find(a => a.id === formData.activityTypeId);
       const srv = services?.find(s => s.id === formData.serviceId);
       const sub = subServices?.find(ss => ss.id === formData.subServiceId);
@@ -148,8 +151,12 @@ export function ContractTemplateForm({ template, onClose }: Props) {
 
       toast({ title: t('saved') });
       onClose();
-    } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
+    } catch (e: any) {
+      toast({ 
+        variant: "destructive", 
+        title: t('error'),
+        description: e.message || (isRtl ? "خطأ في الاتصال بالسحاب." : "Cloud connection error.")
+      });
     } finally {
       setLoading(false);
     }
@@ -197,14 +204,14 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                         <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('orgRef')}</Label>
                         <Select value={formData.activityTypeId || ''} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: ''})}>
                            <SelectTrigger className="h-11 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                           <SelectContent>{activities?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{isRtl ? a.name : a.nameEn}</SelectItem>)}</SelectContent>
+                           <SelectContent className="rounded-2xl">{activities?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{isRtl ? a.name : a.nameEn}</SelectItem>)}</SelectContent>
                         </Select>
                      </div>
                      <div className="space-y-2">
                         <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('techRef')}</Label>
                         <Select disabled={!formData.activityTypeId} value={formData.serviceId || ''} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: ''})}>
                            <SelectTrigger className="h-11 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                           <SelectContent>{services?.map(s => <SelectItem key={s.id} value={s.id!}>{isRtl ? s.name : s.nameEn}</SelectItem>)}</SelectContent>
+                           <SelectContent>{services?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold">{isRtl ? s.name : s.nameEn}</SelectItem>)}</SelectContent>
                         </Select>
                      </div>
                      <div className="space-y-2">

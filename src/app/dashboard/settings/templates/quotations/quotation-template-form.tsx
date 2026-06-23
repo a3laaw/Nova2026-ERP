@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
+import { usePermissions } from '@/hooks/use-permissions';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
@@ -39,6 +40,7 @@ interface Props {
 export function QuotationTemplateForm({ template, onClose }: Props) {
   const { globalUser, user } = useAuthContext();
   const { t, lang, dir } = useLanguage();
+  const { permissions } = usePermissions();
   const db = useFirestore();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
@@ -120,7 +122,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
           unit: 'unit', 
           quantity: 1, 
           unitPrice: 0, 
-          percentage: 0,
+          percentage: 0, 
           timing: 'at',
           contractualEvent: 'MANUAL'
         }
@@ -172,7 +174,8 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
 
     setLoading(true);
     try {
-      const service = new TemplateService(db, companyId);
+      // تمرير الصلاحيات للخدمة لضمان السماح بالحفظ
+      const service = new TemplateService(db, companyId, permissions);
       const activity = activities?.find(a => a.id === formData.activityTypeId);
       const srv = services?.find(s => s.id === formData.serviceId);
       const sub = subServices?.find(ss => ss.id === formData.subServiceId);
@@ -195,8 +198,12 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
 
       toast({ title: t('saved') });
       onClose();
-    } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
+    } catch (e: any) {
+      toast({ 
+        variant: "destructive", 
+        title: t('error'), 
+        description: e.message || (isRtl ? "حدث خطأ غير متوقع أثناء الحفظ." : "Unexpected error during save.")
+      });
     } finally {
       setLoading(false);
     }
