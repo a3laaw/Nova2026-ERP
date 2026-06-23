@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -10,7 +9,8 @@ import {
   Truck, Plus, Search, Loader2, ArrowRight,
   Filter, MoreHorizontal, Phone, Mail,
   Star, ShieldCheck, ExternalLink, MapPin,
-  Building2, ShoppingBag, Send, Sparkles, Save
+  Building2, ShoppingBag, Send, Sparkles, Save,
+  FileSearch
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -130,7 +130,7 @@ export default function SuppliersPage() {
            { label: isRtl ? 'إجمالي الموردين' : 'Total Suppliers', val: suppliers?.length || 0, icon: Building2, color: 'text-orange-600', bg: 'bg-orange-50' },
            { label: isRtl ? 'طلبات نشطة' : 'Active Orders', val: 12, icon: ShoppingBag, color: 'text-blue-600', bg: 'bg-blue-50' },
            { label: isRtl ? 'تقييم الجودة' : 'Quality Rate', val: '4.8/5', icon: Star, color: 'text-amber-600', bg: 'bg-amber-50' },
-           { label: isRtl ? 'عروض معالجة' : 'Quotes Processed', val: 84, icon: FileSearch, icon2: FileSearch, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+           { label: isRtl ? 'عروض معالجة' : 'Quotes Processed', val: 84, icon: FileSearch, color: 'text-emerald-600', bg: 'bg-emerald-50' },
          ].map((stat, i) => (
            <Card key={i} className="border-0 shadow-xl rounded-[2rem] p-8 text-start bg-white group hover:scale-[1.03] transition-all">
               <div className={cn("p-4 rounded-2xl w-fit mb-6 transition-transform group-hover:rotate-6", stat.bg, stat.color)}>
@@ -198,7 +198,7 @@ export default function SuppliersPage() {
                     <TableCell className="text-start">
                        <div className="space-y-1.5">
                           <div className="flex items-center gap-2 text-xs font-bold text-slate-600"><Phone className="h-3 w-3 text-orange-400" /> {supplier.phone}</div>
-                          <div className="flex items-center gap-2 text-xs font-bold text-slate-500"><Mail className="h-3 w-3 text-orange-400" /> {supplier.email}</div>
+                          <div className="flex items-center gap-2 text-xs font-bold text-slate-50"><Mail className="h-3 w-3 text-orange-400" /> {supplier.email}</div>
                        </div>
                     </TableCell>
                     <TableCell className="text-center">
