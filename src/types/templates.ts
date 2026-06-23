@@ -1,5 +1,6 @@
 /**
  * @fileOverview تعريف واجهات البيانات لمكتبة القوالب في نظام NovaFlow ERP.
+ * تم تحديث الهياكل لتشمل جداول الكميات (BOQ) الاحترافية.
  */
 
 import { BaseReference } from './reference';
@@ -7,6 +8,8 @@ import { BaseReference } from './reference';
 export type TemplateType = 'quotation' | 'contract' | 'boq';
 
 export type PricingMode = 'fixed' | 'itemized' | 'percentage';
+
+export type MeasurementMode = 'quantity' | 'lumpsum' | 'hybrid';
 
 export interface QuotationItem {
   description: string;
@@ -61,13 +64,29 @@ export interface ContractTemplate extends BaseTemplate {
   durationNotes?: string;
 }
 
+/**
+ * بنية جدول الكميات (BOQ)
+ */
+export interface BOQSection {
+  code?: string;
+  name: string;
+  order: number;
+}
+
+export interface BOQItem {
+  sectionName?: string;
+  itemCode?: string;
+  description: string;
+  unit: string;
+  quantity: number;
+  rate?: number;
+  costRate?: number;
+  notes?: string;
+  order: number;
+}
+
 export interface BOQTemplate extends BaseTemplate {
-  items: Array<{
-    itemCode: string;
-    description: string;
-    unit: string;
-    estimatedQty: number;
-    estimatedRate?: number;
-    category?: string;
-  }>;
+  sections: BOQSection[];
+  items: BOQItem[];
+  measurementMode?: MeasurementMode;
 }
