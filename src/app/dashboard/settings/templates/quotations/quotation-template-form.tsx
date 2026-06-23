@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -435,7 +435,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
          <div className="space-y-8">
             <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
                <CardHeader className="bg-slate-50 border-b p-6 text-start">
-                  <CardTitle className="text-sm font-black flex items-center gap-2 text-slate-800"><FileText className="h-4 w-4 text-primary" /> {t('introText')}</CardTitle>
+                  <CardTitle className="text-sm font-black flex items-center gap-2 text-slate-800"><FileText className="h-4 w-4 text-primary" /> {isRtl ? 'نص مقدمة العرض' : 'Quotation Intro'}</CardTitle>
                </CardHeader>
                <CardContent className="p-6 text-start">
                   <Textarea 
@@ -449,7 +449,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
 
             <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
                <CardHeader className="bg-slate-50 border-b p-6 text-start">
-                  <CardTitle className="text-sm font-black flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> {t('defaultTerms')}</CardTitle>
+                  <CardTitle className="text-sm font-black flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> {isRtl ? 'الشروط والأحكام' : 'Terms & Conditions'}</CardTitle>
                </CardHeader>
                <CardContent className="p-6 space-y-6 text-start">
                   <Textarea 
@@ -459,7 +459,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                     className="min-h-[150px] rounded-2xl bg-slate-50/50 p-4 border-2"
                   />
                   <div className="space-y-2">
-                     <Label className="text-[10px] font-black uppercase text-slate-400">{t('validDays')}</Label>
+                     <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'صلاحية العرض (أيام)' : 'Validity (Days)'}</Label>
                      <Input type="number" value={formData.validDays || 30} onChange={e => setFormData({...formData, validDays: Number(e.target.value)})} className="h-11 rounded-xl border-2 font-black" />
                   </div>
                </CardContent>
@@ -471,7 +471,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                </div>
                <div className="flex items-center justify-between relative z-10">
                   <div className="text-start">
-                     <h4 className="font-black text-lg text-primary">{t('defaultTemplate')}</h4>
+                     <h4 className="font-black text-lg text-primary">{isRtl ? 'القالب الافتراضي' : 'Default Template'}</h4>
                      <p className="text-white/60 text-[10px] font-bold">{isRtl ? 'اعتماد كنموذج رئيسي لهذه الخدمة.' : 'Set as primary template.'}</p>
                   </div>
                   <Switch 

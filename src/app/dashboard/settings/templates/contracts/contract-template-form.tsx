@@ -66,9 +66,9 @@ export function ContractTemplateForm({ template, onClose }: Props) {
   );
 
   // Reference Data Fetching
-  const actQuery = useMemo(() => companyId && db ? query(collection(db, paths.activityTypes(companyId)), orderBy('order')) : null, [db, companyId]);
-  const srvQuery = useMemo(() => companyId && db && formData.activityTypeId ? query(collection(db, paths.services(companyId, formData.activityTypeId)), orderBy('order')) : null, [db, companyId, formData.activityTypeId]);
-  const subQuery = useMemo(() => companyId && db && formData.activityTypeId && formData.serviceId ? query(collection(db, paths.subServices(companyId, formData.activityTypeId, formData.serviceId)), orderBy('order')) : null, [db, companyId, formData.activityTypeId, formData.serviceId]);
+  const actQuery = useMemo(() => companyId && db ? query(collection(db, paths.activityTypes(companyId)), orderBy('name')) : null, [db, companyId]);
+  const srvQuery = useMemo(() => companyId && db && formData.activityTypeId ? query(collection(db, paths.services(companyId, formData.activityTypeId)), orderBy('name')) : null, [db, companyId, formData.activityTypeId]);
+  const subQuery = useMemo(() => companyId && db && formData.activityTypeId && formData.serviceId ? query(collection(db, paths.subServices(companyId, formData.activityTypeId, formData.serviceId)), orderBy('name')) : null, [db, companyId, formData.activityTypeId, formData.serviceId]);
   
   const stagesQuery = useMemo(() => 
     companyId && db && formData.activityTypeId && formData.serviceId && formData.subServiceId
@@ -103,12 +103,6 @@ export function ContractTemplateForm({ template, onClose }: Props) {
     const newMilestones = [...(formData.defaultMilestones || [])];
     newMilestones[idx] = { ...newMilestones[idx], [field]: value };
     setFormData({ ...formData, defaultMilestones: newMilestones });
-  };
-
-  const updateClause = (idx: number, value: string) => {
-    const newClauses = [...(formData.clauses || [])];
-    newClauses[idx] = value;
-    setFormData({ ...formData, clauses: newClauses });
   };
 
   const handleSave = async () => {

@@ -83,12 +83,12 @@ const translations: Record<Language, Record<string, string>> = {
     newTemplate: 'إنشاء قالب جديد',
     defaultTemplate: 'النموذج الافتراضي',
     pricingMode: 'نمط التسعير',
-    fixed: 'سعر مقطوع (Fixed)',
-    itemized: 'بنود تفصيلية (Units)',
-    percentage: 'نسب مئوية (Percentage %)',
+    fixed: 'سعر مقطوع',
+    itemized: 'بنود تفصيلية',
+    percentage: 'نسب مئوية',
     
     // Quotation Specific
-    introText: 'مقدمة العرض (خطاب التقديم)',
+    introText: 'مقدمة العرض',
     defaultTerms: 'الشروط والأحكام والالتزامات',
     validDays: 'صلاحية العرض (أيام)',
     validUntil: 'صلاحية العرض لغاية',
@@ -110,9 +110,9 @@ const translations: Record<Language, Record<string, string>> = {
     event: 'الحدث المالي',
     contractSigning: 'توقيع العقد الرسمي',
     contracting: 'التعاقد المبدئي',
-    at: 'عند (At Start)',
-    during: 'أثناء (During)',
-    after: 'بعد (Upon Completion)',
+    at: 'عند',
+    during: 'أثناء',
+    after: 'بعد الإنجاز',
 
     // HR & Payroll
     employees: 'سجل الموظفين',
@@ -212,10 +212,10 @@ const translations: Record<Language, Record<string, string>> = {
     pricingMode: 'Pricing Mode',
     fixed: 'Fixed Price',
     itemized: 'Itemized Units',
-    percentage: 'Percentage %',
+    percentage: 'Percentage',
     
     // Quotation Specific
-    introText: 'Quotation Intro (Letter)',
+    introText: 'Quotation Intro',
     defaultTerms: 'Terms & Conditions',
     validDays: 'Validity (Days)',
     validUntil: 'Valid Until',
@@ -233,8 +233,8 @@ const translations: Record<Language, Record<string, string>> = {
     addClause: 'Add Clause',
     milestones: 'Payment Milestones',
     addMilestone: 'Add Milestone',
-    milestoneTiming: 'Timing',
-    event: 'Financial Event',
+    milestoneTiming: 'Payment Timing',
+    event: 'Contractual Event',
     contractSigning: 'Contract Signing',
     contracting: 'Contracting',
     at: 'At Start',
