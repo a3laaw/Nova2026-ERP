@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -15,8 +15,7 @@ import {
 } from "@/components/ui/select";
 import { 
   Save, X, Plus, Trash2, Loader2, ArrowRight,
-  LayoutGrid, Boxes, Layers, Calculator,
-  ShieldCheck, Info, Sparkles, FileText
+  Calculator, ShieldCheck, Info, Sparkles, FileText
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
@@ -24,7 +23,7 @@ import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { QuotationTemplate, PricingMode, QuotationItem } from '@/types/templates';
-import { ActivityType, Service, SubService } from '@/types/reference';
+import { ActivityType, Service, SubService, TechnicalStage } from '@/types/reference';
 import { TemplateService } from '@/services/template-service';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -65,10 +64,18 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
   const actQuery = useMemo(() => companyId && db ? query(collection(db, paths.activityTypes(companyId)), orderBy('name')) : null, [db, companyId]);
   const srvQuery = useMemo(() => companyId && db && formData.activityTypeId ? query(collection(db, paths.services(companyId, formData.activityTypeId)), orderBy('name')) : null, [db, companyId, formData.activityTypeId]);
   const subQuery = useMemo(() => companyId && db && formData.activityTypeId && formData.serviceId ? query(collection(db, paths.subServices(companyId, formData.activityTypeId, formData.serviceId)), orderBy('name')) : null, [db, companyId, formData.activityTypeId, formData.serviceId]);
+  
+  // جلب المراحل الفنية لتحويل وصف البند إلى قائمة منسدلة
+  const stagesQuery = useMemo(() => 
+    companyId && db && formData.activityTypeId && formData.serviceId && formData.subServiceId
+      ? query(collection(db, paths.technicalStages(companyId, formData.activityTypeId, formData.serviceId, formData.subServiceId)), orderBy('order'))
+      : null, 
+  [db, companyId, formData.activityTypeId, formData.serviceId, formData.subServiceId]);
 
   const { data: activities } = useCollection<ActivityType>(actQuery);
   const { data: services } = useCollection<Service>(srvQuery);
   const { data: subServices } = useCollection<SubService>(subQuery);
+  const { data: stages } = useCollection<TechnicalStage>(stagesQuery);
 
   const addItem = () => {
     setFormData({
@@ -101,7 +108,6 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
     try {
       const service = new TemplateService(db, companyId);
       
-      // إسناد المسميات المرجعية لسهولة العرض مستقبلاً
       const activity = activities?.find(a => a.id === formData.activityTypeId);
       const srv = services?.find(s => s.id === formData.serviceId);
       const sub = subServices?.find(ss => ss.id === formData.subServiceId);
@@ -141,7 +147,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                {template ? (isRtl ? 'تعديل قالب عرض سعر' : 'Edit Quote Template') : (isRtl ? 'إنشاء قالب عرض سعر جديد' : 'New Quote Template')}
             </h1>
             <p className="text-xs font-bold text-muted-foreground opacity-70">
-               {isRtl ? 'تحديد البنود، الشروط، ونظام التسعير المرجعي' : 'Define line items, terms, and reference pricing'}
+               {isRtl ? 'تحديد البنود من المسار الفني وإعداد التسعير' : 'Select items from technical path and setup pricing'}
             </p>
           </div>
         </div>
@@ -157,7 +163,6 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
          <div className="lg:col-span-2 space-y-8">
-            {/* 1. Basic Info & Linking */}
             <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
                <CardHeader className="bg-primary/5 p-8 border-b text-start">
                   <CardTitle className="text-lg font-black flex items-center gap-2"><Info className="h-5 w-5 text-primary" /> {isRtl ? 'الارتباط التشغيلي' : 'Operational Link'}</CardTitle>
@@ -176,21 +181,21 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-50">
                      <div className="space-y-2">
-                        <Label className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{t('orgRef')}</Label>
+                        <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('orgRef')}</Label>
                         <Select value={formData.activityTypeId} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: ''})}>
                            <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="..." /></SelectTrigger>
                            <SelectContent>{activities?.map(a => <SelectItem key={a.id} value={a.id!}>{isRtl ? a.name : a.nameEn}</SelectItem>)}</SelectContent>
                         </Select>
                      </div>
                      <div className="space-y-2">
-                        <Label className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{t('techRef')}</Label>
+                        <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('techRef')}</Label>
                         <Select disabled={!formData.activityTypeId} value={formData.serviceId} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: ''})}>
                            <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="..." /></SelectTrigger>
                            <SelectContent>{services?.map(s => <SelectItem key={s.id} value={s.id!}>{isRtl ? s.name : s.nameEn}</SelectItem>)}</SelectContent>
                         </Select>
                      </div>
                      <div className="space-y-2">
-                        <Label className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{t('newPath')}</Label>
+                        <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('newPath')}</Label>
                         <Select disabled={!formData.serviceId} value={formData.subServiceId} onValueChange={v => setFormData({...formData, subServiceId: v})}>
                            <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="..." /></SelectTrigger>
                            <SelectContent>{subServices?.map(ss => <SelectItem key={ss.id} value={ss.id!}>{isRtl ? ss.name : ss.nameEn}</SelectItem>)}</SelectContent>
@@ -200,11 +205,10 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                </CardContent>
             </Card>
 
-            {/* 2. Items & Pricing */}
             <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
                <CardHeader className="bg-slate-900 text-white p-8 border-b flex flex-row items-center justify-between">
                   <div className="text-start">
-                     <CardTitle className="text-lg font-black flex items-center gap-2 text-primary"><Calculator className="h-5 w-5" /> {isRtl ? 'بنود التسعير المرجعية' : 'Pricing Line Items'}</CardTitle>
+                     <CardTitle className="text-lg font-black flex items-center gap-2 text-primary"><Calculator className="h-5 w-5" /> {isRtl ? 'بنود التسعير (من المسار الفني)' : 'Pricing from Technical Path'}</CardTitle>
                   </div>
                   <div className="flex items-center gap-3">
                      <Label className="text-white text-[10px] font-black uppercase tracking-widest">{t('pricingMode')}</Label>
@@ -226,11 +230,30 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                        <div className="flex justify-between items-start gap-4">
                           <div className="flex-1 space-y-2 text-start">
                              <Label className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'وصف البند أو المرحلة' : 'Item/Stage Description'}</Label>
-                             <Input 
+                             
+                             {/* تحويل وصف البند إلى قائمة منسدلة من المراحل الفنية */}
+                             <Select 
                                value={item.description} 
-                               onChange={e => updateItem(idx, 'description', e.target.value)} 
-                               className="h-10 rounded-xl bg-white border-2 font-bold"
-                             />
+                               onValueChange={v => updateItem(idx, 'description', v)}
+                             >
+                                <SelectTrigger className="h-12 rounded-xl border-2 bg-white font-bold text-slate-700">
+                                   <SelectValue placeholder={isRtl ? "اختر مرحلة من المسار الفني..." : "Select stage from path..."} />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl">
+                                   {stages?.map(s => (
+                                     <SelectItem key={s.id} value={isRtl ? s.name : s.nameEn} className="font-bold">
+                                        {isRtl ? s.name : s.nameEn}
+                                     </SelectItem>
+                                   ))}
+                                   {!stages?.length && (
+                                     <SelectItem value="manual" disabled>{isRtl ? 'يرجى اختيار المسار الفني أولاً' : 'Select technical path first'}</SelectItem>
+                                   )}
+                                </SelectContent>
+                             </Select>
+
+                             <p className="text-[8px] text-slate-400 font-bold italic">
+                                {isRtl ? "* ملاحظة: يمكنك كتابة نص مخصص إذا لم تجد المرحلة المناسبة." : "* Note: You can still manually type a description if needed."}
+                             </p>
                           </div>
                           {formData.items!.length > 1 && (
                             <Button variant="ghost" size="icon" onClick={() => removeItem(idx)} className="h-10 w-10 text-rose-500 hover:bg-rose-50 rounded-xl mt-6">
@@ -282,7 +305,6 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
          </div>
 
          <div className="space-y-8">
-            {/* 3. Narrative Content */}
             <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
                <CardHeader className="bg-slate-50 border-b p-6 text-start">
                   <CardTitle className="text-sm font-black flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> {t('introText')}</CardTitle>
@@ -315,7 +337,6 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                </CardContent>
             </Card>
 
-            {/* 4. Global Settings */}
             <div className="p-8 rounded-[2.5rem] bg-primary text-white space-y-6 shadow-2xl shadow-primary/20">
                <div className="flex items-center justify-between">
                   <div className="text-start">
@@ -332,7 +353,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                <div className="pt-4 border-t border-white/20 flex items-start gap-3">
                   <Sparkles className="h-6 w-6 text-white/40 shrink-0" />
                   <p className="text-[10px] font-bold leading-relaxed text-white/80 text-start">
-                     {isRtl ? 'نصيحة: استخدم الكلمات المفتاحية في المقدمة مثل [CLIENT_NAME] أو [PROJECT_NAME] ليتم استبدالها لاحقاً بالقيم الفعلية.' : 'Tip: Use placeholders like [CLIENT_NAME] in the intro to be replaced during generation.'}
+                     {isRtl ? 'نصيحة: ربط البنود بمراحل المسار الفني يضمن دقة المطالبات المالية لاحقاً.' : 'Tip: Linking items to path stages ensures accurate billing later.'}
                   </p>
                </div>
             </div>
