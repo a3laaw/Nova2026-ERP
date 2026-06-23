@@ -205,32 +205,32 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                      <div className="space-y-2">
                         <Label className="text-[10px] font-black uppercase text-slate-400">{t('name')}</Label>
-                        <Input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="h-12 rounded-xl border-2 font-bold" />
+                        <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-12 rounded-xl border-2 font-bold" />
                      </div>
                      <div className="space-y-2">
                         <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الكود المرجعي' : 'Template Code'}</Label>
-                        <Input value={formData.code} onChange={e => setFormData({...formData, code: e.target.value})} className="h-12 rounded-xl border-2 font-mono" placeholder="e.g. RES_ARCH_01" />
+                        <Input value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value})} className="h-12 rounded-xl border-2 font-mono" placeholder="e.g. RES_ARCH_01" />
                      </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-50">
                      <div className="space-y-2">
                         <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('orgRef')}</Label>
-                        <Select value={formData.activityTypeId} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: ''})}>
+                        <Select value={formData.activityTypeId || ''} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: ''})}>
                            <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="..." /></SelectTrigger>
                            <SelectContent>{activities?.map(a => <SelectItem key={a.id} value={a.id!}>{isRtl ? a.name : a.nameEn}</SelectItem>)}</SelectContent>
                         </Select>
                      </div>
                      <div className="space-y-2">
                         <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('techRef')}</Label>
-                        <Select disabled={!formData.activityTypeId} value={formData.serviceId} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: ''})}>
+                        <Select disabled={!formData.activityTypeId} value={formData.serviceId || ''} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: ''})}>
                            <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="..." /></SelectTrigger>
                            <SelectContent>{services?.map(s => <SelectItem key={s.id} value={s.id!}>{isRtl ? s.name : s.nameEn}</SelectItem>)}</SelectContent>
                         </Select>
                      </div>
                      <div className="space-y-2">
                         <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('newPath')}</Label>
-                        <Select disabled={!formData.serviceId} value={formData.subServiceId} onValueChange={v => setFormData({...formData, subServiceId: v})}>
+                        <Select disabled={!formData.serviceId} value={formData.subServiceId || ''} onValueChange={v => setFormData({...formData, subServiceId: v})}>
                            <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="..." /></SelectTrigger>
                            <SelectContent>{subServices?.map(ss => <SelectItem key={ss.id} value={ss.id!}>{isRtl ? ss.name : ss.nameEn}</SelectItem>)}</SelectContent>
                         </Select>
@@ -250,7 +250,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                   </div>
                   <div className="flex items-center gap-3">
                      <Label className="text-[10px] font-black uppercase tracking-widest">{t('pricingMode')}</Label>
-                     <Select value={formData.pricingMode} onValueChange={(v: PricingMode) => setFormData({...formData, pricingMode: v})}>
+                     <Select value={formData.pricingMode || 'itemized'} onValueChange={(v: PricingMode) => setFormData({...formData, pricingMode: v})}>
                         <SelectTrigger className="h-10 w-40 border-2 font-black text-xs rounded-xl bg-white">
                            <SelectValue />
                         </SelectTrigger>
@@ -276,7 +276,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                 {idx + 1}
                              </div>
                              <Input 
-                               value={item.label} 
+                               value={item.label || ''} 
                                onChange={e => updateItem(idx, 'label', e.target.value)}
                                className="bg-transparent border-0 border-b border-slate-200 rounded-none h-10 text-xl font-black text-slate-800 focus-visible:ring-0 w-64"
                                placeholder={isRtl ? "مسمى الدفعة..." : "Payment Label..."}
@@ -295,7 +295,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                 <Label className="text-[10px] font-black text-slate-400 uppercase flex items-center gap-1">
                                    <Clock className="h-3 w-3 text-primary" /> {isRtl ? 'التوقيت' : 'Timing'}
                                 </Label>
-                                <Select value={item.timing} onValueChange={v => updateItem(idx, 'timing', v)}>
+                                <Select value={item.timing || 'at'} onValueChange={v => updateItem(idx, 'timing', v)}>
                                    <SelectTrigger className="h-12 rounded-xl border-2 font-black">
                                       <SelectValue />
                                    </SelectTrigger>
@@ -324,7 +324,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                    </Select>
                                 ) : (
                                    <Select value={item.technicalStageId || ''} onValueChange={v => updateItem(idx, 'technicalStageId', v)}>
-                                      <SelectTrigger className="h-12 rounded-xl border-2 font-bold text-xs">
+                                      <SelectTrigger className="h-12 rounded-xl border-2 font-black text-xs">
                                          <SelectValue placeholder={isRtl ? "اختر مرحلة..." : "Select stage..."} />
                                       </SelectTrigger>
                                       <SelectContent className="rounded-xl">
@@ -339,7 +339,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                 <Label className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'القيمة / السعر' : 'Amount'}</Label>
                                 <Input 
                                   type="number" 
-                                  value={formData.pricingMode === 'percentage' ? item.percentage : item.unitPrice} 
+                                  value={formData.pricingMode === 'percentage' ? (item.percentage ?? 0) : (item.unitPrice ?? 0)} 
                                   onChange={e => updateItem(idx, formData.pricingMode === 'percentage' ? 'percentage' : 'unitPrice', Number(e.target.value))}
                                   className="h-12 rounded-xl border-2 font-black text-lg text-emerald-600 text-center"
                                 />
@@ -348,7 +348,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                              <div className="md:col-span-12 space-y-2 pt-2">
                                 <Label className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'وصف تفصيلي يظهر في جدول عرض السعر' : 'Description for the quote table'}</Label>
                                 <Textarea 
-                                  value={item.description} 
+                                  value={item.description || ''} 
                                   onChange={e => updateItem(idx, 'description', e.target.value)}
                                   className="min-h-[60px] rounded-2xl bg-slate-50/50 border-dashed border-2"
                                   placeholder="..."
@@ -377,7 +377,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                </CardHeader>
                <CardContent className="p-6 text-start">
                   <Textarea 
-                    value={formData.introText} 
+                    value={formData.introText || ''} 
                     onChange={e => setFormData({...formData, introText: e.target.value})}
                     placeholder={isRtl ? "نص مقدمة عرض السعر..." : "Introduction text..."}
                     className="min-h-[150px] rounded-2xl bg-slate-50/50 p-4 border-2"
@@ -391,14 +391,14 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                </CardHeader>
                <CardContent className="p-6 space-y-6 text-start">
                   <Textarea 
-                    value={formData.defaultTerms} 
+                    value={formData.defaultTerms || ''} 
                     onChange={e => setFormData({...formData, defaultTerms: e.target.value})}
                     placeholder={isRtl ? "الشروط والأحكام الخاصة بالعرض..." : "Terms and conditions..."}
                     className="min-h-[150px] rounded-2xl bg-slate-50/50 p-4 border-2"
                   />
                   <div className="space-y-2">
                      <Label className="text-[10px] font-black uppercase text-slate-400">{t('validDays')}</Label>
-                     <Input type="number" value={formData.validDays} onChange={e => setFormData({...formData, validDays: Number(e.target.value)})} className="h-11 rounded-xl border-2 font-black" />
+                     <Input type="number" value={formData.validDays ?? 30} onChange={e => setFormData({...formData, validDays: Number(e.target.value)})} className="h-11 rounded-xl border-2 font-black" />
                   </div>
                </CardContent>
             </Card>
@@ -413,7 +413,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                      <p className="text-white/60 text-[10px] font-bold">{isRtl ? 'اعتماد كنموذج رئيسي لهذه الخدمة.' : 'Set as primary template.'}</p>
                   </div>
                   <Switch 
-                    checked={formData.isDefault} 
+                    checked={formData.isDefault || false} 
                     onCheckedChange={v => setFormData({...formData, isDefault: v})} 
                   />
                </div>

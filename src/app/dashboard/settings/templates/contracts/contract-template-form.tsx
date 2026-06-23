@@ -183,32 +183,32 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                      <div className="space-y-2">
                         <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'اسم القالب' : 'Template Name'}</Label>
-                        <Input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="h-12 rounded-xl border-2 font-bold" />
+                        <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-12 rounded-xl border-2 font-bold" />
                      </div>
                      <div className="space-y-2">
                         <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الرقم المرجعي' : 'Ref Code'}</Label>
-                        <Input value={formData.code} onChange={e => setFormData({...formData, code: e.target.value})} className="h-12 rounded-xl border-2 font-mono" placeholder="CONT_STD_01" />
+                        <Input value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value})} className="h-12 rounded-xl border-2 font-mono" placeholder="CONT_STD_01" />
                      </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-50">
                      <div className="space-y-2">
                         <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'النشاط الرئيسي' : 'Activity'}</Label>
-                        <Select value={formData.activityTypeId} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: ''})}>
+                        <Select value={formData.activityTypeId || ''} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: ''})}>
                            <SelectTrigger className="h-11 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
                            <SelectContent>{activities?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{isRtl ? a.name : a.nameEn}</SelectItem>)}</SelectContent>
                         </Select>
                      </div>
                      <div className="space-y-2">
                         <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'الخدمة الفنية' : 'Service'}</Label>
-                        <Select disabled={!formData.activityTypeId} value={formData.serviceId} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: ''})}>
+                        <Select disabled={!formData.activityTypeId} value={formData.serviceId || ''} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: ''})}>
                            <SelectTrigger className="h-11 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                           <SelectContent>{services?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold">{isRtl ? s.name : s.nameEn}</SelectItem>)}</SelectContent>
+                           <SelectContent>{services?.map(s => <SelectItem key={s.id} value={s.id!}>{isRtl ? s.name : s.nameEn}</SelectItem>)}</SelectContent>
                         </Select>
                      </div>
                      <div className="space-y-2">
                         <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'المسار الفرعي' : 'Sub-Service'}</Label>
-                        <Select disabled={!formData.serviceId} value={formData.subServiceId} onValueChange={v => setFormData({...formData, subServiceId: v})}>
+                        <Select disabled={!formData.serviceId} value={formData.subServiceId || ''} onValueChange={v => setFormData({...formData, subServiceId: v})}>
                            <SelectTrigger className="h-11 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
                            <SelectContent>{subServices?.map(ss => <SelectItem key={ss.id} value={ss.id!} className="font-bold">{isRtl ? ss.name : ss.nameEn}</SelectItem>)}</SelectContent>
                         </Select>
@@ -236,7 +236,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                             <div className="w-40 space-y-2">
                                <Label className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'مسمى الدفعة' : 'Label'}</Label>
                                <Input 
-                                 value={milestone.name} 
+                                 value={milestone.name || ''} 
                                  onChange={e => updateMilestone(idx, 'name', e.target.value)} 
                                  className="h-12 rounded-xl bg-white border-2 font-black text-slate-800"
                                  placeholder={isRtl ? `الدفعة ${idx + 1}` : `Payment ${idx + 1}`}
@@ -249,7 +249,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                      <Label className="text-[10px] font-black text-primary uppercase flex items-center gap-1">
                                         <Clock className="h-3 w-3" /> {t('milestoneTiming')}
                                      </Label>
-                                     <Select value={milestone.timing} onValueChange={v => updateMilestone(idx, 'timing', v)}>
+                                     <Select value={milestone.timing || 'after'} onValueChange={v => updateMilestone(idx, 'timing', v)}>
                                         <SelectTrigger className="h-12 rounded-xl border-2 bg-white font-black">
                                            <SelectValue />
                                         </SelectTrigger>
@@ -293,7 +293,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                <div className="space-y-2">
                                   <Label className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'وصف شرط الاستحقاق (يظهر في العقد)' : 'Legal condition for the contract'}</Label>
                                   <Input 
-                                    value={milestone.conditionText} 
+                                    value={milestone.conditionText || ''} 
                                     onChange={e => updateMilestone(idx, 'conditionText', e.target.value)} 
                                     className="h-10 rounded-xl bg-white/50 border-dashed"
                                     placeholder="..."
@@ -305,7 +305,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                <Label className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{isRtl ? 'الحصة %' : 'Share %'}</Label>
                                <Input 
                                  type="number" 
-                                 value={milestone.percentage} 
+                                 value={milestone.percentage ?? 0} 
                                  onChange={e => updateMilestone(idx, 'percentage', Number(e.target.value))} 
                                  className="h-12 rounded-xl bg-white border-2 font-black text-emerald-600 text-center text-lg"
                                />
@@ -337,7 +337,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                           {idx + 1}
                        </div>
                        <Textarea 
-                         value={clause} 
+                         value={clause || ''} 
                          onChange={e => updateClause(idx, e.target.value)}
                          className="min-h-[80px] rounded-2xl bg-slate-50/50 border-2 border-slate-100 focus:bg-white transition-all text-sm"
                        />
@@ -357,7 +357,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                </CardHeader>
                <CardContent className="p-6">
                   <Textarea 
-                    value={formData.introText} 
+                    value={formData.introText || ''} 
                     onChange={e => setFormData({...formData, introText: e.target.value})}
                     placeholder="..."
                     className="min-h-[120px] rounded-2xl bg-slate-50/30 p-4 border-2 border-slate-100"
@@ -371,7 +371,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                </CardHeader>
                <CardContent className="p-6">
                   <Textarea 
-                    value={formData.legalText} 
+                    value={formData.legalText || ''} 
                     onChange={e => setFormData({...formData, legalText: e.target.value})}
                     placeholder="..."
                     className="min-h-[200px] rounded-2xl bg-slate-50/30 p-4 border-2 border-slate-100"
@@ -389,7 +389,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                      <p className="text-white/60 text-[10px] font-bold">{isRtl ? 'اعتماد هذا العقد كنموذج أولي لهذه الخدمة.' : 'Set as primary template.'}</p>
                   </div>
                   <Switch 
-                    checked={formData.isDefault} 
+                    checked={formData.isDefault || false} 
                     onCheckedChange={v => setFormData({...formData, isDefault: v})} 
                   />
                </div>
