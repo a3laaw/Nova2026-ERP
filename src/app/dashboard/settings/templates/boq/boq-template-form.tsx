@@ -17,7 +17,7 @@ import {
 import { 
   Save, X, Plus, Trash2, Loader2, ArrowRight,
   FileSpreadsheet, Boxes, Layers, DollarSign, Calculator, AlertTriangle,
-  ChevronDown, ChevronRight, LayoutGrid
+  ChevronDown, ChevronRight, LayoutGrid, CheckCircle2
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
@@ -93,7 +93,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     
     // Validations
     if (!formData.name) {
-      toast({ variant: "destructive", title: t('error'), description: isRtl ? "يرجى إدخال اسم القالب." : "Name is required." });
+      toast({ variant: "destructive", title: t('error'), description: isRtl ? "يرجى إدخل اسم القالب." : "Name is required." });
       return;
     }
 
@@ -214,7 +214,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                       <Label className="text-[10px] font-black text-slate-400 uppercase">{t('orgRef')}</Label>
                       <Select value={formData.activityTypeId} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: ''})}>
                          <SelectTrigger className="h-12 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                         <SelectContent className="rounded-xl">
+                         <SelectContent className="rounded-2xl">
                             {activities?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{isRtl ? a.name : a.nameEn}</SelectItem>)}
                          </SelectContent>
                       </Select>
@@ -246,7 +246,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform"><DollarSign className="h-40 w-40" /></div>
                <div className="max-w-md mx-auto space-y-4 relative z-10">
                   <Label className="text-xs font-black uppercase text-emerald-600 tracking-[0.2em]">
-                     {isRtl ? 'إجمالي الميزانية التقديرية للمقياسة (KWD)' : 'Total Estimated BOQ Budget (KWD)'}
+                     {isRtl ? 'إجمالي قيمة المقياسة التقديرية (KWD)' : 'Total Estimated BOQ Budget (KWD)'}
                   </Label>
                   <Input 
                      type="number" 
