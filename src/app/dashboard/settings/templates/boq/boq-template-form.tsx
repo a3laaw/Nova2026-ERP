@@ -139,6 +139,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                </CardContent>
             </Card>
 
+            {/* صندوق القيمة الزمردي المعتمد للمقايسات */}
             <div className="p-12 bg-emerald-50/50 rounded-[3.5rem] border-2 border-emerald-100 text-center relative overflow-hidden group shadow-xl">
                <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform"><DollarSign className="h-40 w-40" /></div>
                <div className="max-w-md mx-auto space-y-4 relative z-10">

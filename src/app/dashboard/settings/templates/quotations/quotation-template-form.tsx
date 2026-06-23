@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { 
   Select, 
   SelectContent, 
@@ -30,7 +31,6 @@ import { TemplateService } from '@/services/template-service';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
 
 interface Props {
   template: QuotationTemplate | null;
@@ -142,7 +142,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
          <div className="lg:col-span-2 space-y-8">
-            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5">
+            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
                <CardContent className="p-10 space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                      <div className="space-y-2">
@@ -157,6 +157,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                </CardContent>
             </Card>
 
+            {/* صندوق القيمة الزمردي المعتمد (Emerald UI) */}
             <div className="p-12 bg-emerald-50/50 rounded-[3.5rem] border-2 border-emerald-100 text-center relative overflow-hidden group shadow-xl">
                <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform"><DollarSign className="h-40 w-40" /></div>
                <div className="max-w-md mx-auto space-y-4 relative z-10">
@@ -177,7 +178,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                   <h3 className="text-2xl font-black font-headline flex items-center gap-3"><Calculator className="h-8 w-8 text-primary" /> {isRtl ? 'هيكلة بنود التسعير' : 'Pricing Items'}</h3>
                   <Select value={formData.pricingMode || 'itemized'} onValueChange={(v: PricingMode) => setFormData({...formData, pricingMode: v})}>
                      <SelectTrigger className="h-10 w-48 rounded-xl border-2 font-black text-xs bg-white"><SelectValue /></SelectTrigger>
-                     <SelectContent className="rounded-xl">
+                     <SelectContent className="rounded-2xl">
                         <SelectItem value="itemized" className="font-bold">{t('itemized')}</SelectItem>
                         <SelectItem value="fixed" className="font-bold">{t('fixed')}</SelectItem>
                         <SelectItem value="percentage" className="font-bold">{t('percentage')}</SelectItem>
@@ -224,6 +225,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                   <Button onClick={() => setFormData({...formData, items: [...(formData.items || []), { label: '', percentage: 0, unitPrice: 0 }]})} variant="outline" className="w-full h-16 rounded-[2.5rem] border-2 border-dashed border-primary/20 text-primary font-black gap-2 hover:bg-primary/5 transition-all"><Plus className="h-6 w-6" /> {t('addQuotationItem')}</Button>
                </div>
 
+               {/* صندوق التحقق الذكي (Validation Box) */}
                <div className={cn(
                  "p-10 rounded-[3rem] border-4 border-dashed flex items-center justify-between shadow-xl transition-all",
                  isMathValid ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-rose-50 border-rose-200 text-rose-800"

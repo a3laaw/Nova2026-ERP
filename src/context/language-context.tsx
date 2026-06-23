@@ -150,10 +150,7 @@ const translations: Record<Language, Record<string, string>> = {
     scopeNone: 'محجوب',
     scopeOwn: 'سجلاتي فقط',
     scopeDept: 'سجلات القسم',
-    scopeAll: 'كل المنشأة',
-    totalEntitlement: 'إجمالي المستحقات',
-    serviceYears: 'سنوات الخدمة',
-    resignationFactor: 'عامل الاستقالة'
+    scopeAll: 'كل المنشأة'
   },
   en: {
     dashboard: 'Dashboard',
@@ -293,10 +290,7 @@ const translations: Record<Language, Record<string, string>> = {
     scopeNone: 'None',
     scopeOwn: 'Own Records',
     scopeDept: 'Department',
-    scopeAll: 'All Enterprise',
-    totalEntitlement: 'Total Entitlement',
-    serviceYears: 'Service Years',
-    resignationFactor: 'Resignation Factor'
+    scopeAll: 'All Enterprise'
   }
 };
 

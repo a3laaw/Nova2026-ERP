@@ -118,7 +118,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
          <div className="lg:col-span-2 space-y-8">
-            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5">
+            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
                <CardContent className="p-10 space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                      <div className="space-y-2">
@@ -133,6 +133,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                </CardContent>
             </Card>
 
+            {/* صندوق القيمة الزمردي المعتمد (Emerald UI) */}
             <div className="p-12 bg-emerald-50/50 rounded-[3.5rem] border-2 border-emerald-100 text-center relative overflow-hidden group shadow-xl">
                <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform"><DollarSign className="h-40 w-40" /></div>
                <div className="max-w-md mx-auto space-y-4 relative z-10">
@@ -180,6 +181,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                   <Button onClick={() => setFormData({...formData, defaultMilestones: [...(formData.defaultMilestones || []), { name: '', percentage: 0, timing: 'at' }]})} variant="outline" className="w-full h-16 rounded-[2.5rem] border-2 border-dashed border-primary/20 text-primary font-black gap-2 hover:bg-primary/5 transition-all"><Plus className="h-6 w-6" /> {t('addMilestone')}</Button>
                </div>
 
+               {/* صندوق التحقق المئوي (Odoo Style) */}
                <div className={cn(
                  "p-10 rounded-[3rem] border-4 border-dashed flex items-center justify-between shadow-xl transition-all",
                  isMathValid ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-rose-50 border-rose-200 text-rose-800"
@@ -197,7 +199,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
 
          <div className="lg:col-span-1 space-y-6">
             <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
-               <CardHeader className="bg-slate-900 text-white p-6 text-start"><CardTitle className="text-sm font-black flex items-center gap-3"><Gavel className="h-5 w-5 text-primary" /> {isRtl ? 'البنود القانونية' : 'Legal Clauses'}</CardTitle></CardHeader>
+               <CardHeader className="bg-slate-900 text-white p-6 text-start"><CardTitle className="text-sm font-black flex items-center gap-2"><Gavel className="h-5 w-5 text-primary" /> {isRtl ? 'البنود القانونية' : 'Legal Clauses'}</CardTitle></CardHeader>
                <CardContent className="p-6"><Textarea value={formData.legalText || ''} onChange={e => setFormData({...formData, legalText: e.target.value})} className="min-h-[400px] rounded-2xl bg-slate-50/50 p-4 border-2 text-xs font-bold leading-relaxed" /></CardContent>
             </Card>
          </div>
