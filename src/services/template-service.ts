@@ -134,7 +134,7 @@ export class TemplateService {
         updatedAt: serverTimestamp()
       });
 
-      // Clear old items for rewrite (Optional approach, or update specifically)
+      // Clear old items for rewrite (Safe approach for template maintenance)
       const oldItems = await this.getBOQTemplateItems(templateId);
       oldItems.forEach(oi => {
         const itemRef = doc(this.db, paths.boqTemplateItems(this.companyId, templateId), oi.id!);

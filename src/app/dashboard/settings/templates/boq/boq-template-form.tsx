@@ -131,7 +131,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
       componentName: '',
       description: '',
       unit: '',
-      plannedQuantity: 0,
+      plannedQuantity: 1,
       executedQuantity: 0,
       estimatedRate: 0,
       estimatedCostRate: 0,
@@ -152,7 +152,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     setItems(items.filter((_, i) => i !== index));
   };
 
-  // تجميع البنود شجرياً للعرض فقط
+  // تجميع البنود شجرياً للعرض فقط (Section -> Main Category -> Component)
   const groupedItems = useMemo(() => {
     const groups: any = {};
     items.forEach((item, index) => {
@@ -370,7 +370,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                </div>
                
                <div className="text-center md:text-end space-y-2 mt-6 md:mt-0">
-                 <h4 className="font-black text-2xl font-headline flex items-center justify-center md:justify-end gap-3">
+                 <h4 className="font-black text-2xl font-headline flex items-center gap-3 justify-center md:justify-end">
                     {isMathValid ? <CheckCircle2 className="h-8 w-8 text-emerald-500" /> : <AlertTriangle className="h-8 w-8 text-rose-500" />}
                     {isRtl ? 'حالة التوازن المالي للمقياسة' : 'Financial Balance Status'}
                  </h4>
