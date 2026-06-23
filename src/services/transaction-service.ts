@@ -61,13 +61,17 @@ export class TransactionService {
 
     // 3. قراءة المراحل الفنية المرجعية (Template Stages)
     const stagesPath = paths.technicalStages(this.companyId, data.activityTypeId, data.serviceId, data.subServiceId);
-    const stagesQuery = query(collection(this.db, stagesPath), orderBy('order'));
-    const stagesSnap = await getDocs(stagesQuery);
+    // تم إزالة orderBy من الاستعلام مباشرة لتجنب استبعاد الوثائق التي تفتقر لحقل order
+    const stagesSnap = await getDocs(collection(this.db, stagesPath));
 
-    // معالجة واضحة في حال عدم وجود مراحل (Process Guard)
     if (stagesSnap.empty) {
       throw new Error('لا يمكن فتح المعاملة لعدم وجود مراحل عمل معرّفة لهذا المسار في مركز المراجع. يرجى إضافة مراحل للخدمة الفرعية أولاً.');
     }
+
+    // ترتيب المراحل برمجياً لضمان المرونة
+    const sortedStages = stagesSnap.docs
+      .map(d => ({ id: d.id, ...d.data() } as TechnicalStage))
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
 
     const clientData = clientSnap.data();
     const currentCounter = clientData.transactionCounter || 0;
@@ -76,7 +80,7 @@ export class TransactionService {
     // 4. توليد الرقم المتسلسل المهني (رقم الملف - تسلسل المعاملة)
     const transactionNumber = `${clientData.fileNumber}-${nextCounter.toString().padStart(2, '0')}`;
 
-    // 5. تجهيز العملية الذرية (Atomic Batch) لضمان سلامة التوثيق والاستنساخ
+    // 5. تجهيز العملية الذرية (Atomic Batch)
     const batch = writeBatch(this.db);
     const transRef = doc(collection(this.db, paths.transactions(this.companyId)));
     const transactionId = transRef.id;
@@ -103,27 +107,24 @@ export class TransactionService {
       updatedBy: userId
     };
 
-    // أ. إنشاء سجل المعاملة الرئيسي
     batch.set(transRef, transactionData);
 
-    // ب. تحديث عداد المعاملات في ملف العميل
     batch.update(clientRef, {
       transactionCounter: increment(1),
       updatedAt: serverTimestamp()
     });
 
-    // ج. استنساخ المراحل المرجعية إلى مراحل تنفيذية (Stage Instances)
-    stagesSnap.docs.forEach(stageDoc => {
-      const stage = stageDoc.data() as TechnicalStage;
+    // استنساخ المراحل المرتبة
+    sortedStages.forEach(stage => {
       const instanceRef = doc(collection(this.db, paths.transactionStages(this.companyId, transactionId)));
       
       const instanceData: StageInstance = {
         transactionId,
-        technicalStageId: stageDoc.id,
+        technicalStageId: stage.id!,
         code: stage.code,
         name: stage.name,
         description: stage.description || '',
-        order: stage.order,
+        order: stage.order || 0,
         isNumeric: stage.isNumeric,
         numericTarget: stage.numericTarget,
         currentCount: 0,
@@ -143,22 +144,19 @@ export class TransactionService {
       batch.set(instanceRef, instanceData);
     });
 
-    // د. توثيق سجل أحداث الزمن (Timeline Events)
     const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
-    const timelineEvent: TransactionTimelineEvent = {
+    batch.set(timelineRef, {
       transactionId,
       type: 'system',
-      content: `تم افتتاح المعاملة الفنية بنجاح واستنساخ ${stagesSnap.size} مراحل تنفيذية من المسار المرجعي.`,
+      content: `تم افتتاح المعاملة الفنية بنجاح واستنساخ ${sortedStages.length} مراحل تنفيذية من المسار المرجعي.`,
       userId,
       userName,
       companyId: this.companyId,
       createdAt: serverTimestamp()
-    };
-    batch.set(timelineRef, timelineEvent);
+    });
 
-    // هـ. توثيق سجل تاريخ العميل (Client History)
     const historyRef = doc(collection(this.db, paths.clientHistory(this.companyId, data.clientId)));
-    const historyEvent: ClientHistory = {
+    batch.set(historyRef, {
       clientId: data.clientId,
       type: 'transaction_created',
       content: `تم فتح معاملة فنية جديدة برقم ${transactionNumber}`,
@@ -166,15 +164,12 @@ export class TransactionService {
       userName,
       companyId: this.companyId,
       createdAt: serverTimestamp()
-    };
-    batch.set(historyRef, historyEvent);
+    });
 
-    // 6. تنفيذ الـ Batch النهائي وإعادة المعرف
     try {
       await batch.commit();
       return transactionId;
     } catch (err: any) {
-      console.error("Batch Commit Error:", err);
       if (err.code === 'permission-denied') {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: transRef.path,

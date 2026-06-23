@@ -48,15 +48,38 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
   const stagesQuery = useMemo(() => companyId && db ? query(collection(db, paths.technicalStages(companyId, activityType.id!, mainService.id!, subService.id!))) : null, [db, companyId, activityType, mainService, subService]);
   const { data: stages, loading } = useCollection<TechnicalStage>(stagesQuery);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!technicalPathService || !form || !form.name) return;
     setLoadingAction('save');
-    const data = { ...form, isActive: true, isRequired: true, isEditable: true, nextStageIds: form.nextStageIds || [], name: form.name || '', nameEn: form.nameEn || '', description: form.description || '' };
-    if (form.id) technicalPathService.updateTechnicalStage(activityType.id!, mainService.id!, subService.id!, form.id, data);
-    else technicalPathService.addTechnicalStage(activityType.id!, mainService.id!, subService.id!, data);
-    toast({ title: t('saved') });
-    setForm(null);
-    setLoadingAction(null);
+    
+    // ضمان وجود ترتيب منطقي للمرحلة
+    const nextOrder = form.order !== undefined ? form.order : (stages?.length || 0);
+
+    const data = { 
+      ...form, 
+      isActive: true, 
+      isRequired: true, 
+      isEditable: true, 
+      order: nextOrder,
+      nextStageIds: form.nextStageIds || [], 
+      name: form.name || '', 
+      nameEn: form.nameEn || '', 
+      description: form.description || '' 
+    };
+
+    try {
+      if (form.id) {
+        await technicalPathService.updateTechnicalStage(activityType.id!, mainService.id!, subService.id!, form.id, data);
+      } else {
+        await technicalPathService.addTechnicalStage(activityType.id!, mainService.id!, subService.id!, data);
+      }
+      toast({ title: t('saved') });
+      setForm(null);
+    } catch (e) {
+      toast({ variant: "destructive", title: t('error') });
+    } finally {
+      setLoadingAction(null);
+    }
   };
 
   const getAncestors = (targetId: string, allStages: TechnicalStage[]) => {
@@ -84,10 +107,14 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
     setForm({ ...form, nextStageIds: newIds });
   };
 
+  const sortedStages = useMemo(() => {
+    return [...(stages || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
+  }, [stages]);
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 text-start">
           <Button variant="ghost" onClick={onBack} className="rounded-xl h-10 w-10 p-0 bg-white shadow-sm border hover:bg-slate-50">
              <ArrowRight className={cn("h-4 w-4", !isRtl && 'rotate-180')} />
           </Button>
@@ -109,8 +136,8 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
 
       {loading ? <div className="py-40 text-center"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></div> : (
         <div className="grid grid-cols-1 gap-4">
-          {stages?.length === 0 ? <div className="py-20 text-center bg-white rounded-3xl border-2 border-dashed border-muted"><p className="font-bold text-muted-foreground italic">لا توجد مراحل معرفة.</p></div> : 
-            stages?.map((stage) => (
+          {sortedStages.length === 0 ? <div className="py-20 text-center bg-white rounded-3xl border-2 border-dashed border-muted"><p className="font-bold text-muted-foreground italic">لا توجد مراحل معرفة لهذا المسار.</p></div> : 
+            sortedStages.map((stage) => (
               <Card key={stage.id} className="border-0 shadow-lg rounded-2xl bg-white overflow-hidden group hover:ring-2 hover:ring-primary/10 transition-all text-start">
                 <div className="flex items-center p-5 justify-between">
                   <div className="text-start flex items-center gap-4">
@@ -184,7 +211,7 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
               </div>
 
               <div className="lg:col-span-2 bg-slate-50/80 border-s border-slate-100 p-8 flex flex-col">
-                <div className="mb-6">
+                <div className="mb-6 text-start">
                   <h4 className="font-black text-base flex items-center gap-2 text-slate-700"><ArrowRight className="h-4 w-4 text-primary" /> {t('nextStages')}</h4>
                 </div>
                 <ScrollArea className="flex-1">
