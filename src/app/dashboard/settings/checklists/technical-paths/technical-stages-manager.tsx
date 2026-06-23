@@ -8,7 +8,7 @@ import {
   Plus, Loader2, Trash2, Edit3, 
   Workflow, ArrowRight, Clock,
   ListChecks, ShieldCheck,
-  GripVertical
+  GripVertical, ChevronUp, ChevronDown
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,14 +48,16 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
   const stagesQuery = useMemo(() => companyId && db ? query(collection(db, paths.technicalStages(companyId, activityType.id!, mainService.id!, subService.id!))) : null, [db, companyId, activityType, mainService, subService]);
   const { data: stages, loading } = useCollection<TechnicalStage>(stagesQuery);
 
+  const sortedStages = useMemo(() => {
+    return [...(stages || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
+  }, [stages]);
+
   const handleSave = async () => {
     if (!technicalPathService || !form || !form.name) return;
     setLoadingAction('save');
     
-    // ضمان وجود ترتيب منطقي للمرحلة
-    const nextOrder = form.order !== undefined ? form.order : (stages?.length || 0);
-
-    // توليد كود إذا كان مفقوداً (للتوافق مع المعاملات)
+    // إسناد ترتيب تلقائي في نهاية القائمة إذا كان جديداً
+    const nextOrder = form.id !== undefined ? form.order : sortedStages.length;
     const generatedCode = form.code || (form.nameEn || form.name || 'STAGE').toUpperCase().replace(/\s+/g, '_');
 
     const data = { 
@@ -79,6 +81,29 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
       }
       toast({ title: t('saved') });
       setForm(null);
+    } catch (e) {
+      toast({ variant: "destructive", title: t('error') });
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  const handleMove = async (index: number, direction: 'up' | 'down') => {
+    if (!technicalPathService || !stages) return;
+    const newStages = [...sortedStages];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    
+    if (targetIndex < 0 || targetIndex >= newStages.length) return;
+
+    // تبديل العناصر في المصفوفة
+    const temp = newStages[index];
+    newStages[index] = newStages[targetIndex];
+    newStages[targetIndex] = temp;
+
+    setLoadingAction('reorder');
+    try {
+      await technicalPathService.reorderStages(activityType.id!, mainService.id!, subService.id!, newStages);
+      toast({ title: isRtl ? "تم تحديث ترتيب المسار" : "Order Updated" });
     } catch (e) {
       toast({ variant: "destructive", title: t('error') });
     } finally {
@@ -111,10 +136,6 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
     setForm({ ...form, nextStageIds: newIds });
   };
 
-  const sortedStages = useMemo(() => {
-    return [...(stages || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
-  }, [stages]);
-
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -135,20 +156,41 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
             </div>
           </div>
         </div>
-        <Button onClick={() => setForm({ name: '', nameEn: '', description: '', code: '', isNumeric: false, isTimed: false, nextStageIds: [] })} className="rounded-xl shadow-lg font-bold"><Plus className="me-2 h-4 w-4" /> {isRtl ? 'إضافة مرحلة' : 'Add Stage'}</Button>
+        <Button onClick={() => setForm({ name: '', nameEn: '', description: '', code: '', isNumeric: false, isTimed: false, nextStageIds: [] })} className="btn-nova-primary h-12 rounded-xl shadow-lg font-bold"><Plus className="me-2 h-4 w-4" /> {isRtl ? 'إضافة مرحلة' : 'Add Stage'}</Button>
       </div>
 
-      {loading ? <div className="py-40 text-center"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></div> : (
+      {loading || loadingAction === 'reorder' ? <div className="py-40 text-center"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></div> : (
         <div className="grid grid-cols-1 gap-4">
           {sortedStages.length === 0 ? <div className="py-20 text-center bg-white rounded-3xl border-2 border-dashed border-muted"><p className="font-bold text-muted-foreground italic">لا توجد مراحل معرّفة لهذا المسار.</p></div> : 
-            sortedStages.map((stage) => (
+            sortedStages.map((stage, idx) => (
               <Card key={stage.id} className="border-0 shadow-lg rounded-2xl bg-white overflow-hidden group hover:ring-2 hover:ring-primary/10 transition-all text-start">
                 <div className="flex items-center p-5 justify-between">
                   <div className="text-start flex items-center gap-4">
-                    <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-300 group-hover:text-primary transition-colors"><GripVertical className="h-5 w-5" /></div>
+                    {/* أدوات الترتيب (Up/Down) */}
+                    <div className="flex flex-col gap-1">
+                       <Button 
+                         variant="ghost" 
+                         size="icon" 
+                         className="h-6 w-6 rounded-md hover:bg-primary/10 text-slate-300 hover:text-primary disabled:opacity-20"
+                         disabled={idx === 0}
+                         onClick={() => handleMove(idx, 'up')}
+                       >
+                          <ChevronUp className="h-4 w-4" />
+                       </Button>
+                       <Button 
+                         variant="ghost" 
+                         size="icon" 
+                         className="h-6 w-6 rounded-md hover:bg-primary/10 text-slate-300 hover:text-primary disabled:opacity-20"
+                         disabled={idx === sortedStages.length - 1}
+                         onClick={() => handleMove(idx, 'down')}
+                       >
+                          <ChevronDown className="h-4 w-4" />
+                       </Button>
+                    </div>
                     <div>
                       <h3 className="font-black text-slate-800 text-base">{isRtl ? stage.name : stage.nameEn}</h3>
                       <div className="flex gap-3 mt-1">
+                         <span className="text-[10px] font-black text-primary bg-primary/5 px-2 rounded">#{idx + 1}</span>
                          {stage.isTimed && <span className="flex items-center gap-1 text-[10px] font-bold text-blue-600"><Clock className="h-3 w-3" /> {stage.timeTargetDays} {isRtl ? 'يوم' : 'Days'}</span>}
                          {stage.isNumeric && <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600"><ListChecks className="h-3 w-3" /> {isRtl ? 'مستهدف:' : 'Target:'} {stage.numericTarget}</span>}
                          <span className="text-[8px] font-mono text-slate-300 uppercase tracking-tighter">Code: {stage.code}</span>

@@ -9,7 +9,9 @@ import {
   deleteDoc, 
   serverTimestamp,
   writeBatch,
-  getDocs
+  getDocs,
+  query,
+  orderBy
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -123,6 +125,26 @@ export class TechnicalPathService {
     const docRef = doc(this.db, path, stageId);
     return deleteDoc(docRef).catch((err) => {
       this.handleError(docRef.path, 'delete');
+      throw err;
+    });
+  }
+
+  /**
+   * محرك الترتيب الذكي: يقوم بتبديل الترتيب بين مرحلتين في عملية ذرية واحدة.
+   */
+  async reorderStages(actId: string, srvId: string, subId: string, stages: TechnicalStage[]) {
+    const batch = writeBatch(this.db);
+    const path = paths.technicalStages(this.companyId, actId, srvId, subId);
+    
+    stages.forEach((stage, index) => {
+      if (stage.id) {
+        const docRef = doc(this.db, path, stage.id);
+        batch.update(docRef, { order: index, updatedAt: serverTimestamp() });
+      }
+    });
+
+    return batch.commit().catch((err) => {
+      this.handleError(path, 'update');
       throw err;
     });
   }
