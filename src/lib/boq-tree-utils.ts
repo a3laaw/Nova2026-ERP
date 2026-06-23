@@ -17,13 +17,13 @@ import {
 export function transformToBOQTree(items: BOQTemplateItem[]): BOQTreeSection[] {
   const sectionsMap: Record<string, BOQTreeSection> = {};
 
-  items.forEach((item) => {
+  items.forEach((item, index) => {
     // 1. معالجة مستوى القسم (Section)
     if (!sectionsMap[item.sectionId]) {
       sectionsMap[item.sectionId] = {
         id: item.sectionId,
         name: item.sectionName,
-        order: item.order, // الترتيب التقريبي للقسم بناءً على أول بند
+        order: item.order, 
         children: []
       };
     }
@@ -53,8 +53,8 @@ export function transformToBOQTree(items: BOQTemplateItem[]): BOQTreeSection[] {
       mainCategory.children.push(component);
     }
 
-    // 4. إضافة البند النهائي (Leaf Node)
-    component.children.push(item);
+    // 4. إضافة البند النهائي (Leaf Node) مع الاحتفاظ بالفهرس الأصلي للتعديل
+    component.children.push({ ...item, originalIndex: index } as any);
   });
 
   // فرز كافة المستويات بناءً على حقل الترتيب (Order)
@@ -70,19 +70,10 @@ export function transformToBOQTree(items: BOQTemplateItem[]): BOQTreeSection[] {
             .sort((a, b) => a.order - b.order)
             .map(comp => ({
               ...comp,
-              children: comp.children.sort((a, b) => a.order - b.order)
+              children: comp.children.sort((a, b) => (a as any).order - (b as any).order)
             }))
         }))
     }));
 
   return sortedSections;
 }
-
-/**
- * مثال استخدام بسيط للمطور:
- * const tree = transformToBOQTree(flatItemsFromFirestore);
- * tree.forEach(section => {
- *    console.log(section.name);
- *    section.children.forEach(cat => console.log("--" + cat.name));
- * });
- */

@@ -64,7 +64,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     }
   );
 
-  // جلب المراجع الفنية للربط
   const actQuery = useMemo(() => companyId && db ? query(collection(db, paths.activityTypes(companyId)), orderBy('order')) : null, [db, companyId]);
   const srvQuery = useMemo(() => companyId && db && formData.activityTypeId ? query(collection(db, paths.services(companyId, formData.activityTypeId)), orderBy('order')) : null, [db, companyId, formData.activityTypeId]);
   const subQuery = useMemo(() => companyId && db && formData.activityTypeId && formData.serviceId ? query(collection(db, paths.subServices(companyId, formData.activityTypeId, formData.serviceId)), orderBy('order')) : null, [db, companyId, formData.activityTypeId, formData.serviceId]);
@@ -73,7 +72,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
   const { data: services } = useCollection<Service>(srvQuery);
   const { data: subServices } = useCollection<SubService>(subQuery);
 
-  // جلب البنود المسطحة عند التعديل
   useEffect(() => {
     if (template?.id && db && companyId) {
       const service = new TemplateService(db, companyId, permissions);
@@ -84,7 +82,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     }
   }, [template, db, companyId, permissions]);
 
-  // بناء الشجرة الهرمية للعرض من المصفوفة المسطحة
   const boqTree = useMemo(() => transformToBOQTree(items), [items]);
 
   const totalItemsCost = useMemo(() => {
@@ -151,13 +148,10 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     setItems([...items, newItem]);
   };
 
-  const updateItem = (itemId: string | undefined, index: number, field: keyof BOQTemplateItem, value: any) => {
+  const updateItem = (index: number, field: keyof BOQTemplateItem, value: any) => {
     const newItems = [...items];
-    const targetIdx = itemId ? newItems.findIndex(it => it.id === itemId) : index;
-    if (targetIdx !== -1) {
-      newItems[targetIdx] = { ...newItems[targetIdx], [field]: value };
-      setItems(newItems);
-    }
+    newItems[index] = { ...newItems[index], [field]: value };
+    setItems(newItems);
   };
 
   const removeItem = (index: number) => {
@@ -168,7 +162,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
 
   return (
     <div className="space-y-10 animate-in fade-in duration-500 pb-20 text-start" dir={dir}>
-      {/* Header Controls */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-8">
         <div className="flex items-center gap-4">
           <Button variant="ghost" onClick={onClose} className="h-14 w-14 p-0 rounded-2xl bg-white shadow-sm border-2 hover:bg-slate-50 transition-all">
@@ -188,20 +181,16 @@ export function BOQTemplateForm({ template, onClose }: Props) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-1 gap-10">
-        
-        {/* Template Identity */}
+      <div className="space-y-10">
         <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
            <div className="bg-primary/5 p-8 border-b flex items-center justify-between">
               <div className="flex items-center gap-3">
                  <Settings2 className="h-6 w-6 text-primary" />
                  <h3 className="text-xl font-black font-headline text-slate-800">{isRtl ? 'تعريف وارتباط القالب' : 'Template Identity & Link'}</h3>
               </div>
-              <div className="flex items-center gap-4">
-                 <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'افتراضي' : 'Default'}</Label>
-                    <Switch checked={formData.isDefault || false} onCheckedChange={v => setFormData({...formData, isDefault: v})} />
-                 </div>
+              <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border-2">
+                 <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'افتراضي' : 'Default'}</Label>
+                 <Switch checked={formData.isDefault || false} onCheckedChange={v => setFormData({...formData, isDefault: v})} />
               </div>
            </div>
            <CardContent className="p-10 space-y-10">
@@ -248,7 +237,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
            </CardContent>
         </Card>
 
-        {/* Emerald Budget Center */}
         <div className="p-12 bg-emerald-50/50 rounded-[3.5rem] border-4 border-emerald-100/50 text-center relative overflow-hidden group shadow-2xl">
            <div className="absolute top-0 right-0 p-12 opacity-5 group-hover:scale-110 transition-transform duration-700"><DollarSign className="h-48 w-48 text-emerald-600" /></div>
            <div className="max-w-xl mx-auto space-y-6 relative z-10">
@@ -267,7 +255,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
            </div>
         </div>
 
-        {/* الشجرة التنفيذية الهرمية (Hierarchical Tree View) */}
         <div className="space-y-12">
            <div className="flex justify-between items-center px-8">
               <div className="text-start">
@@ -280,8 +267,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
            <div className="space-y-16">
               {boqTree.map((section) => (
                 <div key={section.id} className="space-y-8 animate-in slide-in-from-bottom-4 duration-300">
-                   
-                   {/* Level 1: Section */}
                    <div className="flex items-center gap-6 bg-slate-900 text-white p-6 rounded-[2.5rem] shadow-2xl ring-4 ring-primary/5">
                       <div className="h-12 w-12 rounded-2xl bg-primary/20 flex items-center justify-center text-primary border border-primary/20">
                          <LayoutGrid className="h-6 w-6" />
@@ -291,7 +276,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                          <Input 
                             value={section.name} 
                             onChange={e => {
-                               // تحديث كافة البنود التابعة لهذا القسم
                                const newItems = items.map(it => it.sectionId === section.id ? { ...it, sectionName: e.target.value } : it);
                                setItems(newItems);
                             }}
@@ -304,8 +288,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                    <div className="ms-10 space-y-12 border-s-4 border-slate-100 ps-10">
                       {section.children.map((category) => (
                         <div key={category.id} className="space-y-6">
-                           
-                           {/* Level 2: Main Category */}
                            <div className="flex items-center gap-4 bg-blue-50/50 p-4 rounded-3xl border-2 border-white shadow-sm group">
                               <div className="h-10 w-10 rounded-xl bg-blue-500 text-white flex items-center justify-center shadow-lg"><Boxes className="h-5 w-5" /></div>
                               <div className="flex-1">
@@ -324,8 +306,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                            <div className="ms-12 space-y-8 border-s-2 border-blue-50 ps-8">
                               {category.children.map((comp) => (
                                 <div key={comp.id} className="space-y-4">
-                                   
-                                   {/* Level 3: Component */}
                                    <div className="flex items-center gap-3 text-slate-400 group">
                                       <div className="h-8 w-8 rounded-lg bg-white border-2 flex items-center justify-center shadow-sm"><Hammer className="h-4 w-4" /></div>
                                       <div className="flex-1 flex items-center gap-3">
@@ -341,17 +321,16 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                                       </div>
                                    </div>
 
-                                   {/* Level 4: Detailed Items List */}
                                    <div className="grid grid-cols-1 gap-4">
                                       {comp.children.map((item: any) => (
-                                        <Card key={item.originalIndex} className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden group hover:ring-4 hover:ring-primary/5 transition-all">
+                                        <Card key={`${item.id}-${item.originalIndex}`} className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden group hover:ring-4 hover:ring-primary/5 transition-all">
                                            <CardContent className="p-8">
                                               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                                                  <div className="lg:col-span-6 space-y-3">
                                                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'توصيف البند التنفيذي الدقيق' : 'DETAILED EXECUTION DESCRIPTION'}</Label>
                                                     <Textarea 
                                                        value={item.description} 
-                                                       onChange={e => updateItem(undefined, item.originalIndex, 'description', e.target.value)}
+                                                       onChange={e => updateItem(item.originalIndex, 'description', e.target.value)}
                                                        className="min-h-[100px] rounded-2xl border-2 bg-slate-50/50 p-5 font-bold text-sm focus:bg-white transition-all shadow-inner"
                                                        placeholder="..."
                                                     />
@@ -359,15 +338,15 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                                                  <div className="lg:col-span-5 grid grid-cols-2 md:grid-cols-4 gap-4">
                                                     <div className="space-y-1.5">
                                                        <Label className="text-[9px] font-black text-slate-400 uppercase">Unit</Label>
-                                                       <Input value={item.unit} onChange={e => updateItem(undefined, item.originalIndex, 'unit', e.target.value)} className="h-12 border-2 rounded-xl text-center font-black" />
+                                                       <Input value={item.unit} onChange={e => updateItem(item.originalIndex, 'unit', e.target.value)} className="h-12 border-2 rounded-xl text-center font-black" />
                                                     </div>
                                                     <div className="space-y-1.5">
                                                        <Label className="text-[9px] font-black text-slate-400 uppercase">Qty</Label>
-                                                       <Input type="number" value={item.plannedQuantity} onChange={e => updateItem(undefined, item.originalIndex, 'plannedQuantity', Number(e.target.value))} className="h-12 border-2 rounded-xl text-center font-black" />
+                                                       <Input type="number" value={item.plannedQuantity} onChange={e => updateItem(item.originalIndex, 'plannedQuantity', Number(e.target.value))} className="h-12 border-2 rounded-xl text-center font-black" />
                                                     </div>
                                                     <div className="space-y-1.5">
                                                        <Label className="text-[9px] font-black text-slate-400 uppercase">Rate (KWD)</Label>
-                                                       <Input type="number" value={item.estimatedRate} onChange={e => updateItem(undefined, item.originalIndex, 'estimatedRate', Number(e.target.value))} className="h-12 border-2 rounded-xl text-center font-black text-emerald-600 bg-emerald-50/20" />
+                                                       <Input type="number" value={item.estimatedRate} onChange={e => updateItem(item.originalIndex, 'estimatedRate', Number(e.target.value))} className="h-12 border-2 rounded-xl text-center font-black text-emerald-600 bg-emerald-50/20" />
                                                     </div>
                                                     <div className="space-y-1.5">
                                                        <Label className="text-[9px] font-black text-slate-400 uppercase">Subtotal</Label>
@@ -402,7 +381,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
            </div>
         </div>
 
-        {/* Final Financial Balance Hub (Sticky Logic) */}
         <div className={cn(
           "p-12 rounded-[4rem] border-4 border-dashed flex flex-col md:flex-row items-center justify-between shadow-3xl transition-all duration-500",
           isMathValid ? "bg-emerald-100/50 border-emerald-300 text-emerald-900" : "bg-rose-100/50 border-rose-300 text-rose-900"
