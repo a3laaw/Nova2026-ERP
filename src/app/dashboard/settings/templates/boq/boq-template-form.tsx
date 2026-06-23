@@ -16,8 +16,9 @@ import {
 } from "@/components/ui/select";
 import { 
   Save, X, Plus, Trash2, Loader2, ArrowRight,
-  FileSpreadsheet, Boxes, Layers, DollarSign, Calculator, AlertTriangle,
-  ChevronDown, ChevronRight, LayoutGrid, CheckCircle2
+  Calculator, DollarSign, AlertTriangle, 
+  ChevronRight, Layers, LayoutGrid, CheckCircle2,
+  Settings2, Boxes, Hammer
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
@@ -28,6 +29,7 @@ import { paths } from '@/firebase/multi-tenant';
 import { BOQTemplate, BOQTemplateItem } from '@/types/templates';
 import { ActivityType, Service, SubService } from '@/types/reference';
 import { TemplateService } from '@/services/template-service';
+import { transformToBOQTree } from '@/lib/boq-tree-utils';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
@@ -62,7 +64,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     }
   );
 
-  // جلب المراجع الفنية
+  // جلب المراجع الفنية للربط
   const actQuery = useMemo(() => companyId && db ? query(collection(db, paths.activityTypes(companyId)), orderBy('order')) : null, [db, companyId]);
   const srvQuery = useMemo(() => companyId && db && formData.activityTypeId ? query(collection(db, paths.services(companyId, formData.activityTypeId)), orderBy('order')) : null, [db, companyId, formData.activityTypeId]);
   const subQuery = useMemo(() => companyId && db && formData.activityTypeId && formData.serviceId ? query(collection(db, paths.subServices(companyId, formData.activityTypeId, formData.serviceId)), orderBy('order')) : null, [db, companyId, formData.activityTypeId, formData.serviceId]);
@@ -71,7 +73,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
   const { data: services } = useCollection<Service>(srvQuery);
   const { data: subServices } = useCollection<SubService>(subQuery);
 
-  // جلب البنود إذا كان تعديلاً
+  // جلب البنود المسطحة عند التعديل
   useEffect(() => {
     if (template?.id && db && companyId) {
       const service = new TemplateService(db, companyId, permissions);
@@ -82,6 +84,9 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     }
   }, [template, db, companyId, permissions]);
 
+  // بناء الشجرة الهرمية للعرض من المصفوفة المسطحة
+  const boqTree = useMemo(() => transformToBOQTree(items), [items]);
+
   const totalItemsCost = useMemo(() => {
     return items.reduce((acc, item) => acc + ((item.plannedQuantity || 0) * (item.estimatedRate || 0)), 0);
   }, [items]);
@@ -91,27 +96,31 @@ export function BOQTemplateForm({ template, onClose }: Props) {
   const handleSave = async () => {
     if (!db || !companyId || !user) return;
     
-    // Validations
     if (!formData.name) {
-      toast({ variant: "destructive", title: t('error'), description: isRtl ? "يرجى إدخل اسم القالب." : "Name is required." });
-      return;
-    }
-
-    const invalidItems = items.filter(it => !it.description || !it.unit || (it.plannedQuantity || 0) <= 0 || !it.sectionName || !it.mainCategoryName || !it.componentName);
-    if (invalidItems.length > 0) {
-      toast({ variant: "destructive", title: t('error'), description: isRtl ? "يوجد بنود غير مكتملة البيانات الأساسية." : "Some items have missing data." });
+      toast({ variant: "destructive", title: t('error'), description: isRtl ? "يرجى إدخال اسم القالب." : "Name required." });
       return;
     }
 
     if (!isMathValid) {
-      toast({ variant: "destructive", title: t('error'), description: isRtl ? "مجموع بنود الجدول لا يطابق الإجمالي التقديري." : "Items sum mismatch with base amount." });
+      toast({ variant: "destructive", title: t('error'), description: isRtl ? "مجموع البنود لا يطابق الإجمالي التقديري." : "Balance mismatch." });
       return;
     }
 
     setLoading(true);
     try {
       const service = new TemplateService(db, companyId, permissions);
-      await service.saveBOQTemplateWithItems(template?.id || null, formData, items, user.uid);
+      const selectedAct = activities?.find(a => a.id === formData.activityTypeId);
+      const selectedSrv = services?.find(s => s.id === formData.serviceId);
+      const selectedSub = subServices?.find(ss => ss.id === formData.subServiceId);
+
+      const finalData = {
+        ...formData,
+        activityTypeName: isRtl ? selectedAct?.name : selectedAct?.nameEn,
+        serviceName: isRtl ? selectedSrv?.name : selectedSrv?.nameEn,
+        subServiceName: isRtl ? selectedSub?.name : selectedSub?.nameEn,
+      };
+
+      await service.saveBOQTemplateWithItems(template?.id || null, finalData, items, user.uid);
       toast({ title: t('saved') });
       onClose();
     } catch (e: any) {
@@ -123,265 +132,298 @@ export function BOQTemplateForm({ template, onClose }: Props) {
 
   const addNewItem = () => {
     const newItem: BOQTemplateItem = {
-      sectionId: '',
-      sectionName: '',
-      mainCategoryId: '',
-      mainCategoryName: '',
-      componentId: '',
-      componentName: '',
+      sectionId: 'SEC-' + Date.now(),
+      sectionName: isRtl ? 'قسم جديد' : 'New Section',
+      mainCategoryId: 'CAT-' + Date.now(),
+      mainCategoryName: isRtl ? 'بند رئيسي جديد' : 'New Category',
+      componentId: 'COMP-' + Date.now(),
+      componentName: isRtl ? 'عنصر عمل' : 'Component',
       description: '',
-      unit: '',
+      unit: 'm2',
       plannedQuantity: 1,
       executedQuantity: 0,
       estimatedRate: 0,
       estimatedCostRate: 0,
       materialCodes: [],
       order: items.length,
-      companyId
+      companyId: companyId!
     };
     setItems([...items, newItem]);
   };
 
-  const updateItem = (index: number, field: keyof BOQTemplateItem, value: any) => {
+  const updateItem = (itemId: string | undefined, index: number, field: keyof BOQTemplateItem, value: any) => {
     const newItems = [...items];
-    newItems[index] = { ...newItems[index], [field]: value };
-    setItems(newItems);
+    const targetIdx = itemId ? newItems.findIndex(it => it.id === itemId) : index;
+    if (targetIdx !== -1) {
+      newItems[targetIdx] = { ...newItems[targetIdx], [field]: value };
+      setItems(newItems);
+    }
   };
 
   const removeItem = (index: number) => {
     setItems(items.filter((_, i) => i !== index));
   };
 
-  // تجميع البنود شجرياً للعرض فقط (Section -> Main Category -> Component)
-  const groupedItems = useMemo(() => {
-    const groups: any = {};
-    items.forEach((item, index) => {
-      const sName = item.sectionName || (isRtl ? 'بدون قسم' : 'Unassigned Section');
-      const mName = item.mainCategoryName || (isRtl ? 'بدون فئة' : 'Unassigned Category');
-      const cName = item.componentName || (isRtl ? 'بدون عنصر' : 'Unassigned Component');
-
-      if (!groups[sName]) groups[sName] = {};
-      if (!groups[sName][mName]) groups[sName][mName] = {};
-      if (!groups[sName][mName][cName]) groups[sName][mName][cName] = [];
-      
-      groups[sName][mName][cName].push({ ...item, originalIndex: index });
-    });
-    return groups;
-  }, [items, isRtl]);
-
   if (templateLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-20 text-start" dir={dir}>
-      <div className="flex items-center justify-between border-b pb-6">
+    <div className="space-y-10 animate-in fade-in duration-500 pb-20 text-start" dir={dir}>
+      {/* Header Controls */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-8">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" onClick={onClose} className="h-12 w-12 p-0 rounded-2xl bg-white shadow-sm border">
-            <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-180")} />
+          <Button variant="ghost" onClick={onClose} className="h-14 w-14 p-0 rounded-2xl bg-white shadow-sm border-2 hover:bg-slate-50 transition-all">
+            <ArrowRight className={cn("h-6 w-6", !isRtl && "rotate-180")} />
           </Button>
-          <h1 className="text-3xl font-black font-headline">{isRtl ? 'محرر جداول الكميات الذكي' : 'BOQ Template Editor'}</h1>
+          <div className="text-start space-y-1">
+             <h1 className="text-3xl font-black font-headline text-slate-900 tracking-tight">{isRtl ? 'هندسة المقايسات وجداول الكميات' : 'BOQ Engineering Editor'}</h1>
+             <p className="text-xs font-bold text-muted-foreground italic opacity-70">{isRtl ? 'بناء الهيكل التنفيذي والمالي لبنود الأعمال.' : 'Structuring operational and financial work items.'}</p>
+          </div>
         </div>
         <div className="flex gap-4">
-           <Button variant="outline" onClick={onClose} className="rounded-xl h-12 px-6 font-bold">{t('logout')}</Button>
-           <Button onClick={handleSave} disabled={loading} className="bg-primary text-white font-black rounded-xl h-12 px-10 shadow-xl gap-2 hover:scale-[1.02] transition-all">
-             {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />}
+           <Button variant="outline" onClick={onClose} className="rounded-xl h-12 px-8 font-black border-2">{isRtl ? 'إلغاء' : 'Cancel'}</Button>
+           <Button onClick={handleSave} disabled={loading} className="btn-nova-primary h-14 px-12 rounded-2xl text-lg gap-3">
+             {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
              {t('save')}
            </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-         <div className="lg:col-span-12 space-y-8">
-            {/* القالب الأساسي */}
-            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
-               <CardContent className="p-10 space-y-8">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                     <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('name')}</Label>
-                        <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-14 rounded-2xl border-2 font-black text-lg bg-slate-50/50" />
-                     </div>
-                     <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'كود المقياسة' : 'BOQ Code'}</Label>
-                        <Input value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value})} className="h-14 rounded-2xl border-2 font-mono text-lg" />
-                     </div>
-                     <div className="flex items-center justify-between p-6 bg-slate-50 rounded-3xl border-2 border-white shadow-inner">
-                        <p className="text-[11px] font-black text-slate-500 uppercase">{t('defaultTemplate')}</p>
-                        <Switch checked={formData.isDefault || false} onCheckedChange={v => setFormData({...formData, isDefault: v})} />
-                     </div>
-                  </div>
+      <div className="grid grid-cols-1 lg:grid-cols-1 gap-10">
+        
+        {/* Template Identity */}
+        <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
+           <div className="bg-primary/5 p-8 border-b flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                 <Settings2 className="h-6 w-6 text-primary" />
+                 <h3 className="text-xl font-black font-headline text-slate-800">{isRtl ? 'تعريف وارتباط القالب' : 'Template Identity & Link'}</h3>
+              </div>
+              <div className="flex items-center gap-4">
+                 <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'افتراضي' : 'Default'}</Label>
+                    <Switch checked={formData.isDefault || false} onCheckedChange={v => setFormData({...formData, isDefault: v})} />
+                 </div>
+              </div>
+           </div>
+           <CardContent className="p-10 space-y-10">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+                 <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('name')}</Label>
+                    <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-14 rounded-2xl border-2 font-black text-lg bg-slate-50/50" />
+                 </div>
+                 <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'كود المرجعية' : 'Ref Code'}</Label>
+                    <Input value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value.toUpperCase().replace(/\s+/g, '_')})} className="h-14 rounded-2xl border-2 font-mono text-lg text-primary" placeholder="BOQ_RES_01" />
+                 </div>
+                 <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'النشاط الفني المخصص' : 'Activity Path'}</Label>
+                    <Select value={formData.activityTypeId} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: ''})}>
+                       <SelectTrigger className="h-14 rounded-2xl border-2 font-black"><SelectValue placeholder="..." /></SelectTrigger>
+                       <SelectContent className="rounded-2xl">
+                          {activities?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{isRtl ? a.name : a.nameEn}</SelectItem>)}
+                       </SelectContent>
+                    </Select>
+                 </div>
+              </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t">
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-black text-slate-400 uppercase">{t('orgRef')}</Label>
-                      <Select value={formData.activityTypeId} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: ''})}>
-                         <SelectTrigger className="h-12 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                         <SelectContent className="rounded-2xl">
-                            {activities?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{isRtl ? a.name : a.nameEn}</SelectItem>)}
-                         </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-black text-slate-400 uppercase">{t('newService')}</Label>
-                      <Select disabled={!formData.activityTypeId} value={formData.serviceId} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: ''})}>
-                         <SelectTrigger className="h-12 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                         <SelectContent className="rounded-xl">
-                            {services?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold">{isRtl ? s.name : s.nameEn}</SelectItem>)}
-                         </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-black text-slate-400 uppercase">{t('newPath')}</Label>
-                      <Select disabled={!formData.serviceId} value={formData.subServiceId} onValueChange={v => setFormData({...formData, subServiceId: v})}>
-                         <SelectTrigger className="h-12 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                         <SelectContent className="rounded-xl">
-                            {subServices?.map(ss => <SelectItem key={ss.id} value={ss.id!} className="font-bold">{isRtl ? ss.name : ss.nameEn}</SelectItem>)}
-                         </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-               </CardContent>
-            </Card>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-10 pt-4 border-t border-slate-50">
+                 <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الخدمة الرئيسية' : 'Main Service'}</Label>
+                    <Select disabled={!formData.activityTypeId} value={formData.serviceId} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: ''})}>
+                       <SelectTrigger className="h-14 rounded-2xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
+                       <SelectContent className="rounded-2xl">
+                          {services?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold">{isRtl ? s.name : s.nameEn}</SelectItem>)}
+                       </SelectContent>
+                    </Select>
+                 </div>
+                 <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المسار التشغيلي (Pipeline)' : 'Operational Pipeline'}</Label>
+                    <Select disabled={!formData.serviceId} value={formData.subServiceId} onValueChange={v => setFormData({...formData, subServiceId: v})}>
+                       <SelectTrigger className="h-14 rounded-2xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
+                       <SelectContent className="rounded-2xl">
+                          {subServices?.map(ss => <SelectItem key={ss.id} value={ss.id!} className="font-bold">{isRtl ? ss.name : ss.nameEn}</SelectItem>)}
+                       </SelectContent>
+                    </Select>
+                 </div>
+              </div>
+           </CardContent>
+        </Card>
 
-            {/* صندوق القيمة الزمردي */}
-            <div className="p-12 bg-emerald-50/50 rounded-[3.5rem] border-2 border-emerald-100 text-center relative overflow-hidden group shadow-xl">
-               <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform"><DollarSign className="h-40 w-40" /></div>
-               <div className="max-w-md mx-auto space-y-4 relative z-10">
-                  <Label className="text-xs font-black uppercase text-emerald-600 tracking-[0.2em]">
-                     {isRtl ? 'إجمالي قيمة المقياسة التقديرية (KWD)' : 'Total Estimated BOQ Budget (KWD)'}
-                  </Label>
-                  <Input 
-                     type="number" 
-                     value={formData.baseAmount || 0} 
-                     onChange={e => setFormData({...formData, baseAmount: Number(e.target.value)})} 
-                     className="h-20 rounded-[2.5rem] border-4 border-emerald-200 font-black text-4xl text-emerald-700 bg-white shadow-2xl text-center"
-                  />
-               </div>
-            </div>
+        {/* Emerald Budget Center */}
+        <div className="p-12 bg-emerald-50/50 rounded-[3.5rem] border-4 border-emerald-100/50 text-center relative overflow-hidden group shadow-2xl">
+           <div className="absolute top-0 right-0 p-12 opacity-5 group-hover:scale-110 transition-transform duration-700"><DollarSign className="h-48 w-48 text-emerald-600" /></div>
+           <div className="max-w-xl mx-auto space-y-6 relative z-10">
+              <Label className="text-xs font-black uppercase text-emerald-600 tracking-[0.3em]">
+                 {isRtl ? 'إجمالي قيمة المقياسة التقديرية (KWD)' : 'Total Estimated BOQ Budget (KWD)'}
+              </Label>
+              <div className="relative">
+                 <Input 
+                    type="number" 
+                    value={formData.baseAmount || 0} 
+                    onChange={e => setFormData({...formData, baseAmount: Number(e.target.value)})} 
+                    className="h-28 rounded-[3rem] border-4 border-emerald-200 font-black text-6xl text-emerald-700 bg-white shadow-2xl text-center focus:ring-emerald-200 transition-all"
+                 />
+                 <div className="absolute -bottom-4 left-1/2 -translate-x-1/2"><Badge className="bg-emerald-600 text-white font-black px-6 py-1.5 shadow-xl">SI CONTROL</Badge></div>
+              </div>
+           </div>
+        </div>
 
-            {/* محرر البنود الشجري المطور */}
-            <div className="space-y-10">
-               <div className="flex justify-between items-center px-6">
-                  <h3 className="text-2xl font-black font-headline flex items-center gap-3"><Calculator className="h-8 w-8 text-primary" /> {isRtl ? 'هيكلة البنود التنفيذية' : 'Work Items Breakdown'}</h3>
-                  <Button onClick={addNewItem} className="h-12 px-6 rounded-xl bg-slate-900 text-white font-black gap-2 hover:scale-105 transition-all"><Plus className="h-5 w-5" /> {isRtl ? 'بند تنفيذ جديد' : 'Add Item'}</Button>
-               </div>
+        {/* الشجرة التنفيذية الهرمية (Hierarchical Tree View) */}
+        <div className="space-y-12">
+           <div className="flex justify-between items-center px-8">
+              <div className="text-start">
+                 <h3 className="text-2xl font-black font-headline flex items-center gap-3 text-slate-800"><Calculator className="h-8 w-8 text-primary" /> {isRtl ? 'محرك هيكلة بنود الأعمال' : 'Work Items Engineering'}</h3>
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Hierarchical Tree Structure / Flat Storage</p>
+              </div>
+              <Button onClick={addNewItem} className="h-16 px-10 rounded-2xl bg-[#1e1b4b] text-white font-black text-lg gap-3 hover:bg-slate-800 shadow-2xl transition-all"><Plus className="h-6 w-6 text-primary" /> {isRtl ? 'إضافة بند تنفيذي' : 'Add Item'}</Button>
+           </div>
 
-               <div className="space-y-12">
-                  {Object.keys(groupedItems).map((sectionName) => (
-                    <div key={sectionName} className="space-y-6">
-                       <div className="flex items-center gap-4 bg-slate-100 p-4 rounded-2xl border-2 border-white shadow-sm">
-                          <Badge className="bg-primary text-white font-black rounded-lg">SECTION</Badge>
-                          <h4 className="text-xl font-black text-slate-800">{sectionName}</h4>
-                       </div>
+           <div className="space-y-16">
+              {boqTree.map((section) => (
+                <div key={section.id} className="space-y-8 animate-in slide-in-from-bottom-4 duration-300">
+                   
+                   {/* Level 1: Section */}
+                   <div className="flex items-center gap-6 bg-slate-900 text-white p-6 rounded-[2.5rem] shadow-2xl ring-4 ring-primary/5">
+                      <div className="h-12 w-12 rounded-2xl bg-primary/20 flex items-center justify-center text-primary border border-primary/20">
+                         <LayoutGrid className="h-6 w-6" />
+                      </div>
+                      <div className="flex-1">
+                         <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">{isRtl ? 'القسم الفني' : 'TECHNICAL SECTION'}</span>
+                         <Input 
+                            value={section.name} 
+                            onChange={e => {
+                               // تحديث كافة البنود التابعة لهذا القسم
+                               const newItems = items.map(it => it.sectionId === section.id ? { ...it, sectionName: e.target.value } : it);
+                               setItems(newItems);
+                            }}
+                            className="bg-transparent border-0 text-2xl font-black p-0 h-auto focus-visible:ring-0 text-white placeholder:text-white/20"
+                            placeholder="..."
+                         />
+                      </div>
+                   </div>
 
-                       {Object.keys(groupedItems[sectionName]).map((mainCatName) => (
-                         <div key={mainCatName} className="ms-8 space-y-4">
-                            <div className="flex items-center gap-3 bg-blue-50/50 p-3 rounded-xl border border-blue-100">
-                               <ChevronRight className="h-4 w-4 text-blue-400" />
-                               <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Main Category:</span>
-                               <h5 className="text-lg font-black text-blue-900">{mainCatName}</h5>
-                            </div>
-
-                            {Object.keys(groupedItems[sectionName][mainCatName]).map((compName) => (
-                              <div key={compName} className="ms-8 space-y-4">
-                                 <div className="flex items-center gap-2 text-slate-500">
-                                    <Layers className="h-4 w-4" />
-                                    <span className="text-[9px] font-black uppercase">Component:</span>
-                                    <span className="font-bold text-slate-800">{compName}</span>
-                                 </div>
-
-                                 <div className="grid grid-cols-1 gap-4">
-                                    {groupedItems[sectionName][mainCatName][compName].map((item: any) => (
-                                      <Card key={item.originalIndex} className="border-0 shadow-lg rounded-[2rem] bg-white overflow-hidden group hover:ring-2 hover:ring-primary/10 transition-all border-s-8 border-s-primary/20">
-                                         <CardContent className="p-8">
-                                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                                               {/* التنظيم الهرمي داخل البند */}
-                                               <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-3 gap-4 pb-4 border-b border-dashed">
-                                                  <div className="space-y-1">
-                                                     <Label className="text-[8px] font-black text-slate-400 uppercase">Section</Label>
-                                                     <Input value={item.sectionName} onChange={e => updateItem(item.originalIndex, 'sectionName', e.target.value)} className="h-8 text-[11px] font-bold rounded-lg" />
-                                                  </div>
-                                                  <div className="space-y-1">
-                                                     <Label className="text-[8px] font-black text-slate-400 uppercase">Main Category</Label>
-                                                     <Input value={item.mainCategoryName} onChange={e => updateItem(item.originalIndex, 'mainCategoryName', e.target.value)} className="h-8 text-[11px] font-bold rounded-lg" />
-                                                  </div>
-                                                  <div className="space-y-1">
-                                                     <Label className="text-[8px] font-black text-slate-400 uppercase">Component</Label>
-                                                     <Input value={item.componentName} onChange={e => updateItem(item.originalIndex, 'componentName', e.target.value)} className="h-8 text-[11px] font-bold rounded-lg" />
-                                                  </div>
-                                               </div>
-
-                                               {/* بيانات البند التفصيلية */}
-                                               <div className="lg:col-span-5 space-y-2">
-                                                  <Label className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'توصيف العمل التفصيلي' : 'Item Description'}</Label>
-                                                  <Textarea 
-                                                    value={item.description} 
-                                                    onChange={e => updateItem(item.originalIndex, 'description', e.target.value)}
-                                                    className="min-h-[80px] rounded-xl border-2 font-bold text-sm bg-slate-50/30"
-                                                  />
-                                               </div>
-
-                                               <div className="lg:col-span-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-                                                  <div className="space-y-1">
-                                                     <Label className="text-[9px] font-black text-slate-400 uppercase">Unit</Label>
-                                                     <Input value={item.unit} onChange={e => updateItem(item.originalIndex, 'unit', e.target.value)} className="h-10 font-bold border-2 rounded-xl text-center" />
-                                                  </div>
-                                                  <div className="space-y-1">
-                                                     <Label className="text-[9px] font-black text-slate-400 uppercase">Qty</Label>
-                                                     <Input type="number" value={item.plannedQuantity} onChange={e => updateItem(item.originalIndex, 'plannedQuantity', Number(e.target.value))} className="h-10 font-black border-2 rounded-xl text-center" />
-                                                  </div>
-                                                  <div className="space-y-1">
-                                                     <Label className="text-[9px] font-black text-slate-400 uppercase">Rate (KWD)</Label>
-                                                     <Input type="number" value={item.estimatedRate} onChange={e => updateItem(item.originalIndex, 'estimatedRate', Number(e.target.value))} className="h-10 font-black border-2 rounded-xl text-center text-emerald-600" />
-                                                  </div>
-                                                  <div className="space-y-1">
-                                                     <Label className="text-[9px] font-black text-slate-400 uppercase">Subtotal</Label>
-                                                     <div className="h-10 flex items-center justify-center font-mono font-black text-emerald-700 bg-emerald-50 rounded-xl">
-                                                        {((item.plannedQuantity || 0) * (item.estimatedRate || 0)).toLocaleString()}
-                                                     </div>
-                                                  </div>
-                                               </div>
-
-                                               <div className="lg:col-span-1 flex flex-col justify-end pb-1.5">
-                                                  <Button variant="ghost" size="icon" onClick={() => removeItem(item.originalIndex)} className="h-10 w-10 text-rose-200 hover:text-rose-600 transition-colors">
-                                                     <Trash2 className="h-5 w-5" />
-                                                  </Button>
-                                               </div>
-                                            </div>
-                                         </CardContent>
-                                      </Card>
-                                    ))}
-                                 </div>
+                   <div className="ms-10 space-y-12 border-s-4 border-slate-100 ps-10">
+                      {section.children.map((category) => (
+                        <div key={category.id} className="space-y-6">
+                           
+                           {/* Level 2: Main Category */}
+                           <div className="flex items-center gap-4 bg-blue-50/50 p-4 rounded-3xl border-2 border-white shadow-sm group">
+                              <div className="h-10 w-10 rounded-xl bg-blue-500 text-white flex items-center justify-center shadow-lg"><Boxes className="h-5 w-5" /></div>
+                              <div className="flex-1">
+                                 <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">{isRtl ? 'البند الرئيسي' : 'MAIN CATEGORY'}</span>
+                                 <Input 
+                                    value={category.name} 
+                                    onChange={e => {
+                                       const newItems = items.map(it => it.mainCategoryId === category.id ? { ...it, mainCategoryName: e.target.value } : it);
+                                       setItems(newItems);
+                                    }}
+                                    className="bg-transparent border-0 font-black text-xl p-0 h-auto focus-visible:ring-0 text-blue-900"
+                                 />
                               </div>
-                            ))}
-                         </div>
-                       ))}
-                    </div>
-                  ))}
-               </div>
-            </div>
+                           </div>
 
-            {/* شريط التوازن المالي النهائي */}
-            <div className={cn(
-              "p-10 rounded-[3.5rem] border-4 border-dashed flex flex-col md:flex-row items-center justify-between shadow-2xl transition-all",
-              isMathValid ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-rose-50 border-rose-200 text-rose-800"
-            )}>
-               <div className="text-center bg-white p-8 rounded-[2.5rem] shadow-xl min-w-[250px] border-2 border-emerald-100">
-                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إجمالي البنود الفعلي' : 'Items Aggregated Total'}</p>
-                 <span className="text-4xl font-black font-headline">{totalItemsCost.toLocaleString()} KWD</span>
-               </div>
-               
-               <div className="text-center md:text-end space-y-2 mt-6 md:mt-0">
-                 <h4 className="font-black text-2xl font-headline flex items-center gap-3 justify-center md:justify-end">
-                    {isMathValid ? <CheckCircle2 className="h-8 w-8 text-emerald-500" /> : <AlertTriangle className="h-8 w-8 text-rose-500" />}
-                    {isRtl ? 'حالة التوازن المالي للمقياسة' : 'Financial Balance Status'}
-                 </h4>
-                 <p className="text-sm font-bold opacity-70 leading-relaxed max-w-md">
-                    {isMathValid 
-                      ? (isRtl ? 'المقياسة متوازنة تماماً وجاهزة للاعتماد.' : 'BOQ is perfectly balanced and ready for commit.')
-                      : (isRtl ? `تنبيه: يوجد فرق قدره ${(formData.baseAmount || 0) - totalItemsCost} KWD بين الإجمالي التقديري ومجموع البنود.` : `Mismatch detected. Diff: ${(formData.baseAmount || 0) - totalItemsCost} KWD`)}
-                 </p>
-               </div>
-            </div>
-         </div>
+                           <div className="ms-12 space-y-8 border-s-2 border-blue-50 ps-8">
+                              {category.children.map((comp) => (
+                                <div key={comp.id} className="space-y-4">
+                                   
+                                   {/* Level 3: Component */}
+                                   <div className="flex items-center gap-3 text-slate-400 group">
+                                      <div className="h-8 w-8 rounded-lg bg-white border-2 flex items-center justify-center shadow-sm"><Hammer className="h-4 w-4" /></div>
+                                      <div className="flex-1 flex items-center gap-3">
+                                         <span className="text-[8px] font-black uppercase tracking-widest">{isRtl ? 'العنصر الفرعي' : 'COMPONENT'}</span>
+                                         <Input 
+                                            value={comp.name} 
+                                            onChange={e => {
+                                               const newItems = items.map(it => it.componentId === comp.id ? { ...it, componentName: e.target.value } : it);
+                                               setItems(newItems);
+                                            }}
+                                            className="bg-transparent border-0 font-bold text-base p-0 h-auto focus-visible:ring-0 text-slate-700 w-fit min-w-[200px]"
+                                         />
+                                      </div>
+                                   </div>
+
+                                   {/* Level 4: Detailed Items List */}
+                                   <div className="grid grid-cols-1 gap-4">
+                                      {comp.children.map((item: any) => (
+                                        <Card key={item.originalIndex} className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden group hover:ring-4 hover:ring-primary/5 transition-all">
+                                           <CardContent className="p-8">
+                                              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                                                 <div className="lg:col-span-6 space-y-3">
+                                                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'توصيف البند التنفيذي الدقيق' : 'DETAILED EXECUTION DESCRIPTION'}</Label>
+                                                    <Textarea 
+                                                       value={item.description} 
+                                                       onChange={e => updateItem(undefined, item.originalIndex, 'description', e.target.value)}
+                                                       className="min-h-[100px] rounded-2xl border-2 bg-slate-50/50 p-5 font-bold text-sm focus:bg-white transition-all shadow-inner"
+                                                       placeholder="..."
+                                                    />
+                                                 </div>
+                                                 <div className="lg:col-span-5 grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                    <div className="space-y-1.5">
+                                                       <Label className="text-[9px] font-black text-slate-400 uppercase">Unit</Label>
+                                                       <Input value={item.unit} onChange={e => updateItem(undefined, item.originalIndex, 'unit', e.target.value)} className="h-12 border-2 rounded-xl text-center font-black" />
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                       <Label className="text-[9px] font-black text-slate-400 uppercase">Qty</Label>
+                                                       <Input type="number" value={item.plannedQuantity} onChange={e => updateItem(undefined, item.originalIndex, 'plannedQuantity', Number(e.target.value))} className="h-12 border-2 rounded-xl text-center font-black" />
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                       <Label className="text-[9px] font-black text-slate-400 uppercase">Rate (KWD)</Label>
+                                                       <Input type="number" value={item.estimatedRate} onChange={e => updateItem(undefined, item.originalIndex, 'estimatedRate', Number(e.target.value))} className="h-12 border-2 rounded-xl text-center font-black text-emerald-600 bg-emerald-50/20" />
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                       <Label className="text-[9px] font-black text-slate-400 uppercase">Subtotal</Label>
+                                                       <div className="h-12 flex items-center justify-center font-mono font-black text-emerald-700 bg-emerald-100 rounded-xl shadow-inner">
+                                                          {((item.plannedQuantity || 0) * (item.estimatedRate || 0)).toLocaleString()}
+                                                       </div>
+                                                    </div>
+                                                 </div>
+                                                 <div className="lg:col-span-1 flex flex-col items-center justify-center pt-6">
+                                                    <Button 
+                                                      variant="ghost" 
+                                                      size="icon" 
+                                                      onClick={() => removeItem(item.originalIndex)} 
+                                                      className="h-12 w-12 rounded-2xl text-rose-200 hover:text-rose-600 hover:bg-rose-50 transition-all"
+                                                    >
+                                                       <Trash2 className="h-6 w-6" />
+                                                    </Button>
+                                                 </div>
+                                              </div>
+                                           </CardContent>
+                                        </Card>
+                                      ))}
+                                   </div>
+                                </div>
+                              ))}
+                           </div>
+                        </div>
+                      ))}
+                   </div>
+                </div>
+              ))}
+           </div>
+        </div>
+
+        {/* Final Financial Balance Hub (Sticky Logic) */}
+        <div className={cn(
+          "p-12 rounded-[4rem] border-4 border-dashed flex flex-col md:flex-row items-center justify-between shadow-3xl transition-all duration-500",
+          isMathValid ? "bg-emerald-100/50 border-emerald-300 text-emerald-900" : "bg-rose-100/50 border-rose-300 text-rose-900"
+        )}>
+           <div className="text-center bg-white p-10 rounded-[3rem] shadow-2xl min-w-[300px] border-4 border-white ring-8 ring-black/[0.02]">
+             <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">{isRtl ? 'إجمالي البنود المجمعة' : 'Aggregated Total'}</p>
+             <span className="text-6xl font-black font-headline">{totalItemsCost.toLocaleString()} <span className="text-sm">KWD</span></span>
+           </div>
+           
+           <div className="text-center md:text-end space-y-3 mt-10 md:mt-0">
+             <h4 className="font-black text-3xl font-headline flex items-center gap-4 justify-center md:justify-end">
+                {isMathValid ? <CheckCircle2 className="h-10 w-10 text-emerald-600 animate-in zoom-in" /> : <AlertTriangle className="h-10 w-10 text-rose-600 animate-pulse" />}
+                {isRtl ? 'رادار الموازنة المالية' : 'Financial Balance Radar'}
+             </h4>
+             <p className="text-base font-bold opacity-80 leading-relaxed max-w-lg">
+                {isMathValid 
+                  ? (isRtl ? 'المقياسة في حالة توازن مطلق. مجموع البنود يطابق الميزانية المحددة.' : 'BOQ is perfectly balanced. Items sum matches defined budget.')
+                  : (isRtl ? `يوجد تباين قدره ${((formData.baseAmount || 0) - totalItemsCost).toFixed(3)} KWD بين الميزانية ومجموع البنود.` : `Variance detected: ${((formData.baseAmount || 0) - totalItemsCost).toFixed(3)} KWD`)}
+             </p>
+           </div>
+        </div>
       </div>
     </div>
   );
