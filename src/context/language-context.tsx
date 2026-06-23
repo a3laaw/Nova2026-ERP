@@ -13,11 +13,10 @@ interface LanguageContextType {
 
 const translations: Record<Language, Record<string, string>> = {
   ar: {
-    // القائمة الرئيسية (Odoo Style)
     dashboard: 'الرئيسية',
     crm: 'العملاء',
     leads: 'الفرص',
-    clients: 'قاعدة العملاء',
+    clients: 'العملاء',
     projects: 'المشاريع',
     activeProjects: 'المشاريع الجارية',
     accounting: 'الحسابات',
@@ -30,8 +29,6 @@ const translations: Record<Language, Record<string, string>> = {
     reports: 'التقارير',
     ai: 'ذكاء Nova',
     settings: 'الإعدادات',
-    
-    // إجراءات عامة
     switchLang: 'English',
     logout: 'خروج',
     profile: 'حسابي',
@@ -57,8 +54,6 @@ const translations: Record<Language, Record<string, string>> = {
     value: 'القيمة',
     summary: 'الملخص',
     reconciliation: 'المطابقة البنكية',
-
-    // الإعدادات والهيكل
     orgRef: 'الهيكل الوظيفي',
     techRef: 'مسارات العمل',
     geoRef: 'المناطق',
@@ -76,15 +71,11 @@ const translations: Record<Language, Record<string, string>> = {
     technicalLink: 'الربط الفني',
     operationalPath: 'مسار التنفيذ',
     totalStages: 'عدد المراحل',
-    
-    // العملاء
     addLead: 'إضافة فرصة',
     fileNumber: 'رقم الملف',
     civilId: 'الرقم المدني',
     mobile: 'الهاتف',
     email: 'البريد',
-
-    // القوالب
     templateLibrary: 'القوالب',
     quotationTemplates: 'قوالب العروض',
     contractTemplates: 'قوالب العقود',
@@ -97,8 +88,6 @@ const translations: Record<Language, Record<string, string>> = {
     percentage: 'نسبة مئوية',
     share: 'الحصة',
     amount: 'المبلغ',
-    
-    // العروض
     introText: 'المقدمة',
     defaultTerms: 'الشروط والالتزامات',
     validDays: 'صلاحية العرض (أيام)',
@@ -106,13 +95,11 @@ const translations: Record<Language, Record<string, string>> = {
     issueDate: 'تاريخ الإصدار',
     quotationFor: 'موجه إلى',
     subject: 'الموضوع',
-    estimatedTotal: 'القيمة التقديرية',
+    estimatedTotal: 'إجمالي القيمة التقديرية',
     totalQuoteValue: 'إجمالي قيمة البنود',
     totalQuoteShare: 'إجمالي حصص العقد',
     addQuotationItem: 'إضافة بند مالي',
     quoteAnalysis: 'تحليل العروض',
-    
-    // العقود
     legalText: 'النصوص القانونية',
     closingText: 'الخاتمة',
     clauses: 'بنود العقد',
@@ -126,8 +113,6 @@ const translations: Record<Language, Record<string, string>> = {
     at: 'عند',
     during: 'أثناء',
     after: 'بعد',
-
-    // الموظفين
     employees: 'سجل الموظفين',
     newHire: 'تعيين جديد',
     payroll: 'الرواتب',
@@ -147,14 +132,10 @@ const translations: Record<Language, Record<string, string>> = {
     accountSecurity: 'أمان الحساب',
     changePassword: 'تغيير كلمة المرور',
     passwordDesc: 'تحديث بيانات الدخول لضمان حماية حسابك.',
-
-    // المشاريع
     project: 'المشروع',
     newProject: 'مشروع جديد',
     startProject: 'بدء المشروع',
     budget: 'الميزانية',
-
-    // التقارير والطباعة
     print: 'طباعة',
     download: 'تحميل',
     officialReport: 'تقرير رسمي',
@@ -164,9 +145,7 @@ const translations: Record<Language, Record<string, string>> = {
     laborExpiry: 'اعتماد الشؤون',
     address: 'العنوان',
     saveAllRules: 'حفظ كافة القواعد',
-    backToSettings: 'رجوع للإعدادات',
-
-    // نطاقات الوصول
+    backToSettings: 'رجوع للضبط',
     scopeNone: 'محجوب',
     scopeOwn: 'سجلاتي فقط',
     scopeDept: 'سجلات القسم',
@@ -189,7 +168,6 @@ const translations: Record<Language, Record<string, string>> = {
     reports: 'Reports',
     ai: 'Nova AI',
     settings: 'Settings',
-    
     switchLang: 'العربية',
     logout: 'Logout',
     profile: 'Profile',
@@ -215,7 +193,6 @@ const translations: Record<Language, Record<string, string>> = {
     value: 'Value',
     summary: 'Summary',
     reconciliation: 'Reconciliation',
-
     orgRef: 'Org Structure',
     techRef: 'Workflows',
     geoRef: 'Areas',
@@ -233,13 +210,11 @@ const translations: Record<Language, Record<string, string>> = {
     technicalLink: 'Tech Link',
     operationalPath: 'Ops Path',
     totalStages: 'Total Stages',
-
     addLead: 'Add Opportunity',
     fileNumber: 'File No.',
     civilId: 'Civil ID',
     mobile: 'Mobile',
     email: 'Email',
-
     templateLibrary: 'Templates',
     quotationTemplates: 'Quote Templates',
     contractTemplates: 'Contract Templates',
@@ -252,7 +227,6 @@ const translations: Record<Language, Record<string, string>> = {
     percentage: 'Percentage',
     share: 'Share',
     amount: 'Amount',
-    
     introText: 'Introduction',
     defaultTerms: 'Terms & Conditions',
     validDays: 'Validity (Days)',
@@ -265,7 +239,6 @@ const translations: Record<Language, Record<string, string>> = {
     totalQuoteShare: 'Total Contract Share',
     addQuotationItem: 'Add Item',
     quoteAnalysis: 'Quote Analysis',
-
     legalText: 'Legal Text',
     closingText: 'Closing',
     clauses: 'Clauses',
@@ -279,7 +252,6 @@ const translations: Record<Language, Record<string, string>> = {
     at: 'At',
     during: 'During',
     after: 'After',
-
     employees: 'Staff',
     newHire: 'New Hire',
     payroll: 'Payroll',
@@ -299,12 +271,10 @@ const translations: Record<Language, Record<string, string>> = {
     accountSecurity: 'Account Security',
     changePassword: 'Change Password',
     passwordDesc: 'Update your login details to ensure account protection.',
-
     project: 'Project',
     newProject: 'New Project',
     startProject: 'Start Project',
     budget: 'Budget',
-
     print: 'Print',
     download: 'Download',
     officialReport: 'Official Report',
@@ -315,7 +285,6 @@ const translations: Record<Language, Record<string, string>> = {
     address: 'Address',
     saveAllRules: 'Save Rules',
     backToSettings: 'Back',
-
     scopeNone: 'None',
     scopeOwn: 'Own Records',
     scopeDept: 'Department',

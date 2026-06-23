@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -107,8 +106,9 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
 
   const addItem = () => {
     const nextIndex = (formData.items?.length || 0) + 1;
-    const labels = isRtl ? ['الأولى', 'الثانية', 'الثالثة', 'الرابعة', 'الخامسة', 'السادسة'] : ['1st', '2nd', '3rd', '4th', '5th', '6th'];
-    const label = isRtl ? `الدفعة ${labels[nextIndex - 1] || nextIndex}` : `${labels[nextIndex - 1] || nextIndex} Installment`;
+    const labelsAr = ['الأولى', 'الثانية', 'الثالثة', 'الرابعة', 'الخامسة', 'السادسة'];
+    const labelsEn = ['1st', '2nd', '3rd', '4th', '5th', '6th'];
+    const label = isRtl ? `الدفعة ${labelsAr[nextIndex - 1] || nextIndex}` : `${labelsEn[nextIndex - 1] || nextIndex} Installment`;
 
     setFormData({
       ...formData,
@@ -150,13 +150,11 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
   const handleSave = async () => {
     if (!db || !companyId || !user) return;
     
-    // 1. فحص الحقول الإلزامية
     if (!formData.name || !formData.activityTypeId || !formData.serviceId || !formData.subServiceId) {
       toast({ variant: "destructive", title: t('error'), description: isRtl ? "يرجى إكمال كافة بيانات الربط الفني." : "Please complete all technical links." });
       return;
     }
 
-    // 2. فحص التوازن المالي (نفس الخطأ الظاهر في الصورة)
     if (!isMathValid) {
       const diff = isPercentageMode 
         ? (100 - totalPercentage) 
@@ -175,7 +173,6 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
     setLoading(true);
     try {
       const service = new TemplateService(db, companyId);
-      
       const activity = activities?.find(a => a.id === formData.activityTypeId);
       const srv = services?.find(s => s.id === formData.serviceId);
       const sub = subServices?.find(ss => ss.id === formData.subServiceId);
@@ -207,7 +204,6 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
 
   return (
     <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500 pb-20" dir={dir}>
-      {/* Header Controls */}
       <div className="flex items-center justify-between border-b pb-6">
         <div className="flex items-center gap-4 text-start">
           <Button variant="ghost" onClick={onClose} className="h-12 w-12 p-0 rounded-2xl bg-white shadow-sm border">
@@ -234,7 +230,6 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
          <div className="lg:col-span-2 space-y-8">
-            {/* Identity & Reference Card */}
             <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
                <CardContent className="p-10 space-y-8 text-start">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -274,7 +269,6 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                </CardContent>
             </Card>
 
-            {/* Smart Pricing Logic Section */}
             <div className="space-y-6">
                <div className="flex justify-between items-end px-6">
                   <div className="text-start">
@@ -298,10 +292,9 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                   </div>
                </div>
 
-               {/* Total Base Amount Box - Matches the Image Style */}
                <div className="p-10 bg-emerald-50/40 rounded-[3rem] border-2 border-emerald-100/50 text-start animate-in fade-in zoom-in-95 relative overflow-hidden group">
                   <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:scale-110 transition-transform"><DollarSign className="h-32 w-32" /></div>
-                  <div className="max-w-md mx-auto space-y-3 relative z-10">
+                  <div className="max-w-md mx-auto space-y-3 relative z-10 text-center">
                      <Label className="text-[11px] font-black uppercase text-emerald-600 tracking-widest flex items-center justify-center gap-2">
                         <DollarSign className="h-4 w-4" /> {isRtl ? 'إجمالي قيمة العقد التقديرية (KWD)' : 'Total Estimated Value (KWD)'}
                      </Label>
@@ -315,7 +308,6 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                   </div>
                </div>
 
-               {/* Items List */}
                <div className="space-y-6">
                   {formData.items?.map((item, idx) => {
                     const isFirst = idx === 0;
@@ -409,7 +401,6 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                   })}
                </div>
 
-               {/* Unified Validation Box - Matches Image Styling */}
                <div className={cn(
                  "p-10 rounded-[3rem] border-4 border-dashed flex items-center justify-between transition-all shadow-2xl",
                  isMathValid ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-rose-50 border-rose-200 text-rose-800"
@@ -443,7 +434,6 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
             </div>
          </div>
 
-         {/* Sidebar for Meta Details */}
          <div className="lg:col-span-1 space-y-8">
             <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
                <CardHeader className="bg-slate-50 border-b p-6 text-start">
@@ -472,7 +462,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                   />
                   <div className="space-y-2">
                      <Label className="text-[10px] font-black uppercase text-slate-400">{t('validDays')}</Label>
-                     <Input type="number" value={formData.validDays || 30} onChange={e => setFormData({...formData, validDays: Number(e.target.value)})} className="h-12 rounded-xl border-2 font-black text-lg text-center" />
+                     <Input type="number" value={formData.validDays || 0} onChange={e => setFormData({...formData, validDays: Number(e.target.value)})} className="h-12 rounded-xl border-2 font-black text-lg text-center" />
                   </div>
                </CardContent>
             </Card>

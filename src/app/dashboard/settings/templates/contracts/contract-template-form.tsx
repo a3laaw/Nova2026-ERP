@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -66,7 +65,6 @@ export function ContractTemplateForm({ template, onClose }: Props) {
     }
   );
 
-  // جلب البيانات المرجعية
   const actQuery = useMemo(() => companyId && db ? query(collection(db, paths.activityTypes(companyId)), orderBy('name')) : null, [db, companyId]);
   const srvQuery = useMemo(() => companyId && db && formData.activityTypeId ? query(collection(db, paths.services(companyId, formData.activityTypeId)), orderBy('name')) : null, [db, companyId, formData.activityTypeId]);
   const subQuery = useMemo(() => companyId && db && formData.activityTypeId && formData.serviceId ? query(collection(db, paths.subServices(companyId, formData.activityTypeId, formData.serviceId)), orderBy('name')) : null, [db, companyId, formData.activityTypeId, formData.serviceId]);
@@ -118,7 +116,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
     if (!isMathValid) {
       toast({ 
         variant: "destructive", 
-        title: isRtl ? "خطأ في التوازن" : "Math Error", 
+        title: t('error'), 
         description: isRtl ? `مجموع النسب ${totalPercentage}% فقط. يجب أن يكتمل لـ 100%.` : `Total is ${totalPercentage}%. Must be 100%.`
       });
       return;
@@ -178,7 +176,6 @@ export function ContractTemplateForm({ template, onClose }: Props) {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
          <div className="lg:col-span-8 space-y-8">
-            {/* Identity & Reference Card */}
             <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
                <CardHeader className="bg-slate-50/50 p-8 border-b text-start">
                   <CardTitle className="text-lg font-black flex items-center gap-2"><Landmark className="h-5 w-5 text-primary" /> {t('operationalPath')}</CardTitle>
@@ -221,7 +218,6 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                </CardContent>
             </Card>
 
-            {/* Payment Milestones Logic */}
             <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
                <CardHeader className="bg-slate-900 text-white p-8 border-b flex flex-row items-center justify-between">
                   <CardTitle className="text-lg font-black flex items-center gap-2 text-primary"><Calculator className="h-5 w-5" /> {isRtl ? 'هيكلة الدفعات المخططة' : 'Payment Milestones Structure'}</CardTitle>
@@ -230,22 +226,22 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                   </Button>
                </CardHeader>
                <CardContent className="p-8 space-y-6">
-                  {/* Total Value Box */}
-                  <div className="p-8 bg-emerald-50/40 rounded-[2.5rem] border-2 border-emerald-100/50 text-start animate-in fade-in zoom-in-95">
-                     <div className="max-w-md mx-auto space-y-2">
-                        <Label className="text-[10px] font-black uppercase text-emerald-600 tracking-widest flex items-center justify-center gap-2">
-                           <DollarSign className="h-3 w-3" /> {isRtl ? 'إجمالي قيمة العقد التقديرية (KWD)' : 'Total Estimated Value (KWD)'}
+                  <div className="p-10 bg-emerald-50/40 rounded-[3rem] border-2 border-emerald-100/50 text-start animate-in fade-in zoom-in-95 relative overflow-hidden group">
+                     <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:scale-110 transition-transform"><DollarSign className="h-32 w-32" /></div>
+                     <div className="max-w-md mx-auto space-y-3 relative z-10 text-center">
+                        <Label className="text-[11px] font-black uppercase text-emerald-600 tracking-widest flex items-center justify-center gap-2">
+                           <DollarSign className="h-4 w-4" /> {isRtl ? 'إجمالي قيمة العقد التقديرية (KWD)' : 'Total Estimated Value (KWD)'}
                         </Label>
                         <Input 
                            type="number" 
                            value={formData.baseAmount || 0} 
                            onChange={e => setFormData({...formData, baseAmount: Number(e.target.value)})} 
-                           className="h-14 rounded-2xl border-2 border-emerald-200 font-black text-2xl text-emerald-700 bg-white shadow-inner text-center"
+                           className="h-16 rounded-[2rem] border-2 border-emerald-200 font-black text-3xl text-emerald-700 bg-white shadow-2xl text-center focus-visible:ring-emerald-500"
+                           placeholder="0.000"
                         />
                      </div>
                   </div>
 
-                  {/* Milestones List */}
                   {formData.defaultMilestones?.map((milestone, idx) => {
                     const isFirst = idx === 0;
                     const calculatedAmount = ((formData.baseAmount || 0) * (milestone.percentage || 0)) / 100;
@@ -311,20 +307,22 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                     );
                   })}
 
-                  {/* Validation Summary Box */}
                   <div className={cn(
-                    "p-8 rounded-[3rem] border-4 border-dashed flex items-center justify-between transition-all",
+                    "p-10 rounded-[3rem] border-4 border-dashed flex items-center justify-between transition-all shadow-2xl",
                     isMathValid ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-rose-50 border-rose-200 text-rose-800"
                   )}>
                      <div className="text-center bg-white p-6 rounded-[2rem] shadow-xl border-2 border-inherit min-w-[150px]">
-                        <span className="text-4xl font-black">{totalPercentage}%</span>
-                        {!isMathValid && <AlertTriangle className="h-5 w-5 mx-auto mt-1 animate-pulse" />}
+                        <span className="text-4xl font-black font-headline">{totalPercentage}%</span>
+                        {!isMathValid && <AlertTriangle className="h-6 w-6 mx-auto mt-2 animate-pulse text-rose-500" />}
                      </div>
-                     <div className="flex items-center gap-3">
+                     <div className="flex items-center gap-6">
                         <div className="text-end">
-                           <p className="font-black text-lg">{t('totalQuoteShare')}</p>
+                           <p className="font-black text-2xl font-headline">{t('totalQuoteShare')}</p>
+                           <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest">{isMathValid ? 'FULLY BALANCED' : 'MATHEMATICAL MISMATCH'}</p>
                         </div>
-                        <Calculator className="h-8 w-8" />
+                        <div className="h-16 w-16 bg-white rounded-3xl flex items-center justify-center shadow-lg border-2 border-inherit">
+                           <Calculator className="h-8 w-8" />
+                        </div>
                      </div>
                   </div>
                </CardContent>
