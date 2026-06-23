@@ -14,7 +14,6 @@ import {
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { Transaction, TransactionTimelineEvent, StageInstance } from '@/types/transaction';
-import { ClientHistory } from '@/types/client';
 import { TechnicalStage } from '@/types/reference';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -22,7 +21,7 @@ import { ensureActionPermission } from '@/lib/permissions';
 
 /**
  * خدمة إدارة المعاملات الفنية (Technical Transactions Service).
- * مسؤولة عن الدورة المستندية لفتح المسارات الفنية والترقيم المهني واستنساخ مراحل العمل.
+ * مسؤولة عن الدورة المستندية لفتح المسارات الفنية والترقيم المهني واستنساخ مراحل العمل والتحديث الميداني.
  */
 export class TransactionService {
   constructor(
@@ -48,10 +47,8 @@ export class TransactionService {
     description?: string;
   }, userId: string, userName: string) {
     
-    // 1. إنفاذ الصلاحيات الميدانية (Security Enforcement)
     ensureActionPermission(this.permissions, 'projects:create');
 
-    // 2. التحقق من وجود العميل واستخراج العداد
     const clientRef = doc(this.db, paths.clients(this.companyId), data.clientId);
     const clientSnap = await getDoc(clientRef);
     
@@ -59,17 +56,13 @@ export class TransactionService {
       throw new Error('CLIENT_NOT_FOUND: العميل غير موجود في النظام.');
     }
 
-    // 3. قراءة المراحل الفنية المرجعية (Template Stages)
     const stagesPath = paths.technicalStages(this.companyId, data.activityTypeId, data.serviceId, data.subServiceId);
-    // جلب كافة المراحل
     const stagesSnap = await getDocs(collection(this.db, stagesPath));
 
-    // معالجة واضحة في حال عدم وجود مراحل (Process Guard)
     if (stagesSnap.empty) {
       throw new Error('لا يمكن فتح المعاملة لعدم وجود مراحل عمل معرّفة لهذا المسار في مركز المراجع. يرجى إضافة مراحل للخدمة الفرعية أولاً.');
     }
 
-    // ترتيب المراحل برمجياً لضمان المرونة
     const sortedStages = stagesSnap.docs
       .map(d => ({ id: d.id, ...d.data() } as TechnicalStage))
       .sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -78,10 +71,8 @@ export class TransactionService {
     const currentCounter = clientData.transactionCounter || 0;
     const nextCounter = currentCounter + 1;
 
-    // 4. توليد الرقم المتسلسل المهني (رقم الملف - تسلسل المعاملة)
     const transactionNumber = `${clientData.fileNumber}-${nextCounter.toString().padStart(2, '0')}`;
 
-    // 5. تجهيز العملية الذرية (Atomic Batch)
     const batch = writeBatch(this.db);
     const transRef = doc(collection(this.db, paths.transactions(this.companyId)));
     const transactionId = transRef.id;
@@ -115,11 +106,8 @@ export class TransactionService {
       updatedAt: serverTimestamp()
     });
 
-    // استنساخ المراحل المرتبة مع تطهير البيانات من قيم undefined
     sortedStages.forEach(stage => {
       const instanceRef = doc(collection(this.db, paths.transactionStages(this.companyId, transactionId)));
-      
-      // تأمين البيانات من قيم undefined التي ترفضها فايربيز
       const instanceData: StageInstance = {
         transactionId,
         technicalStageId: stage.id!,
@@ -146,7 +134,6 @@ export class TransactionService {
       batch.set(instanceRef, instanceData);
     });
 
-    // تسجيل في الجدول الزمني
     const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
     batch.set(timelineRef, {
       transactionId,
@@ -158,7 +145,6 @@ export class TransactionService {
       createdAt: serverTimestamp()
     });
 
-    // تسجيل في تاريخ العميل
     const historyRef = doc(collection(this.db, paths.clientHistory(this.companyId, data.clientId)));
     batch.set(historyRef, {
       clientId: data.clientId,
@@ -183,5 +169,101 @@ export class TransactionService {
       }
       throw err;
     }
+  }
+
+  /**
+   * بدء العمل على مرحلة
+   */
+  async startStage(transactionId: string, stageId: string, userId: string, userName: string) {
+    ensureActionPermission(this.permissions, 'projects:edit');
+    const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
+    const stageSnap = await getDoc(stageRef);
+    if (!stageSnap.exists()) return;
+    const stageData = stageSnap.data() as StageInstance;
+
+    const batch = writeBatch(this.db);
+    batch.update(stageRef, {
+      status: 'in-progress',
+      startedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      updatedBy: userId
+    });
+
+    const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
+    batch.set(timelineRef, {
+      transactionId,
+      type: 'stage_start',
+      content: `بدء العمل الميداني على المرحلة: ${stageData.name}`,
+      userId,
+      userName,
+      companyId: this.companyId,
+      createdAt: serverTimestamp()
+    });
+
+    await batch.commit();
+  }
+
+  /**
+   * إكمال مرحلة
+   */
+  async completeStage(transactionId: string, stageId: string, userId: string, userName: string) {
+    ensureActionPermission(this.permissions, 'projects:edit');
+    const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
+    const stageSnap = await getDoc(stageRef);
+    if (!stageSnap.exists()) return;
+    const stageData = stageSnap.data() as StageInstance;
+
+    const batch = writeBatch(this.db);
+    batch.update(stageRef, {
+      status: 'completed',
+      completedAt: serverTimestamp(),
+      completedBy: userId,
+      updatedAt: serverTimestamp(),
+      updatedBy: userId
+    });
+
+    const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
+    batch.set(timelineRef, {
+      transactionId,
+      type: 'stage_complete',
+      content: `إنجاز المرحلة بالكامل: ${stageData.name}`,
+      userId,
+      userName,
+      companyId: this.companyId,
+      createdAt: serverTimestamp()
+    });
+
+    await batch.commit();
+  }
+
+  /**
+   * تحديث العداد الرقمي للمرحلة
+   */
+  async updateStageCount(transactionId: string, stageId: string, newCount: number, userId: string, userName: string) {
+    ensureActionPermission(this.permissions, 'projects:edit');
+    const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
+    const stageSnap = await getDoc(stageRef);
+    if (!stageSnap.exists()) return;
+    const stageData = stageSnap.data() as StageInstance;
+
+    const batch = writeBatch(this.db);
+    batch.update(stageRef, {
+      currentCount: newCount,
+      updatedAt: serverTimestamp(),
+      updatedBy: userId
+    });
+
+    const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
+    batch.set(timelineRef, {
+      transactionId,
+      type: 'numeric_update',
+      content: `تحديث الإنجاز في مرحلة ${stageData.name}: تم رصد ${newCount} من أصل ${stageData.numericTarget}`,
+      userId,
+      userName,
+      companyId: this.companyId,
+      createdAt: serverTimestamp()
+    });
+
+    await batch.commit();
   }
 }

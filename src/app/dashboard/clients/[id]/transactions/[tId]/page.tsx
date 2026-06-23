@@ -1,17 +1,17 @@
-
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
 import { 
   ArrowRight, Activity, Clock, Loader2, 
   History, ShieldCheck, HardHat, ListChecks, 
   Timer, LayoutGrid, Info, CheckCircle2,
-  AlertCircle, Lock, User, Printer
+  AlertCircle, Lock, User, Printer, Play, Check, Save
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy } from 'firebase/firestore';
@@ -20,21 +20,27 @@ import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { Transaction, StageInstance, TransactionTimelineEvent } from '@/types/transaction';
+import { TransactionService } from '@/services/transaction-service';
+import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 export default function TransactionDetailsPage() {
   const params = useParams();
   const clientId = params.id as string;
   const transactionId = params.tId as string;
-  const { globalUser } = useAuthContext();
+  const { globalUser, user } = useAuthContext();
   const { t, lang, dir } = useLanguage();
-  const { check } = usePermissions();
+  const { check, permissions } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [counts, setCounts] = useState<Record<string, number>>({});
+
   const viewAccess = check('projects', 'view');
+  const canEdit = check('projects', 'edit').can;
 
   const transRef = useMemo(() => 
     companyId && db ? doc(db, paths.transactions(companyId), transactionId) : null, 
@@ -51,11 +57,58 @@ export default function TransactionDetailsPage() {
   [db, companyId, transactionId]);
   const { data: timeline, loading: timelineLoading } = useCollection<TransactionTimelineEvent>(timelineQuery);
 
+  const transactionService = useMemo(() => 
+    db && companyId ? new TransactionService(db, companyId, permissions) : null, 
+  [db, companyId, permissions]);
+
+  const progressPercent = useMemo(() => {
+    if (!stages?.length) return 0;
+    const completed = stages.filter(s => s.status === 'completed').length;
+    return Math.round((completed / stages.length) * 100);
+  }, [stages]);
+
+  const handleStartStage = async (stageId: string) => {
+    if (!transactionService || !user) return;
+    setProcessingId(stageId);
+    try {
+      await transactionService.startStage(transactionId, stageId, user.uid, user.displayName || 'User');
+      toast({ title: isRtl ? "تم بدء العمل" : "Stage Started" });
+    } catch (e) {
+      toast({ variant: "destructive", title: t('error') });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleCompleteStage = async (stageId: string) => {
+    if (!transactionService || !user) return;
+    setProcessingId(stageId);
+    try {
+      await transactionService.completeStage(transactionId, stageId, user.uid, user.displayName || 'User');
+      toast({ title: isRtl ? "تم إنجاز المرحلة" : "Stage Completed" });
+    } catch (e) {
+      toast({ variant: "destructive", title: t('error') });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleUpdateCount = async (stageId: string) => {
+    if (!transactionService || !user || counts[stageId] === undefined) return;
+    setProcessingId(`count_${stageId}`);
+    try {
+      await transactionService.updateStageCount(transactionId, stageId, counts[stageId], user.uid, user.displayName || 'User');
+      toast({ title: isRtl ? "تم تحديث الإنجاز" : "Count Updated" });
+    } catch (e) {
+      toast({ variant: "destructive", title: t('error') });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   if (!viewAccess.can) return <div className="h-[60vh] flex flex-col items-center justify-center space-y-4"><Lock className="h-12 w-12 text-rose-500" /><p className="font-black">{isRtl ? 'وصول محجوب' : 'Access Denied'}</p></div>;
   if (transLoading || stagesLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
   if (!transaction) return <div className="p-20 text-center font-black text-slate-400">{isRtl ? 'المعاملة غير موجودة' : 'Transaction not found'}</div>;
-
-  const progressPercent = stages?.length ? Math.round((stages.filter(s => s.status === 'completed').length / stages.length) * 100) : 0;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-20" dir={dir}>
@@ -93,7 +146,7 @@ export default function TransactionDetailsPage() {
         </div>
 
         <div className="flex gap-3 w-full md:w-auto">
-           <Button variant="outline" size="sm" className="flex-1 md:flex-none h-11 px-6 rounded-xl bg-white border-2 font-black text-xs gap-2">
+           <Button variant="outline" size="sm" onClick={() => window.print()} className="flex-1 md:flex-none h-11 px-6 rounded-xl bg-white border-2 font-black text-xs gap-2">
               <Printer className="h-4 w-4" /> {isRtl ? 'طباعة' : 'Print'}
            </Button>
            <Button size="sm" className="flex-1 md:flex-none h-11 px-6 rounded-xl bg-primary text-white font-black text-xs shadow-lg shadow-primary/20">
@@ -162,9 +215,29 @@ export default function TransactionDetailsPage() {
                                <h4 className="font-black text-lg text-slate-900 tracking-tight">{stage.name}</h4>
                                <div className="flex flex-wrap gap-3">
                                   {stage.isNumeric && (
-                                     <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 text-[10px] font-black border-emerald-100 border gap-1">
-                                        <ListChecks className="h-3 w-3" /> {isRtl ? 'المستهدف:' : 'Target:'} {stage.currentCount} / {stage.numericTarget}
-                                     </Badge>
+                                     <div className="flex items-center gap-2">
+                                        <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 text-[10px] font-black border-emerald-100 border gap-1">
+                                           <ListChecks className="h-3 w-3" /> {isRtl ? 'الإنجاز الحالي:' : 'Current:'} {stage.currentCount} / {stage.numericTarget}
+                                        </Badge>
+                                        {canEdit && stage.status !== 'completed' && (
+                                          <div className="flex items-center gap-1 animate-in fade-in">
+                                             <Input 
+                                               type="number" 
+                                               className="h-7 w-16 text-[10px] font-bold px-2 rounded-lg"
+                                               defaultValue={stage.currentCount}
+                                               onChange={(e) => setCounts({...counts, [stage.id!]: Number(e.target.value)})}
+                                             />
+                                             <Button 
+                                               size="icon" 
+                                               className="h-7 w-7 rounded-lg" 
+                                               disabled={processingId === `count_${stage.id}`}
+                                               onClick={() => handleUpdateCount(stage.id!)}
+                                             >
+                                                {processingId === `count_${stage.id}` ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                             </Button>
+                                          </div>
+                                        )}
+                                     </div>
                                   )}
                                   {stage.isTimed && (
                                      <Badge variant="secondary" className="bg-blue-50 text-blue-700 text-[10px] font-black border-blue-100 border gap-1">
@@ -176,7 +249,31 @@ export default function TransactionDetailsPage() {
                             </div>
                          </div>
 
-                         <div className="text-end shrink-0">
+                         <div className="flex items-center gap-3">
+                            {canEdit && stage.status === 'pending' && (
+                               <Button 
+                                 size="sm" 
+                                 onClick={() => handleStartStage(stage.id!)}
+                                 disabled={processingId === stage.id}
+                                 className="rounded-xl h-10 px-5 bg-blue-600 text-white font-black gap-2 shadow-lg shadow-blue-200"
+                               >
+                                  {processingId === stage.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                                  {isRtl ? 'بدء العمل' : 'Start'}
+                               </Button>
+                            )}
+                            
+                            {canEdit && stage.status === 'in-progress' && (
+                               <Button 
+                                 size="sm" 
+                                 onClick={() => handleCompleteStage(stage.id!)}
+                                 disabled={processingId === stage.id}
+                                 className="rounded-xl h-10 px-5 bg-emerald-600 text-white font-black gap-2 shadow-lg shadow-emerald-200"
+                               >
+                                  {processingId === stage.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                                  {isRtl ? 'إنهاء المرحلة' : 'Complete'}
+                               </Button>
+                            )}
+
                             <Badge className={cn(
                                "font-black px-4 py-1.5 rounded-xl border-0 shadow-inner text-[10px] uppercase",
                                stage.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 
@@ -227,7 +324,8 @@ export default function TransactionDetailsPage() {
                               <div className={cn(
                                 "absolute top-1 h-3 w-3 rounded-full border-2 border-white shadow-md z-10",
                                 event.type === 'system' ? 'bg-primary' : 
-                                event.type === 'stage_complete' ? 'bg-emerald-500' : 'bg-blue-500',
+                                event.type === 'stage_complete' ? 'bg-emerald-500' : 
+                                event.type === 'stage_start' ? 'bg-blue-500' : 'bg-slate-500',
                                 isRtl ? "right-0" : "left-0"
                               )} />
                               
@@ -255,15 +353,6 @@ export default function TransactionDetailsPage() {
                  </div>
               </CardContent>
            </Card>
-
-           <div className="p-6 rounded-[2rem] bg-blue-50 border-2 border-dashed border-blue-200 flex items-start gap-4 text-start">
-              <Info className="h-5 w-5 text-blue-600 mt-1 shrink-0" />
-              <p className="text-[10px] text-blue-700 font-bold leading-relaxed">
-                 {isRtl 
-                   ? 'ملاحظة: يتم تحديث هذا المسار آلياً عند إكمال المهندس للمراحل الميدانية. أي تأخير في المراحل "الإلزامية" قد يعيق تقدم المعاملة بالكامل.' 
-                   : 'Note: This pipeline updates automatically. Delays in "Required" stages may block the entire transaction progress.'}
-              </p>
-           </div>
         </div>
 
       </div>
