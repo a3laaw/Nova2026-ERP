@@ -56,6 +56,11 @@ export const paths = {
   contractTemplates: (companyId: string) => getTenantPath(companyId, 'contractTemplates'),
   boqTemplates: (companyId: string) => getTenantPath(companyId, 'boqTemplates'),
 
+  // المستندات الحية (Active Documents)
+  quotations: (companyId: string) => getTenantPath(companyId, 'quotations'),
+  contracts: (companyId: string) => getTenantPath(companyId, 'contracts'),
+  boqs: (companyId: string) => getTenantPath(companyId, 'boqs'),
+
   // المشاريع والفرص
   projects: (companyId: string) => getTenantPath(companyId, 'projects'),
   stageInstances: (companyId: string, projectId: string) => `${getTenantPath(companyId, 'projects')}/${projectId}/instances`,
