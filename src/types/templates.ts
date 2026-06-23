@@ -6,6 +6,17 @@ import { BaseReference } from './reference';
 
 export type TemplateType = 'quotation' | 'contract' | 'boq';
 
+export type PricingMode = 'fixed' | 'itemized' | 'percentage';
+
+export interface QuotationItem {
+  description: string;
+  unit?: string;
+  quantity?: number;
+  unitPrice?: number;
+  percentage?: number;
+  notes?: string;
+}
+
 export interface BaseTemplate extends BaseReference {
   code: string;
   name: string;
@@ -21,13 +32,14 @@ export interface BaseTemplate extends BaseReference {
   isActive: boolean;
   createdBy: string;
   updatedBy: string;
-  content?: any; // سيتم تعريفه لاحقاً حسب نوع القالب (Markdown, JSON, الخ)
 }
 
 export interface QuotationTemplate extends BaseTemplate {
-  termsAndConditions?: string;
-  validityDays?: number;
-  currency?: string;
+  introText?: string;
+  defaultTerms?: string;
+  validDays?: number;
+  pricingMode: PricingMode;
+  items: QuotationItem[];
 }
 
 export interface ContractTemplate extends BaseTemplate {

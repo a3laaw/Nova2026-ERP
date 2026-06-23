@@ -185,7 +185,25 @@ const translations: Record<Language, Record<string, string>> = {
     sick: 'مرضية',
     emergency: 'اضطرارية',
     unpaid: 'بدون راتب',
-    legalGuide: 'الدليل القانوني'
+    legalGuide: 'الدليل القانوني',
+    templateLibrary: 'مكتبة القوالب',
+    quotationTemplates: 'قوالب العروض',
+    contractTemplates: 'قوالب العقود',
+    boqTemplates: 'قوالب الكميات',
+    newTemplate: 'قالب جديد',
+    pricingMode: 'نظام التسعير',
+    fixed: 'سعر مقطوع',
+    itemized: 'بنود تفصيلية',
+    percentage: 'نسبة مئوية',
+    introText: 'مقدمة العرض',
+    defaultTerms: 'الشروط والأحكام',
+    validDays: 'صلاحية العرض (أيام)',
+    addQuotationItem: 'إضافة بند تسعير',
+    unitPrice: 'سعر الوحدة',
+    quantity: 'الكمية',
+    unit: 'الوحدة',
+    items: 'البنود',
+    defaultTemplate: 'قالب افتراضي'
   },
   en: {
     dashboard: 'Dashboard',
@@ -360,7 +378,25 @@ const translations: Record<Language, Record<string, string>> = {
     sick: 'Sick',
     emergency: 'Emergency',
     unpaid: 'Unpaid',
-    legalGuide: 'Legal Guide'
+    legalGuide: 'Legal Guide',
+    templateLibrary: 'Template Library',
+    quotationTemplates: 'Quotation Templates',
+    contractTemplates: 'Contract Templates',
+    boqTemplates: 'BOQ Templates',
+    newTemplate: 'New Template',
+    pricingMode: 'Pricing Mode',
+    fixed: 'Fixed Price',
+    itemized: 'Itemized Units',
+    percentage: 'Percentage %',
+    introText: 'Quotation Intro',
+    defaultTerms: 'Terms & Conditions',
+    validDays: 'Validity (Days)',
+    addQuotationItem: 'Add Pricing Item',
+    unitPrice: 'Unit Price',
+    quantity: 'Qty',
+    unit: 'Unit',
+    items: 'Line Items',
+    defaultTemplate: 'Default Template'
   }
 };
 

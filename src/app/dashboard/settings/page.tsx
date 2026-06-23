@@ -3,7 +3,8 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
-  Settings2, Building2, UserCog, Database, ArrowLeft, ShieldCheck, Clock, Users
+  Settings2, Building2, UserCog, Database, ArrowLeft, ShieldCheck, Clock, Users,
+  LayoutTemplate
 } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/context/language-context';
@@ -38,6 +39,16 @@ export default function SettingsHubPage() {
       visible: isAdmin
     },
     {
+      id: 'templates',
+      title: t('templateLibrary'),
+      description: isRtl ? 'بناء قوالب عروض الأسعار، العقود، وجداول الكميات' : 'Build templates for quotations, contracts, and BOQs',
+      icon: LayoutTemplate,
+      color: 'text-blue-600',
+      bg: 'bg-blue-50',
+      path: '/dashboard/settings/templates/quotations',
+      visible: isAdmin || check('ref:view').can
+    },
+    {
       id: 'checklists',
       title: t('checklists'),
       description: isRtl ? 'إدارة الدستور التشغيلي والقواعد المرجعية للنظام' : 'Manage operational constitution and system references',
@@ -45,7 +56,7 @@ export default function SettingsHubPage() {
       color: 'text-primary',
       bg: 'bg-primary/10',
       path: '/dashboard/settings/checklists',
-      visible: check('ref:view')
+      visible: check('ref:view').can
     },
     {
       id: 'roles',
@@ -65,7 +76,7 @@ export default function SettingsHubPage() {
       color: 'text-amber-600',
       bg: 'bg-amber-50',
       path: '/dashboard/settings/work-hours',
-      visible: check('ref:view')
+      visible: check('ref:view').can
     },
     {
       id: 'profile',
