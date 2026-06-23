@@ -59,7 +59,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
       pricingMode: 'itemized',
       items: [
         { 
-          description: isRtl ? 'عند توقيع العقد' : 'At Contract Signing', 
+          description: '', 
           label: isRtl ? 'الدفعة الأولى' : '1st Installment',
           unit: 'batch', 
           quantity: 1, 
@@ -74,7 +74,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
     }
   );
 
-  // جلب المراجع الفنية للربط
+  // Fetch Technical Reference Data
   const actQuery = useMemo(() => companyId && db ? query(collection(db, paths.activityTypes(companyId)), orderBy('name')) : null, [db, companyId]);
   const srvQuery = useMemo(() => companyId && db && formData.activityTypeId ? query(collection(db, paths.services(companyId, formData.activityTypeId)), orderBy('name')) : null, [db, companyId, formData.activityTypeId]);
   const subQuery = useMemo(() => companyId && db && formData.activityTypeId && formData.serviceId ? query(collection(db, paths.subServices(companyId, formData.activityTypeId, formData.serviceId)), orderBy('name')) : null, [db, companyId, formData.activityTypeId, formData.serviceId]);
@@ -90,15 +90,14 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
   const { data: subServices } = useCollection<SubService>(subQuery);
   const { data: stages } = useCollection<TechnicalStage>(stagesQuery);
 
-  // حساب إجمالي النسب المئوية لضمان تغطية كامل قيمة العقد
   const totalPercentage = useMemo(() => {
     return formData.items?.reduce((acc, item) => acc + (item.percentage || 0), 0) || 0;
   }, [formData.items]);
 
   const addItem = () => {
     const nextIndex = (formData.items?.length || 0) + 1;
-    const labels = ['الأولى', 'الثانية', 'الثالثة', 'الرابعة', 'الخامسة', 'السادسة', 'السابعة', 'الثامنة', 'التاسعة', 'العاشرة'];
-    const label = isRtl ? `الدفعة ${labels[nextIndex - 1] || nextIndex}` : `Installment ${nextIndex}`;
+    const labels = isRtl ? ['الأولى', 'الثانية', 'الثالثة', 'الرابعة', 'الخامسة', 'السادسة'] : ['1st', '2nd', '3rd', '4th', '5th', '6th'];
+    const label = isRtl ? `الدفعة ${labels[nextIndex - 1] || nextIndex}` : `${labels[nextIndex - 1] || nextIndex} Installment`;
 
     setFormData({
       ...formData,
@@ -140,14 +139,14 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
   const handleSave = async () => {
     if (!db || !companyId || !user) return;
     if (!formData.name || !formData.activityTypeId || !formData.serviceId) {
-      toast({ variant: "destructive", title: isRtl ? "بيانات ناقصة" : "Missing Fields" });
+      toast({ variant: "destructive", title: t('error'), description: isRtl ? "بيانات ناقصة" : "Missing Fields" });
       return;
     }
 
     if (formData.pricingMode === 'percentage' && totalPercentage !== 100) {
       toast({ 
         variant: "destructive", 
-        title: isRtl ? "تنبيه مالي" : "Financial Alert", 
+        title: t('error'), 
         description: isRtl ? "يجب أن يكون مجموع النسب المئوية 100% لتغطية كامل قيمة العقد." : "Total percentage must be 100%."
       });
       return;
@@ -166,7 +165,9 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
         activityTypeName: (isRtl ? activity?.name : activity?.nameEn) || '',
         serviceName: (isRtl ? srv?.name : srv?.nameEn) || '',
         subServiceName: (isRtl ? sub?.name : sub?.nameEn) || '',
-        code: formData.code || formData.name?.toUpperCase().replace(/\s+/g, '_')
+        code: formData.code || formData.name?.toUpperCase().replace(/\s+/g, '_'),
+        introText: formData.introText || '',
+        defaultTerms: formData.defaultTerms || '',
       };
 
       if (template?.id) {
@@ -278,7 +279,6 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                   </div>
                </div>
 
-               {/* خانة القيمة التقديرية (Moved here as requested) */}
                <div className="p-8 bg-emerald-50/30 rounded-[2.5rem] border-2 border-emerald-100/50 text-start animate-in fade-in zoom-in-95">
                   <div className="max-w-md space-y-2">
                      <Label className="text-[10px] font-black uppercase text-emerald-600 tracking-widest flex items-center gap-2">
@@ -389,7 +389,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                              </div>
 
                              <div className="md:col-span-12 space-y-2 pt-4">
-                                <Label className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'وصف تفصيلي يظهر في جدول عرض السعر' : 'Description for the quote table'}</Label>
+                                <Label className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'وصف البند في الجدول' : 'Description for Table'}</Label>
                                 <Textarea 
                                   value={item.description || ''} 
                                   onChange={e => updateItem(idx, 'description', e.target.value)}
@@ -403,7 +403,6 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                   );
                })}
 
-               {/* ملخص الحساب في حالة النسبة المئوية */}
                {formData.pricingMode === 'percentage' && (
                  <div className={cn(
                    "p-8 rounded-[2rem] border-4 border-dashed flex items-center justify-between",
@@ -428,7 +427,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                  onClick={addItem}
                  className="w-full h-20 rounded-[2.5rem] border-2 border-dashed border-primary/30 text-primary font-black text-lg hover:bg-primary/5 transition-all gap-4"
                >
-                  <Plus className="h-7 w-7" /> {isRtl ? 'إضافة بند مالي / دفعة جديدة' : 'Add New Milestone'}
+                  <Plus className="h-7 w-7" /> {isRtl ? 'إضافة بند مالي جديد' : 'Add New Installment'}
                </Button>
             </div>
          </div>
@@ -479,14 +478,6 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                     checked={formData.isDefault || false} 
                     onCheckedChange={v => setFormData({...formData, isDefault: v})} 
                   />
-               </div>
-               <div className="pt-4 border-t border-white/10 relative z-10">
-                  <div className="flex items-start gap-3 text-start">
-                     <Info className="h-6 w-6 text-primary shrink-0 mt-0.5" />
-                     <p className="text-[10px] font-bold leading-relaxed text-slate-400">
-                        {isRtl ? 'تنبيه: ربط البنود بالتوقيت الزمني (عند/أثناء/بعد) يسمح للنظام بجدولة استحقاق المبالغ آلياً بناءً على إنجاز المهندس في الميدان.' : 'Tip: Linking items to timing (At/During/After) allows auto-scheduling of payments based on field progress.'}
-                     </p>
-                  </div>
                </div>
             </div>
          </div>
