@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { 
   FileText, Plus, Loader2, Search, ArrowRight, 
   Gavel, Trash2, Edit3, ShieldCheck, Landmark,
-  Calculator
+  Calculator, Sparkles
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -55,7 +55,7 @@ export default function ContractTemplatesPage() {
 
   const filtered = (templates || []).filter(temp => 
     temp.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    temp.code.toLowerCase().includes(searchTerm.toLowerCase())
+    (temp.code && temp.code.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   if (editingTemplate) {
@@ -70,22 +70,25 @@ export default function ContractTemplatesPage() {
   return (
     <div className="space-y-8 animate-in fade-in duration-500" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="text-start">
+        <div className="text-start space-y-2">
+          <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-primary/5 px-4 py-1.5 rounded-full w-fit">
+             <ShieldCheck className="h-3 w-3" /> {isRtl ? 'مكتبة الوثائق القانونية' : 'Legal Document Library'}
+          </div>
           <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
             <Gavel className="h-10 w-10 text-primary" />
-            {isRtl ? 'قوالب العقود الرسمية' : 'Contract Templates'}
+            {isRtl ? 'قوالب العقود' : 'Contract Templates'}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-            {isRtl ? 'إدارة النصوص القانونية ودفعات التعاقد المربوطة بالمراحل الفنية.' : 'Manage legal texts and payment milestones linked to technical stages.'}
+            {isRtl ? 'إدارة النماذج التعاقدية ودفعات الاستحقاق المربوطة ميدانياً.' : 'Manage contract forms and field-linked payment milestones.'}
           </p>
         </div>
 
         <Button 
           onClick={() => setEditingTemplate('new')}
-          className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all"
+          className="bg-primary text-white font-black rounded-2xl px-10 py-7 text-xl shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-3 border-b-8 border-orange-700"
         >
-          <Plus className="me-2 h-6 w-6" />
-          {isRtl ? 'قالب عقد جديد' : 'New Contract Template'}
+          <Plus className="h-7 w-7" />
+          {isRtl ? 'قالب عقد جديد' : 'New Template'}
         </Button>
       </div>
 
@@ -94,8 +97,8 @@ export default function ContractTemplatesPage() {
            <div className="relative w-full max-w-md">
               <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
               <Input 
-                placeholder={t('search')} 
-                className="ps-12 rounded-2xl h-14 bg-white border-2 border-slate-100 font-bold" 
+                placeholder={isRtl ? 'بحث باسم العقد أو الكود...' : 'Search contract templates...'} 
+                className="ps-12 rounded-2xl h-14 bg-white border-2 border-slate-100 font-bold text-lg" 
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
               />
@@ -105,66 +108,65 @@ export default function ContractTemplatesPage() {
           <Table>
             <TableHeader className="bg-muted/30">
               <TableRow>
-                <TableHead className="py-6 ps-8 text-start">{isRtl ? 'القالب / الكود' : 'Template / Code'}</TableHead>
-                <TableHead className="text-start">{isRtl ? 'الخدمة المرتبطة' : 'Linked Service'}</TableHead>
-                <TableHead className="text-center">{isRtl ? 'عدد الدفعات' : 'Milestones'}</TableHead>
-                <TableHead className="text-end">{isRtl ? 'القيمة التقديرية' : 'Est. Value'}</TableHead>
-                <TableHead className="text-center">{isRtl ? 'الوضع الافتراضي' : 'Default'}</TableHead>
-                <TableHead className="pe-8 text-end">{isRtl ? 'إجراءات' : 'Actions'}</TableHead>
+                <TableHead className="py-8 ps-10 text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'مسمى القالب / المرجعية' : 'Template / Reference'}</TableHead>
+                <TableHead className="text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'الخدمة المرتبطة' : 'Linked Service'}</TableHead>
+                <TableHead className="text-center text-xs font-black uppercase tracking-widest">{isRtl ? 'عدد الدفعات' : 'Milestones'}</TableHead>
+                <TableHead className="text-end text-xs font-black uppercase tracking-widest">{isRtl ? 'القيمة التقديرية' : 'Est. Value'}</TableHead>
+                <TableHead className="pe-10 text-end text-xs font-black uppercase tracking-widest">{isRtl ? 'إجراءات' : 'Actions'}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-24"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/20" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-32"><Loader2 className="animate-spin h-12 w-12 mx-auto text-primary/20" /></TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-24 text-slate-400 font-bold italic">{isRtl ? 'لا يوجد قوالب عقود مسجلة.' : 'No contract templates found.'}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-32 text-slate-400 font-bold italic">{isRtl ? 'لا توجد قوالب عقود مسجلة حالياً.' : 'No contract templates found.'}</TableCell></TableRow>
               ) : (
                 filtered.map((temp) => (
-                  <TableRow key={temp.id} className="hover:bg-slate-50 transition-colors group border-b-slate-50">
-                    <TableCell className="py-6 ps-8 text-start">
-                       <div className="flex items-center gap-4">
-                          <div className="h-10 w-10 rounded-xl bg-primary/5 text-primary flex items-center justify-center font-black">
-                             {temp.code?.charAt(0) || 'C'}
+                  <TableRow key={temp.id} className="hover:bg-slate-50/50 transition-colors group border-b-slate-50 cursor-pointer" onClick={() => setEditingTemplate(temp)}>
+                    <TableCell className="py-8 ps-10 text-start">
+                       <div className="flex items-center gap-5">
+                          <div className="h-14 w-14 rounded-2xl bg-white shadow-lg flex items-center justify-center text-primary font-black text-xl border-2 border-orange-50 group-hover:scale-110 transition-transform">
+                             <FileText className="h-7 w-7" />
                           </div>
                           <div className="text-start">
-                             <p className="font-black text-slate-800">{temp.name}</p>
-                             <p className="text-[10px] font-mono text-slate-400 uppercase tracking-tighter">REF: {temp.code}</p>
+                             <p className="font-black text-xl text-slate-800 tracking-tight">{temp.name}</p>
+                             <p className="text-[10px] font-mono text-slate-400 uppercase tracking-widest mt-1">REF: {temp.code || 'NO_CODE'}</p>
                           </div>
                        </div>
                     </TableCell>
                     <TableCell className="text-start">
-                       <div className="flex flex-col">
-                          <span className="text-xs font-bold text-slate-600">{temp.activityTypeName}</span>
-                          <span className="text-[10px] text-slate-400 font-bold">{temp.serviceName}</span>
+                       <div className="flex flex-col gap-1">
+                          <Badge variant="secondary" className="bg-primary/5 text-primary border-0 font-black text-[9px] uppercase tracking-tighter px-3 w-fit">{temp.activityTypeName}</Badge>
+                          <span className="text-xs font-bold text-slate-500">{temp.serviceName}</span>
                        </div>
                     </TableCell>
                     <TableCell className="text-center">
-                       <Badge variant="secondary" className="font-black text-[9px] uppercase px-3 bg-blue-50 text-blue-600 border-blue-100 border gap-1">
-                          <Calculator className="h-2.5 w-2.5" />
-                          {temp.defaultMilestones?.length || 0} {isRtl ? 'دفعات' : 'Milestones'}
-                       </Badge>
+                       <div className="flex flex-col items-center gap-1">
+                          <span className="font-black text-2xl text-slate-900">{temp.defaultMilestones?.length || 0}</span>
+                          <span className="text-[8px] font-black text-slate-400 uppercase">{isRtl ? 'دفعة مجدولة' : 'Milestones'}</span>
+                       </div>
                     </TableCell>
-                    <TableCell className="text-end font-mono font-black text-emerald-600">
-                       {temp.baseAmount?.toLocaleString() || '0'}
+                    <TableCell className="text-end">
+                       <div className="flex flex-col items-end gap-1 pe-4">
+                          <span className="font-mono font-black text-2xl text-emerald-600">
+                             {temp.baseAmount?.toLocaleString() || '0'}
+                          </span>
+                          <span className="text-[10px] font-bold text-slate-400">KWD</span>
+                       </div>
                     </TableCell>
-                    <TableCell className="text-center">
-                       {temp.isDefault ? (
-                         <ShieldCheck className="h-5 w-5 text-emerald-500 mx-auto" />
-                       ) : <span className="text-slate-200">-</span>}
-                    </TableCell>
-                    <TableCell className="pe-8 text-end">
-                       <div className="flex justify-end gap-2">
-                          <Button variant="outline" size="icon" onClick={() => setEditingTemplate(temp)} className="rounded-xl h-10 w-10 text-primary border-primary/20 hover:bg-primary hover:text-white transition-all">
-                             <Edit3 className="h-4 w-4" />
+                    <TableCell className="pe-10 text-end" onClick={e => e.stopPropagation()}>
+                       <div className="flex justify-end gap-3">
+                          <Button variant="outline" size="icon" onClick={() => setEditingTemplate(temp)} className="rounded-xl h-12 w-12 text-primary border-primary/20 hover:bg-primary hover:text-white shadow-sm transition-all">
+                             <Edit3 className="h-5 w-5" />
                           </Button>
                           <Button 
                             variant="ghost" 
                             size="icon" 
                             disabled={loadingAction === temp.id}
                             onClick={() => handleDelete(temp.id!)}
-                            className="rounded-xl h-10 w-10 text-rose-500 hover:bg-rose-50"
+                            className="rounded-xl h-12 w-12 text-rose-300 hover:text-rose-600 hover:bg-rose-50 transition-all"
                           >
-                             {loadingAction === temp.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
+                             {loadingAction === temp.id ? <Loader2 className="animate-spin h-5 w-5" /> : <Trash2 className="h-5 w-5" />}
                           </Button>
                        </div>
                     </TableCell>
@@ -175,6 +177,25 @@ export default function ContractTemplatesPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <div className="p-12 bg-white border-4 border-orange-100 rounded-[3rem] shadow-2xl flex flex-col md:flex-row justify-between items-center gap-10 relative overflow-hidden group">
+         <div className="absolute top-0 right-0 p-12 opacity-5 group-hover:scale-110 transition-transform duration-700">
+            <Sparkles className="h-48 w-48 text-primary" />
+         </div>
+         <div className="text-start space-y-4 relative z-10 max-w-2xl">
+            <h2 className="text-4xl font-black font-headline tracking-tight text-slate-900">{isRtl ? 'ذكاء الأتمتة التعاقدية' : 'Contract Automation Intelligence'}</h2>
+            <p className="text-slate-500 text-lg font-bold leading-relaxed">
+               {isRtl ? 'قم بتعريف قوالب عقودك مرة واحدة، وسيقوم النظام آلياً بإنشاء العقود التنفيذية وتتبع دفعاتها بناءً على الإنجاز الفعلي في مواقع المشاريع.' : 'Define your contract templates once, and let the system auto-generate execution contracts and track payments based on actual project site progress.'}
+            </p>
+         </div>
+         <Button 
+            className="h-20 px-12 rounded-[2rem] bg-slate-900 text-white font-black text-2xl shadow-2xl hover:scale-105 transition-all gap-4 relative z-10"
+            onClick={() => setEditingTemplate('new')}
+         >
+            <Plus className="h-8 w-8 text-primary" />
+            {isRtl ? 'ابدأ البناء الآن' : 'Start Designing'}
+         </Button>
+      </div>
     </div>
   );
 }
