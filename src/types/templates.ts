@@ -1,6 +1,6 @@
 /**
  * @fileOverview تعريف واجهات البيانات لمكتبة القوالب في نظام NovaFlow ERP.
- * تم تحديث الهياكل لتشمل جداول الكميات (BOQ) الاحترافية.
+ * تم تحديث الهياكل لتشمل جداول الكميات (BOQ) ومنطق الدفعات المطور.
  */
 
 import { BaseReference } from './reference';
@@ -10,6 +10,8 @@ export type TemplateType = 'quotation' | 'contract' | 'boq';
 export type PricingMode = 'fixed' | 'itemized' | 'percentage';
 
 export type MeasurementMode = 'quantity' | 'lumpsum' | 'hybrid';
+
+export type MilestoneTiming = 'at' | 'during' | 'after';
 
 export interface QuotationItem {
   description: string;
@@ -48,10 +50,12 @@ export interface QuotationTemplate extends BaseTemplate {
 
 export interface ContractMilestone {
   name: string;
-  percentage?: number;
+  percentage: number;
   amount?: number;
   conditionText?: string;
-  technicalStageId?: string; // الربط مع مرحلة فنية من المراجع
+  timing: MilestoneTiming; // عند / أثناء / بعد
+  technicalStageId?: string; // الربط مع مرحلة فنية (للدفعات الفنية)
+  contractualEvent?: 'SIGNING' | 'CONTRACTING' | 'MANUAL'; // للأحداث الإدارية (للدفعة الأولى)
 }
 
 export interface ContractTemplate extends BaseTemplate {

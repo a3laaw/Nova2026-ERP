@@ -210,7 +210,14 @@ const translations: Record<Language, Record<string, string>> = {
     addClause: 'إضافة مادة قانونية',
     milestones: 'دفعات التعاقد',
     addMilestone: 'إضافة دفعة مالية',
-    condition: 'شرط الاستحقاق'
+    condition: 'شرط الاستحقاق',
+    at: 'عند',
+    during: 'أثناء',
+    after: 'بعد',
+    contractSigning: 'توقيع العقد',
+    contracting: 'التعاقد',
+    milestoneTiming: 'توقيت الاستحقاق',
+    event: 'الحدث'
   },
   en: {
     dashboard: 'Dashboard',
@@ -410,7 +417,14 @@ const translations: Record<Language, Record<string, string>> = {
     addClause: 'Add Clause',
     milestones: 'Payment Milestones',
     addMilestone: 'Add Milestone',
-    condition: 'Requirement Condition'
+    condition: 'Requirement Condition',
+    at: 'At',
+    during: 'During',
+    after: 'After',
+    contractSigning: 'Contract Signing',
+    contracting: 'Contracting',
+    milestoneTiming: 'Timing',
+    event: 'Event'
   }
 };
 
