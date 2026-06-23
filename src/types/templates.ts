@@ -20,6 +20,7 @@ export interface QuotationItem {
   quantity?: number;
   unitPrice?: number;
   percentage?: number;
+  amount?: number; // القيمة المحسوبة (للعرض فقط)
   notes?: string;
   timing?: MilestoneTiming;
   technicalStageId?: string;
@@ -31,6 +32,7 @@ export interface BaseTemplate extends BaseReference {
   code: string;
   name: string;
   description?: string;
+  baseAmount?: number; // القيمة التقديرية الأساسية للقالب
   activityTypeId: string;
   activityTypeName?: string;
   serviceId: string;

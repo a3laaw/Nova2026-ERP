@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useMemo, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,7 @@ import {
 import { 
   Save, X, Plus, Trash2, Loader2, ArrowRight,
   Calculator, ShieldCheck, Info, Sparkles, FileText,
-  Clock, Zap, LayoutGrid, AlertTriangle
+  Clock, Zap, LayoutGrid, AlertTriangle, DollarSign
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
@@ -49,6 +49,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
       name: '',
       code: '',
       description: '',
+      baseAmount: 0,
       activityTypeId: '',
       serviceId: '',
       subServiceId: '',
@@ -130,7 +131,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
     
     if (field === 'technicalStageId' && stages) {
       const stage = stages.find(s => s.id === value);
-      if (stage) newItems[idx].description = isRtl ? stage.name : stage.nameEn;
+      if (stage) newItems[idx].description = (isRtl ? stage.name : stage.nameEn) || '';
     }
 
     setFormData({ ...formData, items: newItems });
@@ -227,12 +228,28 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                      </div>
                   </div>
 
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-50">
+                     <div className="space-y-2 p-6 bg-emerald-50/30 rounded-3xl border-2 border-emerald-100/50">
+                        <Label className="text-[10px] font-black uppercase text-emerald-600 tracking-widest flex items-center gap-2">
+                          <DollarSign className="h-3 w-3" /> {isRtl ? 'إجمالي قيمة العقد التقديرية (KWD)' : 'Estimated Contract Value (KWD)'}
+                        </Label>
+                        <Input 
+                          type="number" 
+                          value={formData.baseAmount || 0} 
+                          onChange={e => setFormData({...formData, baseAmount: Number(e.target.value)})} 
+                          className="h-14 rounded-2xl border-2 border-emerald-200 font-black text-2xl text-emerald-700 bg-white shadow-inner text-center"
+                          placeholder="0.000"
+                        />
+                        <p className="text-[9px] font-bold text-emerald-600/70 mt-1 italic">{isRtl ? '* سيتم استخدام هذه القيمة كمرجع لحساب الدفعات المئوية.' : '* Used as reference for percentage calculations.'}</p>
+                     </div>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-50">
                      <div className="space-y-2">
                         <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('orgRef')}</Label>
                         <Select value={formData.activityTypeId || ''} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: ''})}>
                            <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="..." /></SelectTrigger>
-                           <SelectContent>{activities?.map(a => <SelectItem key={a.id} value={a.id!}>{isRtl ? a.name : a.nameEn}</SelectItem>)}</SelectContent>
+                           <SelectContent>{activities?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{isRtl ? a.name : a.nameEn}</SelectItem>)}</SelectContent>
                         </Select>
                      </div>
                      <div className="space-y-2">
@@ -246,7 +263,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                         <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('newPath')}</Label>
                         <Select disabled={!formData.serviceId} value={formData.subServiceId || ''} onValueChange={v => setFormData({...formData, subServiceId: v})}>
                            <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="..." /></SelectTrigger>
-                           <SelectContent>{subServices?.map(ss => <SelectItem key={ss.id} value={ss.id!}>{isRtl ? ss.name : ss.nameEn}</SelectItem>)}</SelectContent>
+                           <SelectContent>{subServices?.map(ss => <SelectItem key={ss.id} value={ss.id!} className="font-bold">{isRtl ? ss.name : ss.nameEn}</SelectItem>)}</SelectContent>
                         </Select>
                      </div>
                   </div>
@@ -279,6 +296,8 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
 
                {formData.items?.map((item, idx) => {
                   const isFirst = idx === 0;
+                  const calculatedAmount = formData.pricingMode === 'percentage' ? ((formData.baseAmount || 0) * (item.percentage || 0)) / 100 : 0;
+                  
                   return (
                     <Card key={idx} className={cn(
                       "border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5 animate-in fade-in slide-in-from-top-4 duration-500",
@@ -353,15 +372,22 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                 <Label className="text-[10px] font-black text-slate-400 uppercase">
                                   {formData.pricingMode === 'percentage' ? (isRtl ? 'الحصة (%)' : 'Share (%)') : (isRtl ? 'القيمة / السعر' : 'Amount')}
                                 </Label>
-                                <Input 
-                                  type="number" 
-                                  value={formData.pricingMode === 'percentage' ? (item.percentage || 0) : (item.unitPrice || 0)} 
-                                  onChange={e => updateItem(idx, formData.pricingMode === 'percentage' ? 'percentage' : 'unitPrice', Number(e.target.value))}
-                                  className="h-12 rounded-xl border-2 font-black text-lg text-emerald-600 text-center"
-                                />
+                                <div className="relative">
+                                   <Input 
+                                     type="number" 
+                                     value={formData.pricingMode === 'percentage' ? (item.percentage || 0) : (item.unitPrice || 0)} 
+                                     onChange={e => updateItem(idx, formData.pricingMode === 'percentage' ? 'percentage' : 'unitPrice', Number(e.target.value))}
+                                     className="h-12 rounded-xl border-2 font-black text-lg text-emerald-600 text-center"
+                                   />
+                                   {formData.pricingMode === 'percentage' && (
+                                     <div className="absolute -bottom-6 left-0 right-0 text-center">
+                                        <span className="text-[10px] font-black text-emerald-500">≈ {calculatedAmount.toLocaleString()} KWD</span>
+                                     </div>
+                                   )}
+                                </div>
                              </div>
 
-                             <div className="md:col-span-12 space-y-2 pt-2">
+                             <div className="md:col-span-12 space-y-2 pt-4">
                                 <Label className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'وصف تفصيلي يظهر في جدول عرض السعر' : 'Description for the quote table'}</Label>
                                 <Textarea 
                                   value={item.description || ''} 
@@ -409,7 +435,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
          <div className="space-y-8">
             <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
                <CardHeader className="bg-slate-50 border-b p-6 text-start">
-                  <CardTitle className="text-sm font-black flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> {t('introText')}</CardTitle>
+                  <CardTitle className="text-sm font-black flex items-center gap-2 text-slate-800"><FileText className="h-4 w-4 text-primary" /> {t('introText')}</CardTitle>
                </CardHeader>
                <CardContent className="p-6 text-start">
                   <Textarea 

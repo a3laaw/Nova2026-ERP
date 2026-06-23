@@ -17,7 +17,7 @@ import {
   Save, X, Plus, Trash2, Loader2, ArrowRight,
   Gavel, Calculator, Info, Sparkles,
   Landmark, Clock, FileText,
-  BadgeCheck, Settings2, Zap, AlertTriangle
+  BadgeCheck, Settings2, Zap, AlertTriangle, DollarSign
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
@@ -50,6 +50,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
       name: '',
       code: '',
       description: '',
+      baseAmount: 0,
       activityTypeId: '',
       serviceId: '',
       subServiceId: '',
@@ -195,12 +196,28 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                <CardContent className="p-8 space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                      <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'اسم القالب' : 'Template Name'}</Label>
+                        <Label className="text-[10px] font-black uppercase text-slate-400">{t('name')}</Label>
                         <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-12 rounded-xl border-2 font-bold" />
                      </div>
                      <div className="space-y-2">
                         <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الرقم المرجعي' : 'Ref Code'}</Label>
                         <Input value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value})} className="h-12 rounded-xl border-2 font-mono" placeholder="CONT_STD_01" />
+                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-50">
+                     <div className="space-y-2 p-6 bg-primary/5 rounded-3xl border-2 border-primary/10">
+                        <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
+                          <DollarSign className="h-3 w-3" /> {isRtl ? 'قيمة العقد التقديرية (KWD)' : 'Estimated Contract Value (KWD)'}
+                        </Label>
+                        <Input 
+                          type="number" 
+                          value={formData.baseAmount || 0} 
+                          onChange={e => setFormData({...formData, baseAmount: Number(e.target.value)})} 
+                          className="h-14 rounded-2xl border-2 border-primary/20 font-black text-2xl text-primary bg-white shadow-inner text-center"
+                          placeholder="0.000"
+                        />
+                        <p className="text-[9px] font-bold text-slate-400 mt-1 italic">{isRtl ? '* تُستخدم هذه القيمة كمرجع افتراضي لحساب دفعات العقود الناتجة عن هذا القالب.' : '* Used as a reference for calculating milestones in contracts.'}</p>
                      </div>
                   </div>
 
@@ -240,6 +257,8 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                <CardContent className="p-8 space-y-6">
                   {formData.defaultMilestones?.map((milestone, idx) => {
                     const isFirst = idx === 0;
+                    const calculatedAmount = ((formData.baseAmount || 0) * (milestone.percentage || 0)) / 100;
+
                     return (
                       <div key={idx} className={cn(
                         "p-8 rounded-[2.5rem] bg-slate-50 border-2 transition-all space-y-6 animate-in fade-in slide-in-from-top-2",
@@ -316,12 +335,17 @@ export function ContractTemplateForm({ template, onClose }: Props) {
 
                             <div className="w-24 space-y-2">
                                <Label className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{isRtl ? 'الحصة %' : 'Share %'}</Label>
-                               <Input 
-                                 type="number" 
-                                 value={milestone.percentage || 0} 
-                                 onChange={e => updateMilestone(idx, 'percentage', Number(e.target.value))} 
-                                 className="h-12 rounded-xl bg-white border-2 font-black text-emerald-600 text-center text-lg"
-                               />
+                               <div className="relative">
+                                  <Input 
+                                    type="number" 
+                                    value={milestone.percentage || 0} 
+                                    onChange={e => updateMilestone(idx, 'percentage', Number(e.target.value))} 
+                                    className="h-12 rounded-xl bg-white border-2 font-black text-emerald-600 text-center text-lg"
+                                  />
+                                  <div className="absolute -bottom-6 left-0 right-0 text-center">
+                                     <span className="text-[9px] font-black text-emerald-500">≈ {calculatedAmount.toLocaleString()}</span>
+                                  </div>
+                               </div>
                             </div>
                             
                             <Button variant="ghost" size="icon" onClick={() => removeMilestone(idx)} className="h-10 w-10 text-rose-300 hover:text-rose-500 rounded-full mt-8">
