@@ -6,9 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
-  FileText, Plus, Loader2, Search, ArrowRight, 
-  Gavel, Trash2, Edit3, ShieldCheck, Landmark,
-  Calculator, Sparkles
+  Plus, Loader2, Search, ArrowRight, 
+  Gavel, Trash2, Edit3, ShieldCheck, FileText
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -22,6 +21,10 @@ import { ContractTemplateForm } from './contract-template-form';
 import { TemplateService } from '@/services/template-service';
 import { toast } from '@/hooks/use-toast';
 
+/**
+ * صفحة إدارة قوالب العقود (Contracts Library)
+ * تم فصلها بالكامل لضمان التخصص التشغيلي.
+ */
 export default function ContractTemplatesPage() {
   const { globalUser } = useAuthContext();
   const { t, lang, dir } = useLanguage();
@@ -71,15 +74,15 @@ export default function ContractTemplatesPage() {
     <div className="space-y-8 animate-in fade-in duration-500" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start space-y-2">
-          <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-primary/5 px-4 py-1.5 rounded-full w-fit">
+          <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-primary/5 px-4 py-1.5 rounded-full w-fit border border-primary/10">
              <ShieldCheck className="h-3 w-3" /> {isRtl ? 'مكتبة الوثائق القانونية' : 'Legal Document Library'}
           </div>
           <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
             <Gavel className="h-10 w-10 text-primary" />
-            {isRtl ? 'قوالب العقود' : 'Contract Templates'}
+            {t('contractTemplates')}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-            {isRtl ? 'إدارة النماذج التعاقدية ودفعات الاستحقاق المربوطة ميدانياً.' : 'Manage contract forms and field-linked payment milestones.'}
+            {isRtl ? 'إدارة النماذج التعاقدية وهياكل الدفعات المعتمدة.' : 'Manage contract forms and approved payment structures.'}
           </p>
         </div>
 
@@ -97,7 +100,7 @@ export default function ContractTemplatesPage() {
            <div className="relative w-full max-w-md">
               <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
               <Input 
-                placeholder={isRtl ? 'بحث باسم العقد أو الكود...' : 'Search contract templates...'} 
+                placeholder={isRtl ? 'بحث باسم العقد...' : 'Search contract templates...'} 
                 className="ps-12 rounded-2xl h-14 bg-white border-2 border-slate-100 font-bold text-lg" 
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
@@ -108,10 +111,10 @@ export default function ContractTemplatesPage() {
           <Table>
             <TableHeader className="bg-muted/30">
               <TableRow>
-                <TableHead className="py-8 ps-10 text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'مسمى القالب / المرجعية' : 'Template / Reference'}</TableHead>
-                <TableHead className="text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'الخدمة المرتبطة' : 'Linked Service'}</TableHead>
-                <TableHead className="text-center text-xs font-black uppercase tracking-widest">{isRtl ? 'عدد الدفعات' : 'Milestones'}</TableHead>
-                <TableHead className="text-end text-xs font-black uppercase tracking-widest">{isRtl ? 'القيمة التقديرية' : 'Est. Value'}</TableHead>
+                <TableHead className="py-8 ps-10 text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'مسمى القالب' : 'Template Name'}</TableHead>
+                <TableHead className="text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'المسار المرتبط' : 'Associated Path'}</TableHead>
+                <TableHead className="text-center text-xs font-black uppercase tracking-widest">{isRtl ? 'الدفعات' : 'Milestones'}</TableHead>
+                <TableHead className="text-end text-xs font-black uppercase tracking-widest">{isRtl ? 'القيمة' : 'Est. Value'}</TableHead>
                 <TableHead className="pe-10 text-end text-xs font-black uppercase tracking-widest">{isRtl ? 'إجراءات' : 'Actions'}</TableHead>
               </TableRow>
             </TableHeader>
@@ -119,7 +122,7 @@ export default function ContractTemplatesPage() {
               {loading ? (
                 <TableRow><TableCell colSpan={5} className="text-center py-32"><Loader2 className="animate-spin h-12 w-12 mx-auto text-primary/20" /></TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-32 text-slate-400 font-bold italic">{isRtl ? 'لا توجد قوالب عقود مسجلة حالياً.' : 'No contract templates found.'}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-32 text-slate-400 font-bold italic">{isRtl ? 'لا توجد قوالب عقود مسجلة.' : 'No contract templates found.'}</TableCell></TableRow>
               ) : (
                 filtered.map((temp) => (
                   <TableRow key={temp.id} className="hover:bg-slate-50/50 transition-colors group border-b-slate-50 cursor-pointer" onClick={() => setEditingTemplate(temp)}>
@@ -129,30 +132,22 @@ export default function ContractTemplatesPage() {
                              <FileText className="h-7 w-7" />
                           </div>
                           <div className="text-start">
-                             <p className="font-black text-xl text-slate-800 tracking-tight">{temp.name}</p>
+                             <p className="font-black text-xl text-slate-800">{temp.name}</p>
                              <p className="text-[10px] font-mono text-slate-400 uppercase tracking-widest mt-1">REF: {temp.code || 'NO_CODE'}</p>
                           </div>
                        </div>
                     </TableCell>
                     <TableCell className="text-start">
                        <div className="flex flex-col gap-1">
-                          <Badge variant="secondary" className="bg-primary/5 text-primary border-0 font-black text-[9px] uppercase tracking-tighter px-3 w-fit">{temp.activityTypeName}</Badge>
-                          <span className="text-xs font-bold text-slate-500">{temp.serviceName}</span>
+                          <Badge variant="secondary" className="bg-primary/5 text-primary border-0 font-black text-[9px] uppercase px-3 w-fit">{temp.activityTypeName}</Badge>
+                          <span className="text-xs font-bold text-slate-500">{temp.subServiceName || temp.serviceName}</span>
                        </div>
                     </TableCell>
-                    <TableCell className="text-center">
-                       <div className="flex flex-col items-center gap-1">
-                          <span className="font-black text-2xl text-slate-900">{temp.defaultMilestones?.length || 0}</span>
-                          <span className="text-[8px] font-black text-slate-400 uppercase">{isRtl ? 'دفعة مجدولة' : 'Milestones'}</span>
-                       </div>
-                    </TableCell>
+                    <TableCell className="text-center font-black text-xl text-slate-900">{temp.defaultMilestones?.length || 0}</TableCell>
                     <TableCell className="text-end">
-                       <div className="flex flex-col items-end gap-1 pe-4">
-                          <span className="font-mono font-black text-2xl text-emerald-600">
-                             {temp.baseAmount?.toLocaleString() || '0'}
-                          </span>
-                          <span className="text-[10px] font-bold text-slate-400">KWD</span>
-                       </div>
+                       <span className="font-mono font-black text-xl text-emerald-600 pe-4">
+                          {temp.baseAmount?.toLocaleString() || '0'}
+                       </span>
                     </TableCell>
                     <TableCell className="pe-10 text-end" onClick={e => e.stopPropagation()}>
                        <div className="flex justify-end gap-3">
@@ -177,25 +172,6 @@ export default function ContractTemplatesPage() {
           </Table>
         </CardContent>
       </Card>
-
-      <div className="p-12 bg-white border-4 border-orange-100 rounded-[3rem] shadow-2xl flex flex-col md:flex-row justify-between items-center gap-10 relative overflow-hidden group">
-         <div className="absolute top-0 right-0 p-12 opacity-5 group-hover:scale-110 transition-transform duration-700">
-            <Sparkles className="h-48 w-48 text-primary" />
-         </div>
-         <div className="text-start space-y-4 relative z-10 max-w-2xl">
-            <h2 className="text-4xl font-black font-headline tracking-tight text-slate-900">{isRtl ? 'ذكاء الأتمتة التعاقدية' : 'Contract Automation Intelligence'}</h2>
-            <p className="text-slate-500 text-lg font-bold leading-relaxed">
-               {isRtl ? 'قم بتعريف قوالب عقودك مرة واحدة، وسيقوم النظام آلياً بإنشاء العقود التنفيذية وتتبع دفعاتها بناءً على الإنجاز الفعلي في مواقع المشاريع.' : 'Define your contract templates once, and let the system auto-generate execution contracts and track payments based on actual project site progress.'}
-            </p>
-         </div>
-         <Button 
-            className="h-20 px-12 rounded-[2rem] bg-slate-900 text-white font-black text-2xl shadow-2xl hover:scale-105 transition-all gap-4 relative z-10"
-            onClick={() => setEditingTemplate('new')}
-         >
-            <Plus className="h-8 w-8 text-primary" />
-            {isRtl ? 'ابدأ البناء الآن' : 'Start Designing'}
-         </Button>
-      </div>
     </div>
   );
 }

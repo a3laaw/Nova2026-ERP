@@ -4,13 +4,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { 
   Settings2, Building2, UserCog, Database, ArrowLeft, ShieldCheck, Clock, Users,
-  LayoutTemplate
+  FileText, Gavel, FileSpreadsheet
 } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { cn } from '@/lib/utils';
 
+/**
+ * محطة الإعدادات المركزية - NovaFlow ERP
+ * تم فصل القوالب إلى 3 أقسام مستقلة بناءً على طلبك لضمان التخصص التشغيلي.
+ */
 export default function SettingsHubPage() {
   const { t, lang, dir } = useLanguage();
   const { isAdmin, check } = usePermissions();
@@ -38,16 +42,38 @@ export default function SettingsHubPage() {
       path: '/dashboard/settings/users',
       visible: isAdmin
     },
+    // --- الثلاثية المفصولة للقوالب ---
     {
-      id: 'templates',
-      title: t('templateLibrary'),
-      description: isRtl ? 'بناء قوالب عروض الأسعار، العقود، وجداول الكميات' : 'Build templates for quotations, contracts, and BOQs',
-      icon: LayoutTemplate,
+      id: 'quote-templates',
+      title: t('quotationTemplates'),
+      description: isRtl ? 'بناء قوالب عروض الأسعار والمناقصات' : 'Build templates for quotes and tenders',
+      icon: FileText,
       color: 'text-blue-600',
       bg: 'bg-blue-50',
       path: '/dashboard/settings/templates/quotations',
-      visible: isAdmin || check('ref:view').can
+      visible: isAdmin || check('ref', 'view').can
     },
+    {
+      id: 'contract-templates',
+      title: t('contractTemplates'),
+      description: isRtl ? 'صياغة نماذج العقود وهيكلة دفعات الاستحقاق' : 'Draft contract forms and structure payment milestones',
+      icon: Gavel,
+      color: 'text-indigo-600',
+      bg: 'bg-indigo-50',
+      path: '/dashboard/settings/templates/contracts',
+      visible: isAdmin || check('ref', 'view').can
+    },
+    {
+      id: 'boq-templates',
+      title: t('boqTemplates'),
+      description: isRtl ? 'إعداد جداول الكميات والمقايسات الهندسية' : 'Prepare BOQs and engineering estimations',
+      icon: FileSpreadsheet,
+      color: 'text-emerald-600',
+      bg: 'bg-emerald-50',
+      path: '/dashboard/settings/templates/boq',
+      visible: isAdmin || check('ref', 'view').can
+    },
+    // --------------------------------
     {
       id: 'checklists',
       title: t('checklists'),
@@ -56,7 +82,7 @@ export default function SettingsHubPage() {
       color: 'text-primary',
       bg: 'bg-primary/10',
       path: '/dashboard/settings/checklists',
-      visible: check('ref:view').can
+      visible: check('ref', 'view').can
     },
     {
       id: 'roles',
@@ -76,7 +102,7 @@ export default function SettingsHubPage() {
       color: 'text-amber-600',
       bg: 'bg-amber-50',
       path: '/dashboard/settings/work-hours',
-      visible: check('ref:view').can
+      visible: check('ref', 'view').can
     },
     {
       id: 'profile',
