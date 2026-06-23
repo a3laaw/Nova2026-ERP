@@ -12,7 +12,7 @@ import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
-import { usePermissions } from '@/hooks/use-permissions'; // استيراد الصلاحيات
+import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { Client } from '@/types/client';
 import { ActivityType, Service, SubService } from '@/types/reference';
@@ -25,7 +25,7 @@ export default function NewTransactionPage() {
   const clientId = useParams().id as string;
   const { globalUser, user } = useAuthContext();
   const { lang, dir } = useLanguage();
-  const { permissions } = usePermissions(); // جلب مصفوفة الصلاحيات
+  const { permissions } = usePermissions(); 
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
@@ -59,7 +59,6 @@ export default function NewTransactionPage() {
       const selectedSub = subServices?.find(ss => ss.id === form.subServiceId);
       const selectedEng = employees?.find(e => e.id === form.assignedEngineerId);
 
-      // تمرير مصفوفة الصلاحيات للسيرفس لضمان نجاح التحقق الأمني الداخلي
       const service = new TransactionService(db, companyId, permissions);
       
       const transactionId = await service.createTransaction({
@@ -81,7 +80,6 @@ export default function NewTransactionPage() {
         description: isRtl ? 'جاري تحويلك لرادار المتابعة...' : 'Redirecting to tracking radar...'
       });
       
-      // التوجه لصفحة المعاملة الجديدة
       router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}`);
     } catch (e: any) {
       console.error("Create Transaction Error:", e);

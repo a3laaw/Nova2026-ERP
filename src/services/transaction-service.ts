@@ -49,7 +49,6 @@ export class TransactionService {
   }, userId: string, userName: string) {
     
     // 1. إنفاذ الصلاحيات الميدانية (Security Enforcement)
-    // نستخدم مصفوفة الصلاحيات الممرة للتأكد من أحقية الموظف
     ensureActionPermission(this.permissions, 'projects:create');
 
     // 2. التحقق من وجود العميل واستخراج العداد
@@ -67,7 +66,7 @@ export class TransactionService {
 
     // معالجة واضحة في حال عدم وجود مراحل (Process Guard)
     if (stagesSnap.empty) {
-      throw new Error('لا يمكن فتح المعاملة لعدم وجود مراحل عمل معرّفة لهذا المسار في مركز المراجع.');
+      throw new Error('لا يمكن فتح المعاملة لعدم وجود مراحل عمل معرّفة لهذا المسار في مركز المراجع. يرجى إضافة مراحل للخدمة الفرعية أولاً.');
     }
 
     const clientData = clientSnap.data();
@@ -130,8 +129,8 @@ export class TransactionService {
         currentCount: 0,
         isTimed: stage.isTimed,
         timeTargetDays: stage.timeTargetDays,
-        isRequired: stage.isRequired,
-        isEditable: stage.isEditable,
+        isRequired: stage.isRequired || false,
+        isEditable: stage.isEditable || true,
         nextStageIds: stage.nextStageIds || [],
         status: 'pending',
         activityTypeId: data.activityTypeId,
@@ -144,12 +143,12 @@ export class TransactionService {
       batch.set(instanceRef, instanceData);
     });
 
-    // د. توثيق الجدول الزمني للمعاملة (Timeline)
+    // د. توثيق سجل أحداث الزمن (Timeline Events)
     const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
     const timelineEvent: TransactionTimelineEvent = {
       transactionId,
       type: 'system',
-      content: `تم افتتاح المعاملة الفنية برقم ${transactionNumber} واستنساخ ${stagesSnap.size} مراحل تنفيذية من المسار المرجعي.`,
+      content: `تم افتتاح المعاملة الفنية بنجاح واستنساخ ${stagesSnap.size} مراحل تنفيذية من المسار المرجعي.`,
       userId,
       userName,
       companyId: this.companyId,
@@ -157,7 +156,7 @@ export class TransactionService {
     };
     batch.set(timelineRef, timelineEvent);
 
-    // هـ. توثيق سجل تاريخ العميل (History)
+    // هـ. توثيق سجل تاريخ العميل (Client History)
     const historyRef = doc(collection(this.db, paths.clientHistory(this.companyId, data.clientId)));
     const historyEvent: ClientHistory = {
       clientId: data.clientId,
@@ -176,7 +175,6 @@ export class TransactionService {
       return transactionId;
     } catch (err: any) {
       console.error("Batch Commit Error:", err);
-      // في حال وجود خطأ في الصلاحيات على مستوى Firestore
       if (err.code === 'permission-denied') {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: transRef.path,
