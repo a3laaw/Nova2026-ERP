@@ -15,19 +15,21 @@ import {
 } from "@/components/ui/select";
 import { 
   Save, X, Plus, Trash2, Loader2, ArrowRight,
-  Calculator, ShieldCheck, Info, Sparkles, FileText
+  Calculator, ShieldCheck, Info, Sparkles, FileText,
+  Clock, Zap, LayoutGrid
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
-import { QuotationTemplate, PricingMode, QuotationItem } from '@/types/templates';
+import { QuotationTemplate, PricingMode, QuotationItem, MilestoneTiming } from '@/types/templates';
 import { ActivityType, Service, SubService, TechnicalStage } from '@/types/reference';
 import { TemplateService } from '@/services/template-service';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
 
 interface Props {
   template: QuotationTemplate | null;
@@ -54,7 +56,17 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
       defaultTerms: '',
       validDays: 30,
       pricingMode: 'itemized',
-      items: [{ description: '', unit: 'unit', quantity: 1, unitPrice: 0, notes: '' }],
+      items: [
+        { 
+          description: isRtl ? 'عند توقيع العقد' : 'At Contract Signing', 
+          label: isRtl ? 'الدفعة الأولى' : '1st Installment',
+          unit: 'batch', 
+          quantity: 1, 
+          unitPrice: 0, 
+          timing: 'at',
+          contractualEvent: 'SIGNING'
+        }
+      ],
       isDefault: false,
       isActive: true
     }
@@ -65,7 +77,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
   const srvQuery = useMemo(() => companyId && db && formData.activityTypeId ? query(collection(db, paths.services(companyId, formData.activityTypeId)), orderBy('name')) : null, [db, companyId, formData.activityTypeId]);
   const subQuery = useMemo(() => companyId && db && formData.activityTypeId && formData.serviceId ? query(collection(db, paths.subServices(companyId, formData.activityTypeId, formData.serviceId)), orderBy('name')) : null, [db, companyId, formData.activityTypeId, formData.serviceId]);
   
-  // جلب المراحل الفنية لتحويل وصف البند إلى قائمة منسدلة
+  // جلب المراحل الفنية لربط البنود بها
   const stagesQuery = useMemo(() => 
     companyId && db && formData.activityTypeId && formData.serviceId && formData.subServiceId
       ? query(collection(db, paths.technicalStages(companyId, formData.activityTypeId, formData.serviceId, formData.subServiceId)), orderBy('order'))
@@ -78,9 +90,24 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
   const { data: stages } = useCollection<TechnicalStage>(stagesQuery);
 
   const addItem = () => {
+    const nextIndex = (formData.items?.length || 0) + 1;
+    const labels = ['الأولى', 'الثانية', 'الثالثة', 'الرابعة', 'الخامسة', 'السادسة', 'السابعة', 'الثامنة', 'التاسعة', 'العاشرة'];
+    const label = isRtl ? `الدفعة ${labels[nextIndex - 1] || nextIndex}` : `Installment ${nextIndex}`;
+
     setFormData({
       ...formData,
-      items: [...(formData.items || []), { description: '', unit: 'unit', quantity: 1, unitPrice: 0, notes: '' }]
+      items: [
+        ...(formData.items || []), 
+        { 
+          description: '', 
+          label: label,
+          unit: 'unit', 
+          quantity: 1, 
+          unitPrice: 0, 
+          timing: 'at',
+          contractualEvent: 'MANUAL'
+        }
+      ]
     });
   };
 
@@ -94,6 +121,13 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
   const updateItem = (idx: number, field: keyof QuotationItem, value: any) => {
     const newItems = [...(formData.items || [])];
     newItems[idx] = { ...newItems[idx], [field]: value };
+    
+    // إذا تغيرت المرحلة التقنية، نقوم بتحديث الوصف آلياً
+    if (field === 'technicalStageId' && stages) {
+      const stage = stages.find(s => s.id === value);
+      if (stage) newItems[idx].description = isRtl ? stage.name : stage.nameEn;
+    }
+
     setFormData({ ...formData, items: newItems });
   };
 
@@ -138,16 +172,16 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
   return (
     <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500 pb-20" dir={dir}>
       <div className="flex items-center justify-between border-b pb-6">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 text-start">
           <Button variant="ghost" onClick={onClose} className="h-12 w-12 p-0 rounded-2xl bg-white shadow-sm border">
             <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-180")} />
           </Button>
           <div className="text-start">
             <h1 className="text-2xl font-black font-headline">
-               {template ? (isRtl ? 'تعديل قالب عرض سعر' : 'Edit Quote Template') : (isRtl ? 'إنشاء قالب عرض سعر جديد' : 'New Quote Template')}
+               {template ? (isRtl ? 'تعديل قالب عرض السعر' : 'Edit Quote Template') : (isRtl ? 'إنشاء قالب عرض سعر جديد' : 'New Quote Template')}
             </h1>
             <p className="text-xs font-bold text-muted-foreground opacity-70">
-               {isRtl ? 'تحديد البنود من المسار الفني وإعداد التسعير' : 'Select items from technical path and setup pricing'}
+               {isRtl ? 'تحديد الدفعات المالية وربطها بالمسار الفني' : 'Define payment installments and link to technical path'}
             </p>
           </div>
         </div>
@@ -171,7 +205,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                      <div className="space-y-2">
                         <Label className="text-[10px] font-black uppercase text-slate-400">{t('name')}</Label>
-                        <Input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="h-12 rounded-xl border-2" />
+                        <Input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="h-12 rounded-xl border-2 font-bold" />
                      </div>
                      <div className="space-y-2">
                         <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الكود المرجعي' : 'Template Code'}</Label>
@@ -205,15 +239,19 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
-               <CardHeader className="bg-slate-900 text-white p-8 border-b flex flex-row items-center justify-between">
+            <div className="space-y-6">
+               <div className="flex justify-between items-end px-4">
                   <div className="text-start">
-                     <CardTitle className="text-lg font-black flex items-center gap-2 text-primary"><Calculator className="h-5 w-5" /> {isRtl ? 'بنود التسعير (من المسار الفني)' : 'Pricing from Technical Path'}</CardTitle>
+                     <h3 className="text-2xl font-black font-headline text-slate-800 flex items-center gap-3">
+                        <Calculator className="h-8 w-8 text-primary" />
+                        {isRtl ? 'هيكلة بنود الدفعات الذكية' : 'Payment Items Structure'}
+                     </h3>
+                     <p className="text-xs font-bold text-slate-400 mt-1">{isRtl ? 'اربط كل دفعة مادية بتوقيت فني من المسار.' : 'Link each payment to a technical timing in the path.'}</p>
                   </div>
                   <div className="flex items-center gap-3">
-                     <Label className="text-white text-[10px] font-black uppercase tracking-widest">{t('pricingMode')}</Label>
+                     <Label className="text-[10px] font-black uppercase tracking-widest">{t('pricingMode')}</Label>
                      <Select value={formData.pricingMode} onValueChange={(v: PricingMode) => setFormData({...formData, pricingMode: v})}>
-                        <SelectTrigger className="h-10 w-40 bg-white/10 border-white/20 text-white font-black text-xs rounded-lg">
+                        <SelectTrigger className="h-10 w-40 border-2 font-black text-xs rounded-xl bg-white">
                            <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -223,85 +261,113 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                         </SelectContent>
                      </Select>
                   </div>
-               </CardHeader>
-               <CardContent className="p-8 space-y-6">
-                  {formData.items?.map((item, idx) => (
-                    <div key={idx} className="p-6 rounded-[2rem] bg-slate-50 border-2 border-white shadow-inner space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                       <div className="flex justify-between items-start gap-4">
-                          <div className="flex-1 space-y-2 text-start">
-                             <Label className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'وصف البند أو المرحلة' : 'Item/Stage Description'}</Label>
-                             
-                             {/* تحويل وصف البند إلى قائمة منسدلة من المراحل الفنية */}
-                             <Select 
-                               value={item.description} 
-                               onValueChange={v => updateItem(idx, 'description', v)}
-                             >
-                                <SelectTrigger className="h-12 rounded-xl border-2 bg-white font-bold text-slate-700">
-                                   <SelectValue placeholder={isRtl ? "اختر مرحلة من المسار الفني..." : "Select stage from path..."} />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl">
-                                   {stages?.map(s => (
-                                     <SelectItem key={s.id} value={isRtl ? s.name : s.nameEn} className="font-bold">
-                                        {isRtl ? s.name : s.nameEn}
-                                     </SelectItem>
-                                   ))}
-                                   {!stages?.length && (
-                                     <SelectItem value="manual" disabled>{isRtl ? 'يرجى اختيار المسار الفني أولاً' : 'Select technical path first'}</SelectItem>
-                                   )}
-                                </SelectContent>
-                             </Select>
+               </div>
 
-                             <p className="text-[8px] text-slate-400 font-bold italic">
-                                {isRtl ? "* ملاحظة: يمكنك كتابة نص مخصص إذا لم تجد المرحلة المناسبة." : "* Note: You can still manually type a description if needed."}
-                             </p>
-                          </div>
-                          {formData.items!.length > 1 && (
-                            <Button variant="ghost" size="icon" onClick={() => removeItem(idx)} className="h-10 w-10 text-rose-500 hover:bg-rose-50 rounded-xl mt-6">
-                               <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                       </div>
-                       
-                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 items-end">
-                          {formData.pricingMode === 'itemized' && (
-                             <>
-                                <div className="space-y-1.5 text-start">
-                                   <Label className="text-[8px] font-black text-slate-400 uppercase">{t('quantity')}</Label>
-                                   <Input type="number" value={item.quantity} onChange={e => updateItem(idx, 'quantity', Number(e.target.value))} className="h-10 rounded-xl bg-white" />
-                                </div>
-                                <div className="space-y-1.5 text-start">
-                                   <Label className="text-[8px] font-black text-slate-400 uppercase">{t('unit')}</Label>
-                                   <Input value={item.unit} onChange={e => updateItem(idx, 'unit', e.target.value)} className="h-10 rounded-xl bg-white" />
-                                </div>
-                                <div className="space-y-1.5 text-start">
-                                   <Label className="text-[8px] font-black text-slate-400 uppercase">{t('unitPrice')}</Label>
-                                   <Input type="number" step="0.001" value={item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', Number(e.target.value))} className="h-10 rounded-xl bg-white font-mono text-emerald-600 font-black" />
-                                </div>
-                             </>
-                          )}
-                          {formData.pricingMode === 'percentage' && (
-                             <div className="space-y-1.5 text-start">
-                                <Label className="text-[8px] font-black text-slate-400 uppercase">{isRtl ? 'النسبة (%)' : 'Percentage %'}</Label>
-                                <Input type="number" value={item.percentage} onChange={e => updateItem(idx, 'percentage', Number(e.target.value))} className="h-10 rounded-xl bg-white font-black text-primary" />
+               {formData.items?.map((item, idx) => {
+                  const isFirst = idx === 0;
+                  return (
+                    <Card key={idx} className={cn(
+                      "border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5 animate-in fade-in slide-in-from-top-4 duration-500",
+                      isFirst ? "border-s-8 border-s-primary" : "border-s-8 border-s-blue-500"
+                    )}>
+                       <CardHeader className="bg-slate-50/50 p-8 border-b flex flex-row items-center justify-between">
+                          <div className="flex items-center gap-4 text-start">
+                             <div className="h-10 w-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-black text-xs">
+                                {idx + 1}
                              </div>
-                          )}
-                          <div className={cn("space-y-1.5 text-start", formData.pricingMode === 'fixed' ? 'col-span-4' : '')}>
-                             <Label className="text-[8px] font-black text-slate-400 uppercase">{isRtl ? 'ملاحظات البند' : 'Notes'}</Label>
-                             <Input value={item.notes} onChange={e => updateItem(idx, 'notes', e.target.value)} className="h-10 rounded-xl bg-white" />
+                             <Input 
+                               value={item.label} 
+                               onChange={e => updateItem(idx, 'label', e.target.value)}
+                               className="bg-transparent border-0 border-b border-slate-200 rounded-none h-10 text-xl font-black text-slate-800 focus-visible:ring-0 w-64"
+                               placeholder={isRtl ? "مسمى الدفعة..." : "Payment Label..."}
+                             />
                           </div>
-                       </div>
-                    </div>
-                  ))}
-                  
-                  <Button 
-                    variant="outline" 
-                    onClick={addItem}
-                    className="w-full h-14 rounded-2xl border-2 border-dashed border-primary/30 text-primary font-black gap-2 hover:bg-primary/5 transition-all"
-                  >
-                     <Plus className="h-5 w-5" /> {t('addQuotationItem')}
-                  </Button>
-               </CardContent>
-            </Card>
+                          {!isFirst && (
+                             <Button variant="ghost" size="icon" onClick={() => removeItem(idx)} className="h-10 w-10 text-rose-300 hover:text-rose-500">
+                                <Trash2 className="h-5 w-5" />
+                             </Button>
+                          )}
+                       </CardHeader>
+                       <CardContent className="p-8 space-y-6 text-start">
+                          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-end">
+                             
+                             <div className="md:col-span-3 space-y-2">
+                                <Label className="text-[10px] font-black text-slate-400 uppercase flex items-center gap-1">
+                                   <Clock className="h-3 w-3 text-primary" /> {isRtl ? 'التوقيت' : 'Timing'}
+                                </Label>
+                                <Select value={item.timing} onValueChange={v => updateItem(idx, 'timing', v)}>
+                                   <SelectTrigger className="h-12 rounded-xl border-2 font-black">
+                                      <SelectValue />
+                                   </SelectTrigger>
+                                   <SelectContent>
+                                      <SelectItem value="at" className="font-bold">{t('at')}</SelectItem>
+                                      <SelectItem value="during" className="font-bold">{t('during')}</SelectItem>
+                                      <SelectItem value="after" className="font-bold">{t('after')}</SelectItem>
+                                   </SelectContent>
+                                </Select>
+                             </div>
+
+                             <div className="md:col-span-6 space-y-2">
+                                <Label className="text-[10px] font-black text-blue-600 uppercase flex items-center gap-1">
+                                   <Zap className="h-3 w-3" /> {t('event')}
+                                </Label>
+                                {isFirst ? (
+                                   <Select value={item.contractualEvent || 'SIGNING'} onValueChange={v => updateItem(idx, 'contractualEvent', v)}>
+                                      <SelectTrigger className="h-12 rounded-xl border-2 font-black text-blue-600">
+                                         <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                         <SelectItem value="SIGNING" className="font-bold">{t('contractSigning')}</SelectItem>
+                                         <SelectItem value="CONTRACTING" className="font-bold">{t('contracting')}</SelectItem>
+                                         <SelectItem value="MANUAL" className="font-bold">{isRtl ? 'حدث مخصص' : 'Custom Event'}</SelectItem>
+                                      </SelectContent>
+                                   </Select>
+                                ) : (
+                                   <Select value={item.technicalStageId || ''} onValueChange={v => updateItem(idx, 'technicalStageId', v)}>
+                                      <SelectTrigger className="h-12 rounded-xl border-2 font-bold text-xs">
+                                         <SelectValue placeholder={isRtl ? "اختر مرحلة..." : "Select stage..."} />
+                                      </SelectTrigger>
+                                      <SelectContent className="rounded-xl">
+                                         {stages?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold">{isRtl ? s.name : s.nameEn}</SelectItem>)}
+                                         {!stages?.length && <SelectItem value="none" disabled>{isRtl ? 'يرجى ربط المسار أولاً' : 'Link path first'}</SelectItem>}
+                                      </SelectContent>
+                                   </Select>
+                                )}
+                             </div>
+
+                             <div className="md:col-span-3 space-y-2">
+                                <Label className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'القيمة / السعر' : 'Amount'}</Label>
+                                <Input 
+                                  type="number" 
+                                  value={formData.pricingMode === 'percentage' ? item.percentage : item.unitPrice} 
+                                  onChange={e => updateItem(idx, formData.pricingMode === 'percentage' ? 'percentage' : 'unitPrice', Number(e.target.value))}
+                                  className="h-12 rounded-xl border-2 font-black text-lg text-emerald-600 text-center"
+                                />
+                             </div>
+
+                             <div className="md:col-span-12 space-y-2 pt-2">
+                                <Label className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'وصف تفصيلي يظهر في جدول عرض السعر' : 'Description for the quote table'}</Label>
+                                <Textarea 
+                                  value={item.description} 
+                                  onChange={e => updateItem(idx, 'description', e.target.value)}
+                                  className="min-h-[60px] rounded-2xl bg-slate-50/50 border-dashed border-2"
+                                  placeholder="..."
+                                />
+                             </div>
+                          </div>
+                       </CardContent>
+                    </Card>
+                  );
+               })}
+
+               <Button 
+                 variant="outline" 
+                 onClick={addItem}
+                 className="w-full h-20 rounded-[2.5rem] border-2 border-dashed border-primary/30 text-primary font-black text-lg hover:bg-primary/5 transition-all gap-4"
+               >
+                  <Plus className="h-7 w-7" /> {isRtl ? 'إضافة بند مالي / دفعة جديدة' : 'Add New Milestone'}
+               </Button>
+            </div>
          </div>
 
          <div className="space-y-8">
@@ -337,24 +403,27 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                </CardContent>
             </Card>
 
-            <div className="p-8 rounded-[2.5rem] bg-primary text-white space-y-6 shadow-2xl shadow-primary/20">
-               <div className="flex items-center justify-between">
+            <div className="p-8 rounded-[2.5rem] bg-slate-900 text-white space-y-6 shadow-2xl relative overflow-hidden group">
+               <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform">
+                  <LayoutGrid className="h-32 w-32 text-primary" />
+               </div>
+               <div className="flex items-center justify-between relative z-10">
                   <div className="text-start">
-                     <h4 className="font-black text-lg">{t('defaultTemplate')}</h4>
-                     <p className="text-white/60 text-[10px] font-bold">{isRtl ? 'سيتم اختيار هذا القالب آلياً عند فتح عرض سعر لهذه الخدمة.' : 'Automatically selected when creating a quote for this service.'}</p>
+                     <h4 className="font-black text-lg text-primary">{t('defaultTemplate')}</h4>
+                     <p className="text-white/60 text-[10px] font-bold">{isRtl ? 'اعتماد كنموذج رئيسي لهذه الخدمة.' : 'Set as primary template.'}</p>
                   </div>
                   <Switch 
                     checked={formData.isDefault} 
                     onCheckedChange={v => setFormData({...formData, isDefault: v})} 
-                    className="data-[state=checked]:bg-white data-[state=checked]:text-primary"
                   />
                </div>
-               
-               <div className="pt-4 border-t border-white/20 flex items-start gap-3">
-                  <Sparkles className="h-6 w-6 text-white/40 shrink-0" />
-                  <p className="text-[10px] font-bold leading-relaxed text-white/80 text-start">
-                     {isRtl ? 'نصيحة: ربط البنود بمراحل المسار الفني يضمن دقة المطالبات المالية لاحقاً.' : 'Tip: Linking items to path stages ensures accurate billing later.'}
-                  </p>
+               <div className="pt-4 border-t border-white/10 relative z-10">
+                  <div className="flex items-start gap-3 text-start">
+                     <Info className="h-6 w-6 text-primary shrink-0 mt-0.5" />
+                     <p className="text-[10px] font-bold leading-relaxed text-slate-400">
+                        {isRtl ? 'تنبيه: ربط البنود بالتوقيت الزمني (عند/أثناء/بعد) يسمح للنظام بجدولة استحقاق المبالغ آلياً بناءً على إنجاز المهندس في الميدان.' : 'Tip: Linking items to timing (At/During/After) allows auto-scheduling of payments based on field progress.'}
+                     </p>
+                  </div>
                </div>
             </div>
          </div>

@@ -15,11 +15,15 @@ export type MilestoneTiming = 'at' | 'during' | 'after';
 
 export interface QuotationItem {
   description: string;
+  label?: string; // مسمى الدفعة (مثلاً: الدفعة الأولى)
   unit?: string;
   quantity?: number;
   unitPrice?: number;
   percentage?: number;
   notes?: string;
+  timing?: MilestoneTiming;
+  technicalStageId?: string;
+  contractualEvent?: 'SIGNING' | 'CONTRACTING' | 'MANUAL';
 }
 
 export interface BaseTemplate extends BaseReference {
