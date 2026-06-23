@@ -70,7 +70,7 @@ const translations: Record<Language, Record<string, string>> = {
     nextStages: 'المراحل التالية',
     technicalLink: 'الربط الفني',
     operationalPath: 'مسار التنفيذ',
-    totalStages: 'Total Stages',
+    totalStages: 'إجمالي المراحل',
     addLead: 'إضافة فرصة',
     fileNumber: 'رقم الملف',
     civilId: 'الرقم المدني',
@@ -150,7 +150,10 @@ const translations: Record<Language, Record<string, string>> = {
     scopeNone: 'محجوب',
     scopeOwn: 'سجلاتي فقط',
     scopeDept: 'سجلات القسم',
-    scopeAll: 'كل المنشأة'
+    scopeAll: 'كل المنشأة',
+    totalEntitlement: 'إجمالي المستحقات',
+    serviceYears: 'سنوات الخدمة',
+    resignationFactor: 'عامل الاستقالة'
   },
   en: {
     dashboard: 'Dashboard',
@@ -290,7 +293,10 @@ const translations: Record<Language, Record<string, string>> = {
     scopeNone: 'None',
     scopeOwn: 'Own Records',
     scopeDept: 'Department',
-    scopeAll: 'All Enterprise'
+    scopeAll: 'All Enterprise',
+    totalEntitlement: 'Total Entitlement',
+    serviceYears: 'Service Years',
+    resignationFactor: 'Resignation Factor'
   }
 };
 
