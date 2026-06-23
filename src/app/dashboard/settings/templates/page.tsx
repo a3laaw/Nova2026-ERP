@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { 
   LayoutTemplate, FileText, Gavel, FileSpreadsheet, 
   ArrowRight, Sparkles, ChevronRight, Plus,
@@ -29,7 +30,7 @@ export default function TemplatesHubPage() {
       color: 'text-blue-600',
       bg: 'bg-blue-50',
       path: '/dashboard/settings/templates/quotations',
-      count: '8 Active'
+      count: isRtl ? '8 نشط' : '8 Active'
     },
     {
       id: 'contracts',
@@ -39,7 +40,7 @@ export default function TemplatesHubPage() {
       color: 'text-indigo-600',
       bg: 'bg-indigo-50',
       path: '/dashboard/settings/templates/contracts',
-      count: '5 Legal'
+      count: isRtl ? '5 قانوني' : '5 Legal'
     },
     {
       id: 'boq',
@@ -49,7 +50,7 @@ export default function TemplatesHubPage() {
       color: 'text-emerald-600',
       bg: 'bg-emerald-50',
       path: '/dashboard/settings/templates/boq',
-      count: '12 Estim.'
+      count: isRtl ? '12 مقايسة' : '12 Estim.'
     }
   ];
 
