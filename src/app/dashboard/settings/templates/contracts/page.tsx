@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   FileText, Plus, Loader2, Search, ArrowRight, 
-  Gavel, Trash2, Edit3, ShieldCheck, Landmark
+  Gavel, Trash2, Edit3, ShieldCheck, Landmark,
+  Calculator
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -81,10 +82,10 @@ export default function ContractTemplatesPage() {
 
         <Button 
           onClick={() => setEditingTemplate('new')}
-          className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform"
+          className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all"
         >
           <Plus className="me-2 h-6 w-6" />
-          {t('newTemplate')}
+          {isRtl ? 'قالب عقد جديد' : 'New Contract Template'}
         </Button>
       </div>
 
@@ -107,15 +108,16 @@ export default function ContractTemplatesPage() {
                 <TableHead className="py-6 ps-8 text-start">{isRtl ? 'القالب / الكود' : 'Template / Code'}</TableHead>
                 <TableHead className="text-start">{isRtl ? 'الخدمة المرتبطة' : 'Linked Service'}</TableHead>
                 <TableHead className="text-center">{isRtl ? 'عدد الدفعات' : 'Milestones'}</TableHead>
+                <TableHead className="text-end">{isRtl ? 'القيمة التقديرية' : 'Est. Value'}</TableHead>
                 <TableHead className="text-center">{isRtl ? 'الوضع الافتراضي' : 'Default'}</TableHead>
                 <TableHead className="pe-8 text-end">{isRtl ? 'إجراءات' : 'Actions'}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-24"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/20" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-24"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/20" /></TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-24 text-slate-400 font-bold italic">{isRtl ? 'لا يوجد قوالب عقود مسجلة.' : 'No contract templates found.'}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-24 text-slate-400 font-bold italic">{isRtl ? 'لا يوجد قوالب عقود مسجلة.' : 'No contract templates found.'}</TableCell></TableRow>
               ) : (
                 filtered.map((temp) => (
                   <TableRow key={temp.id} className="hover:bg-slate-50 transition-colors group border-b-slate-50">
@@ -126,7 +128,7 @@ export default function ContractTemplatesPage() {
                           </div>
                           <div className="text-start">
                              <p className="font-black text-slate-800">{temp.name}</p>
-                             <p className="text-[10px] font-mono text-slate-400 uppercase">REF: {temp.code}</p>
+                             <p className="text-[10px] font-mono text-slate-400 uppercase tracking-tighter">REF: {temp.code}</p>
                           </div>
                        </div>
                     </TableCell>
@@ -137,9 +139,13 @@ export default function ContractTemplatesPage() {
                        </div>
                     </TableCell>
                     <TableCell className="text-center">
-                       <Badge variant="secondary" className="font-black text-[9px] uppercase px-3 bg-blue-50 text-blue-600 border-blue-100 border">
+                       <Badge variant="secondary" className="font-black text-[9px] uppercase px-3 bg-blue-50 text-blue-600 border-blue-100 border gap-1">
+                          <Calculator className="h-2.5 w-2.5" />
                           {temp.defaultMilestones?.length || 0} {isRtl ? 'دفعات' : 'Milestones'}
                        </Badge>
+                    </TableCell>
+                    <TableCell className="text-end font-mono font-black text-emerald-600">
+                       {temp.baseAmount?.toLocaleString() || '0'}
                     </TableCell>
                     <TableCell className="text-center">
                        {temp.isDefault ? (
@@ -148,7 +154,7 @@ export default function ContractTemplatesPage() {
                     </TableCell>
                     <TableCell className="pe-8 text-end">
                        <div className="flex justify-end gap-2">
-                          <Button variant="outline" size="icon" onClick={() => setEditingTemplate(temp)} className="rounded-xl h-10 w-10 text-primary border-primary/20 hover:bg-primary hover:text-white">
+                          <Button variant="outline" size="icon" onClick={() => setEditingTemplate(temp)} className="rounded-xl h-10 w-10 text-primary border-primary/20 hover:bg-primary hover:text-white transition-all">
                              <Edit3 className="h-4 w-4" />
                           </Button>
                           <Button 
