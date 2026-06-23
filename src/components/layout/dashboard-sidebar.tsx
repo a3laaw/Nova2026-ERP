@@ -1,6 +1,5 @@
 /**
- * @fileOverview القائمة الجانبية (Sidebar) الديناميكية.
- * تعتمد كلياً على مصفوفة الصلاحيات لإظهار أو إخفاء الموديولات بناءً على صلاحية 'view'.
+ * @fileOverview القائمة الجانبية (Sidebar) الديناميكية المحدثة بمصطلحات عملية (Odoo Style).
  */
 
 "use client"
@@ -59,8 +58,8 @@ export function DashboardSidebar() {
       url: "/dashboard/projects", 
       resource: 'projects',
       subItems: [
-        { title: t('projectExecution'), url: "/dashboard/projects", icon: Layers },
-        { title: t('projectReports'), url: "/dashboard/reports", icon: FileText },
+        { title: isRtl ? 'المشاريع الجارية' : 'Active Projects', url: "/dashboard/projects", icon: Layers },
+        { title: t('reports'), url: "/dashboard/reports", icon: FileText },
       ]
     },
     { 
@@ -70,7 +69,7 @@ export function DashboardSidebar() {
       resource: 'procurement',
       subItems: [
         { title: t('suppliers'), url: "/dashboard/procurement/suppliers", icon: Truck },
-        { title: t('supplierQuotes'), url: "/dashboard/ai", icon: FileSearch },
+        { title: isRtl ? 'تحليل العروض' : 'Quote Analysis', url: "/dashboard/ai", icon: FileSearch },
       ]
     },
     { 
@@ -80,12 +79,12 @@ export function DashboardSidebar() {
       resource: 'hr',
       subItems: [
         { 
-          title: isRtl ? 'ملفي الوظيفي (Dossier)' : 'My Full Dossier', 
+          title: isRtl ? 'ملفي الشخصي' : 'My Profile', 
           url: globalUser?.employeeId ? `/dashboard/hr/reports/dossier/${globalUser.employeeId}` : '/dashboard/hr', 
           icon: ShieldCheck 
         },
         { 
-          title: t('employees'), 
+          title: isRtl ? 'سجل الموظفين' : 'Staff Records', 
           url: "/dashboard/hr/employees", 
           icon: Users,
           hideIfOwnScope: true 
@@ -105,7 +104,7 @@ export function DashboardSidebar() {
       url: "/dashboard/accounting", 
       resource: 'accounting',
       subItems: [
-        { title: t('smartReconciliation'), url: "/dashboard/accounting", icon: Sparkles },
+        { title: isRtl ? 'المطابقة البنكية' : 'Reconciliation', url: "/dashboard/accounting", icon: Sparkles },
       ]
     },
     { 
@@ -114,7 +113,7 @@ export function DashboardSidebar() {
       url: "/dashboard/inventory", 
       resource: 'inventory',
       subItems: [
-        { title: t('warehouses'), url: "/dashboard/inventory", icon: Building2 },
+        { title: isRtl ? 'المستودعات' : 'Warehouses', url: "/dashboard/inventory", icon: Building2 },
       ]
     },
     { 
@@ -123,7 +122,7 @@ export function DashboardSidebar() {
       url: "/dashboard/settings", 
       resource: 'settings',
       subItems: [
-        { title: isRtl ? 'إدارة المستخدمين' : 'Users Management', url: "/dashboard/settings/users", icon: Users },
+        { title: isRtl ? 'المستخدمين' : 'Users', url: "/dashboard/settings/users", icon: Users },
         { title: t('companyIdentity'), url: "/dashboard/settings/company", icon: Building2 },
         { title: t('rolesRef'), url: "/dashboard/settings/roles", icon: ShieldCheck },
       ]
@@ -180,10 +179,10 @@ export function DashboardSidebar() {
         {!isCollapsed && (
           <div className="p-3 rounded-2xl bg-white border border-orange-50 shadow-lg">
              <div className="flex items-center justify-between mb-1">
-                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Core Engine</span>
-                <Badge className="bg-[#e87c24] text-white text-[8px] font-black uppercase h-4 px-1.5 rounded-md">v2.1</Badge>
+                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Business Core</span>
+                <Badge className="bg-[#e87c24] text-white text-[8px] font-black uppercase h-4 px-1.5 rounded-md">v2.5</Badge>
              </div>
-             <p className="text-[8px] font-black text-[#1e1b4b]/60 text-center uppercase">Compact UI Active</p>
+             <p className="text-[8px] font-black text-[#1e1b4b]/60 text-center uppercase tracking-tighter">Odoo Style UI</p>
           </div>
         )}
       </SidebarFooter>
