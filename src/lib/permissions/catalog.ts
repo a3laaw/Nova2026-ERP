@@ -71,6 +71,13 @@ export const SYSTEM_RESOURCES: SystemResource[] = [
     allowedActions: ['view', 'create', 'transfer', 'export']
   },
   {
+    id: 'templates',
+    labelAr: 'مكتبة القوالب',
+    labelEn: 'Template Library',
+    module: 'Operations',
+    allowedActions: ['view', 'create', 'edit', 'delete']
+  },
+  {
     id: 'settings',
     labelAr: 'إعدادات النظام',
     labelEn: 'Settings',
