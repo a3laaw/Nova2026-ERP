@@ -55,11 +55,15 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
     // ضمان وجود ترتيب منطقي للمرحلة
     const nextOrder = form.order !== undefined ? form.order : (stages?.length || 0);
 
+    // توليد كود إذا كان مفقوداً (للتوافق مع المعاملات)
+    const generatedCode = form.code || (form.nameEn || form.name || 'STAGE').toUpperCase().replace(/\s+/g, '_');
+
     const data = { 
       ...form, 
+      code: generatedCode,
       isActive: true, 
-      isRequired: true, 
-      isEditable: true, 
+      isRequired: form.isRequired !== undefined ? form.isRequired : true, 
+      isEditable: form.isEditable !== undefined ? form.isEditable : true, 
       order: nextOrder,
       nextStageIds: form.nextStageIds || [], 
       name: form.name || '', 
@@ -131,12 +135,12 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
             </div>
           </div>
         </div>
-        <Button onClick={() => setForm({ name: '', nameEn: '', description: '', isNumeric: false, isTimed: false, nextStageIds: [] })} className="rounded-xl shadow-lg font-bold"><Plus className="me-2 h-4 w-4" /> {isRtl ? 'إضافة مرحلة' : 'Add Stage'}</Button>
+        <Button onClick={() => setForm({ name: '', nameEn: '', description: '', code: '', isNumeric: false, isTimed: false, nextStageIds: [] })} className="rounded-xl shadow-lg font-bold"><Plus className="me-2 h-4 w-4" /> {isRtl ? 'إضافة مرحلة' : 'Add Stage'}</Button>
       </div>
 
       {loading ? <div className="py-40 text-center"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></div> : (
         <div className="grid grid-cols-1 gap-4">
-          {sortedStages.length === 0 ? <div className="py-20 text-center bg-white rounded-3xl border-2 border-dashed border-muted"><p className="font-bold text-muted-foreground italic">لا توجد مراحل معرفة لهذا المسار.</p></div> : 
+          {sortedStages.length === 0 ? <div className="py-20 text-center bg-white rounded-3xl border-2 border-dashed border-muted"><p className="font-bold text-muted-foreground italic">لا توجد مراحل معرّفة لهذا المسار.</p></div> : 
             sortedStages.map((stage) => (
               <Card key={stage.id} className="border-0 shadow-lg rounded-2xl bg-white overflow-hidden group hover:ring-2 hover:ring-primary/10 transition-all text-start">
                 <div className="flex items-center p-5 justify-between">
@@ -147,6 +151,7 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
                       <div className="flex gap-3 mt-1">
                          {stage.isTimed && <span className="flex items-center gap-1 text-[10px] font-bold text-blue-600"><Clock className="h-3 w-3" /> {stage.timeTargetDays} {isRtl ? 'يوم' : 'Days'}</span>}
                          {stage.isNumeric && <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600"><ListChecks className="h-3 w-3" /> {isRtl ? 'مستهدف:' : 'Target:'} {stage.numericTarget}</span>}
+                         <span className="text-[8px] font-mono text-slate-300 uppercase tracking-tighter">Code: {stage.code}</span>
                       </div>
                     </div>
                   </div>
@@ -182,6 +187,11 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
                       <Label className="text-xs font-bold text-slate-500">{t('name')} (En)</Label>
                       <Input value={form.nameEn || ''} onChange={e => setForm({...form, nameEn: e.target.value})} className="h-11 rounded-xl bg-slate-50/50 text-start" dir="ltr" />
                     </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                      <Label className="text-xs font-bold text-slate-500">{isRtl ? 'كود المرحلة (Code)' : 'Stage Code'}</Label>
+                      <Input value={form.code || ''} onChange={e => setForm({...form, code: e.target.value.toUpperCase().replace(/\s+/g, '_')})} className="h-11 rounded-xl bg-slate-50/50 font-mono text-xs uppercase" placeholder="e.g. ARCH_REVIEW" />
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">

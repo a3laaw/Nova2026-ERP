@@ -61,9 +61,10 @@ export class TransactionService {
 
     // 3. قراءة المراحل الفنية المرجعية (Template Stages)
     const stagesPath = paths.technicalStages(this.companyId, data.activityTypeId, data.serviceId, data.subServiceId);
-    // تم إزالة orderBy من الاستعلام مباشرة لتجنب استبعاد الوثائق التي تفتقر لحقل order
+    // جلب كافة المراحل
     const stagesSnap = await getDocs(collection(this.db, stagesPath));
 
+    // معالجة واضحة في حال عدم وجود مراحل (Process Guard)
     if (stagesSnap.empty) {
       throw new Error('لا يمكن فتح المعاملة لعدم وجود مراحل عمل معرّفة لهذا المسار في مركز المراجع. يرجى إضافة مراحل للخدمة الفرعية أولاً.');
     }
@@ -114,24 +115,25 @@ export class TransactionService {
       updatedAt: serverTimestamp()
     });
 
-    // استنساخ المراحل المرتبة
+    // استنساخ المراحل المرتبة مع تطهير البيانات من قيم undefined
     sortedStages.forEach(stage => {
       const instanceRef = doc(collection(this.db, paths.transactionStages(this.companyId, transactionId)));
       
+      // تأمين البيانات من قيم undefined التي ترفضها فايربيز
       const instanceData: StageInstance = {
         transactionId,
         technicalStageId: stage.id!,
-        code: stage.code,
-        name: stage.name,
+        code: stage.code || (stage.nameEn || stage.name || 'STAGE').toUpperCase().replace(/\s+/g, '_'),
+        name: stage.name || '',
         description: stage.description || '',
         order: stage.order || 0,
-        isNumeric: stage.isNumeric,
-        numericTarget: stage.numericTarget,
+        isNumeric: !!stage.isNumeric,
+        numericTarget: stage.numericTarget || 0,
         currentCount: 0,
-        isTimed: stage.isTimed,
-        timeTargetDays: stage.timeTargetDays,
-        isRequired: stage.isRequired || false,
-        isEditable: stage.isEditable || true,
+        isTimed: !!stage.isTimed,
+        timeTargetDays: stage.timeTargetDays || 0,
+        isRequired: !!stage.isRequired,
+        isEditable: stage.isEditable !== false,
         nextStageIds: stage.nextStageIds || [],
         status: 'pending',
         activityTypeId: data.activityTypeId,
@@ -144,6 +146,7 @@ export class TransactionService {
       batch.set(instanceRef, instanceData);
     });
 
+    // تسجيل في الجدول الزمني
     const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
     batch.set(timelineRef, {
       transactionId,
@@ -155,6 +158,7 @@ export class TransactionService {
       createdAt: serverTimestamp()
     });
 
+    // تسجيل في تاريخ العميل
     const historyRef = doc(collection(this.db, paths.clientHistory(this.companyId, data.clientId)));
     batch.set(historyRef, {
       clientId: data.clientId,
