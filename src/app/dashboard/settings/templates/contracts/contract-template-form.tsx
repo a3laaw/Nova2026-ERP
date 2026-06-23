@@ -17,7 +17,7 @@ import {
   Save, X, Plus, Trash2, Loader2, ArrowRight,
   Gavel, Calculator, Info, Sparkles,
   Landmark, Clock, FileText,
-  BadgeCheck, Settings2, Zap
+  BadgeCheck, Settings2, Zap, AlertTriangle
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
@@ -69,7 +69,6 @@ export function ContractTemplateForm({ template, onClose }: Props) {
   const srvQuery = useMemo(() => companyId && db && formData.activityTypeId ? query(collection(db, paths.services(companyId, formData.activityTypeId)), orderBy('order')) : null, [db, companyId, formData.activityTypeId]);
   const subQuery = useMemo(() => companyId && db && formData.activityTypeId && formData.serviceId ? query(collection(db, paths.subServices(companyId, formData.activityTypeId, formData.serviceId)), orderBy('order')) : null, [db, companyId, formData.activityTypeId, formData.serviceId]);
   
-  // جلب المراحل الفنية لربطها بالدفعات
   const stagesQuery = useMemo(() => 
     companyId && db && formData.activityTypeId && formData.serviceId && formData.subServiceId
       ? query(collection(db, paths.technicalStages(companyId, formData.activityTypeId, formData.serviceId, formData.subServiceId)), orderBy('order'))
@@ -81,6 +80,11 @@ export function ContractTemplateForm({ template, onClose }: Props) {
   const { data: subServices } = useCollection<SubService>(subQuery);
   const { data: stages } = useCollection<TechnicalStage>(stagesQuery);
 
+  // حساب إجمالي النسب المئوية للدفعات
+  const totalPercentage = useMemo(() => {
+    return formData.defaultMilestones?.reduce((acc, m) => acc + (m.percentage || 0), 0) || 0;
+  }, [formData.defaultMilestones]);
+
   const addMilestone = () => {
     setFormData({
       ...formData,
@@ -91,7 +95,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
   const removeMilestone = (idx: number) => {
     setFormData({
       ...formData,
-      defaultMilestones: formData.defaultMilestones?.filter((_, i) => i !== idx)
+      defaultMilestones: (formData.defaultMilestones || []).filter((_, i) => i !== idx)
     });
   };
 
@@ -118,6 +122,15 @@ export function ContractTemplateForm({ template, onClose }: Props) {
       return;
     }
 
+    if (totalPercentage !== 100) {
+      toast({ 
+        variant: "destructive", 
+        title: isRtl ? "تنبيه في الدفعات" : "Milestones Alert", 
+        description: isRtl ? "يجب أن يكون مجموع نسب الدفعات 100% لتغطية كامل إجمالي قيمة العقد." : "Total percentage must be 100%."
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const service = new TemplateService(db, companyId);
@@ -128,9 +141,9 @@ export function ContractTemplateForm({ template, onClose }: Props) {
 
       const finalData = {
         ...formData,
-        activityTypeName: isRtl ? activity?.name : activity?.nameEn,
-        serviceName: isRtl ? srv?.name : srv?.nameEn,
-        subServiceName: isRtl ? sub?.name : sub?.nameEn,
+        activityTypeName: (isRtl ? activity?.name : activity?.nameEn) || '',
+        serviceName: (isRtl ? srv?.name : srv?.nameEn) || '',
+        subServiceName: (isRtl ? sub?.name : sub?.nameEn) || '',
         code: formData.code || formData.name?.toUpperCase().replace(/\s+/g, '_')
       };
 
@@ -176,7 +189,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
          <div className="lg:col-span-8 space-y-8">
             
             <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
-               <CardHeader className="bg-slate-50/50 p-8 border-b">
+               <CardHeader className="bg-slate-50/50 p-8 border-b text-start">
                   <CardTitle className="text-lg font-black flex items-center gap-2"><Landmark className="h-5 w-5 text-primary" /> {isRtl ? 'الارتباط والتعريف' : 'Identity & Link'}</CardTitle>
                </CardHeader>
                <CardContent className="p-8 space-y-6">
@@ -305,7 +318,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                <Label className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{isRtl ? 'الحصة %' : 'Share %'}</Label>
                                <Input 
                                  type="number" 
-                                 value={milestone.percentage ?? 0} 
+                                 value={milestone.percentage || 0} 
                                  onChange={e => updateMilestone(idx, 'percentage', Number(e.target.value))} 
                                  className="h-12 rounded-xl bg-white border-2 font-black text-emerald-600 text-center text-lg"
                                />
@@ -318,6 +331,24 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                       </div>
                     );
                   })}
+
+                  {/* ملخص حصص العقد */}
+                  <div className={cn(
+                    "p-8 rounded-[2rem] border-4 border-dashed flex items-center justify-between",
+                    totalPercentage === 100 ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-rose-50 border-rose-200 text-rose-800"
+                  )}>
+                     <div className="flex items-center gap-3">
+                        <Calculator className="h-8 w-8" />
+                        <div className="text-start">
+                           <p className="font-black text-lg">{isRtl ? 'إجمالي توزيع الدفعات' : 'Total Payment Distribution'}</p>
+                           <p className="text-xs font-bold opacity-70">{isRtl ? 'يجب أن يكون المجموع 100% من إجمالي قيمة العقد النهائية.' : 'Total must be 100% of final contract value.'}</p>
+                        </div>
+                     </div>
+                     <div className="text-center">
+                        <span className="text-4xl font-black">{totalPercentage}%</span>
+                        {totalPercentage !== 100 && <AlertTriangle className="h-5 w-5 mx-auto mt-1 animate-pulse" />}
+                     </div>
+                  </div>
                </CardContent>
             </Card>
 
@@ -341,7 +372,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                          onChange={e => updateClause(idx, e.target.value)}
                          className="min-h-[80px] rounded-2xl bg-slate-50/50 border-2 border-slate-100 focus:bg-white transition-all text-sm"
                        />
-                       <Button variant="ghost" size="icon" onClick={() => setFormData({...formData, clauses: formData.clauses?.filter((_, i) => i !== idx)})} className="opacity-0 group-hover:opacity-100 text-rose-400">
+                       <Button variant="ghost" size="icon" onClick={() => setFormData({...formData, clauses: (formData.clauses || []).filter((_, i) => i !== idx)})} className="opacity-0 group-hover:opacity-100 text-rose-400">
                           <Trash2 className="h-4 w-4" />
                        </Button>
                     </div>

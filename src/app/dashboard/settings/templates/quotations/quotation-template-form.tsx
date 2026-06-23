@@ -16,14 +16,14 @@ import {
 import { 
   Save, X, Plus, Trash2, Loader2, ArrowRight,
   Calculator, ShieldCheck, Info, Sparkles, FileText,
-  Clock, Zap, LayoutGrid
+  Clock, Zap, LayoutGrid, AlertTriangle
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
-import { QuotationTemplate, PricingMode, QuotationItem, MilestoneTiming } from '@/types/templates';
+import { QuotationTemplate, PricingMode, QuotationItem } from '@/types/templates';
 import { ActivityType, Service, SubService, TechnicalStage } from '@/types/reference';
 import { TemplateService } from '@/services/template-service';
 import { toast } from '@/hooks/use-toast';
@@ -63,6 +63,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
           unit: 'batch', 
           quantity: 1, 
           unitPrice: 0, 
+          percentage: 0,
           timing: 'at',
           contractualEvent: 'SIGNING'
         }
@@ -77,7 +78,6 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
   const srvQuery = useMemo(() => companyId && db && formData.activityTypeId ? query(collection(db, paths.services(companyId, formData.activityTypeId)), orderBy('name')) : null, [db, companyId, formData.activityTypeId]);
   const subQuery = useMemo(() => companyId && db && formData.activityTypeId && formData.serviceId ? query(collection(db, paths.subServices(companyId, formData.activityTypeId, formData.serviceId)), orderBy('name')) : null, [db, companyId, formData.activityTypeId, formData.serviceId]);
   
-  // جلب المراحل الفنية لربط البنود بها
   const stagesQuery = useMemo(() => 
     companyId && db && formData.activityTypeId && formData.serviceId && formData.subServiceId
       ? query(collection(db, paths.technicalStages(companyId, formData.activityTypeId, formData.serviceId, formData.subServiceId)), orderBy('order'))
@@ -88,6 +88,11 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
   const { data: services } = useCollection<Service>(srvQuery);
   const { data: subServices } = useCollection<SubService>(subQuery);
   const { data: stages } = useCollection<TechnicalStage>(stagesQuery);
+
+  // حساب إجمالي النسب المئوية لضمان تغطية كامل قيمة العقد
+  const totalPercentage = useMemo(() => {
+    return formData.items?.reduce((acc, item) => acc + (item.percentage || 0), 0) || 0;
+  }, [formData.items]);
 
   const addItem = () => {
     const nextIndex = (formData.items?.length || 0) + 1;
@@ -104,6 +109,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
           unit: 'unit', 
           quantity: 1, 
           unitPrice: 0, 
+          percentage: 0,
           timing: 'at',
           contractualEvent: 'MANUAL'
         }
@@ -114,7 +120,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
   const removeItem = (idx: number) => {
     setFormData({
       ...formData,
-      items: formData.items?.filter((_, i) => i !== idx)
+      items: (formData.items || []).filter((_, i) => i !== idx)
     });
   };
 
@@ -122,7 +128,6 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
     const newItems = [...(formData.items || [])];
     newItems[idx] = { ...newItems[idx], [field]: value };
     
-    // إذا تغيرت المرحلة التقنية، نقوم بتحديث الوصف آلياً
     if (field === 'technicalStageId' && stages) {
       const stage = stages.find(s => s.id === value);
       if (stage) newItems[idx].description = isRtl ? stage.name : stage.nameEn;
@@ -138,6 +143,15 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
       return;
     }
 
+    if (formData.pricingMode === 'percentage' && totalPercentage !== 100) {
+      toast({ 
+        variant: "destructive", 
+        title: isRtl ? "تنبيه مالي" : "Financial Alert", 
+        description: isRtl ? "يجب أن يكون مجموع النسب المئوية 100% لتغطية كامل قيمة العقد." : "Total percentage must be 100%."
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const service = new TemplateService(db, companyId);
@@ -148,9 +162,9 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
 
       const finalData = {
         ...formData,
-        activityTypeName: isRtl ? activity?.name : activity?.nameEn,
-        serviceName: isRtl ? srv?.name : srv?.nameEn,
-        subServiceName: isRtl ? sub?.name : sub?.nameEn,
+        activityTypeName: (isRtl ? activity?.name : activity?.nameEn) || '',
+        serviceName: (isRtl ? srv?.name : srv?.nameEn) || '',
+        subServiceName: (isRtl ? sub?.name : sub?.nameEn) || '',
         code: formData.code || formData.name?.toUpperCase().replace(/\s+/g, '_')
       };
 
@@ -336,10 +350,12 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                              </div>
 
                              <div className="md:col-span-3 space-y-2">
-                                <Label className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'القيمة / السعر' : 'Amount'}</Label>
+                                <Label className="text-[10px] font-black text-slate-400 uppercase">
+                                  {formData.pricingMode === 'percentage' ? (isRtl ? 'الحصة (%)' : 'Share (%)') : (isRtl ? 'القيمة / السعر' : 'Amount')}
+                                </Label>
                                 <Input 
                                   type="number" 
-                                  value={formData.pricingMode === 'percentage' ? (item.percentage ?? 0) : (item.unitPrice ?? 0)} 
+                                  value={formData.pricingMode === 'percentage' ? (item.percentage || 0) : (item.unitPrice || 0)} 
                                   onChange={e => updateItem(idx, formData.pricingMode === 'percentage' ? 'percentage' : 'unitPrice', Number(e.target.value))}
                                   className="h-12 rounded-xl border-2 font-black text-lg text-emerald-600 text-center"
                                 />
@@ -359,6 +375,26 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                     </Card>
                   );
                })}
+
+               {/* ملخص الحساب في حالة النسبة المئوية */}
+               {formData.pricingMode === 'percentage' && (
+                 <div className={cn(
+                   "p-8 rounded-[2rem] border-4 border-dashed flex items-center justify-between",
+                   totalPercentage === 100 ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-rose-50 border-rose-200 text-rose-800"
+                 )}>
+                    <div className="flex items-center gap-3">
+                       <Calculator className="h-8 w-8" />
+                       <div className="text-start">
+                          <p className="font-black text-lg">{isRtl ? 'إجمالي حصص العقد' : 'Total Contract Share'}</p>
+                          <p className="text-xs font-bold opacity-70">{isRtl ? 'يجب أن يكون المجموع 100% من إجمالي قيمة العقد.' : 'Must sum up to 100% of contract total.'}</p>
+                       </div>
+                    </div>
+                    <div className="text-center">
+                       <span className="text-4xl font-black">{totalPercentage}%</span>
+                       {totalPercentage !== 100 && <AlertTriangle className="h-5 w-5 mx-auto mt-1 animate-pulse" />}
+                    </div>
+                 </div>
+               )}
 
                <Button 
                  variant="outline" 
@@ -398,7 +434,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                   />
                   <div className="space-y-2">
                      <Label className="text-[10px] font-black uppercase text-slate-400">{t('validDays')}</Label>
-                     <Input type="number" value={formData.validDays ?? 30} onChange={e => setFormData({...formData, validDays: Number(e.target.value)})} className="h-11 rounded-xl border-2 font-black" />
+                     <Input type="number" value={formData.validDays || 30} onChange={e => setFormData({...formData, validDays: Number(e.target.value)})} className="h-11 rounded-xl border-2 font-black" />
                   </div>
                </CardContent>
             </Card>
