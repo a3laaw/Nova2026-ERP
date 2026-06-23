@@ -228,22 +228,6 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                      </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-50">
-                     <div className="space-y-2 p-6 bg-emerald-50/30 rounded-3xl border-2 border-emerald-100/50">
-                        <Label className="text-[10px] font-black uppercase text-emerald-600 tracking-widest flex items-center gap-2">
-                          <DollarSign className="h-3 w-3" /> {isRtl ? 'إجمالي قيمة العقد التقديرية (KWD)' : 'Estimated Contract Value (KWD)'}
-                        </Label>
-                        <Input 
-                          type="number" 
-                          value={formData.baseAmount || 0} 
-                          onChange={e => setFormData({...formData, baseAmount: Number(e.target.value)})} 
-                          className="h-14 rounded-2xl border-2 border-emerald-200 font-black text-2xl text-emerald-700 bg-white shadow-inner text-center"
-                          placeholder="0.000"
-                        />
-                        <p className="text-[9px] font-bold text-emerald-600/70 mt-1 italic">{isRtl ? '* سيتم استخدام هذه القيمة كمرجع لحساب الدفعات المئوية.' : '* Used as reference for percentage calculations.'}</p>
-                     </div>
-                  </div>
-
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-50">
                      <div className="space-y-2">
                         <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('orgRef')}</Label>
@@ -291,6 +275,23 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                            <SelectItem value="percentage" className="font-bold">{t('percentage')}</SelectItem>
                         </SelectContent>
                      </Select>
+                  </div>
+               </div>
+
+               {/* خانة القيمة التقديرية (Moved here as requested) */}
+               <div className="p-8 bg-emerald-50/30 rounded-[2.5rem] border-2 border-emerald-100/50 text-start animate-in fade-in zoom-in-95">
+                  <div className="max-w-md space-y-2">
+                     <Label className="text-[10px] font-black uppercase text-emerald-600 tracking-widest flex items-center gap-2">
+                        <DollarSign className="h-3 w-3" /> {isRtl ? 'إجمالي قيمة العقد التقديرية (KWD)' : 'Estimated Contract Value (KWD)'}
+                     </Label>
+                     <Input 
+                        type="number" 
+                        value={formData.baseAmount || 0} 
+                        onChange={e => setFormData({...formData, baseAmount: Number(e.target.value)})} 
+                        className="h-14 rounded-2xl border-2 border-emerald-200 font-black text-2xl text-emerald-700 bg-white shadow-inner text-center"
+                        placeholder="0.000"
+                     />
+                     <p className="text-[9px] font-bold text-emerald-600/70 mt-1 italic">{isRtl ? '* سيتم استخدام هذه القيمة كمرجع لحساب الدفعات المئوية.' : '* Used as reference for percentage calculations.'}</p>
                   </div>
                </div>
 

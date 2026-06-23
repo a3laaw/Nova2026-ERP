@@ -205,22 +205,6 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                      </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-50">
-                     <div className="space-y-2 p-6 bg-primary/5 rounded-3xl border-2 border-primary/10">
-                        <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
-                          <DollarSign className="h-3 w-3" /> {isRtl ? 'قيمة العقد التقديرية (KWD)' : 'Estimated Contract Value (KWD)'}
-                        </Label>
-                        <Input 
-                          type="number" 
-                          value={formData.baseAmount || 0} 
-                          onChange={e => setFormData({...formData, baseAmount: Number(e.target.value)})} 
-                          className="h-14 rounded-2xl border-2 border-primary/20 font-black text-2xl text-primary bg-white shadow-inner text-center"
-                          placeholder="0.000"
-                        />
-                        <p className="text-[9px] font-bold text-slate-400 mt-1 italic">{isRtl ? '* تُستخدم هذه القيمة كمرجع افتراضي لحساب دفعات العقود الناتجة عن هذا القالب.' : '* Used as a reference for calculating milestones in contracts.'}</p>
-                     </div>
-                  </div>
-
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-50">
                      <div className="space-y-2">
                         <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'النشاط الرئيسي' : 'Activity'}</Label>
@@ -255,6 +239,23 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                   </Button>
                </CardHeader>
                <CardContent className="p-8 space-y-6">
+                  {/* إجمالي قيمة العقد (Moved here as requested) */}
+                  <div className="p-8 bg-primary/5 rounded-[2.5rem] border-2 border-primary/10 animate-in fade-in zoom-in-95">
+                     <div className="max-w-md space-y-2">
+                        <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
+                           <DollarSign className="h-3 w-3" /> {isRtl ? 'إجمالي قيمة العقد التقديرية (KWD)' : 'Estimated Contract Value (KWD)'}
+                        </Label>
+                        <Input 
+                           type="number" 
+                           value={formData.baseAmount || 0} 
+                           onChange={e => setFormData({...formData, baseAmount: Number(e.target.value)})} 
+                           className="h-14 rounded-2xl border-2 border-primary/20 font-black text-2xl text-primary bg-white shadow-inner text-center"
+                           placeholder="0.000"
+                        />
+                        <p className="text-[9px] font-bold text-slate-400 mt-1 italic">{isRtl ? '* تُستخدم هذه القيمة كمرجع افتراضي لحساب دفعات العقود الناتجة عن هذا القالب.' : '* Used as a reference for calculating milestones in contracts.'}</p>
+                     </div>
+                  </div>
+
                   {formData.defaultMilestones?.map((milestone, idx) => {
                     const isFirst = idx === 0;
                     const calculatedAmount = ((formData.baseAmount || 0) * (milestone.percentage || 0)) / 100;
