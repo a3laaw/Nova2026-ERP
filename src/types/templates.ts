@@ -102,9 +102,31 @@ export interface BOQTemplateItem {
   updatedAt?: any;
 }
 
+/**
+ * الهيكل الشجري لعرض المقايسات في الواجهة
+ */
+export interface BOQTreeComponent {
+  id: string;
+  name: string;
+  order: number;
+  children: BOQTemplateItem[];
+}
+
+export interface BOQTreeMainCategory {
+  id: string;
+  name: string;
+  order: number;
+  children: BOQTreeComponent[];
+}
+
+export interface BOQTreeSection {
+  id: string;
+  name: string;
+  order: number;
+  children: BOQTreeMainCategory[];
+}
+
 export interface BOQTemplate extends BaseTemplate {
   measurementMode?: MeasurementMode;
-  // في القالب، قد نحتفظ بنسخة من البنود للتنقل السريع، 
-  // لكن المرجع الحقيقي هو الـ items subcollection
   items?: BOQTemplateItem[]; 
 }
