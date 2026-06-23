@@ -1,6 +1,6 @@
 /**
  * @fileOverview تعريف واجهات البيانات لمكتبة القوالب في نظام NovaFlow ERP.
- * تم تحديث الهياكل لتشمل جداول الكميات (BOQ) ومنطق الدفعات المطور.
+ * تم تحديث الهياكل لتشمل جداول الكميات (BOQ) بالهيكل الرباعي المعتمد.
  */
 
 import { BaseReference } from './reference';
@@ -15,12 +15,12 @@ export type MilestoneTiming = 'at' | 'during' | 'after';
 
 export interface QuotationItem {
   description: string;
-  label?: string; // مسمى الدفعة (مثلاً: الدفعة الأولى)
+  label?: string;
   unit?: string;
   quantity?: number;
   unitPrice?: number;
   percentage?: number;
-  amount?: number; // القيمة المحسوبة (للعرض فقط)
+  amount?: number;
   notes?: string;
   timing?: MilestoneTiming;
   technicalStageId?: string;
@@ -32,7 +32,7 @@ export interface BaseTemplate extends BaseReference {
   code: string;
   name: string;
   description?: string;
-  baseAmount?: number; // القيمة التقديرية الأساسية للقالب
+  baseAmount?: number;
   activityTypeId: string;
   activityTypeName?: string;
   serviceId: string;
@@ -59,9 +59,9 @@ export interface ContractMilestone {
   percentage: number;
   amount?: number;
   conditionText?: string;
-  timing: MilestoneTiming; // عند / أثناء / بعد
-  technicalStageId?: string; // الربط مع مرحلة فنية (للدفعات الفنية)
-  contractualEvent?: 'SIGNING' | 'CONTRACTING' | 'MANUAL'; // للأحداث الإدارية (للدفعة الأولى)
+  timing: MilestoneTiming;
+  technicalStageId?: string;
+  contractualEvent?: 'SIGNING' | 'CONTRACTING' | 'MANUAL';
 }
 
 export interface ContractTemplate extends BaseTemplate {
@@ -75,28 +75,36 @@ export interface ContractTemplate extends BaseTemplate {
 }
 
 /**
- * بنية جدول الكميات (BOQ)
+ * بنية بند جدول الكميات المطور (Flat Firestore Structure)
  */
-export interface BOQSection {
-  code?: string;
-  name: string;
-  order: number;
-}
-
-export interface BOQItem {
-  sectionName?: string;
+export interface BOQTemplateItem {
+  id?: string;
+  sectionId: string;
+  sectionName: string;
+  mainCategoryId: string;
+  mainCategoryName: string;
+  componentId: string;
+  componentName: string;
   itemCode?: string;
   description: string;
   unit: string;
-  quantity: number;
-  rate?: number;
-  costRate?: number;
+  plannedQuantity: number;
+  executedQuantity: number;
+  estimatedRate?: number;
+  estimatedCostRate?: number;
   notes?: string;
   order: number;
+  technicalStageId?: string;
+  billingTriggerGroup?: string;
+  materialCodes: string[];
+  companyId: string;
+  createdAt?: any;
+  updatedAt?: any;
 }
 
 export interface BOQTemplate extends BaseTemplate {
-  sections: BOQSection[];
-  items: BOQItem[];
   measurementMode?: MeasurementMode;
+  // في القالب، قد نحتفظ بنسخة من البنود للتنقل السريع، 
+  // لكن المرجع الحقيقي هو الـ items subcollection
+  items?: BOQTemplateItem[]; 
 }

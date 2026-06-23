@@ -11,10 +11,12 @@ import {
   query,
   where,
   getDocs,
-  writeBatch
+  writeBatch,
+  orderBy,
+  getDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
-import { TemplateType, BaseTemplate } from '@/types/templates';
+import { TemplateType, BaseTemplate, BOQTemplateItem } from '@/types/templates';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { ensureActionPermission } from '@/lib/permissions';
@@ -26,9 +28,6 @@ export class TemplateService {
     private userPermissions: string[] = []
   ) {}
 
-  /**
-   * جلب مسار المجموعة بناءً على النوع
-   */
   private getCollectionPath(type: TemplateType) {
     switch (type) {
       case 'quotation': return paths.quotationTemplates(this.companyId);
@@ -37,12 +36,8 @@ export class TemplateService {
     }
   }
 
-  /**
-   * إضافة قالب جديد
-   */
   async addTemplate(type: TemplateType, data: Partial<BaseTemplate>, userId: string) {
     ensureActionPermission(this.userPermissions, 'ref:edit');
-    
     const path = this.getCollectionPath(type);
     const docData = {
       ...data,
@@ -57,11 +52,9 @@ export class TemplateService {
     };
 
     try {
-      // إذا كان القالب افتراضياً، يجب إلغاء الافتراضي عن الآخرين لنفس النشاط والخدمة
       if (docData.isDefault) {
         await this.clearDefaultTemplates(type, docData.activityTypeId, docData.serviceId);
       }
-
       return await addDoc(collection(this.db, path), docData);
     } catch (err) {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
@@ -73,12 +66,8 @@ export class TemplateService {
     }
   }
 
-  /**
-   * تحديث قالب موجود
-   */
   async updateTemplate(type: TemplateType, id: string, data: Partial<BaseTemplate>, userId: string) {
     ensureActionPermission(this.userPermissions, 'ref:edit');
-    
     const path = this.getCollectionPath(type);
     const docRef = doc(this.db, path, id);
 
@@ -86,7 +75,6 @@ export class TemplateService {
       if (data.isDefault) {
         await this.clearDefaultTemplates(type, data.activityTypeId!, data.serviceId!);
       }
-
       await updateDoc(docRef, {
         ...data,
         updatedBy: userId,
@@ -102,18 +90,75 @@ export class TemplateService {
     }
   }
 
-  /**
-   * حذف قالب
-   */
   async deleteTemplate(type: TemplateType, id: string) {
     ensureActionPermission(this.userPermissions, 'ref:delete');
     const path = this.getCollectionPath(type);
     return deleteDoc(doc(this.db, path, id));
   }
 
-  /**
-   * وظيفة خاصة لإلغاء القوالب الافتراضية السابقة لضمان وجود افتراضي واحد فقط لكل خدمة
-   */
+  // --- BOQ Template Item Operations ---
+
+  async getBOQTemplateItems(templateId: string): Promise<BOQTemplateItem[]> {
+    const q = query(
+      collection(this.db, paths.boqTemplateItems(this.companyId, templateId)),
+      orderBy('order')
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as BOQTemplateItem));
+  }
+
+  async saveBOQTemplateWithItems(templateId: string | null, templateData: any, items: BOQTemplateItem[], userId: string) {
+    ensureActionPermission(this.userPermissions, 'ref:edit');
+    const batch = writeBatch(this.db);
+    let finalTemplateId = templateId;
+
+    // 1. Save Template Doc
+    if (!templateId) {
+      const newRef = doc(collection(this.db, paths.boqTemplates(this.companyId)));
+      finalTemplateId = newRef.id;
+      batch.set(newRef, {
+        ...templateData,
+        companyId: this.companyId,
+        version: 1,
+        isActive: true,
+        createdBy: userId,
+        updatedBy: userId,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+    } else {
+      const ref = doc(this.db, paths.boqTemplates(this.companyId), templateId);
+      batch.update(ref, {
+        ...templateData,
+        updatedBy: userId,
+        updatedAt: serverTimestamp()
+      });
+
+      // Clear old items for rewrite (Optional approach, or update specifically)
+      const oldItems = await this.getBOQTemplateItems(templateId);
+      oldItems.forEach(oi => {
+        const itemRef = doc(this.db, paths.boqTemplateItems(this.companyId, templateId), oi.id!);
+        batch.delete(itemRef);
+      });
+    }
+
+    // 2. Save Items
+    const itemsColl = collection(this.db, paths.boqTemplateItems(this.companyId, finalTemplateId!));
+    items.forEach((item, idx) => {
+      const itemRef = doc(itemsColl);
+      batch.set(itemRef, {
+        ...item,
+        order: idx,
+        companyId: this.companyId,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+    });
+
+    await batch.commit();
+    return finalTemplateId;
+  }
+
   private async clearDefaultTemplates(type: TemplateType, activityTypeId: string, serviceId: string) {
     const path = this.getCollectionPath(type);
     const q = query(

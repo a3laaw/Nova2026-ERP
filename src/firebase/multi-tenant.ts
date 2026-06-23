@@ -58,6 +58,7 @@ export const paths = {
   quotationTemplates: (companyId: string) => getTenantPath(companyId, 'quotationTemplates'),
   contractTemplates: (companyId: string) => getTenantPath(companyId, 'contractTemplates'),
   boqTemplates: (companyId: string) => getTenantPath(companyId, 'boqTemplates'),
+  boqTemplateItems: (companyId: string, templateId: string) => `${getTenantPath(companyId, 'boqTemplates')}/${templateId}/items`,
 
   // المستندات الحية (Active Documents)
   quotations: (companyId: string) => getTenantPath(companyId, 'quotations'),
