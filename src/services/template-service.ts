@@ -13,7 +13,7 @@ import {
   getDocs,
   writeBatch,
   orderBy,
-  getDoc
+  setDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { TemplateType, BaseTemplate, BOQTemplateItem } from '@/types/templates';
@@ -21,6 +21,10 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { ensureActionPermission } from '@/lib/permissions';
 
+/**
+ * خدمة إدارة المكتبة المركزية للقوالب (Template Service).
+ * تدعم: عروض الأسعار، العقود، والمقايسات (BOQ) مع بنودها الفرعية.
+ */
 export class TemplateService {
   constructor(
     private db: Firestore, 
@@ -28,6 +32,9 @@ export class TemplateService {
     private userPermissions: string[] = []
   ) {}
 
+  /**
+   * جلب المسار الصحيح بناءً على نوع القالب
+   */
   private getCollectionPath(type: TemplateType) {
     switch (type) {
       case 'quotation': return paths.quotationTemplates(this.companyId);
@@ -36,9 +43,12 @@ export class TemplateService {
     }
   }
 
+  // --- 1. عمليات القوالب العامة (Add, Update, Delete) ---
+
   async addTemplate(type: TemplateType, data: Partial<BaseTemplate>, userId: string) {
     ensureActionPermission(this.userPermissions, 'ref:edit');
     const path = this.getCollectionPath(type);
+    
     const docData = {
       ...data,
       companyId: this.companyId,
@@ -52,16 +62,13 @@ export class TemplateService {
     };
 
     try {
+      // إذا تم تعيينه كافتراضي، يجب إلغاء الافتراضي عن البقية في نفس الفئة
       if (docData.isDefault) {
         await this.clearDefaultTemplates(type, docData.activityTypeId, docData.serviceId);
       }
       return await addDoc(collection(this.db, path), docData);
     } catch (err) {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path,
-        operation: 'create',
-        requestResourceData: docData
-      }));
+      this.handleError(path, 'create', docData);
       throw err;
     }
   }
@@ -71,21 +78,19 @@ export class TemplateService {
     const path = this.getCollectionPath(type);
     const docRef = doc(this.db, path, id);
 
+    const updateData = {
+      ...data,
+      updatedBy: userId,
+      updatedAt: serverTimestamp()
+    };
+
     try {
       if (data.isDefault) {
         await this.clearDefaultTemplates(type, data.activityTypeId!, data.serviceId!);
       }
-      await updateDoc(docRef, {
-        ...data,
-        updatedBy: userId,
-        updatedAt: serverTimestamp()
-      });
+      await updateDoc(docRef, updateData);
     } catch (err) {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: docRef.path,
-        operation: 'update',
-        requestResourceData: data
-      }));
+      this.handleError(docRef.path, 'update', data);
       throw err;
     }
   }
@@ -93,73 +98,89 @@ export class TemplateService {
   async deleteTemplate(type: TemplateType, id: string) {
     ensureActionPermission(this.userPermissions, 'ref:delete');
     const path = this.getCollectionPath(type);
-    return deleteDoc(doc(this.db, path, id));
+    const docRef = doc(this.db, path, id);
+    
+    return deleteDoc(docRef).catch(err => {
+      this.handleError(docRef.path, 'delete');
+      throw err;
+    });
   }
 
-  // --- BOQ Template Item Operations ---
+  // --- 2. عمليات بنود المقايسات (BOQ Template Items) - Source of Truth: Subcollection ---
 
-  async getBOQTemplateItems(templateId: string): Promise<BOQTemplateItem[]> {
-    const q = query(
-      collection(this.db, paths.boqTemplateItems(this.companyId, templateId)),
-      orderBy('order')
-    );
+  /**
+   * جلب كافة بنود مقايسة معينة مرتبة حسب الحقل order
+   */
+  async listBOQTemplateItems(templateId: string): Promise<BOQTemplateItem[]> {
+    const path = paths.boqTemplateItems(this.companyId, templateId);
+    const q = query(collection(this.db, path), orderBy('order'));
     const snap = await getDocs(q);
     return snap.docs.map(d => ({ id: d.id, ...d.data() } as BOQTemplateItem));
   }
 
-  async saveBOQTemplateWithItems(templateId: string | null, templateData: any, items: BOQTemplateItem[], userId: string) {
+  /**
+   * إضافة بند جديد لمقايسة (يُحفظ في المجموعة الفرعية)
+   */
+  async addBOQTemplateItem(templateId: string, item: Omit<BOQTemplateItem, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>, userId?: string) {
     ensureActionPermission(this.userPermissions, 'ref:edit');
-    const batch = writeBatch(this.db);
-    let finalTemplateId = templateId;
+    const path = paths.boqTemplateItems(this.companyId, templateId);
+    const itemRef = doc(collection(this.db, path));
+    
+    const docData = {
+      ...item,
+      id: itemRef.id,
+      companyId: this.companyId,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
 
-    // 1. Save Template Doc
-    if (!templateId) {
-      const newRef = doc(collection(this.db, paths.boqTemplates(this.companyId)));
-      finalTemplateId = newRef.id;
-      batch.set(newRef, {
-        ...templateData,
-        companyId: this.companyId,
-        version: 1,
-        isActive: true,
-        createdBy: userId,
-        updatedBy: userId,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
-    } else {
-      const ref = doc(this.db, paths.boqTemplates(this.companyId), templateId);
-      batch.update(ref, {
-        ...templateData,
-        updatedBy: userId,
-        updatedAt: serverTimestamp()
-      });
-
-      // Clear old items for rewrite (Safe approach for template maintenance)
-      const oldItems = await this.getBOQTemplateItems(templateId);
-      oldItems.forEach(oi => {
-        const itemRef = doc(this.db, paths.boqTemplateItems(this.companyId, templateId), oi.id!);
-        batch.delete(itemRef);
-      });
-    }
-
-    // 2. Save Items
-    const itemsColl = collection(this.db, paths.boqTemplateItems(this.companyId, finalTemplateId!));
-    items.forEach((item, idx) => {
-      const itemRef = doc(itemsColl);
-      batch.set(itemRef, {
-        ...item,
-        order: idx,
-        companyId: this.companyId,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
+    return setDoc(itemRef, docData).catch(err => {
+      this.handleError(itemRef.path, 'create', docData);
+      throw err;
     });
-
-    await batch.commit();
-    return finalTemplateId;
   }
 
-  private async clearDefaultTemplates(type: TemplateType, activityTypeId: string, serviceId: string) {
+  /**
+   * تحديث بند مقايسة موجود
+   */
+  async updateBOQTemplateItem(templateId: string, itemId: string, data: Partial<BOQTemplateItem>, userId?: string) {
+    ensureActionPermission(this.userPermissions, 'ref:edit');
+    const path = paths.boqTemplateItems(this.companyId, templateId);
+    const docRef = doc(this.db, path, itemId);
+
+    const updateData = {
+      ...data,
+      updatedAt: serverTimestamp()
+    };
+
+    return updateDoc(docRef, updateData).catch(err => {
+      this.handleError(docRef.path, 'update', data);
+      throw err;
+    });
+  }
+
+  /**
+   * حذف بند من المقايسة
+   */
+  async deleteBOQTemplateItem(templateId: string, itemId: string) {
+    ensureActionPermission(this.userPermissions, 'ref:delete');
+    const path = paths.boqTemplateItems(this.companyId, templateId);
+    const docRef = doc(this.db, path, itemId);
+    
+    return deleteDoc(docRef).catch(err => {
+      this.handleError(docRef.path, 'delete');
+      throw err;
+    });
+  }
+
+  // --- 3. الدوال المساعدة (Private Helpers) ---
+
+  /**
+   * تنظيف حالة "الافتراضي" من القوالب الأخرى لضمان وجود قالب واحد فقط كمرجع لكل خدمة
+   */
+  private async clearDefaultTemplates(type: TemplateType, activityTypeId?: string, serviceId?: string) {
+    if (!activityTypeId || !serviceId) return;
+    
     const path = this.getCollectionPath(type);
     const q = query(
       collection(this.db, path),
@@ -176,5 +197,17 @@ export class TemplateService {
       });
       await batch.commit();
     }
+  }
+
+  /**
+   * معالجة أخطاء الصلاحيات والارتباط مع واجهة المستخدم
+   */
+  private handleError(path: string, operation: any, data?: any) {
+    const permissionError = new FirestorePermissionError({
+      path,
+      operation,
+      requestResourceData: data,
+    });
+    errorEmitter.emit('permission-error', permissionError);
   }
 }
