@@ -143,7 +143,7 @@ export default function DepartmentsPage() {
         
         <Dialog open={isDeptOpen} onOpenChange={setIsDeptOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => setDeptForm({ name: '', nameEn: '', description: '' })} className="btn-nova-primary h-12 px-6 rounded-2xl flex items-center gap-2">
+            <Button onClick={() => setDeptForm({ name: '', nameEn: '', description: '' })} className="h-12 px-6 rounded-2xl bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white font-black shadow-lg shadow-orange-500/20 flex items-center gap-2 hover:scale-105 transition-all">
               <Plus className="h-5 w-5" /> {t('newDept')}
             </Button>
           </DialogTrigger>
@@ -184,7 +184,7 @@ export default function DepartmentsPage() {
                     )}
                   >
                     <span className="text-sm font-black">{isRtl ? dept.name : dept.nameEn}</span>
-                    <div className="flex items-center gap-1 z-20">
+                    <div className="flex items-center gap-1 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDeptForm(dept); setIsDeptOpen(true); }}>
                         <Edit3 className="h-4 w-4" />
                       </Button>
@@ -215,16 +215,16 @@ export default function DepartmentsPage() {
                 <DialogTrigger asChild>
                   <Button 
                     disabled={!selectedDept}
-                    className="rounded-xl h-12 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black shadow-lg shadow-blue-500/20 hover:scale-105 transition-all gap-2"
+                    className="rounded-xl h-12 px-6 bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white font-black shadow-lg shadow-orange-500/20 hover:scale-105 transition-all gap-2"
                     onClick={() => setJobForm({ name: '', nameEn: '', roleId: '' })}
                   >
-                    <Plus className="h-5 w-5" /> {isRtl ? 'إضافة وظيفة جديدة' : 'Add Sub-Job'}
+                    <Plus className="h-5 w-5" /> {isRtl ? 'إضافة وظيفة جديدة' : 'Add Job'}
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="rounded-[2.5rem] p-8 max-w-xl border-0 shadow-3xl" dir={dir}>
+                <DialogContent className="rounded-[2.5rem] p-8 max-w-xl border-0 shadow-3xl bg-white" dir={dir}>
                   <DialogHeader className="text-start">
                     <DialogTitle className="font-black text-2xl flex items-center gap-3">
-                       <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl"><Plus className="h-6 w-6" /></div>
+                       <div className="p-3 bg-primary/10 text-primary rounded-2xl"><Plus className="h-6 w-6" /></div>
                        {jobForm.id ? (isRtl ? 'تعديل بيانات الوظيفة' : 'Edit Job') : (isRtl ? 'إضافة وظيفة للقسم' : 'Add New Job')}
                     </DialogTitle>
                     <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">{isRtl ? `القسم: ${selectedDept?.name}` : `Dept: ${selectedDept?.nameEn}`}</p>
@@ -252,7 +252,7 @@ export default function DepartmentsPage() {
                     </div>
                   </div>
                   <DialogFooter className="mt-6">
-                    <Button onClick={handleSaveJob} disabled={loadingAction === 'save_job'} className="w-full h-16 rounded-2xl font-black text-xl bg-blue-600 text-white shadow-xl shadow-blue-500/20">
+                    <Button onClick={handleSaveJob} disabled={loadingAction === 'save_job'} className="w-full h-16 rounded-2xl font-black text-xl bg-primary text-white shadow-xl shadow-orange-500/20">
                       {loadingAction === 'save_job' ? <Loader2 className="animate-spin" /> : t('save')}
                     </Button>
                   </DialogFooter>
@@ -269,10 +269,10 @@ export default function DepartmentsPage() {
                 jobsLoading ? <div className="py-10 text-center"><Loader2 className="animate-spin mx-auto text-primary/30" /></div> : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {jobs?.map(job => (
-                      <div key={job.id} className="p-5 rounded-2xl border-2 border-slate-50 bg-white hover:border-blue-200 transition-all flex items-center justify-between group shadow-sm">
+                      <div key={job.id} className="p-5 rounded-2xl border-2 border-slate-50 bg-white hover:border-primary/20 transition-all flex items-center justify-between group shadow-sm">
                         <div className="text-start">
                            <span className="text-sm font-black text-slate-800 block">{isRtl ? job.name : job.nameEn}</span>
-                           <span className="text-[9px] font-bold text-blue-600 flex items-center gap-1 mt-1">
+                           <span className="text-[9px] font-bold text-primary flex items-center gap-1 mt-1">
                               <ShieldCheck className="h-2.5 w-2.5" /> {job.roleName || (isRtl ? 'بدون دور محدد' : 'No Role Assigned')}
                            </span>
                         </div>

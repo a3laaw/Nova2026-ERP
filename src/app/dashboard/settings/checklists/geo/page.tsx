@@ -130,7 +130,7 @@ export default function GeoPage() {
         
         <Dialog open={isGovOpen} onOpenChange={setIsGovOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => setGovForm({ name: '', nameEn: '' })} className="btn-nova-primary h-12 px-6 rounded-2xl flex items-center gap-2">
+            <Button onClick={() => setGovForm({ name: '', nameEn: '' })} className="h-12 px-6 rounded-2xl bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white font-black shadow-lg shadow-orange-500/20 flex items-center gap-2 hover:scale-105 transition-all">
               <Plus className="h-5 w-5" /> {t('newGov')}
             </Button>
           </DialogTrigger>
@@ -206,16 +206,16 @@ export default function GeoPage() {
                 <DialogTrigger asChild>
                   <Button 
                     disabled={!selectedGov} 
-                    className="rounded-xl h-12 px-6 bg-slate-900 text-white font-black shadow-lg hover:scale-105 transition-all gap-2"
+                    className="rounded-xl h-12 px-6 bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white font-black shadow-lg hover:scale-105 transition-all gap-2"
                     onClick={() => setAreaForm({ name: '', nameEn: '' })}
                   >
-                    <Plus className="h-5 w-5 text-primary" /> {isRtl ? 'إضافة منطقة جديدة' : 'Add Sub-Area'}
+                    <Plus className="h-5 w-5" /> {isRtl ? 'إضافة منطقة جديدة' : 'Add Area'}
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="rounded-[2.5rem] p-8 border-0 shadow-3xl max-w-xl" dir={dir}>
                   <DialogHeader className="text-start">
                     <DialogTitle className="font-black text-2xl flex items-center gap-3">
-                       <div className="p-3 bg-slate-100 text-slate-900 rounded-2xl"><MapPin className="h-6 w-6" /></div>
+                       <div className="p-3 bg-primary/10 text-primary rounded-2xl"><MapPin className="h-6 w-6" /></div>
                        {isRtl ? 'إضافة منطقة سكنية' : 'Add New Area'}
                     </DialogTitle>
                     <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">{isRtl ? `المحافظة: ${selectedGov?.name}` : `Gov: ${selectedGov?.nameEn}`}</p>
@@ -225,7 +225,7 @@ export default function GeoPage() {
                     <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('name')} (En)</Label><Input value={areaForm.nameEn || ''} onChange={e => setAreaForm({...areaForm, nameEn: e.target.value})} className="h-12 rounded-xl border-2 font-bold text-start" dir="ltr" /></div>
                   </div>
                   <DialogFooter>
-                    <Button onClick={handleSaveArea} disabled={loadingAction === 'save_area'} className="w-full h-16 rounded-2xl font-black text-xl bg-slate-900 text-white shadow-xl">
+                    <Button onClick={handleSaveArea} disabled={loadingAction === 'save_area'} className="w-full h-16 rounded-2xl font-black text-xl bg-primary text-white shadow-xl shadow-orange-500/20">
                       {loadingAction === 'save_area' ? <Loader2 className="animate-spin" /> : t('save')}
                     </Button>
                   </DialogFooter>
