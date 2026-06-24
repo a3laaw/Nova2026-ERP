@@ -130,7 +130,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
   const addNewItem = () => {
     const newItem: BOQTemplateItem = {
       sectionId: 'SEC-' + Date.now(),
-      sectionName: isRtl ? 'قسم جديد' : 'New Section',
+      sectionName: isRtl ? 'قسم فني جديد' : 'New Section',
       mainCategoryId: 'CAT-' + Date.now(),
       mainCategoryName: isRtl ? 'بند رئيسي جديد' : 'New Category',
       componentId: 'COMP-' + Date.now(),
@@ -161,213 +161,195 @@ export function BOQTemplateForm({ template, onClose }: Props) {
   if (templateLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-500 pb-20 text-start" dir={dir}>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-8">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" onClick={onClose} className="h-14 w-14 p-0 rounded-2xl bg-white shadow-sm border-2 hover:bg-slate-50 transition-all">
-            <ArrowRight className={cn("h-6 w-6", !isRtl && "rotate-180")} />
+    <div className="space-y-6 animate-in fade-in duration-500 pb-20 text-start" dir={dir}>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" onClick={onClose} className="h-10 w-10 p-0 rounded-xl bg-white shadow-sm border-2 hover:bg-slate-50 transition-all">
+            <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
           </Button>
-          <div className="text-start space-y-1">
-             <h1 className="text-3xl font-black font-headline text-slate-900 tracking-tight">{isRtl ? 'هندسة المقايسات وجداول الكميات' : 'BOQ Engineering Editor'}</h1>
-             <p className="text-xs font-bold text-muted-foreground italic opacity-70">{isRtl ? 'بناء الهيكل التنفيذي والمالي لبنود الأعمال.' : 'Structuring operational and financial work items.'}</p>
+          <div className="text-start">
+             <h1 className="text-xl font-black font-headline text-slate-900 tracking-tight">{isRtl ? 'هندسة المقايسات (BOQ)' : 'BOQ Engineering'}</h1>
+             <p className="text-[10px] font-bold text-muted-foreground uppercase opacity-70 tracking-widest">Template Hierarchy Manager</p>
           </div>
         </div>
-        <div className="flex gap-4">
-           <Button variant="outline" onClick={onClose} className="rounded-xl h-12 px-8 font-black border-2">{isRtl ? 'إلغاء' : 'Cancel'}</Button>
-           <Button onClick={handleSave} disabled={loading} className="btn-nova-primary h-14 px-12 rounded-2xl text-lg gap-3">
-             {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
+        <div className="flex gap-2">
+           <Button variant="outline" onClick={onClose} className="rounded-lg h-10 px-6 font-bold border-2 text-xs">إلغاء</Button>
+           <Button onClick={handleSave} disabled={loading} className="btn-nova-primary h-10 px-8 rounded-lg text-xs gap-2">
+             {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
              {t('save')}
            </Button>
         </div>
       </div>
 
-      <div className="space-y-10">
-        <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
-           <div className="bg-primary/5 p-8 border-b flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                 <Settings2 className="h-6 w-6 text-primary" />
-                 <h3 className="text-xl font-black font-headline text-slate-800">{isRtl ? 'تعريف وارتباط القالب' : 'Template Identity & Link'}</h3>
+      <div className="space-y-6">
+        <Card className="border-0 shadow-lg rounded-[1.5rem] bg-white overflow-hidden ring-1 ring-black/5">
+           <div className="bg-slate-50 p-4 border-b flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                 <Settings2 className="h-4 w-4 text-primary" />
+                 <h3 className="text-sm font-black font-headline text-slate-800">{isRtl ? 'إعدادات القالب' : 'Template Identity'}</h3>
               </div>
-              <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border-2">
-                 <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'افتراضي' : 'Default'}</Label>
-                 <Switch checked={formData.isDefault || false} onCheckedChange={v => setFormData({...formData, isDefault: v})} />
+              <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-lg border-2">
+                 <Label className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'افتراضي' : 'Default'}</Label>
+                 <Switch checked={formData.isDefault || false} onCheckedChange={v => setFormData({...formData, isDefault: v})} className="scale-75" />
               </div>
            </div>
-           <CardContent className="p-10 space-y-10">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-                 <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('name')}</Label>
-                    <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-14 rounded-2xl border-2 font-black text-lg bg-slate-50/50" />
+           <CardContent className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 <div className="space-y-1.5">
+                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{t('name')}</Label>
+                    <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-10 rounded-xl border-2 font-bold" />
                  </div>
-                 <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'كود المرجعية' : 'Ref Code'}</Label>
-                    <Input value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value.toUpperCase().replace(/\s+/g, '_')})} className="h-14 rounded-2xl border-2 font-mono text-lg text-primary" placeholder="BOQ_RES_01" />
+                 <div className="space-y-1.5">
+                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'كود المرجعية' : 'Ref Code'}</Label>
+                    <Input value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value.toUpperCase().replace(/\s+/g, '_')})} className="h-10 rounded-xl border-2 font-mono text-primary" placeholder="BOQ_01" />
                  </div>
-                 <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'النشاط الفني المخصص' : 'Activity Path'}</Label>
+                 <div className="space-y-1.5">
+                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'النشاط الفني' : 'Activity'}</Label>
                     <Select value={formData.activityTypeId} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: ''})}>
-                       <SelectTrigger className="h-14 rounded-2xl border-2 font-black"><SelectValue placeholder="..." /></SelectTrigger>
-                       <SelectContent className="rounded-2xl">
-                          {activities?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{isRtl ? a.name : a.nameEn}</SelectItem>)}
+                       <SelectTrigger className="h-10 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
+                       <SelectContent>
+                          {activities?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold text-xs">{isRtl ? a.name : a.nameEn}</SelectItem>)}
                        </SelectContent>
                     </Select>
                  </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-10 pt-4 border-t border-slate-50">
-                 <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الخدمة الرئيسية' : 'Main Service'}</Label>
-                    <Select disabled={!formData.activityTypeId} value={formData.serviceId} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: ''})}>
-                       <SelectTrigger className="h-14 rounded-2xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                       <SelectContent className="rounded-2xl">
-                          {services?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold">{isRtl ? s.name : s.nameEn}</SelectItem>)}
-                       </SelectContent>
-                    </Select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 border-t border-slate-50">
+                 <div className="space-y-1.5">
+                    <Label className="text-[9px] font-black uppercase text-slate-400">الخدمة والمسار التشغيلي</Label>
+                    <div className="flex gap-2">
+                       <Select disabled={!formData.activityTypeId} value={formData.serviceId} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: ''})}>
+                          <SelectTrigger className="h-10 rounded-xl border-2 font-bold flex-1"><SelectValue placeholder={isRtl ? "الخدمة..." : "Service..."} /></SelectTrigger>
+                          <SelectContent>
+                             {services?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs">{isRtl ? s.name : s.nameEn}</SelectItem>)}
+                          </SelectContent>
+                       </Select>
+                       <Select disabled={!formData.serviceId} value={formData.subServiceId} onValueChange={v => setFormData({...formData, subServiceId: v})}>
+                          <SelectTrigger className="h-10 rounded-xl border-2 font-bold flex-1"><SelectValue placeholder={isRtl ? "المسار..." : "Pipeline..."} /></SelectTrigger>
+                          <SelectContent>
+                             {subServices?.map(ss => <SelectItem key={ss.id} value={ss.id!} className="font-bold text-xs">{isRtl ? ss.name : ss.nameEn}</SelectItem>)}
+                          </SelectContent>
+                       </Select>
+                    </div>
                  </div>
-                 <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المسار التشغيلي (Pipeline)' : 'Operational Pipeline'}</Label>
-                    <Select disabled={!formData.serviceId} value={formData.subServiceId} onValueChange={v => setFormData({...formData, subServiceId: v})}>
-                       <SelectTrigger className="h-14 rounded-2xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                       <SelectContent className="rounded-2xl">
-                          {subServices?.map(ss => <SelectItem key={ss.id} value={ss.id!} className="font-bold">{isRtl ? ss.name : ss.nameEn}</SelectItem>)}
-                       </SelectContent>
-                    </Select>
+                 <div className="space-y-1.5">
+                    <Label className="text-[9px] font-black uppercase text-emerald-600 tracking-widest">{isRtl ? 'إجمالي الميزانية التقديرية' : 'Total Estimated Budget'}</Label>
+                    <div className="relative">
+                       <DollarSign className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500" />
+                       <Input 
+                          type="number" 
+                          value={formData.baseAmount || 0} 
+                          onChange={e => setFormData({...formData, baseAmount: Number(e.target.value)})} 
+                          className="h-10 rounded-xl border-2 ps-9 font-black text-lg text-emerald-700 bg-emerald-50/10 text-center"
+                       />
+                    </div>
                  </div>
               </div>
            </CardContent>
         </Card>
 
-        <div className="p-12 bg-emerald-50/50 rounded-[3.5rem] border-4 border-emerald-100/50 text-center relative overflow-hidden group shadow-2xl">
-           <div className="absolute top-0 right-0 p-12 opacity-5 group-hover:scale-110 transition-transform duration-700"><DollarSign className="h-48 w-48 text-emerald-600" /></div>
-           <div className="max-w-xl mx-auto space-y-6 relative z-10">
-              <Label className="text-xs font-black uppercase text-emerald-600 tracking-[0.3em]">
-                 {isRtl ? 'إجمالي قيمة المقياسة التقديرية (KWD)' : 'Total Estimated BOQ Budget (KWD)'}
-              </Label>
-              <div className="relative">
-                 <Input 
-                    type="number" 
-                    value={formData.baseAmount || 0} 
-                    onChange={e => setFormData({...formData, baseAmount: Number(e.target.value)})} 
-                    className="h-28 rounded-[3rem] border-4 border-emerald-200 font-black text-6xl text-emerald-700 bg-white shadow-2xl text-center focus:ring-emerald-200 transition-all"
-                 />
-                 <div className="absolute -bottom-4 left-1/2 -translate-x-1/2"><Badge className="bg-emerald-600 text-white font-black px-6 py-1.5 shadow-xl">SI CONTROL</Badge></div>
-              </div>
-           </div>
-        </div>
-
-        <div className="space-y-12">
-           <div className="flex justify-between items-center px-8">
+        {/* محرك الشجرة الهندسية - تصميم Odoo المبسط */}
+        <div className="space-y-8">
+           <div className="flex justify-between items-center px-4">
               <div className="text-start">
-                 <h3 className="text-2xl font-black font-headline flex items-center gap-3 text-slate-800"><Calculator className="h-8 w-8 text-primary" /> {isRtl ? 'محرك هيكلة بنود الأعمال' : 'Work Items Engineering'}</h3>
-                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Hierarchical Tree Structure / Flat Storage</p>
+                 <h3 className="text-lg font-black font-headline flex items-center gap-2 text-slate-800"><Calculator className="h-5 w-5 text-primary" /> {isRtl ? 'هيكلة بنود العمل' : 'Work Items Engineering'}</h3>
               </div>
-              <Button onClick={addNewItem} className="h-16 px-10 rounded-2xl bg-[#1e1b4b] text-white font-black text-lg gap-3 hover:bg-slate-800 shadow-2xl transition-all"><Plus className="h-6 w-6 text-primary" /> {isRtl ? 'إضافة بند تنفيذي' : 'Add Item'}</Button>
+              <Button onClick={addNewItem} size="sm" className="rounded-xl bg-[#1e1b4b] text-white font-black gap-2 shadow-lg"><Plus className="h-4 w-4" /> {isRtl ? 'بند جديد' : 'New Item'}</Button>
            </div>
 
-           <div className="space-y-16">
+           <div className="space-y-10">
               {boqTree.map((section) => (
-                <div key={section.id} className="space-y-8 animate-in slide-in-from-bottom-4 duration-300">
-                   <div className="flex items-center gap-6 bg-slate-900 text-white p-6 rounded-[2.5rem] shadow-2xl ring-4 ring-primary/5">
-                      <div className="h-12 w-12 rounded-2xl bg-primary/20 flex items-center justify-center text-primary border border-primary/20">
-                         <LayoutGrid className="h-6 w-6" />
+                <div key={section.id} className="space-y-4 animate-in slide-in-from-bottom-2">
+                   {/* رأس القسم الفني - فاتح وأنيق */}
+                   <div className="flex items-center gap-4 bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl shadow-sm">
+                      <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
+                         <LayoutGrid className="h-5 w-5" />
                       </div>
                       <div className="flex-1">
-                         <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">{isRtl ? 'القسم الفني' : 'TECHNICAL SECTION'}</span>
+                         <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'القسم الفني' : 'TECHNICAL SECTION'}</span>
                          <Input 
                             value={section.name} 
                             onChange={e => {
                                const newItems = items.map(it => it.sectionId === section.id ? { ...it, sectionName: e.target.value } : it);
                                setItems(newItems);
                             }}
-                            className="bg-transparent border-0 text-2xl font-black p-0 h-auto focus-visible:ring-0 text-white placeholder:text-white/20"
-                            placeholder="..."
+                            className="bg-transparent border-0 text-lg font-black p-0 h-auto focus-visible:ring-0 text-slate-800"
                          />
                       </div>
                    </div>
 
-                   <div className="ms-10 space-y-12 border-s-4 border-slate-100 ps-10">
+                   <div className="ms-6 space-y-6 border-s-2 border-slate-100 ps-6">
                       {section.children.map((category) => (
-                        <div key={category.id} className="space-y-6">
-                           <div className="flex items-center gap-4 bg-blue-50/50 p-4 rounded-3xl border-2 border-white shadow-sm group">
-                              <div className="h-10 w-10 rounded-xl bg-blue-500 text-white flex items-center justify-center shadow-lg"><Boxes className="h-5 w-5" /></div>
+                        <div key={category.id} className="space-y-4">
+                           <div className="flex items-center gap-3 bg-white p-3 rounded-xl border-2 border-slate-50 shadow-sm group">
+                              <div className="h-8 w-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100"><Boxes className="h-4 w-4" /></div>
                               <div className="flex-1">
-                                 <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">{isRtl ? 'البند الرئيسي' : 'MAIN CATEGORY'}</span>
+                                 <span className="text-[8px] font-black text-blue-400 uppercase">{isRtl ? 'البند الرئيسي' : 'MAIN CATEGORY'}</span>
                                  <Input 
                                     value={category.name} 
                                     onChange={e => {
                                        const newItems = items.map(it => it.mainCategoryId === category.id ? { ...it, mainCategoryName: e.target.value } : it);
                                        setItems(newItems);
                                     }}
-                                    className="bg-transparent border-0 font-black text-xl p-0 h-auto focus-visible:ring-0 text-blue-900"
+                                    className="bg-transparent border-0 font-black text-sm p-0 h-auto focus-visible:ring-0 text-blue-900"
                                  />
                               </div>
                            </div>
 
-                           <div className="ms-12 space-y-8 border-s-2 border-blue-50 ps-8">
+                           <div className="ms-10 space-y-4 border-s border-blue-50 ps-6">
                               {category.children.map((comp) => (
-                                <div key={comp.id} className="space-y-4">
-                                   <div className="flex items-center gap-3 text-slate-400 group">
-                                      <div className="h-8 w-8 rounded-lg bg-white border-2 flex items-center justify-center shadow-sm"><Hammer className="h-4 w-4" /></div>
-                                      <div className="flex-1 flex items-center gap-3">
-                                         <span className="text-[8px] font-black uppercase tracking-widest">{isRtl ? 'العنصر الفرعي' : 'COMPONENT'}</span>
+                                <div key={comp.id} className="space-y-3">
+                                   <div className="flex items-center gap-2 text-slate-400">
+                                      <Hammer className="h-3 w-3" />
+                                      <div className="flex-1 flex items-center gap-2">
+                                         <span className="text-[7px] font-black uppercase tracking-widest">{isRtl ? 'العنصر' : 'COMPONENT'}</span>
                                          <Input 
                                             value={comp.name} 
                                             onChange={e => {
                                                const newItems = items.map(it => it.componentId === comp.id ? { ...it, componentName: e.target.value } : it);
                                                setItems(newItems);
                                             }}
-                                            className="bg-transparent border-0 font-bold text-base p-0 h-auto focus-visible:ring-0 text-slate-700 w-fit min-w-[200px]"
+                                            className="bg-transparent border-0 font-bold text-xs p-0 h-auto focus-visible:ring-0 text-slate-600"
                                          />
                                       </div>
                                    </div>
 
-                                   <div className="grid grid-cols-1 gap-4">
+                                   <div className="grid grid-cols-1 gap-2">
                                       {comp.children.map((item: any) => (
-                                        <Card key={`${item.id}-${item.originalIndex}`} className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden group hover:ring-4 hover:ring-primary/5 transition-all">
-                                           <CardContent className="p-8">
-                                              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                                                 <div className="lg:col-span-6 space-y-3">
-                                                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'توصيف البند التنفيذي الدقيق' : 'DETAILED EXECUTION DESCRIPTION'}</Label>
-                                                    <Textarea 
-                                                       value={item.description} 
-                                                       onChange={e => updateItem(item.originalIndex, 'description', e.target.value)}
-                                                       className="min-h-[100px] rounded-2xl border-2 bg-slate-50/50 p-5 font-bold text-sm focus:bg-white transition-all shadow-inner"
-                                                       placeholder="..."
-                                                    />
-                                                 </div>
-                                                 <div className="lg:col-span-5 grid grid-cols-2 md:grid-cols-4 gap-4">
-                                                    <div className="space-y-1.5">
-                                                       <Label className="text-[9px] font-black text-slate-400 uppercase">Unit</Label>
-                                                       <Input value={item.unit} onChange={e => updateItem(item.originalIndex, 'unit', e.target.value)} className="h-12 border-2 rounded-xl text-center font-black" />
-                                                    </div>
-                                                    <div className="space-y-1.5">
-                                                       <Label className="text-[9px] font-black text-slate-400 uppercase">Qty</Label>
-                                                       <Input type="number" value={item.plannedQuantity} onChange={e => updateItem(item.originalIndex, 'plannedQuantity', Number(e.target.value))} className="h-12 border-2 rounded-xl text-center font-black" />
-                                                    </div>
-                                                    <div className="space-y-1.5">
-                                                       <Label className="text-[9px] font-black text-slate-400 uppercase">Rate (KWD)</Label>
-                                                       <Input type="number" value={item.estimatedRate} onChange={e => updateItem(item.originalIndex, 'estimatedRate', Number(e.target.value))} className="h-12 border-2 rounded-xl text-center font-black text-emerald-600 bg-emerald-50/20" />
-                                                    </div>
-                                                    <div className="space-y-1.5">
-                                                       <Label className="text-[9px] font-black text-slate-400 uppercase">Subtotal</Label>
-                                                       <div className="h-12 flex items-center justify-center font-mono font-black text-emerald-700 bg-emerald-100 rounded-xl shadow-inner">
-                                                          {((item.plannedQuantity || 0) * (item.estimatedRate || 0)).toLocaleString()}
-                                                       </div>
-                                                    </div>
-                                                 </div>
-                                                 <div className="lg:col-span-1 flex flex-col items-center justify-center pt-6">
-                                                    <Button 
-                                                      variant="ghost" 
-                                                      size="icon" 
-                                                      onClick={() => removeItem(item.originalIndex)} 
-                                                      className="h-12 w-12 rounded-2xl text-rose-200 hover:text-rose-600 hover:bg-rose-50 transition-all"
-                                                    >
-                                                       <Trash2 className="h-6 w-6" />
-                                                    </Button>
-                                                 </div>
+                                        <div key={`${item.id}-${item.originalIndex}`} className="p-4 rounded-xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col lg:flex-row gap-4 items-start">
+                                           <div className="flex-1 w-full space-y-1.5">
+                                              <Label className="text-[8px] font-black text-slate-400 uppercase">{isRtl ? 'وصف البند التنفيذي' : 'DESCRIPTION'}</Label>
+                                              <Textarea 
+                                                 value={item.description} 
+                                                 onChange={e => updateItem(item.originalIndex, 'description', e.target.value)}
+                                                 className="min-h-[60px] rounded-lg border-2 bg-slate-50/30 p-3 text-xs font-bold focus:bg-white transition-all shadow-inner"
+                                              />
+                                           </div>
+                                           <div className="grid grid-cols-4 gap-2 w-full lg:w-[400px]">
+                                              <div className="space-y-1">
+                                                 <Label className="text-[8px] font-black text-slate-400 uppercase">Unit</Label>
+                                                 <Input value={item.unit} onChange={e => updateItem(item.originalIndex, 'unit', e.target.value)} className="h-8 border-2 rounded-lg text-center font-black text-[10px]" />
                                               </div>
-                                           </CardContent>
-                                        </Card>
+                                              <div className="space-y-1">
+                                                 <Label className="text-[8px] font-black text-slate-400 uppercase">Qty</Label>
+                                                 <Input type="number" value={item.plannedQuantity} onChange={e => updateItem(item.originalIndex, 'plannedQuantity', Number(e.target.value))} className="h-8 border-2 rounded-lg text-center font-black text-[10px]" />
+                                              </div>
+                                              <div className="space-y-1">
+                                                 <Label className="text-[8px] font-black text-slate-400 uppercase">Rate</Label>
+                                                 <Input type="number" value={item.estimatedRate} onChange={e => updateItem(item.originalIndex, 'estimatedRate', Number(e.target.value))} className="h-8 border-2 rounded-lg text-center font-black text-[10px] text-emerald-600 bg-emerald-50/10" />
+                                              </div>
+                                              <div className="flex items-end justify-center pb-1">
+                                                 <Button 
+                                                   variant="ghost" 
+                                                   size="icon" 
+                                                   onClick={() => removeItem(item.originalIndex)} 
+                                                   className="h-8 w-8 rounded-lg text-rose-300 hover:text-rose-600 hover:bg-rose-50"
+                                                 >
+                                                    <Trash2 className="h-4 w-4" />
+                                                 </Button>
+                                              </div>
+                                           </div>
+                                        </div>
                                       ))}
                                    </div>
                                 </div>
@@ -381,24 +363,25 @@ export function BOQTemplateForm({ template, onClose }: Props) {
            </div>
         </div>
 
+        {/* تذييل التحقق - أنيق وغير داكن */}
         <div className={cn(
-          "p-12 rounded-[4rem] border-4 border-dashed flex flex-col md:flex-row items-center justify-between shadow-3xl transition-all duration-500",
-          isMathValid ? "bg-emerald-100/50 border-emerald-300 text-emerald-900" : "bg-rose-100/50 border-rose-300 text-rose-900"
+          "p-8 rounded-[2rem] border-2 border-dashed flex flex-col md:flex-row items-center justify-between shadow-xl transition-all duration-500",
+          isMathValid ? "bg-emerald-50 border-emerald-200" : "bg-rose-50 border-rose-200"
         )}>
-           <div className="text-center bg-white p-10 rounded-[3rem] shadow-2xl min-w-[300px] border-4 border-white ring-8 ring-black/[0.02]">
-             <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">{isRtl ? 'إجمالي البنود المجمعة' : 'Aggregated Total'}</p>
-             <span className="text-6xl font-black font-headline">{totalItemsCost.toLocaleString()} <span className="text-sm">KWD</span></span>
+           <div className="text-center bg-white p-6 rounded-[1.5rem] shadow-md min-w-[200px] border-2 border-white">
+             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إجمالي البنود المجمعة' : 'Aggregated Total'}</p>
+             <span className="text-3xl font-black">{totalItemsCost.toLocaleString()} <span className="text-xs">KWD</span></span>
            </div>
            
-           <div className="text-center md:text-end space-y-3 mt-10 md:mt-0">
-             <h4 className="font-black text-3xl font-headline flex items-center gap-4 justify-center md:justify-end">
-                {isMathValid ? <CheckCircle2 className="h-10 w-10 text-emerald-600 animate-in zoom-in" /> : <AlertTriangle className="h-10 w-10 text-rose-600 animate-pulse" />}
-                {isRtl ? 'رادار الموازنة المالية' : 'Financial Balance Radar'}
+           <div className="text-center md:text-end space-y-1 mt-6 md:mt-0">
+             <h4 className="font-black text-lg font-headline flex items-center justify-center md:justify-end gap-2">
+                {isMathValid ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : <AlertTriangle className="h-5 w-5 text-rose-600 animate-pulse" />}
+                {isRtl ? 'حالة التوازن المالي' : 'Financial Status'}
              </h4>
-             <p className="text-base font-bold opacity-80 leading-relaxed max-w-lg">
+             <p className="text-xs font-bold opacity-70 leading-relaxed max-w-sm">
                 {isMathValid 
-                  ? (isRtl ? 'المقياسة في حالة توازن مطلق. مجموع البنود يطابق الميزانية المحددة.' : 'BOQ is perfectly balanced. Items sum matches defined budget.')
-                  : (isRtl ? `يوجد تباين قدره ${((formData.baseAmount || 0) - totalItemsCost).toFixed(3)} KWD بين الميزانية ومجموع البنود.` : `Variance detected: ${((formData.baseAmount || 0) - totalItemsCost).toFixed(3)} KWD`)}
+                  ? (isRtl ? 'المقياسة في حالة توازن مطلق. مجموع البنود يطابق الميزانية.' : 'Perfectly balanced. Items match budget.')
+                  : (isRtl ? `تنبيه: يوجد تباين قدره ${((formData.baseAmount || 0) - totalItemsCost).toFixed(3)} KWD.` : `Variance detected: ${((formData.baseAmount || 0) - totalItemsCost).toFixed(3)} KWD`)}
              </p>
            </div>
         </div>
