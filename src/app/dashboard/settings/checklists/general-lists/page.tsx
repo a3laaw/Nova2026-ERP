@@ -75,7 +75,8 @@ export default function GeneralListsPage() {
     return query(collection(db, path), orderBy('order'));
   }, [db, companyId, activeTab]);
 
-  const { data: items, loading } = useCollection<BaseReferenceList>(listQuery);
+  const { data: rawItems, loading } = useCollection<BaseReferenceList>(listQuery);
+  const items = rawItems || [];
 
   const service = useMemo(() => 
     db && companyId ? new ReferenceListService(db, companyId) : null, 
@@ -184,7 +185,7 @@ export default function GeneralListsPage() {
       
       {/* Navigation Sidebar */}
       <div className="lg:col-span-3 space-y-4 text-start">
-         <div className="bg-white rounded-[2rem] shadow-lg border-2 border-slate-50 p-2 space-y-1">
+         <div className="bg-white rounded-[2rem] shadow-lg border-2 border-slate-50 p-3 space-y-1">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-4 py-2">{isRtl ? 'القوائم الأساسية' : 'Main Lists'}</p>
             {staticMenuItems.map((item) => (
               <div 
@@ -223,24 +224,32 @@ export default function GeneralListsPage() {
                       activeTab === list.code ? "bg-primary/5 border-2 border-primary/20" : "hover:bg-slate-50"
                     )}
                   >
-                    <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center bg-slate-100 text-slate-400", activeTab === list.code && "bg-primary text-white")}>
+                    <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center bg-slate-100 text-slate-400", activeTab === list.code && "bg-primary text-white shadow-lg")}>
                       <Star className="h-5 w-5" />
                     </div>
-                    <span className="text-sm font-black">{isRtl ? list.name : list.nameEn}</span>
+                    <span className={cn("text-sm font-black transition-colors", activeTab === list.code ? "text-primary" : "text-slate-500")}>
+                      {isRtl ? list.name : list.nameEn}
+                    </span>
                   </div>
                 ))}
               </>
             )}
 
-            {/* Add New List Button */}
+            {/* Add New List Button - IMPROVED VISIBILITY & NOVA IDENTITY */}
             {canCreate && (
               <Dialog open={isAddingList} onOpenChange={setIsAddingList}>
                 <DialogTrigger asChild>
-                  <Button variant="ghost" className="w-full mt-4 h-14 rounded-2xl border-2 border-dashed border-slate-200 text-slate-400 hover:border-primary/40 hover:text-primary hover:bg-primary/5 font-black text-xs gap-2">
-                    <ListPlus className="h-4 w-4" /> {isRtl ? 'إنشاء قائمة أساسية جديدة' : 'Add New Main List'}
+                  <Button 
+                    variant="outline" 
+                    className="w-full mt-6 h-16 rounded-2xl border-2 border-dashed border-primary/40 text-primary hover:bg-primary/5 font-black text-xs gap-3 transition-all shadow-sm group"
+                  >
+                    <div className="p-2 bg-primary/10 rounded-lg group-hover:bg-primary group-hover:text-white transition-colors">
+                      <ListPlus className="h-5 w-5" />
+                    </div>
+                    {isRtl ? 'إنشاء قائمة أساسية جديدة' : 'Add New Main List'}
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="rounded-[2.5rem] p-8 max-w-lg border-0 shadow-3xl bg-white" dir={dir}>
+                <DialogContent className="rounded-[2.5rem] p-8 max-w-xl border-0 shadow-3xl bg-white" dir={dir}>
                   <DialogHeader className="text-start">
                     <DialogTitle className="font-black text-2xl flex items-center gap-3">
                        <div className="p-3 bg-primary/10 text-primary rounded-2xl"><ListPlus className="h-6 w-6" /></div>
@@ -262,7 +271,7 @@ export default function GeneralListsPage() {
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button onClick={handleCreateNewList} disabled={loadingAction === 'create_list'} className="w-full h-16 rounded-2xl font-black text-xl bg-primary">
+                    <Button onClick={handleCreateNewList} disabled={loadingAction === 'create_list'} className="w-full h-16 rounded-2xl font-black text-xl bg-primary text-white shadow-xl shadow-primary/20 border-b-4 border-orange-700">
                       {loadingAction === 'create_list' ? <Loader2 className="animate-spin" /> : (isRtl ? 'إنشاء القائمة الآن' : 'Create List Now')}
                     </Button>
                   </DialogFooter>
