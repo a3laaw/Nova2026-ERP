@@ -15,7 +15,7 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
-import { QuotationTemplate, ContractTemplate, BOQTemplate, BOQTemplateItem } from '@/types/templates';
+import { BOQTemplate, BOQTemplateItem, QuotationTemplate, ContractTemplate } from '@/types/templates';
 import { Quotation, Contract, BOQ, BOQItem } from '@/types/documents';
 import { Transaction, StageInstance } from '@/types/transaction';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -115,61 +115,6 @@ export class DocumentService {
   }
 
   /**
-   * استنساخ عقد من قالب مع ربط الدفعات بمراحل المعاملة
-   */
-  async instantiateContractFromTemplate(templateId: string, transactionId: string, userId: string): Promise<string> {
-    const templateRef = doc(this.db, paths.contractTemplates(this.companyId), templateId);
-    const transRef = doc(this.db, paths.transactions(this.companyId), transactionId);
-
-    const [templateSnap, transSnap] = await Promise.all([getDoc(templateRef), getDoc(transRef)]);
-
-    if (!templateSnap.exists() || !transSnap.exists()) {
-      throw new Error('MISSING_CONTEXT');
-    }
-
-    const template = templateSnap.data() as ContractTemplate;
-    const transaction = transSnap.data() as Transaction;
-
-    const stagesSnap = await getDocs(collection(this.db, paths.transactionStages(this.companyId, transactionId)));
-    const stageInstances = stagesSnap.docs.map(d => ({ id: d.id, ...d.data() } as StageInstance));
-
-    const docRef = doc(collection(this.db, paths.contracts(this.companyId)));
-    
-    const linkedMilestones = (template.defaultMilestones || []).map(m => {
-      const instance = stageInstances.find(si => si.technicalStageId === m.technicalStageId);
-      return {
-        ...m,
-        linkedStageInstanceId: instance?.id || null
-      };
-    });
-
-    const contractData: Contract = {
-      id: docRef.id,
-      transactionId,
-      clientId: transaction.clientId,
-      clientName: transaction.clientName,
-      templateId,
-      name: `${template.name} - ${transaction.transactionNumber}`,
-      introText: template.introText,
-      legalText: template.legalText,
-      closingText: template.closingText,
-      clauses: JSON.parse(JSON.stringify(template.clauses || [])),
-      milestones: linkedMilestones as any,
-      status: 'draft',
-      totalAmount: 0,
-      version: 1,
-      companyId: this.companyId,
-      createdBy: userId,
-      updatedBy: userId,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    };
-
-    await setDoc(docRef, contractData);
-    return docRef.id;
-  }
-
-  /**
    * استنساخ جدول كميات (BOQ) فعلي من قالب وربطه بالمعاملة أو المشروع
    * محرك الاستنساخ السيادي - NovaFlow Core
    */
@@ -250,6 +195,8 @@ export class DocumentService {
       const runtimeItem: BOQItem = {
         id: itemRef.id,
         boqId,
+        transactionId: payload.transactionId || '', // الربط المباشر بالمعاملة
+        projectId: payload.projectId || '',         // الربط المباشر بالمشروع
         workItemMasterId: item.workItemMasterId || '',
         sectionId: item.sectionId,
         sectionName: item.sectionName,
@@ -267,7 +214,7 @@ export class DocumentService {
         estimatedRate: item.estimatedRate || 0,
         estimatedCostRate: item.estimatedCostRate || 0,
         notes: item.notes || '',
-        technicalStageId: item.technicalStageId || '',
+        technicalStageId: item.technicalStageId || '', // الربط بالمرحلة الفنية
         billingTriggerGroup: item.billingTriggerGroup || '',
         materialCodes: item.materialCodes || [],
         order: item.order !== undefined ? item.order : 0,

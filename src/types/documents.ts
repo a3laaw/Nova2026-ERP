@@ -42,10 +42,13 @@ export interface Contract extends BaseDocument {
 
 /**
  * بند المقايسة الفعلي (Runtime BOQ Item)
+ * تم تحديثه ليشمل transactionId للربط المباشر بالمراحل
  */
 export interface BOQItem extends BaseReference {
   id: string;
   boqId: string;
+  transactionId?: string; // رابط المعاملة المباشر
+  projectId?: string;     // رابط المشروع
   workItemMasterId?: string;
   sectionId: string;
   sectionName: string;
@@ -64,7 +67,7 @@ export interface BOQItem extends BaseReference {
   estimatedCostRate?: number;
   actualRate?: number;
   notes?: string;
-  technicalStageId?: string;
+  technicalStageId?: string; // الرابط الجوهري بالمرحلة الفنية
   billingTriggerGroup?: string;
   materialCodes: string[];
   order: number;
