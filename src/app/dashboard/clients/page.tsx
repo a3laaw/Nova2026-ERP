@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, UserPlus, Search, Loader2, ArrowRight, ShieldCheck } from "lucide-react";
+import { Users, UserPlus, Search, Loader2, ArrowRight } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
@@ -37,31 +37,31 @@ export default function ClientsListPage() {
   );
 
   return (
-    <div className="space-y-6" dir={dir}>
+    <div className="space-y-6 animate-in fade-in duration-500" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start">
-           <h1 className="text-2xl font-black font-headline flex items-center gap-3">
-             <Users className="h-7 w-7 text-primary" />
+           <h1 className="text-3xl font-black font-headline flex items-center gap-3 text-slate-900">
+             <Users className="h-8 w-8 text-primary" />
              {isRtl ? 'قاعدة العملاء' : 'Clients Database'}
            </h1>
         </div>
-        <Button onClick={() => router.push('/dashboard/clients/new')} className="bg-primary text-white font-black rounded-xl h-10 px-5 shadow-lg shadow-primary/10 gap-2">
+        <Button onClick={() => router.push('/dashboard/clients/new')} variant="default" className="h-11 px-6 shadow-lg shadow-primary/20 flex items-center gap-2">
           <UserPlus className="h-4 w-4" /> {isRtl ? 'تسجيل عميل' : 'New Client'}
         </Button>
       </div>
 
-      <Card className="border-0 shadow-xl rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/[0.02]">
+      <Card className="border-0 shadow-xl rounded-xl bg-white overflow-hidden ring-1 ring-black/5">
         <CardHeader className="bg-slate-50/50 border-b p-4">
            <div className="relative w-full max-w-sm">
-              <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input placeholder={isRtl ? 'بحث...' : 'Search...'} className="ps-10 rounded-xl h-9 bg-white border-slate-200 text-xs" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+              <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+              <Input placeholder={isRtl ? 'بحث...' : 'Search...'} className="ps-12 h-11 bg-white border-slate-200" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
            </div>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="p-0 overflow-x-auto">
           <Table>
-            <TableHeader>
+            <TableHeader className="bg-muted/30">
               <TableRow>
-                <TableHead className="py-3 ps-8 text-start">{isRtl ? 'الملف / العميل' : 'File / Client'}</TableHead>
+                <TableHead className="py-6 ps-8 text-start">{isRtl ? 'العميل' : 'Client'}</TableHead>
                 <TableHead className="text-start">{isRtl ? 'الهاتف' : 'Mobile'}</TableHead>
                 <TableHead className="text-start">{isRtl ? 'الحالة' : 'Status'}</TableHead>
                 <TableHead className="pe-8"></TableHead>
@@ -69,26 +69,25 @@ export default function ClientsListPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={4} className="text-center py-20"><Loader2 className="animate-spin h-6 w-6 mx-auto text-primary/20" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={4} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
               ) : filtered.map((client) => (
-                <TableRow key={client.id} className="hover:bg-primary/[0.01] cursor-pointer group" onClick={() => router.push(`/dashboard/clients/${client.id}`)}>
-                  <TableCell className="ps-8 py-2">
-                     <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-lg bg-slate-50 flex items-center justify-center font-black text-[9px] text-slate-400 group-hover:text-primary transition-colors">
-                           {client.fileNumber.split('-')[1]?.split('/')[0] || '??'}
-                        </div>
-                        <div className="text-start">
-                           <p className="font-black text-sm text-slate-800 leading-none">{client.nameAr}</p>
-                           <p className="text-[9px] text-slate-400 font-bold mt-1 uppercase">{client.fileNumber}</p>
-                        </div>
+                <TableRow key={client.id} className="hover:bg-primary/5 transition-colors group cursor-pointer" onClick={() => router.push(`/dashboard/clients/${client.id}`)}>
+                  <TableCell className="ps-8 py-6">
+                     <div className="flex flex-col text-start">
+                        <span className="font-black text-slate-800 text-sm leading-none">{client.nameAr}</span>
+                        <span className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-widest">{client.fileNumber}</span>
                      </div>
                   </TableCell>
-                  <TableCell className="py-2 text-xs font-bold text-slate-600">{client.mobile}</TableCell>
-                  <TableCell className="py-2">
-                     <Badge className={cn("text-[8px] font-black px-2 py-0.5", client.status === 'contracted' ? 'bg-emerald-500' : 'bg-blue-500')}>{client.status}</Badge>
+                  <TableCell className="py-6 text-xs font-bold text-slate-600">{client.mobile}</TableCell>
+                  <TableCell className="py-6">
+                     <Badge className={cn("text-[9px] font-black px-3 py-1 rounded-lg border-0 shadow-sm", client.status === 'contracted' ? 'bg-emerald-500 text-white' : 'bg-blue-500 text-white')}>
+                        {client.status.toUpperCase()}
+                     </Badge>
                   </TableCell>
                   <TableCell className="pe-8 text-end">
-                     <Button variant="ghost" size="icon" className="rounded-lg group-hover:bg-primary group-hover:text-white h-7 w-7"><ArrowRight className={cn("h-4 w-4", isRtl && "rotate-180")} /></Button>
+                     <Button variant="ghost" size="icon" className="rounded-xl group-hover:bg-primary group-hover:text-white transition-all h-9 w-9">
+                        <ArrowRight className={cn("h-5 w-5", isRtl && "rotate-180")} />
+                     </Button>
                   </TableCell>
                 </TableRow>
               ))}

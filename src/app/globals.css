@@ -7,17 +7,15 @@
 @layer base {
   :root {
     /* Standardized Enterprise SaaS Palette */
-    /* Background: Soft gray-white for reduced eye strain */
     --background: 210 20% 98%; /* #F8F9FA */
-    --foreground: 222 47% 11%; /* Deep navy text */
+    --foreground: 222 47% 11%;
     
-    --card: 0 0% 100%; /* Pure white cards */
+    --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
     
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
     
-    /* Firebase Strategic Accents */
     --primary: 36 100% 50%; /* #FFA000 - Firebase Orange */
     --primary-foreground: 0 0% 100%;
     
@@ -25,7 +23,7 @@
     --secondary-foreground: 222 47% 11%;
     
     --muted: 210 40% 96.1%;
-    --muted-foreground: 215 16% 35%; /* Darker gray for high contrast accessibility */
+    --muted-foreground: 215 16% 35%;
     
     --accent: 45 100% 58%; /* #FFCA28 - Firebase Yellow */
     --accent-foreground: 222 47% 11%;
@@ -37,7 +35,7 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 36 100% 50%;
     
-    /* Strict Uniform Border Radius */
+    /* Strict Uniform Border Radius - System Standard */
     --radius: 12px;
   }
 }
@@ -54,17 +52,14 @@
   }
 }
 
-/* Modern Blur Shadow for Floating Cards */
 .card-shadow {
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.04), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
 }
 
-/* Sidebar Active State Preserved */
 .sidebar-item-active {
   @apply bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-lg shadow-orange-500/30 scale-[1.02] font-black;
 }
 
-/* Remove all scrollbars for clean aesthetic while keeping functionality */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }

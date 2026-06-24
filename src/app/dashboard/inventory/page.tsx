@@ -42,7 +42,6 @@ export default function InventoryDashboard() {
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
   const [isAssignAssetOpen, setIsAssignAssetOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [returningId, setReturningId] = useState<string | null>(null);
 
   const [itemForm, setItemForm] = useState({ name: '', sku: '', quantity: 0, unit: 'pcs', warehouseId: 'default' });
   const [assignForm, setAssignForm] = useState({ employeeId: '', itemId: '', quantity: 1 });
@@ -102,7 +101,7 @@ export default function InventoryDashboard() {
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start">
            <h1 className="text-3xl font-black tracking-tight flex items-center gap-3 text-slate-900">
-             <Package className="h-8 w-8 text-[#FFA000]" />
+             <Package className="h-8 w-8 text-primary" />
              {isRtl ? 'المخازن والعهد' : 'Inventory & Assets'}
            </h1>
            <p className="text-slate-600 text-sm font-bold opacity-80">{isRtl ? 'تتبع المخزون والعهد الميدانية' : 'Track stock and field assignments'}</p>
@@ -112,34 +111,36 @@ export default function InventoryDashboard() {
            {canTransfer && (
              <Dialog open={isAssignAssetOpen} onOpenChange={setIsAssignAssetOpen}>
                 <DialogTrigger asChild>
-                   <Button className="bg-[#1e1b4b] text-white font-bold h-11 px-6 shadow-sm">
-                      <Truck className="h-4 w-4 me-2" /> {isRtl ? 'صرف عهدة' : 'Assign Asset'}
+                   <Button variant="default" className="h-11 px-8 shadow-xl shadow-primary/20 flex items-center gap-2">
+                      <Truck className="h-4 w-4" /> {isRtl ? 'صرف عهدة' : 'Assign Asset'}
                    </Button>
                 </DialogTrigger>
-                <DialogContent className="rounded-xl p-8 max-w-lg" dir={dir}>
-                   <DialogHeader><DialogTitle className="text-start font-bold text-xl">{isRtl ? 'صرف عهدة جديدة' : 'New Assignment'}</DialogTitle></DialogHeader>
-                   <div className="space-y-4 py-4 text-start">
+                <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
+                   <div className="bg-slate-900 p-8 text-white text-start">
+                      <DialogTitle className="font-black text-2xl">{isRtl ? 'صرف عهدة جديدة' : 'New Assignment'}</DialogTitle>
+                   </div>
+                   <div className="p-8 space-y-6 text-start">
                       <div className="space-y-2">
-                         <Label className="text-xs font-bold text-slate-500 uppercase">{isRtl ? 'الموظف' : 'Employee'}</Label>
+                         <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'الموظف' : 'Employee'}</Label>
                          <Select value={assignForm.employeeId} onValueChange={v => setAssignForm({...assignForm, employeeId: v})}>
-                            <SelectTrigger className="h-11 rounded-lg border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                            <SelectContent className="rounded-lg">
+                            <SelectTrigger className="h-11 border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
+                            <SelectContent className="rounded-xl">
                                {employees?.map(e => <SelectItem key={e.id} value={e.id!} className="font-bold">{e.fullName}</SelectItem>)}
                             </SelectContent>
                          </Select>
                       </div>
                       <div className="space-y-2">
-                         <Label className="text-xs font-bold text-slate-500 uppercase">{isRtl ? 'الصنف' : 'Item'}</Label>
+                         <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'الصنف' : 'Item'}</Label>
                          <Select value={assignForm.itemId} onValueChange={v => setAssignForm({...assignForm, itemId: v})}>
-                            <SelectTrigger className="h-11 rounded-lg border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                            <SelectContent className="rounded-lg">
+                            <SelectTrigger className="h-11 border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
+                            <SelectContent className="rounded-xl">
                                {items?.filter(i => i.quantity > 0).map(i => <SelectItem key={i.id} value={i.id!} className="font-bold">{i.name}</SelectItem>)}
                             </SelectContent>
                          </Select>
                       </div>
                    </div>
-                   <DialogFooter>
-                      <Button onClick={handleAssignAsset} disabled={loading} className="w-full h-12 rounded-lg font-bold bg-[#FFA000]">
+                   <DialogFooter className="p-8 bg-slate-50 border-t">
+                      <Button onClick={handleAssignAsset} disabled={loading} className="w-full h-12 rounded-xl font-black">
                          {loading ? <Loader2 className="animate-spin h-5 w-5" /> : (isRtl ? 'تأكيد الصرف' : 'Confirm')}
                       </Button>
                    </DialogFooter>
@@ -149,103 +150,62 @@ export default function InventoryDashboard() {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
          {[
-           { label: isRtl ? 'أصناف المخزن' : 'Items', val: items?.length || 0, icon: Boxes, color: 'text-[#FFA000]', bg: 'bg-orange-50' },
+           { label: isRtl ? 'أصناف المخزن' : 'Items', val: items?.length || 0, icon: Boxes, color: 'text-primary', bg: 'bg-orange-50' },
            { label: isRtl ? 'العهد النشطة' : 'Active', val: assignments?.filter((a: any) => a.status === 'in-use').length || 0, icon: Truck, color: 'text-blue-600', bg: 'bg-blue-50' },
-           { label: isRtl ? 'مسترجع' : 'Returned', val: assignments?.filter((a: any) => a.status === 'returned').length || 0, icon: PackageCheck, color: 'text-emerald-600', bg: 'bg-emerald-50' },
            { label: isRtl ? 'تنبيهات نقص' : 'Low Stock', val: items?.filter(i => i.quantity < 3).length || 0, icon: AlertTriangle, color: 'text-rose-600', bg: 'bg-rose-50' },
          ].map((stat, i) => (
-           <Card key={i} className="border-none shadow-sm card-shadow bg-white">
-              <CardContent className="p-5 flex items-center justify-between">
-                <div className="text-start">
-                   <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{stat.label}</p>
-                   <h3 className="text-3xl font-black text-slate-900">{stat.val}</h3>
-                </div>
-                <div className={cn("p-3 rounded-lg", stat.bg, stat.color)}>
-                   <stat.icon className="h-5 w-5" />
-                </div>
-              </CardContent>
+           <Card key={i} className="border-0 shadow-lg rounded-xl bg-white p-6 flex items-center justify-between">
+              <div className="text-start">
+                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{stat.label}</p>
+                 <h3 className="text-3xl font-black text-slate-900">{stat.val}</h3>
+              </div>
+              <div className={cn("p-4 rounded-xl", stat.bg, stat.color)}>
+                 <stat.icon className="h-6 w-6" />
+              </div>
            </Card>
          ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-         <Card className="lg:col-span-2 border-none shadow-sm card-shadow bg-white overflow-hidden">
-            <CardHeader className="bg-slate-50/50 border-b p-5 text-start">
-               <CardTitle className="text-base font-bold flex items-center gap-2">
-                 <Boxes className="h-5 w-5 text-[#FFA000]" /> {isRtl ? 'رصيد المستودع' : 'Stock Balance'}
-               </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-               <Table>
-                  <TableHeader className="bg-muted/5">
-                     <TableRow>
-                        <TableHead className="py-4 ps-6">{isRtl ? 'الصنف' : 'Item'}</TableHead>
-                        <TableHead className="text-center">{isRtl ? 'الكمية' : 'Qty'}</TableHead>
-                        <TableHead className="text-end pe-6">{isRtl ? 'الحالة' : 'Status'}</TableHead>
-                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                     {iLoading ? <tr><td colSpan={3} className="p-10 text-center"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/30" /></td></tr> : 
-                        items?.map(item => (
-                           <TableRow key={item.id} className="border-b-slate-50 hover:bg-slate-50/50">
-                              <td className="py-4 ps-6 font-bold text-slate-800">{item.name}</td>
-                              <td className="text-center">
-                                 <span className={cn("font-black text-sm", item.quantity < 3 ? "text-rose-600" : "text-slate-900")}>
-                                    {item.quantity}
-                                 </span>
-                                 <span className="text-[10px] ms-1 text-slate-400 font-bold uppercase">{item.unit}</span>
-                              </td>
-                              <td className="text-end pe-6">
-                                 <Badge variant="outline" className={cn(
-                                   "font-black text-[9px] border-none px-3 py-1",
-                                   item.quantity < 3 ? "bg-rose-50 text-rose-600" : "bg-emerald-50 text-emerald-600"
-                                 )}>
-                                    {item.quantity < 3 ? 'LOW' : 'STABLE'}
-                                 </Badge>
-                              </td>
-                           </TableRow>
-                        ))
-                     }
-                  </TableBody>
-               </Table>
-            </CardContent>
-         </Card>
-
-         <Card className="border-none shadow-sm card-shadow bg-white overflow-hidden flex flex-col">
-            <CardHeader className="bg-slate-50/50 border-b p-5 text-start">
-               <CardTitle className="text-base font-bold flex items-center gap-2">
-                 <History className="h-5 w-5 text-slate-400" /> {isRtl ? 'سجل العهد' : 'Recent Activity'}
-               </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0 flex-1 overflow-y-auto max-h-[500px]">
-               <div className="divide-y divide-slate-50">
-                  {assignments.length === 0 ? (
-                    <div className="p-20 text-center text-slate-400 font-bold italic text-xs">{isRtl ? 'لا يوجد حركات.' : 'No activity.'}</div>
-                  ) : assignments.map((log: any) => (
-                    <div key={log.id} className="p-5 space-y-3 hover:bg-slate-50/50 transition-all text-start group">
-                       <div className="flex justify-between items-start">
-                          <div>
-                             <p className="text-sm font-black text-slate-800">{log.itemName}</p>
-                             <p className="text-[10px] font-bold text-slate-500 flex items-center gap-1">
-                                <User className="h-3 w-3 text-[#039BE5]" /> {log.employeeName}
-                             </p>
-                          </div>
-                          <Badge variant="outline" className={cn(
-                            "text-[8px] font-black uppercase px-2 border-none",
-                            log.status === 'in-use' ? "bg-amber-50 text-amber-600" : "bg-emerald-50 text-emerald-600"
-                          )}>{log.status}</Badge>
-                       </div>
-                       <div className="flex justify-between items-center text-[10px] font-bold text-slate-400">
-                          <span className="font-mono">{log.assignedAt?.toDate().toLocaleDateString()}</span>
-                       </div>
-                    </div>
+      <Card className="border-0 shadow-xl rounded-xl bg-white overflow-hidden ring-1 ring-black/5">
+         <CardHeader className="bg-slate-50/50 border-b p-6 flex flex-row items-center justify-between">
+            <CardTitle className="text-lg font-black">{isRtl ? 'رصيد المستودع' : 'Stock Balance'}</CardTitle>
+            <div className="relative w-full max-w-xs">
+               <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+               <Input placeholder={t('search')} className="ps-12 h-10 border-slate-200" />
+            </div>
+         </CardHeader>
+         <CardContent className="p-0 overflow-x-auto">
+            <Table>
+               <TableHeader className="bg-muted/30">
+                  <TableRow>
+                     <TableHead className="py-6 ps-8 text-start font-black uppercase text-[10px] tracking-widest">{isRtl ? 'الصنف' : 'Item'}</TableHead>
+                     <TableHead className="text-center font-black uppercase text-[10px] tracking-widest">{isRtl ? 'الكمية' : 'Qty'}</TableHead>
+                     <TableHead className="pe-8"></TableHead>
+                  </TableRow>
+               </TableHeader>
+               <TableBody>
+                  {iLoading ? (
+                    <TableRow><TableCell colSpan={3} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
+                  ) : items?.map(item => (
+                    <TableRow key={item.id} className="hover:bg-primary/5 transition-colors border-b-slate-100">
+                       <TableCell className="py-6 ps-8 font-black text-slate-800">{item.name}</TableCell>
+                       <TableCell className="text-center">
+                          <span className={cn("font-black text-xl", item.quantity < 3 ? "text-rose-600" : "text-emerald-600")}>{item.quantity}</span>
+                          <span className="text-[10px] font-bold text-slate-400 ms-1 uppercase">{item.unit}</span>
+                       </TableCell>
+                       <TableCell className="pe-8 text-end">
+                          <Button variant="outline" size="sm" className="rounded-lg text-[10px] h-9">
+                             <Edit3 className="h-3.5 w-3.5" />
+                          </Button>
+                       </TableCell>
+                    </TableRow>
                   ))}
-               </div>
-            </CardContent>
-         </Card>
-      </div>
+               </TableBody>
+            </Table>
+         </CardContent>
+      </Card>
     </div>
   );
 }

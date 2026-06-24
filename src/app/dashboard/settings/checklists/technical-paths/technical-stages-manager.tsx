@@ -56,7 +56,6 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
     if (!technicalPathService || !form || !form.name) return;
     setLoadingAction('save');
     
-    // إسناد ترتيب تلقائي في نهاية القائمة إذا كان جديداً
     const nextOrder = form.id !== undefined ? form.order : sortedStages.length;
     const generatedCode = form.code || (form.nameEn || form.name || 'STAGE').toUpperCase().replace(/\s+/g, '_');
 
@@ -95,7 +94,6 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
     
     if (targetIndex < 0 || targetIndex >= newStages.length) return;
 
-    // تبديل العناصر في المصفوفة
     const temp = newStages[index];
     newStages[index] = newStages[targetIndex];
     newStages[targetIndex] = temp;
@@ -137,9 +135,9 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300 text-start">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="flex items-center gap-4 text-start">
+        <div className="flex items-center gap-4">
           <Button variant="ghost" onClick={onBack} className="rounded-xl h-10 w-10 p-0 bg-white shadow-sm border hover:bg-slate-50">
              <ArrowRight className={cn("h-4 w-4", !isRtl && 'rotate-180')} />
           </Button>
@@ -156,22 +154,23 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
             </div>
           </div>
         </div>
-        <Button onClick={() => setForm({ name: '', nameEn: '', description: '', code: '', isNumeric: false, isTimed: false, nextStageIds: [] })} className="btn-nova-primary h-12 rounded-xl shadow-lg font-bold"><Plus className="me-2 h-4 w-4" /> {isRtl ? 'إضافة مرحلة' : 'Add Stage'}</Button>
+        <Button onClick={() => setForm({ name: '', nameEn: '', description: '', code: '', isNumeric: false, isTimed: false, nextStageIds: [] })} variant="default" className="h-11 shadow-lg shadow-primary/20">
+          <Plus className="me-2 h-4 w-4" /> {isRtl ? 'إضافة مرحلة' : 'Add Stage'}
+        </Button>
       </div>
 
       {loading || loadingAction === 'reorder' ? <div className="py-40 text-center"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></div> : (
         <div className="grid grid-cols-1 gap-4">
-          {sortedStages.length === 0 ? <div className="py-20 text-center bg-white rounded-3xl border-2 border-dashed border-muted"><p className="font-bold text-muted-foreground italic">لا توجد مراحل معرّفة لهذا المسار.</p></div> : 
+          {sortedStages.length === 0 ? <div className="py-20 text-center bg-white rounded-xl border-2 border-dashed border-muted"><p className="font-bold text-muted-foreground italic">لا توجد مراحل معرّفة.</p></div> : 
             sortedStages.map((stage, idx) => (
-              <Card key={stage.id} className="border-0 shadow-lg rounded-2xl bg-white overflow-hidden group hover:ring-2 hover:ring-primary/10 transition-all text-start">
+              <Card key={stage.id} className="border-0 shadow-lg rounded-xl bg-white overflow-hidden group hover:ring-2 hover:ring-primary/10 transition-all text-start">
                 <div className="flex items-center p-5 justify-between">
                   <div className="text-start flex items-center gap-4">
-                    {/* أدوات الترتيب (Up/Down) */}
                     <div className="flex flex-col gap-1">
                        <Button 
                          variant="ghost" 
                          size="icon" 
-                         className="h-6 w-6 rounded-md hover:bg-primary/10 text-slate-300 hover:text-primary disabled:opacity-20"
+                         className="h-6 w-6 rounded-md text-slate-300 hover:text-primary disabled:opacity-20"
                          disabled={idx === 0}
                          onClick={() => handleMove(idx, 'up')}
                        >
@@ -180,7 +179,7 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
                        <Button 
                          variant="ghost" 
                          size="icon" 
-                         className="h-6 w-6 rounded-md hover:bg-primary/10 text-slate-300 hover:text-primary disabled:opacity-20"
+                         className="h-6 w-6 rounded-md text-slate-300 hover:text-primary disabled:opacity-20"
                          disabled={idx === sortedStages.length - 1}
                          onClick={() => handleMove(idx, 'down')}
                        >
@@ -191,9 +190,8 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
                       <h3 className="font-black text-slate-800 text-base">{isRtl ? stage.name : stage.nameEn}</h3>
                       <div className="flex gap-3 mt-1">
                          <span className="text-[10px] font-black text-primary bg-primary/5 px-2 rounded">#{idx + 1}</span>
-                         {stage.isTimed && <span className="flex items-center gap-1 text-[10px] font-bold text-blue-600"><Clock className="h-3 w-3" /> {stage.timeTargetDays} {isRtl ? 'يوم' : 'Days'}</span>}
-                         {stage.isNumeric && <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600"><ListChecks className="h-3 w-3" /> {isRtl ? 'مستهدف:' : 'Target:'} {stage.numericTarget}</span>}
-                         <span className="text-[8px] font-mono text-slate-300 uppercase tracking-tighter">Code: {stage.code}</span>
+                         {stage.isTimed && <span className="text-[10px] font-bold text-blue-600 flex items-center gap-1"><Clock className="h-3 w-3" /> {stage.timeTargetDays} {isRtl ? 'يوم' : 'Days'}</span>}
+                         {stage.isNumeric && <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1"><ListChecks className="h-3 w-3" /> {isRtl ? 'مستهدف:' : 'Target:'} {stage.numericTarget}</span>}
                       </div>
                     </div>
                   </div>
@@ -210,74 +208,73 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
 
       {form && (
         <Dialog open onOpenChange={() => setForm(null)}>
-          <DialogContent className="rounded-[2rem] max-w-4xl overflow-hidden p-0 border-0 shadow-2xl" dir={dir}>
+          <DialogContent className="rounded-xl p-0 overflow-hidden max-w-4xl border-0 shadow-3xl bg-white" dir={dir}>
             <div className="grid grid-cols-1 lg:grid-cols-5 h-full max-h-[85vh]">
-              <div className="lg:col-span-3 p-8 space-y-6 overflow-y-auto bg-white">
-                <DialogHeader>
-                  <DialogTitle className="text-start font-black text-xl flex items-center gap-2 text-slate-800">
-                    <ShieldCheck className="text-primary h-6 w-6" /> {form.id ? t('editStage') : t('addStage')}
+              <div className="lg:col-span-3 p-8 space-y-6 overflow-y-auto bg-white border-e">
+                <DialogHeader className="text-start">
+                  <DialogTitle className="text-2xl font-black font-headline flex items-center gap-2 text-slate-800">
+                    <ShieldCheck className="text-primary h-7 w-7" /> {form.id ? t('editStage') : t('addStage')}
                   </DialogTitle>
                 </DialogHeader>
                 
-                <div className="space-y-5 py-2 text-start">
+                <div className="space-y-5 py-2">
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold text-slate-500">{t('name')} (Ar)</Label>
-                      <Input value={form.name || ''} onChange={e => setForm({...form, name: e.target.value})} className="h-11 rounded-xl bg-slate-50/50" />
+                    <div className="space-y-2">
+                      <Label className="text-xs font-black uppercase text-slate-400">{t('name')} (Ar)</Label>
+                      <Input value={form.name || ''} onChange={e => setForm({...form, name: e.target.value})} className="h-11 border-2 font-bold" />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold text-slate-500">{t('name')} (En)</Label>
-                      <Input value={form.nameEn || ''} onChange={e => setForm({...form, nameEn: e.target.value})} className="h-11 rounded-xl bg-slate-50/50 text-start" dir="ltr" />
+                    <div className="space-y-2">
+                      <Label className="text-xs font-black uppercase text-slate-400">{t('name')} (En)</Label>
+                      <Input value={form.nameEn || ''} onChange={e => setForm({...form, nameEn: e.target.value})} className="h-11 border-2 font-bold text-start" dir="ltr" />
                     </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                      <Label className="text-xs font-bold text-slate-500">{isRtl ? 'كود المرحلة (Code)' : 'Stage Code'}</Label>
-                      <Input value={form.code || ''} onChange={e => setForm({...form, code: e.target.value.toUpperCase().replace(/\s+/g, '_')})} className="h-11 rounded-xl bg-slate-50/50 font-mono text-xs uppercase" placeholder="e.g. ARCH_REVIEW" />
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                            <Label className="text-[11px] font-black text-slate-700 uppercase tracking-tight">{isRtl ? 'تتبع زمني' : 'Time Tracking'}</Label>
-                            <Switch checked={form.isTimed || false} onCheckedChange={val => setForm({...form, isTimed: val})} />
-                        </div>
-                        {form.isTimed && <Input type="number" value={form.timeTargetDays || ''} onChange={e => setForm({...form, timeTargetDays: Number(e.target.value)})} className="h-9 rounded-lg bg-white" placeholder={isRtl ? 'الأيام' : 'Days'} />}
+                  <div className="p-6 bg-slate-50 rounded-xl border-2 space-y-6">
+                    <div className="flex items-center justify-between">
+                        <Label className="font-black text-sm">{isRtl ? 'تتبع زمني' : 'Time Tracking'}</Label>
+                        <Switch checked={form.isTimed || false} onCheckedChange={val => setForm({...form, isTimed: val})} />
                     </div>
-                    <div className="space-y-3 border-s border-slate-200 ps-4">
-                        <div className="flex items-center justify-between">
-                            <Label className="text-[11px] font-black text-slate-700 uppercase tracking-tight">{isRtl ? 'تتبع عددي' : 'Numeric Tracking'}</Label>
-                            <Switch checked={form.isNumeric || false} onCheckedChange={val => setForm({...form, isNumeric: val})} />
-                        </div>
-                        {form.isNumeric && <Input type="number" value={form.numericTarget || ''} onChange={e => setForm({...form, numericTarget: Number(e.target.value)})} className="h-9 rounded-lg bg-white" placeholder={isRtl ? 'الكمية' : 'Qty'} />}
+                    {form.isTimed && <Input type="number" value={form.timeTargetDays || ''} onChange={e => setForm({...form, timeTargetDays: Number(e.target.value)})} className="h-11 bg-white border-2" placeholder={isRtl ? 'عدد الأيام المستهدفة' : 'Days'} />}
+                    
+                    <div className="flex items-center justify-between border-t pt-6">
+                        <Label className="font-black text-sm">{isRtl ? 'تتبع عددي' : 'Numeric Tracking'}</Label>
+                        <Switch checked={form.isNumeric || false} onCheckedChange={val => setForm({...form, isNumeric: val})} />
                     </div>
+                    {form.isNumeric && <Input type="number" value={form.numericTarget || ''} onChange={e => setForm({...form, numericTarget: Number(e.target.value)})} className="h-11 bg-white border-2" placeholder={isRtl ? 'الكمية المستهدفة' : 'Target Qty'} />}
                   </div>
 
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-bold text-slate-500">{isRtl ? 'الوصف' : 'Description'}</Label>
-                    <Textarea value={form.description || ''} onChange={e => setForm({...form, description: e.target.value})} className="rounded-xl min-h-[80px] bg-slate-50/50 resize-none" placeholder="..." />
+                  <div className="space-y-2">
+                    <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'الوصف' : 'Description'}</Label>
+                    <Textarea value={form.description || ''} onChange={e => setForm({...form, description: e.target.value})} className="rounded-xl border-2 min-h-[100px]" />
                   </div>
                 </div>
 
-                <DialogFooter className="pt-2"><Button onClick={handleSave} disabled={loadingAction === 'save'} className="w-full h-12 rounded-xl font-black text-base bg-primary shadow-xl shadow-primary/20">{loadingAction === 'save' ? <Loader2 className="animate-spin" /> : t('save')}</Button></DialogFooter>
+                <DialogFooter className="pt-4 border-t">
+                  <Button onClick={handleSave} disabled={loadingAction === 'save'} className="w-full h-12 rounded-xl">
+                    {loadingAction === 'save' ? <Loader2 className="animate-spin" /> : t('save')}
+                  </Button>
+                </DialogFooter>
               </div>
 
-              <div className="lg:col-span-2 bg-slate-50/80 border-s border-slate-100 p-8 flex flex-col">
+              <div className="lg:col-span-2 bg-slate-50/50 p-8 flex flex-col">
                 <div className="mb-6 text-start">
-                  <h4 className="font-black text-base flex items-center gap-2 text-slate-700"><ArrowRight className="h-4 w-4 text-primary" /> {t('nextStages')}</h4>
+                  <h4 className="font-black text-lg flex items-center gap-2 text-slate-700"><ArrowRight className="h-5 w-5 text-primary" /> {t('nextStages')}</h4>
                 </div>
                 <ScrollArea className="flex-1">
                   <div className="space-y-2 pr-3">
-                    {availableNextStages.length === 0 ? <div className="py-10 text-center bg-white/50 rounded-2xl border border-dashed border-slate-200"><p className="text-[9px] text-slate-400 font-bold px-4">لا توجد مراحل متاحة للربط.</p></div> : 
+                    {availableNextStages.length === 0 ? <div className="py-10 text-center bg-white/50 rounded-xl border-2 border-dashed"><p className="text-[10px] text-slate-400 font-bold px-4">لا توجد مراحل متاحة للربط.</p></div> : 
                       availableNextStages.map((s) => (
-                        <div key={s.id} onClick={() => toggleNextStage(s.id!)} className={cn("p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-3", form.nextStageIds?.includes(s.id!) ? "bg-primary/5 border-primary/30 shadow-sm" : "bg-white border-slate-200")}>
-                          <Checkbox id={`stage-${s.id}`} checked={form.nextStageIds?.includes(s.id!)} className="h-4 w-4 pointer-events-none" /><Label className="font-black text-[11px] block cursor-pointer text-slate-600">{isRtl ? s.name : s.nameEn}</Label>
+                        <div key={s.id} onClick={() => toggleNextStage(s.id!)} className={cn("p-4 rounded-xl border-2 transition-all cursor-pointer flex items-center gap-3", form.nextStageIds?.includes(s.id!) ? "bg-white border-primary shadow-md" : "bg-white border-slate-100")}>
+                          <Checkbox id={`stage-${s.id}`} checked={form.nextStageIds?.includes(s.id!)} className="h-5 w-5 pointer-events-none" /><Label className="font-black text-xs block cursor-pointer text-slate-700">{isRtl ? s.name : s.nameEn}</Label>
                         </div>
                       ))
                     }
                   </div>
                 </ScrollArea>
-                <div className="mt-6 pt-4 border-t border-slate-200 flex justify-between items-center"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'المراحل المربوطة' : 'Linked'}</span><Badge className="bg-primary text-white rounded-full h-5 w-5 p-0 flex items-center justify-center text-[10px]">{form.nextStageIds?.length || 0}</Badge></div>
+                <div className="mt-6 pt-4 border-t border-slate-200 flex justify-between items-center text-[10px] font-black uppercase text-slate-400">
+                  <span>{isRtl ? 'المراحل المربوطة' : 'Linked'}</span>
+                  <Badge variant="secondary" className="bg-primary text-white">{form.nextStageIds?.length || 0}</Badge>
+                </div>
               </div>
             </div>
           </DialogContent>

@@ -74,38 +74,39 @@ export default function CRMPage() {
   ) || [];
 
   return (
-    <div className="space-y-6" dir={dir}>
+    <div className="space-y-6 animate-in fade-in duration-500" dir={dir}>
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start">
           <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-            <Users className="h-8 w-8 text-[#039BE5]" />
+            <Users className="h-8 w-8 text-primary" />
             {t('crm')}
           </h1>
           <p className="text-slate-600 text-sm font-bold opacity-80 italic">
-            {viewAccess.scope === 'all' ? (isRtl ? 'عرض شامل للمنشأة' : 'Enterprise View') : (isRtl ? 'فلترة القسم' : 'Dept Locked')}
+            {isRtl ? 'إدارة الفرص والمبيعات' : 'Manage Leads & Sales'}
           </p>
         </div>
         
         {createAccess.can && (
           <Dialog>
             <DialogTrigger asChild>
-              <Button className="bg-[#FFA000] text-white font-bold h-11 px-6 shadow-sm">
-                <UserPlus className="me-2 h-4 w-4" />
+              <Button variant="default" className="h-11 px-8 shadow-xl shadow-primary/20 flex items-center gap-2">
+                <UserPlus className="h-5 w-5" />
                 {t('addLead')}
               </Button>
             </DialogTrigger>
-            <DialogContent className="rounded-xl border-0 shadow-2xl max-w-lg" dir={dir}>
-              <DialogHeader>
-                <DialogTitle className="text-start font-bold text-xl">{t('addLead')}</DialogTitle>
+            <DialogContent className="rounded-xl border-0 shadow-2xl max-w-lg p-0 overflow-hidden bg-white" dir={dir}>
+              <DialogHeader className="bg-slate-50 p-8 border-b">
+                <DialogTitle className="text-start font-black text-2xl">{t('addLead')}</DialogTitle>
               </DialogHeader>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4 text-start">
-                <div className="space-y-2"><Label className="text-xs font-bold">{t('name')}</Label><Input value={newLead.name} onChange={e => setNewLead({...newLead, name: e.target.value})} className="h-11 rounded-lg" /></div>
-                <div className="space-y-2"><Label className="text-xs font-bold">{t('company')}</Label><Input value={newLead.company} onChange={e => setNewLead({...newLead, company: e.target.value})} className="h-11 rounded-lg" /></div>
+              <div className="p-8 space-y-6 text-start">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                   <div className="space-y-2"><Label className="text-xs font-black">{t('name')}</Label><Input value={newLead.name} onChange={e => setNewLead({...newLead, name: e.target.value})} className="h-11 border-2" /></div>
+                   <div className="space-y-2"><Label className="text-xs font-black">{t('company')}</Label><Input value={newLead.company} onChange={e => setNewLead({...newLead, company: e.target.value})} className="h-11 border-2" /></div>
+                </div>
               </div>
-              <DialogFooter>
-                <Button onClick={handleAddLead} disabled={isAdding} className="w-full h-12 rounded-lg font-bold bg-[#FFA000]">
-                  {isAdding ? <Loader2 className="animate-spin" /> : <Plus className="me-2 h-4 w-4" />}
-                  {t('save')}
+              <DialogFooter className="p-8 bg-slate-50 border-t">
+                <Button onClick={handleAddLead} disabled={isAdding} className="w-full h-12 rounded-xl font-black">
+                  {isAdding ? <Loader2 className="animate-spin" /> : (isRtl ? 'إضافة الفرصة' : 'Create Lead')}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -113,38 +114,36 @@ export default function CRMPage() {
         )}
       </header>
 
-      <Card className="border-none shadow-sm card-shadow bg-white overflow-hidden">
-        <CardHeader className="bg-slate-50/50 border-b p-4 flex flex-row items-center justify-between">
+      <Card className="border-0 shadow-xl rounded-xl bg-white overflow-hidden ring-1 ring-black/5">
+        <CardHeader className="bg-slate-50/50 border-b p-6 flex flex-row items-center justify-between">
           <div className="relative w-full max-w-xs">
-            <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input placeholder={t('search')} className="ps-10 rounded-xl h-10 bg-white border-slate-200 text-xs font-bold" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+            <Input placeholder={t('search')} className="ps-12 h-11 bg-white border-slate-200" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
-          <Button variant="ghost" size="sm" className="font-bold text-slate-500 rounded-lg"><Filter className="h-4 w-4 me-2" /> {isRtl ? 'فلترة' : 'Filter'}</Button>
+          <Button variant="ghost" className="rounded-xl font-bold h-11 px-4 flex items-center gap-2"><Filter className="h-4 w-4" /> {isRtl ? 'تصفية' : 'Filter'}</Button>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
           <Table>
-            <TableHeader className="bg-muted/10">
+            <TableHeader className="bg-muted/30">
               <TableRow>
-                <TableHead className="py-4 ps-6 text-start font-black">{t('name')}</TableHead>
-                <TableHead className="text-start font-black">{t('company')}</TableHead>
-                <TableHead className="text-start font-black">{t('status')}</TableHead>
+                <TableHead className="py-6 ps-8 text-start font-black uppercase text-[10px] tracking-widest">{t('name')}</TableHead>
+                <TableHead className="text-start font-black uppercase text-[10px] tracking-widest">{t('company')}</TableHead>
+                <TableHead className="text-start font-black uppercase text-[10px] tracking-widest">{t('status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={3} className="text-center py-20"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/30" /></TableCell></TableRow>
-              ) : filteredLeads.length === 0 ? (
-                <TableRow><TableCell colSpan={3} className="text-center py-20 italic text-slate-400 font-bold">{isRtl ? 'لا توجد بيانات.' : 'No leads found.'}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={3} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
               ) : filteredLeads.map((lead: any) => (
-                <TableRow key={lead.id} className="hover:bg-slate-50/50 transition-colors border-b-slate-50">
-                  <TableCell className="ps-6 font-bold text-slate-800">{lead.name}</TableCell>
-                  <TableCell className="text-slate-600 font-bold">{lead.company}</TableCell>
+                <TableRow key={lead.id} className="hover:bg-primary/5 transition-colors border-b-slate-100">
+                  <TableCell className="py-6 ps-8 font-black text-slate-800">{lead.name}</TableCell>
+                  <TableCell className="text-slate-500 font-bold text-sm">{lead.company}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className={cn(
-                      "font-black text-[9px] uppercase border-none px-3 py-1",
-                      lead.status === 'new' ? "bg-blue-50 text-blue-600" : "bg-amber-50 text-amber-600"
+                      "font-black text-[9px] uppercase px-3 py-1 border-0 shadow-sm",
+                      lead.status === 'new' ? "bg-blue-500 text-white" : "bg-amber-500 text-white"
                     )}>
-                      {t(lead.status)}
+                      {lead.status}
                     </Badge>
                   </TableCell>
                 </TableRow>

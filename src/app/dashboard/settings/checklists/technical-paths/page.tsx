@@ -127,15 +127,19 @@ export default function TechnicalPathsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-start">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-black font-headline flex items-center gap-3 text-start"><Workflow className="h-6 w-6 text-primary" /> {isRtl ? 'هندسة المسارات الفنية' : 'Technical Path Engineering'}</h2>
-        <Button onClick={() => { setActivityForm({ name: '', nameEn: '' }); setIsActOpen(true); }} className="btn-nova-primary h-12 rounded-xl shadow-lg"><Plus className="me-2 h-4 w-4" /> {isRtl ? 'نشاط جديد' : 'New Activity'}</Button>
+        <h2 className="text-2xl font-black font-headline flex items-center gap-3">
+          <Workflow className="h-6 w-6 text-primary" /> {isRtl ? 'هندسة المسارات الفنية' : 'Technical Path Engineering'}
+        </h2>
+        <Button onClick={() => { setActivityForm({ name: '', nameEn: '' }); setIsActOpen(true); }} variant="default" className="h-11 shadow-lg shadow-primary/20">
+          <Plus className="me-2 h-4 w-4" /> {isRtl ? 'نشاط جديد' : 'New Activity'}
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-4">
-          <Card className="border-0 shadow-lg rounded-3xl overflow-hidden bg-white">
+          <Card className="border-0 shadow-lg rounded-xl overflow-hidden bg-white">
             <CardHeader className="bg-slate-50 border-b p-4 text-start"><CardTitle className="text-xs font-black flex items-center gap-2 uppercase text-slate-400"><LayoutGrid className="h-4 w-4" /> {isRtl ? 'الأنشطة' : 'Activities'}</CardTitle></CardHeader>
             <CardContent className="p-0 max-h-[500px] overflow-y-auto">
               {activitiesLoading ? <div className="p-10 text-center"><Loader2 className="animate-spin mx-auto text-primary/30" /></div> : activities?.map(act => (
@@ -153,7 +157,7 @@ export default function TechnicalPathsPage() {
         </div>
 
         <div className={cn("lg:col-span-4", !selectedActivity && 'opacity-30')}>
-          <Card className="border-0 shadow-lg rounded-3xl overflow-hidden bg-white">
+          <Card className="border-0 shadow-lg rounded-xl overflow-hidden bg-white">
             <CardHeader className="bg-slate-50 border-b p-4 flex flex-row items-center justify-between"><CardTitle className="text-xs font-black flex items-center gap-2 uppercase text-slate-400"><Boxes className="h-4 w-4" /> {isRtl ? 'الخدمات' : 'Services'}</CardTitle>{selectedActivity && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setServiceForm({ name: '', nameEn: '' }); setIsSrvOpen(true); }}><Plus className="h-5 w-5" /></Button>}</CardHeader>
             <CardContent className="p-0 max-h-[500px] overflow-y-auto">
               {!selectedActivity ? <div className="p-10 text-center text-xs italic text-muted-foreground">اختر نشاطاً</div> : servicesLoading ? <div className="p-10 text-center"><Loader2 className="animate-spin mx-auto" /></div> : services?.map(srv => (
@@ -171,14 +175,14 @@ export default function TechnicalPathsPage() {
         </div>
 
         <div className={cn("lg:col-span-4", !selectedService && 'opacity-30')}>
-          <Card className="border-0 shadow-lg rounded-3xl overflow-hidden bg-white">
+          <Card className="border-0 shadow-lg rounded-xl overflow-hidden bg-white">
             <CardHeader className="bg-slate-50 border-b p-4 flex flex-row items-center justify-between"><CardTitle className="text-xs font-black flex items-center gap-2 uppercase text-slate-400"><Layers className="h-4 w-4" /> {isRtl ? 'المسارات' : 'Sub-Services'}</CardTitle>{selectedService && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setSubForm({ name: '', nameEn: '' }); setIsSubOpen(true); }}><Plus className="h-5 w-5" /></Button>}</CardHeader>
             <CardContent className="p-0 max-h-[500px] overflow-y-auto">
               {!selectedService ? <div className="p-10 text-center text-xs italic text-muted-foreground">اختر خدمة</div> : subLoading ? <div className="p-10 text-center"><Loader2 className="animate-spin mx-auto" /></div> : subServices?.map(sub => (
                 <div key={sub.id} className={cn("p-5 border-b flex items-center justify-between group transition-all", selectedSub?.id === sub.id ? 'bg-emerald-50/50 border-s-4 border-s-emerald-500' : 'hover:bg-muted/30')}>
                   <span className="text-sm font-black">{isRtl ? sub.name : sub.nameEn}</span>
                   <div className="flex items-center gap-1 z-20">
-                    <Button onClick={() => { setSelectedSub(sub); setViewMode('stages'); }} variant="outline" size="sm" className="h-8 rounded-lg text-[10px] font-black border-primary/20 text-primary">إدارة المراحل</Button>
+                    <Button onClick={() => { setSelectedSub(sub); setViewMode('stages'); }} variant="outline" size="sm" className="h-8 text-[10px]">إدارة المراحل</Button>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600" onClick={(e) => { e.stopPropagation(); setSubForm(sub); setIsSubOpen(true); }}><Edit3 className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" disabled={loadingAction === `delete_${sub.id}`} onClick={(e) => { e.stopPropagation(); setDeletingContext({ id: sub.id!, type: 'sub' }); }}><Trash2 className="h-4 w-4" /></Button>
@@ -192,14 +196,14 @@ export default function TechnicalPathsPage() {
       </div>
 
       <Dialog open={isActOpen} onOpenChange={setIsActOpen}>
-        <DialogContent className="rounded-[2rem] max-w-lg p-8" dir={dir}>
+        <DialogContent className="rounded-xl p-8" dir={dir}>
           <DialogHeader><DialogTitle className="text-start font-black text-xl">{activityForm.id ? t('edit') : t('newActivity')}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-4 text-start">
-            <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={activityForm.name || ''} onChange={e => setActivityForm({...activityForm, name: e.target.value})} /></div>
-            <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={activityForm.nameEn || ''} onChange={e => setActivityForm({...activityForm, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
+            <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={activityForm.name || ''} onChange={e => setActivityForm({...activityForm, name: e.target.value})} className="h-11 border-2" /></div>
+            <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={activityForm.nameEn || ''} onChange={e => setActivityForm({...activityForm, nameEn: e.target.value})} className="h-11 border-2 text-start" dir="ltr" /></div>
           </div>
           <DialogFooter className="mt-8">
-            <Button onClick={handleSaveActivity} disabled={loadingAction === 'save_act'} className="w-full h-12 rounded-xl font-bold bg-primary text-white">
+            <Button onClick={handleSaveActivity} disabled={loadingAction === 'save_act'} className="w-full h-12 rounded-xl">
               {loadingAction === 'save_act' ? <Loader2 className="animate-spin" /> : t('save')}
             </Button>
           </DialogFooter>
@@ -207,14 +211,14 @@ export default function TechnicalPathsPage() {
       </Dialog>
 
       <Dialog open={isSrvOpen} onOpenChange={setIsSrvOpen}>
-        <DialogContent className="rounded-[2rem] max-w-lg p-8" dir={dir}>
+        <DialogContent className="rounded-xl p-8" dir={dir}>
           <DialogHeader><DialogTitle className="text-start font-black text-xl">{serviceForm.id ? t('edit') : t('newService')}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-4 text-start">
-            <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={serviceForm.name || ''} onChange={e => setServiceForm({...serviceForm, name: e.target.value})} /></div>
-            <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={serviceForm.nameEn || ''} onChange={e => setServiceForm({...serviceForm, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
+            <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={serviceForm.name || ''} onChange={e => setServiceForm({...serviceForm, name: e.target.value})} className="h-11 border-2" /></div>
+            <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={serviceForm.nameEn || ''} onChange={e => setServiceForm({...serviceForm, nameEn: e.target.value})} className="h-11 border-2 text-start" dir="ltr" /></div>
           </div>
           <DialogFooter className="mt-8">
-            <Button onClick={handleSaveService} disabled={loadingAction === 'save_srv'} className="w-full h-12 rounded-xl font-bold bg-primary text-white">
+            <Button onClick={handleSaveService} disabled={loadingAction === 'save_srv'} className="w-full h-12 rounded-xl">
               {loadingAction === 'save_srv' ? <Loader2 className="animate-spin" /> : t('save')}
             </Button>
           </DialogFooter>
@@ -222,14 +226,14 @@ export default function TechnicalPathsPage() {
       </Dialog>
 
       <Dialog open={isSubOpen} onOpenChange={setIsSubOpen}>
-        <DialogContent className="rounded-[2rem] max-w-lg p-8" dir={dir}>
+        <DialogContent className="rounded-xl p-8" dir={dir}>
           <DialogHeader><DialogTitle className="text-start font-black text-xl">{subForm.id ? t('edit') : t('newPath')}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-4 text-start">
-            <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={subForm.name || ''} onChange={e => setSubForm({...subForm, name: e.target.value})} /></div>
-            <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={subForm.nameEn || ''} onChange={e => setSubForm({...subForm, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
+            <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={subForm.name || ''} onChange={e => setSubForm({...subForm, name: e.target.value})} className="h-11 border-2" /></div>
+            <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={subForm.nameEn || ''} onChange={e => setSubForm({...subForm, nameEn: e.target.value})} className="h-11 border-2 text-start" dir="ltr" /></div>
           </div>
           <DialogFooter className="mt-8">
-            <Button onClick={handleSaveSub} disabled={loadingAction === 'save_sub'} className="w-full h-12 rounded-xl font-bold bg-primary text-white">
+            <Button onClick={handleSaveSub} disabled={loadingAction === 'save_sub'} className="w-full h-12 rounded-xl">
               {loadingAction === 'save_sub' ? <Loader2 className="animate-spin" /> : t('save')}
             </Button>
           </DialogFooter>
@@ -237,17 +241,17 @@ export default function TechnicalPathsPage() {
       </Dialog>
 
       <AlertDialog open={!!deletingContext} onOpenChange={(open) => !open && setDeletingContext(null)}>
-        <AlertDialogContent className="rounded-[2rem] p-8" dir={dir}>
+        <AlertDialogContent className="rounded-xl p-8" dir={dir}>
           <AlertDialogHeader>
-            <div className="mx-auto w-16 h-16 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mb-4"><AlertTriangle className="h-8 w-8" /></div>
+            <div className="mx-auto w-16 h-16 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center mb-4"><AlertTriangle className="h-8 w-8" /></div>
             <AlertDialogTitle className="text-start font-black text-2xl">{t('confirmDelete')}</AlertDialogTitle>
             <AlertDialogDescription className="text-start font-bold">
               {isRtl ? 'سيؤدي هذا لحذف كافة العناصر والخدمات التابعة لهذا المسار بشكل نهائي.' : 'This will permanently delete all sub-items and services linked to this path.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-8 gap-4">
-            <AlertDialogCancel className="rounded-xl h-12 border-2 font-bold">{isRtl ? 'إلغاء' : 'Cancel'}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleFinalDelete} className="rounded-xl h-12 font-black bg-rose-600 hover:bg-rose-700 text-white px-8">
+            <AlertDialogCancel className="rounded-xl h-11 font-bold border-2">{isRtl ? 'إلغاء' : 'Cancel'}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleFinalDelete} className="rounded-xl h-11 bg-rose-600 hover:bg-rose-700 text-white px-8">
               {isRtl ? 'نعم، احذف' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>

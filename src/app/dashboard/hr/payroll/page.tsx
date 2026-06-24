@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -29,8 +28,6 @@ export default function PayrollBatchesPage() {
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
-  // استخدام استعلام مبسط أولاً لتجنب الحاجة لفهرس مركب فوراً
-  // Firestore يحتاج لفهرس عند الجمع بين orderBy لعدة حقول.
   const batchesQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.payroll(companyId)), orderBy('year', 'desc')) : null, 
   [db, companyId]);
@@ -52,43 +49,37 @@ export default function PayrollBatchesPage() {
 
         <Button 
           onClick={() => router.push('/dashboard/hr/payroll/new')}
-          className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all"
+          variant="default"
+          className="h-12 px-8 shadow-xl shadow-primary/20"
         >
           <Plus className="me-2 h-6 w-6" />
           {isRtl ? 'توليد كشف جديد' : 'New Payroll Batch'}
         </Button>
       </div>
 
-      {error && (
-        <Card className="border-2 border-rose-100 bg-rose-50 p-6 rounded-2xl text-start">
-           <p className="text-rose-700 font-black text-sm">خطأ في جلب البيانات: {error.message}</p>
-           <p className="text-rose-600 text-xs mt-1 font-bold">إذا كان الخطأ يتعلق بـ "Index"، يرجى مراجعة كونسول المتصفح للضغط على رابط إنشاء الفهرس المفقود.</p>
-        </Card>
-      )}
-
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-         <Card className="border-0 shadow-lg rounded-[2rem] p-6 text-start bg-white">
+         <Card className="border-0 shadow-lg rounded-xl p-6 text-start bg-white">
             <TrendingUp className="h-8 w-8 text-emerald-500 mb-4" />
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'إجمالي الرواتب الصافية' : 'Total Net Paid'}</p>
             <h3 className="text-3xl font-black font-headline text-slate-900">
               {batches?.reduce((acc, b) => acc + (b.totalNetSalary || 0), 0).toLocaleString()} <span className="text-xs">KWD</span>
             </h3>
          </Card>
-         <Card className="border-0 shadow-lg rounded-[2rem] p-6 text-start bg-white">
+         <Card className="border-0 shadow-lg rounded-xl p-6 text-start bg-white">
             <TrendingDown className="h-8 w-8 text-rose-500 mb-4" />
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'إجمالي الخصومات' : 'Total Deductions'}</p>
             <h3 className="text-3xl font-black font-headline text-slate-900">
               {batches?.reduce((acc, b) => acc + (b.totalDeductions || 0), 0).toLocaleString()} <span className="text-xs">KWD</span>
             </h3>
          </Card>
-         <Card className="border-0 shadow-lg rounded-[2rem] p-6 text-start bg-white">
+         <Card className="border-0 shadow-lg rounded-xl p-6 text-start bg-white">
             <FileText className="h-8 w-8 text-blue-500 mb-4" />
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'عدد الدفعات' : 'Batch Count'}</p>
             <h3 className="text-3xl font-black font-headline text-slate-900">{batches?.length || 0}</h3>
          </Card>
       </div>
 
-      <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
+      <Card className="border-0 shadow-xl rounded-xl bg-white overflow-hidden ring-1 ring-black/5">
         <CardHeader className="bg-slate-50/50 border-b p-8">
            <CardTitle className="text-xl font-black">{isRtl ? 'سجل دفعات الرواتب' : 'Payroll History'}</CardTitle>
         </CardHeader>
@@ -132,7 +123,7 @@ export default function PayrollBatchesPage() {
                            </Badge>
                         </TableCell>
                         <TableCell className="pe-8 text-center">
-                           <Button variant="ghost" size="icon" className="rounded-xl group-hover:bg-primary group-hover:text-white">
+                           <Button variant="ghost" size="icon" className="rounded-xl group-hover:bg-primary group-hover:text-white transition-all">
                               <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-0", isRtl && "rotate-180")} />
                            </Button>
                         </TableCell>

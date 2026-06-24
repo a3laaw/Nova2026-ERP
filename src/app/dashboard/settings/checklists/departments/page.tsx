@@ -134,28 +134,28 @@ export default function DepartmentsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-start">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-black font-headline flex items-center gap-3 text-start">
+        <h2 className="text-2xl font-black font-headline flex items-center gap-3">
           <Building2 className="h-6 w-6 text-primary" /> 
           {isRtl ? 'الهيكل التنظيمي' : 'Organizational Structure'}
         </h2>
         
         <Dialog open={isDeptOpen} onOpenChange={setIsDeptOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => setDeptForm({ name: '', nameEn: '', description: '' })} className="h-12 px-6 rounded-2xl bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white font-black shadow-lg shadow-orange-500/20 flex items-center gap-2 hover:scale-105 transition-all">
-              <Plus className="h-5 w-5" /> {t('newDept')}
+            <Button onClick={() => setDeptForm({ name: '', nameEn: '', description: '' })} variant="default" className="h-11 shadow-lg shadow-primary/20 flex items-center gap-2">
+              <Plus className="h-4 w-4" /> {t('newDept')}
             </Button>
           </DialogTrigger>
-          <DialogContent className="rounded-[2.5rem] max-w-2xl p-8" dir={dir}>
-            <DialogHeader><DialogTitle className="text-start font-black text-2xl">{deptForm.id ? t('edit') : t('newDept')}</DialogTitle></DialogHeader>
+          <DialogContent className="rounded-xl p-8 max-w-2xl border-0 shadow-3xl bg-white" dir={dir}>
+            <DialogHeader className="text-start"><DialogTitle className="font-black text-2xl">{deptForm.id ? t('edit') : t('newDept')}</DialogTitle></DialogHeader>
             <div className="grid grid-cols-2 gap-6 py-4 text-start">
-              <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={deptForm.name || ''} onChange={e => setDeptForm({...deptForm, name: e.target.value})} /></div>
-              <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={deptForm.nameEn || ''} onChange={e => setDeptForm({...deptForm, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
-              <div className="col-span-2 space-y-2"><Label>{isRtl ? 'الوصف' : 'Description'}</Label><Textarea value={deptForm.description || ''} onChange={e => setDeptForm({...deptForm, description: e.target.value})} /></div>
+              <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('name')} (Ar)</Label><Input value={deptForm.name || ''} onChange={e => setDeptForm({...deptForm, name: e.target.value})} className="h-11 border-2" /></div>
+              <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('name')} (En)</Label><Input value={deptForm.nameEn || ''} onChange={e => setDeptForm({...deptForm, nameEn: e.target.value})} className="h-11 border-2 text-start" dir="ltr" /></div>
+              <div className="col-span-2 space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'الوصف' : 'Description'}</Label><Textarea value={deptForm.description || ''} onChange={e => setDeptForm({...deptForm, description: e.target.value})} className="min-h-[100px] border-2" /></div>
             </div>
-            <DialogFooter className="mt-6">
-              <Button onClick={handleSaveDept} disabled={loadingAction === 'save_dept'} className="w-full h-12 rounded-xl font-bold bg-primary text-white">
+            <DialogFooter>
+              <Button onClick={handleSaveDept} disabled={loadingAction === 'save_dept'} className="w-full h-12 rounded-xl">
                 {loadingAction === 'save_dept' ? <Loader2 className="animate-spin" /> : t('save')}
               </Button>
             </DialogFooter>
@@ -164,12 +164,12 @@ export default function DepartmentsPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-5 text-start">
-          <Card className="border-0 shadow-lg rounded-3xl overflow-hidden bg-white">
-            <CardHeader className="bg-slate-50/50 border-b p-4">
+        <div className="lg:col-span-5">
+          <Card className="border-0 shadow-lg rounded-xl overflow-hidden bg-white">
+            <CardHeader className="bg-slate-50/50 border-b p-4 text-start">
               <div className="relative">
                 <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder={t('search')} className="ps-10 rounded-xl bg-white" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                <Input placeholder={t('search')} className="ps-10 h-10 bg-white" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
               </div>
             </CardHeader>
             <CardContent className="p-0 max-h-[600px] overflow-y-auto">
@@ -207,7 +207,7 @@ export default function DepartmentsPage() {
         </div>
 
         <div className={cn("lg:col-span-7", !selectedDept && 'opacity-60')}>
-          <Card className="border-0 shadow-lg rounded-3xl overflow-hidden bg-white text-start">
+          <Card className="border-0 shadow-lg rounded-xl overflow-hidden bg-white">
             <CardHeader className="bg-slate-50/50 border-b p-6 flex flex-row items-center justify-between">
               <div><CardTitle className="text-lg font-black flex items-center gap-2"><Briefcase className="h-5 w-5 text-primary" /> {isRtl ? 'الوظائف' : 'Job Titles'}</CardTitle></div>
               
@@ -215,35 +215,36 @@ export default function DepartmentsPage() {
                 <DialogTrigger asChild>
                   <Button 
                     disabled={!selectedDept}
-                    className="rounded-xl h-12 px-6 bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white font-black shadow-lg shadow-orange-500/20 hover:scale-105 transition-all gap-2"
+                    variant="outline"
+                    className="h-11 shadow-sm hover:scale-105 transition-all gap-2"
                     onClick={() => setJobForm({ name: '', nameEn: '', roleId: '' })}
                   >
-                    <Plus className="h-5 w-5" /> {isRtl ? 'إضافة وظيفة جديدة' : 'Add Job'}
+                    <Plus className="h-4 w-4" /> {isRtl ? 'إضافة وظيفة جديدة' : 'Add Job'}
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="rounded-[2.5rem] p-8 max-w-xl border-0 shadow-3xl bg-white" dir={dir}>
+                <DialogContent className="rounded-xl p-8 max-w-xl border-0 shadow-3xl bg-white" dir={dir}>
                   <DialogHeader className="text-start">
                     <DialogTitle className="font-black text-2xl flex items-center gap-3">
-                       <div className="p-3 bg-primary/10 text-primary rounded-2xl"><Plus className="h-6 w-6" /></div>
+                       <Plus className="h-6 w-6 text-primary" />
                        {jobForm.id ? (isRtl ? 'تعديل بيانات الوظيفة' : 'Edit Job') : (isRtl ? 'إضافة وظيفة للقسم' : 'Add New Job')}
                     </DialogTitle>
                     <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">{isRtl ? `القسم: ${selectedDept?.name}` : `Dept: ${selectedDept?.nameEn}`}</p>
                   </DialogHeader>
                   <div className="space-y-6 py-4 text-start">
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('name')} (Ar)</Label><Input value={jobForm.name || ''} onChange={e => setJobForm({...jobForm, name: e.target.value})} className="h-12 rounded-xl border-2 font-bold" /></div>
-                      <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('name')} (En)</Label><Input value={jobForm.nameEn || ''} onChange={e => setJobForm({...jobForm, nameEn: e.target.value})} className="h-12 rounded-xl border-2 font-bold text-start" dir="ltr" /></div>
+                      <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('name')} (Ar)</Label><Input value={jobForm.name || ''} onChange={e => setJobForm({...jobForm, name: e.target.value})} className="h-11 border-2 font-bold" /></div>
+                      <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('name')} (En)</Label><Input value={jobForm.nameEn || ''} onChange={e => setJobForm({...jobForm, nameEn: e.target.value})} className="h-11 border-2 font-bold text-start" dir="ltr" /></div>
                     </div>
                     
-                    <div className="p-6 bg-primary/5 rounded-2xl border-2 border-primary/10 space-y-4">
+                    <div className="p-6 bg-slate-50 rounded-xl border-2 space-y-4">
                         <div className="flex items-center gap-2 text-primary font-black text-xs uppercase tracking-widest">
                           <ShieldCheck className="h-4 w-4" /> {isRtl ? 'ربط الصلاحيات (الدور الأمني)' : 'Security Permissions Link'}
                         </div>
                         <Select value={jobForm.roleId} onValueChange={v => setJobForm({...jobForm, roleId: v})}>
-                          <SelectTrigger className="h-12 rounded-xl bg-white border-2 font-black">
-                              <SelectValue placeholder={isRtl ? "اختر قالب الصلاحيات لهذا المسمى" : "Select Permission Template"} />
+                          <SelectTrigger className="h-11 rounded-lg bg-white border-2 font-black">
+                              <SelectValue placeholder={isRtl ? "اختر قالب الصلاحيات" : "Select Role"} />
                           </SelectTrigger>
-                          <SelectContent className="rounded-2xl">
+                          <SelectContent className="rounded-xl">
                               {roles?.map(r => (
                                 <SelectItem key={r.id} value={r.id!} className="font-bold">{isRtl ? r.name : r.nameEn}</SelectItem>
                               ))}
@@ -251,8 +252,8 @@ export default function DepartmentsPage() {
                         </Select>
                     </div>
                   </div>
-                  <DialogFooter className="mt-6">
-                    <Button onClick={handleSaveJob} disabled={loadingAction === 'save_job'} className="w-full h-16 rounded-2xl font-black text-xl bg-primary text-white shadow-xl shadow-orange-500/20">
+                  <DialogFooter>
+                    <Button onClick={handleSaveJob} disabled={loadingAction === 'save_job'} className="w-full h-12 rounded-xl">
                       {loadingAction === 'save_job' ? <Loader2 className="animate-spin" /> : t('save')}
                     </Button>
                   </DialogFooter>
@@ -262,18 +263,18 @@ export default function DepartmentsPage() {
             <CardContent className="p-6">
               {!selectedDept ? (
                 <div className="py-20 text-center italic text-muted-foreground flex flex-col items-center gap-4 opacity-40">
-                  <div className="w-16 h-16 bg-slate-100 rounded-3xl flex items-center justify-center"><ChevronRight className={cn("h-8 w-8", !isRtl && "rotate-180")} /></div>
-                  <p className="font-black">{isRtl ? 'يرجى اختيار قسم من القائمة اليمنى لإدارة الوظائف التابعة له.' : 'Please select a department to manage its sub-jobs.'}</p>
+                  <div className="w-16 h-16 bg-slate-100 rounded-xl flex items-center justify-center"><ChevronRight className={cn("h-8 w-8", !isRtl && "rotate-180")} /></div>
+                  <p className="font-black">{isRtl ? 'يرجى اختيار قسم من القائمة لإدارة وظائفه.' : 'Please select a department.'}</p>
                 </div>
               ) : (
                 jobsLoading ? <div className="py-10 text-center"><Loader2 className="animate-spin mx-auto text-primary/30" /></div> : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {jobs?.map(job => (
-                      <div key={job.id} className="p-5 rounded-2xl border-2 border-slate-50 bg-white hover:border-primary/20 transition-all flex items-center justify-between group shadow-sm">
+                      <div key={job.id} className="p-5 rounded-xl border border-slate-100 bg-white hover:border-primary/20 transition-all flex items-center justify-between group shadow-sm">
                         <div className="text-start">
                            <span className="text-sm font-black text-slate-800 block">{isRtl ? job.name : job.nameEn}</span>
                            <span className="text-[9px] font-bold text-primary flex items-center gap-1 mt-1">
-                              <ShieldCheck className="h-2.5 w-2.5" /> {job.roleName || (isRtl ? 'بدون دور محدد' : 'No Role Assigned')}
+                              <ShieldCheck className="h-2.5 w-2.5" /> {job.roleName || (isRtl ? 'بدون دور' : 'No Role')}
                            </span>
                         </div>
                         <div className="flex gap-1 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -293,8 +294,8 @@ export default function DepartmentsPage() {
                       </div>
                     ))}
                     {jobs?.length === 0 && (
-                      <div className="col-span-full py-16 text-center text-slate-300 font-bold border-2 border-dashed rounded-3xl">
-                         {isRtl ? 'لا توجد وظائف مضافة لهذا القسم.' : 'No sub-jobs in this department.'}
+                      <div className="col-span-full py-16 text-center text-slate-300 font-bold border-2 border-dashed rounded-xl">
+                         {isRtl ? 'لا توجد وظائف مضافة.' : 'No sub-jobs found.'}
                       </div>
                     )}
                   </div>
@@ -306,18 +307,18 @@ export default function DepartmentsPage() {
       </div>
 
       <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
-        <AlertDialogContent className="rounded-[2rem] p-8" dir={dir}>
+        <AlertDialogContent className="rounded-xl p-8" dir={dir}>
           <AlertDialogHeader>
-            <div className="mx-auto w-16 h-16 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mb-4">
+            <div className="mx-auto w-16 h-16 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center mb-4">
                <AlertTriangle className="h-8 w-8" />
             </div>
             <AlertDialogTitle className="text-start font-black text-2xl">{t('confirmDelete')}</AlertDialogTitle>
             <AlertDialogDescription className="text-start font-bold">
-              {isRtl ? 'هل أنت متأكد من الحذف؟ سيتم إزالة السجل نهائياً من النظام.' : 'Are you sure? This will permanently remove the record.'}
+              {isRtl ? 'سيتم إزالة السجل نهائياً.' : 'This will permanently remove the record.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-8 gap-4">
-            <AlertDialogCancel className="rounded-xl h-12 font-bold border-2">{isRtl ? 'إلغاء' : 'Cancel'}</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-xl h-11 border-2">{isRtl ? 'إلغاء' : 'Cancel'}</AlertDialogCancel>
             <AlertDialogAction 
               onClick={() => {
                 if (deletingId) {
@@ -326,7 +327,7 @@ export default function DepartmentsPage() {
                   else handleDeleteJob(deletingId);
                 }
               }}
-              className="rounded-xl h-12 font-black bg-rose-600 hover:bg-rose-700 text-white px-8"
+              className="rounded-xl h-11 bg-rose-600 hover:bg-rose-700 text-white px-8"
             >
               {isRtl ? 'نعم، احذف' : 'Delete'}
             </AlertDialogAction>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -48,11 +47,10 @@ export default function EmployeesPage() {
 
   const companyId = globalUser?.companyId;
 
-  // فحص الصلاحيات الميدانية
   const viewAccess = check('hr', 'view');
   const createAccess = check('hr', 'create');
   const deleteAccess = check('hr', 'delete');
-  const canSeeSalaries = check('hr', 'approve').can; // فقط من يعتمد الرواتب يراها
+  const canSeeSalaries = check('hr', 'approve').can;
 
   const employeesQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.employees(companyId)), orderBy('employeeNumber')) : null, 
@@ -64,22 +62,15 @@ export default function EmployeesPage() {
     db && companyId ? new HRService(db, companyId) : null, 
   [db, companyId]);
 
-  // تطبيق منطق عزل البيانات (Data Isolation)
   const filteredEmployees = useMemo(() => {
     if (!viewAccess.can || !employees) return [];
-
     return employees.filter(emp => {
-      // 1. فلترة البحث النصي
       const matchSearch = emp.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           emp.employeeNumber?.includes(searchTerm);
-      
       if (!matchSearch) return false;
-
-      // 2. تطبيق نطاق الوصول (Scope)
       if (viewAccess.scope === 'all') return true;
       if (viewAccess.scope === 'dept') return emp.departmentId === globalUser?.departmentId;
       if (viewAccess.scope === 'own') return emp.id === globalUser?.employeeId;
-
       return false;
     });
   }, [employees, viewAccess, globalUser, searchTerm]);
@@ -99,7 +90,7 @@ export default function EmployeesPage() {
   };
 
   return (
-    <div className="space-y-8" dir={dir}>
+    <div className="space-y-8 animate-in fade-in duration-500" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start">
           <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
@@ -107,14 +98,15 @@ export default function EmployeesPage() {
             {viewAccess.scope === 'own' ? (isRtl ? 'ملفي الوظيفي' : 'My Profile') : (isRtl ? 'سجل الموظفين' : 'Employee Records')}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-            {viewAccess.scope === 'own' ? (isRtl ? 'عرض بياناتك المسجلة في النظام' : 'View your recorded data') : (isRtl ? 'إدارة القوى العاملة والبيانات الوظيفية' : 'Manage workforce and job profiles')}
+            {isRtl ? 'إدارة القوى العاملة والبيانات الوظيفية' : 'Manage workforce and job profiles'}
           </p>
         </div>
 
         {createAccess.can && createAccess.scope !== 'own' && (
           <Button 
             onClick={() => router.push('/dashboard/hr/employees/new')}
-            className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform"
+            variant="default"
+            className="h-12 px-8 shadow-xl shadow-primary/20"
           >
             <UserPlus className="me-2 h-6 w-6" />
             {isRtl ? 'توظيف جديد' : 'New Hire'}
@@ -122,13 +114,13 @@ export default function EmployeesPage() {
         )}
       </div>
 
-      <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
-        <CardHeader className="bg-slate-50/50 border-b p-8 flex flex-row items-center justify-between">
+      <Card className="border-0 shadow-xl rounded-xl bg-white overflow-hidden ring-1 ring-black/5">
+        <CardHeader className="bg-slate-50/50 border-b p-8">
           <div className="relative w-full max-w-md">
             <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input 
-              placeholder={isRtl ? 'بحث باسم الموظف أو رقم الملف...' : 'Search by name or number...'} 
-              className="ps-12 rounded-2xl h-14 bg-white text-start border-2 border-slate-100" 
+              placeholder={isRtl ? 'بحث...' : 'Search...'} 
+              className="ps-12 h-11 bg-white border-slate-200" 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -139,110 +131,83 @@ export default function EmployeesPage() {
             <TableHeader className="bg-muted/30">
               <TableRow>
                 <TableHead className="py-6 ps-8 text-start">{isRtl ? 'الموظف' : 'Employee'}</TableHead>
-                <TableHead className="text-start">{isRtl ? 'الوظيفة / القسم' : 'Job / Dept'}</TableHead>
+                <TableHead className="text-start">{isRtl ? 'الوظيفة' : 'Job'}</TableHead>
                 <TableHead className="text-start">{isRtl ? 'الحالة' : 'Status'}</TableHead>
-                {canSeeSalaries && (
-                  <TableHead className="text-end">
-                    <div className="flex items-center justify-end gap-2 group">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 p-0 rounded-lg hover:bg-primary/10 text-primary transition-all"
-                          onClick={() => setShowSalaries(!showSalaries)}
-                        >
-                          {showSalaries ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </Button>
-                        <span className="font-black">{isRtl ? 'الراتب' : 'Salary'}</span>
-                    </div>
-                  </TableHead>
-                )}
-                <TableHead className="text-center pe-8"></TableHead>
+                {canSeeSalaries && <TableHead className="text-end">{isRtl ? 'الراتب' : 'Salary'}</TableHead>}
+                <TableHead className="pe-8"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-24"><Loader2 className="animate-spin h-12 w-12 mx-auto text-primary/30" /></TableCell></TableRow>
-              ) : filteredEmployees.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-24 text-muted-foreground font-bold italic">{isRtl ? 'لا توجد نتائج مطابقة.' : 'No results found.'}</TableCell></TableRow>
-              ) : (
-                filteredEmployees.map((emp) => (
-                  <TableRow key={emp.id} className="hover:bg-primary/5 transition-colors group cursor-pointer" onClick={() => router.push(`/dashboard/hr/employees/${emp.id}`)}>
-                    <TableCell className="py-6 ps-8 text-start">
-                      <div className="flex items-center gap-4">
-                         <div className="h-12 w-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors font-black">
-                            {emp.employeeNumber}
-                         </div>
-                         <div className="flex flex-col">
-                            <span className="font-black text-slate-800">{emp.fullName}</span>
-                            <span className="text-[10px] text-muted-foreground font-bold flex items-center gap-1">
-                               <Phone className="h-2 w-2" /> {emp.mobile}
-                            </span>
-                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-start">
-                       <div className="flex flex-col">
-                          <span className="font-bold text-sm text-slate-700 flex items-center gap-1">
-                             <Briefcase className="h-3 w-3 text-primary" /> {emp.jobTitle}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground uppercase font-black">{emp.departmentName}</span>
+                <TableRow><TableCell colSpan={5} className="text-center py-24"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
+              ) : filteredEmployees.map((emp) => (
+                <TableRow key={emp.id} className="hover:bg-primary/5 transition-colors group cursor-pointer" onClick={() => router.push(`/dashboard/hr/employees/${emp.id}`)}>
+                  <TableCell className="py-6 ps-8 text-start">
+                    <div className="flex items-center gap-4">
+                       <div className="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center font-black text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-all">
+                          {emp.employeeNumber}
                        </div>
+                       <div className="flex flex-col">
+                          <span className="font-black text-slate-800">{emp.fullName}</span>
+                          <span className="text-[10px] text-muted-foreground font-bold">{emp.mobile}</span>
+                       </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-start">
+                     <span className="font-bold text-xs text-slate-700 flex items-center gap-1">
+                        <Briefcase className="h-3 w-3 text-primary" /> {emp.jobTitle}
+                     </span>
+                  </TableCell>
+                  <TableCell className="text-start">
+                     <Badge className={cn(
+                       "font-black px-3 py-1 rounded-lg border-0 shadow-sm uppercase text-[9px]",
+                       emp.status === 'active' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'
+                     )}>
+                        {emp.status}
+                     </Badge>
+                  </TableCell>
+                  {canSeeSalaries && (
+                    <TableCell className="text-end font-mono font-black text-emerald-600">
+                      {showSalaries ? emp.basicSalary?.toLocaleString() : '••••'}
                     </TableCell>
-                    <TableCell className="text-start">
-                       <Badge className={cn(
-                         "font-black px-3 py-1 rounded-lg border-0 shadow-sm",
-                         emp.status === 'active' ? 'bg-emerald-500 text-white' : 
-                         emp.status === 'on-leave' ? 'bg-amber-50 text-amber-600' : 'bg-rose-500 text-white'
-                       )}>
-                          {isRtl ? (emp.status === 'active' ? 'نشط' : emp.status === 'on-leave' ? 'في إجازة' : 'منتهي') : emp.status.toUpperCase()}
-                       </Badge>
-                    </TableCell>
-                    {canSeeSalaries && (
-                      <TableCell className="text-end font-mono font-black text-emerald-600 text-lg">
-                        {showSalaries ? emp.basicSalary?.toLocaleString() : '••••'}
-                      </TableCell>
-                    )}
-                    <TableCell className="text-center pe-8" onClick={e => e.stopPropagation()}>
-                      <div className="flex items-center justify-end gap-2">
-                         {deleteAccess.can && deleteAccess.scope !== 'own' && (
-                           <Button 
-                             variant="ghost" 
-                             size="icon" 
-                             className="text-destructive hover:bg-destructive/5 rounded-xl"
-                             disabled={loadingAction === emp.id}
-                             onClick={() => setDeletingId(emp.id!)}
-                           >
-                             {loadingAction === emp.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                           </Button>
-                         )}
-                         <Button variant="ghost" size="icon" className="rounded-xl group-hover:bg-primary group-hover:text-white transition-all" onClick={() => router.push(`/dashboard/hr/employees/${emp.id}`)}>
-                           <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-180")} />
+                  )}
+                  <TableCell className="pe-8 text-end" onClick={e => e.stopPropagation()}>
+                    <div className="flex justify-end gap-2">
+                       {deleteAccess.can && (
+                         <Button 
+                           variant="ghost" 
+                           size="icon" 
+                           className="text-rose-400 hover:text-rose-600 rounded-xl"
+                           onClick={() => setDeletingId(emp.id!)}
+                         >
+                           <Trash2 className="h-4 w-4" />
                          </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
+                       )}
+                       <Button variant="ghost" size="icon" className="rounded-xl group-hover:bg-primary group-hover:text-white transition-all">
+                         <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
+                       </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
 
       <AlertDialog open={!!deletingId} onOpenChange={open => !open && setDeletingId(null)}>
-        <AlertDialogContent className="rounded-[2.5rem] p-8" dir={dir}>
+        <AlertDialogContent className="rounded-xl p-8" dir={dir}>
           <AlertDialogHeader>
-            <div className="mx-auto w-16 h-16 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mb-4">
-               <AlertTriangle className="h-8 w-8" />
-            </div>
+            <div className="mx-auto w-16 h-16 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center mb-4"><AlertTriangle className="h-8 w-8" /></div>
             <AlertDialogTitle className="text-start font-black text-2xl">{t('confirmDelete')}</AlertDialogTitle>
             <AlertDialogDescription className="text-start font-bold">
-              {isRtl ? 'هل أنت متأكد؟ سيتم حذف ملف الموظف وسجلاته المالية فوراً ولا يمكن التراجع.' : 'Are you sure? Employee profile and financial records will be deleted immediately.'}
+              {isRtl ? 'هل أنت متأكد؟ سيتم حذف ملف الموظف نهائياً.' : 'Are you sure? Employee profile will be deleted.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-8 gap-4">
-            <AlertDialogCancel className="rounded-xl h-12 font-bold border-2">{isRtl ? 'إلغاء' : 'Cancel'}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="rounded-xl h-12 font-black bg-rose-600 hover:bg-rose-700 text-white px-8">
-              {isRtl ? 'نعم، احذف السجل' : 'Yes, Delete'}
+            <AlertDialogCancel className="rounded-xl h-11 font-bold border-2">{isRtl ? 'إلغاء' : 'Cancel'}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="rounded-xl h-11 bg-rose-600 hover:bg-rose-700 text-white px-8">
+              {isRtl ? 'نعم، احذف' : 'Yes, Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

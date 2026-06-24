@@ -130,18 +130,18 @@ export default function GeoPage() {
         
         <Dialog open={isGovOpen} onOpenChange={setIsGovOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => setGovForm({ name: '', nameEn: '' })} className="h-12 px-6 rounded-2xl bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white font-black shadow-lg shadow-orange-500/20 flex items-center gap-2 hover:scale-105 transition-all">
-              <Plus className="h-5 w-5" /> {t('newGov')}
+            <Button onClick={() => setGovForm({ name: '', nameEn: '' })} variant="default" className="h-11 shadow-lg shadow-primary/20">
+              <Plus className="h-4 w-4 me-2" /> {t('newGov')}
             </Button>
           </DialogTrigger>
-          <DialogContent className="rounded-[2.5rem] p-8 border-0 shadow-3xl" dir={dir}>
+          <DialogContent className="rounded-xl p-8 border-0 shadow-3xl" dir={dir}>
              <DialogHeader className="text-start"><DialogTitle className="font-black text-2xl">{govForm.id ? t('edit') : t('newGov')}</DialogTitle></DialogHeader>
              <div className="grid grid-cols-2 gap-4 py-6 text-start">
-               <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('name')} (Ar)</Label><Input value={govForm.name || ''} onChange={e => setGovForm({...govForm, name: e.target.value})} className="h-12 rounded-xl border-2 font-bold" /></div>
-               <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('name')} (En)</Label><Input value={govForm.nameEn || ''} onChange={e => setGovForm({...govForm, nameEn: e.target.value})} className="h-12 rounded-xl border-2 font-bold text-start" dir="ltr" /></div>
+               <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('name')} (Ar)</Label><Input value={govForm.name || ''} onChange={e => setGovForm({...govForm, name: e.target.value})} className="h-11 border-2" /></div>
+               <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('name')} (En)</Label><Input value={govForm.nameEn || ''} onChange={e => setGovForm({...govForm, nameEn: e.target.value})} className="h-11 border-2 text-start" dir="ltr" /></div>
              </div>
              <DialogFooter>
-               <Button onClick={handleSaveGov} disabled={loadingAction === 'save_gov'} className="w-full h-14 rounded-xl font-black text-lg bg-primary">
+               <Button onClick={handleSaveGov} disabled={loadingAction === 'save_gov'} className="w-full h-12 rounded-xl">
                  {loadingAction === 'save_gov' ? <Loader2 className="animate-spin" /> : t('save')}
                </Button>
              </DialogFooter>
@@ -151,11 +151,11 @@ export default function GeoPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-4 text-start">
-          <Card className="border-0 shadow-lg rounded-3xl overflow-hidden bg-white">
+          <Card className="border-0 shadow-lg rounded-xl overflow-hidden bg-white">
             <CardHeader className="bg-slate-50/50 border-b p-4">
               <div className="relative">
                 <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder={t('search')} className="ps-10 rounded-xl h-10 bg-white" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                <Input placeholder={t('search')} className="ps-10 h-10 bg-white" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
               </div>
             </CardHeader>
             <CardContent className="p-0 max-h-[500px] overflow-y-auto">
@@ -165,7 +165,7 @@ export default function GeoPage() {
                     key={gov.id} 
                     onClick={() => setSelectedGov(gov)} 
                     className={cn(
-                      "p-5 border-b flex items-center justify-between cursor-pointer transition-all group border-2 border-transparent", 
+                      "p-5 border-b flex items-center justify-between cursor-pointer transition-all group", 
                       selectedGov?.id === gov.id ? 'bg-primary/5 border-s-4 border-s-primary' : 'hover:bg-muted/30'
                     )}
                   >
@@ -198,7 +198,7 @@ export default function GeoPage() {
         </div>
 
         <div className={cn("lg:col-span-8 text-start", !selectedGov && 'opacity-60')}>
-          <Card className="border-0 shadow-lg rounded-3xl overflow-hidden bg-white">
+          <Card className="border-0 shadow-lg rounded-xl overflow-hidden bg-white">
             <CardHeader className="bg-slate-50/50 border-b p-6 flex flex-row items-center justify-between">
               <div><CardTitle className="text-lg font-black flex items-center gap-2"><MapPin className="h-5 w-5 text-primary" /> {isRtl ? 'المناطق' : 'Areas'}</CardTitle></div>
               
@@ -206,26 +206,27 @@ export default function GeoPage() {
                 <DialogTrigger asChild>
                   <Button 
                     disabled={!selectedGov} 
-                    className="rounded-xl h-12 px-6 bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white font-black shadow-lg hover:scale-105 transition-all gap-2"
+                    variant="outline"
+                    className="h-11 shadow-sm hover:scale-105 transition-all gap-2"
                     onClick={() => setAreaForm({ name: '', nameEn: '' })}
                   >
-                    <Plus className="h-5 w-5" /> {isRtl ? 'إضافة منطقة جديدة' : 'Add Area'}
+                    <Plus className="h-4 w-4" /> {isRtl ? 'إضافة منطقة جديدة' : 'Add Area'}
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="rounded-[2.5rem] p-8 border-0 shadow-3xl max-w-xl" dir={dir}>
+                <DialogContent className="rounded-xl p-8 border-0 shadow-3xl max-w-xl" dir={dir}>
                   <DialogHeader className="text-start">
                     <DialogTitle className="font-black text-2xl flex items-center gap-3">
-                       <div className="p-3 bg-primary/10 text-primary rounded-2xl"><MapPin className="h-6 w-6" /></div>
+                       <MapPin className="h-6 w-6 text-primary" />
                        {isRtl ? 'إضافة منطقة سكنية' : 'Add New Area'}
                     </DialogTitle>
                     <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">{isRtl ? `المحافظة: ${selectedGov?.name}` : `Gov: ${selectedGov?.nameEn}`}</p>
                   </DialogHeader>
                   <div className="grid grid-cols-2 gap-4 py-6 text-start">
-                    <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('name')} (Ar)</Label><Input value={areaForm.name || ''} onChange={e => setAreaForm({...areaForm, name: e.target.value})} className="h-12 rounded-xl border-2 font-bold" /></div>
-                    <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('name')} (En)</Label><Input value={areaForm.nameEn || ''} onChange={e => setAreaForm({...areaForm, nameEn: e.target.value})} className="h-12 rounded-xl border-2 font-bold text-start" dir="ltr" /></div>
+                    <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('name')} (Ar)</Label><Input value={areaForm.name || ''} onChange={e => setAreaForm({...areaForm, name: e.target.value})} className="h-11 border-2" /></div>
+                    <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('name')} (En)</Label><Input value={areaForm.nameEn || ''} onChange={e => setAreaForm({...areaForm, nameEn: e.target.value})} className="h-11 border-2 text-start" dir="ltr" /></div>
                   </div>
                   <DialogFooter>
-                    <Button onClick={handleSaveArea} disabled={loadingAction === 'save_area'} className="w-full h-16 rounded-2xl font-black text-xl bg-primary text-white shadow-xl shadow-orange-500/20">
+                    <Button onClick={handleSaveArea} disabled={loadingAction === 'save_area'} className="w-full h-12 rounded-xl">
                       {loadingAction === 'save_area' ? <Loader2 className="animate-spin" /> : t('save')}
                     </Button>
                   </DialogFooter>
@@ -235,14 +236,14 @@ export default function GeoPage() {
             <CardContent className="p-6">
               {!selectedGov ? (
                 <div className="py-20 text-center italic text-muted-foreground flex flex-col items-center gap-4 opacity-40">
-                  <div className="w-16 h-16 bg-slate-100 rounded-3xl flex items-center justify-center"><ChevronRight className={cn("h-8 w-8", !isRtl && "rotate-180")} /></div>
+                  <div className="w-16 h-16 bg-slate-100 rounded-xl flex items-center justify-center"><ChevronRight className={cn("h-8 w-8", !isRtl && "rotate-180")} /></div>
                   <p className="font-black">{isRtl ? 'يرجى اختيار محافظة من القائمة اليمنى لعرض وإضافة المناطق التابعة لها.' : 'Please select a governorate to manage its areas.'}</p>
                 </div>
               ) : (
                 areasLoading ? <div className="py-10 text-center"><Loader2 className="animate-spin mx-auto text-primary/30" /></div> : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {areas?.map(area => (
-                      <div key={area.id} className="p-4 rounded-2xl border-2 border-slate-50 bg-white hover:border-primary/20 transition-all flex items-center justify-between group shadow-sm">
+                      <div key={area.id} className="p-4 rounded-xl border border-slate-100 bg-white hover:border-primary/20 transition-all flex items-center justify-between group shadow-sm">
                         <span className="text-sm font-black text-slate-800">{isRtl ? area.name : area.nameEn}</span>
                         <div className="flex gap-1 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
                            <Button 
@@ -266,7 +267,7 @@ export default function GeoPage() {
                       </div>
                     ))}
                     {areas?.length === 0 && (
-                      <div className="col-span-full py-16 text-center text-slate-300 font-bold border-2 border-dashed rounded-3xl">
+                      <div className="col-span-full py-16 text-center text-slate-300 font-bold border-2 border-dashed rounded-xl">
                          {isRtl ? 'لا توجد مناطق مضافة لهذه المحافظة.' : 'No areas in this governorate.'}
                       </div>
                     )}
@@ -279,9 +280,9 @@ export default function GeoPage() {
       </div>
 
       <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
-        <AlertDialogContent className="rounded-[2rem] p-8" dir={dir}>
+        <AlertDialogContent className="rounded-xl p-8" dir={dir}>
           <AlertDialogHeader>
-            <div className="mx-auto w-16 h-16 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mb-4">
+            <div className="mx-auto w-16 h-16 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center mb-4">
                <AlertTriangle className="h-8 w-8" />
             </div>
             <AlertDialogTitle className="text-start font-black text-2xl">{t('confirmDelete')}</AlertDialogTitle>
@@ -290,7 +291,7 @@ export default function GeoPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-8 gap-4">
-            <AlertDialogCancel className="rounded-xl h-12 font-bold border-2">{isRtl ? 'إلغاء' : 'Cancel'}</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-xl h-11 font-bold border-2">{isRtl ? 'إلغاء' : 'Cancel'}</AlertDialogCancel>
             <AlertDialogAction 
               onClick={() => {
                 if (deletingId) {
@@ -299,7 +300,7 @@ export default function GeoPage() {
                   else handleDeleteArea(deletingId);
                 }
               }}
-              className="rounded-xl h-12 font-black bg-rose-600 hover:bg-rose-700 text-white px-8"
+              className="rounded-xl h-11 font-black bg-rose-600 hover:bg-rose-700 text-white px-8"
             >
               {isRtl ? 'نعم، احذف' : 'Delete'}
             </AlertDialogAction>
