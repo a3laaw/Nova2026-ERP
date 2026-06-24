@@ -214,7 +214,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                     "absolute top-0 z-[999] hidden group-hover:block animate-in fade-in zoom-in-95 duration-200",
                     isRtl ? "right-full mr-2" : "left-full ml-2"
                   )}>
-                    <div className="bg-white border-2 border-orange-100 shadow-2xl rounded-2xl p-2 min-w-[180px]">
+                    <div className="bg-white border-2 border-orange-100 shadow-2xl rounded-2xl p-2 min-w-[180px] space-y-1">
                       <p className="px-3 py-2 text-[10px] font-black text-[#e87c24] border-b mb-1 uppercase tracking-widest">{item.title}</p>
                       {item.subItems.map((sub: any) => (
                         <Link 
@@ -222,7 +222,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                           href={sub.url}
                           className={cn(
                             "flex items-center justify-between h-9 px-3 rounded-xl text-[11px] font-black transition-all",
-                            pathname === sub.url ? "bg-[#FFFDE7] text-[#e87c24]" : "text-slate-600 hover:bg-[#FFF3E0] hover:text-[#e87c24]"
+                            pathname === sub.url ? "bg-[#FFFDE7] text-[#e87c24]" : "text-slate-600 hover:bg-gradient-to-r hover:from-[#FFF3E0] hover:to-[#FFFDE7] hover:text-[#e87c24]"
                           )}
                         >
                           <span>{sub.title}</span>
@@ -270,20 +270,20 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
             </button>
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <div className="mt-2 space-y-1 bg-white border border-orange-100 shadow-xl rounded-2xl animate-in slide-in-from-top-2 duration-300 overflow-hidden">
+            <div className="mt-3 space-y-2 px-1 animate-in slide-in-from-top-2 duration-300">
               {item.subItems.map((sub: any) => (
                 <Link 
                   key={sub.title} 
                   href={sub.url}
                   className={cn(
-                    "flex items-center justify-between h-10 px-5 transition-all text-[11px] font-black border-b border-orange-50/30 last:border-0",
+                    "flex items-center justify-between h-11 px-5 transition-all duration-300 text-[11px] font-black rounded-2xl border border-orange-100/50 shadow-sm hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98]",
                     pathname === sub.url 
-                      ? "bg-[#FFFDE7] text-[#e87c24]" 
-                      : "text-slate-700 hover:bg-gradient-to-r hover:from-[#FFF3E0] hover:to-[#FFFDE7] hover:text-[#e87c24]"
+                      ? "bg-[#FFFDE7] text-[#e87c24] border-primary/20 shadow-primary/5" 
+                      : "bg-white text-slate-700 hover:bg-gradient-to-r hover:from-[#FFF3E0] hover:to-[#FFFDE7] hover:text-[#e87c24]"
                   )}
                 >
                   <span className="truncate text-start flex-1">{sub.title}</span>
-                  <sub.icon className={cn("h-3.5 w-3.5 ml-2", pathname === sub.url ? "opacity-100 text-primary" : "opacity-40")} />
+                  <sub.icon className={cn("h-3.5 w-3.5 ml-2 transition-all", pathname === sub.url ? "opacity-100 text-primary scale-110" : "opacity-40")} />
                 </Link>
               ))}
             </div>
