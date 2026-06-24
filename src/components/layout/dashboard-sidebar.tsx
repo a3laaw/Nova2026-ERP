@@ -1,210 +1,166 @@
-'use client';
+/**
+ * @fileOverview القائمة الجانبية (Sidebar) السيادية المحدثة - NovaFlow ERP.
+ * تم تحسين تباين الألوان ووضوح النصوص في القوائم الفرعية مع الحفاظ على التصميم الكبسولي.
+ */
 
-import * as React from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import {
-  LayoutDashboard,
-  Users,
-  HardHat,
-  Calculator,
-  UserCircle,
-  ShoppingCart,
-  Warehouse,
-  BarChart3,
-  Sparkles,
-  Clock,
-  ShieldCheck,
-  Calendar,
-  FileSpreadsheet,
-  FileText,
-  DollarSign,
-  Package,
-  Layers,
-  FileSearch,
-  BookOpen,
-  TrendingUp,
-  Truck,
-  Scale,
-  Building2,
-  UserCog,
-  Database,
-  ChevronLeft,
-  ArrowRight,
-  Plus,
-  Settings2,
-} from 'lucide-react';
+"use client"
 
-import { cn } from '@/lib/utils';
-import { useLanguage } from '@/context/language-context';
-import { usePermissions } from '@/hooks/use-permissions';
-import { Badge } from '@/components/ui/badge';
+import * as React from "react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
 import {
-  Sidebar,
-  SidebarHeader,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarFooter,
-  SidebarMenu,
-  SidebarMenuItem,
+  LayoutDashboard, Users, HardHat, Calculator, UserCircle,
+  ShoppingCart, Sparkles, Clock, ShieldCheck,
+  Calendar, FileSpreadsheet, FileText, Package,
+  Layers, FileSearch, Truck, Scale,
+  Building2, Database, ChevronLeft, Settings2, UserCog,
+  Eye, EyeOff, Search, Menu
+} from "lucide-react"
+import { cn } from "@/lib/utils"
+import { useLanguage } from "@/context/language-context"
+import { usePermissions } from "@/hooks/use-permissions"
+import { useAuthContext } from "@/context/auth-context"
+import { Badge } from "@/components/ui/badge"
+import {
+  Sidebar, SidebarHeader, SidebarContent, SidebarGroup,
+  SidebarGroupContent, SidebarFooter, SidebarMenu, SidebarMenuItem,
   useSidebar,
-} from '@/components/ui/sidebar';
+} from "@/components/ui/sidebar"
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+  Collapsible, CollapsibleContent, CollapsibleTrigger,
+} from "@/components/ui/collapsible"
+import {
+  Tooltip, TooltipProvider, TooltipTrigger, TooltipContent,
+} from "@/components/ui/tooltip"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuLabel,
-} from '@/components/ui/dropdown-menu';
-import { useAuthContext } from '@/context/auth-context';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-
-type SidebarItem = {
-  title: string;
-  icon: React.ElementType;
-  url: string;
-  resource?: string;
-  permission?: string;
-  subItems?: {
-    title: string;
-    url: string;
-    icon: React.ElementType;
-    permission?: string;
-  }[];
-};
+} from "@/components/ui/dropdown-menu"
 
 export function DashboardSidebar() {
-  const pathname = usePathname();
-  const { state } = useSidebar();
-  const { t, lang } = useLanguage();
-  const { canAccess, isAdmin, check } = usePermissions();
-  const { globalUser } = useAuthContext();
+  const pathname = usePathname()
+  const { state } = useSidebar()
+  const { t, lang } = useLanguage()
+  const { canAccess, check } = usePermissions()
+  const { globalUser } = useAuthContext()
+  const isRtl = lang === 'ar'
+  const isCollapsed = state === "collapsed"
 
-  const isRtl = lang === 'ar';
-  const isCollapsed = state === 'collapsed';
-
-  // خلفية السايدبار تطابق النظام الرمادي #F8F9FA
-  const sidebarBg = "#F8F9FA";
-
-  const menuItems: SidebarItem[] = React.useMemo(() => [
-    { title: t('dashboard'), icon: LayoutDashboard, url: '/dashboard', resource: 'dashboard' },
-    {
-      title: t('crm'),
-      icon: Users,
-      url: '/dashboard/crm',
+  const menuItems = React.useMemo(() => [
+    { title: t('dashboard'), icon: LayoutDashboard, url: "/dashboard", resource: 'dashboard' },
+    { 
+      title: t('crm'), 
+      icon: Users, 
+      url: "/dashboard/crm", 
       resource: 'crm',
       subItems: [
-        { title: t('leads'), url: '/dashboard/crm', icon: Users },
-        { title: t('clients'), url: '/dashboard/clients', icon: UserCircle },
-      ],
+        { title: t('leads'), url: "/dashboard/crm", icon: Users },
+        { title: t('clients'), url: "/dashboard/clients", icon: UserCircle },
+      ]
     },
-    {
-      title: t('projects'),
-      icon: HardHat,
-      url: '/dashboard/projects',
+    { 
+      title: t('projects'), 
+      icon: HardHat, 
+      url: "/dashboard/projects", 
       resource: 'projects',
       subItems: [
-        { title: t('activeProjects'), url: '/dashboard/projects', icon: Layers },
-        { title: t('reports'), url: '/dashboard/reports', icon: FileText },
-      ],
+        { title: t('activeProjects'), url: "/dashboard/projects", icon: Layers },
+        { title: t('reports'), url: "/dashboard/reports", icon: FileText },
+      ]
     },
-    {
-      title: t('procurement'),
-      icon: ShoppingCart,
-      url: '/dashboard/procurement',
+    { 
+      title: t('procurement'), 
+      icon: ShoppingCart, 
+      url: "/dashboard/procurement", 
       resource: 'procurement',
       subItems: [
-        { title: t('suppliers'), url: '/dashboard/procurement/suppliers', icon: Truck },
-        { title: t('quoteAnalysis'), url: '/dashboard/ai', icon: FileSearch },
-        { title: t('purchaseOrders'), url: '/dashboard/procurement', icon: Package },
-      ],
+        { title: t('suppliers'), url: "/dashboard/procurement/suppliers", icon: Truck },
+        { title: t('quoteAnalysis'), url: "/dashboard/ai", icon: FileSearch },
+      ]
     },
-    {
-      title: t('hr'),
-      icon: UserCircle,
-      url: '/dashboard/hr',
+    { 
+      title: t('hr'), 
+      icon: UserCircle, 
+      url: "/dashboard/hr", 
       resource: 'hr',
       subItems: [
-        { title: t('employees'), url: '/dashboard/hr/employees', icon: Users },
-        { title: t('leaves'), url: '/dashboard/hr/leaves', icon: Calendar },
-        { title: t('permissions'), url: '/dashboard/hr/permissions', icon: Clock },
-        { title: t('attendance'), url: '/dashboard/hr/attendance/import', icon: FileSpreadsheet },
-        { title: t('payroll'), url: '/dashboard/hr/payroll', icon: Calculator },
-        { title: t('gratuity'), url: '/dashboard/hr/gratuity', icon: Scale },
-        { title: t('hrReports'), url: '/dashboard/hr/reports', icon: BarChart3 },
-      ],
+        { 
+          title: t('myProfile'), 
+          url: globalUser?.employeeId ? `/dashboard/hr/reports/dossier/${globalUser.employeeId}` : '/dashboard/hr', 
+          icon: ShieldCheck 
+        },
+        { 
+          title: t('staffRecords'), 
+          url: "/dashboard/hr/employees", 
+          icon: Users,
+          hideIfOwnScope: true 
+        },
+        { title: t('leaves'), url: "/dashboard/hr/leaves", icon: Calendar },
+        { 
+          title: t('payroll'), 
+          url: "/dashboard/hr/payroll", 
+          icon: Calculator,
+          requiredAction: 'approve' as const
+        },
+      ]
     },
-    {
-      title: t('accounting'),
-      icon: Calculator,
-      url: '/dashboard/accounting',
+    { 
+      title: t('accounting'), 
+      icon: Calculator, 
+      url: "/dashboard/accounting", 
       resource: 'accounting',
       subItems: [
-        { title: t('smartReconciliation'), url: '/dashboard/accounting', icon: Sparkles },
-        { title: t('chartOfAccounts'), url: '/dashboard/accounting', icon: BookOpen },
-      ],
+        { title: t('reconciliation'), url: "/dashboard/accounting", icon: Sparkles },
+      ]
     },
-    {
-      title: t('inventory'),
-      icon: Warehouse,
-      url: '/dashboard/inventory',
+    { 
+      title: t('inventory'), 
+      icon: Package, 
+      url: "/dashboard/inventory", 
       resource: 'inventory',
       subItems: [
-        { title: t('warehouses'), url: '/dashboard/inventory', icon: Warehouse },
-        { title: t('fieldAssets'), url: '/dashboard/inventory', icon: HardHat },
-      ],
+        { title: t('warehouses'), url: "/dashboard/inventory", icon: Building2 },
+      ]
     },
-    {
-      title: t('settings'),
-      icon: Settings2,
-      url: '/dashboard/settings',
+    { 
+      title: t('settings'), 
+      icon: Settings2, 
+      url: "/dashboard/settings", 
       resource: 'settings',
       subItems: [
-        { title: t('companyIdentity'), url: '/dashboard/settings/company', icon: Building2, permission: 'admin' },
-        { title: t('checklists'), url: '/dashboard/settings/checklists', icon: Database, permission: 'ref:view' },
-        { title: t('rolesRef'), url: '/dashboard/settings/roles', icon: ShieldCheck, permission: 'admin' },
-        { title: t('workHours'), url: '/dashboard/settings/work-hours', icon: Clock, permission: 'ref:view' },
-        { title: t('profile'), url: '/dashboard/settings/profile', icon: UserCog, permission: 'public' },
-      ],
-    },
-    { title: t('ai'), icon: Sparkles, url: '/dashboard/ai', resource: 'dashboard' },
-  ].filter((item) => {
-    if (!item.resource) return true;
-    if (!canAccess(item.resource)) return false;
-    
-    // فلترة العناصر الفرعية داخل الإعدادات بناءً على صلاحيات الأدمن أو غيره
-    if (item.subItems) {
-      item.subItems = item.subItems.filter(sub => {
-        if (!sub.permission || sub.permission === 'public') return true;
-        if (sub.permission === 'admin') return isAdmin;
-        if (sub.permission.includes(':view')) {
-          const mod = sub.permission.split(':')[0];
-          return canAccess(mod);
-        }
-        return isAdmin;
-      });
+        { title: t('companyIdentity'), url: "/dashboard/settings/company", icon: Building2 },
+        { title: t('checklists'), url: "/dashboard/settings/checklists", icon: Database },
+        { title: t('rolesRef'), url: "/dashboard/settings/roles", icon: ShieldCheck },
+        { title: t('workHours'), url: "/dashboard/settings/work-hours", icon: Clock },
+        { title: t('profile'), url: "/dashboard/settings/profile", icon: UserCog },
+      ]
     }
-    
-    return true;
-  }), [t, canAccess, isAdmin]);
+  ], [t, isRtl, globalUser]);
+
+  const visibleItems = React.useMemo(() => {
+    return menuItems.filter(item => {
+      if (!canAccess(item.resource)) return false;
+      if (item.subItems) {
+        item.subItems = item.subItems.filter(sub => {
+          const access = check(item.resource, (sub as any).requiredAction || 'view');
+          if (!access.can) return false;
+          if ((sub as any).hideIfOwnScope && access.scope === 'own') return false;
+          return true;
+        });
+        if (item.subItems.length === 0 && item.resource !== 'dashboard' && item.resource !== 'settings') return false;
+      }
+      return true;
+    });
+  }, [menuItems, canAccess, check]);
 
   return (
-    <Sidebar collapsible="icon" side={isRtl ? "right" : "left"} className="border-none" style={{ backgroundColor: sidebarBg }}>
-      <SidebarHeader className={cn('flex flex-col items-center transition-all duration-300', isCollapsed ? 'p-2 pt-4' : 'p-4 pt-6')}>
+    <Sidebar collapsible="icon" side={isRtl ? "right" : "left"} className="border-none bg-transparent">
+      <SidebarHeader className="p-4 pt-6">
         {!isCollapsed ? (
-          <div className="flex flex-col text-start px-2 w-full">
+          <div className="flex flex-col text-start px-2 animate-in fade-in slide-in-from-top-2">
             <span className="font-headline font-black text-2xl text-[#1e1b4b] tracking-tighter leading-none">NovaFlow</span>
             <div className="flex items-center gap-2 mt-1">
               <span className="text-[8px] uppercase font-black tracking-[0.3em] text-[#e87c24]">ENTERPRISE</span>
@@ -212,66 +168,49 @@ export function DashboardSidebar() {
             </div>
           </div>
         ) : (
-          <div className="mx-auto h-12 w-9 rounded-full bg-gradient-to-br from-[#FFB000] to-[#e87c24] flex items-center justify-center text-white shadow-xl shadow-orange-500/20">
-            <Sparkles className="h-5 w-5" />
+          <div className="mx-auto h-12 w-9 rounded-full bg-gradient-to-br from-[#FFB000] to-[#e87c24] flex items-center justify-center text-white shadow-xl shadow-orange-500/20 transition-all">
+             <Sparkles className="h-5 w-5" />
           </div>
         )}
       </SidebarHeader>
-
-      <SidebarContent className="flex-1 px-1.5 scrollbar-hide bg-transparent">
+      
+      <SidebarContent className="px-4 py-4 overflow-y-auto scrollbar-hide">
         <SidebarGroup className="p-0">
-          {!isCollapsed && (
-            <SidebarGroupLabel className="mt-3 mb-2 px-2 text-start text-[9px] font-black uppercase tracking-widest text-[#1e1b4b]/40">
-              {isRtl ? 'إدارة العمليات' : 'Operations'}
-            </SidebarGroupLabel>
-          )}
-          <SidebarMenu className="gap-2">
-            {menuItems.map((item) => (
-              <SidebarNavItem key={item.title} item={item} pathname={pathname} isCollapsed={isCollapsed} isRtl={isRtl} />
-            ))}
-          </SidebarMenu>
+          <SidebarGroupContent>
+            <SidebarMenu className="gap-4">
+              {visibleItems.map((item) => (
+                <NavItemRenderer key={item.title} item={item} isCollapsed={isCollapsed} isRtl={isRtl} pathname={pathname} />
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-
-      <SidebarFooter className={cn('p-4 mt-auto transition-all duration-300', isCollapsed ? 'p-2' : 'px-3 py-3')}>
+      
+      <SidebarFooter className="p-4 mt-auto">
         {!isCollapsed && (
-          <div className="mx-auto w-full max-w-[220px] rounded-2xl border border-orange-100 bg-white p-3 shadow-xl ring-1 ring-black/[0.02]">
-            <div className="mb-1.5 flex items-center justify-between">
-              <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Business Core</span>
-              <Badge className="h-3.5 bg-[#e87c24] px-1.5 text-[8px] font-black uppercase text-white">v2.5</Badge>
-            </div>
-            <p className="text-center text-[9px] font-black uppercase tracking-tighter text-[#1e1b4b]/80">Odoo Style UI</p>
+          <div className="p-3 rounded-2xl bg-white border border-orange-100 shadow-lg ring-1 ring-black/[0.02]">
+             <div className="flex items-center justify-between mb-1">
+                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Business Core</span>
+                <Badge className="bg-[#e87c24] text-white text-[8px] font-black uppercase h-4 px-1.5 rounded-md">v2.5</Badge>
+             </div>
+             <p className="text-[8px] font-black text-[#1e1b4b]/60 text-center uppercase tracking-tighter">Odoo Style UI</p>
           </div>
         )}
       </SidebarFooter>
     </Sidebar>
-  );
+  )
 }
 
-function SidebarNavItem({
-  item,
-  pathname,
-  isCollapsed,
-  isRtl,
-}: {
-  item: SidebarItem;
-  pathname: string;
-  isCollapsed: boolean;
-  isRtl: boolean;
-}) {
-  const [isFlyoutOpen, setIsFlyoutOpen] = React.useState(false);
-  const [isExpanded, setIsExpanded] = React.useState(false);
-
-  const isActive = pathname === item.url || (item.url !== '/dashboard' && pathname.startsWith(item.url));
-
-  // الكبسولات البرتقالية المتدرجة
-  const expandedStyle = "bg-gradient-to-br from-[#FFB000] to-[#e87c24] text-white shadow-lg hover:scale-[1.02] transition-all rounded-full";
+function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
+  const isGroupActive = item.subItems?.some((sub: any) => pathname === sub.url)
+  const isSelfActive = pathname === item.url
+  const isActive = isSelfActive || isGroupActive
   
-  // الحالة المصغرة: كبسولات عمودية
-  const collapsedActive = "bg-white text-[#e87c24] shadow-xl ring-1 ring-orange-100 rounded-full h-12 w-9 flex items-center justify-center mx-auto";
-  const collapsedInactive = "bg-[#FFA000] text-white shadow-md rounded-full h-12 w-9 flex items-center justify-center mx-auto hover:scale-110 transition-transform";
+  const [isExpanded, setIsExpanded] = React.useState(isActive)
+  const style = "bg-gradient-to-br from-[#FFB000] to-[#e87c24] text-white shadow-lg hover:scale-[1.02] transition-all rounded-full"
+  const activeStyle = "bg-white text-[#e87c24] shadow-xl border-2 border-orange-50 rounded-full font-black"
 
-  const subItemHoverStyle = "hover:bg-gradient-to-r hover:from-[#FFF3E0] hover:to-[#FFFDE7] hover:text-[#e87c24] transition-colors";
+  const subItemHoverStyle = "hover:bg-gradient-to-r hover:from-[#FFF3E0] hover:to-[#FFFDE7] hover:text-[#e87c24]";
 
   if (isCollapsed) {
     return (
@@ -280,12 +219,12 @@ function SidebarNavItem({
           <Tooltip>
             <TooltipTrigger asChild>
               {item.subItems ? (
-                <DropdownMenu open={isFlyoutOpen} onOpenChange={setIsFlyoutOpen}>
+                <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
                       className={cn(
-                        "transition-all duration-300 outline-none",
-                        isActive ? collapsedActive : collapsedInactive
+                        "flex h-12 w-9 items-center justify-center transition-all duration-300 rounded-full outline-none shadow-md",
+                        isActive ? "bg-white text-[#e87c24] ring-2 ring-orange-100" : "bg-[#FFA000] text-white"
                       )}
                     >
                       <item.icon className="h-5 w-5 shrink-0" />
@@ -295,21 +234,21 @@ function SidebarNavItem({
                     side={isRtl ? "left" : "right"}
                     sideOffset={14}
                     align="start"
-                    className="z-[999] w-64 rounded-[1.5rem] border-2 border-orange-100 bg-white p-2 shadow-2xl"
+                    className="z-[999] w-64 rounded-[1.5rem] border-2 border-orange-100 bg-white p-2 shadow-2xl backdrop-blur-xl"
                   >
                     <DropdownMenuLabel className="px-4 py-4 text-xs font-black text-[#1e1b4b] border-b mb-1 flex items-center gap-3">
                       <div className="p-2 bg-orange-50 rounded-xl text-orange-600"><item.icon className="h-4 w-4" /></div>
                       {item.title}
                     </DropdownMenuLabel>
-                    {item.subItems.map((sub) => (
+                    {item.subItems.map((sub: any) => (
                       <DropdownMenuItem key={sub.title} asChild className="p-0 focus:bg-transparent">
                         <Link 
                           href={sub.url}
                           className={cn(
-                            "flex items-center justify-between h-10 rounded-xl px-4 text-[11px] font-black w-full mb-1",
+                            "flex items-center justify-between h-10 rounded-xl px-4 text-[11px] font-black w-full mb-1 transition-all",
                             pathname === sub.url 
                               ? "bg-gradient-to-r from-[#FFF3E0] to-[#FFFDE7] text-[#e87c24] shadow-sm" 
-                              : cn("text-[#1e1b4b]", subItemHoverStyle)
+                              : cn("text-[#1e1b4b] hover:bg-slate-50", subItemHoverStyle)
                           )}
                         >
                           <span className="truncate">{sub.title}</span>
@@ -320,11 +259,11 @@ function SidebarNavItem({
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
-                <Link
+                <Link 
                   href={item.url}
                   className={cn(
-                    "transition-all duration-300",
-                    isActive ? collapsedActive : collapsedInactive
+                    "flex h-12 w-9 items-center justify-center transition-all duration-300 rounded-full shadow-md",
+                    isActive ? "bg-white text-[#e87c24] ring-2 ring-orange-100" : "bg-[#FFA000] text-white"
                   )}
                 >
                   <item.icon className="h-5 w-5 shrink-0" />
@@ -337,56 +276,61 @@ function SidebarNavItem({
           </Tooltip>
         </TooltipProvider>
       </SidebarMenuItem>
-    );
+    )
   }
 
   return (
     <SidebarMenuItem>
       {item.subItems ? (
-        <Collapsible open={isExpanded || isActive} onOpenChange={setIsExpanded}>
-          <CollapsibleTrigger asChild>
-            <button className={cn("flex items-center transition-all duration-300 w-full h-11 px-4", expandedStyle)}>
-              <div className={cn("flex items-center gap-3 w-full", isRtl ? "flex-row" : "flex-row-reverse")}>
-                <item.icon className="h-5 w-5 shrink-0" />
-                <span className="flex-1 text-start text-xs font-black tracking-tight">{item.title}</span>
-                <ChevronLeft className={cn("h-4 w-4 transition-transform", (isExpanded || isActive) ? "rotate-90" : "rotate-0")} />
+        <div className={cn(
+          "overflow-hidden transition-all duration-300 rounded-[2rem]",
+          isActive ? "bg-white/40 shadow-inner" : ""
+        )}>
+          <Collapsible open={isExpanded || isActive} onOpenChange={setIsExpanded}>
+            <CollapsibleTrigger asChild>
+              <button className={cn("flex items-center transition-all duration-300 w-full h-11 px-4", isActive ? activeStyle : style)}>
+                <div className={cn("flex items-center gap-3 w-full", isRtl ? "flex-row" : "flex-row-reverse")}>
+                  <item.icon className="h-5 w-5 shrink-0" />
+                  <span className="flex-1 text-start text-xs font-black tracking-tight">{item.title}</span>
+                  <ChevronLeft className={cn("h-4 w-4 transition-transform opacity-50", (isExpanded || isActive) ? "rotate-90" : "rotate-0")} />
+                </div>
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="mt-2 space-y-1 px-2 animate-in slide-in-from-top-1 duration-200 pb-3">
+                {item.subItems.map((sub: any) => (
+                  <Link 
+                    key={sub.title} 
+                    href={sub.url}
+                    className={cn(
+                      "flex items-center justify-between h-9 rounded-xl px-4 transition-all text-[11px] font-black",
+                      pathname === sub.url 
+                        ? "bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-md" 
+                        : cn("text-slate-600", subItemHoverStyle)
+                    )}
+                  >
+                    <span className="truncate text-start flex-1">{sub.title}</span>
+                    <sub.icon className={cn("h-3.5 w-3.5 ml-2 transition-opacity", pathname === sub.url ? "opacity-100" : "opacity-30")} />
+                  </Link>
+                ))}
               </div>
-            </button>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <div className="mt-2 space-y-1 px-2 animate-in slide-in-from-top-1 duration-200">
-              {item.subItems.map((sub: any) => (
-                <Link 
-                  key={sub.title} 
-                  href={sub.url}
-                  className={cn(
-                    "flex items-center justify-between h-9 rounded-xl px-4 transition-all text-[10px] font-black",
-                    pathname === sub.url 
-                      ? "bg-white/20 text-white shadow-inner" 
-                      : cn("text-white/70", subItemHoverStyle)
-                  )}
-                >
-                  <span className="truncate text-start flex-1">{sub.title}</span>
-                  <sub.icon className={cn("h-3 w-3 ml-2", pathname === sub.url ? "opacity-100" : "opacity-40")} />
-                </Link>
-              ))}
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
       ) : (
         <Link 
           href={item.url} 
           className={cn(
             "flex items-center transition-all duration-300 h-11 px-4", 
-            isActive ? "bg-white text-[#e87c24] shadow-xl border-2 border-orange-50 rounded-full" : expandedStyle
+            isActive ? activeStyle : style
           )}
         >
           <div className={cn("flex items-center gap-3 w-full", isRtl ? "flex-row" : "flex-row-reverse")}>
-            <item.icon className={cn("h-5 w-5 shrink-0", isActive ? "text-[#e87c24]" : "text-white")} />
+            <item.icon className="h-5 w-5 shrink-0" />
             <span className="flex-1 text-start text-xs font-black tracking-tight">{item.title}</span>
           </div>
         </Link>
       )}
     </SidebarMenuItem>
-  );
+  )
 }
