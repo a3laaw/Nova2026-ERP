@@ -1,310 +1,496 @@
-/**
- * @fileOverview السايدبار السيادي لـ NovaFlow ERP (المستعاد).
- * يتميز بتصميم الكبسولات البرتقالية المتدرجة كما في رؤية المستخدم الأصلية.
- * يدعم القوائم المتشعبة (Sub-menus) في الوضعين الموسع والمصغر.
- */
+'use client';
 
-"use client"
+import * as React from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import {
+  LayoutDashboard,
+  Users,
+  HardHat,
+  Calculator,
+  UserCircle,
+  ShoppingCart,
+  Warehouse,
+  BarChart3,
+  Sparkles,
+  Clock,
+  ShieldCheck,
+  Calendar,
+  FileSpreadsheet,
+  FileText,
+  DollarSign,
+  Package,
+  Layers,
+  FileSearch,
+  BookOpen,
+  TrendingUp,
+  Truck,
+  Scale,
+  Building2,
+  UserCog,
+  Database,
+  ChevronLeft,
+  ArrowRight,
+  Plus,
+} from 'lucide-react';
 
-import * as React from "react"
-import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import { cn } from '@/lib/utils';
+import { useLanguage } from '@/context/language-context';
+import { usePermissions } from '@/hooks/use-permissions';
+import { Badge } from '@/components/ui/badge';
 import {
-  LayoutDashboard, Users, HardHat, Calculator, UserCircle,
-  ShoppingCart, Sparkles, ShieldCheck,
-  Calendar, FileText, Package,
-  TrendingUp, BarChart3,
-  Building2, Settings2, ChevronDown, ChevronRight,
-  Clock, Briefcase, UserPlus, Search, Gavel, FileSpreadsheet,
-  ListTree, Palette, UserCog, History, Scale, DollarSign,
-  Landmark, Database, Plane, UserCheck, LayoutGrid,
-  Truck
-} from "lucide-react"
-import { cn } from "@/lib/utils"
-import { useLanguage } from "@/context/language-context"
-import { usePermissions } from "@/hooks/use-permissions"
-import { useAuthContext } from "@/context/auth-context"
-import {
-  Sidebar, SidebarHeader, SidebarContent, SidebarGroup,
-  SidebarGroupContent, SidebarFooter, SidebarMenu, SidebarMenuItem,
-  SidebarMenuButton, SidebarMenuSub, SidebarMenuSubItem, SidebarMenuSubButton,
+  SidebarHeader,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarFooter,
+  SidebarMenu,
+  SidebarMenuItem,
   useSidebar,
-} from "@/components/ui/sidebar"
+} from '@/components/ui/sidebar';
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible"
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu"
+} from '@/components/ui/dropdown-menu';
+
+type SidebarItem = {
+  title: string;
+  icon: React.ElementType;
+  url: string;
+  module?: string;
+  permission?: string;
+  subItems?: {
+    title: string;
+    url: string;
+    icon: React.ElementType;
+  }[];
+};
 
 export function DashboardSidebar() {
-  const pathname = usePathname()
-  const { state } = useSidebar()
-  const { t, lang } = useLanguage()
-  const { canAccess } = usePermissions()
-  const isRtl = lang === 'ar'
-  const isCollapsed = state === "collapsed"
+  const pathname = usePathname();
+  const { state } = useSidebar();
+  const { t, lang, dir } = useLanguage();
+  const { canAccess, isAdmin } = usePermissions();
 
-  // تعريف هيكل القوائم المتشعب لضمان الوصول لكافة الموديولات
-  const menuGroups = React.useMemo(() => [
-    { 
-      title: t('dashboard'), 
-      icon: LayoutDashboard, 
-      url: "/dashboard", 
-      resource: 'dashboard' 
-    },
-    { 
-      title: t('clients'), 
-      icon: UserCircle, 
-      url: "/dashboard/clients", 
-      resource: 'crm',
+  const isRtl = lang === 'ar';
+  const isCollapsed = state === 'collapsed';
+
+  const menuItems: SidebarItem[] = [
+    { title: t('dashboard'), icon: LayoutDashboard, url: '/dashboard', module: 'dashboard' },
+    {
+      title: t('crm'),
+      icon: Users,
+      url: '/dashboard/crm',
+      module: 'crm',
       subItems: [
-        { title: isRtl ? 'قاعدة العملاء' : 'All Clients', url: "/dashboard/clients", icon: Users },
-        { title: isRtl ? 'تسجيل عميل جديد' : 'New Client', url: "/dashboard/clients/new", icon: UserPlus },
-        { title: isRtl ? 'الفرص البيعية (CRM)' : 'Sales Leads', url: "/dashboard/crm", icon: TrendingUp },
-      ]
+        { title: t('leads'), url: '/dashboard/crm', icon: Users },
+        { title: t('clients'), url: '/dashboard/clients', icon: UserCircle },
+      ],
     },
-    { 
-      title: t('projects'), 
-      icon: HardHat, 
-      url: "/dashboard/projects", 
-      resource: 'projects',
+    {
+      title: t('projects'),
+      icon: HardHat,
+      url: '/dashboard/projects',
+      module: 'projects',
       subItems: [
-        { title: isRtl ? 'المشاريع النشطة' : 'Active Projects', url: "/dashboard/projects", icon: Briefcase },
-        { title: isRtl ? 'مركز التقارير' : 'Reports Hub', url: "/dashboard/reports", icon: BarChart3 },
-      ]
+        { title: t('projectExecution'), url: '/dashboard/projects', icon: Layers },
+        { title: t('reports'), url: '/dashboard/reports', icon: BarChart3 },
+      ],
     },
-    { 
-      title: t('procurement'), 
-      icon: ShoppingCart, 
-      url: "/dashboard/procurement", 
-      resource: 'procurement',
+    {
+      title: t('procurement'),
+      icon: ShoppingCart,
+      url: '/dashboard/procurement',
+      module: 'procurement',
       subItems: [
-        { title: isRtl ? 'لوحة المشتريات' : 'Procurement Overview', url: "/dashboard/procurement", icon: ShoppingCart },
-        { title: isRtl ? 'سجل الموردين' : 'Suppliers', url: "/dashboard/procurement/suppliers", icon: Truck },
-        { title: isRtl ? 'محلل عروض الأسعار' : 'Quote AI Analyzer', url: "/dashboard/procurement/quotes", icon: Sparkles },
-      ]
+        { title: t('suppliers'), url: '/dashboard/procurement/suppliers', icon: Truck },
+        { title: t('supplierQuotes'), url: '/dashboard/procurement/quotes', icon: FileSearch },
+        { title: t('purchaseOrders'), url: '/dashboard/procurement', icon: Package },
+      ],
     },
-    { 
-      title: t('hr'), 
-      icon: Users, 
-      url: "/dashboard/hr", 
-      resource: 'hr',
+    {
+      title: t('hr'),
+      icon: UserCircle,
+      url: '/dashboard/hr',
+      module: 'hr',
       subItems: [
-        { title: isRtl ? 'نظرة عامة' : 'HR Overview', url: "/dashboard/hr", icon: UserCircle },
-        { title: isRtl ? 'سجل الموظفين' : 'Employees', url: "/dashboard/hr/employees", icon: Briefcase },
-        { title: isRtl ? 'كشوف الرواتب' : 'Payroll', url: "/dashboard/hr/payroll", icon: Calculator },
-        { title: isRtl ? 'طلبات الإجازات' : 'Leaves', url: "/dashboard/hr/leaves", icon: Plane },
-        { title: isRtl ? 'الاستئذانات' : 'Permissions', url: "/dashboard/hr/permissions", icon: Clock },
-        { title: isRtl ? 'التوظيف' : 'Recruitment', url: "/dashboard/hr/recruitment", icon: UserCheck },
-        { title: isRtl ? 'نهاية الخدمة' : 'Indemnity', url: "/dashboard/hr/gratuity-calculator", icon: Scale },
-        { title: isRtl ? 'مركز التقارير' : 'HR Reports', url: "/dashboard/hr/reports", icon: FileText },
-      ]
+        { title: t('employees'), url: '/dashboard/hr/employees', icon: Users },
+        { title: t('leaves'), url: '/dashboard/hr/leaves', icon: Calendar },
+        { title: t('permissions'), url: '/dashboard/hr/permissions', icon: Clock },
+        { title: t('attendance'), url: '/dashboard/hr/attendance/import', icon: FileSpreadsheet },
+        { title: t('payroll'), url: '/dashboard/hr/payroll', icon: Calculator },
+        { title: t('gratuity'), url: '/dashboard/hr/gratuity-calculator', icon: Scale },
+        { title: t('hrReports'), url: '/dashboard/hr/reports', icon: BarChart3 },
+      ],
     },
-    { 
-      title: t('inventory'), 
-      icon: Package, 
-      url: "/dashboard/inventory", 
-      resource: 'inventory',
+    {
+      title: t('accounting'),
+      icon: Calculator,
+      url: '/dashboard/accounting',
+      module: 'accounting',
       subItems: [
-        { title: isRtl ? 'المخازن والعهد' : 'Stock & Assets', url: "/dashboard/inventory", icon: Package },
-      ]
+        { title: t('smartReconciliation'), url: '/dashboard/accounting', icon: Sparkles },
+        { title: t('journalEntries'), url: '/dashboard/ai', icon: FileText },
+        { title: t('chartOfAccounts'), url: '/dashboard/accounting', icon: BookOpen },
+      ],
     },
-    { 
-      title: t('settings'), 
-      icon: Settings2, 
-      url: "/dashboard/settings", 
-      resource: 'settings',
+    {
+      title: t('inventory'),
+      icon: Warehouse,
+      url: '/dashboard/inventory',
+      module: 'inventory',
       subItems: [
-        { title: isRtl ? 'إعدادات المنشأة' : 'Company Settings', url: "/dashboard/settings/company", icon: Building2 },
-        { title: isRtl ? 'المستخدمين' : 'User Management', url: "/dashboard/settings/users", icon: Users },
-        { title: isRtl ? 'القوائم المرجعية' : 'Technical Setup', url: "/dashboard/settings/checklists", icon: Database },
-        { title: isRtl ? 'قوالب المستندات' : 'Template Library', url: "/dashboard/settings/templates", icon: FileSpreadsheet },
-        { title: isRtl ? 'مواعيد العمل' : 'Work Schedules', url: "/dashboard/settings/work-hours", icon: Clock },
-        { title: isRtl ? 'الصلاحيات' : 'Role Matrix', url: "/dashboard/settings/roles", icon: ShieldCheck },
-        { title: isRtl ? 'الملف الشخصي' : 'My Profile', url: "/dashboard/settings/profile", icon: UserCog },
-      ]
+        { title: t('warehouses'), url: '/dashboard/inventory', icon: Warehouse },
+        { title: t('fieldAssets'), url: '/dashboard/inventory', icon: HardHat },
+      ],
+    },
+    {
+      title: t('reports'),
+      icon: BarChart3,
+      url: '/dashboard/reports',
+      module: 'reports',
+      subItems: [
+        { title: t('operationalReports'), url: '/dashboard/reports', icon: TrendingUp },
+        { title: t('financialReports'), url: '/dashboard/hr/reports/payroll', icon: DollarSign },
+      ],
+    },
+    { title: t('ai'), icon: Sparkles, url: '/dashboard/ai', module: 'dashboard' },
+  ].filter((item) => !item.module || canAccess(item.module));
+
+  const settingsItems: SidebarItem[] = [
+    { title: t('companyIdentity'), url: '/dashboard/settings/company', icon: Building2, permission: 'admin' },
+    { title: t('checklists'), url: '/dashboard/settings/checklists', icon: Database, permission: 'ref:view' },
+    { title: t('rolesRef'), url: '/dashboard/settings/roles', icon: ShieldCheck, permission: 'admin' },
+    { title: t('workHours'), url: '/dashboard/settings/work-hours', icon: Clock, permission: 'ref:view' },
+    { title: t('profile'), url: '/dashboard/settings/profile', icon: UserCog, permission: 'public' },
+  ].filter((item) => {
+    if (item.permission === 'public') return true;
+    if (item.permission === 'admin') return isAdmin;
+    if (item.permission?.includes(':view')) {
+      const mod = item.permission.split(':')[0];
+      return canAccess(mod);
     }
-  ], [t, isRtl]);
-
-  const visibleGroups = React.useMemo(() => {
-    return menuGroups.filter(group => canAccess(group.resource));
-  }, [menuGroups, canAccess]);
+    return isAdmin;
+  });
 
   return (
-    <Sidebar collapsible="icon" side={isRtl ? "right" : "left"} className="border-none bg-[#fdfaf3]">
-      <SidebarHeader className="p-6 pt-10">
+    <>
+      <SidebarHeader
+        className={cn(
+          'shrink-0 grow-0 basis-auto items-center gap-0 transition-all duration-300',
+          isCollapsed ? 'p-3' : 'px-4 py-4'
+        )}
+      >
         {!isCollapsed ? (
-          <div className="flex flex-col text-start px-4">
-            <span className="font-headline font-black text-2xl text-[#1e1b4b] tracking-tighter leading-none">NovaFlow</span>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-[8px] uppercase font-black tracking-[0.3em] text-[#e87c24]">ENTERPRISE</span>
+          <div className="mx-auto flex w-full max-w-[220px] flex-col items-center text-center animate-in fade-in slide-in-from-top-2">
+            <span className="font-headline text-2xl font-black leading-none tracking-tight text-[#1e1b4b]">
+              NovaFlow
+            </span>
+            <div className="mt-1.5 flex items-center justify-center gap-1.5">
+              <span className="text-[7px] font-black uppercase tracking-[0.4em] text-[#e87c24]">
+                SYSTEMS
+              </span>
+              <div className="h-[1.5px] w-5 rounded-full bg-[#e87c24]" />
             </div>
           </div>
         ) : (
-          <div className="mx-auto h-[42px] w-[42px] rounded-xl bg-primary/5 flex items-center justify-center text-primary">
-             <Sparkles className="h-5 w-5" />
+          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[#FFB000] to-[#e87c24] text-white shadow-xl shadow-orange-500/20">
+            <Sparkles className="h-6 w-6" />
           </div>
         )}
       </SidebarHeader>
-      
-      <SidebarContent className="px-6 py-6 overflow-y-auto scrollbar-hide">
-        <SidebarMenu className="gap-2">
-          {visibleGroups.map((group) => (
-            <NavGroupRenderer 
-              key={group.title} 
-              group={group} 
-              isCollapsed={isCollapsed} 
-              isRtl={isRtl} 
-              pathname={pathname} 
-            />
-          ))}
-        </SidebarMenu>
+
+      <SidebarContent className="flex-1 min-h-0 px-1.5 scrollbar-hide bg-[#fdfaf3]">
+        <SidebarGroup className="p-0">
+          {!isCollapsed && (
+            <SidebarGroupLabel className="mt-3 mb-2 px-2 text-start text-[9px] font-black uppercase tracking-widest text-[#1e1b4b]/40">
+              {isRtl ? 'إدارة العمليات' : 'Operations'}
+            </SidebarGroupLabel>
+          )}
+
+          <SidebarGroupContent>
+            <SidebarMenu className="mt-1 gap-2">
+              {menuItems.map((item) => (
+                <SidebarNavItem
+                  key={item.title}
+                  item={item}
+                  pathname={pathname}
+                  isCollapsed={isCollapsed}
+                  isRtl={isRtl}
+                />
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup className="mt-4 mb-2 p-0">
+          {!isCollapsed && (
+            <SidebarGroupLabel className="mb-2 border-t border-orange-100/30 px-2 pt-4 text-start text-[9px] font-black uppercase tracking-widest text-[#1e1b4b]/40">
+              {isRtl ? 'الإعدادات' : 'Settings'}
+            </SidebarGroupLabel>
+          )}
+
+          <SidebarMenu className="gap-2">
+            {settingsItems.map((item) => (
+              <SidebarNavItem
+                key={item.title}
+                item={item}
+                pathname={pathname}
+                isCollapsed={isCollapsed}
+                isRtl={isRtl}
+              />
+            ))}
+          </SidebarMenu>
+        </SidebarGroup>
       </SidebarContent>
-      
-      <SidebarFooter className="p-6 mt-auto">
-        {!isCollapsed && (
-          <div className="p-4 rounded-[2rem] bg-slate-900 text-white shadow-xl text-center">
-             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">v2.5 Professional</p>
+
+      <SidebarFooter
+        className={cn(
+          'shrink-0 grow-0 basis-auto items-center gap-0 transition-all duration-300 bg-[#fdfaf3]',
+          isCollapsed ? 'p-2' : 'px-3 py-3'
+        )}
+      >
+        {!isCollapsed ? (
+          <div className="mx-auto w-full max-w-[220px] rounded-2xl border border-orange-100 bg-white p-3 shadow-xl ring-1 ring-black/[0.02]">
+            <div className="mb-1.5 flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                  Kuwait Cloud
+                </span>
+              </div>
+              <Badge className="h-3.5 bg-[#e87c24] px-1.5 text-[8px] font-black uppercase text-white">
+                v1.9
+              </Badge>
+            </div>
+            <p className="text-center text-[9px] font-black uppercase tracking-tighter text-[#1e1b4b]/80">
+              Enterprise Intelligence
+            </p>
+          </div>
+        ) : (
+          <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-xl border border-emerald-100 bg-emerald-50 text-emerald-600 shadow-sm">
+            <ShieldCheck className="h-5 w-5" />
           </div>
         )}
       </SidebarFooter>
-    </Sidebar>
-  )
+    </>
+  );
 }
 
-function NavGroupRenderer({ group, isCollapsed, isRtl, pathname }: any) {
-  const router = useRouter();
-  const isActive = pathname === group.url || (group.url !== '/dashboard' && pathname.startsWith(group.url));
-  const hasSubItems = group.subItems && group.subItems.length > 0;
+function SidebarNavItem({
+  item,
+  pathname,
+  isCollapsed,
+  isRtl,
+}: {
+  item: SidebarItem;
+  pathname: string;
+  isCollapsed: boolean;
+  isRtl: boolean;
+}) {
+  const [isFlyoutOpen, setIsFlyoutOpen] = React.useState(false);
+  const [isExpanded, setIsExpanded] = React.useState(false);
+  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
-  // الحالة الموسعة: تصميم الكبسولة البرتقالية الكاملة
-  if (!isCollapsed) {
-    if (!hasSubItems) {
-      return (
-        <SidebarMenuItem>
-          <Link 
-            href={group.url} 
-            className={cn(
-              "flex items-center transition-all duration-300 rounded-full h-11 px-6 group", 
-              isActive 
-                ? "bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-xl shadow-orange-500/30 scale-[1.02]" 
-                : "text-slate-500 hover:bg-white hover:text-primary"
-            )}
-          >
-            <div className={cn("flex items-center gap-4 w-full", isRtl ? "flex-row-reverse" : "flex-row")}>
-              <group.icon className="h-5 w-5 shrink-0" strokeWidth={isActive ? 3 : 2} />
-              <span className="flex-1 text-start text-sm font-black tracking-tight">{group.title}</span>
-            </div>
-          </Link>
-        </SidebarMenuItem>
-      );
-    }
+  const isActive =
+    pathname === item.url || (item.url !== '/dashboard' && pathname.startsWith(item.url));
 
+  const inactiveCard =
+    'bg-gradient-to-r from-[#e87c24] to-[#FFB000] border-0 shadow-lg text-white rounded-full';
+  const activeCard =
+    'bg-white border-2 border-orange-100 shadow-xl text-[#1e1b4b] font-black rounded-full';
+
+  const handleMouseEnter = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    if (isCollapsed && item.subItems) setIsFlyoutOpen(true);
+  };
+
+  const handleMouseLeave = () => {
+    timeoutRef.current = setTimeout(() => {
+      setIsFlyoutOpen(false);
+    }, 150);
+  };
+
+  if (isCollapsed) {
     return (
-      <Collapsible defaultOpen={isActive} className="group/collapsible">
-        <SidebarMenuItem>
-          <CollapsibleTrigger asChild>
-            <div 
-              className={cn(
-                "flex items-center transition-all duration-300 rounded-full h-11 px-6 group cursor-pointer", 
-                isActive 
-                  ? "bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-xl shadow-orange-500/30 scale-[1.02]" 
-                  : "text-slate-500 hover:bg-white hover:text-primary"
+      <SidebarMenuItem className="flex justify-center">
+        <TooltipProvider delayDuration={0}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              {item.subItems ? (
+                <DropdownMenu open={isFlyoutOpen} onOpenChange={setIsFlyoutOpen}>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      onMouseEnter={handleMouseEnter}
+                      onMouseLeave={handleMouseLeave}
+                      className={cn(
+                        'flex h-11 w-11 items-center justify-center rounded-2xl outline-none transition-all duration-300 hover:scale-105 active:scale-95',
+                        isActive ? activeCard : inactiveCard
+                      )}
+                    >
+                      <item.icon
+                        className={cn('h-5 w-5 shrink-0', isActive ? 'text-[#e87c24]' : 'text-white')}
+                      />
+                    </button>
+                  </DropdownMenuTrigger>
+
+                  <DropdownMenuContent
+                    side={isRtl ? 'left' : 'right'}
+                    sideOffset={14}
+                    align="start"
+                    dir={isRtl ? 'rtl' : 'ltr'}
+                    onMouseEnter={handleMouseEnter}
+                    onMouseLeave={handleMouseLeave}
+                    className="z-[9999] w-64 rounded-[1.5rem] border-2 border-orange-100 bg-white/98 p-2 shadow-2xl backdrop-blur-xl"
+                  >
+                    <DropdownMenuLabel className="mb-2 flex items-center gap-3 border-b border-orange-50 px-4 py-4 text-start text-xs font-black uppercase tracking-widest text-[#1e1b4b]">
+                      <div className="rounded-xl bg-orange-50 p-2 text-orange-600">
+                        <item.icon className="h-4 w-4" />
+                      </div>
+                      {item.title}
+                    </DropdownMenuLabel>
+
+                    {item.subItems.map((sub) => (
+                      <DropdownMenuItem
+                        key={sub.title}
+                        asChild
+                        className="group mb-1 cursor-pointer rounded-xl px-4 py-3 focus:bg-orange-50"
+                      >
+                        <Link href={sub.url} className="flex w-full items-center justify-between">
+                          <span
+                            className={cn(
+                              'flex-1 text-start text-[12px] font-black transition-colors',
+                              pathname === sub.url ? 'text-[#e87c24]' : 'text-[#1e1b4b]'
+                            )}
+                          >
+                            {sub.title}
+                          </span>
+                          <sub.icon
+                            className={cn(
+                              'ml-3 h-4 w-4 opacity-30 transition-all group-hover:opacity-100',
+                              pathname === sub.url && 'text-[#e87c24] opacity-100'
+                            )}
+                          />
+                        </Link>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Link
+                  href={item.url}
+                  className={cn(
+                    'flex h-11 w-11 items-center justify-center rounded-2xl transition-all duration-300 hover:scale-105',
+                    isActive ? activeCard : inactiveCard
+                  )}
+                >
+                  <item.icon
+                    className={cn('h-5 w-5 shrink-0', isActive ? 'text-[#e87c24]' : 'text-white')}
+                  />
+                </Link>
               )}
-            >
-              <div className={cn("flex items-center gap-4 w-full", isRtl ? "flex-row-reverse" : "flex-row")}>
-                <group.icon className="h-5 w-5 shrink-0" strokeWidth={isActive ? 3 : 2} />
-                <span className="flex-1 text-start text-sm font-black tracking-tight">{group.title}</span>
-                <ChevronDown className={cn("h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180", !isActive && "text-slate-300")} />
-              </div>
-            </div>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <SidebarMenuSub className="ms-8 mt-2 border-s-2 border-primary/20 ps-4 space-y-1">
-              {group.subItems.map((sub: any) => (
-                <SidebarMenuSubItem key={sub.title}>
-                  <SidebarMenuSubButton asChild isActive={pathname === sub.url}>
-                    <Link href={sub.url} className={cn(
-                      "flex items-center gap-3 py-2 px-3 rounded-xl transition-all font-bold text-xs",
-                      pathname === sub.url ? "text-primary bg-primary/5" : "text-slate-400 hover:text-primary hover:bg-white"
-                    )}>
-                      {sub.icon && <sub.icon className="h-3.5 w-3.5" />}
-                      {sub.title}
-                    </Link>
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-              ))}
-            </SidebarMenuSub>
-          </CollapsibleContent>
-        </SidebarMenuItem>
-      </Collapsible>
+            </TooltipTrigger>
+
+            {!item.subItems && (
+              <TooltipContent
+                side={isRtl ? 'left' : 'right'}
+                sideOffset={8}
+                className="rounded-lg border-0 bg-[#1e1b4b] px-3 py-1.5 text-[10px] font-black text-white shadow-2xl"
+              >
+                {item.title}
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
+      </SidebarMenuItem>
     );
   }
 
-  // الحالة المصغرة: أيقونات عائمة مع قائمة منسدلة (Dropdown)
   return (
-    <SidebarMenuItem className="flex justify-center mb-4">
-      {hasSubItems ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button 
-              className={cn(
-                "flex items-center justify-center transition-all duration-300",
-                "h-[42px] w-[42px] rounded-xl outline-none",
-                isActive 
-                  ? "bg-[#FFF3E0] text-[#e87c24] shadow-sm ring-1 ring-[#e87c24]/20" 
-                  : "text-slate-400 hover:bg-white hover:text-primary"
-              )}
-            >
-              <group.icon className="h-5 w-5" strokeWidth={2.5} />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent 
-            side={isRtl ? "left" : "right"} 
-            align="start" 
-            className="w-56 rounded-xl border-0 shadow-2xl p-2 bg-white z-[999]"
-          >
-            <DropdownMenuLabel className="px-3 py-2 text-[10px] font-black uppercase text-slate-400 tracking-widest">
-              {group.title}
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator className="bg-slate-50" />
-            {group.subItems.map((sub: any) => (
-              <DropdownMenuItem 
-                key={sub.title} 
-                onClick={() => router.push(sub.url)}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all mb-1 last:mb-0",
-                  pathname === sub.url 
-                    ? "bg-[#FFFDE7] text-[#e87c24] font-black" 
-                    : "text-slate-600 font-bold hover:bg-slate-50"
-                )}
-              >
-                {sub.icon && <sub.icon className="h-4 w-4" />}
-                <span className="text-xs">{sub.title}</span>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : (
-        <Link 
-          href={group.url}
+    <SidebarMenuItem className="px-1.5">
+      {item.subItems ? (
+        <div
           className={cn(
-            "flex items-center justify-center transition-all duration-300",
-            "h-[42px] w-[42px] rounded-xl outline-none",
-            isActive 
-              ? "bg-[#FFF3E0] text-[#e87c24] shadow-sm ring-1 ring-[#e87c24]/20" 
-              : "text-slate-400 hover:bg-white hover:text-primary"
+            'overflow-hidden transition-all duration-300',
+            isActive ? activeCard : inactiveCard
           )}
         >
-          <group.icon className="h-5 w-5" strokeWidth={2.5} />
+          <button
+            className={cn(
+              'flex h-11 w-full items-center gap-3 px-3.5 transition-colors hover:bg-white/10',
+              isRtl ? 'flex-row-reverse' : 'flex-row'
+            )}
+            onClick={() => setIsExpanded((prev) => !prev)}
+          >
+            <item.icon
+              className={cn('h-5 w-5 shrink-0', isActive ? 'text-[#e87c24]' : 'text-white')}
+            />
+
+            <span className="flex-1 truncate text-start text-sm font-black">
+              {item.title}
+            </span>
+
+            <ChevronLeft
+              className={cn(
+                'h-3.5 w-3.5 shrink-0 opacity-60 transition-transform',
+                isExpanded ? (isRtl ? 'rotate-90' : '-rotate-90') : !isRtl ? 'rotate-180' : ''
+              )}
+            />
+          </button>
+
+          {isExpanded && (
+            <div className="animate-in slide-in-from-top-2 space-y-1 px-2 pb-3 duration-300">
+              {item.subItems.map((sub) => {
+                const isSubActive = pathname === sub.url;
+
+                return (
+                  <Link
+                    key={sub.title}
+                    href={sub.url}
+                    className={cn(
+                      'flex h-9 items-center justify-between rounded-full px-3 text-[11px] font-bold transition-all',
+                      isSubActive
+                        ? isActive
+                          ? 'bg-orange-50 text-[#e87c24] shadow-sm'
+                          : 'bg-white/20 text-white shadow-inner'
+                        : isActive
+                          ? 'text-slate-500 hover:bg-orange-50/50'
+                          : 'text-white/70 hover:bg-white/10'
+                    )}
+                  >
+                    <span className="truncate text-start">{sub.title}</span>
+                    <sub.icon
+                      className={cn('ml-2.5 h-3.5 w-3.5 opacity-50', isSubActive && 'opacity-100')}
+                    />
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ) : (
+        <Link
+          href={item.url}
+          className={cn(
+            'flex h-11 items-center gap-3 shadow-md transition-all duration-300',
+            isRtl ? 'flex-row-reverse' : 'flex-row',
+            isActive ? activeCard : inactiveCard
+          )}
+        >
+          <item.icon
+            className={cn('h-5 w-5 shrink-0', isActive ? 'text-[#e87c24]' : 'text-white')}
+          />
+          <span className="flex-1 truncate text-start text-sm font-black">{item.title}</span>
         </Link>
       )}
     </SidebarMenuItem>
