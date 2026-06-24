@@ -39,8 +39,8 @@
     /* Strict Uniform Border Radius - 12px for Workspace */
     --radius: 12px;
 
-    /* Sidebar Background - Original Cream */
-    --sidebar-background: 48 100% 98%; /* #fdfaf3 */
+    /* Sidebar Background - Matched to System Gray */
+    --sidebar-background: 210 20% 98%; /* #F8F9FA */
   }
 }
 

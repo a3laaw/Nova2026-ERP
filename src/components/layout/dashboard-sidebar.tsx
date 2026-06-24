@@ -1,5 +1,5 @@
 /**
- * @fileOverview القائمة الجانبية (Sidebar) الديناميكية المحدثة بمصطلحات عملية (Odoo Style).
+ * @fileOverview القائمة الجانبية (Sidebar) الديناميكية المحدثة بنمط الكبسولات السيادي (Odoo Style).
  */
 
 "use client"
@@ -133,23 +133,20 @@ export function DashboardSidebar() {
     return menuItems.filter(item => {
       if (!canAccess(item.resource)) return false;
       if (item.subItems) {
-        // Create a copy of subItems to avoid mutation issues in memo
-        const filteredSubItems = item.subItems.filter(sub => {
+        item.subItems = item.subItems.filter(sub => {
           const access = check(item.resource, (sub as any).requiredAction || 'view');
           if (!access.can) return false;
           if ((sub as any).hideIfOwnScope && access.scope === 'own') return false;
           return true;
         });
-        if (filteredSubItems.length === 0 && item.resource !== 'dashboard') return false;
-        // Assign the filtered list to a temporary property for the renderer
-        (item as any).renderableSubItems = filteredSubItems;
+        if (item.subItems.length === 0 && item.resource !== 'dashboard') return false;
       }
       return true;
     });
   }, [menuItems, canAccess, check]);
 
   return (
-    <Sidebar collapsible="icon" side={isRtl ? "right" : "left"} className="border-none bg-[#fdfaf3]">
+    <Sidebar collapsible="icon" side={isRtl ? "right" : "left"} className="border-none bg-sidebar">
       <SidebarHeader className="p-4 pt-6">
         {!isCollapsed ? (
           <div className="flex flex-col text-start px-2">
@@ -160,7 +157,7 @@ export function DashboardSidebar() {
             </div>
           </div>
         ) : (
-          <div className="mx-auto h-11 w-11 rounded-2xl bg-gradient-to-br from-[#FFB000] to-[#e87c24] flex items-center justify-center text-white shadow-xl transition-all">
+          <div className="mx-auto h-11 w-11 rounded-[1.2rem] bg-gradient-to-br from-[#FFB000] to-[#e87c24] flex items-center justify-center text-white shadow-xl transition-all">
              <Sparkles className="h-6 w-6" />
           </div>
         )}
@@ -194,18 +191,12 @@ export function DashboardSidebar() {
 }
 
 function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
-  const subItemsToUse = item.renderableSubItems || item.subItems;
-  const isGroupActive = subItemsToUse?.some((sub: any) => pathname === sub.url);
-  const isSelfActive = pathname === item.url;
-  const isActive = isSelfActive || isGroupActive;
+  const isGroupActive = item.subItems?.some((sub: any) => pathname === sub.url)
+  const isSelfActive = pathname === item.url
+  const isActive = isSelfActive || isGroupActive
   
-  const [isExpanded, setIsExpanded] = React.useState(isActive);
-  const style = "bg-gradient-to-br from-[#FFB000] to-[#e87c24] text-white shadow-lg hover:scale-[1.02] transition-all";
-
-  // Effect to sync expansion with active path
-  React.useEffect(() => {
-    if (isActive) setIsExpanded(true);
-  }, [isActive]);
+  const [isExpanded, setIsExpanded] = React.useState(isActive)
+  const style = "bg-gradient-to-br from-[#FFB000] to-[#e87c24] text-white shadow-lg hover:scale-[1.02] transition-all rounded-full"
 
   if (isCollapsed) {
     return (
@@ -220,7 +211,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                   isActive ? "bg-white text-[#e87c24] shadow-xl border-2 border-orange-50" : style
                 )}
               >
-                <item.icon className="h-5 w-5" />
+                <item.icon className="h-6 w-6" />
               </Link>
             </TooltipTrigger>
             <TooltipContent side={isRtl ? "left" : "right"} className="bg-[#1e1b4b] text-white font-black text-[10px]">
@@ -234,12 +225,12 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
 
   return (
     <SidebarMenuItem>
-      {subItemsToUse ? (
+      {item.subItems ? (
         <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
           <CollapsibleTrigger asChild>
             <button className={cn(
-              "flex items-center transition-all duration-300 rounded-full w-full h-11 px-4", 
-              isActive ? "bg-white text-[#1e1b4b] shadow-xl border-2 border-orange-100 font-black" : style
+              "flex items-center transition-all duration-300 w-full h-11 px-4", 
+              isActive ? "bg-white text-[#e87c24] shadow-xl border-2 border-orange-50 font-black rounded-full" : style
             )}>
               <div className={cn("flex items-center gap-3 w-full", isRtl ? "flex-row" : "flex-row-reverse")}>
                 <item.icon className={cn("h-5 w-5 shrink-0", isActive ? "text-[#e87c24]" : "text-white")} />
@@ -249,13 +240,13 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
           </CollapsibleTrigger>
           <CollapsibleContent>
             <div className="mt-2 space-y-1.5 px-1 animate-in slide-in-from-top-1 duration-200">
-              {subItemsToUse.map((sub: any) => (
+              {item.subItems.map((sub: any) => (
                 <Link 
                   key={sub.title} 
                   href={sub.url}
                   className={cn(
                     "flex items-center justify-between h-9 rounded-xl px-4 transition-all text-[10px] font-black",
-                    pathname === sub.url ? "bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-md" : "bg-orange-50/50 text-[#1e1b4b] border border-orange-100/30"
+                    pathname === sub.url ? "bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-md" : "bg-white text-[#1e1b4b] border border-orange-100/30"
                   )}
                 >
                   <span className="truncate text-start flex-1">{sub.title}</span>
@@ -269,8 +260,8 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
         <Link 
           href={item.url} 
           className={cn(
-            "flex items-center transition-all duration-300 rounded-full h-11 px-4", 
-            isActive ? "bg-white text-[#1e1b4b] shadow-xl border-2 border-orange-100 font-black" : style
+            "flex items-center transition-all duration-300 h-11 px-4", 
+            isActive ? "bg-white text-[#e87c24] shadow-xl border-2 border-orange-50 font-black rounded-full" : style
           )}
         >
           <div className={cn("flex items-center gap-3 w-full", isRtl ? "flex-row" : "flex-row-reverse")}>
