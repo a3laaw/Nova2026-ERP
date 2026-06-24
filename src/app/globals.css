@@ -32,7 +32,7 @@
     --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 36 100% 50% / 0.15; /* Nano-Edge Standard: primary/15 */
+    --border: 36 100% 50% / 0.15; /* Premium Nano-Edge: Firebase Orange 15% */
     --input: 214.3 31.8% 91.4%;
     --ring: 36 100% 50%;
     
@@ -60,7 +60,7 @@
 
 /* Premium Highlight Edge */
 .nano-edge {
-  @apply border border-primary/15 ring-1 ring-primary/5;
+  @apply border border-primary/15 ring-1 ring-primary/5 shadow-sm;
 }
 
 .sidebar-item-active {

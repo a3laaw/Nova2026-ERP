@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Users, UserPlus, Search, Loader2, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -18,7 +18,6 @@ import { Label } from "@/components/ui/label";
 import { toast } from '@/hooks/use-toast';
 import { canPerformOnRecord } from '@/lib/permissions/engine';
 import { cn } from '@/lib/utils';
-import { addDoc, serverTimestamp } from 'firebase/firestore';
 
 export default function CRMPage() {
   const { globalUser } = useAuthContext();
@@ -115,8 +114,8 @@ export default function CRMPage() {
         )}
       </header>
 
-      {/* Independent Filter Card */}
-      <Card className="border-0 shadow-sm rounded-xl bg-white mb-4 overflow-hidden">
+      {/* Independent Search Card with 16px Separation */}
+      <Card className="nano-edge bg-white mb-4">
         <div className="p-5 flex flex-row items-center justify-between gap-4">
           <div className="relative w-full max-w-sm">
             <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary" />
@@ -127,22 +126,22 @@ export default function CRMPage() {
               onChange={(e) => setSearchTerm(e.target.value)} 
             />
           </div>
-          <Button variant="outline" className="h-11 px-6 border-primary/20">
+          <Button variant="outline" className="h-11 px-6">
             <Filter className="h-4 w-4 me-2" /> 
             {isRtl ? 'تصفية النتائج' : 'Filter Results'}
           </Button>
         </div>
       </Card>
 
-      {/* Main Table Card with Nano-Edge */}
-      <Card className="border-0 shadow-xl rounded-xl bg-white overflow-hidden ring-1 ring-black/5">
+      {/* Main Table Card */}
+      <Card className="nano-edge bg-white overflow-hidden">
         <CardContent className="p-0 overflow-x-auto">
           <Table>
-            <TableHeader>
+            <TableHeader className="bg-[#F4F6F9] border-b">
               <TableRow>
                 <TableHead className="py-5 ps-8">{t('name')}</TableHead>
                 <TableHead>{t('company')}</TableHead>
-                <TableHead>{t('status')}</TableHead>
+                <TableHead className="pe-8">{t('status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -151,10 +150,10 @@ export default function CRMPage() {
               ) : filteredLeads.length === 0 ? (
                 <TableRow><TableCell colSpan={3} className="text-center py-20 italic text-slate-400 font-bold">{isRtl ? 'لا يوجد نتائج.' : 'No results found.'}</TableCell></TableRow>
               ) : filteredLeads.map((lead: any) => (
-                <TableRow key={lead.id} className="hover:bg-[#FFF9F2] transition-colors border-b-slate-100">
+                <TableRow key={lead.id} className="hover:bg-[#FFF9F2] transition-colors">
                   <TableCell className="py-5 ps-8 font-black text-slate-800">{lead.name}</TableCell>
                   <TableCell className="text-slate-500 font-bold text-sm">{lead.company}</TableCell>
-                  <TableCell>
+                  <TableCell className="pe-8">
                     <Badge variant="outline" className={cn(
                       "font-black text-[9px] uppercase px-3 py-1 border-0 shadow-sm",
                       lead.status === 'new' ? "bg-[#039BE5]/10 text-[#039BE5]" : "bg-[#FFA000]/10 text-[#FFA000]"

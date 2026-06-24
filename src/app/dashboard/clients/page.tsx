@@ -50,8 +50,8 @@ export default function ClientsListPage() {
         </Button>
       </div>
 
-      {/* Independent Filter Card */}
-      <Card className="border-0 shadow-sm rounded-xl bg-white mb-4 overflow-hidden">
+      {/* Search Header Card with 16px Separation */}
+      <Card className="nano-edge bg-white mb-4">
         <div className="p-5 flex flex-row items-center justify-between gap-4">
            <div className="relative w-full max-w-sm">
               <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary" />
@@ -62,22 +62,22 @@ export default function ClientsListPage() {
                 onChange={e => setSearchTerm(e.target.value)} 
               />
            </div>
-           <Button variant="outline" className="h-11 px-6 border-primary/20">
+           <Button variant="outline" className="h-11 px-6">
               <Filter className="h-4 w-4 me-2" /> {isRtl ? 'تصفية النتائج' : 'Filter Results'}
            </Button>
         </div>
       </Card>
 
       {/* Main Data Table */}
-      <Card className="border-0 shadow-xl rounded-xl bg-white overflow-hidden ring-1 ring-black/5">
+      <Card className="nano-edge bg-white overflow-hidden">
         <CardContent className="p-0 overflow-x-auto">
           <Table>
-            <TableHeader>
+            <TableHeader className="bg-[#F4F6F9] border-b">
               <TableRow>
                 <TableHead className="py-5 ps-8">{isRtl ? 'العميل' : 'Client'}</TableHead>
                 <TableHead>{isRtl ? 'الهاتف' : 'Mobile'}</TableHead>
                 <TableHead>{isRtl ? 'الحالة' : 'Status'}</TableHead>
-                <TableHead className="pe-8"></TableHead>
+                <TableHead className="pe-8 text-end"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -86,7 +86,7 @@ export default function ClientsListPage() {
               ) : filtered.length === 0 ? (
                 <TableRow><TableCell colSpan={4} className="text-center py-20 italic text-slate-400 font-bold">{isRtl ? 'لا يوجد عملاء.' : 'No clients found.'}</TableCell></TableRow>
               ) : filtered.map((client) => (
-                <TableRow key={client.id} className="cursor-pointer group" onClick={() => router.push(`/dashboard/clients/${client.id}`)}>
+                <TableRow key={client.id} className="cursor-pointer group hover:bg-[#FFF9F2]" onClick={() => router.push(`/dashboard/clients/${client.id}`)}>
                   <TableCell className="ps-8 py-5">
                      <div className="flex flex-col text-start">
                         <span className="font-black text-slate-800 text-sm leading-none">{client.nameAr}</span>

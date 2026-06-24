@@ -1,5 +1,6 @@
 /**
- * @fileOverview القائمة الجانبية (Sidebar) المحدثة بنظام الملاحة الرشيق (SaaS Style).
+ * @fileOverview القائمة الجانبية (Sidebar) المستعادة بنظام الملاحة الأصلي المعتمد.
+ * تم قفل التصميم الموسع واستعادة التراص الرأسي وإلغاء التكرار اللوني.
  */
 
 "use client"
@@ -28,9 +29,6 @@ import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from "@/components/ui/collapsible"
 import {
-  Tooltip, TooltipProvider, TooltipTrigger, TooltipContent,
-} from "@/components/ui/tooltip"
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -41,7 +39,7 @@ export function DashboardSidebar() {
   const pathname = usePathname()
   const { state } = useSidebar()
   const { t, lang } = useLanguage()
-  const { canAccess, check } = usePermissions()
+  const { canAccess } = usePermissions()
   const { globalUser } = useAuthContext()
   const isRtl = lang === 'ar'
   const isCollapsed = state === "collapsed"
@@ -89,9 +87,9 @@ export function DashboardSidebar() {
           url: globalUser?.employeeId ? `/dashboard/hr/reports/dossier/${globalUser.employeeId}` : '/dashboard/hr', 
           icon: ShieldCheck 
         },
-        { title: t('staffRecords'), url: "/dashboard/hr/employees", icon: Users, hideIfOwnScope: true },
+        { title: t('staffRecords'), url: "/dashboard/hr/employees", icon: Users },
         { title: t('leaves'), url: "/dashboard/hr/leaves", icon: Calendar },
-        { title: t('payroll'), url: "/dashboard/hr/payroll", icon: Calculator, requiredAction: 'approve' as const },
+        { title: t('payroll'), url: "/dashboard/hr/payroll", icon: Calculator },
       ]
     },
     { title: t('inventory'), icon: Package, url: "/dashboard/inventory", resource: 'inventory' },
@@ -107,13 +105,10 @@ export function DashboardSidebar() {
         { title: t('checklists'), url: "/dashboard/settings/checklists", icon: ShieldCheck },
       ]
     }
-  ], [t, isRtl, globalUser]);
+  ], [t, globalUser]);
 
   const visibleItems = React.useMemo(() => {
-    return menuItems.filter(item => {
-      if (!canAccess(item.resource)) return false;
-      return true;
-    });
+    return menuItems.filter(item => canAccess(item.resource));
   }, [menuItems, canAccess]);
 
   return (
@@ -137,7 +132,7 @@ export function DashboardSidebar() {
       <SidebarContent className="px-4 py-4 overflow-y-auto scrollbar-hide">
         <SidebarGroup className="p-0">
           <SidebarGroupContent>
-            <SidebarMenu className="gap-4">
+            <SidebarMenu className="gap-1">
               {visibleItems.map((item) => (
                 <NavItemRenderer key={item.title} item={item} isCollapsed={isCollapsed} isRtl={isRtl} pathname={pathname} />
               ))}
@@ -162,16 +157,16 @@ export function DashboardSidebar() {
 }
 
 function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
-  const isGroupActive = item.subItems?.some((sub: any) => pathname === sub.url)
-  const isSelfActive = pathname === item.url
-  const isActive = isSelfActive || isGroupActive
+  const isGroupActive = item.subItems?.some((sub: any) => pathname.startsWith(sub.url));
+  const isSelfActive = pathname === item.url;
+  const isActive = isSelfActive || isGroupActive;
   
-  const [isExpanded, setIsExpanded] = React.useState(isActive)
-  const activeStyle = "bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-lg shadow-orange-500/20 scale-[1.02] font-black"
+  const [isExpanded, setIsExpanded] = React.useState(isActive);
+  const activeStyle = "bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-lg shadow-orange-500/20 font-black";
 
   if (isCollapsed) {
     return (
-      <SidebarMenuItem className="flex justify-center">
+      <SidebarMenuItem className="flex justify-center mb-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button 
@@ -218,34 +213,36 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
           )}
         </DropdownMenu>
       </SidebarMenuItem>
-    )
+    );
   }
 
   return (
-    <SidebarMenuItem>
+    <SidebarMenuItem className="mb-0.5">
       {item.subItems ? (
         <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
           <CollapsibleTrigger asChild>
-            <button className={cn("flex items-center transition-all duration-300 rounded-xl w-full h-12 px-4", isActive ? activeStyle : "text-slate-500 hover:bg-slate-50")}>
+            <button className={cn(
+              "flex items-center transition-all duration-300 rounded-xl w-full h-11 px-4", 
+              isActive && !isSelfActive ? "bg-slate-50 text-slate-900" : (isSelfActive ? activeStyle : "text-slate-500 hover:bg-slate-50")
+            )}>
               <div className={cn("flex items-center gap-3 w-full", isRtl ? "flex-row" : "flex-row-reverse")}>
-                <item.icon className="h-5 w-5 shrink-0" />
-                <span className="flex-1 text-start text-sm font-black tracking-tight">{item.title}</span>
+                <item.icon className="h-4.5 w-4.5 shrink-0" />
+                <span className="flex-1 text-start text-xs font-black tracking-tight">{item.title}</span>
               </div>
             </button>
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <div className="mt-2 space-y-1.5 px-1 animate-in slide-in-from-top-1 duration-200">
+            <div className="mt-1 space-y-0.5 px-1 animate-in slide-in-from-top-1 duration-200">
               {item.subItems.map((sub: any) => (
                 <Link 
                   key={sub.title} 
                   href={sub.url}
                   className={cn(
-                    "flex items-center justify-between h-10 rounded-xl px-4 transition-all text-xs font-black",
-                    pathname === sub.url ? "bg-[#FFFDE7] text-[#e87c24] border border-primary/10 shadow-sm" : "text-slate-600 hover:bg-slate-50"
+                    "flex items-center justify-between h-9 rounded-xl px-4 transition-all text-[11px] font-black",
+                    pathname === sub.url ? "bg-[#FFFDE7] text-[#e87c24] border border-primary/10" : "text-slate-600 hover:bg-slate-50"
                   )}
                 >
                   <span className="truncate text-start flex-1">{sub.title}</span>
-                  <sub.icon className={cn("h-4 w-4 ml-2", pathname === sub.url ? "opacity-100" : "opacity-40")} />
                 </Link>
               ))}
             </div>
@@ -255,16 +252,16 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
         <Link 
           href={item.url} 
           className={cn(
-            "flex items-center transition-all duration-300 rounded-xl h-12 px-4", 
-            isActive ? activeStyle : "text-slate-500 hover:bg-slate-50"
+            "flex items-center transition-all duration-300 rounded-xl h-11 px-4", 
+            isSelfActive ? activeStyle : "text-slate-500 hover:bg-slate-50"
           )}
         >
           <div className={cn("flex items-center gap-3 w-full", isRtl ? "flex-row" : "flex-row-reverse")}>
-            <item.icon className="h-5 w-5 shrink-0" />
-            <span className="flex-1 text-start text-sm font-black tracking-tight">{item.title}</span>
+            <item.icon className="h-4.5 w-4.5 shrink-0" />
+            <span className="flex-1 text-start text-xs font-black tracking-tight">{item.title}</span>
           </div>
         </Link>
       )}
     </SidebarMenuItem>
-  )
+  );
 }
