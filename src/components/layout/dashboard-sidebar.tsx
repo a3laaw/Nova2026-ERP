@@ -1,7 +1,7 @@
 /**
- * @fileOverview السايدبار السيادي لـ NovaFlow ERP.
+ * @fileOverview السايدبار السيادي لـ NovaFlow ERP (المستعاد).
+ * يتميز بتصميم الكبسولات البرتقالية المتدرجة كما في رؤية المستخدم الأصلية.
  * يدعم القوائم المتشعبة (Sub-menus) في الوضعين الموسع والمصغر.
- * يحافظ على هوية الكبسولات البرتقالية والخلفية الكريمية (#fdfaf3).
  */
 
 "use client"
@@ -13,17 +13,16 @@ import {
   LayoutDashboard, Users, HardHat, Calculator, UserCircle,
   ShoppingCart, Sparkles, ShieldCheck,
   Calendar, FileText, Package,
-  Layers, FileSearch, Truck,
+  TrendingUp, BarChart3,
   Building2, Settings2, ChevronDown, ChevronRight,
   Clock, Briefcase, UserPlus, Search, Gavel, FileSpreadsheet,
   ListTree, Palette, UserCog, History, Scale, DollarSign,
-  Landmark, Database
+  Landmark, Database, Plane, UserCheck, LayoutGrid
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
 import { usePermissions } from "@/hooks/use-permissions"
 import { useAuthContext } from "@/context/auth-context"
-import { Badge } from "@/components/ui/badge"
 import {
   Sidebar, SidebarHeader, SidebarContent, SidebarGroup,
   SidebarGroupContent, SidebarFooter, SidebarMenu, SidebarMenuItem,
@@ -52,7 +51,7 @@ export function DashboardSidebar() {
   const isRtl = lang === 'ar'
   const isCollapsed = state === "collapsed"
 
-  // تعريف هيكل القوائم المتشعب
+  // تعريف هيكل القوائم المتشعب لضمان الوصول لكافة الموديولات
   const menuGroups = React.useMemo(() => [
     { 
       title: t('dashboard'), 
@@ -68,7 +67,7 @@ export function DashboardSidebar() {
       subItems: [
         { title: isRtl ? 'قاعدة العملاء' : 'All Clients', url: "/dashboard/clients", icon: Users },
         { title: isRtl ? 'تسجيل عميل جديد' : 'New Client', url: "/dashboard/clients/new", icon: UserPlus },
-        { title: isRtl ? 'الفرص البيعية (CRM)' : 'Sales Leads', url: "/dashboard/crm", icon: TrendingUpIcon },
+        { title: isRtl ? 'الفرص البيعية (CRM)' : 'Sales Leads', url: "/dashboard/crm", icon: TrendingUp },
       ]
     },
     { 
@@ -78,7 +77,7 @@ export function DashboardSidebar() {
       resource: 'projects',
       subItems: [
         { title: isRtl ? 'المشاريع النشطة' : 'Active Projects', url: "/dashboard/projects", icon: Briefcase },
-        { title: isRtl ? 'مركز التقارير' : 'Reports Hub', url: "/dashboard/reports", icon: BarChartIcon },
+        { title: isRtl ? 'مركز التقارير' : 'Reports Hub', url: "/dashboard/reports", icon: BarChart3 },
       ]
     },
     { 
@@ -101,9 +100,9 @@ export function DashboardSidebar() {
         { title: isRtl ? 'نظرة عامة' : 'HR Overview', url: "/dashboard/hr", icon: UserCircle },
         { title: isRtl ? 'سجل الموظفين' : 'Employees', url: "/dashboard/hr/employees", icon: Briefcase },
         { title: isRtl ? 'كشوف الرواتب' : 'Payroll', url: "/dashboard/hr/payroll", icon: Calculator },
-        { title: isRtl ? 'طلبات الإجازات' : 'Leaves', url: "/dashboard/hr/leaves", icon: Calendar },
+        { title: isRtl ? 'طلبات الإجازات' : 'Leaves', url: "/dashboard/hr/leaves", icon: Plane },
         { title: isRtl ? 'الاستئذانات' : 'Permissions', url: "/dashboard/hr/permissions", icon: Clock },
-        { title: isRtl ? 'التوظيف' : 'Recruitment', url: "/dashboard/hr/recruitment", icon: UserPlus },
+        { title: isRtl ? 'التوظيف' : 'Recruitment', url: "/dashboard/hr/recruitment", icon: UserCheck },
         { title: isRtl ? 'نهاية الخدمة' : 'Indemnity', url: "/dashboard/hr/gratuity-calculator", icon: Scale },
         { title: isRtl ? 'مركز التقارير' : 'HR Reports', url: "/dashboard/hr/reports", icon: FileText },
       ]
@@ -185,7 +184,7 @@ function NavGroupRenderer({ group, isCollapsed, isRtl, pathname }: any) {
   const isActive = pathname === group.url || (group.url !== '/dashboard' && pathname.startsWith(group.url));
   const hasSubItems = group.subItems && group.subItems.length > 0;
 
-  // الحالة الموسعة (الكبسولة البرتقالية)
+  // الحالة الموسعة: تصميم الكبسولة البرتقالية الكاملة كما في الصورة
   if (!isCollapsed) {
     if (!hasSubItems) {
       return (
@@ -199,7 +198,7 @@ function NavGroupRenderer({ group, isCollapsed, isRtl, pathname }: any) {
                 : "text-slate-500 hover:bg-white hover:text-primary"
             )}
           >
-            <div className={cn("flex items-center gap-4 w-full", isRtl ? "flex-row" : "flex-row-reverse")}>
+            <div className={cn("flex items-center gap-4 w-full", isRtl ? "flex-row-reverse" : "flex-row")}>
               <group.icon className="h-5 w-5 shrink-0" strokeWidth={isActive ? 3 : 2} />
               <span className="flex-1 text-start text-sm font-black tracking-tight">{group.title}</span>
             </div>
@@ -220,7 +219,7 @@ function NavGroupRenderer({ group, isCollapsed, isRtl, pathname }: any) {
                   : "text-slate-500 hover:bg-white hover:text-primary"
               )}
             >
-              <div className={cn("flex items-center gap-4 w-full", isRtl ? "flex-row" : "flex-row-reverse")}>
+              <div className={cn("flex items-center gap-4 w-full", isRtl ? "flex-row-reverse" : "flex-row")}>
                 <group.icon className="h-5 w-5 shrink-0" strokeWidth={isActive ? 3 : 2} />
                 <span className="flex-1 text-start text-sm font-black tracking-tight">{group.title}</span>
                 <ChevronDown className={cn("h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180", !isActive && "text-slate-300")} />
@@ -249,7 +248,7 @@ function NavGroupRenderer({ group, isCollapsed, isRtl, pathname }: any) {
     );
   }
 
-  // الحالة المصغرة (القائمة المنبثقة)
+  // الحالة المصغرة: أيقونات عائمة مع قائمة منسدلة (Dropdown)
   return (
     <SidebarMenuItem className="flex justify-center mb-4">
       {hasSubItems ? (
@@ -309,46 +308,4 @@ function NavGroupRenderer({ group, isCollapsed, isRtl, pathname }: any) {
       )}
     </SidebarMenuItem>
   );
-}
-
-// أيقونات إضافية غير موجودة في القائمة الأصلية
-function TrendingUpIcon(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-      <polyline points="16 7 22 7 22 13" />
-    </svg>
-  )
-}
-
-function BarChartIcon(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <line x1="12" x2="12" y1="20" y2="10" />
-      <line x1="18" x2="18" y1="20" y2="4" />
-      <line x1="6" x2="6" y1="20" y2="16" />
-    </svg>
-  )
 }
