@@ -1,5 +1,5 @@
 /**
- * @fileOverview القائمة الجانبية (Sidebar) بتصميم مستطيل حاد الحواف (Sharp Architecture) وتأثير طفو سيادي.
+ * @fileOverview القائمة الجانبية (Sidebar) بتصميم مستطيل حاد (Sharp Architecture) مطابق للصورة المرفقة.
  */
 
 "use client"
@@ -10,9 +10,9 @@ import { usePathname } from "next/navigation"
 import {
   LayoutDashboard, Users, HardHat, Calculator, UserCircle,
   ShoppingCart, Sparkles, Clock, ShieldCheck,
-  Calendar, FileSpreadsheet, FileText, Package,
-  Layers, FileSearch, Truck, Scale,
-  Building2, Database, ChevronLeft, Settings2
+  Calendar, FileText, Package,
+  Layers, FileSearch, Truck,
+  Building2, ChevronLeft, Settings2, ChevronDown
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
@@ -78,24 +78,10 @@ export function DashboardSidebar() {
       url: "/dashboard/hr", 
       resource: 'hr',
       subItems: [
-        { 
-          title: t('myProfile'), 
-          url: globalUser?.employeeId ? `/dashboard/hr/reports/dossier/${globalUser.employeeId}` : '/dashboard/hr', 
-          icon: ShieldCheck 
-        },
-        { 
-          title: t('staffRecords'), 
-          url: "/dashboard/hr/employees", 
-          icon: Users,
-          hideIfOwnScope: true 
-        },
+        { title: t('myProfile'), url: globalUser?.employeeId ? `/dashboard/hr/reports/dossier/${globalUser.employeeId}` : '/dashboard/hr', icon: ShieldCheck },
+        { title: t('staffRecords'), url: "/dashboard/hr/employees", icon: Users, hideIfOwnScope: true },
         { title: t('leaves'), url: "/dashboard/hr/leaves", icon: Calendar },
-        { 
-          title: t('payroll'), 
-          url: "/dashboard/hr/payroll", 
-          icon: Calculator,
-          requiredAction: 'approve' as const
-        },
+        { title: t('payroll'), url: "/dashboard/hr/payroll", icon: Calculator, requiredAction: 'approve' as const },
       ]
     },
     { 
@@ -149,7 +135,7 @@ export function DashboardSidebar() {
     <Sidebar collapsible="icon" side={isRtl ? "right" : "left"} className="border-none bg-[#F8F9FA]">
       <SidebarHeader className="p-4 pt-6">
         {!isCollapsed ? (
-          <div className="flex flex-col text-start px-2">
+          <div className="flex flex-col text-start px-2 border-b-2 border-orange-50 pb-4">
             <span className="font-headline font-black text-2xl text-[#1e1b4b] tracking-tighter leading-none">NovaFlow</span>
             <div className="flex items-center gap-2 mt-1">
               <span className="text-[8px] uppercase font-black tracking-[0.3em] text-[#e87c24]">ENTERPRISE</span>
@@ -177,12 +163,9 @@ export function DashboardSidebar() {
       
       <SidebarFooter className="p-4 mt-auto">
         {!isCollapsed && (
-          <div className="p-4 rounded-none bg-white border border-orange-100 shadow-xl ring-1 ring-black/[0.02]">
-             <div className="flex items-center justify-between mb-1">
-                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Kuwait Cloud</span>
-                <Badge className="bg-[#e87c24] text-white text-[8px] font-black uppercase h-4 px-2 rounded-none">v2.5</Badge>
-             </div>
-             <p className="text-[8px] font-black text-[#1e1b4b]/60 text-center uppercase tracking-tighter">Sharp Architecture</p>
+          <div className="p-4 rounded-none bg-white border border-orange-100 shadow-xl ring-1 ring-black/[0.02] flex justify-between items-center">
+             <Badge className="bg-[#e87c24] text-white text-[8px] font-black uppercase h-5 px-2 rounded-none">V2.5</Badge>
+             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">KUWAIT CLOUD</span>
           </div>
         )}
       </SidebarFooter>
@@ -197,13 +180,13 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
   
   const [isExpanded, setIsExpanded] = React.useState(isActive)
 
-  const floatingBase = "transition-all duration-300 rounded-none shadow-md hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98]"
+  const commonStyle = "flex items-center w-full h-11 px-4 transition-all duration-300 rounded-none shadow-md hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98] border-0"
+  
   const expandedStyle = cn(
-    "flex items-center w-full h-11 px-4",
-    floatingBase,
+    commonStyle,
     isActive 
       ? "bg-white text-[#e87c24] border-2 border-orange-100 shadow-orange-500/10" 
-      : "bg-gradient-to-br from-[#FFB000] to-[#e87c24] text-white border-0"
+      : "bg-gradient-to-br from-[#FFB000] to-[#e87c24] text-white"
   )
 
   if (isCollapsed) {
@@ -242,21 +225,21 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
               <div className={cn("flex items-center gap-3 w-full", isRtl ? "flex-row" : "flex-row-reverse")}>
                 <item.icon className="h-5 w-5 shrink-0" />
                 <span className="flex-1 text-start text-xs font-black tracking-tight">{item.title}</span>
-                <ChevronLeft className={cn("h-3.5 w-3.5 transition-transform", isExpanded ? "rotate-90" : (isRtl ? "" : "rotate-180"))} />
+                {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronLeft className={cn("h-3.5 w-3.5 transition-transform", isRtl ? "" : "rotate-180")} />}
               </div>
             </button>
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <div className="mt-3 space-y-2 px-2 animate-in slide-in-from-top-2 duration-300">
+            <div className="mt-1 bg-white border border-orange-100 shadow-lg rounded-none animate-in slide-in-from-top-2 duration-300 overflow-hidden">
               {item.subItems.map((sub: any) => (
                 <Link 
                   key={sub.title} 
                   href={sub.url}
                   className={cn(
-                    "flex items-center justify-between h-10 rounded-none px-4 transition-all text-[11px] font-black border-2 border-transparent",
+                    "flex items-center justify-between h-10 rounded-none px-4 transition-all text-[11px] font-black border-b border-orange-50/30 last:border-0",
                     pathname === sub.url 
-                      ? "bg-white text-[#e87c24] shadow-lg border-orange-100 scale-[1.03] z-10" 
-                      : "bg-white/40 text-slate-700 hover:bg-gradient-to-r hover:from-[#FFF3E0] hover:to-[#FFFDE7] hover:text-[#e87c24] hover:shadow-md hover:-translate-y-0.5"
+                      ? "bg-orange-50/50 text-[#e87c24]" 
+                      : "bg-transparent text-slate-700 hover:bg-gradient-to-r hover:from-[#FFF3E0] hover:to-[#FFFDE7] hover:text-[#e87c24]"
                   )}
                 >
                   <span className="truncate text-start flex-1">{sub.title}</span>
