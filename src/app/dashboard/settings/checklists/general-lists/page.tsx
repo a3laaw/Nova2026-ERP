@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,7 @@ import {
   Plus, Loader2, Search, 
   Trash2, Edit3, ShieldCheck,
   Scale, CreditCard, DollarSign, Clock, Package, LayoutGrid,
-  Save, X, RefreshCcw, DownloadCloud
+  Save, X, RefreshCcw, DownloadCloud, ListPlus, Star
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -24,7 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { 
   AlertDialog, 
   AlertDialogAction, 
@@ -51,6 +51,11 @@ export default function GeneralListsPage() {
   const [editingItem, setEditingItem] = useState<Partial<BaseReferenceList> | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  const [customLists, setCustomLists] = useState<any[]>([]);
+  
+  // Custom List Creator State
+  const [isAddingList, setIsAddingList] = useState(false);
+  const [newListForm, setNewListForm] = useState({ name: '', nameEn: '', code: '' });
 
   // Permissions
   const canEdit = check('ref', 'edit').can;
@@ -58,15 +63,29 @@ export default function GeneralListsPage() {
   const canDelete = check('ref', 'delete').can;
 
   // Data Fetching
-  const listQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths[activeTab](companyId)), orderBy('order')) : null, 
-  [db, companyId, activeTab]);
+  const listQuery = useMemo(() => {
+    if (!companyId || !db) return null;
+    // تحديد المسار بناءً على النوع (أساسي أو مخصص)
+    let path = '';
+    if (paths[activeTab as keyof typeof paths] && typeof paths[activeTab as keyof typeof paths] === 'function') {
+      path = (paths[activeTab as keyof typeof paths] as Function)(companyId);
+    } else {
+      path = `companies/${companyId}/customReferenceLists/${activeTab}/items`;
+    }
+    return query(collection(db, path), orderBy('order'));
+  }, [db, companyId, activeTab]);
 
   const { data: items, loading } = useCollection<BaseReferenceList>(listQuery);
 
   const service = useMemo(() => 
     db && companyId ? new ReferenceListService(db, companyId) : null, 
   [db, companyId]);
+
+  useEffect(() => {
+    if (service) {
+      service.getCustomListsMetadata().then(setCustomLists);
+    }
+  }, [service, isAddingList]);
 
   const filtered = items.filter(item => 
     item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -105,6 +124,25 @@ export default function GeneralListsPage() {
     }
   };
 
+  const handleCreateNewList = async () => {
+    if (!service || !user || !newListForm.name || !newListForm.code) return;
+    setLoadingAction('create_list');
+    try {
+      await service.createCustomList({
+        ...newListForm,
+        code: newListForm.code.toUpperCase().replace(/\s+/g, '_'),
+        order: (6 + customLists.length + 1)
+      }, user.uid);
+      toast({ title: isRtl ? "تم إنشاء القائمة الجديدة" : "New list created" });
+      setIsAddingList(false);
+      setNewListForm({ name: '', nameEn: '', code: '' });
+    } catch (e) {
+      toast({ variant: "destructive", title: t('error') });
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
   const handlePullDefaults = async () => {
     if (!service || !user) return;
     setLoadingAction('seeding');
@@ -132,7 +170,7 @@ export default function GeneralListsPage() {
     document.body.removeChild(link);
   };
 
-  const menuItems: { id: ReferenceListType, label: string, icon: any, color: string }[] = [
+  const staticMenuItems: { id: ReferenceListType, label: string, icon: any, color: string }[] = [
     { id: 'unitTypes', label: t('unitTypes'), icon: Scale, color: 'text-blue-600' },
     { id: 'paymentMethods', label: t('paymentMethods'), icon: CreditCard, color: 'text-emerald-600' },
     { id: 'paymentConditionTypes', label: t('paymentConditionTypes'), icon: DollarSign, color: 'text-amber-600' },
@@ -147,7 +185,8 @@ export default function GeneralListsPage() {
       {/* Navigation Sidebar */}
       <div className="lg:col-span-3 space-y-4 text-start">
          <div className="bg-white rounded-[2rem] shadow-lg border-2 border-slate-50 p-2 space-y-1">
-            {menuItems.map((item) => (
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-4 py-2">{isRtl ? 'القوائم الأساسية' : 'Main Lists'}</p>
+            {staticMenuItems.map((item) => (
               <div 
                 key={item.id}
                 onClick={() => { setActiveTab(item.id); setSearchTerm(""); }}
@@ -170,18 +209,66 @@ export default function GeneralListsPage() {
                  )}>{item.label}</span>
               </div>
             ))}
-         </div>
 
-         <div className="p-6 rounded-[2rem] bg-blue-50 border-2 border-white shadow-inner space-y-2">
-            <div className="flex items-center gap-2 text-blue-600">
-               <ShieldCheck className="h-4 w-4" />
-               <h4 className="font-black text-[10px] uppercase tracking-widest">{isRtl ? 'الرقابة النظامية' : 'System Guard'}</h4>
-            </div>
-            <p className="text-[10px] font-bold text-blue-700/70 leading-relaxed">
-               {isRtl 
-                 ? 'العناصر المعتمدة من النظام (System) لا يمكن حذفها أو تعديل أكوادها لضمان استقرار العمليات المالية.' 
-                 : 'System items cannot be deleted or have their codes modified to ensure operational stability.'}
-            </p>
+            {/* Custom Lists Section */}
+            {customLists.length > 0 && (
+              <>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-4 py-2 mt-4">{isRtl ? 'قوائم مخصصة' : 'Custom Lists'}</p>
+                {customLists.map(list => (
+                  <div 
+                    key={list.id}
+                    onClick={() => { setActiveTab(list.code); setSearchTerm(""); }}
+                    className={cn(
+                      "p-4 rounded-xl cursor-pointer transition-all flex items-center gap-4 group",
+                      activeTab === list.code ? "bg-primary/5 border-2 border-primary/20" : "hover:bg-slate-50"
+                    )}
+                  >
+                    <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center bg-slate-100 text-slate-400", activeTab === list.code && "bg-primary text-white")}>
+                      <Star className="h-5 w-5" />
+                    </div>
+                    <span className="text-sm font-black">{isRtl ? list.name : list.nameEn}</span>
+                  </div>
+                ))}
+              </>
+            )}
+
+            {/* Add New List Button */}
+            {canCreate && (
+              <Dialog open={isAddingList} onOpenChange={setIsAddingList}>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" className="w-full mt-4 h-14 rounded-2xl border-2 border-dashed border-slate-200 text-slate-400 hover:border-primary/40 hover:text-primary hover:bg-primary/5 font-black text-xs gap-2">
+                    <ListPlus className="h-4 w-4" /> {isRtl ? 'إنشاء قائمة أساسية جديدة' : 'Add New Main List'}
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="rounded-[2.5rem] p-8 max-w-lg border-0 shadow-3xl bg-white" dir={dir}>
+                  <DialogHeader className="text-start">
+                    <DialogTitle className="font-black text-2xl flex items-center gap-3">
+                       <div className="p-3 bg-primary/10 text-primary rounded-2xl"><ListPlus className="h-6 w-6" /></div>
+                       {isRtl ? 'إنشاء قائمة مرجعية جديدة' : 'New Reference List'}
+                    </DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 py-6 text-start">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'الاسم (عربي)' : 'Name (AR)'}</Label>
+                      <Input value={newListForm.name} onChange={e => setNewListForm({...newListForm, name: e.target.value})} className="h-12 rounded-xl border-2 font-bold" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'Name (English)' : 'Name (EN)'}</Label>
+                      <Input value={newListForm.nameEn} onChange={e => setNewListForm({...newListForm, nameEn: e.target.value})} className="h-12 rounded-xl border-2 font-bold" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'الكود التعريفي (سيادي)' : 'List Code (System)'}</Label>
+                      <Input value={newListForm.code} onChange={e => setNewListForm({...newListForm, code: e.target.value.toUpperCase()})} placeholder="e.g. NATIONALITIES" className="h-12 rounded-xl border-2 font-mono font-black text-primary" />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button onClick={handleCreateNewList} disabled={loadingAction === 'create_list'} className="w-full h-16 rounded-2xl font-black text-xl bg-primary">
+                      {loadingAction === 'create_list' ? <Loader2 className="animate-spin" /> : (isRtl ? 'إنشاء القائمة الآن' : 'Create List Now')}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
          </div>
       </div>
 
@@ -227,7 +314,7 @@ export default function GeneralListsPage() {
                       className="bg-primary text-white font-black rounded-xl h-12 px-6 shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-2"
                     >
                         <Plus className="h-5 w-5" />
-                        {isRtl ? 'إضافة عنصر' : 'Add Item'}
+                        {isRtl ? 'إضافة بند للقائمة' : 'Add Entry'}
                     </Button>
                   )}
                </div>
@@ -249,13 +336,7 @@ export default function GeneralListsPage() {
                      ) : filtered.length === 0 ? (
                        <TableRow>
                         <TableCell colSpan={5} className="text-center py-24 space-y-4">
-                           <div className="mx-auto w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center border-2 border-dashed">
-                              <Package className="h-8 w-8 text-slate-200" />
-                           </div>
                            <p className="italic text-slate-300 font-bold">{isRtl ? 'لا توجد بيانات مسجلة لهذه القائمة.' : 'No items found for this list.'}</p>
-                           <Button variant="link" onClick={handlePullDefaults} className="text-primary font-black">
-                              {isRtl ? 'هل تريد سحب البيانات الافتراضية من النظام؟' : 'Want to pull system defaults?'}
-                           </Button>
                         </TableCell>
                        </TableRow>
                      ) : (
@@ -310,9 +391,9 @@ export default function GeneralListsPage() {
             <div className="bg-primary p-10 text-white text-start">
                <DialogTitle className="text-3xl font-black font-headline flex items-center gap-3">
                   <Edit3 className="h-9 w-9 text-white" />
-                  {editingItem?.id ? (isRtl ? 'تعديل عنصر مرجعي' : 'Edit Reference') : (isRtl ? 'إضافة عنصر مرجعي' : 'Add Reference')}
+                  {editingItem?.id ? (isRtl ? 'تعديل بند' : 'Edit Entry') : (isRtl ? 'إضافة بند جديد' : 'Add Entry')}
                </DialogTitle>
-               <p className="text-white/80 font-bold mt-2 uppercase text-xs tracking-widest">{t(activeTab)}</p>
+               <p className="text-white/80 font-bold mt-2 uppercase text-xs tracking-widest">{activeTab}</p>
             </div>
             
             <div className="p-10 space-y-6 text-start bg-white max-h-[70vh] overflow-y-auto">
@@ -418,11 +499,11 @@ export default function GeneralListsPage() {
              </div>
              <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900">{t('confirmDelete')}</AlertDialogTitle>
              <AlertDialogDescription className="text-start font-bold text-slate-400 mt-2 text-lg">
-                {isRtl ? 'هل أنت متأكد من حذف هذا العنصر المرجعي؟' : 'Are you sure you want to delete this reference item?'}
+                {isRtl ? 'هل أنت متأكد من حذف هذا العنصر؟' : 'Are you sure you want to delete this item?'}
              </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-10 gap-4 flex flex-row">
-            <AlertDialogCancel className="flex-1 h-14 rounded-2xl font-bold border-2 bg-white">{t('logout')}</AlertDialogCancel>
+            <AlertDialogCancel className="flex-1 h-14 rounded-2xl font-bold border-2 bg-white">{isRtl ? 'إلغاء' : 'Cancel'}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="flex-[2] h-14 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200">
                {isRtl ? 'نعم، احذف' : 'Delete'}
             </AlertDialogAction>

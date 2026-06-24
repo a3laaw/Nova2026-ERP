@@ -12,7 +12,8 @@ import {
   getDocs,
   writeBatch,
   orderBy,
-  getDoc
+  getDoc,
+  setDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { BaseReferenceList } from '@/types/reference';
@@ -26,25 +27,56 @@ export type ReferenceListType =
   | 'paymentConditionTypes' 
   | 'milestoneTimingTypes' 
   | 'itemCategories' 
-  | 'costTypeCategories';
+  | 'costTypeCategories'
+  | string; // دعم القوائم المخصصة
 
 /**
  * خدمة إدارة القوائم المرجعية الموحدة والقابلة للتوسعة.
- * توفر عمليات CRUD سيادية مع احترام قواعد الحماية الميدانية.
  */
 export class ReferenceListService {
   constructor(private db: Firestore, private companyId: string) {}
 
   private getCollectionPath(type: ReferenceListType): string {
-    return paths[type](this.companyId);
+    // إذا كانت من القوائم الأساسية المعروفة
+    if (paths[type as keyof typeof paths] && typeof paths[type as keyof typeof paths] === 'function') {
+      return (paths[type as keyof typeof paths] as Function)(this.companyId);
+    }
+    // إذا كانت قائمة مخصصة (Custom List)
+    return `companies/${this.companyId}/customReferenceLists/${type}/items`;
+  }
+
+  /**
+   * جلب تعريفات القوائم المخصصة
+   */
+  async getCustomListsMetadata() {
+    const q = query(collection(this.db, `companies/${this.companyId}/customReferenceLists`), orderBy('order'));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }
+
+  /**
+   * إنشاء تعريف لقائمة مرجعية جديدة بالكامل
+   */
+  async createCustomList(data: { code: string, name: string, nameEn: string, icon?: string, order: number }, userId: string) {
+    const docRef = doc(this.db, `companies/${this.companyId}/customReferenceLists`, data.code);
+    const docData = {
+      ...data,
+      companyId: this.companyId,
+      createdBy: userId,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+    await setDoc(docRef, docData);
+    return data.code;
   }
 
   /**
    * جلب كافة عناصر القائمة مرتبة
    */
   async list(type: ReferenceListType): Promise<BaseReferenceList[]> {
+    const path = this.getCollectionPath(type);
     const q = query(
-      collection(this.db, this.getCollectionPath(type)), 
+      collection(this.db, path), 
       orderBy('order')
     );
     const snap = await getDocs(q);
@@ -80,13 +112,12 @@ export class ReferenceListService {
   }
 
   /**
-   * تحديث عنصر مرجعي مع التحقق من قابلية التعديل
+   * تحديث عنصر مرجعي
    */
   async update(type: ReferenceListType, id: string, data: Partial<BaseReferenceList>, userId: string) {
     const path = this.getCollectionPath(type);
     const docRef = doc(this.db, path, id);
     
-    // 1. جلب السجل الحالي للتحقق من isEditable
     const snap = await getDoc(docRef);
     if (!snap.exists()) throw new Error('NOT_FOUND');
     const current = snap.data() as BaseReferenceList;
@@ -98,10 +129,9 @@ export class ReferenceListService {
         requestResourceData: data
       });
       errorEmitter.emit('permission-error', error);
-      throw new Error('SYSTEM_PROTECTED: لا يمكن تعديل هذا السجل النظامي.');
+      throw new Error('SYSTEM_PROTECTED');
     }
 
-    // 2. التنفيذ
     return updateDoc(docRef, {
       ...data,
       updatedBy: userId,
@@ -128,7 +158,7 @@ export class ReferenceListService {
     const current = snap.data() as BaseReferenceList;
 
     if (current.isSystem && !current.isEditable) {
-      throw new Error('SYSTEM_PROTECTED: لا يمكن حذف العناصر النظامية الأساسية.');
+      throw new Error('SYSTEM_PROTECTED');
     }
 
     return deleteDoc(docRef).catch((err) => {
@@ -141,11 +171,11 @@ export class ReferenceListService {
   }
 
   /**
-   * ضخ البيانات الأولية للقوائم المرجعية (Seeding)
+   * ضخ البيانات الأولية للقوائم المرجعية
    */
   async seedAllLists(userId: string) {
     const batch = writeBatch(this.db);
-    const listTypes: ReferenceListType[] = [
+    const listTypes: string[] = [
       'unitTypes', 'paymentMethods', 'paymentConditionTypes', 
       'milestoneTimingTypes', 'itemCategories', 'costTypeCategories'
     ];
@@ -162,7 +192,7 @@ export class ReferenceListService {
             ...item,
             companyId: this.companyId,
             isSystem: true,
-            isEditable: type !== 'milestoneTimingTypes', // التوقيت غير قابل للتعديل عادة
+            isEditable: type !== 'milestoneTimingTypes',
             isActive: true,
             order: idx + 1,
             createdBy: userId,
