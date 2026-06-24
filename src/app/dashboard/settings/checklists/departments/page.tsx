@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -207,75 +206,84 @@ export default function DepartmentsPage() {
           </Card>
         </div>
 
-        <div className={cn("lg:col-span-7", !selectedDept && 'opacity-40')}>
+        <div className={cn("lg:col-span-7", !selectedDept && 'opacity-60')}>
           <Card className="border-0 shadow-lg rounded-3xl overflow-hidden bg-white text-start">
             <CardHeader className="bg-slate-50/50 border-b p-6 flex flex-row items-center justify-between">
               <div><CardTitle className="text-lg font-black flex items-center gap-2"><Briefcase className="h-5 w-5 text-primary" /> {isRtl ? 'الوظائف' : 'Job Titles'}</CardTitle></div>
-              {selectedDept && (
-                <Dialog open={isJobOpen} onOpenChange={setIsJobOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="secondary" size="sm" className="rounded-xl h-10 px-4" onClick={() => setJobForm({ name: '', nameEn: '', roleId: '' })}>
-                      <Plus className="me-2 h-4 w-4" /> {isRtl ? 'إضافة وظيفة' : 'Add Job'}
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="rounded-[2.5rem] p-8 max-w-xl" dir={dir}>
-                    <DialogHeader><DialogTitle className="text-start font-black text-xl">{jobForm.id ? (isRtl ? 'تعديل وظيفة' : 'Edit Job') : (isRtl ? 'إضافة وظيفة' : 'Add Job')}</DialogTitle></DialogHeader>
-                    <div className="space-y-6 py-4 text-start">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={jobForm.name || ''} onChange={e => setJobForm({...jobForm, name: e.target.value})} /></div>
-                        <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={jobForm.nameEn || ''} onChange={e => setJobForm({...jobForm, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
-                      </div>
-                      
-                      <div className="p-6 bg-primary/5 rounded-2xl border-2 border-primary/10 space-y-4">
-                         <div className="flex items-center gap-2 text-primary font-black text-xs uppercase tracking-widest">
-                            <ShieldCheck className="h-4 w-4" /> {isRtl ? 'ربط الصلاحيات (الدور الأمني)' : 'Security Permissions Link'}
-                         </div>
-                         <Select value={jobForm.roleId} onValueChange={v => setJobForm({...jobForm, roleId: v})}>
-                            <SelectTrigger className="h-12 rounded-xl bg-white border-2 font-black">
-                               <SelectValue placeholder={isRtl ? "اختر قالب الصلاحيات لهذا المسمى" : "Select Permission Template"} />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-2xl">
-                               {roles?.map(r => (
-                                 <SelectItem key={r.id} value={r.id!} className="font-bold">{isRtl ? r.name : r.nameEn}</SelectItem>
-                               ))}
-                            </SelectContent>
-                         </Select>
-                      </div>
+              
+              <Dialog open={isJobOpen} onOpenChange={setIsJobOpen}>
+                <DialogTrigger asChild>
+                  <Button 
+                    disabled={!selectedDept}
+                    className="rounded-xl h-12 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black shadow-lg shadow-blue-500/20 hover:scale-105 transition-all gap-2"
+                    onClick={() => setJobForm({ name: '', nameEn: '', roleId: '' })}
+                  >
+                    <Plus className="h-5 w-5" /> {isRtl ? 'إضافة وظيفة جديدة' : 'Add Sub-Job'}
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="rounded-[2.5rem] p-8 max-w-xl border-0 shadow-3xl" dir={dir}>
+                  <DialogHeader className="text-start">
+                    <DialogTitle className="font-black text-2xl flex items-center gap-3">
+                       <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl"><Plus className="h-6 w-6" /></div>
+                       {jobForm.id ? (isRtl ? 'تعديل بيانات الوظيفة' : 'Edit Job') : (isRtl ? 'إضافة وظيفة للقسم' : 'Add New Job')}
+                    </DialogTitle>
+                    <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">{isRtl ? `القسم: ${selectedDept?.name}` : `Dept: ${selectedDept?.nameEn}`}</p>
+                  </DialogHeader>
+                  <div className="space-y-6 py-4 text-start">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('name')} (Ar)</Label><Input value={jobForm.name || ''} onChange={e => setJobForm({...jobForm, name: e.target.value})} className="h-12 rounded-xl border-2 font-bold" /></div>
+                      <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('name')} (En)</Label><Input value={jobForm.nameEn || ''} onChange={e => setJobForm({...jobForm, nameEn: e.target.value})} className="h-12 rounded-xl border-2 font-bold text-start" dir="ltr" /></div>
                     </div>
-                    <DialogFooter className="mt-6">
-                      <Button onClick={handleSaveJob} disabled={loadingAction === 'save_job'} className="w-full h-12 rounded-xl font-bold bg-primary text-white">
-                        {loadingAction === 'save_job' ? <Loader2 className="animate-spin" /> : t('save')}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              )}
+                    
+                    <div className="p-6 bg-primary/5 rounded-2xl border-2 border-primary/10 space-y-4">
+                        <div className="flex items-center gap-2 text-primary font-black text-xs uppercase tracking-widest">
+                          <ShieldCheck className="h-4 w-4" /> {isRtl ? 'ربط الصلاحيات (الدور الأمني)' : 'Security Permissions Link'}
+                        </div>
+                        <Select value={jobForm.roleId} onValueChange={v => setJobForm({...jobForm, roleId: v})}>
+                          <SelectTrigger className="h-12 rounded-xl bg-white border-2 font-black">
+                              <SelectValue placeholder={isRtl ? "اختر قالب الصلاحيات لهذا المسمى" : "Select Permission Template"} />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-2xl">
+                              {roles?.map(r => (
+                                <SelectItem key={r.id} value={r.id!} className="font-bold">{isRtl ? r.name : r.nameEn}</SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                    </div>
+                  </div>
+                  <DialogFooter className="mt-6">
+                    <Button onClick={handleSaveJob} disabled={loadingAction === 'save_job'} className="w-full h-16 rounded-2xl font-black text-xl bg-blue-600 text-white shadow-xl shadow-blue-500/20">
+                      {loadingAction === 'save_job' ? <Loader2 className="animate-spin" /> : t('save')}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </CardHeader>
             <CardContent className="p-6">
               {!selectedDept ? (
-                <div className="py-20 text-center italic text-muted-foreground flex flex-col items-center gap-2">
-                  <ChevronRight className={cn("h-10 w-10 opacity-10", !isRtl && "rotate-180")} />
-                  {isRtl ? 'يرجى اختيار قسم لعرض الوظائف' : 'Select a department to view jobs'}
+                <div className="py-20 text-center italic text-muted-foreground flex flex-col items-center gap-4 opacity-40">
+                  <div className="w-16 h-16 bg-slate-100 rounded-3xl flex items-center justify-center"><ChevronRight className={cn("h-8 w-8", !isRtl && "rotate-180")} /></div>
+                  <p className="font-black">{isRtl ? 'يرجى اختيار قسم من القائمة اليمنى لإدارة الوظائف التابعة له.' : 'Please select a department to manage its sub-jobs.'}</p>
                 </div>
               ) : (
                 jobsLoading ? <div className="py-10 text-center"><Loader2 className="animate-spin mx-auto text-primary/30" /></div> : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {jobs?.map(job => (
-                      <div key={job.id} className="p-4 rounded-2xl border-2 bg-slate-50/50 hover:bg-white transition-all flex items-center justify-between group">
+                      <div key={job.id} className="p-5 rounded-2xl border-2 border-slate-50 bg-white hover:border-blue-200 transition-all flex items-center justify-between group shadow-sm">
                         <div className="text-start">
-                           <span className="text-sm font-black block">{isRtl ? job.name : job.nameEn}</span>
-                           <span className="text-[9px] font-bold text-primary flex items-center gap-1 mt-1">
+                           <span className="text-sm font-black text-slate-800 block">{isRtl ? job.name : job.nameEn}</span>
+                           <span className="text-[9px] font-bold text-blue-600 flex items-center gap-1 mt-1">
                               <ShieldCheck className="h-2.5 w-2.5" /> {job.roleName || (isRtl ? 'بدون دور محدد' : 'No Role Assigned')}
                            </span>
                         </div>
-                        <div className="flex gap-1 z-20">
-                           <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setJobForm(job); setIsJobOpen(true); }}>
+                        <div className="flex gap-1 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
+                           <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:bg-blue-50" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setJobForm(job); setIsJobOpen(true); }}>
                              <Edit3 className="h-4 w-4" />
                            </Button>
                            <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="h-8 w-8 text-destructive"
+                            className="h-8 w-8 text-destructive hover:bg-rose-50"
                             disabled={loadingAction === `delete_job_${job.id}`}
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDeletingId(job.id!); }}
                            >
@@ -284,6 +292,11 @@ export default function DepartmentsPage() {
                         </div>
                       </div>
                     ))}
+                    {jobs?.length === 0 && (
+                      <div className="col-span-full py-16 text-center text-slate-300 font-bold border-2 border-dashed rounded-3xl">
+                         {isRtl ? 'لا توجد وظائف مضافة لهذا القسم.' : 'No sub-jobs in this department.'}
+                      </div>
+                    )}
                   </div>
                 )
               )}
@@ -323,4 +336,3 @@ export default function DepartmentsPage() {
     </div>
   );
 }
-

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -9,7 +9,7 @@ import {
   Plus, Loader2, Search, 
   Trash2, Edit3, ShieldCheck,
   Scale, CreditCard, DollarSign, Clock, Package, LayoutGrid,
-  Save, X
+  Save, X, RefreshCcw, DownloadCloud
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -105,6 +105,33 @@ export default function GeneralListsPage() {
     }
   };
 
+  const handlePullDefaults = async () => {
+    if (!service || !user) return;
+    setLoadingAction('seeding');
+    try {
+      await service.seedAllLists(user.uid);
+      toast({ title: isRtl ? "تم سحب البيانات الافتراضية بنجاح" : "System defaults pulled successfully" });
+    } catch (e) {
+      toast({ variant: "destructive", title: t('error') });
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  const handleDownloadCSV = () => {
+    if (items.length === 0) return;
+    const headers = ["Code", "Name (AR)", "Order", "Is Active"];
+    const rows = items.map(it => [it.code, it.name, it.order, it.isActive]);
+    let csvContent = "data:text/csv;charset=utf-8,\uFEFF" + [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `NovaFlow_${activeTab}_export.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const menuItems: { id: ReferenceListType, label: string, icon: any, color: string }[] = [
     { id: 'unitTypes', label: t('unitTypes'), icon: Scale, color: 'text-blue-600' },
     { id: 'paymentMethods', label: t('paymentMethods'), icon: CreditCard, color: 'text-emerald-600' },
@@ -162,7 +189,7 @@ export default function GeneralListsPage() {
       <div className="lg:col-span-9 space-y-6">
          <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
             <CardHeader className="bg-slate-50/50 border-b p-6 flex flex-col md:flex-row items-center justify-between gap-4">
-               <div className="relative w-full max-w-md">
+               <div className="relative w-full max-w-sm">
                   <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                   <Input 
                     placeholder={t('search')} 
@@ -171,15 +198,39 @@ export default function GeneralListsPage() {
                     onChange={e => setSearchTerm(e.target.value)}
                   />
                </div>
-               {canCreate && (
-                 <Button 
-                   onClick={() => setEditingItem({ name: '', nameEn: '', code: '', order: items.length + 1, isActive: true, isEditable: true, isSystem: false })}
-                   className="bg-primary text-white font-black rounded-xl h-12 px-6 shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-2"
-                 >
-                    <Plus className="h-5 w-5" />
-                    {isRtl ? 'إضافة عنصر' : 'Add Item'}
-                 </Button>
-               )}
+               <div className="flex items-center gap-2">
+                  <Button 
+                    variant="outline"
+                    onClick={handleDownloadCSV}
+                    disabled={items.length === 0}
+                    className="rounded-xl h-12 border-2 font-black gap-2 hover:bg-slate-50"
+                  >
+                     <DownloadCloud className="h-4 w-4 text-slate-400" />
+                     {isRtl ? 'تنزيل' : 'Download'}
+                  </Button>
+                  
+                  {items.length === 0 && (
+                    <Button 
+                      variant="outline"
+                      onClick={handlePullDefaults}
+                      disabled={loadingAction === 'seeding'}
+                      className="rounded-xl h-12 border-2 font-black gap-2 text-blue-600 hover:bg-blue-50 border-blue-100"
+                    >
+                       {loadingAction === 'seeding' ? <Loader2 className="animate-spin h-4 w-4" /> : <RefreshCcw className="h-4 w-4" />}
+                       {isRtl ? 'سحب الافتراضيات' : 'Pull Defaults'}
+                    </Button>
+                  )}
+
+                  {canCreate && (
+                    <Button 
+                      onClick={() => setEditingItem({ name: '', nameEn: '', code: '', order: items.length + 1, isActive: true, isEditable: true, isSystem: false })}
+                      className="bg-primary text-white font-black rounded-xl h-12 px-6 shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-2"
+                    >
+                        <Plus className="h-5 w-5" />
+                        {isRtl ? 'إضافة عنصر' : 'Add Item'}
+                    </Button>
+                  )}
+               </div>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
                <Table>
@@ -196,7 +247,17 @@ export default function GeneralListsPage() {
                      {loading ? (
                        <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
                      ) : filtered.length === 0 ? (
-                       <TableRow><TableCell colSpan={5} className="text-center py-20 italic text-slate-300 font-bold">{isRtl ? 'لا توجد نتائج مطابقة.' : 'No items found.'}</TableCell></TableRow>
+                       <TableRow>
+                        <TableCell colSpan={5} className="text-center py-24 space-y-4">
+                           <div className="mx-auto w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center border-2 border-dashed">
+                              <Package className="h-8 w-8 text-slate-200" />
+                           </div>
+                           <p className="italic text-slate-300 font-bold">{isRtl ? 'لا توجد بيانات مسجلة لهذه القائمة.' : 'No items found for this list.'}</p>
+                           <Button variant="link" onClick={handlePullDefaults} className="text-primary font-black">
+                              {isRtl ? 'هل تريد سحب البيانات الافتراضية من النظام؟' : 'Want to pull system defaults?'}
+                           </Button>
+                        </TableCell>
+                       </TableRow>
                      ) : (
                        filtered.map((item) => (
                          <TableRow key={item.id} className="hover:bg-slate-50 transition-colors group">
@@ -304,7 +365,7 @@ export default function GeneralListsPage() {
                          onChange={e => setEditingItem({...editingItem, symbol: e.target.value} as any)} 
                          placeholder="m2, kg..."
                          className="h-11 rounded-xl border-2 font-mono bg-white" 
-                       />
+                    />
                     </div>
                     <div className="space-y-2">
                        <Label className="text-xs font-black uppercase text-slate-400">{t('category')}</Label>
