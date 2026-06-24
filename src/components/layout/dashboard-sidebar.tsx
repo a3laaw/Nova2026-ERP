@@ -68,7 +68,6 @@ type SidebarItem = {
   icon: React.ElementType;
   url: string;
   module?: string;
-  permission?: string;
   subItems?: {
     title: string;
     url: string;
@@ -129,7 +128,7 @@ export function DashboardSidebar() {
         { title: t('permissions'), url: '/dashboard/hr/permissions', icon: Clock },
         { title: t('attendance'), url: '/dashboard/hr/attendance/import', icon: FileSpreadsheet },
         { title: t('payroll'), url: '/dashboard/hr/payroll', icon: Calculator },
-        { title: t('gratuity'), url: '/dashboard/hr/gratuity-calculator', icon: Scale },
+        { title: t('gratuity'), url: '/dashboard/hr/gratuity', icon: Scale },
         { title: t('hrReports'), url: '/dashboard/hr/reports', icon: BarChart3 },
       ],
     },
@@ -168,58 +167,50 @@ export function DashboardSidebar() {
   ].filter((item) => !item.module || canAccess(item.module));
 
   const settingsItems: SidebarItem[] = [
-    { title: t('companyIdentity'), url: '/dashboard/settings/company', icon: Building2, permission: 'admin' },
-    { title: t('checklists'), url: '/dashboard/settings/checklists', icon: Database, permission: 'ref:view' },
-    { title: t('rolesRef'), url: '/dashboard/settings/roles', icon: ShieldCheck, permission: 'admin' },
-    { title: t('workHours'), url: '/dashboard/settings/work-hours', icon: Clock, permission: 'ref:view' },
-    { title: t('profile'), url: '/dashboard/settings/profile', icon: UserCog, permission: 'public' },
-  ].filter((item) => {
-    if (item.permission === 'public') return true;
-    if (item.permission === 'admin') return isAdmin;
-    if (item.permission?.includes(':view')) {
-      const mod = item.permission.split(':')[0];
-      return canAccess(mod);
-    }
-    return isAdmin;
-  });
+    { title: t('companyIdentity'), url: '/dashboard/settings/company', icon: Building2 },
+    { title: t('checklists'), url: '/dashboard/settings/checklists', icon: Database },
+    { title: t('rolesRef'), url: '/dashboard/settings/roles', icon: ShieldCheck },
+    { title: t('workHours'), url: '/dashboard/settings/work-hours', icon: Clock },
+    { title: t('profile'), url: '/dashboard/settings/profile', icon: UserCog },
+  ].filter(() => isAdmin);
 
   return (
     <>
       <SidebarHeader
         className={cn(
-          'shrink-0 grow-0 basis-auto items-center gap-0 transition-all duration-300',
-          isCollapsed ? 'p-3' : 'px-4 py-4'
+          'shrink-0 grow-0 basis-auto items-center gap-0 transition-all duration-300 bg-[#fdfaf3]',
+          isCollapsed ? 'p-3' : 'px-4 py-8'
         )}
       >
         {!isCollapsed ? (
           <div className="mx-auto flex w-full max-w-[220px] flex-col items-center text-center animate-in fade-in slide-in-from-top-2">
-            <span className="font-headline text-2xl font-black leading-none tracking-tight text-[#1e1b4b]">
+            <span className="font-headline text-3xl font-black leading-none tracking-tight text-[#1e1b4b]">
               NovaFlow
             </span>
-            <div className="mt-1.5 flex items-center justify-center gap-1.5">
-              <span className="text-[7px] font-black uppercase tracking-[0.4em] text-[#e87c24]">
+            <div className="mt-2 flex items-center justify-center gap-1.5">
+              <span className="text-[8px] font-black uppercase tracking-[0.4em] text-[#e87c24]">
                 SYSTEMS
               </span>
-              <div className="h-[1.5px] w-5 rounded-full bg-[#e87c24]" />
+              <div className="h-[2px] w-8 rounded-full bg-[#e87c24]" />
             </div>
           </div>
         ) : (
-          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[#FFB000] to-[#e87c24] text-white shadow-xl shadow-orange-500/20">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#FFB000] to-[#e87c24] text-white shadow-xl shadow-orange-500/20">
             <Sparkles className="h-6 w-6" />
           </div>
         )}
       </SidebarHeader>
 
-      <SidebarContent className="flex-1 min-h-0 px-1.5 scrollbar-hide bg-[#fdfaf3]">
+      <SidebarContent className="flex-1 min-h-0 px-2.5 scrollbar-hide bg-[#fdfaf3]">
         <SidebarGroup className="p-0">
           {!isCollapsed && (
-            <SidebarGroupLabel className="mt-3 mb-2 px-2 text-start text-[9px] font-black uppercase tracking-widest text-[#1e1b4b]/40">
+            <SidebarGroupLabel className="mt-4 mb-4 px-4 text-start text-[10px] font-black uppercase tracking-widest text-[#1e1b4b]/40">
               {isRtl ? 'إدارة العمليات' : 'Operations'}
             </SidebarGroupLabel>
           )}
 
           <SidebarGroupContent>
-            <SidebarMenu className="mt-1 gap-2">
+            <SidebarMenu className="gap-3">
               {menuItems.map((item) => (
                 <SidebarNavItem
                   key={item.title}
@@ -233,14 +224,14 @@ export function DashboardSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup className="mt-4 mb-2 p-0">
+        <SidebarGroup className="mt-8 mb-4 p-0">
           {!isCollapsed && (
-            <SidebarGroupLabel className="mb-2 border-t border-orange-100/30 px-2 pt-4 text-start text-[9px] font-black uppercase tracking-widest text-[#1e1b4b]/40">
+            <SidebarGroupLabel className="mb-4 border-t border-orange-100/30 px-4 pt-6 text-start text-[10px] font-black uppercase tracking-widest text-[#1e1b4b]/40">
               {isRtl ? 'الإعدادات' : 'Settings'}
             </SidebarGroupLabel>
           )}
 
-          <SidebarMenu className="gap-2">
+          <SidebarMenu className="gap-3">
             {settingsItems.map((item) => (
               <SidebarNavItem
                 key={item.title}
@@ -257,29 +248,29 @@ export function DashboardSidebar() {
       <SidebarFooter
         className={cn(
           'shrink-0 grow-0 basis-auto items-center gap-0 transition-all duration-300 bg-[#fdfaf3]',
-          isCollapsed ? 'p-2' : 'px-3 py-3'
+          isCollapsed ? 'p-2' : 'px-4 py-6'
         )}
       >
         {!isCollapsed ? (
-          <div className="mx-auto w-full max-w-[220px] rounded-2xl border border-orange-100 bg-white p-3 shadow-xl ring-1 ring-black/[0.02]">
-            <div className="mb-1.5 flex items-center justify-between">
+          <div className="mx-auto w-full max-w-[220px] rounded-[2rem] border-2 border-orange-100 bg-white p-4 shadow-xl">
+            <div className="mb-2 flex items-center justify-between">
               <div className="flex items-center gap-1.5">
-                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-                <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                <div className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
                   Kuwait Cloud
                 </span>
               </div>
-              <Badge className="h-3.5 bg-[#e87c24] px-1.5 text-[8px] font-black uppercase text-white">
+              <Badge className="h-4 bg-[#e87c24] px-1.5 text-[8px] font-black uppercase text-white border-0">
                 v1.9
               </Badge>
             </div>
-            <p className="text-center text-[9px] font-black uppercase tracking-tighter text-[#1e1b4b]/80">
-              Enterprise Intelligence
+            <p className="text-center text-[10px] font-black uppercase tracking-tighter text-[#1e1b4b]">
+              ERP Intelligence
             </p>
           </div>
         ) : (
-          <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-xl border border-emerald-100 bg-emerald-50 text-emerald-600 shadow-sm">
-            <ShieldCheck className="h-5 w-5" />
+          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl border-2 border-emerald-100 bg-emerald-50 text-emerald-600 shadow-sm">
+            <ShieldCheck className="h-6 w-6" />
           </div>
         )}
       </SidebarFooter>
@@ -305,10 +296,8 @@ function SidebarNavItem({
   const isActive =
     pathname === item.url || (item.url !== '/dashboard' && pathname.startsWith(item.url));
 
-  const inactiveCard =
-    'bg-gradient-to-r from-[#e87c24] to-[#FFB000] border-0 shadow-lg text-white rounded-full';
-  const activeCard =
-    'bg-white border-2 border-orange-100 shadow-xl text-[#1e1b4b] font-black rounded-full';
+  // التصميم الكبسولي الموحد كما في الصورة
+  const capsuleStyle = "bg-gradient-to-br from-[#FFB000] to-[#e87c24] text-white shadow-xl rounded-full";
 
   const handleMouseEnter = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -334,13 +323,11 @@ function SidebarNavItem({
                       onMouseEnter={handleMouseEnter}
                       onMouseLeave={handleMouseLeave}
                       className={cn(
-                        'flex h-11 w-11 items-center justify-center rounded-2xl outline-none transition-all duration-300 hover:scale-105 active:scale-95',
-                        isActive ? activeCard : inactiveCard
+                        'flex h-12 w-12 items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95',
+                        capsuleStyle
                       )}
                     >
-                      <item.icon
-                        className={cn('h-5 w-5 shrink-0', isActive ? 'text-[#e87c24]' : 'text-white')}
-                      />
+                      <item.icon className="h-6 w-6 shrink-0 text-white" />
                     </button>
                   </DropdownMenuTrigger>
 
@@ -349,9 +336,7 @@ function SidebarNavItem({
                     sideOffset={14}
                     align="start"
                     dir={isRtl ? 'rtl' : 'ltr'}
-                    onMouseEnter={handleMouseEnter}
-                    onMouseLeave={handleMouseLeave}
-                    className="z-[9999] w-64 rounded-[1.5rem] border-2 border-orange-100 bg-white/98 p-2 shadow-2xl backdrop-blur-xl"
+                    className="z-[9999] w-64 rounded-[2rem] border-2 border-orange-100 bg-white p-2 shadow-2xl"
                   >
                     <DropdownMenuLabel className="mb-2 flex items-center gap-3 border-b border-orange-50 px-4 py-4 text-start text-xs font-black uppercase tracking-widest text-[#1e1b4b]">
                       <div className="rounded-xl bg-orange-50 p-2 text-orange-600">
@@ -367,20 +352,16 @@ function SidebarNavItem({
                         className="group mb-1 cursor-pointer rounded-xl px-4 py-3 focus:bg-orange-50"
                       >
                         <Link href={sub.url} className="flex w-full items-center justify-between">
-                          <span
-                            className={cn(
-                              'flex-1 text-start text-[12px] font-black transition-colors',
-                              pathname === sub.url ? 'text-[#e87c24]' : 'text-[#1e1b4b]'
-                            )}
-                          >
+                          <span className={cn(
+                            'flex-1 text-start text-[12px] font-black',
+                            pathname === sub.url ? 'text-[#e87c24]' : 'text-[#1e1b4b]'
+                          )}>
                             {sub.title}
                           </span>
-                          <sub.icon
-                            className={cn(
-                              'ml-3 h-4 w-4 opacity-30 transition-all group-hover:opacity-100',
-                              pathname === sub.url && 'text-[#e87c24] opacity-100'
-                            )}
-                          />
+                          <sub.icon className={cn(
+                            'ml-3 h-4 w-4 opacity-30',
+                            pathname === sub.url && 'text-[#e87c24] opacity-100'
+                          )} />
                         </Link>
                       </DropdownMenuItem>
                     ))}
@@ -390,23 +371,16 @@ function SidebarNavItem({
                 <Link
                   href={item.url}
                   className={cn(
-                    'flex h-11 w-11 items-center justify-center rounded-2xl transition-all duration-300 hover:scale-105',
-                    isActive ? activeCard : inactiveCard
+                    'flex h-12 w-12 items-center justify-center transition-all duration-300 hover:scale-105',
+                    capsuleStyle
                   )}
                 >
-                  <item.icon
-                    className={cn('h-5 w-5 shrink-0', isActive ? 'text-[#e87c24]' : 'text-white')}
-                  />
+                  <item.icon className="h-6 w-6 shrink-0 text-white" />
                 </Link>
               )}
             </TooltipTrigger>
-
             {!item.subItems && (
-              <TooltipContent
-                side={isRtl ? 'left' : 'right'}
-                sideOffset={8}
-                className="rounded-lg border-0 bg-[#1e1b4b] px-3 py-1.5 text-[10px] font-black text-white shadow-2xl"
-              >
+              <TooltipContent side={isRtl ? 'left' : 'right'} className="bg-[#1e1b4b] text-white font-black text-[10px] rounded-lg border-0 shadow-2xl">
                 {item.title}
               </TooltipContent>
             )}
@@ -417,82 +391,52 @@ function SidebarNavItem({
   }
 
   return (
-    <SidebarMenuItem className="px-1.5">
-      {item.subItems ? (
-        <div
+    <SidebarMenuItem className="px-1">
+      <div className={cn(
+        'overflow-hidden transition-all duration-500',
+        capsuleStyle,
+        isExpanded && item.subItems ? 'rounded-[2.5rem]' : 'rounded-full'
+      )}>
+        <button
           className={cn(
-            'overflow-hidden transition-all duration-300',
-            isActive ? activeCard : inactiveCard
+            'flex h-14 w-full items-center gap-4 px-6 transition-colors hover:bg-white/10',
+            isRtl ? 'flex-row-reverse' : 'flex-row'
           )}
+          onClick={() => setIsExpanded((prev) => !prev)}
         >
-          <button
-            className={cn(
-              'flex h-11 w-full items-center gap-3 px-3.5 transition-colors hover:bg-white/10',
-              isRtl ? 'flex-row-reverse' : 'flex-row'
-            )}
-            onClick={() => setIsExpanded((prev) => !prev)}
-          >
-            <item.icon
-              className={cn('h-5 w-5 shrink-0', isActive ? 'text-[#e87c24]' : 'text-white')}
-            />
-
-            <span className="flex-1 truncate text-start text-sm font-black">
-              {item.title}
-            </span>
-
-            <ChevronLeft
-              className={cn(
-                'h-3.5 w-3.5 shrink-0 opacity-60 transition-transform',
-                isExpanded ? (isRtl ? 'rotate-90' : '-rotate-90') : !isRtl ? 'rotate-180' : ''
-              )}
-            />
-          </button>
-
-          {isExpanded && (
-            <div className="animate-in slide-in-from-top-2 space-y-1 px-2 pb-3 duration-300">
-              {item.subItems.map((sub) => {
-                const isSubActive = pathname === sub.url;
-
-                return (
-                  <Link
-                    key={sub.title}
-                    href={sub.url}
-                    className={cn(
-                      'flex h-9 items-center justify-between rounded-full px-3 text-[11px] font-bold transition-all',
-                      isSubActive
-                        ? isActive
-                          ? 'bg-orange-50 text-[#e87c24] shadow-sm'
-                          : 'bg-white/20 text-white shadow-inner'
-                        : isActive
-                          ? 'text-slate-500 hover:bg-orange-50/50'
-                          : 'text-white/70 hover:bg-white/10'
-                    )}
-                  >
-                    <span className="truncate text-start">{sub.title}</span>
-                    <sub.icon
-                      className={cn('ml-2.5 h-3.5 w-3.5 opacity-50', isSubActive && 'opacity-100')}
-                    />
-                  </Link>
-                );
-              })}
-            </div>
+          <item.icon className="h-6 w-6 shrink-0 text-white" />
+          <span className="flex-1 truncate text-start text-base font-black">
+            {item.title}
+          </span>
+          {item.subItems && (
+            <ChevronLeft className={cn(
+              'h-4 w-4 shrink-0 text-white/60 transition-transform duration-300',
+              isExpanded ? (isRtl ? 'rotate-90' : '-rotate-90') : (!isRtl ? 'rotate-180' : '')
+            )} />
           )}
-        </div>
-      ) : (
-        <Link
-          href={item.url}
-          className={cn(
-            'flex h-11 items-center gap-3 shadow-md transition-all duration-300',
-            isRtl ? 'flex-row-reverse' : 'flex-row',
-            isActive ? activeCard : inactiveCard
-          )}
-        >
-          <item.icon
-            className={cn('h-5 w-5 shrink-0', isActive ? 'text-[#e87c24]' : 'text-white')}
-          />
-          <span className="flex-1 truncate text-start text-sm font-black">{item.title}</span>
-        </Link>
-      )}
+        </button>
+
+        {isExpanded && item.subItems && (
+          <div className="animate-in slide-in-from-top-2 space-y-2 px-4 pb-6 duration-300">
+            {item.subItems.map((sub) => {
+              const isSubActive = pathname === sub.url;
+              return (
+                <Link
+                  key={sub.title}
+                  href={sub.url}
+                  className={cn(
+                    'flex h-11 items-center justify-between rounded-full px-5 text-[13px] font-bold transition-all',
+                    isSubActive ? 'bg-white/20 text-white shadow-inner scale-105' : 'text-white/80 hover:bg-white/10 hover:text-white'
+                  )}
+                >
+                  <span className="truncate text-start">{sub.title}</span>
+                  <sub.icon className={cn('ml-3 h-4 w-4 opacity-50', isSubActive && 'opacity-100')} />
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </SidebarMenuItem>
   );
 }
