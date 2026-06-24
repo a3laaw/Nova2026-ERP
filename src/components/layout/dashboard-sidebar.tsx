@@ -157,8 +157,8 @@ export function DashboardSidebar() {
             </div>
           </div>
         ) : (
-          <div className="mx-auto h-11 w-24 rounded-[1.2rem] bg-gradient-to-br from-[#FFB000] to-[#e87c24] flex items-center justify-center text-white shadow-xl transition-all">
-             <Sparkles className="h-6 w-6" />
+          <div className="mx-auto h-[42px] w-[42px] rounded-[12px] bg-primary/5 flex items-center justify-center text-primary shadow-sm ring-1 ring-primary/10">
+             <Sparkles className="h-5 w-5" />
           </div>
         )}
       </SidebarHeader>
@@ -166,7 +166,7 @@ export function DashboardSidebar() {
       <SidebarContent className="px-4 py-4 overflow-y-auto scrollbar-hide">
         <SidebarGroup className="p-0">
           <SidebarGroupContent>
-            <SidebarMenu className="gap-4">
+            <SidebarMenu className={cn("gap-4", isCollapsed && "gap-6")}>
               {visibleItems.map((item) => (
                 <NavItemRenderer key={item.title} item={item} isCollapsed={isCollapsed} isRtl={isRtl} pathname={pathname} />
               ))}
@@ -196,7 +196,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
   const isActive = isSelfActive || isGroupActive
   
   const [isExpanded, setIsExpanded] = React.useState(isActive)
-  const style = "bg-gradient-to-br from-[#FFB000] to-[#e87c24] text-white shadow-lg hover:scale-[1.02] transition-all"
+  const expandedStyle = "bg-gradient-to-br from-[#FFB000] to-[#e87c24] text-white shadow-lg hover:scale-[1.02] transition-all"
 
   if (isCollapsed) {
     return (
@@ -207,14 +207,17 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
               <Link 
                 href={item.url}
                 className={cn(
-                  "flex h-11 w-24 items-center justify-center transition-all duration-300 rounded-2xl",
-                  isActive ? "bg-white text-[#e87c24] shadow-xl border-2 border-orange-50" : style
+                  "flex items-center justify-center transition-all duration-300",
+                  "h-[42px] w-[42px] rounded-[12px]",
+                  isActive 
+                    ? "bg-[#FFF3E0] text-[#e87c24] shadow-sm ring-1 ring-[#e87c24]/10" 
+                    : "text-slate-400 hover:bg-[#FFF3E0] hover:text-[#e87c24]"
                 )}
               >
-                <item.icon className="h-6 w-6" />
+                <item.icon className="h-5 w-5" strokeWidth={2.5} />
               </Link>
             </TooltipTrigger>
-            <TooltipContent side={isRtl ? "left" : "right"} className="bg-[#1e1b4b] text-white font-black text-[10px]">
+            <TooltipContent side={isRtl ? "left" : "right"} className="bg-[#1e1b4b] text-white font-black text-[10px] rounded-lg border-0 px-3 py-1.5 shadow-2xl">
               {item.title}
             </TooltipContent>
           </Tooltip>
@@ -228,7 +231,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
       {item.subItems ? (
         <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
           <CollapsibleTrigger asChild>
-            <button className={cn("flex items-center transition-all duration-300 rounded-2xl w-full h-11 px-4", style)}>
+            <button className={cn("flex items-center transition-all duration-300 rounded-2xl w-full h-11 px-4", expandedStyle)}>
               <div className={cn("flex items-center gap-3 w-full", isRtl ? "flex-row" : "flex-row-reverse")}>
                 <item.icon className="h-5 w-5 shrink-0" />
                 <span className="flex-1 text-start text-xs font-black tracking-tight">{item.title}</span>
@@ -258,7 +261,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
           href={item.url} 
           className={cn(
             "flex items-center transition-all duration-300 rounded-2xl h-11 px-4", 
-            isActive ? "bg-white text-[#e87c24] shadow-xl border-2 border-orange-50" : style
+            isActive ? "bg-white text-[#e87c24] shadow-xl border-2 border-orange-50" : expandedStyle
           )}
         >
           <div className={cn("flex items-center gap-3 w-full", isRtl ? "flex-row" : "flex-row-reverse")}>
