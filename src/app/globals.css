@@ -1,4 +1,3 @@
-
 @import "leaflet/dist/leaflet.css";
 
 @tailwind base;
@@ -7,37 +6,40 @@
 
 @layer base {
   :root {
-    /* الهوية البصرية المعتمدة لـ Nova ERP */
-    --background: 45 60% 97%; /* #fdfaf3 - العاجي الفاخر */
-    --foreground: 244 45% 20%; /* #1e1b4b - كحلي هندسي داكن */
+    /* Enterprise SaaS Palette */
+    --background: 210 20% 98%; /* #F8F9FA - Ultra-clean soft gray-white */
+    --foreground: 222 47% 11%; /* Deep navy for high contrast text */
     
-    --card: 0 0% 100%;
-    --card-foreground: 244 45% 20%;
+    --card: 0 0% 100%; /* Pure White */
+    --card-foreground: 222 47% 11%;
     
     --popover: 0 0% 100%;
-    --popover-foreground: 244 45% 20%;
+    --popover-foreground: 222 47% 11%;
     
-    /* الألوان الرئيسية */
-    --primary: 27 82% 53%; /* #e87c24 - البرتقالي الأساسي */
+    /* Firebase Branding Accents - Used as Indicators */
+    --primary: 36 100% 50%; /* #FFA000 - Firebase Orange */
     --primary-foreground: 0 0% 100%;
     
-    --accent: 41 100% 50%; /* #FFB000 - الذهبي/الأصفر */
-    --accent-foreground: 244 45% 10%;
+    --accent: 45 100% 58%; /* #FFCA28 - Firebase Yellow */
+    --accent-foreground: 222 47% 11%;
     
-    --secondary: 199 89% 48%; /* أزرق تكنولوجي مساند */
-    --secondary-foreground: 0 0% 100%;
+    --info: 199 98% 45%; /* #039BE5 - Firebase Blue */
     
-    --muted: 45 30% 94%;
-    --muted-foreground: 215 16% 47%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222 47% 11%;
     
-    --destructive: 0 84% 60%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 40%; /* High contrast gray for readability */
+    
+    --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
     
-    --border: 27 82% 90%;
-    --input: 27 82% 90%;
-    --ring: 27 82% 53%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 36 100% 50%;
     
-    --radius: 2rem;
+    /* Standardized Enterprise Radius */
+    --radius: 12px;
   }
 }
 
@@ -46,35 +48,31 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-body;
-    background-color: #fdfaf3; /* تثبيت اللون العاجي */
+    @apply bg-background text-foreground font-body antialiased;
   }
   h1, h2, h3, h4, h5, h6 {
-    @apply font-headline text-[#1e1b4b] tracking-tight font-black;
+    @apply font-headline tracking-tight font-bold;
   }
 }
 
-/* نمط الأزرار البرتقالي الذهبي */
-.btn-nova-primary {
-  @apply bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white font-black shadow-xl shadow-orange-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all;
+/* Professional SaaS Card Shadow */
+.card-shadow {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
 }
 
-/* نمط القائمة الجانبية النشط */
+.btn-nova-primary {
+  @apply bg-primary text-white font-bold shadow-md hover:shadow-lg hover:opacity-90 transition-all rounded-lg;
+}
+
+/* Sidebar remains orange - classes preserved */
 .sidebar-item-active {
   @apply bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-lg shadow-orange-500/30 scale-[1.02] font-black;
 }
 
-/* تحسينات البطاقات */
-.card-nova {
-  @apply bg-white/95 backdrop-blur-sm border-0 shadow-2xl rounded-[2.5rem] ring-1 ring-black/[0.02];
-}
-
-/* إصلاح أيقونات Leaflet */
 .leaflet-container {
-  @apply rounded-[1.5rem] overflow-hidden;
+  @apply rounded-xl overflow-hidden;
 }
 
-/* إخفاء مؤشرات الإدخال للأرقام */
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
   -webkit-appearance: none;

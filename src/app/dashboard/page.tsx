@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -11,16 +10,17 @@ import {
   ArrowUpRight, 
   Plus,
   HardHat,
-  UserCircle,
   ShoppingCart,
-  FileText
+  FileText,
+  Activity
 } from "lucide-react"
 import { 
   Bar, 
   BarChart, 
   XAxis, 
   YAxis, 
-  CartesianGrid
+  CartesianGrid,
+  ResponsiveContainer
 } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { cn } from "@/lib/utils"
@@ -39,12 +39,12 @@ const data = [
 
 const chartConfig = {
   revenue: {
-    label: "الإيرادات",
-    color: "hsl(var(--primary))",
+    label: "Revenue",
+    color: "#039BE5", // Firebase Blue
   },
   expenses: {
-    label: "المصاريف",
-    color: "hsl(var(--secondary-foreground))",
+    label: "Expenses",
+    color: "#FFA000", // Firebase Orange
   },
 } satisfies ChartConfig
 
@@ -61,7 +61,8 @@ export default function DashboardPage() {
       change: "+12.5%",
       trend: "up",
       icon: DollarSign,
-      color: "bg-primary/10 text-primary",
+      color: "text-[#039BE5]", // Info Blue
+      bg: "bg-blue-50",
     },
     {
       title: isRtl ? "المشاريع النشطة" : "Active Projects",
@@ -69,15 +70,17 @@ export default function DashboardPage() {
       change: isRtl ? "+2 جديد" : "+2 new",
       trend: "up",
       icon: Briefcase,
-      color: "bg-blue-500/10 text-blue-500",
+      color: "text-[#FFA000]", // Brand Orange
+      bg: "bg-orange-50",
     },
     {
       title: isRtl ? "القوى العاملة" : "Workforce",
       value: "142",
-      change: isRtl ? "98% في الموقع" : "98% on-site",
+      change: isRtl ? "98% تواجد" : "98% presence",
       trend: "neutral",
       icon: Users,
-      color: "bg-purple-500/10 text-purple-500",
+      color: "text-[#FFCA28]", // Brand Yellow
+      bg: "bg-yellow-50",
     },
     {
       title: isRtl ? "معدل الإنجاز" : "Completion Rate",
@@ -85,125 +88,121 @@ export default function DashboardPage() {
       change: isRtl ? "+5% سنوي" : "+5% yearly",
       trend: "up",
       icon: TrendingUp,
-      color: "bg-green-500/10 text-green-500",
+      color: "text-emerald-600",
+      bg: "bg-emerald-50",
     },
   ]
 
   return (
     <div className="space-y-6" dir={dir}>
-      {/* Welcome Section - Reduced sizes */}
+      {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="text-start">
-          <h1 className="text-2xl font-black font-headline">{isRtl ? 'مرحباً بك،' : 'Welcome back,'} {user?.email?.split('@')[0]}</h1>
-          <p className="text-muted-foreground text-sm font-bold opacity-70 italic">{isRtl ? `نظرة عامة على عمليات شركة ${company?.name || '...'}` : `Overview of ${company?.name || '...'} operations`}</p>
+          <h1 className="text-2xl font-bold text-slate-900">{isRtl ? 'نظرة عامة على العمليات' : 'Operations Overview'}</h1>
+          <p className="text-slate-500 text-sm font-medium">{company?.name || '...'}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="hidden sm:flex rounded-xl font-bold h-9">
-            <FileText className="me-2 h-3.5 w-3.5" />
-            {isRtl ? `تصدير تقرير` : `Export Report`}
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" className="rounded-lg font-semibold bg-white border-slate-200 text-slate-600 h-9">
+            <FileText className="me-2 h-4 w-4" />
+            {isRtl ? `تصدير التقرير` : `Export Data`}
           </Button>
-          <Button size="sm" className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 rounded-xl px-5 h-9 font-black">
-            <Plus className="me-2 h-3.5 w-3.5" />
-            {isRtl ? 'إجراء سريع' : 'Quick Action'}
+          <Button size="sm" className="bg-[#FFA000] hover:bg-[#F57C00] text-white shadow-sm rounded-lg px-5 h-9 font-bold">
+            <Plus className="me-2 h-4 w-4" />
+            {isRtl ? 'مشروع جديد' : 'New Project'}
           </Button>
         </div>
       </div>
 
-      {/* Stats Grid - Reduced padding */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat, i) => (
-          <Card key={i} className="border-0 shadow-sm hover:shadow-md transition-all duration-300 rounded-2xl group overflow-hidden bg-white">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div className={cn("p-2 rounded-lg transition-transform group-hover:scale-110", stat.color)}>
-                  <stat.icon className="h-5 w-5" />
+          <Card key={i} className="border-none shadow-sm card-shadow rounded-xl bg-white overflow-hidden">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className={cn("p-2.5 rounded-lg", stat.bg)}>
+                  <stat.icon className={cn("h-5 w-5", stat.color)} />
                 </div>
                 <div className={cn(
-                  "flex items-center text-[10px] font-black px-2 py-0.5 rounded-full",
-                  stat.trend === "up" ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"
+                  "text-[10px] font-bold px-2 py-1 rounded-md",
+                  stat.trend === "up" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"
                 )}>
-                  {stat.trend === "up" ? <ArrowUpRight className="me-1 h-2.5 w-2.5" /> : null}
                   {stat.change}
                 </div>
               </div>
-              <div className="mt-3 text-start">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.title}</p>
-                <h3 className="text-xl font-black font-headline mt-1 tracking-tight">{stat.value}</h3>
+              <div className="text-start">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{stat.title}</p>
+                <h3 className="text-2xl font-bold text-slate-900 mt-1">{stat.value}</h3>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Charts & Activity - Reduced padding and headers */}
+      {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Revenue Chart */}
-        <Card className="lg:col-span-2 border-0 shadow-lg rounded-2xl bg-white overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between px-6 py-4 border-b border-muted">
+        {/* Performance Chart */}
+        <Card className="lg:col-span-2 border-none shadow-sm card-shadow bg-white rounded-xl">
+          <CardHeader className="flex flex-row items-center justify-between px-6 py-5 border-b border-slate-50">
             <div className="text-start">
-              <CardTitle className="text-base font-black font-headline">{isRtl ? 'الأداء المالي للشركة' : 'Financial Performance'}</CardTitle>
-              <CardDescription className="text-[10px] font-bold">{isRtl ? 'تحليل الإيرادات مقابل المصاريف (6 أشهر)' : 'Revenue vs Expenses Analysis (6 months)'}</CardDescription>
+              <CardTitle className="text-lg font-bold text-slate-900">{isRtl ? 'الأداء المالي والإنتاجي' : 'Financial Performance'}</CardTitle>
+              <CardDescription className="text-xs font-medium text-slate-500">{isRtl ? 'تحليل الإيرادات والمصروفات للفترة الحالية' : 'Revenue vs Expenses monthly analysis'}</CardDescription>
             </div>
+            <Activity className="h-5 w-5 text-slate-300" />
           </CardHeader>
           <CardContent className="p-6">
-            <div className="h-[250px] w-full">
+            <div className="h-[300px] w-full">
               <ChartContainer config={chartConfig}>
-                <BarChart data={data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--muted))" />
+                <BarChart data={data}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
                   <XAxis 
                     dataKey="name" 
                     axisLine={false} 
                     tickLine={false} 
-                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10, fontWeight: 700 }}
+                    tick={{ fill: "#64748B", fontSize: 11, fontWeight: 600 }}
                   />
                   <YAxis 
                     axisLine={false} 
                     tickLine={false} 
-                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10, fontWeight: 700 }}
+                    tick={{ fill: "#64748B", fontSize: 11, fontWeight: 600 }}
                   />
-                  <ChartTooltip 
-                    cursor={{ fill: "hsl(var(--muted))", opacity: 0.4 }}
-                    content={<ChartTooltipContent hideLabel />}
-                  />
-                  <Bar dataKey="revenue" fill="var(--color-revenue)" radius={[4, 4, 0, 0]} barSize={20} />
-                  <Bar dataKey="expenses" fill="var(--color-expenses)" radius={[4, 4, 0, 0]} barSize={20} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="revenue" fill="var(--color-revenue)" radius={[4, 4, 0, 0]} barSize={24} />
+                  <Bar dataKey="expenses" fill="var(--color-expenses)" radius={[4, 4, 0, 0]} barSize={24} />
                 </BarChart>
               </ChartContainer>
             </div>
           </CardContent>
         </Card>
 
-        {/* Recent Activity */}
-        <Card className="border-0 shadow-lg rounded-2xl bg-white overflow-hidden">
-          <CardHeader className="px-6 py-4 border-b border-muted text-start">
-            <CardTitle className="text-base font-black font-headline">{isRtl ? 'نشاط العمليات' : 'Operational Activity'}</CardTitle>
-            <CardDescription className="text-[10px] font-bold">{isRtl ? 'أحداث تشغيلية في الوقت الفعلي' : 'Real-time operational events'}</CardDescription>
+        {/* Real-time Activity Feed */}
+        <Card className="border-none shadow-sm card-shadow bg-white rounded-xl overflow-hidden">
+          <CardHeader className="px-6 py-5 border-b border-slate-50 text-start">
+            <CardTitle className="text-lg font-bold text-slate-900">{isRtl ? 'سجل العمليات' : 'Live Activity'}</CardTitle>
+            <CardDescription className="text-xs font-medium text-slate-500">Real-time updates from sites</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="divide-y divide-muted">
+            <div className="divide-y divide-slate-50">
               {[
-                { title: isRtl ? "تسجيل زيارة ميدانية" : "Field Visit Recorded", detail: isRtl ? "مصفاة الزور - المرحلة الثانية" : "Al-Zour Refinery - Phase 2", time: isRtl ? "12 د" : "12m", icon: HardHat, color: "text-blue-500" },
-                { title: isRtl ? "إنشاء دفعة الرواتب" : "Payroll Batch Created", detail: isRtl ? "يوليو 2024 (142 موظف)" : "July 2024 (142 Emps)", time: isRtl ? "2 س" : "2h", icon: UserCircle, color: "text-purple-500" },
-                { title: isRtl ? "تحليل عروض الأسعار" : "Quote Analysis", detail: isRtl ? "مناقصة حديد التسليح" : "Steel Rebar Tender", time: isRtl ? "4 س" : "4h", icon: ShoppingCart, color: "text-primary" },
-                { title: isRtl ? "ترحيل قيد محاسبي" : "Journal Posted", detail: isRtl ? "عقد #AX202 - القسط الأول" : "Contract #AX202 - P1", time: isRtl ? "5 س" : "5h", icon: FileText, color: "text-green-500" },
+                { title: isRtl ? "موافقة على عرض سعر" : "Quote Approved", detail: "Project Alpha - Steel Supply", time: "5m", color: "text-[#039BE5]" },
+                { title: isRtl ? "تحديث بصمة الحضور" : "Attendance Logged", detail: "120 Staff checked-in", time: "1h", color: "text-[#FFCA28]" },
+                { title: isRtl ? "إصدار مستند مالي" : "Payment Voucher", detail: "Contract #2291 - Installment 1", time: "3h", color: "text-emerald-500" },
+                { title: isRtl ? "نقص في المخزون" : "Low Stock Alert", detail: "Cement - Central Warehouse", time: "5h", color: "text-[#FFA000]" },
               ].map((activity, i) => (
-                <div key={i} className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors">
-                  <div className={cn("flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center bg-muted", activity.color)}>
-                    <activity.icon className="h-4 w-4" />
-                  </div>
+                <div key={i} className="flex items-start gap-4 p-5 hover:bg-slate-50/50 transition-colors">
+                  <div className={cn("h-2 w-2 rounded-full mt-2 shrink-0", activity.color.replace('text-', 'bg-'))} />
                   <div className="flex-1 min-w-0 text-start">
-                    <p className="text-xs font-black truncate text-slate-800">{activity.title}</p>
-                    <p className="text-[9px] text-muted-foreground truncate font-bold">{activity.detail}</p>
+                    <p className="text-sm font-bold text-slate-800 truncate">{activity.title}</p>
+                    <p className="text-xs text-slate-500 font-medium truncate mt-0.5">{activity.detail}</p>
                   </div>
-                  <div className="text-[9px] font-black text-slate-400 whitespace-nowrap">
+                  <div className="text-[10px] font-bold text-slate-400">
                     {activity.time}
                   </div>
                 </div>
               ))}
             </div>
-            <div className="p-3 bg-muted/20">
-              <Button variant="ghost" className="w-full h-8 text-[10px] font-black text-primary uppercase tracking-widest">
-                {isRtl ? 'سجل التدقيق الشامل' : 'Full Audit Trail'}
+            <div className="p-4 bg-slate-50/50">
+              <Button variant="ghost" className="w-full h-9 text-xs font-bold text-[#039BE5] hover:text-[#0288D1] hover:bg-blue-50">
+                {isRtl ? 'عرض السجل الكامل' : 'View Full Logs'}
               </Button>
             </div>
           </CardContent>
