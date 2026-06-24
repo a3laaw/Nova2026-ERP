@@ -60,7 +60,7 @@ export const paths = {
   // المعاملات الفنية (Technical Transactions)
   transactions: (companyId: string) => getTenantPath(companyId, 'transactions'),
   transactionStages: (companyId: string, tId: string) => `${getTenantPath(companyId, 'transactions')}/${tId}/stageInstances`,
-  transactionTimeline: (companyId: string) => `${getTenantPath(companyId, 'transactionTimeline')}`, // Added missing global ref
+  transactionTimeline: (companyId: string, tId: string) => `${getTenantPath(companyId, 'transactions')}/${tId}/timeline`,
 
   // مكتبة القوالب (Template Library)
   quotationTemplates: (companyId: string) => getTenantPath(companyId, 'quotationTemplates'),
