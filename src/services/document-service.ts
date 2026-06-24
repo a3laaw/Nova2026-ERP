@@ -24,7 +24,7 @@ import { ensureActionPermission } from '@/lib/permissions';
 
 /**
  * خدمة إدارة المستندات الحية (Document Service).
- * مسؤولة عن استنساخ القوالب وتحويلها إلى سجلات تنفيذية مرتبطة بالمعاملات.
+ * مسؤولة عن استنساخ القوالب وتحويلها إلى سجلات تنفيذية مرتبطة بالمعاملات والمشاريع.
  */
 export class DocumentService {
   constructor(
@@ -60,6 +60,7 @@ export class DocumentService {
       
       return `${prefix}${nextSeq}`;
     } catch (e) {
+      console.warn("Numbering fetch error, fallback to first:", e);
       return `${prefix}0001`;
     }
   }
@@ -92,7 +93,7 @@ export class DocumentService {
       defaultTerms: template.defaultTerms,
       validDays: template.validDays || 30,
       pricingMode: template.pricingMode,
-      items: JSON.parse(JSON.stringify(template.items)), // Deep Copy
+      items: JSON.parse(JSON.stringify(template.items || [])), // Deep Copy
       status: 'draft',
       totalAmount: 0, 
       version: 1,
@@ -134,7 +135,7 @@ export class DocumentService {
 
     const docRef = doc(collection(this.db, paths.contracts(this.companyId)));
     
-    const linkedMilestones = template.defaultMilestones.map(m => {
+    const linkedMilestones = (template.defaultMilestones || []).map(m => {
       const instance = stageInstances.find(si => si.technicalStageId === m.technicalStageId);
       return {
         ...m,
@@ -152,7 +153,7 @@ export class DocumentService {
       introText: template.introText,
       legalText: template.legalText,
       closingText: template.closingText,
-      clauses: JSON.parse(JSON.stringify(template.clauses)),
+      clauses: JSON.parse(JSON.stringify(template.clauses || [])),
       milestones: linkedMilestones as any,
       status: 'draft',
       totalAmount: 0,
@@ -170,14 +171,15 @@ export class DocumentService {
 
   /**
    * استنساخ جدول كميات (BOQ) فعلي من قالب وربطه بالمعاملة أو المشروع
+   * محرك الاستنساخ السيادي - NovaFlow Core
    */
   async instantiateBoqFromTemplate(
     templateId: string, 
-    context: { 
+    payload: { 
       transactionId?: string, 
       projectId?: string, 
-      clientId: string, 
-      clientName: string,
+      clientId?: string, 
+      clientName?: string,
       activityTypeId?: string,
       serviceId?: string,
       subServiceId?: string,
@@ -188,34 +190,42 @@ export class DocumentService {
     userName: string
   ): Promise<string> {
     
+    // 1. التحقق من صلاحية الإنشاء
     ensureActionPermission(this.permissions, 'projects:create');
 
+    // 2. جلب بيانات القالب ورأس القالب
     const templateRef = doc(this.db, paths.boqTemplates(this.companyId), templateId);
     const templateSnap = await getDoc(templateRef);
 
-    if (!templateSnap.exists()) throw new Error('TEMPLATE_NOT_FOUND: القالب غير موجود.');
+    if (!templateSnap.exists()) {
+      throw new Error('TEMPLATE_NOT_FOUND: القالب غير موجود في النظام.');
+    }
 
     const template = templateSnap.data() as BOQTemplate;
+    
+    // 3. جلب كافة بنود القالب من المجموعة الفرعية
     const templateItemsSnap = await getDocs(collection(this.db, paths.boqTemplateItems(this.companyId, templateId)));
     
+    // 4. توليد رقم المقايسة والمسار الجديد
     const boqNumber = await this.getNextBOQNumber();
     const boqRef = doc(collection(this.db, paths.boqs(this.companyId)));
     const boqId = boqRef.id;
 
+    // 5. بناء كائن المقايسة الفعلي (Runtime BOQ Header)
     const boqData: BOQ = {
       id: boqId,
       boqNumber,
-      transactionId: context.transactionId || '',
-      projectId: context.projectId || '',
-      clientId: context.clientId,
-      clientName: context.clientName,
+      transactionId: payload.transactionId || '',
+      projectId: payload.projectId || '',
+      clientId: payload.clientId || '',
+      clientName: payload.clientName || '',
       templateId,
       templateName: template.name,
-      name: context.name || `${template.name} - ${boqNumber}`,
-      description: context.description || '',
-      activityTypeId: context.activityTypeId || template.activityTypeId,
-      serviceId: context.serviceId || template.serviceId,
-      subServiceId: context.subServiceId || template.subServiceId,
+      name: payload.name || `${template.name} - ${boqNumber}`,
+      description: payload.description || template.description || '',
+      activityTypeId: payload.activityTypeId || template.activityTypeId,
+      serviceId: payload.serviceId || template.serviceId,
+      subServiceId: payload.subServiceId || template.subServiceId,
       measurementMode: template.measurementMode || 'quantity',
       status: 'draft',
       totalAmount: template.baseAmount || 0,
@@ -228,50 +238,54 @@ export class DocumentService {
     };
 
     const batch = writeBatch(this.db);
+    
+    // كتابة رأس المقايسة
     batch.set(boqRef, boqData);
 
-    // استنساخ البنود إلى المجموعة الفرعية
+    // 6. استنساخ البنود إلى المجموعة الفرعية (Runtime Items)
     templateItemsSnap.docs.forEach(itemDoc => {
       const item = itemDoc.data() as BOQTemplateItem;
       const itemRef = doc(collection(this.db, paths.boqItems(this.companyId, boqId)));
+      
       const runtimeItem: BOQItem = {
         id: itemRef.id,
         boqId,
-        workItemMasterId: item.workItemMasterId,
+        workItemMasterId: item.workItemMasterId || '',
         sectionId: item.sectionId,
         sectionName: item.sectionName,
         mainCategoryId: item.mainCategoryId,
         mainCategoryName: item.mainCategoryName,
         componentId: item.componentId,
         componentName: item.componentName,
-        itemCode: item.itemCode,
-        description: item.description,
+        itemCode: item.itemCode || '',
+        description: item.description || item.name || '',
         unit: item.unit,
-        unitTypeId: item.unitTypeId,
-        unitSymbol: item.unitSymbol,
+        unitTypeId: item.unitTypeId || '',
+        unitSymbol: item.unitSymbol || '',
         plannedQuantity: item.plannedQuantity || 0,
-        executedQuantity: 0,
+        executedQuantity: 0, // تصفير الإنجاز الفعلي عند البدء
         estimatedRate: item.estimatedRate || 0,
         estimatedCostRate: item.estimatedCostRate || 0,
         notes: item.notes || '',
-        technicalStageId: item.technicalStageId,
-        billingTriggerGroup: item.billingTriggerGroup,
+        technicalStageId: item.technicalStageId || '',
+        billingTriggerGroup: item.billingTriggerGroup || '',
         materialCodes: item.materialCodes || [],
-        order: item.order,
+        order: item.order !== undefined ? item.order : 0,
         companyId: this.companyId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       };
+      
       batch.set(itemRef, runtimeItem);
     });
 
-    // توثيق الحدث في المعاملة إذا وجدت
-    if (context.transactionId) {
-      const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, context.transactionId)));
+    // 7. توثيق الحدث في المعاملة (إذا تم الربط)
+    if (payload.transactionId) {
+      const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, payload.transactionId)));
       batch.set(timelineRef, {
-        transactionId: context.transactionId,
+        transactionId: payload.transactionId,
         type: 'system',
-        content: `تم إنشاء جدول كميات فعلي برقم ${boqNumber} من القالب: ${template.name}`,
+        content: `تم إنشاء جدول كميات فعلي برقم ${boqNumber} من القالب المرجعي: ${template.name}`,
         userId,
         userName,
         companyId: this.companyId,
