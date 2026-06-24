@@ -37,8 +37,19 @@ export class TemplateService {
   }
 
   /**
+   * جلب قاموس بنود العمل المرجعي
+   */
+  async getWorkItemsMaster() {
+    const q = query(
+      collection(this.db, paths.boqWorkItemsMaster(this.companyId)),
+      orderBy('sectionName')
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }
+
+  /**
    * حفظ قالب المقايسة مع كافة بنوده في عملية واحدة (Batch Save)
-   * يتم استبدال البنود الحالية في الـ subcollection بالبنود الجديدة
    */
   async saveBOQTemplateWithItems(templateId: string | null, templateData: Partial<BOQTemplate>, items: BOQTemplateItem[], userId: string) {
     ensureActionPermission(this.userPermissions, 'ref:edit');
@@ -58,14 +69,12 @@ export class TemplateService {
     };
     batch.set(templateRef, headData, { merge: true });
 
-    // 2. معالجة البنود في المجموعة الفرعية
+    // 2. معالجة البنود في المجموعة الفرعية (Sync Mode)
     const itemsCollection = collection(this.db, paths.boqTemplateItems(this.companyId, finalTemplateId));
     
-    // مسح البنود القديمة لضمان تطابق الحالة (Sync)
     const oldItemsSnap = await getDocs(itemsCollection);
     oldItemsSnap.docs.forEach(d => batch.delete(d.ref));
 
-    // إضافة البنود الجديدة
     items.forEach((item, idx) => {
       const itemRef = doc(itemsCollection);
       batch.set(itemRef, {
