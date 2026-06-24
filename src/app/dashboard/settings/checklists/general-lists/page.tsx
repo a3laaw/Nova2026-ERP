@@ -65,7 +65,6 @@ export default function GeneralListsPage() {
   // Data Fetching
   const listQuery = useMemo(() => {
     if (!companyId || !db) return null;
-    // تحديد المسار بناءً على النوع (أساسي أو مخصص)
     let path = '';
     if (paths[activeTab as keyof typeof paths] && typeof paths[activeTab as keyof typeof paths] === 'function') {
       path = (paths[activeTab as keyof typeof paths] as Function)(companyId);
@@ -183,59 +182,66 @@ export default function GeneralListsPage() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-in fade-in duration-500">
       
-      {/* Navigation Sidebar */}
+      {/* Navigation Sidebar (Vertical Internal Menu) */}
       <div className="lg:col-span-3 space-y-4 text-start">
          <div className="bg-white rounded-[2rem] shadow-lg border-2 border-slate-50 p-3 space-y-1">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-4 py-2">{isRtl ? 'القوائم الأساسية' : 'Main Lists'}</p>
-            {staticMenuItems.map((item) => (
-              <div 
-                key={item.id}
-                onClick={() => { setActiveTab(item.id); setSearchTerm(""); }}
-                className={cn(
-                  "p-4 rounded-xl cursor-pointer transition-all flex items-center gap-4 group",
-                  activeTab === item.id 
-                    ? "bg-primary/5 border-2 border-primary/20 shadow-inner" 
-                    : "hover:bg-slate-50 border-2 border-transparent"
-                )}
-              >
-                 <div className={cn(
-                   "h-10 w-10 rounded-xl flex items-center justify-center transition-all",
-                   activeTab === item.id ? "bg-primary text-white shadow-lg" : "bg-slate-100 text-slate-400 group-hover:bg-white group-hover:text-primary"
-                 )}>
-                    <item.icon className="h-5 w-5" />
-                 </div>
-                 <span className={cn(
-                   "text-sm font-black transition-colors",
-                   activeTab === item.id ? "text-primary" : "text-slate-500"
-                 )}>{item.label}</span>
-              </div>
-            ))}
+            {staticMenuItems.map((item) => {
+              const isActive = activeTab === item.id;
+              return (
+                <div 
+                  key={item.id}
+                  onClick={() => { setActiveTab(item.id); setSearchTerm(""); }}
+                  className={cn(
+                    "p-4 rounded-xl cursor-pointer transition-all flex items-center gap-4 group",
+                    isActive 
+                      ? "bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-lg shadow-orange-500/30 scale-[1.02] border-0" 
+                      : "hover:bg-slate-50 border-2 border-transparent"
+                  )}
+                >
+                   <div className={cn(
+                     "h-10 w-10 rounded-xl flex items-center justify-center transition-all",
+                     isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-400 group-hover:bg-white group-hover:text-primary"
+                   )}>
+                      <item.icon className="h-5 w-5" />
+                   </div>
+                   <span className={cn(
+                     "text-sm font-black transition-colors",
+                     isActive ? "text-white" : "text-slate-500"
+                   )}>{item.label}</span>
+                </div>
+              );
+            })}
 
             {/* Custom Lists Section */}
             {customLists.length > 0 && (
               <>
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-4 py-2 mt-4">{isRtl ? 'قوائم مخصصة' : 'Custom Lists'}</p>
-                {customLists.map(list => (
-                  <div 
-                    key={list.id}
-                    onClick={() => { setActiveTab(list.code); setSearchTerm(""); }}
-                    className={cn(
-                      "p-4 rounded-xl cursor-pointer transition-all flex items-center gap-4 group",
-                      activeTab === list.code ? "bg-primary/5 border-2 border-primary/20" : "hover:bg-slate-50"
-                    )}
-                  >
-                    <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center bg-slate-100 text-slate-400", activeTab === list.code && "bg-primary text-white shadow-lg")}>
-                      <Star className="h-5 w-5" />
+                {customLists.map(list => {
+                  const isActive = activeTab === list.code;
+                  return (
+                    <div 
+                      key={list.id}
+                      onClick={() => { setActiveTab(list.code); setSearchTerm(""); }}
+                      className={cn(
+                        "p-4 rounded-xl cursor-pointer transition-all flex items-center gap-4 group",
+                        isActive 
+                          ? "bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-lg shadow-orange-500/30 scale-[1.02] border-0" 
+                          : "hover:bg-slate-50 border-2 border-transparent"
+                      )}
+                    >
+                      <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center bg-slate-100 text-slate-400", isActive && "bg-white/20 text-white")}>
+                        <Star className="h-5 w-5" />
+                      </div>
+                      <span className={cn("text-sm font-black transition-colors", isActive ? "text-white" : "text-slate-500")}>
+                        {isRtl ? list.name : list.nameEn}
+                      </span>
                     </div>
-                    <span className={cn("text-sm font-black transition-colors", activeTab === list.code ? "text-primary" : "text-slate-500")}>
-                      {isRtl ? list.name : list.nameEn}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </>
             )}
 
-            {/* Add New List Button - IMPROVED VISIBILITY & NOVA IDENTITY */}
             {canCreate && (
               <Dialog open={isAddingList} onOpenChange={setIsAddingList}>
                 <DialogTrigger asChild>

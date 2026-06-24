@@ -148,32 +148,35 @@ export default function ReferenceListsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
-        {/* Navigation Sidebar */}
+        {/* Navigation Sidebar (Vertical Internal Menu) */}
         <div className="lg:col-span-3 space-y-4">
            <div className="bg-white rounded-[2rem] shadow-xl border-2 border-slate-50 p-3 space-y-2">
-              {menuItems.map((item) => (
-                <div 
-                  key={item.id}
-                  onClick={() => { setActiveTab(item.id); setSearchTerm(""); }}
-                  className={cn(
-                    "p-4 rounded-xl cursor-pointer transition-all flex items-center gap-4 group",
-                    activeTab === item.id 
-                      ? "bg-primary/5 border-2 border-primary/20 shadow-inner" 
-                      : "hover:bg-slate-50 border-2 border-transparent"
-                  )}
-                >
-                   <div className={cn(
-                     "h-10 w-10 rounded-xl flex items-center justify-center transition-all",
-                     activeTab === item.id ? "bg-primary text-white shadow-lg" : "bg-slate-100 text-slate-400 group-hover:bg-white group-hover:text-primary"
-                   )}>
-                      <item.icon className="h-5 w-5" />
-                   </div>
-                   <span className={cn(
-                     "text-sm font-black transition-colors",
-                     activeTab === item.id ? "text-primary" : "text-slate-500"
-                   )}>{item.label}</span>
-                </div>
-              ))}
+              {menuItems.map((item) => {
+                const isActive = activeTab === item.id;
+                return (
+                  <div 
+                    key={item.id}
+                    onClick={() => { setActiveTab(item.id); setSearchTerm(""); }}
+                    className={cn(
+                      "p-4 rounded-xl cursor-pointer transition-all flex items-center gap-4 group",
+                      isActive 
+                        ? "bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-lg shadow-orange-500/30 scale-[1.02] border-0" 
+                        : "hover:bg-slate-50 border-2 border-transparent"
+                    )}
+                  >
+                     <div className={cn(
+                       "h-10 w-10 rounded-xl flex items-center justify-center transition-all",
+                       isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-400 group-hover:bg-white group-hover:text-primary"
+                     )}>
+                        <item.icon className="h-5 w-5" />
+                     </div>
+                     <span className={cn(
+                       "text-sm font-black transition-colors",
+                       isActive ? "text-white" : "text-slate-500"
+                     )}>{item.label}</span>
+                  </div>
+                );
+              })}
            </div>
 
            <Card className="border-0 shadow-lg rounded-[2rem] bg-blue-50 p-6 text-start">
