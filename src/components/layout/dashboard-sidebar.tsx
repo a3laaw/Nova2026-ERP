@@ -1,5 +1,5 @@
 /**
- * @fileOverview القائمة الجانبية (Sidebar) الديناميكية المحدثة بنمط الكبسولات السيادي (Odoo Style).
+ * @fileOverview القائمة الجانبية (Sidebar) الديناميكية المحدثة بمصطلحات عملية (Odoo Style).
  */
 
 "use client"
@@ -146,7 +146,7 @@ export function DashboardSidebar() {
   }, [menuItems, canAccess, check]);
 
   return (
-    <Sidebar collapsible="icon" side={isRtl ? "right" : "left"} className="border-none bg-sidebar">
+    <Sidebar collapsible="icon" side={isRtl ? "right" : "left"} className="border-none bg-transparent">
       <SidebarHeader className="p-4 pt-6">
         {!isCollapsed ? (
           <div className="flex flex-col text-start px-2">
@@ -157,7 +157,7 @@ export function DashboardSidebar() {
             </div>
           </div>
         ) : (
-          <div className="mx-auto h-11 w-11 rounded-[1.2rem] bg-gradient-to-br from-[#FFB000] to-[#e87c24] flex items-center justify-center text-white shadow-xl transition-all">
+          <div className="mx-auto h-11 w-24 rounded-[1.2rem] bg-gradient-to-br from-[#FFB000] to-[#e87c24] flex items-center justify-center text-white shadow-xl transition-all">
              <Sparkles className="h-6 w-6" />
           </div>
         )}
@@ -196,7 +196,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
   const isActive = isSelfActive || isGroupActive
   
   const [isExpanded, setIsExpanded] = React.useState(isActive)
-  const style = "bg-gradient-to-br from-[#FFB000] to-[#e87c24] text-white shadow-lg hover:scale-[1.02] transition-all rounded-full"
+  const style = "bg-gradient-to-br from-[#FFB000] to-[#e87c24] text-white shadow-lg hover:scale-[1.02] transition-all"
 
   if (isCollapsed) {
     return (
@@ -207,7 +207,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
               <Link 
                 href={item.url}
                 className={cn(
-                  "flex h-11 w-11 items-center justify-center transition-all duration-300 rounded-2xl",
+                  "flex h-11 w-24 items-center justify-center transition-all duration-300 rounded-2xl",
                   isActive ? "bg-white text-[#e87c24] shadow-xl border-2 border-orange-50" : style
                 )}
               >
@@ -228,12 +228,9 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
       {item.subItems ? (
         <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
           <CollapsibleTrigger asChild>
-            <button className={cn(
-              "flex items-center transition-all duration-300 w-full h-11 px-4", 
-              isActive ? "bg-white text-[#e87c24] shadow-xl border-2 border-orange-50 font-black rounded-full" : style
-            )}>
+            <button className={cn("flex items-center transition-all duration-300 rounded-2xl w-full h-11 px-4", style)}>
               <div className={cn("flex items-center gap-3 w-full", isRtl ? "flex-row" : "flex-row-reverse")}>
-                <item.icon className={cn("h-5 w-5 shrink-0", isActive ? "text-[#e87c24]" : "text-white")} />
+                <item.icon className="h-5 w-5 shrink-0" />
                 <span className="flex-1 text-start text-xs font-black tracking-tight">{item.title}</span>
               </div>
             </button>
@@ -246,7 +243,9 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                   href={sub.url}
                   className={cn(
                     "flex items-center justify-between h-9 rounded-xl px-4 transition-all text-[10px] font-black",
-                    pathname === sub.url ? "bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-md" : "bg-white text-[#1e1b4b] border border-orange-100/30"
+                    pathname === sub.url 
+                      ? "bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-md" 
+                      : "bg-white text-[#1e1b4b] border border-orange-100/30 hover:bg-gradient-to-r hover:from-[#FFF3E0] hover:to-[#FFFDE7] hover:text-[#e87c24]"
                   )}
                 >
                   <span className="truncate text-start flex-1">{sub.title}</span>
@@ -260,8 +259,8 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
         <Link 
           href={item.url} 
           className={cn(
-            "flex items-center transition-all duration-300 h-11 px-4", 
-            isActive ? "bg-white text-[#e87c24] shadow-xl border-2 border-orange-50 font-black rounded-full" : style
+            "flex items-center transition-all duration-300 rounded-2xl h-11 px-4", 
+            isActive ? "bg-white text-[#e87c24] shadow-xl border-2 border-orange-50" : style
           )}
         >
           <div className={cn("flex items-center gap-3 w-full", isRtl ? "flex-row" : "flex-row-reverse")}>
