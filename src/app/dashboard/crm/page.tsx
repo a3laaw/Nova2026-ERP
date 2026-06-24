@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { Label } from "@/components/ui/label";
 import { toast } from '@/hooks/use-toast';
 import { canPerformOnRecord } from '@/lib/permissions/engine';
+import { cn } from '@/lib/utils';
 
 export default function CRMPage() {
   const { globalUser } = useAuthContext();
@@ -28,7 +29,6 @@ export default function CRMPage() {
   const [newLead, setNewLead] = useState({ name: '', company: '', status: 'new', value: '', email: '' });
   const isRtl = lang === 'ar';
 
-  // 1. فحص الصلاحيات مع السياق
   const viewAccess = check('crm', 'view');
   const createAccess = check('crm', 'create');
 
@@ -38,15 +38,9 @@ export default function CRMPage() {
 
   const { data: rawLeads, loading } = useCollection(leadsQuery);
 
-  // 2. تطبيق الفلترة الميدانية (Runtime Filtering)
-  // هنا يتم عزل البيانات بناءً على كود القسم الموجود في المراجع
   const leads = useMemo(() => {
     if (!viewAccess.can) return [];
-    
-    // إذا كان النطاق 'all' (المنشأة كاملة) يرى الجميع
     if (viewAccess.scope === 'all') return rawLeads;
-
-    // الفلترة بناءً على ID القسم المرجعي (Dept) أو ID الموظف (Own)
     return rawLeads.filter(lead => canPerformOnRecord(
       viewAccess, 
       { uid: globalUser?.uid || '', departmentId: globalUser?.departmentId },
@@ -63,7 +57,7 @@ export default function CRMPage() {
         value: Number(newLead.value) || 0,
         createdAt: serverTimestamp(),
         createdBy: globalUser?.uid,
-        departmentId: globalUser?.departmentId || 'general' // ربط السجل آلياً بقسم الموظف
+        departmentId: globalUser?.departmentId || 'general'
       });
       toast({ title: t('saved') });
       setNewLead({ name: '', company: '', status: 'new', value: '', email: '' });
@@ -80,74 +74,78 @@ export default function CRMPage() {
   ) || [];
 
   return (
-    <div className="space-y-8" dir={dir}>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="space-y-6" dir={dir}>
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start">
-          <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
-            <Users className="h-10 w-10 text-primary" />
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+            <Users className="h-8 w-8 text-[#039BE5]" />
             {t('crm')}
           </h1>
-          <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-            {viewAccess.scope === 'all' 
-              ? (isRtl ? 'عرض شامل للمنشأة' : 'Full Enterprise View') 
-              : (isRtl ? `فلترة مرجعية نشطة للقسم: ${globalUser?.departmentId || '---'}` : `Filtering by Dept ID: ${globalUser?.departmentId}`)}
+          <p className="text-slate-600 text-sm font-bold opacity-80 italic">
+            {viewAccess.scope === 'all' ? (isRtl ? 'عرض شامل للمنشأة' : 'Enterprise View') : (isRtl ? 'فلترة القسم' : 'Dept Locked')}
           </p>
         </div>
         
         {createAccess.can && (
           <Dialog>
             <DialogTrigger asChild>
-              <Button className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform">
-                <UserPlus className="me-2 h-6 w-6" />
+              <Button className="bg-[#FFA000] text-white font-bold h-11 px-6 shadow-sm">
+                <UserPlus className="me-2 h-4 w-4" />
                 {t('addLead')}
               </Button>
             </DialogTrigger>
-            <DialogContent className="rounded-3xl border-0 shadow-2xl max-w-lg" dir={dir}>
+            <DialogContent className="rounded-xl border-0 shadow-2xl max-w-lg" dir={dir}>
               <DialogHeader>
-                <DialogTitle className="text-start font-headline font-black text-2xl">{t('addLead')}</DialogTitle>
+                <DialogTitle className="text-start font-bold text-xl">{t('addLead')}</DialogTitle>
               </DialogHeader>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-6 text-start">
-                <div className="space-y-2"><Label>{t('name')}</Label><Input value={newLead.name} onChange={e => setNewLead({...newLead, name: e.target.value})} className="h-14 rounded-2xl" /></div>
-                <div className="space-y-2"><Label>{t('company')}</Label><Input value={newLead.company} onChange={e => setNewLead({...newLead, company: e.target.value})} className="h-14 rounded-2xl" /></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4 text-start">
+                <div className="space-y-2"><Label className="text-xs font-bold">{t('name')}</Label><Input value={newLead.name} onChange={e => setNewLead({...newLead, name: e.target.value})} className="h-11 rounded-lg" /></div>
+                <div className="space-y-2"><Label className="text-xs font-bold">{t('company')}</Label><Input value={newLead.company} onChange={e => setNewLead({...newLead, company: e.target.value})} className="h-11 rounded-lg" /></div>
               </div>
               <DialogFooter>
-                <Button onClick={handleAddLead} disabled={isAdding} className="w-full h-14 rounded-2xl font-black text-lg bg-primary">
-                  {isAdding ? <Loader2 className="animate-spin" /> : <Plus className="me-2 h-5 w-5" />}
+                <Button onClick={handleAddLead} disabled={isAdding} className="w-full h-12 rounded-lg font-bold bg-[#FFA000]">
+                  {isAdding ? <Loader2 className="animate-spin" /> : <Plus className="me-2 h-4 w-4" />}
                   {t('save')}
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
         )}
-      </div>
+      </header>
 
-      <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
-        <CardHeader className="bg-slate-50 border-b p-6">
-          <div className="relative w-full max-w-sm">
-            <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder={t('search')} className="ps-10 rounded-xl h-12 bg-white" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+      <Card className="border-none shadow-sm card-shadow bg-white overflow-hidden">
+        <CardHeader className="bg-slate-50/50 border-b p-4 flex flex-row items-center justify-between">
+          <div className="relative w-full max-w-xs">
+            <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input placeholder={t('search')} className="ps-10 rounded-xl h-10 bg-white border-slate-200 text-xs font-bold" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
+          <Button variant="ghost" size="sm" className="font-bold text-slate-500 rounded-lg"><Filter className="h-4 w-4 me-2" /> {isRtl ? 'فلترة' : 'Filter'}</Button>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
           <Table>
-            <TableHeader className="bg-muted/30">
+            <TableHeader className="bg-muted/10">
               <TableRow>
-                <TableHead className="text-start font-black">{t('name')}</TableHead>
+                <TableHead className="py-4 ps-6 text-start font-black">{t('name')}</TableHead>
                 <TableHead className="text-start font-black">{t('company')}</TableHead>
                 <TableHead className="text-start font-black">{t('status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={3} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={3} className="text-center py-20"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/30" /></TableCell></TableRow>
               ) : filteredLeads.length === 0 ? (
-                <TableRow><TableCell colSpan={3} className="text-center py-20 italic text-slate-400 font-bold">{t('noEmployees')}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={3} className="text-center py-20 italic text-slate-400 font-bold">{isRtl ? 'لا توجد بيانات.' : 'No leads found.'}</TableCell></TableRow>
               ) : filteredLeads.map((lead: any) => (
-                <TableRow key={lead.id} className="hover:bg-muted/10 transition-colors">
-                  <TableCell className="text-start font-black text-slate-800">{lead.name}</TableCell>
-                  <TableCell className="text-start text-muted-foreground font-bold">{lead.company}</TableCell>
-                  <TableCell className="text-start">
-                    <Badge className="bg-blue-500/10 text-blue-600 font-black">{t(lead.status)}</Badge>
+                <TableRow key={lead.id} className="hover:bg-slate-50/50 transition-colors border-b-slate-50">
+                  <TableCell className="ps-6 font-bold text-slate-800">{lead.name}</TableCell>
+                  <TableCell className="text-slate-600 font-bold">{lead.company}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={cn(
+                      "font-black text-[9px] uppercase border-none px-3 py-1",
+                      lead.status === 'new' ? "bg-blue-50 text-blue-600" : "bg-amber-50 text-amber-600"
+                    )}>
+                      {t(lead.status)}
+                    </Badge>
                   </TableCell>
                 </TableRow>
               ))}

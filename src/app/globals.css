@@ -6,39 +6,38 @@
 
 @layer base {
   :root {
-    /* Enterprise SaaS Palette */
-    --background: 210 20% 98%; /* #F8F9FA - Ultra-clean soft gray-white */
-    --foreground: 222 47% 11%; /* Deep navy for high contrast text */
+    /* Standardized Enterprise SaaS Palette */
+    /* Background: Soft gray-white for reduced eye strain */
+    --background: 210 20% 98%; /* #F8F9FA */
+    --foreground: 222 47% 11%; /* Deep navy text */
     
-    --card: 0 0% 100%; /* Pure White */
+    --card: 0 0% 100%; /* Pure white cards */
     --card-foreground: 222 47% 11%;
     
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
     
-    /* Firebase Branding Accents - Used as Indicators */
+    /* Firebase Strategic Accents */
     --primary: 36 100% 50%; /* #FFA000 - Firebase Orange */
     --primary-foreground: 0 0% 100%;
-    
-    --accent: 45 100% 58%; /* #FFCA28 - Firebase Yellow */
-    --accent-foreground: 222 47% 11%;
-    
-    --info: 199 98% 45%; /* #039BE5 - Firebase Blue */
     
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222 47% 11%;
     
     --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 40%; /* High contrast gray for readability */
+    --muted-foreground: 215 16% 35%; /* Darker gray for high contrast accessibility */
     
-    --destructive: 0 84.2% 60.2%;
+    --accent: 45 100% 58%; /* #FFCA28 - Firebase Yellow */
+    --accent-foreground: 222 47% 11%;
+    
+    --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
-    
+
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 36 100% 50%;
     
-    /* Standardized Enterprise Radius */
+    /* Strict Uniform Border Radius */
     --radius: 12px;
   }
 }
@@ -51,26 +50,27 @@
     @apply bg-background text-foreground font-body antialiased;
   }
   h1, h2, h3, h4, h5, h6 {
-    @apply font-headline tracking-tight font-bold;
+    @apply font-headline tracking-tight font-bold text-slate-900;
   }
 }
 
-/* Professional SaaS Card Shadow */
+/* Modern Blur Shadow for Floating Cards */
 .card-shadow {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.04), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
 }
 
-.btn-nova-primary {
-  @apply bg-primary text-white font-bold shadow-md hover:shadow-lg hover:opacity-90 transition-all rounded-lg;
-}
-
-/* Sidebar remains orange - classes preserved */
+/* Sidebar Active State Preserved */
 .sidebar-item-active {
   @apply bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-lg shadow-orange-500/30 scale-[1.02] font-black;
 }
 
-.leaflet-container {
-  @apply rounded-xl overflow-hidden;
+/* Remove all scrollbars for clean aesthetic while keeping functionality */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 input::-webkit-outer-spin-button,

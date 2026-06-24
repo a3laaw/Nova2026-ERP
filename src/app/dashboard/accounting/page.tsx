@@ -30,10 +30,8 @@ export default function AccountingPage() {
   const [reconciling, setReconciling] = useState(false);
   const [reconResult, setReconResult] = useState<any>(null);
 
-  // فحص الصلاحيات باستخدام المحرك الجديد
-  // يتم إخفاء الزر بالكامل (NOT disabled) إذا كانت الصلاحية غير متوفرة
   const canPost = check('accounting', 'post').can;
-  const canReconcile = check('accounting', 'create').can; // استخدام 'create' للمطابقة
+  const canReconcile = check('accounting', 'create').can;
 
   const handleSmartReconciliation = async () => {
     if (!canReconcile) return;
@@ -53,44 +51,43 @@ export default function AccountingPage() {
   };
 
   return (
-    <div className="space-y-8" dir={dir}>
-      <div className="flex justify-between items-center">
+    <div className="space-y-6" dir={dir}>
+      <header className="flex justify-between items-center">
         <div className="text-start">
-          <h1 className="text-4xl font-black font-headline flex items-center gap-3">
-            <Calculator className="h-10 w-10 text-primary" />
+          <h1 className="text-3xl font-black tracking-tight flex items-center gap-3">
+            <Calculator className="h-8 w-8 text-[#FFA000]" />
             {t('accounting')}
           </h1>
-          <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">{t('smartReconciliation')}</p>
+          <p className="text-slate-600 text-sm font-bold opacity-80 italic">{t('smartReconciliation')}</p>
         </div>
         
-        {/* إنفاذ الصلاحية: يختفي زر الترحيل إذا لم يملك المستخدم صلاحية post */}
         {canPost && (
-           <Button className="bg-emerald-600 text-white font-black rounded-xl h-12 px-6 gap-2 shadow-xl shadow-emerald-100">
-              <Send className="h-4 w-4" /> {t('post') || 'Post All Records'}
+           <Button className="bg-emerald-600 text-white font-bold h-11 px-6 shadow-sm">
+              <Send className="h-4 w-4 me-2" /> {t('post') || 'Post All Records'}
            </Button>
         )}
-      </div>
+      </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
-          <CardHeader className="bg-primary/5 border-b p-6 text-start">
-            <CardTitle className="text-lg font-bold">{t('bankStatement')}</CardTitle>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="border-none shadow-sm card-shadow bg-white overflow-hidden">
+          <CardHeader className="bg-slate-50/50 border-b p-5 text-start">
+            <CardTitle className="text-sm font-black uppercase tracking-widest text-slate-500">{t('bankStatement')}</CardTitle>
           </CardHeader>
           <CardContent className="p-0 overflow-x-auto">
             <Table>
-              <TableHeader>
+              <TableHeader className="bg-muted/5">
                 <TableRow>
-                  <TableHead className="text-start">{t('govs')}</TableHead>
+                  <TableHead className="text-start py-4 ps-6">{t('govs')}</TableHead>
                   <TableHead className="text-start">{t('summary')}</TableHead>
-                  <TableHead className="text-end">{t('value')}</TableHead>
+                  <TableHead className="text-end pe-6">{t('value')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {initialBankEntries.map((entry) => (
-                  <TableRow key={entry.id}>
-                    <TableCell className="font-mono text-xs text-start">{entry.date}</TableCell>
-                    <TableCell className="font-medium text-xs text-start">{entry.description}</TableCell>
-                    <TableCell className="font-mono text-end font-bold text-xs">{entry.amount.toLocaleString()}</TableCell>
+                  <TableRow key={entry.id} className="border-b-slate-50 hover:bg-slate-50/50">
+                    <TableCell className="font-mono text-[10px] text-slate-400 ps-6">{entry.date}</TableCell>
+                    <TableCell className="font-bold text-xs text-slate-700">{entry.description}</TableCell>
+                    <TableCell className="font-mono text-end font-black text-xs pe-6">{entry.amount.toLocaleString()}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -98,25 +95,25 @@ export default function AccountingPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
-          <CardHeader className="bg-secondary/40 border-b p-6 text-start">
-            <CardTitle className="text-lg font-bold">{t('ledger')}</CardTitle>
+        <Card className="border-none shadow-sm card-shadow bg-white overflow-hidden">
+          <CardHeader className="bg-slate-50/50 border-b p-5 text-start">
+            <CardTitle className="text-sm font-black uppercase tracking-widest text-slate-500">{t('ledger')}</CardTitle>
           </CardHeader>
           <CardContent className="p-0 overflow-x-auto">
             <Table>
-              <TableHeader>
+              <TableHeader className="bg-muted/5">
                 <TableRow>
-                  <TableHead className="text-start">{t('govs')}</TableHead>
+                  <TableHead className="text-start py-4 ps-6">{t('govs')}</TableHead>
                   <TableHead className="text-start">{t('depts')}</TableHead>
-                  <TableHead className="text-end">{t('value')}</TableHead>
+                  <TableHead className="text-end pe-6">{t('value')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {initialLedgerEntries.map((entry) => (
-                  <TableRow key={entry.id}>
-                    <TableCell className="font-mono text-xs text-start">{entry.date}</TableCell>
-                    <TableCell className="font-bold text-xs text-primary text-start">{entry.accountName}</TableCell>
-                    <TableCell className="font-mono text-end font-bold text-xs">{entry.amount.toLocaleString()}</TableCell>
+                  <TableRow key={entry.id} className="border-b-slate-50 hover:bg-slate-50/50">
+                    <TableCell className="font-mono text-[10px] text-slate-400 ps-6">{entry.date}</TableCell>
+                    <TableCell className="font-black text-[10px] text-[#039BE5] uppercase">{entry.accountName}</TableCell>
+                    <TableCell className="font-mono text-end font-black text-xs pe-6">{entry.amount.toLocaleString()}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -125,13 +122,12 @@ export default function AccountingPage() {
         </Card>
       </div>
 
-      {/* إنفاذ الصلاحية: يختفي زر المطابقة تماماً لمن يملك 'View' فقط */}
       {canReconcile && (
-        <div className="flex justify-center">
+        <div className="flex justify-center pt-4">
           <Button
             onClick={handleSmartReconciliation}
             disabled={reconciling}
-            className="bg-primary text-white font-black rounded-2xl px-12 py-8 text-xl shadow-2xl shadow-primary/30 hover:scale-[1.02] transition-transform"
+            className="bg-[#FFA000] text-white font-black rounded-xl h-16 px-12 text-lg shadow-xl shadow-primary/20 hover:scale-105 transition-all"
           >
             {reconciling ? (
               <><RefreshCw className="me-3 h-6 w-6 animate-spin" /> {t('search')}</>
@@ -143,17 +139,17 @@ export default function AccountingPage() {
       )}
 
       {reconResult && (
-        <Card className="border-2 border-primary/20 shadow-2xl rounded-[3rem] bg-white overflow-hidden animate-in slide-in-from-bottom-6 duration-500">
-          <CardHeader className="bg-primary/5 p-10 border-b text-start">
-            <CardTitle className="font-headline font-black text-2xl flex items-center gap-3">
-              <Calculator className="h-8 w-8 text-primary" />
+        <Card className="border-2 border-primary/10 shadow-xl rounded-xl bg-white overflow-hidden animate-in slide-in-from-bottom-6">
+          <CardHeader className="bg-primary/5 p-8 border-b text-start">
+            <CardTitle className="font-black text-xl flex items-center gap-3">
+              <CheckCircle2 className="h-6 w-6 text-emerald-500" />
               {t('reconReport')}
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-10 space-y-8 text-start">
-            <div className="p-8 bg-muted/30 rounded-3xl border-2">
-              <h4 className="font-black text-xl mb-4">{t('summary')}</h4>
-              <p className="text-muted-foreground leading-relaxed text-lg">{reconResult.summary}</p>
+          <CardContent className="p-8 text-start">
+            <div className="p-6 bg-slate-50 rounded-lg border-2 border-white shadow-inner">
+              <h4 className="font-black text-xs text-slate-400 uppercase tracking-widest mb-3">{t('summary')}</h4>
+              <p className="text-slate-700 font-bold leading-relaxed">{reconResult.summary}</p>
             </div>
           </CardContent>
         </Card>
