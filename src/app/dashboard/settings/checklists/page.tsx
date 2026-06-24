@@ -30,7 +30,7 @@ export default function TechnicalSetupPage() {
             variant="ghost" 
             size="icon" 
             onClick={() => router.push('/dashboard/settings')}
-            className="rounded-xl h-10 w-10 bg-white shadow-sm border"
+            className="rounded-xl h-12 w-12 bg-white shadow-sm border border-primary/15"
           >
             <ArrowRight className={cn("h-5 w-5", isRtl ? "rotate-0" : "rotate-180")} />
           </Button>
@@ -48,57 +48,57 @@ export default function TechnicalSetupPage() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" dir={dir}>
         <div className="overflow-x-auto pb-4 scrollbar-hide">
-          <TabsList className="flex w-fit min-w-full md:min-w-0 md:grid md:grid-cols-5 h-14 bg-white border-2 border-slate-100 rounded-xl p-1 shadow-sm gap-1">
+          <TabsList className="flex w-fit min-w-full md:min-w-0 md:grid md:grid-cols-5 h-16 bg-white border border-primary/10 rounded-xl p-1.5 shadow-sm gap-2">
             <TabsTrigger 
               value="general" 
-              className="rounded-lg font-black gap-2 transition-all data-[state=active]:bg-[#F57C00] data-[state=active]:text-white data-[state=active]:shadow-xl flex items-center justify-center px-6 h-full"
+              className="tab-sovereign rounded-lg font-black gap-2 transition-all data-[state=active]:bg-[#F57C00] data-[state=active]:text-white data-[state=active]:shadow-lg flex items-center justify-center px-6 h-full"
             >
               <ListTree className="h-4 w-4" /> {t('referenceLists')}
             </TabsTrigger>
             <TabsTrigger 
               value="org" 
-              className="rounded-lg font-black gap-2 transition-all data-[state=active]:bg-[#F57C00] data-[state=active]:text-white data-[state=active]:shadow-xl flex items-center justify-center px-6 h-full"
+              className="tab-sovereign rounded-lg font-black gap-2 transition-all data-[state=active]:bg-[#F57C00] data-[state=active]:text-white data-[state=active]:shadow-lg flex items-center justify-center px-6 h-full"
             >
               <Building2 className="h-4 w-4" /> {t('orgRef')}
             </TabsTrigger>
             <TabsTrigger 
               value="technical" 
-              className="rounded-lg font-black gap-2 transition-all data-[state=active]:bg-[#F57C00] data-[state=active]:text-white data-[state=active]:shadow-xl flex items-center justify-center px-6 h-full"
+              className="tab-sovereign rounded-lg font-black gap-2 transition-all data-[state=active]:bg-[#F57C00] data-[state=active]:text-white data-[state=active]:shadow-lg flex items-center justify-center px-6 h-full"
             >
               <Workflow className="h-4 w-4" /> {t('techRef')}
             </TabsTrigger>
             <TabsTrigger 
               value="geo" 
-              className="rounded-lg font-black gap-2 transition-all data-[state=active]:bg-[#F57C00] data-[state=active]:text-white data-[state=active]:shadow-xl flex items-center justify-center px-6 h-full"
+              className="tab-sovereign rounded-lg font-black gap-2 transition-all data-[state=active]:bg-[#F57C00] data-[state=active]:text-white data-[state=active]:shadow-lg flex items-center justify-center px-6 h-full"
             >
               <MapPin className="h-4 w-4" /> {t('geoRef')}
             </TabsTrigger>
             <TabsTrigger 
               value="setup" 
-              className="rounded-lg font-black gap-2 transition-all data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-xl flex items-center justify-center px-6 h-full"
+              className="tab-sovereign rounded-lg font-black gap-2 transition-all data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-lg flex items-center justify-center px-6 h-full"
             >
               <Settings2 className="h-4 w-4" /> {t('systemSetup')}
             </TabsTrigger>
           </TabsList>
         </div>
 
-        <TabsContent value="general" className="mt-6">
+        <TabsContent value="general" className="mt-8">
           <GeneralListsPage />
         </TabsContent>
 
-        <TabsContent value="org" className="mt-6">
+        <TabsContent value="org" className="mt-8">
           <DepartmentsPage />
         </TabsContent>
 
-        <TabsContent value="technical" className="mt-6">
+        <TabsContent value="technical" className="mt-8">
            <TechnicalPathsPage />
         </TabsContent>
 
-        <TabsContent value="geo" className="mt-6">
+        <TabsContent value="geo" className="mt-8">
            <GeoPage />
         </TabsContent>
 
-        <TabsContent value="setup" className="mt-6 max-w-4xl mx-auto">
+        <TabsContent value="setup" className="mt-8 max-w-4xl mx-auto">
            <SeedTool />
         </TabsContent>
       </Tabs>

@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -88,8 +88,8 @@ export default function EmployeesPage() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500" dir={dir}>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="space-y-4 animate-in fade-in duration-500" dir={dir}>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
         <div className="text-start">
           <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
             <Users className="h-10 w-10 text-primary" />
@@ -104,37 +104,42 @@ export default function EmployeesPage() {
           <Button 
             onClick={() => router.push('/dashboard/hr/employees/new')}
             variant="default"
-            className="h-12 px-8 shadow-xl shadow-primary/20"
+            className="h-11 px-8 shadow-lg"
           >
-            <UserPlus className="me-2 h-6 w-6" />
+            <UserPlus className="me-2 h-5 w-5" />
             {isRtl ? 'توظيف جديد' : 'New Hire'}
           </Button>
         )}
       </div>
 
-      <Card className="border-0 shadow-xl rounded-xl bg-white overflow-hidden ring-1 ring-black/5">
-        <CardHeader className="bg-slate-50/50 border-b p-6 flex flex-row items-center justify-between gap-4">
+      {/* Independent Filter Card */}
+      <Card className="border-0 shadow-sm rounded-xl bg-white mb-4 overflow-hidden">
+        <div className="p-5 flex flex-row items-center justify-between gap-4">
           <div className="relative w-full max-w-md">
-            <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#FFA000]" />
+            <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary" />
             <Input 
-              placeholder={isRtl ? 'بحث...' : 'Search...'} 
-              className="ps-12 h-11 bg-white border-slate-200 focus-visible:ring-primary/10 focus-visible:border-primary transition-all" 
+              placeholder={isRtl ? 'بحث في سجل الموظفين...' : 'Search staff...'} 
+              className="ps-12 h-11 bg-slate-50/50 border-slate-200 focus-visible:ring-primary/10 focus-visible:border-primary transition-all font-bold" 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button variant="outline" className="rounded-xl font-bold h-11 px-4 flex items-center gap-2 border-slate-200">
-             <Filter className="h-4 w-4 text-[#FFA000]" /> {isRtl ? 'تصفية' : 'Filter'}
+          <Button variant="outline" className="h-11 px-6 border-primary/20">
+             <Filter className="h-4 w-4 me-2" /> {isRtl ? 'تصفية النتائج' : 'Filter Results'}
           </Button>
-        </CardHeader>
+        </div>
+      </Card>
+
+      {/* Main Data Table */}
+      <Card className="border-0 shadow-xl rounded-xl bg-white overflow-hidden ring-1 ring-black/5">
         <CardContent className="p-0 overflow-x-auto">
           <Table>
-            <TableHeader className="bg-muted/10 border-b">
+            <TableHeader>
               <TableRow>
-                <TableHead className="py-5 ps-8 text-start font-black text-slate-500 uppercase text-[10px] tracking-widest">{isRtl ? 'الموظف' : 'Employee'}</TableHead>
-                <TableHead className="text-start font-black text-slate-500 uppercase text-[10px] tracking-widest">{isRtl ? 'الوظيفة' : 'Job'}</TableHead>
-                <TableHead className="text-start font-black text-slate-500 uppercase text-[10px] tracking-widest">{isRtl ? 'الحالة' : 'Status'}</TableHead>
-                {canSeeSalaries && <TableHead className="text-end font-black text-slate-500 uppercase text-[10px] tracking-widest">{isRtl ? 'الراتب' : 'Salary'}</TableHead>}
+                <TableHead className="py-5 ps-8">{isRtl ? 'الموظف' : 'Employee'}</TableHead>
+                <TableHead>{isRtl ? 'الوظيفة' : 'Job'}</TableHead>
+                <TableHead>{isRtl ? 'الحالة' : 'Status'}</TableHead>
+                {canSeeSalaries && <TableHead className="text-end">{isRtl ? 'الراتب' : 'Salary'}</TableHead>}
                 <TableHead className="pe-8"></TableHead>
               </TableRow>
             </TableHeader>
@@ -144,10 +149,10 @@ export default function EmployeesPage() {
               ) : filteredEmployees.length === 0 ? (
                 <TableRow><TableCell colSpan={5} className="text-center py-24 italic text-slate-400 font-bold">{isRtl ? 'لا يوجد موظفين.' : 'No employees found.'}</TableCell></TableRow>
               ) : filteredEmployees.map((emp) => (
-                <TableRow key={emp.id} className="hover:bg-primary/[0.02] transition-colors group cursor-pointer border-b-slate-100" onClick={() => router.push(`/dashboard/hr/employees/${emp.id}`)}>
+                <TableRow key={emp.id} className="cursor-pointer border-b-slate-100" onClick={() => router.push(`/dashboard/hr/employees/${emp.id}`)}>
                   <TableCell className="py-5 ps-8 text-start">
                     <div className="flex items-center gap-4">
-                       <div className="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center font-black text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-all">
+                       <div className="h-10 w-10 rounded-lg bg-slate-100 flex items-center justify-center font-black text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-all">
                           {emp.employeeNumber}
                        </div>
                        <div className="flex flex-col">
@@ -156,15 +161,15 @@ export default function EmployeesPage() {
                        </div>
                     </div>
                   </TableCell>
-                  <TableCell className="text-start">
+                  <TableCell>
                      <span className="font-bold text-xs text-slate-700 flex items-center gap-1">
                         <Briefcase className="h-3 w-3 text-primary" /> {emp.jobTitle}
                      </span>
                   </TableCell>
-                  <TableCell className="text-start">
+                  <TableCell>
                      <Badge variant="outline" className={cn(
                        "font-black px-3 py-1 rounded-lg border-0 shadow-sm uppercase text-[9px]",
-                       emp.status === 'active' ? 'bg-[#039BE5]/10 text-[#039BE5]' : 'bg-[#FFA000]/10 text-[#FFA000]'
+                       emp.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-[#FFA000]/10 text-[#FFA000]'
                      )}>
                         {emp.status}
                      </Badge>
@@ -186,7 +191,7 @@ export default function EmployeesPage() {
                            <Trash2 className="h-4 w-4" />
                          </Button>
                        )}
-                       <Button variant="ghost" size="icon" className="rounded-xl group-hover:bg-primary group-hover:text-white transition-all h-9 w-9">
+                       <Button variant="ghost" size="icon" className="rounded-xl h-9 w-9">
                          <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
                        </Button>
                     </div>

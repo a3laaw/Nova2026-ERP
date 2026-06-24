@@ -13,9 +13,9 @@ const buttonVariants = cva(
         default: "bg-[#FFA000] text-white hover:bg-[#F57C00] shadow-md border-b-2 border-orange-700/20",
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm",
-        /* Secondary: Elegant Orange Outline */
+        /* Secondary: Elegant Orange Outline - Strict 1px border */
         outline:
-          "border-2 border-[#FFA000] bg-white text-[#FFA000] hover:bg-orange-50 shadow-sm",
+          "border border-[#FFA000] bg-transparent text-[#FFA000] hover:bg-orange-50/50 shadow-sm",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-slate-100 hover:text-accent-foreground",

@@ -7,7 +7,6 @@
 @layer base {
   :root {
     /* Standardized Enterprise SaaS Palette */
-    /* Background: Soft gray-white for reduced eye strain */
     --background: 210 20% 98%; /* #F8F9FA */
     --foreground: 222 47% 11%;
     
@@ -27,17 +26,17 @@
     --muted: 210 40% 96.1%;
     --muted-foreground: 215 16% 35%;
     
-    --accent: 45 100% 58%; /* #FFCA28 - Firebase Yellow */
+    --accent: 45 100% 58%; /* #FFCA28 */
     --accent-foreground: 222 47% 11%;
     
     --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
+    --border: 36 100% 50% / 0.15; /* Nano-Edge Standard: primary/15 */
     --input: 214.3 31.8% 91.4%;
     --ring: 36 100% 50%;
     
-    /* Strict Uniform Border Radius - System Standard 12px */
+    /* Strict Uniform Border Radius - 12px */
     --radius: 12px;
   }
 }
@@ -54,9 +53,14 @@
   }
 }
 
-/* Precise Blur Shadows for floating effect */
+/* Premium Blur Shadows for floating effect */
 .card-shadow {
   box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 10px -2px rgba(0, 0, 0, 0.02);
+}
+
+/* Premium Highlight Edge */
+.nano-edge {
+  @apply border border-primary/15 ring-1 ring-primary/5;
 }
 
 .sidebar-item-active {
@@ -78,4 +82,9 @@ input::-webkit-inner-spin-button {
 }
 input[type=number] {
   -moz-appearance: textfield;
+}
+
+/* Active Tab Solid Deep Orange */
+[data-state=active].tab-sovereign {
+  @apply bg-[#F57C00] text-white shadow-xl !important;
 }
