@@ -14,6 +14,7 @@ import { paths } from '@/firebase/multi-tenant';
 import { SEED_DATA } from '@/lib/seed-data';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { ReferenceListService } from './reference-list-service';
 
 export class SeedService {
   constructor(private db: Firestore, private companyId: string) {}
@@ -131,13 +132,17 @@ export class SeedService {
       }
     }
 
-    batch.commit().catch(async (err) => {
-      const permissionError = new FirestorePermissionError({
-        path: 'batch_seed_operation',
-        operation: 'write'
-      });
-      errorEmitter.emit('permission-error', permissionError);
+    // تنفيذ الـ Batch الأول (الهياكل)
+    await batch.commit().catch(async (err) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: 'batch_seed_structures', operation: 'write'
+      }));
+      throw err;
     });
+
+    // 4. ضخ القوائم المرجعية الموحدة (عبر الخدمة المخصصة)
+    const refListService = new ReferenceListService(this.db, this.companyId);
+    await refListService.seedAllLists('SYSTEM_ADMIN');
   }
 
   async isSystemSeeded() {

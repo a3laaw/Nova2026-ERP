@@ -1,5 +1,5 @@
 /**
- * @fileOverview تعريف واجهات البيانات المرجعية لنظام Nova ERP (الهيكل الرباعي الجديد).
+ * @fileOverview تعريف واجهات البيانات المرجعية لنظام Nova ERP (الهيكل الرباعي الجديد والقوائم الموحدة).
  */
 
 export interface BaseReference {
@@ -9,6 +9,38 @@ export interface BaseReference {
   updatedAt?: any;
 }
 
+/**
+ * القالب الأساسي للقوائم النظامية القابلة للتوسعة
+ */
+export interface BaseReferenceList extends BaseReference {
+  code: string;
+  name: string;
+  nameEn?: string;
+  description?: string;
+  isSystem: boolean;   // هل السجل مضاف بواسطة النظام؟
+  isEditable: boolean; // هل يسمح للشركة بتعديل الاسم/الوصف؟
+  isActive: boolean;   // هل السجل متاح للاستخدام في القوائم؟
+  order: number;
+  createdBy?: string;
+  updatedBy?: string;
+}
+
+export interface UnitType extends BaseReferenceList {
+  symbol?: string;
+  category?: string; // (e.g., weight, area, volume, count)
+}
+
+export interface PaymentMethod extends BaseReferenceList {}
+
+export interface PaymentConditionType extends BaseReferenceList {}
+
+export interface MilestoneTimingType extends BaseReferenceList {}
+
+export interface ItemCategory extends BaseReferenceList {}
+
+export interface CostTypeCategory extends BaseReferenceList {}
+
+// الهياكل الهندسية الرباعية الحالية
 export interface ActivityType extends BaseReference {
   code: string;
   name: string;
@@ -50,7 +82,7 @@ export interface TechnicalStage extends BaseReference {
   timeTargetDays?: number | null;
   isRequired: boolean;
   isEditable: boolean;
-  nextStageIds: string[]; // يجب أن تكون داخل نفس الـ subService
+  nextStageIds: string[];
   isActive: boolean;
 }
 
@@ -66,7 +98,7 @@ export interface Job extends BaseReference {
   departmentId: string;
   name: string;
   nameEn: string;
-  roleId?: string;     // الربط الذكي مع مصفوفة الصلاحيات
+  roleId?: string;
   roleName?: string;
   order: number;
   isActive: boolean;

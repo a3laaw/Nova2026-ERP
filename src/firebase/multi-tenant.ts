@@ -23,6 +23,14 @@ export const paths = {
   governorates: (companyId: string) => getTenantPath(companyId, 'governorates'),
   areas: (companyId: string, govId: string) => `${getTenantPath(companyId, 'governorates')}/${govId}/areas`,
 
+  // القوائم المرجعية الموحدة (Extensible Lists)
+  unitTypes: (companyId: string) => getTenantPath(companyId, 'unitTypes'),
+  paymentMethods: (companyId: string) => getTenantPath(companyId, 'paymentMethods'),
+  paymentConditionTypes: (companyId: string) => getTenantPath(companyId, 'paymentConditionTypes'),
+  milestoneTimingTypes: (companyId: string) => getTenantPath(companyId, 'milestoneTimingTypes'),
+  itemCategories: (companyId: string) => getTenantPath(companyId, 'itemCategories'),
+  costTypeCategories: (companyId: string) => getTenantPath(companyId, 'costTypeCategories'),
+
   // العملاء
   clients: (companyId: string) => getTenantPath(companyId, 'clients'),
   clientHistory: (companyId: string, clientId: string) => `${getTenantPath(companyId, 'clients')}/${clientId}/history`,
@@ -52,7 +60,7 @@ export const paths = {
   // المعاملات الفنية (Technical Transactions)
   transactions: (companyId: string) => getTenantPath(companyId, 'transactions'),
   transactionStages: (companyId: string, tId: string) => `${getTenantPath(companyId, 'transactions')}/${tId}/stageInstances`,
-  transactionTimeline: (companyId: string, tId: string) => `${getTenantPath(companyId, 'transactions')}/${tId}/timelineEvents`,
+  transactionTimeline: (companyId: string) => `${getTenantPath(companyId, 'transactionTimeline')}`, // Added missing global ref
 
   // مكتبة القوالب (Template Library)
   quotationTemplates: (companyId: string) => getTenantPath(companyId, 'quotationTemplates'),
