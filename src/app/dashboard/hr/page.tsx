@@ -64,12 +64,12 @@ export default function HRDashboard() {
         
         <div className="flex gap-3">
            {canSeePayroll && (
-             <Button onClick={() => router.push('/dashboard/hr/payroll')} className="bg-emerald-600 text-white font-bold h-11 px-6 shadow-sm">
+             <Button onClick={() => router.push('/dashboard/hr/payroll')} className="h-11 px-6 shadow-sm">
                <Calculator className="me-2 h-4 w-4" /> {isRtl ? 'الرواتب' : 'Payroll'}
              </Button>
            )}
            {canHire && (
-             <Button onClick={() => router.push('/dashboard/hr/employees/new')} className="bg-[#FFA000] text-white font-bold h-11 px-6 shadow-sm">
+             <Button onClick={() => router.push('/dashboard/hr/employees/new')} className="h-11 px-6 shadow-sm">
                <UserPlus className="me-2 h-4 w-4" /> {isRtl ? 'تعيين' : 'Hire'}
              </Button>
            )}
@@ -79,14 +79,23 @@ export default function HRDashboard() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="bg-white p-1 rounded-xl shadow-sm border mb-6 inline-flex">
           <TabsList className="bg-transparent h-10 gap-1 p-0">
-            <TabsTrigger value="overview" className="rounded-lg font-bold text-xs px-6 data-[state=active]:bg-[#FFA000] data-[state=active]:text-white">
+            <TabsTrigger 
+              value="overview" 
+              className="rounded-lg font-black text-xs px-6 data-[state=active]:bg-[#F57C00] data-[state=active]:text-white transition-all gap-2"
+            >
               {isRtl ? 'نظرة عامة' : 'Overview'}
             </TabsTrigger>
-            <TabsTrigger value="leaves" className="rounded-lg font-bold text-xs px-6 data-[state=active]:bg-[#FFA000] data-[state=active]:text-white">
+            <TabsTrigger 
+              value="leaves" 
+              className="rounded-lg font-black text-xs px-6 data-[state=active]:bg-[#F57C00] data-[state=active]:text-white transition-all gap-2"
+            >
               {isRtl ? 'الإجازات' : 'Leaves'}
             </TabsTrigger>
             {canSeeCompliance && (
-              <TabsTrigger value="compliance" className="rounded-lg font-bold text-xs px-6 data-[state=active]:bg-[#FFA000] data-[state=active]:text-white">
+              <TabsTrigger 
+                value="compliance" 
+                className="rounded-lg font-black text-xs px-6 data-[state=active]:bg-[#F57C00] data-[state=active]:text-white transition-all gap-2"
+              >
                 {isRtl ? 'الامتثال' : 'Compliance'}
                 {expiringDocs.length > 0 && <span className="h-1.5 w-1.5 rounded-full bg-rose-500 ms-1" />}
               </TabsTrigger>

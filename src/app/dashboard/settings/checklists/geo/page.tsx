@@ -130,7 +130,7 @@ export default function GeoPage() {
         
         <Dialog open={isGovOpen} onOpenChange={setIsGovOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => setGovForm({ name: '', nameEn: '' })} variant="default" className="h-11 shadow-lg shadow-primary/20">
+            <Button onClick={() => setGovForm({ name: '', nameEn: '' })} variant="default" className="h-11 shadow-lg flex items-center gap-2">
               <Plus className="h-4 w-4 me-2" /> {t('newGov')}
             </Button>
           </DialogTrigger>
@@ -188,7 +188,7 @@ export default function GeoPage() {
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
-                      <ChevronRight className={cn("h-4 w-4 ms-2", isRtl && 'rotate-180', selectedGov?.id === gov.id && 'text-primary')} />
+                      <ChevronRight className={cn("h-4 w-4 ms-2", isRtl && 'rotate-180', selectedDept?.id === dept.id && 'text-primary')} />
                     </div>
                   </div>
                 ))
@@ -207,10 +207,10 @@ export default function GeoPage() {
                   <Button 
                     disabled={!selectedGov} 
                     variant="outline"
-                    className="h-11 shadow-sm hover:scale-105 transition-all gap-2"
+                    className="h-11 transition-all gap-2"
                     onClick={() => setAreaForm({ name: '', nameEn: '' })}
                   >
-                    <Plus className="h-4 w-4" /> {isRtl ? 'إضافة منطقة جديدة' : 'Add Area'}
+                    <Plus className="h-4 w-4" /> {isRtl ? 'إضافة منطقة' : 'Add Area'}
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="rounded-xl p-8 border-0 shadow-3xl max-w-xl" dir={dir}>
@@ -237,7 +237,7 @@ export default function GeoPage() {
               {!selectedGov ? (
                 <div className="py-20 text-center italic text-muted-foreground flex flex-col items-center gap-4 opacity-40">
                   <div className="w-16 h-16 bg-slate-100 rounded-xl flex items-center justify-center"><ChevronRight className={cn("h-8 w-8", !isRtl && "rotate-180")} /></div>
-                  <p className="font-black">{isRtl ? 'يرجى اختيار محافظة من القائمة اليمنى لعرض وإضافة المناطق التابعة لها.' : 'Please select a governorate to manage its areas.'}</p>
+                  <p className="font-black">{isRtl ? 'يرجى اختيار محافظة من القائمة.' : 'Please select a governorate.'}</p>
                 </div>
               ) : (
                 areasLoading ? <div className="py-10 text-center"><Loader2 className="animate-spin mx-auto text-primary/30" /></div> : (
@@ -266,11 +266,6 @@ export default function GeoPage() {
                         </div>
                       </div>
                     ))}
-                    {areas?.length === 0 && (
-                      <div className="col-span-full py-16 text-center text-slate-300 font-bold border-2 border-dashed rounded-xl">
-                         {isRtl ? 'لا توجد مناطق مضافة لهذه المحافظة.' : 'No areas in this governorate.'}
-                      </div>
-                    )}
                   </div>
                 )
               )}
@@ -291,7 +286,7 @@ export default function GeoPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-8 gap-4">
-            <AlertDialogCancel className="rounded-xl h-11 font-bold border-2">{isRtl ? 'إلغاء' : 'Cancel'}</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-xl h-11 border-2">{isRtl ? 'إلغاء' : 'Cancel'}</AlertDialogCancel>
             <AlertDialogAction 
               onClick={() => {
                 if (deletingId) {

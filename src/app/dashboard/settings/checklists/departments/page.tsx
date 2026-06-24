@@ -143,7 +143,7 @@ export default function DepartmentsPage() {
         
         <Dialog open={isDeptOpen} onOpenChange={setIsDeptOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => setDeptForm({ name: '', nameEn: '', description: '' })} variant="default" className="h-11 shadow-lg shadow-primary/20 flex items-center gap-2">
+            <Button onClick={() => setDeptForm({ name: '', nameEn: '', description: '' })} variant="default" className="h-11 shadow-lg flex items-center gap-2">
               <Plus className="h-4 w-4" /> {t('newDept')}
             </Button>
           </DialogTrigger>
@@ -216,10 +216,10 @@ export default function DepartmentsPage() {
                   <Button 
                     disabled={!selectedDept}
                     variant="outline"
-                    className="h-11 shadow-sm hover:scale-105 transition-all gap-2"
+                    className="h-11 transition-all gap-2"
                     onClick={() => setJobForm({ name: '', nameEn: '', roleId: '' })}
                   >
-                    <Plus className="h-4 w-4" /> {isRtl ? 'إضافة وظيفة جديدة' : 'Add Job'}
+                    <Plus className="h-4 w-4" /> {isRtl ? 'إضافة وظيفة' : 'Add Job'}
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="rounded-xl p-8 max-w-xl border-0 shadow-3xl bg-white" dir={dir}>
@@ -293,11 +293,6 @@ export default function DepartmentsPage() {
                         </div>
                       </div>
                     ))}
-                    {jobs?.length === 0 && (
-                      <div className="col-span-full py-16 text-center text-slate-300 font-bold border-2 border-dashed rounded-xl">
-                         {isRtl ? 'لا توجد وظائف مضافة.' : 'No sub-jobs found.'}
-                      </div>
-                    )}
                   </div>
                 )
               )}
