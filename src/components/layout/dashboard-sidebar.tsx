@@ -1,5 +1,5 @@
 /**
- * @fileOverview القائمة الجانبية (Sidebar) بتصميم عائم (Floating Style) وحواف هندسية حادة.
+ * @fileOverview القائمة الجانبية (Sidebar) بتصميم مستطيل حاد الحواف (Sharp Architecture) وتأثير طفو سيادي.
  */
 
 "use client"
@@ -182,7 +182,7 @@ export function DashboardSidebar() {
                 <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Kuwait Cloud</span>
                 <Badge className="bg-[#e87c24] text-white text-[8px] font-black uppercase h-4 px-2 rounded-none">v2.5</Badge>
              </div>
-             <p className="text-[8px] font-black text-[#1e1b4b]/60 text-center uppercase tracking-tighter">Floating Architecture</p>
+             <p className="text-[8px] font-black text-[#1e1b4b]/60 text-center uppercase tracking-tighter">Sharp Architecture</p>
           </div>
         )}
       </SidebarFooter>
@@ -197,7 +197,6 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
   
   const [isExpanded, setIsExpanded] = React.useState(isActive)
 
-  // ستايل "الطفو" المطور: هوامش جانبية، ظلال، وتحريك عند الهوفر
   const floatingBase = "transition-all duration-300 rounded-none shadow-md hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98]"
   const expandedStyle = cn(
     "flex items-center w-full h-11 px-4",
@@ -279,24 +278,5 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
         </Link>
       )}
     </SidebarMenuItem>
-  )
-}
-
-function ChevronLeftIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="m15 18-6-6 6-6" />
-    </svg>
   )
 }
