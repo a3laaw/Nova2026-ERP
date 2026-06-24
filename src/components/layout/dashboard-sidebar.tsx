@@ -226,22 +226,27 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
             <DropdownMenuContent 
               side={isRtl ? "left" : "right"} 
               align="start" 
-              className="z-[999] min-w-[180px] rounded-xl border-2 shadow-2xl p-2 bg-white"
+              className="z-[999] min-w-[190px] rounded-xl border border-slate-100 shadow-2xl p-2 bg-white"
             >
-              <div className="px-2 py-1.5 mb-1 border-b">
-                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{item.title}</p>
+              <div className="px-3 py-2.5 mb-1 border-b border-slate-50">
+                 <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">{item.title}</p>
               </div>
               {item.subItems.map((sub: any) => (
                 <DropdownMenuItem key={sub.title} asChild>
                   <Link 
                     href={sub.url}
                     className={cn(
-                      "flex items-center justify-between h-9 rounded-lg px-3 transition-all text-[10px] font-black cursor-pointer",
-                      pathname === sub.url ? "bg-[#FFF3E0] text-[#e87c24]" : "text-slate-600 hover:bg-slate-50"
+                      "flex items-center justify-between h-9 rounded-lg px-3 transition-all text-[10px] font-black cursor-pointer mb-0.5",
+                      pathname === sub.url 
+                        ? "bg-[#FFFDE7] text-[#e87c24] shadow-sm" 
+                        : "text-slate-600 hover:bg-slate-50"
                     )}
                   >
-                    <span>{sub.title}</span>
-                    <sub.icon className="h-3.5 w-3.5 opacity-40" />
+                    <span className="truncate">{sub.title}</span>
+                    <sub.icon className={cn(
+                      "h-3.5 w-3.5",
+                      pathname === sub.url ? "opacity-100 text-[#e87c24]" : "opacity-40"
+                    )} />
                   </Link>
                 </DropdownMenuItem>
               ))}
