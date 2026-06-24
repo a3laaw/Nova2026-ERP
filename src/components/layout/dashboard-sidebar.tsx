@@ -74,7 +74,7 @@ type SidebarItem = {
   title: string;
   icon: React.ElementType;
   url: string;
-  module?: string;
+  resource?: string;
   permission?: string;
   subItems?: {
     title: string;
@@ -93,16 +93,16 @@ export function DashboardSidebar() {
   const isRtl = lang === 'ar';
   const isCollapsed = state === 'collapsed';
 
-  // خلفية السايدبار تطابق النظام #F8F9FA
+  // خلفية السايدبار تطابق النظام الرمادي #F8F9FA
   const sidebarBg = "#F8F9FA";
 
   const menuItems: SidebarItem[] = React.useMemo(() => [
-    { title: t('dashboard'), icon: LayoutDashboard, url: '/dashboard', module: 'dashboard' },
+    { title: t('dashboard'), icon: LayoutDashboard, url: '/dashboard', resource: 'dashboard' },
     {
       title: t('crm'),
       icon: Users,
       url: '/dashboard/crm',
-      module: 'crm',
+      resource: 'crm',
       subItems: [
         { title: t('leads'), url: '/dashboard/crm', icon: Users },
         { title: t('clients'), url: '/dashboard/clients', icon: UserCircle },
@@ -112,9 +112,9 @@ export function DashboardSidebar() {
       title: t('projects'),
       icon: HardHat,
       url: '/dashboard/projects',
-      module: 'projects',
+      resource: 'projects',
       subItems: [
-        { title: t('projectExecution'), url: '/dashboard/projects', icon: Layers },
+        { title: t('activeProjects'), url: '/dashboard/projects', icon: Layers },
         { title: t('reports'), url: '/dashboard/reports', icon: FileText },
       ],
     },
@@ -122,10 +122,10 @@ export function DashboardSidebar() {
       title: t('procurement'),
       icon: ShoppingCart,
       url: '/dashboard/procurement',
-      module: 'procurement',
+      resource: 'procurement',
       subItems: [
         { title: t('suppliers'), url: '/dashboard/procurement/suppliers', icon: Truck },
-        { title: t('supplierQuotes'), url: '/dashboard/ai', icon: FileSearch },
+        { title: t('quoteAnalysis'), url: '/dashboard/ai', icon: FileSearch },
         { title: t('purchaseOrders'), url: '/dashboard/procurement', icon: Package },
       ],
     },
@@ -133,7 +133,7 @@ export function DashboardSidebar() {
       title: t('hr'),
       icon: UserCircle,
       url: '/dashboard/hr',
-      module: 'hr',
+      resource: 'hr',
       subItems: [
         { title: t('employees'), url: '/dashboard/hr/employees', icon: Users },
         { title: t('leaves'), url: '/dashboard/hr/leaves', icon: Calendar },
@@ -148,7 +148,7 @@ export function DashboardSidebar() {
       title: t('accounting'),
       icon: Calculator,
       url: '/dashboard/accounting',
-      module: 'accounting',
+      resource: 'accounting',
       subItems: [
         { title: t('smartReconciliation'), url: '/dashboard/accounting', icon: Sparkles },
         { title: t('chartOfAccounts'), url: '/dashboard/accounting', icon: BookOpen },
@@ -158,14 +158,14 @@ export function DashboardSidebar() {
       title: t('inventory'),
       icon: Warehouse,
       url: '/dashboard/inventory',
-      module: 'inventory',
+      resource: 'inventory',
       subItems: [
         { title: t('warehouses'), url: '/dashboard/inventory', icon: Warehouse },
         { title: t('fieldAssets'), url: '/dashboard/inventory', icon: HardHat },
       ],
     },
-    { title: t('ai'), icon: Sparkles, url: '/dashboard/ai', module: 'dashboard' },
-  ].filter((item) => !item.module || canAccess(item.module)), [t, canAccess]);
+    { title: t('ai'), icon: Sparkles, url: '/dashboard/ai', resource: 'dashboard' },
+  ].filter((item) => !item.resource || canAccess(item.resource)), [t, canAccess]);
 
   const settingsItems: SidebarItem[] = React.useMemo(() => [
     { title: t('companyIdentity'), url: '/dashboard/settings/company', icon: Building2, permission: 'admin' },
@@ -185,9 +185,9 @@ export function DashboardSidebar() {
 
   return (
     <Sidebar collapsible="icon" side={isRtl ? "right" : "left"} className="border-none" style={{ backgroundColor: sidebarBg }}>
-      <SidebarHeader className={cn('p-4 pt-6 transition-all duration-300', isCollapsed ? 'p-2' : 'px-4 py-4')}>
+      <SidebarHeader className={cn('flex flex-col items-center transition-all duration-300', isCollapsed ? 'p-2 pt-4' : 'p-4 pt-6')}>
         {!isCollapsed ? (
-          <div className="flex flex-col text-start px-2">
+          <div className="flex flex-col text-start px-2 w-full">
             <span className="font-headline font-black text-2xl text-[#1e1b4b] tracking-tighter leading-none">NovaFlow</span>
             <div className="flex items-center gap-2 mt-1">
               <span className="text-[8px] uppercase font-black tracking-[0.3em] text-[#e87c24]">ENTERPRISE</span>
@@ -195,8 +195,8 @@ export function DashboardSidebar() {
             </div>
           </div>
         ) : (
-          <div className="mx-auto h-11 w-11 rounded-2xl bg-gradient-to-br from-[#FFB000] to-[#e87c24] flex items-center justify-center text-white shadow-xl shadow-orange-500/20">
-            <Sparkles className="h-6 w-6" />
+          <div className="mx-auto h-12 w-9 rounded-full bg-gradient-to-br from-[#FFB000] to-[#e87c24] flex items-center justify-center text-white shadow-xl shadow-orange-500/20">
+            <Sparkles className="h-5 w-5" />
           </div>
         )}
       </SidebarHeader>
@@ -260,14 +260,13 @@ function SidebarNavItem({
 
   const isActive = pathname === item.url || (item.url !== '/dashboard' && pathname.startsWith(item.url));
 
-  // تصميم الكبسولة البرتقالية المتدرجة في الوضع المفتوح (مجمدة)
+  // الحالة الموسعة: كبسولات برتقالية متدرجة
   const expandedStyle = "bg-gradient-to-br from-[#FFB000] to-[#e87c24] text-white shadow-lg hover:scale-[1.02] transition-all rounded-full";
   
-  // تصميم الكبسولات العمودية في الوضع المغلق (بناءً على الصورة)
+  // الحالة المصغرة: كبسولات عمودية بناءً على الصورة
   const collapsedActive = "bg-white text-[#e87c24] shadow-xl ring-1 ring-orange-100 rounded-full h-12 w-9 flex items-center justify-center mx-auto";
   const collapsedInactive = "bg-[#FFA000] text-white shadow-md rounded-full h-12 w-9 flex items-center justify-center mx-auto hover:scale-110 transition-transform";
 
-  // تأثير هوفر ذهبي-برتقالي للأزرار الداخلية
   const subItemHoverStyle = "hover:bg-gradient-to-r hover:from-[#FFF3E0] hover:to-[#FFFDE7] hover:text-[#e87c24] transition-colors";
 
   if (isCollapsed) {
