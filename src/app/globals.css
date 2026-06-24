@@ -36,8 +36,11 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 36 100% 50%;
     
-    /* Strict Uniform Border Radius - 12px */
+    /* Strict Uniform Border Radius - 12px for Workspace */
     --radius: 12px;
+
+    /* Sidebar Background - Original Cream */
+    --sidebar-background: 48 100% 98%; /* #fdfaf3 */
   }
 }
 
@@ -63,8 +66,9 @@
   @apply border border-primary/15 ring-1 ring-primary/5 shadow-sm;
 }
 
+/* Sidebar Active Item - Original Capsule Style */
 .sidebar-item-active {
-  @apply bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-lg shadow-orange-500/30 scale-[1.02] font-black;
+  @apply bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-xl shadow-orange-500/30 scale-[1.02] font-black rounded-full !important;
 }
 
 .scrollbar-hide::-webkit-scrollbar {
