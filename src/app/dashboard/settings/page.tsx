@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 
 /**
  * محطة الإعدادات المركزية - NovaFlow ERP
- * تم دمج موديولات القوالب في موديول واحد "القوالب" لضمان التنسيق.
+ * تم دمج موديول "القوائم المرجعية" داخل "الإعدادات الفنية" لتبسيط الهيكل.
  */
 export default function SettingsHubPage() {
   const { t, lang, dir } = useLanguage();
@@ -43,13 +43,13 @@ export default function SettingsHubPage() {
       visible: isAdmin
     },
     {
-      id: 'reference-lists',
-      title: t('referenceLists'),
-      description: t('referenceListsDesc'),
-      icon: ListTree,
+      id: 'checklists',
+      title: t('checklists'),
+      description: isRtl ? 'إدارة الدستور التشغيلي والقوائم المرجعية والمسارات الفنية' : 'Manage operational constitution, reference lists, and technical paths',
+      icon: Database,
       color: 'text-primary',
-      bg: 'bg-primary/10',
-      path: '/dashboard/settings/reference-lists',
+      bg: 'bg-primary/5',
+      path: '/dashboard/settings/checklists',
       visible: check('ref', 'view').can
     },
     {
@@ -61,16 +61,6 @@ export default function SettingsHubPage() {
       bg: 'bg-blue-50',
       path: '/dashboard/settings/templates',
       visible: isAdmin || check('ref', 'view').can
-    },
-    {
-      id: 'checklists',
-      title: t('checklists'),
-      description: isRtl ? 'إدارة الدستور التشغيلي والقواعد المرجعية للنظام' : 'Manage operational constitution and system references',
-      icon: Database,
-      color: 'text-slate-600',
-      bg: 'bg-slate-50',
-      path: '/dashboard/settings/checklists',
-      visible: check('ref', 'view').can
     },
     {
       id: 'roles',

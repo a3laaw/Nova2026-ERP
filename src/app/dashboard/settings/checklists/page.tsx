@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  Database, Building2, MapPin, Workflow, Settings2, ArrowRight
+  Database, Building2, MapPin, Workflow, Settings2, ArrowRight,
+  ListTree
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useRouter } from 'next/navigation';
@@ -12,11 +13,16 @@ import { cn } from '@/lib/utils';
 import DepartmentsPage from './departments/page';
 import GeoPage from './geo/page';
 import TechnicalPathsPage from './technical-paths/page';
+import GeneralListsPage from './general-lists/page';
 import { SeedTool } from './seed-tool';
 
-export default function ReferenceHubPage() {
+/**
+ * محطة الإعدادات الفنية الموحدة (Technical Setup Hub)
+ * تم دمج القوائم المرجعية والهياكل التنظيمية والمسارات الفنية في مكان واحد.
+ */
+export default function TechnicalSetupPage() {
   const { t, lang, dir } = useLanguage();
-  const [activeTab, setActiveTab] = useState("org");
+  const [activeTab, setActiveTab] = useState("general");
   const router = useRouter();
   const isRtl = lang === 'ar';
 
@@ -33,12 +39,12 @@ export default function ReferenceHubPage() {
             <ArrowRight className={cn("h-5 w-5", isRtl ? "rotate-0" : "rotate-180")} />
           </Button>
           <div className="text-start">
-            <h1 className="text-4xl font-black font-headline flex items-center gap-3">
+            <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
               <Database className="h-10 w-10 text-primary" />
               {t('checklists')}
             </h1>
             <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-              {isRtl ? 'إدارة الدستور التشغيلي والقواعد المرجعية للنظام' : 'Manage operational constitution and system references'}
+              {isRtl ? 'إدارة الدستور التشغيلي والقواعد المرجعية الموحدة للنظام' : 'Manage operational constitution and unified system references'}
             </p>
           </div>
         </div>
@@ -46,7 +52,10 @@ export default function ReferenceHubPage() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" dir={dir}>
         <div className="overflow-x-auto pb-4 scrollbar-hide">
-          <TabsList className="flex w-fit min-w-full md:min-w-0 md:grid md:grid-cols-4 h-16 bg-muted/30 rounded-3xl p-2 shadow-inner gap-2">
+          <TabsList className="flex w-fit min-w-full md:min-w-0 md:grid md:grid-cols-5 h-16 bg-muted/30 rounded-3xl p-2 shadow-inner gap-2">
+            <TabsTrigger value="general" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg flex items-center justify-center px-6">
+              <ListTree className="h-5 w-5" /> {t('referenceLists')}
+            </TabsTrigger>
             <TabsTrigger value="org" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg flex items-center justify-center px-6">
               <Building2 className="h-5 w-5" /> {t('orgRef')}
             </TabsTrigger>
@@ -61,6 +70,10 @@ export default function ReferenceHubPage() {
             </TabsTrigger>
           </TabsList>
         </div>
+
+        <TabsContent value="general" className="mt-8">
+          <GeneralListsPage />
+        </TabsContent>
 
         <TabsContent value="org" className="mt-8">
           <DepartmentsPage />
