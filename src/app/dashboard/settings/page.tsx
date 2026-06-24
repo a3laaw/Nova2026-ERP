@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { 
   Settings2, Building2, UserCog, Database, ArrowLeft, ShieldCheck, Clock, Users,
-  LayoutTemplate
+  LayoutTemplate, ListTree
 } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/context/language-context';
@@ -43,6 +43,16 @@ export default function SettingsHubPage() {
       visible: isAdmin
     },
     {
+      id: 'reference-lists',
+      title: t('referenceLists'),
+      description: t('referenceListsDesc'),
+      icon: ListTree,
+      color: 'text-primary',
+      bg: 'bg-primary/10',
+      path: '/dashboard/settings/reference-lists',
+      visible: check('ref', 'view').can
+    },
+    {
       id: 'templates',
       title: t('templates'),
       description: t('templatesDesc'),
@@ -57,8 +67,8 @@ export default function SettingsHubPage() {
       title: t('checklists'),
       description: isRtl ? 'إدارة الدستور التشغيلي والقواعد المرجعية للنظام' : 'Manage operational constitution and system references',
       icon: Database,
-      color: 'text-primary',
-      bg: 'bg-primary/10',
+      color: 'text-slate-600',
+      bg: 'bg-slate-50',
       path: '/dashboard/settings/checklists',
       visible: check('ref', 'view').can
     },
@@ -97,7 +107,7 @@ export default function SettingsHubPage() {
   return (
     <div className="space-y-8" dir={dir}>
       <div className="text-start">
-        <h1 className="text-4xl font-black font-headline flex items-center gap-3">
+        <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
           <Settings2 className="h-10 w-10 text-primary" />
           {t('settings')}
         </h1>
@@ -119,7 +129,7 @@ export default function SettingsHubPage() {
               </div>
               <CardTitle className="text-xl font-black font-headline">{card.title}</CardTitle>
             </CardHeader>
-            <CardContent className="p-8 pt-0">
+            <CardContent className="p-8 pt-0 text-start">
               <p className="text-muted-foreground text-sm font-bold leading-relaxed mb-6 h-10 overflow-hidden">
                 {card.description}
               </p>

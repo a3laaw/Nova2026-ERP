@@ -150,7 +150,23 @@ const translations: Record<Language, Record<string, string>> = {
     scopeNone: 'محجوب',
     scopeOwn: 'سجلاتي فقط',
     scopeDept: 'سجلات القسم',
-    scopeAll: 'كل المنشأة'
+    scopeAll: 'كل المنشأة',
+    referenceLists: 'القوائم المرجعية',
+    referenceListsDesc: 'إدارة الوحدات، طرق الدفع، وتصنيفات النظام الموحدة.',
+    unitTypes: 'وحدات القياس',
+    paymentMethods: 'طرق الدفع',
+    paymentConditionTypes: 'شروط السداد',
+    milestoneTimingTypes: 'توقيت الدفعات',
+    itemCategories: 'تصنيفات الأصناف',
+    costTypeCategories: 'تصنيفات التكاليف',
+    code: 'الكود',
+    isSystem: 'نظامي',
+    isEditable: 'قابل للتعديل',
+    isActive: 'مفعل',
+    order: 'الترتيب',
+    symbol: 'الرمز',
+    category: 'الفئة',
+    addNewItem: 'إضافة عنصر جديد'
   },
   en: {
     dashboard: 'Dashboard',
@@ -290,7 +306,23 @@ const translations: Record<Language, Record<string, string>> = {
     scopeNone: 'None',
     scopeOwn: 'Own Records',
     scopeDept: 'Department',
-    scopeAll: 'All Enterprise'
+    scopeAll: 'All Enterprise',
+    referenceLists: 'Reference Lists',
+    referenceListsDesc: 'Manage units, payment methods, and system categories.',
+    unitTypes: 'Unit Types',
+    paymentMethods: 'Payment Methods',
+    paymentConditionTypes: 'Payment Conditions',
+    milestoneTimingTypes: 'Milestone Timing',
+    itemCategories: 'Item Categories',
+    costTypeCategories: 'Cost Categories',
+    code: 'Code',
+    isSystem: 'System',
+    isEditable: 'Editable',
+    isActive: 'Active',
+    order: 'Order',
+    symbol: 'Symbol',
+    category: 'Category',
+    addNewItem: 'Add New Item'
   }
 };
 
