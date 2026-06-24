@@ -12,7 +12,8 @@ import {
   ShoppingCart, Sparkles, Clock, ShieldCheck,
   Calendar, FileText, Package,
   Layers, FileSearch, Truck,
-  Building2, ChevronLeft, Settings2, ChevronDown
+  Building2, ChevronLeft, Settings2, ChevronDown,
+  Database
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
@@ -110,6 +111,7 @@ export function DashboardSidebar() {
       subItems: [
         { title: t('users'), url: "/dashboard/settings/users", icon: Users },
         { title: t('companyIdentity'), url: "/dashboard/settings/company", icon: Building2 },
+        { title: t('checklists'), url: "/dashboard/settings/checklists", icon: Database },
         { title: t('rolesRef'), url: "/dashboard/settings/roles", icon: ShieldCheck },
         { title: t('workHours'), url: "/dashboard/settings/work-hours", icon: Clock },
         { title: t('profile'), url: "/dashboard/settings/profile", icon: UserCircle },
@@ -228,7 +230,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                               "flex items-center justify-between h-10 px-4 rounded-xl text-[11px] font-black transition-all shadow-sm border border-slate-100 bg-white",
                               pathname === sub.url 
                                 ? "bg-[#FFFDE7] text-[#e87c24] border-primary/20" 
-                                : "text-slate-600 hover:bg-gradient-to-r hover:from-[#FFF3E0] hover:to-[#FFFDE7] hover:text-[#e87c24] hover:-translate-y-0.5"
+                                : "text-slate-700 hover:bg-gradient-to-r hover:from-[#FFF3E0] hover:to-[#FFFDE7] hover:text-[#e87c24] hover:-translate-y-0.5"
                             )}
                           >
                             <span>{sub.title}</span>
@@ -240,7 +242,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                   </div>
                 </div>
               </TooltipTrigger>
-              <TooltipContent side={isRtl ? "left" : "right"} className="bg-[#1e1b4b] text-white font-black text-[10px] rounded-full border-0 shadow-2xl py-2 px-4">
+              <TooltipContent side={isRtl ? "left" : "right"} className="bg-[#1e1b4b] text-white font-black text-[10px] rounded-none border-0 shadow-2xl py-2 px-4">
                 {item.title}
               </TooltipContent>
             </Tooltip>
@@ -253,7 +255,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                   <item.icon className="h-6 w-6" />
                 </Link>
               </TooltipTrigger>
-              <TooltipContent side={isRtl ? "left" : "right"} className="bg-[#1e1b4b] text-white font-black text-[10px] rounded-full border-0 shadow-2xl py-2 px-4">
+              <TooltipContent side={isRtl ? "left" : "right"} className="bg-[#1e1b4b] text-white font-black text-[10px] rounded-none border-0 shadow-2xl py-2 px-4">
                 {item.title}
               </TooltipContent>
             </Tooltip>
