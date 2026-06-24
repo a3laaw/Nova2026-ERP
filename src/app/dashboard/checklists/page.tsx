@@ -36,17 +36,17 @@ export default function ReferenceHubPage() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" dir={dir}>
         <div className="overflow-x-auto pb-4 scrollbar-hide">
-          <TabsList className="flex w-fit min-w-full md:min-w-0 md:grid md:grid-cols-4 h-16 bg-muted/30 rounded-3xl p-2 shadow-inner gap-2">
-            <TabsTrigger value="org" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg flex items-center justify-center px-6">
+          <TabsList className="flex w-fit min-w-full md:min-w-0 md:grid md:grid-cols-4 h-16 bg-white border-2 border-slate-100 rounded-3xl p-2 shadow-sm gap-2">
+            <TabsTrigger value="org" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-xl flex items-center justify-center px-6">
               <Building2 className="h-5 w-5" /> {t('orgRef')}
             </TabsTrigger>
-            <TabsTrigger value="technical" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg flex items-center justify-center px-6">
+            <TabsTrigger value="technical" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-xl flex items-center justify-center px-6">
               <Workflow className="h-5 w-5" /> {t('techRef')}
             </TabsTrigger>
-            <TabsTrigger value="geo" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-white data-[state=active]:shadow-lg flex items-center justify-center px-6">
+            <TabsTrigger value="geo" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-xl flex items-center justify-center px-6">
               <MapPin className="h-5 w-5" /> {t('geoRef')}
             </TabsTrigger>
-            <TabsTrigger value="setup" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-lg flex items-center justify-center px-6">
+            <TabsTrigger value="setup" className="rounded-2xl font-black gap-2 transition-all data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-xl flex items-center justify-center px-6">
               <Settings2 className="h-5 w-5" /> {t('systemSetup')}
             </TabsTrigger>
           </TabsList>

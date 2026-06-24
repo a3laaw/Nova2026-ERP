@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -104,18 +103,18 @@ export default function HRDashboard() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="overflow-x-auto pb-2 scrollbar-hide">
-          <TabsList className="flex w-fit md:grid md:w-[800px] grid-cols-4 h-14 bg-muted/30 rounded-2xl p-1 mb-8 shadow-inner gap-1">
-            <TabsTrigger value="overview" className="rounded-xl font-black gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md transition-all px-6">
+          <TabsList className="flex w-fit md:grid md:w-[800px] grid-cols-4 h-14 bg-white border-2 border-slate-100 rounded-2xl p-1 mb-8 shadow-sm gap-1">
+            <TabsTrigger value="overview" className="rounded-xl font-black gap-2 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md transition-all px-6">
               <Sparkles className="h-4 w-4" /> {isRtl ? 'نظرة عامة' : 'Overview'}
             </TabsTrigger>
-            <TabsTrigger value="leaves" className="rounded-xl font-black gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md transition-all px-6">
+            <TabsTrigger value="leaves" className="rounded-xl font-black gap-2 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md transition-all px-6">
               <Calendar className="h-4 w-4" /> {isRtl ? 'الإجازات' : 'Leaves'}
             </TabsTrigger>
-            <TabsTrigger value="permissions" className="rounded-xl font-black gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md transition-all px-6">
+            <TabsTrigger value="permissions" className="rounded-xl font-black gap-2 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md transition-all px-6">
               <Clock className="h-4 w-4" /> {isRtl ? 'الاستئذانات' : 'Permissions'}
             </TabsTrigger>
             {canSeeCompliance && (
-              <TabsTrigger value="compliance" className="rounded-xl font-black gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md transition-all px-6">
+              <TabsTrigger value="compliance" className="rounded-xl font-black gap-2 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md transition-all px-6">
                 <ShieldAlert className="h-4 w-4" /> {isRtl ? 'الامتثال' : 'Compliance'}
                 {expiringDocs.length > 0 && <span className="h-2 w-2 rounded-full bg-rose-500 ml-1 animate-pulse" />}
               </TabsTrigger>
@@ -201,13 +200,12 @@ export default function HRDashboard() {
                       <CardDescription className="font-bold">حساب الرواتب والخصومات الميدانية.</CardDescription>
                    </CardHeader>
                    <CardContent className="p-8 pt-0 text-start">
-                      <div className="flex items-center gap-2 text-amber-600 font-black text-xs">
-                         {isRtl ? 'إدارة الرواتب' : 'Manage Payroll'}
-                         <ArrowUpRight className="h-4 w-4" />
-                      </div>
-                   </CardContent>
-                </Card>
-              )}
+                    <div className="flex items-center gap-2 text-amber-600 font-black text-xs">
+                       {isRtl ? 'إدارة الرواتب' : 'Manage Payroll'}
+                       <ArrowUpRight className="h-4 w-4" />
+                    </div>
+                 </CardContent>
+              </Card>
            </div>
 
            {canSeeCompliance && expiringDocs.length > 0 && (

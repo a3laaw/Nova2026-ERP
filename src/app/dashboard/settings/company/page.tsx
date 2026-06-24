@@ -66,7 +66,6 @@ export default function CompanyProfilePage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // زيادة الحد الأقصى إلى 1 ميجابايت (1024 * 1024 بايت)
     if (file.size > 1024 * 1024) {
       toast({
         variant: "destructive",
@@ -111,14 +110,14 @@ export default function CompanyProfilePage() {
         <Label className="font-black text-[10px] uppercase tracking-widest text-slate-400">{label}</Label>
         <Tabs defaultValue="upload" className="w-full">
           <TabsList className={cn("grid w-full rounded-lg bg-slate-100 p-0.5 h-8", showTextTab ? "grid-cols-3" : "grid-cols-2")}>
-            <TabsTrigger value="upload" className="rounded-md text-[9px] font-bold gap-1.5 h-7">
+            <TabsTrigger value="upload" className="rounded-md text-[9px] font-bold gap-1.5 h-7 data-[state=active]:bg-primary data-[state=active]:text-white transition-all">
               <UploadCloud className="h-3 w-3" /> {isRtl ? 'رفع صورة' : 'Upload'}
             </TabsTrigger>
-            <TabsTrigger value="url" className="rounded-md text-[9px] font-bold gap-1.5 h-7">
+            <TabsTrigger value="url" className="rounded-md text-[9px] font-bold gap-1.5 h-7 data-[state=active]:bg-primary data-[state=active]:text-white transition-all">
               <LinkIcon className="h-3 w-3" /> {isRtl ? 'رابط' : 'URL'}
             </TabsTrigger>
             {showTextTab && (
-              <TabsTrigger value="text" className="rounded-md text-[9px] font-bold gap-1.5 h-7">
+              <TabsTrigger value="text" className="rounded-md text-[9px] font-bold gap-1.5 h-7 data-[state=active]:bg-primary data-[state=active]:text-white transition-all">
                 <Type className="h-3 w-3" /> {isRtl ? 'نص' : 'Text'}
               </TabsTrigger>
             )}
