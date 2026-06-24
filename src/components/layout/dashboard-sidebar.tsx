@@ -64,6 +64,11 @@ import {
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import { useAuthContext } from '@/context/auth-context';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 type SidebarItem = {
   title: string;
@@ -82,13 +87,16 @@ export function DashboardSidebar() {
   const pathname = usePathname();
   const { state } = useSidebar();
   const { t, lang } = useLanguage();
-  const { canAccess, isAdmin } = usePermissions();
+  const { canAccess, isAdmin, check } = usePermissions();
   const { globalUser } = useAuthContext();
 
   const isRtl = lang === 'ar';
   const isCollapsed = state === 'collapsed';
 
-  const menuItems: SidebarItem[] = [
+  // خلفية السايدبار تطابق النظام #F8F9FA
+  const sidebarBg = "#F8F9FA";
+
+  const menuItems: SidebarItem[] = React.useMemo(() => [
     { title: t('dashboard'), icon: LayoutDashboard, url: '/dashboard', module: 'dashboard' },
     {
       title: t('crm'),
@@ -106,7 +114,7 @@ export function DashboardSidebar() {
       url: '/dashboard/projects',
       module: 'projects',
       subItems: [
-        { title: t('activeProjects'), url: '/dashboard/projects', icon: Layers },
+        { title: t('projectExecution'), url: '/dashboard/projects', icon: Layers },
         { title: t('reports'), url: '/dashboard/reports', icon: FileText },
       ],
     },
@@ -157,9 +165,9 @@ export function DashboardSidebar() {
       ],
     },
     { title: t('ai'), icon: Sparkles, url: '/dashboard/ai', module: 'dashboard' },
-  ].filter((item) => !item.module || canAccess(item.module));
+  ].filter((item) => !item.module || canAccess(item.module)), [t, canAccess]);
 
-  const settingsItems: SidebarItem[] = [
+  const settingsItems: SidebarItem[] = React.useMemo(() => [
     { title: t('companyIdentity'), url: '/dashboard/settings/company', icon: Building2, permission: 'admin' },
     { title: t('checklists'), url: '/dashboard/settings/checklists', icon: Database, permission: 'ref:view' },
     { title: t('rolesRef'), url: '/dashboard/settings/roles', icon: ShieldCheck, permission: 'admin' },
@@ -173,10 +181,10 @@ export function DashboardSidebar() {
       return canAccess(mod);
     }
     return isAdmin;
-  });
+  }), [t, canAccess, isAdmin]);
 
   return (
-    <Sidebar collapsible="icon" side={isRtl ? "right" : "left"} className="border-none bg-[#F8F9FA]">
+    <Sidebar collapsible="icon" side={isRtl ? "right" : "left"} className="border-none" style={{ backgroundColor: sidebarBg }}>
       <SidebarHeader className={cn('p-4 pt-6 transition-all duration-300', isCollapsed ? 'p-2' : 'px-4 py-4')}>
         {!isCollapsed ? (
           <div className="flex flex-col text-start px-2">
@@ -200,13 +208,11 @@ export function DashboardSidebar() {
               {isRtl ? 'إدارة العمليات' : 'Operations'}
             </SidebarGroupLabel>
           )}
-          <SidebarGroupContent>
-            <SidebarMenu className="gap-2">
-              {menuItems.map((item) => (
-                <SidebarNavItem key={item.title} item={item} pathname={pathname} isCollapsed={isCollapsed} isRtl={isRtl} />
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
+          <SidebarMenu className="gap-2">
+            {menuItems.map((item) => (
+              <SidebarNavItem key={item.title} item={item} pathname={pathname} isCollapsed={isCollapsed} isRtl={isRtl} />
+            ))}
+          </SidebarMenu>
         </SidebarGroup>
 
         <SidebarGroup className="mt-4 p-0">
@@ -224,17 +230,13 @@ export function DashboardSidebar() {
       </SidebarContent>
 
       <SidebarFooter className={cn('p-4 mt-auto transition-all duration-300', isCollapsed ? 'p-2' : 'px-3 py-3')}>
-        {!isCollapsed ? (
+        {!isCollapsed && (
           <div className="mx-auto w-full max-w-[220px] rounded-2xl border border-orange-100 bg-white p-3 shadow-xl ring-1 ring-black/[0.02]">
             <div className="mb-1.5 flex items-center justify-between">
               <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Business Core</span>
               <Badge className="h-3.5 bg-[#e87c24] px-1.5 text-[8px] font-black uppercase text-white">v2.5</Badge>
             </div>
             <p className="text-center text-[9px] font-black uppercase tracking-tighter text-[#1e1b4b]/80">Odoo Style UI</p>
-          </div>
-        ) : (
-          <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 shadow-sm border border-emerald-100">
-            <ShieldCheck className="h-5 w-5" />
           </div>
         )}
       </SidebarFooter>
@@ -258,11 +260,15 @@ function SidebarNavItem({
 
   const isActive = pathname === item.url || (item.url !== '/dashboard' && pathname.startsWith(item.url));
 
+  // تصميم الكبسولة البرتقالية المتدرجة في الوضع المفتوح (مجمدة)
   const expandedStyle = "bg-gradient-to-br from-[#FFB000] to-[#e87c24] text-white shadow-lg hover:scale-[1.02] transition-all rounded-full";
   
-  // تصميم الكبسولات العمودية للحالة المصغرة بناءً على الصورة
-  const collapsedActive = "bg-white text-[#e87c24] shadow-xl ring-1 ring-orange-100";
-  const collapsedInactive = "bg-[#FFA000] text-white shadow-md";
+  // تصميم الكبسولات العمودية في الوضع المغلق (بناءً على الصورة)
+  const collapsedActive = "bg-white text-[#e87c24] shadow-xl ring-1 ring-orange-100 rounded-full h-12 w-9 flex items-center justify-center mx-auto";
+  const collapsedInactive = "bg-[#FFA000] text-white shadow-md rounded-full h-12 w-9 flex items-center justify-center mx-auto hover:scale-110 transition-transform";
+
+  // تأثير هوفر ذهبي-برتقالي للأزرار الداخلية
+  const subItemHoverStyle = "hover:bg-gradient-to-r hover:from-[#FFF3E0] hover:to-[#FFFDE7] hover:text-[#e87c24] transition-colors";
 
   if (isCollapsed) {
     return (
@@ -275,7 +281,7 @@ function SidebarNavItem({
                   <DropdownMenuTrigger asChild>
                     <button
                       className={cn(
-                        "flex h-12 w-9 items-center justify-center rounded-full transition-all duration-300 outline-none",
+                        "transition-all duration-300 outline-none",
                         isActive ? collapsedActive : collapsedInactive
                       )}
                     >
@@ -297,10 +303,10 @@ function SidebarNavItem({
                         <Link 
                           href={sub.url}
                           className={cn(
-                            "flex items-center justify-between h-10 rounded-xl px-4 transition-all text-[11px] font-black w-full mb-1",
+                            "flex items-center justify-between h-10 rounded-xl px-4 text-[11px] font-black w-full mb-1",
                             pathname === sub.url 
                               ? "bg-gradient-to-r from-[#FFF3E0] to-[#FFFDE7] text-[#e87c24] shadow-sm" 
-                              : "text-[#1e1b4b] hover:bg-gradient-to-r hover:from-[#FFF3E0] hover:to-[#FFFDE7] hover:text-[#e87c24]"
+                              : cn("text-[#1e1b4b]", subItemHoverStyle)
                           )}
                         >
                           <span className="truncate">{sub.title}</span>
@@ -314,7 +320,7 @@ function SidebarNavItem({
                 <Link
                   href={item.url}
                   className={cn(
-                    "flex h-12 w-9 items-center justify-center rounded-full transition-all duration-300",
+                    "transition-all duration-300",
                     isActive ? collapsedActive : collapsedInactive
                   )}
                 >
@@ -354,7 +360,7 @@ function SidebarNavItem({
                     "flex items-center justify-between h-9 rounded-xl px-4 transition-all text-[10px] font-black",
                     pathname === sub.url 
                       ? "bg-white/20 text-white shadow-inner" 
-                      : "text-white/70 hover:bg-gradient-to-r hover:from-[#FFF3E0] hover:to-[#FFFDE7] hover:text-[#e87c24]"
+                      : cn("text-white/70", subItemHoverStyle)
                   )}
                 >
                   <span className="truncate text-start flex-1">{sub.title}</span>
