@@ -9,8 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   Users, UserPlus, Search, Loader2, ArrowRight, 
-  Filter, Briefcase, Phone, Trash2, AlertTriangle,
-  Eye, EyeOff
+  Filter, Briefcase, Trash2, AlertTriangle
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -42,7 +41,6 @@ export default function EmployeesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
-  const [showSalaries, setShowSalaries] = useState(false);
   const isRtl = lang === 'ar';
 
   const companyId = globalUser?.companyId;
@@ -115,40 +113,45 @@ export default function EmployeesPage() {
       </div>
 
       <Card className="border-0 shadow-xl rounded-xl bg-white overflow-hidden ring-1 ring-black/5">
-        <CardHeader className="bg-slate-50/50 border-b p-8">
+        <CardHeader className="bg-slate-50/50 border-b p-6 flex flex-row items-center justify-between gap-4">
           <div className="relative w-full max-w-md">
-            <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#FFA000]" />
             <Input 
               placeholder={isRtl ? 'بحث...' : 'Search...'} 
-              className="ps-12 h-11 bg-white border-slate-200" 
+              className="ps-12 h-11 bg-white border-slate-200 focus-visible:ring-primary/10 focus-visible:border-primary transition-all" 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+          <Button variant="outline" className="rounded-xl font-bold h-11 px-4 flex items-center gap-2 border-slate-200">
+             <Filter className="h-4 w-4 text-[#FFA000]" /> {isRtl ? 'تصفية' : 'Filter'}
+          </Button>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
           <Table>
-            <TableHeader className="bg-muted/30">
+            <TableHeader className="bg-muted/10 border-b">
               <TableRow>
-                <TableHead className="py-6 ps-8 text-start">{isRtl ? 'الموظف' : 'Employee'}</TableHead>
-                <TableHead className="text-start">{isRtl ? 'الوظيفة' : 'Job'}</TableHead>
-                <TableHead className="text-start">{isRtl ? 'الحالة' : 'Status'}</TableHead>
-                {canSeeSalaries && <TableHead className="text-end">{isRtl ? 'الراتب' : 'Salary'}</TableHead>}
+                <TableHead className="py-5 ps-8 text-start font-black text-slate-500 uppercase text-[10px] tracking-widest">{isRtl ? 'الموظف' : 'Employee'}</TableHead>
+                <TableHead className="text-start font-black text-slate-500 uppercase text-[10px] tracking-widest">{isRtl ? 'الوظيفة' : 'Job'}</TableHead>
+                <TableHead className="text-start font-black text-slate-500 uppercase text-[10px] tracking-widest">{isRtl ? 'الحالة' : 'Status'}</TableHead>
+                {canSeeSalaries && <TableHead className="text-end font-black text-slate-500 uppercase text-[10px] tracking-widest">{isRtl ? 'الراتب' : 'Salary'}</TableHead>}
                 <TableHead className="pe-8"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow><TableCell colSpan={5} className="text-center py-24"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
+              ) : filteredEmployees.length === 0 ? (
+                <TableRow><TableCell colSpan={5} className="text-center py-24 italic text-slate-400 font-bold">{isRtl ? 'لا يوجد موظفين.' : 'No employees found.'}</TableCell></TableRow>
               ) : filteredEmployees.map((emp) => (
-                <TableRow key={emp.id} className="hover:bg-primary/5 transition-colors group cursor-pointer" onClick={() => router.push(`/dashboard/hr/employees/${emp.id}`)}>
-                  <TableCell className="py-6 ps-8 text-start">
+                <TableRow key={emp.id} className="hover:bg-primary/[0.02] transition-colors group cursor-pointer border-b-slate-100" onClick={() => router.push(`/dashboard/hr/employees/${emp.id}`)}>
+                  <TableCell className="py-5 ps-8 text-start">
                     <div className="flex items-center gap-4">
                        <div className="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center font-black text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-all">
                           {emp.employeeNumber}
                        </div>
                        <div className="flex flex-col">
-                          <span className="font-black text-slate-800">{emp.fullName}</span>
+                          <span className="font-black text-slate-800 text-sm">{emp.fullName}</span>
                           <span className="text-[10px] text-muted-foreground font-bold">{emp.mobile}</span>
                        </div>
                     </div>
@@ -159,16 +162,16 @@ export default function EmployeesPage() {
                      </span>
                   </TableCell>
                   <TableCell className="text-start">
-                     <Badge className={cn(
+                     <Badge variant="outline" className={cn(
                        "font-black px-3 py-1 rounded-lg border-0 shadow-sm uppercase text-[9px]",
-                       emp.status === 'active' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'
+                       emp.status === 'active' ? 'bg-[#039BE5]/10 text-[#039BE5]' : 'bg-[#FFA000]/10 text-[#FFA000]'
                      )}>
                         {emp.status}
                      </Badge>
                   </TableCell>
                   {canSeeSalaries && (
                     <TableCell className="text-end font-mono font-black text-emerald-600">
-                      {showSalaries ? emp.basicSalary?.toLocaleString() : '••••'}
+                      {emp.basicSalary?.toLocaleString()}
                     </TableCell>
                   )}
                   <TableCell className="pe-8 text-end" onClick={e => e.stopPropagation()}>
@@ -177,13 +180,13 @@ export default function EmployeesPage() {
                          <Button 
                            variant="ghost" 
                            size="icon" 
-                           className="text-rose-400 hover:text-rose-600 rounded-xl"
+                           className="text-rose-400 hover:text-rose-600 rounded-xl h-9 w-9"
                            onClick={() => setDeletingId(emp.id!)}
                          >
                            <Trash2 className="h-4 w-4" />
                          </Button>
                        )}
-                       <Button variant="ghost" size="icon" className="rounded-xl group-hover:bg-primary group-hover:text-white transition-all">
+                       <Button variant="ghost" size="icon" className="rounded-xl group-hover:bg-primary group-hover:text-white transition-all h-9 w-9">
                          <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
                        </Button>
                     </div>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -9,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   Clock, Plus, Loader2, Search, 
-  ArrowRight, Timer
+  ArrowRight, Timer, Filter
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -31,9 +30,7 @@ export default function PermissionRequestsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const isRtl = lang === 'ar';
 
-  // 1. فحص صلاحية العرض والنطاق
   const viewAccess = check('hr', 'view');
-
   const companyId = globalUser?.companyId;
   const permsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.permissionRequests(companyId)), orderBy('createdAt', 'desc')) : null, 
@@ -41,7 +38,6 @@ export default function PermissionRequestsPage() {
 
   const { data: rawPermissions, loading } = useCollection<PermissionRequest>(permsQuery);
 
-  // 2. الفلترة الميدانية
   const permissions = useMemo(() => {
     if (!viewAccess.can) return [];
     return rawPermissions.filter(req => canPerformOnRecord(
@@ -57,7 +53,7 @@ export default function PermissionRequestsPage() {
   );
 
   return (
-    <div className="space-y-8" dir={dir}>
+    <div className="space-y-8 animate-in fade-in duration-500" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start">
           <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
@@ -71,88 +67,81 @@ export default function PermissionRequestsPage() {
 
         <Button 
           onClick={() => router.push('/dashboard/hr/permissions/new')}
-          className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all"
+          className="bg-primary text-white font-black rounded-xl px-8 h-12 shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all"
         >
-          <Plus className="me-2 h-6 w-6" />
+          <Plus className="me-2 h-5 w-5" />
           {isRtl ? 'طلب استئذان جديد' : 'New Request'}
         </Button>
       </div>
 
-      <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
-        <CardHeader className="bg-slate-50/50 border-b p-8 flex flex-row items-center justify-between">
+      <Card className="border-0 shadow-xl rounded-xl bg-white overflow-hidden ring-1 ring-black/5">
+        <CardHeader className="bg-slate-50/50 border-b p-6 flex flex-row items-center justify-between gap-4">
           <div className="relative w-full max-w-md">
-            <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#FFA000]" />
             <Input 
-              placeholder={isRtl ? 'بحث باسم الموظف...' : 'Search by employee name...'} 
-              className="ps-12 rounded-2xl h-14 bg-white text-start border-2 border-slate-100" 
+              placeholder={isRtl ? 'بحث...' : 'Search...'} 
+              className="ps-12 rounded-xl h-11 bg-white border-slate-200 focus-visible:ring-primary/10 focus-visible:border-primary transition-all" 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+          <Button variant="outline" className="rounded-xl font-bold h-11 px-4 flex items-center gap-2 border-slate-200">
+             <Filter className="h-4 w-4 text-[#FFA000]" /> {isRtl ? 'تصفية' : 'Filter'}
+          </Button>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
           <Table>
-            <TableHeader className="bg-muted/30">
+            <TableHeader className="bg-muted/10 border-b">
               <TableRow>
-                <TableHead className="py-6 ps-8 text-start">{isRtl ? 'الموظف' : 'Employee'}</TableHead>
-                <TableHead className="text-start">{isRtl ? 'النوع' : 'Type'}</TableHead>
-                <TableHead className="text-start">{isRtl ? 'التاريخ' : 'Date'}</TableHead>
-                <TableHead className="text-center">{isRtl ? 'الوقت' : 'Time'}</TableHead>
-                <TableHead className="text-center">{isRtl ? 'المدة' : 'Duration'}</TableHead>
-                <TableHead className="text-start">{isRtl ? 'الحالة' : 'Status'}</TableHead>
+                <TableHead className="py-5 ps-8 text-start font-black text-slate-500 uppercase text-[10px] tracking-widest">{isRtl ? 'الموظف' : 'Employee'}</TableHead>
+                <TableHead className="text-start font-black text-slate-500 uppercase text-[10px] tracking-widest">{isRtl ? 'النوع' : 'Type'}</TableHead>
+                <TableHead className="text-start font-black text-slate-500 uppercase text-[10px] tracking-widest">{isRtl ? 'التاريخ' : 'Date'}</TableHead>
+                <TableHead className="text-center font-black text-slate-500 uppercase text-[10px] tracking-widest">{isRtl ? 'المدة' : 'Duration'}</TableHead>
+                <TableHead className="text-start font-black text-slate-500 uppercase text-[10px] tracking-widest">{isRtl ? 'الحالة' : 'Status'}</TableHead>
                 <TableHead className="pe-8"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={7} className="text-center py-24"><Loader2 className="animate-spin h-12 w-12 mx-auto text-primary/30" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-24"><Loader2 className="animate-spin h-12 w-12 mx-auto text-primary/30" /></TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center py-24 text-muted-foreground font-bold italic">{isRtl ? 'لا توجد طلبات مسجلة.' : 'No requests found.'}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-24 text-slate-400 font-bold italic">{isRtl ? 'لا يوجد طلبات.' : 'No requests found.'}</TableCell></TableRow>
               ) : (
                 filtered.map((req) => (
                   <TableRow 
                     key={req.id} 
-                    className="hover:bg-primary/5 transition-colors group cursor-pointer"
+                    className="hover:bg-primary/[0.02] transition-colors group cursor-pointer border-b-slate-100"
                     onClick={() => router.push(`/dashboard/hr/permissions/${req.id}`)}
                   >
-                    <TableCell className="py-6 ps-8 text-start">
+                    <TableCell className="py-5 ps-8 text-start">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
                            <Timer className="h-5 w-5" />
                         </div>
-                        <span className="font-black text-slate-800">{req.userName}</span>
+                        <span className="font-black text-slate-800 text-sm">{req.userName}</span>
                       </div>
                     </TableCell>
                     <TableCell className="text-start">
-                       <Badge variant="outline" className="font-black border-2 px-3 uppercase text-[9px] border-slate-200">
-                          {isRtl ? (req.type === 'late_arrival' ? 'حضور متأخر' : 'انصراف مبكر') : req.type.replace('_', ' ')}
+                       <Badge variant="outline" className="font-black border-slate-200 px-3 uppercase text-[9px] bg-white">
+                          {isRtl ? (req.type === 'late_arrival' ? 'حضور متأخر' : 'انصراف مبكر') : req.type}
                        </Badge>
                     </TableCell>
-                    <TableCell className="text-start">
-                       <span className="font-mono text-xs font-bold text-slate-500">{req.date}</span>
-                    </TableCell>
-                    <TableCell className="text-center">
-                       <div className="flex items-center justify-center gap-1 text-[10px] font-black text-slate-700">
-                          <span>{req.startTime}</span>
-                          <span className="opacity-20">-</span>
-                          <span>{req.endTime}</span>
-                       </div>
-                    </TableCell>
+                    <TableCell className="text-start font-mono text-xs font-bold text-slate-500">{req.date}</TableCell>
                     <TableCell className="text-center">
                        <span className="font-black text-primary bg-primary/5 px-3 py-1 rounded-lg text-xs">{req.durationHours}h</span>
                     </TableCell>
                     <TableCell className="text-start">
-                       <Badge className={cn(
-                         "font-black px-4 py-1 rounded-lg border-0 shadow-sm",
-                         req.status === 'approved' ? 'bg-emerald-500 text-white' : 
-                         req.status === 'pending' ? 'bg-amber-50 text-amber-600' : 
-                         'bg-rose-500 text-white'
+                       <Badge variant="outline" className={cn(
+                         "font-black px-4 py-1 rounded-lg border-0 shadow-sm text-[9px] uppercase",
+                         req.status === 'approved' ? 'bg-emerald-50 text-emerald-600' : 
+                         req.status === 'pending' ? 'bg-[#FFCA28]/10 text-[#FFCA28]' : 
+                         'bg-rose-50 text-rose-600'
                        )}>
-                          {req.status.toUpperCase()}
+                          {req.status}
                        </Badge>
                     </TableCell>
                     <TableCell className="text-center pe-8">
-                       <Button variant="ghost" size="icon" className="rounded-xl group-hover:bg-primary group-hover:text-white">
+                       <Button variant="ghost" size="icon" className="rounded-xl group-hover:bg-primary group-hover:text-white transition-all h-9 w-9">
                           <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-0", isRtl && "rotate-180")} />
                        </Button>
                     </TableCell>

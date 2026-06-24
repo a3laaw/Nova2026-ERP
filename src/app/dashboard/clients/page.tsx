@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, UserPlus, Search, Loader2, ArrowRight } from "lucide-react";
+import { Users, UserPlus, Search, Loader2, ArrowRight, Filter } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
@@ -51,37 +51,50 @@ export default function ClientsListPage() {
       </div>
 
       <Card className="border-0 shadow-xl rounded-xl bg-white overflow-hidden ring-1 ring-black/5">
-        <CardHeader className="bg-slate-50/50 border-b p-4">
+        <CardHeader className="bg-slate-50/50 border-b p-6 flex flex-row items-center justify-between gap-4">
            <div className="relative w-full max-w-sm">
-              <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-              <Input placeholder={isRtl ? 'بحث...' : 'Search...'} className="ps-12 h-11 bg-white border-slate-200" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+              <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#FFA000]" />
+              <Input 
+                placeholder={isRtl ? 'بحث...' : 'Search...'} 
+                className="ps-12 h-11 bg-white border-slate-200 focus-visible:ring-primary/10 focus-visible:border-primary transition-all" 
+                value={searchTerm} 
+                onChange={e => setSearchTerm(e.target.value)} 
+              />
            </div>
+           <Button variant="outline" className="rounded-xl font-bold h-11 px-4 flex items-center gap-2 border-slate-200">
+              <Filter className="h-4 w-4 text-[#FFA000]" /> {isRtl ? 'تصفية' : 'Filter'}
+           </Button>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
           <Table>
-            <TableHeader className="bg-muted/30">
+            <TableHeader className="bg-muted/10 border-b">
               <TableRow>
-                <TableHead className="py-6 ps-8 text-start">{isRtl ? 'العميل' : 'Client'}</TableHead>
-                <TableHead className="text-start">{isRtl ? 'الهاتف' : 'Mobile'}</TableHead>
-                <TableHead className="text-start">{isRtl ? 'الحالة' : 'Status'}</TableHead>
+                <TableHead className="py-5 ps-8 text-start font-black text-slate-500 uppercase text-[10px] tracking-widest">{isRtl ? 'العميل' : 'Client'}</TableHead>
+                <TableHead className="text-start font-black text-slate-500 uppercase text-[10px] tracking-widest">{isRtl ? 'الهاتف' : 'Mobile'}</TableHead>
+                <TableHead className="text-start font-black text-slate-500 uppercase text-[10px] tracking-widest">{isRtl ? 'الحالة' : 'Status'}</TableHead>
                 <TableHead className="pe-8"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow><TableCell colSpan={4} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
+              ) : filtered.length === 0 ? (
+                <TableRow><TableCell colSpan={4} className="text-center py-20 italic text-slate-400 font-bold">{isRtl ? 'لا يوجد عملاء.' : 'No clients found.'}</TableCell></TableRow>
               ) : filtered.map((client) => (
-                <TableRow key={client.id} className="hover:bg-primary/5 transition-colors group cursor-pointer" onClick={() => router.push(`/dashboard/clients/${client.id}`)}>
-                  <TableCell className="ps-8 py-6">
+                <TableRow key={client.id} className="hover:bg-primary/[0.02] transition-colors group cursor-pointer border-b-slate-100" onClick={() => router.push(`/dashboard/clients/${client.id}`)}>
+                  <TableCell className="ps-8 py-5">
                      <div className="flex flex-col text-start">
                         <span className="font-black text-slate-800 text-sm leading-none">{client.nameAr}</span>
                         <span className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-widest">{client.fileNumber}</span>
                      </div>
                   </TableCell>
-                  <TableCell className="py-6 text-xs font-bold text-slate-600">{client.mobile}</TableCell>
-                  <TableCell className="py-6">
-                     <Badge className={cn("text-[9px] font-black px-3 py-1 rounded-lg border-0 shadow-sm", client.status === 'contracted' ? 'bg-emerald-500 text-white' : 'bg-blue-500 text-white')}>
-                        {client.status.toUpperCase()}
+                  <TableCell className="py-5 text-xs font-bold text-slate-600">{client.mobile}</TableCell>
+                  <TableCell className="py-5">
+                     <Badge variant="outline" className={cn(
+                       "text-[9px] font-black px-3 py-1 rounded-lg border-0 shadow-sm uppercase", 
+                       client.status === 'contracted' ? 'bg-[#039BE5]/10 text-[#039BE5]' : 'bg-[#FFA000]/10 text-[#FFA000]'
+                     )}>
+                        {client.status}
                      </Badge>
                   </TableCell>
                   <TableCell className="pe-8 text-end">

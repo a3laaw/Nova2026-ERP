@@ -117,31 +117,41 @@ export default function CRMPage() {
       <Card className="border-0 shadow-xl rounded-xl bg-white overflow-hidden ring-1 ring-black/5">
         <CardHeader className="bg-slate-50/50 border-b p-6 flex flex-row items-center justify-between">
           <div className="relative w-full max-w-xs">
-            <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-            <Input placeholder={t('search')} className="ps-12 h-11 bg-white border-slate-200" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#FFA000]" />
+            <Input 
+              placeholder={t('search')} 
+              className="ps-12 h-11 bg-white border-slate-200 focus-visible:ring-primary/10 focus-visible:border-primary transition-all" 
+              value={searchTerm} 
+              onChange={(e) => setSearchTerm(e.target.value)} 
+            />
           </div>
-          <Button variant="ghost" className="rounded-xl font-bold h-11 px-4 flex items-center gap-2"><Filter className="h-4 w-4" /> {isRtl ? 'تصفية' : 'Filter'}</Button>
+          <Button variant="outline" className="rounded-xl font-bold h-11 px-4 flex items-center gap-2 border-slate-200">
+            <Filter className="h-4 w-4 text-[#FFA000]" /> 
+            {isRtl ? 'تصفية' : 'Filter'}
+          </Button>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
           <Table>
-            <TableHeader className="bg-muted/30">
+            <TableHeader className="bg-muted/10 border-b">
               <TableRow>
-                <TableHead className="py-6 ps-8 text-start font-black uppercase text-[10px] tracking-widest">{t('name')}</TableHead>
-                <TableHead className="text-start font-black uppercase text-[10px] tracking-widest">{t('company')}</TableHead>
-                <TableHead className="text-start font-black uppercase text-[10px] tracking-widest">{t('status')}</TableHead>
+                <TableHead className="py-5 ps-8 text-start font-black text-slate-500 uppercase text-[10px] tracking-widest">{t('name')}</TableHead>
+                <TableHead className="text-start font-black text-slate-500 uppercase text-[10px] tracking-widest">{t('company')}</TableHead>
+                <TableHead className="text-start font-black text-slate-500 uppercase text-[10px] tracking-widest">{t('status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow><TableCell colSpan={3} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
+              ) : filteredLeads.length === 0 ? (
+                <TableRow><TableCell colSpan={3} className="text-center py-20 italic text-slate-400 font-bold">{isRtl ? 'لا يوجد نتائج.' : 'No results found.'}</TableCell></TableRow>
               ) : filteredLeads.map((lead: any) => (
-                <TableRow key={lead.id} className="hover:bg-primary/5 transition-colors border-b-slate-100">
-                  <TableCell className="py-6 ps-8 font-black text-slate-800">{lead.name}</TableCell>
+                <TableRow key={lead.id} className="hover:bg-primary/[0.02] transition-colors border-b-slate-100">
+                  <TableCell className="py-5 ps-8 font-black text-slate-800">{lead.name}</TableCell>
                   <TableCell className="text-slate-500 font-bold text-sm">{lead.company}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className={cn(
                       "font-black text-[9px] uppercase px-3 py-1 border-0 shadow-sm",
-                      lead.status === 'new' ? "bg-blue-500 text-white" : "bg-amber-500 text-white"
+                      lead.status === 'new' ? "bg-[#039BE5]/10 text-[#039BE5]" : "bg-[#FFA000]/10 text-[#FFA000]"
                     )}>
                       {lead.status}
                     </Badge>
