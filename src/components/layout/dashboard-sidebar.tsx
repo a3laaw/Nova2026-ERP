@@ -17,7 +17,8 @@ import {
   Building2, Settings2, ChevronDown, ChevronRight,
   Clock, Briefcase, UserPlus, Search, Gavel, FileSpreadsheet,
   ListTree, Palette, UserCog, History, Scale, DollarSign,
-  Landmark, Database, Plane, UserCheck, LayoutGrid
+  Landmark, Database, Plane, UserCheck, LayoutGrid,
+  Truck
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
@@ -184,7 +185,7 @@ function NavGroupRenderer({ group, isCollapsed, isRtl, pathname }: any) {
   const isActive = pathname === group.url || (group.url !== '/dashboard' && pathname.startsWith(group.url));
   const hasSubItems = group.subItems && group.subItems.length > 0;
 
-  // الحالة الموسعة: تصميم الكبسولة البرتقالية الكاملة كما في الصورة
+  // الحالة الموسعة: تصميم الكبسولة البرتقالية الكاملة
   if (!isCollapsed) {
     if (!hasSubItems) {
       return (
@@ -194,7 +195,7 @@ function NavGroupRenderer({ group, isCollapsed, isRtl, pathname }: any) {
             className={cn(
               "flex items-center transition-all duration-300 rounded-full h-11 px-6 group", 
               isActive 
-                ? "bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-xl shadow-orange-500/20 scale-[1.02]" 
+                ? "bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-xl shadow-orange-500/30 scale-[1.02]" 
                 : "text-slate-500 hover:bg-white hover:text-primary"
             )}
           >
@@ -215,7 +216,7 @@ function NavGroupRenderer({ group, isCollapsed, isRtl, pathname }: any) {
               className={cn(
                 "flex items-center transition-all duration-300 rounded-full h-11 px-6 group cursor-pointer", 
                 isActive 
-                  ? "bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-xl shadow-orange-500/20 scale-[1.02]" 
+                  ? "bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-xl shadow-orange-500/30 scale-[1.02]" 
                   : "text-slate-500 hover:bg-white hover:text-primary"
               )}
             >
