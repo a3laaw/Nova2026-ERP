@@ -12,7 +12,7 @@ import {
   ShoppingCart, Sparkles, Clock, ShieldCheck,
   Calendar, FileSpreadsheet, FileText, Package,
   Layers, FileSearch, Truck, Scale,
-  Building2, Database, ChevronLeft, Settings2
+  Building2, ChevronLeft, Settings2
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
@@ -30,6 +30,12 @@ import {
 import {
   Tooltip, TooltipProvider, TooltipTrigger, TooltipContent,
 } from "@/components/ui/tooltip"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 export function DashboardSidebar() {
   const pathname = usePathname()
@@ -132,14 +138,15 @@ export function DashboardSidebar() {
   const visibleItems = React.useMemo(() => {
     return menuItems.filter(item => {
       if (!canAccess(item.resource)) return false;
-      if (item.subItems) {
-        item.subItems = item.subItems.filter(sub => {
+      const newItem = { ...item };
+      if (newItem.subItems) {
+        newItem.subItems = newItem.subItems.filter(sub => {
           const access = check(item.resource, (sub as any).requiredAction || 'view');
           if (!access.can) return false;
           if ((sub as any).hideIfOwnScope && access.scope === 'own') return false;
           return true;
         });
-        if (item.subItems.length === 0 && item.resource !== 'dashboard') return false;
+        if (newItem.subItems.length === 0 && newItem.resource !== 'dashboard') return false;
       }
       return true;
     });
@@ -199,6 +206,51 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
   const expandedStyle = "bg-gradient-to-br from-[#FFB000] to-[#e87c24] text-white shadow-lg hover:scale-[1.02] transition-all"
 
   if (isCollapsed) {
+    if (item.subItems) {
+      return (
+        <SidebarMenuItem className="flex justify-center">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button 
+                className={cn(
+                  "flex items-center justify-center transition-all duration-300",
+                  "h-[42px] w-[42px] rounded-[12px] outline-none",
+                  isActive 
+                    ? "bg-[#FFF3E0] text-[#e87c24] shadow-sm ring-1 ring-[#e87c24]/10" 
+                    : "text-slate-400 hover:bg-[#FFF3E0] hover:text-[#e87c24]"
+                )}
+              >
+                <item.icon className="h-5 w-5" strokeWidth={2.5} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent 
+              side={isRtl ? "left" : "right"} 
+              align="start" 
+              className="z-[999] min-w-[180px] rounded-xl border-2 shadow-2xl p-2 bg-white"
+            >
+              <div className="px-2 py-1.5 mb-1 border-b">
+                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{item.title}</p>
+              </div>
+              {item.subItems.map((sub: any) => (
+                <DropdownMenuItem key={sub.title} asChild>
+                  <Link 
+                    href={sub.url}
+                    className={cn(
+                      "flex items-center justify-between h-9 rounded-lg px-3 transition-all text-[10px] font-black cursor-pointer",
+                      pathname === sub.url ? "bg-[#FFF3E0] text-[#e87c24]" : "text-slate-600 hover:bg-slate-50"
+                    )}
+                  >
+                    <span>{sub.title}</span>
+                    <sub.icon className="h-3.5 w-3.5 opacity-40" />
+                  </Link>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </SidebarMenuItem>
+      )
+    }
+
     return (
       <SidebarMenuItem className="flex justify-center">
         <TooltipProvider delayDuration={0}>
