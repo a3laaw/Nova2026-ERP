@@ -32,6 +32,7 @@ import {
   ChevronLeft,
   ArrowRight,
   Plus,
+  Settings2,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -80,6 +81,7 @@ type SidebarItem = {
     title: string;
     url: string;
     icon: React.ElementType;
+    permission?: string;
   }[];
 };
 
@@ -164,23 +166,38 @@ export function DashboardSidebar() {
         { title: t('fieldAssets'), url: '/dashboard/inventory', icon: HardHat },
       ],
     },
+    {
+      title: t('settings'),
+      icon: Settings2,
+      url: '/dashboard/settings',
+      resource: 'settings',
+      subItems: [
+        { title: t('companyIdentity'), url: '/dashboard/settings/company', icon: Building2, permission: 'admin' },
+        { title: t('checklists'), url: '/dashboard/settings/checklists', icon: Database, permission: 'ref:view' },
+        { title: t('rolesRef'), url: '/dashboard/settings/roles', icon: ShieldCheck, permission: 'admin' },
+        { title: t('workHours'), url: '/dashboard/settings/work-hours', icon: Clock, permission: 'ref:view' },
+        { title: t('profile'), url: '/dashboard/settings/profile', icon: UserCog, permission: 'public' },
+      ],
+    },
     { title: t('ai'), icon: Sparkles, url: '/dashboard/ai', resource: 'dashboard' },
-  ].filter((item) => !item.resource || canAccess(item.resource)), [t, canAccess]);
-
-  const settingsItems: SidebarItem[] = React.useMemo(() => [
-    { title: t('companyIdentity'), url: '/dashboard/settings/company', icon: Building2, permission: 'admin' },
-    { title: t('checklists'), url: '/dashboard/settings/checklists', icon: Database, permission: 'ref:view' },
-    { title: t('rolesRef'), url: '/dashboard/settings/roles', icon: ShieldCheck, permission: 'admin' },
-    { title: t('workHours'), url: '/dashboard/settings/work-hours', icon: Clock, permission: 'ref:view' },
-    { title: t('profile'), url: '/dashboard/settings/profile', icon: UserCog, permission: 'public' },
   ].filter((item) => {
-    if (item.permission === 'public') return true;
-    if (item.permission === 'admin') return isAdmin;
-    if (item.permission?.includes(':view')) {
-      const mod = item.permission.split(':')[0];
-      return canAccess(mod);
+    if (!item.resource) return true;
+    if (!canAccess(item.resource)) return false;
+    
+    // فلترة العناصر الفرعية داخل الإعدادات بناءً على صلاحيات الأدمن أو غيره
+    if (item.subItems) {
+      item.subItems = item.subItems.filter(sub => {
+        if (!sub.permission || sub.permission === 'public') return true;
+        if (sub.permission === 'admin') return isAdmin;
+        if (sub.permission.includes(':view')) {
+          const mod = sub.permission.split(':')[0];
+          return canAccess(mod);
+        }
+        return isAdmin;
+      });
     }
-    return isAdmin;
+    
+    return true;
   }), [t, canAccess, isAdmin]);
 
   return (
@@ -210,19 +227,6 @@ export function DashboardSidebar() {
           )}
           <SidebarMenu className="gap-2">
             {menuItems.map((item) => (
-              <SidebarNavItem key={item.title} item={item} pathname={pathname} isCollapsed={isCollapsed} isRtl={isRtl} />
-            ))}
-          </SidebarMenu>
-        </SidebarGroup>
-
-        <SidebarGroup className="mt-4 p-0">
-          {!isCollapsed && (
-            <SidebarGroupLabel className="mb-2 border-t border-orange-100/30 px-2 pt-4 text-start text-[9px] font-black uppercase tracking-widest text-[#1e1b4b]/40">
-              {isRtl ? 'الإعدادات' : 'Settings'}
-            </SidebarGroupLabel>
-          )}
-          <SidebarMenu className="gap-2">
-            {settingsItems.map((item) => (
               <SidebarNavItem key={item.title} item={item} pathname={pathname} isCollapsed={isCollapsed} isRtl={isRtl} />
             ))}
           </SidebarMenu>
@@ -260,10 +264,10 @@ function SidebarNavItem({
 
   const isActive = pathname === item.url || (item.url !== '/dashboard' && pathname.startsWith(item.url));
 
-  // الحالة الموسعة: كبسولات برتقالية متدرجة
+  // الكبسولات البرتقالية المتدرجة
   const expandedStyle = "bg-gradient-to-br from-[#FFB000] to-[#e87c24] text-white shadow-lg hover:scale-[1.02] transition-all rounded-full";
   
-  // الحالة المصغرة: كبسولات عمودية بناءً على الصورة
+  // الحالة المصغرة: كبسولات عمودية
   const collapsedActive = "bg-white text-[#e87c24] shadow-xl ring-1 ring-orange-100 rounded-full h-12 w-9 flex items-center justify-center mx-auto";
   const collapsedInactive = "bg-[#FFA000] text-white shadow-md rounded-full h-12 w-9 flex items-center justify-center mx-auto hover:scale-110 transition-transform";
 
