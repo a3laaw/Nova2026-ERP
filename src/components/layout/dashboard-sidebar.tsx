@@ -12,7 +12,8 @@ import {
   ShoppingCart, Sparkles, Clock, ShieldCheck,
   Calendar, FileSpreadsheet, FileText, Package,
   Layers, FileSearch, Truck, Scale,
-  Building2, Database, ChevronLeft, Settings2
+  Building2, Database, ChevronLeft, Settings2,
+  Warehouse
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
@@ -30,6 +31,13 @@ import {
 import {
   Tooltip, TooltipProvider, TooltipTrigger, TooltipContent,
 } from "@/components/ui/tooltip"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu"
 
 export function DashboardSidebar() {
   const pathname = usePathname()
@@ -203,18 +211,63 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
       <SidebarMenuItem className="flex justify-center">
         <TooltipProvider delayDuration={0}>
           <Tooltip>
-            <TooltipTrigger asChild>
-              <Link 
-                href={item.url}
-                className={cn(
-                  "flex h-11 w-24 items-center justify-center transition-all duration-300 rounded-2xl",
-                  isActive ? "bg-white text-[#e87c24] shadow-xl border-2 border-orange-50" : style
-                )}
-              >
-                <item.icon className="h-6 w-6" />
-              </Link>
-            </TooltipTrigger>
-            <TooltipContent side={isRtl ? "left" : "right"} className="bg-[#1e1b4b] text-white font-black text-[10px]">
+            {item.subItems ? (
+              <DropdownMenu>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className={cn(
+                        "flex h-11 w-24 items-center justify-center transition-all duration-300 rounded-2xl outline-none",
+                        isActive ? "bg-white text-[#e87c24] shadow-xl border-2 border-orange-50" : style
+                      )}
+                    >
+                      <item.icon className="h-6 w-6" />
+                    </button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <DropdownMenuContent 
+                  side={isRtl ? "left" : "right"} 
+                  align="start" 
+                  sideOffset={12}
+                  className="w-56 rounded-2xl border-2 border-orange-50 bg-white shadow-2xl p-2 z-[999]"
+                >
+                  <DropdownMenuLabel className="px-4 py-3 text-xs font-black text-[#1e1b4b] border-b mb-1">
+                    {item.title}
+                  </DropdownMenuLabel>
+                  {item.subItems.map((sub: any) => (
+                    <DropdownMenuItem key={sub.title} asChild className="p-0 focus:bg-transparent">
+                      <Link 
+                        href={sub.url}
+                        className={cn(
+                          "flex items-center justify-between h-10 rounded-xl px-4 transition-all text-[11px] font-black w-full mb-1",
+                          pathname === sub.url 
+                            ? "bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white" 
+                            : "text-[#1e1b4b] hover:bg-gradient-to-r hover:from-[#FFF3E0] hover:to-[#FFFDE7] hover:text-[#e87c24]"
+                        )}
+                      >
+                        <span className="truncate">{sub.title}</span>
+                        <sub.icon className={cn("h-3.5 w-3.5", pathname === sub.url ? "opacity-100" : "opacity-30")} />
+                      </Link>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <>
+                <TooltipTrigger asChild>
+                  <Link 
+                    href={item.url}
+                    className={cn(
+                      "flex h-11 w-24 items-center justify-center transition-all duration-300 rounded-2xl",
+                      isActive ? "bg-white text-[#e87c24] shadow-xl border-2 border-orange-50" : style
+                    )}
+                  >
+                    <item.icon className="h-6 w-6" />
+                  </Link>
+                </TooltipTrigger>
+              </>
+            )}
+            <TooltipContent side={isRtl ? "left" : "right"} className="bg-[#1e1b4b] text-white font-black text-[10px] z-[1000]">
               {item.title}
             </TooltipContent>
           </Tooltip>
@@ -228,10 +281,11 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
       {item.subItems ? (
         <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
           <CollapsibleTrigger asChild>
-            <button className={cn("flex items-center transition-all duration-300 rounded-2xl w-full h-11 px-4", style)}>
+            <button className={cn("flex items-center transition-all duration-300 rounded-full w-full h-11 px-4", style)}>
               <div className={cn("flex items-center gap-3 w-full", isRtl ? "flex-row" : "flex-row-reverse")}>
                 <item.icon className="h-5 w-5 shrink-0" />
                 <span className="flex-1 text-start text-xs font-black tracking-tight">{item.title}</span>
+                <ChevronLeft className={cn("h-4 w-4 transition-transform", isExpanded ? "rotate-90" : "rotate-0")} />
               </div>
             </button>
           </CollapsibleTrigger>
@@ -259,7 +313,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
         <Link 
           href={item.url} 
           className={cn(
-            "flex items-center transition-all duration-300 rounded-2xl h-11 px-4", 
+            "flex items-center transition-all duration-300 rounded-full h-11 px-4", 
             isActive ? "bg-white text-[#e87c24] shadow-xl border-2 border-orange-50" : style
           )}
         >
