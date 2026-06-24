@@ -214,26 +214,32 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                     "absolute top-0 z-[999] hidden group-hover:block animate-in fade-in zoom-in-95 duration-200",
                     isRtl ? "right-full mr-2" : "left-full ml-2"
                   )}>
-                    <div className="bg-white border-2 border-orange-100 shadow-2xl rounded-2xl p-2 min-w-[180px] space-y-1">
-                      <p className="px-3 py-2 text-[10px] font-black text-[#e87c24] border-b mb-1 uppercase tracking-widest">{item.title}</p>
-                      {item.subItems.map((sub: any) => (
-                        <Link 
-                          key={sub.title} 
-                          href={sub.url}
-                          className={cn(
-                            "flex items-center justify-between h-9 px-3 rounded-xl text-[11px] font-black transition-all",
-                            pathname === sub.url ? "bg-[#FFFDE7] text-[#e87c24]" : "text-slate-600 hover:bg-gradient-to-r hover:from-[#FFF3E0] hover:to-[#FFFDE7] hover:text-[#e87c24]"
-                          )}
-                        >
-                          <span>{sub.title}</span>
-                          <sub.icon className="h-3.5 w-3.5 opacity-40" />
-                        </Link>
-                      ))}
+                    <div className="bg-white border-2 border-orange-100 shadow-2xl rounded-2xl min-w-[180px] overflow-hidden">
+                      <div className="px-3 py-2 bg-primary/10 border-b mb-2">
+                        <p className="text-[10px] font-black text-primary uppercase tracking-widest">{item.title}</p>
+                      </div>
+                      <div className="p-2 space-y-2">
+                        {item.subItems.map((sub: any) => (
+                          <Link 
+                            key={sub.title} 
+                            href={sub.url}
+                            className={cn(
+                              "flex items-center justify-between h-9 px-3 rounded-xl text-[11px] font-black transition-all shadow-sm border border-slate-50 bg-white",
+                              pathname === sub.url 
+                                ? "bg-[#FFFDE7] text-[#e87c24] border-primary/20" 
+                                : "text-slate-600 hover:bg-gradient-to-r hover:from-[#FFF3E0] hover:to-[#FFFDE7] hover:text-[#e87c24]"
+                            )}
+                          >
+                            <span>{sub.title}</span>
+                            <sub.icon className="h-3.5 w-3.5 opacity-40" />
+                          </Link>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
               </TooltipTrigger>
-              <TooltipContent side={isRtl ? "left" : "right"} className="bg-[#1e1b4b] text-white font-black text-[10px] rounded-full border-0 shadow-2xl">
+              <TooltipContent side={isRtl ? "left" : "right"} className="bg-primary text-white font-black text-[10px] rounded-full border-0 shadow-2xl">
                 {item.title}
               </TooltipContent>
             </Tooltip>
@@ -246,7 +252,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                   <item.icon className="h-6 w-6" />
                 </Link>
               </TooltipTrigger>
-              <TooltipContent side={isRtl ? "left" : "right"} className="bg-[#1e1b4b] text-white font-black text-[10px] rounded-full border-0 shadow-2xl">
+              <TooltipContent side={isRtl ? "left" : "right"} className="bg-primary text-white font-black text-[10px] rounded-full border-0 shadow-2xl">
                 {item.title}
               </TooltipContent>
             </Tooltip>
@@ -300,3 +306,4 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
     </SidebarMenuItem>
   )
 }
+
