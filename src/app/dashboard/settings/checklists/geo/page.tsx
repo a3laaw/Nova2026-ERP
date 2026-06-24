@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -186,7 +187,7 @@ export default function GeoPage() {
                         disabled={loadingAction === `delete_gov_${gov.id}`}
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDeletingId(gov.id!); }}
                       >
-                        {loadingAction === `delete_gov_${gov.id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                       <ChevronRight className={cn("h-4 w-4 ms-2", isRtl && 'rotate-180', selectedGov?.id === gov.id && 'text-primary')} />
                     </div>
@@ -248,7 +249,7 @@ export default function GeoPage() {
                             disabled={loadingAction === `delete_area_${area.id}`}
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDeletingId(area.id!); }}
                            >
-                            {loadingAction === `delete_area_${area.id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                            <Trash2 className="h-4 w-4" />
                            </Button>
                         </div>
                       </div>
@@ -261,7 +262,6 @@ export default function GeoPage() {
         </div>
       </div>
 
-      {/* حوار تأكيد الحذف الموحد */}
       <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
         <AlertDialogContent className="rounded-[2rem] p-8" dir={dir}>
           <AlertDialogHeader>
@@ -270,7 +270,7 @@ export default function GeoPage() {
             </div>
             <AlertDialogTitle className="text-start font-black text-2xl">{t('confirmDelete')}</AlertDialogTitle>
             <AlertDialogDescription className="text-start font-bold">
-              {isRtl ? 'هل أنت متأكد؟ سيؤدي حذف المحافظة إلى حذف كافة المناطق التابعة لها نهائياً.' : 'Are you sure? Deleting a governorate will remove all its areas permanently.'}
+              {isRtl ? 'هل أنت متأكد؟ سيؤدي هذا لحذف السجل نهائياً.' : 'Are you sure? This will permanently delete the record.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-8 gap-4">
@@ -293,3 +293,4 @@ export default function GeoPage() {
     </div>
   );
 }
+

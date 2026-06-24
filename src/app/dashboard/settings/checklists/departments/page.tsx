@@ -45,6 +45,7 @@ export default function DepartmentsPage() {
   const [selectedDept, setSelectedDept] = useState<Department | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   
   const [isDeptOpen, setIsDeptOpen] = useState(false);
   const [isJobOpen, setIsJobOpen] = useState(false);
@@ -64,7 +65,6 @@ export default function DepartmentsPage() {
     companyId && db && selectedDept?.id ? query(collection(db, paths.jobs(companyId, selectedDept.id)), orderBy('order')) : null, 
   [db, companyId, selectedDept]);
 
-  // استعلام جلب الأدوار (Roles) للربط مع الوظائف
   const rolesQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.roles(companyId)), orderBy('order')) : null, 
   [db, companyId]);
@@ -106,6 +106,31 @@ export default function DepartmentsPage() {
       setIsJobOpen(false);
     } finally {
       setLoadingAction(null);
+    }
+  };
+
+  const handleDeleteDept = async (id: string) => {
+    if (!deptService) return;
+    setLoadingAction(`delete_dept_${id}`);
+    try {
+      await deptService.deleteDepartment(id);
+      if (selectedDept?.id === id) setSelectedDept(null);
+      toast({ title: t('deleted') });
+    } finally {
+      setLoadingAction(null);
+      setDeletingId(null);
+    }
+  };
+
+  const handleDeleteJob = async (jobId: string) => {
+    if (!deptService || !selectedDept?.id) return;
+    setLoadingAction(`delete_job_${jobId}`);
+    try {
+      await deptService.deleteJob(selectedDept.id, jobId);
+      toast({ title: t('deleted') });
+    } finally {
+      setLoadingAction(null);
+      setDeletingId(null);
     }
   };
 
@@ -164,6 +189,15 @@ export default function DepartmentsPage() {
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDeptForm(dept); setIsDeptOpen(true); }}>
                         <Edit3 className="h-4 w-4" />
                       </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-destructive"
+                        disabled={loadingAction === `delete_dept_${dept.id}`}
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDeletingId(dept.id!); }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                       <ChevronRight className={cn("h-4 w-4 ms-2", isRtl && 'rotate-180', selectedDept?.id === dept.id && 'text-primary')} />
                     </div>
                   </div>
@@ -192,7 +226,6 @@ export default function DepartmentsPage() {
                         <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={jobForm.nameEn || ''} onChange={e => setJobForm({...jobForm, nameEn: e.target.value})} className="text-start" dir="ltr" /></div>
                       </div>
                       
-                      {/* ميزة الربط الجديدة: ربط الوظيفة بدور أمني */}
                       <div className="p-6 bg-primary/5 rounded-2xl border-2 border-primary/10 space-y-4">
                          <div className="flex items-center gap-2 text-primary font-black text-xs uppercase tracking-widest">
                             <ShieldCheck className="h-4 w-4" /> {isRtl ? 'ربط الصلاحيات (الدور الأمني)' : 'Security Permissions Link'}
@@ -207,9 +240,6 @@ export default function DepartmentsPage() {
                                ))}
                             </SelectContent>
                          </Select>
-                         <p className="text-[9px] text-slate-400 font-bold italic">
-                            {isRtl ? '* ملاحظة: أي موظف يتم تعيينه في هذه الوظيفة سيرث هذه الصلاحيات تلقائياً.' : '* Any employee hired for this job will automatically inherit these permissions.'}
-                         </p>
                       </div>
                     </div>
                     <DialogFooter className="mt-6">
@@ -242,6 +272,15 @@ export default function DepartmentsPage() {
                            <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setJobForm(job); setIsJobOpen(true); }}>
                              <Edit3 className="h-4 w-4" />
                            </Button>
+                           <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-destructive"
+                            disabled={loadingAction === `delete_job_${job.id}`}
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDeletingId(job.id!); }}
+                           >
+                            <Trash2 className="h-4 w-4" />
+                           </Button>
                         </div>
                       </div>
                     ))}
@@ -252,6 +291,36 @@ export default function DepartmentsPage() {
           </Card>
         </div>
       </div>
+
+      <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
+        <AlertDialogContent className="rounded-[2rem] p-8" dir={dir}>
+          <AlertDialogHeader>
+            <div className="mx-auto w-16 h-16 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mb-4">
+               <AlertTriangle className="h-8 w-8" />
+            </div>
+            <AlertDialogTitle className="text-start font-black text-2xl">{t('confirmDelete')}</AlertDialogTitle>
+            <AlertDialogDescription className="text-start font-bold">
+              {isRtl ? 'هل أنت متأكد من الحذف؟ سيتم إزالة السجل نهائياً من النظام.' : 'Are you sure? This will permanently remove the record.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-8 gap-4">
+            <AlertDialogCancel className="rounded-xl h-12 font-bold border-2">{isRtl ? 'إلغاء' : 'Cancel'}</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                if (deletingId) {
+                  const isDept = departments?.some(d => d.id === deletingId);
+                  if (isDept) handleDeleteDept(deletingId);
+                  else handleDeleteJob(deletingId);
+                }
+              }}
+              className="rounded-xl h-12 font-black bg-rose-600 hover:bg-rose-700 text-white px-8"
+            >
+              {isRtl ? 'نعم، احذف' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
+
