@@ -75,6 +75,7 @@ export const paths = {
   quotations: (companyId: string) => getTenantPath(companyId, 'quotations'),
   contracts: (companyId: string) => getTenantPath(companyId, 'contracts'),
   boqs: (companyId: string) => getTenantPath(companyId, 'boqs'),
+  boqItems: (companyId: string, boqId: string) => `${getTenantPath(companyId, 'boqs')}/${boqId}/items`,
 
   // المشاريع والفرص
   projects: (companyId: string) => getTenantPath(companyId, 'projects'),

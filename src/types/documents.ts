@@ -3,7 +3,7 @@
  */
 
 import { BaseReference } from './reference';
-import { PricingMode, MeasurementMode, QuotationItem, BOQSection, BOQItem, ContractMilestone } from './templates';
+import { PricingMode, MeasurementMode, QuotationItem, ContractMilestone } from './templates';
 
 export type DocumentStatus = 'draft' | 'sent' | 'approved' | 'rejected' | 'active' | 'completed' | 'cancelled';
 
@@ -40,9 +40,46 @@ export interface Contract extends BaseDocument {
   contractType?: string;
 }
 
+/**
+ * بند المقايسة الفعلي (Runtime BOQ Item)
+ */
+export interface BOQItem extends BaseReference {
+  id: string;
+  boqId: string;
+  workItemMasterId?: string;
+  sectionId: string;
+  sectionName: string;
+  mainCategoryId: string;
+  mainCategoryName: string;
+  componentId: string;
+  componentName: string;
+  itemCode?: string;
+  description: string;
+  unit: string;
+  unitTypeId?: string;
+  unitSymbol?: string;
+  plannedQuantity: number;
+  executedQuantity: number;
+  estimatedRate?: number;
+  estimatedCostRate?: number;
+  actualRate?: number;
+  notes?: string;
+  technicalStageId?: string;
+  billingTriggerGroup?: string;
+  materialCodes: string[];
+  order: number;
+}
+
+/**
+ * مستند المقايسة الفعلي (Runtime BOQ Document)
+ */
 export interface BOQ extends BaseDocument {
+  boqNumber: string;
   name: string;
-  sections: BOQSection[];
-  items: BOQItem[];
+  description?: string;
+  templateName?: string;
+  activityTypeId?: string;
+  serviceId?: string;
+  subServiceId?: string;
   measurementMode: MeasurementMode;
 }
