@@ -1,6 +1,5 @@
 /**
  * @fileOverview البيانات المرجعية الأساسية لنظام Nova ERP (النموذج الهندسي الكويتي).
- * تم تحديثها لتشمل القوائم الموحدة وقاموس بنود العمل السيادي.
  */
 
 export const SEED_DATA = {
@@ -125,69 +124,5 @@ export const SEED_DATA = {
     { code: 'EQUIPMENT', name: 'معدات', nameEn: 'Equipment' },
     { code: 'SUB_CON', name: 'مقاول باطن', nameEn: 'Sub-Contractor' },
     { code: 'INDIRECT', name: 'مصاريف غير مباشرة', nameEn: 'Indirect Costs' },
-  ],
-
-  // قاموس بنود العمل السيادي (Master Work Items)
-  boqWorkItemsMaster: [
-    {
-      code: 'EXC-001',
-      name: 'حفريات القواعد والأساسات',
-      nameEn: 'Foundation Excavation',
-      sectionId: 'CIVIL',
-      sectionName: 'الأعمال المدنية',
-      mainCategoryId: 'EARTH_WORKS',
-      mainCategoryName: 'أعمال التربة',
-      componentId: 'EXCAVATION',
-      componentName: 'حفريات',
-      unitName: 'متر مكعب',
-      unitSymbol: 'CUM',
-      lastPurchaseRate: 2.500,
-      description: 'حفر في كافة أنواع التربة للأساسات والميد حسب المخططات.'
-    },
-    {
-      code: 'CON-001',
-      name: 'خرسانة مسلحة للقواعد',
-      nameEn: 'Reinforced Concrete Foundation',
-      sectionId: 'CIVIL',
-      sectionName: 'الأعمال المدنية',
-      mainCategoryId: 'CONCRETE_WORKS',
-      mainCategoryName: 'أعمال الخرسانة',
-      componentId: 'RC_FOUNDATION',
-      componentName: 'قواعد مسلحة',
-      unitName: 'متر مكعب',
-      unitSymbol: 'CUM',
-      lastPurchaseRate: 115.000,
-      description: 'صب خرسانة مسلحة عيار 350 كجم/سم2 للقواعد والأساسات.'
-    },
-    {
-      code: 'BLK-001',
-      name: 'بناء طابوق أسود 20 سم',
-      nameEn: 'Black Block Masonry 20cm',
-      sectionId: 'ARCH',
-      sectionName: 'الأعمال المعمارية',
-      mainCategoryId: 'MASONRY_WORKS',
-      mainCategoryName: 'أعمال المباني',
-      componentId: 'PARTITIONS',
-      componentName: 'قواطع داخلية',
-      unitName: 'متر مربع',
-      unitSymbol: 'SQM',
-      lastPurchaseRate: 8.500,
-      description: 'بناء قواطع طابوق أسود عازل أو مصمت حسب المواصفات.'
-    },
-    {
-      code: 'PLST-001',
-      name: 'أعمال المساح الداخلي',
-      nameEn: 'Internal Plastering',
-      sectionId: 'ARCH',
-      sectionName: 'الأعمال المعمارية',
-      mainCategoryId: 'FINISHING_WORKS',
-      mainCategoryName: 'أعمال التشطيبات',
-      componentId: 'WALL_FINISH',
-      componentName: 'تشطيب جدران',
-      unitName: 'متر مربع',
-      unitSymbol: 'SQM',
-      lastPurchaseRate: 3.250,
-      description: 'تنفيذ مساح أسمنتي ناعم للأسطح الداخلية.'
-    }
   ]
 };

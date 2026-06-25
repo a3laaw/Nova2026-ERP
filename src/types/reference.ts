@@ -27,7 +27,7 @@ export interface BaseReferenceList extends BaseReference {
 
 export interface UnitType extends BaseReferenceList {
   symbol?: string;
-  category?: string; // (e.g., weight, area, volume, count)
+  category?: string; 
 }
 
 export interface PaymentMethod extends BaseReferenceList {}
@@ -121,7 +121,7 @@ export interface Area extends BaseReference {
 }
 
 /**
- * --- المرجع الشجري الديناميكي الموحد لبنود BOQ (Source of Truth) ---
+ * --- المرجع الشجري الديناميكي الموحد لبنود BOQ (Single Source of Truth) ---
  */
 export type BOQNodeRole = 'group' | 'work_item';
 

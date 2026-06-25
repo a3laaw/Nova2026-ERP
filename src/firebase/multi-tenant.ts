@@ -46,7 +46,7 @@ export const paths = {
   // المخازن والمخزون
   warehouses: (companyId: string) => getTenantPath(companyId, 'warehouses'),
   inventoryItems: (companyId: string) => getTenantPath(companyId, 'inventoryItems'),
-  inventoryTransactions: (companyId: string) => getTenantPath(companyId, 'inventoryTransactions'), // حركات الصرف والاستلام
+  inventoryTransactions: (companyId: string) => getTenantPath(companyId, 'inventoryTransactions'), 
   assetAssignments: (companyId: string) => getTenantPath(companyId, 'assetAssignments'),
 
   // الموردين (المشتريات)
@@ -65,11 +65,8 @@ export const paths = {
   transactionComments: (companyId: string, tId: string) => `${getTenantPath(companyId, 'transactions')}/${tId}/comments`,
   stageComments: (companyId: string, tId: string, sId: string) => `${getTenantPath(companyId, 'transactions')}/${tId}/stageInstances/${sId}/comments`,
 
-  // المرجع الشجري الديناميكي الجديد لبنود BOQ
+  // المرجع الشجري الديناميكي الموحد لبنود BOQ (Single Source of Truth)
   boqReferenceNodes: (companyId: string) => getTenantPath(companyId, 'boqReferenceNodes'),
-
-  // قاموس بنود العمل السيادي (القديم - سيتم ترحيله للموديل الجديد)
-  boqWorkItemsMaster: (companyId: string) => getTenantPath(companyId, 'boqWorkItemsMaster'),
 
   // مكتبة القوالب (Template Library)
   quotationTemplates: (companyId: string) => getTenantPath(companyId, 'quotationTemplates'),

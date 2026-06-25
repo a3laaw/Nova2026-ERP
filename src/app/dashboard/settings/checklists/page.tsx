@@ -17,6 +17,7 @@ import { SeedTool } from './seed-tool';
 /**
  * محطة الإعدادات الفنية (Technical Setup Hub)
  * تم توحيد إدارة القاموس الهندسي في "شجرة الأعمال" (BOQNodesPage).
+ * تم حذف التبويب القديم لضمان نظافة المعمارية.
  */
 export default function TechnicalSetupPage() {
   const { t, lang, dir } = useLanguage();
@@ -39,7 +40,7 @@ export default function TechnicalSetupPage() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" dir={dir}>
         <div className="overflow-x-auto pb-4 scrollbar-hide">
-          <TabsList className="flex w-fit min-w-full md:min-w-0 md:grid md:grid-cols-6 h-16 bg-white border border-primary/10 rounded-xl p-1.5 shadow-sm gap-2">
+          <TabsList className="flex w-fit min-w-full md:min-w-0 md:grid md:grid-cols-5 h-16 bg-white border border-primary/10 rounded-xl p-1.5 shadow-sm gap-2">
             <TabsTrigger 
               value="general" 
               className="tab-sovereign rounded-lg font-black gap-2 transition-all data-[state=active]:bg-[#F57C00] data-[state=active]:text-white data-[state=active]:shadow-lg flex items-center justify-center px-6 h-full"
@@ -70,12 +71,6 @@ export default function TechnicalSetupPage() {
             >
               <MapPin className="h-4 w-4" /> {t('geoRef')}
             </TabsTrigger>
-            <TabsTrigger 
-              value="setup" 
-              className="tab-sovereign rounded-lg font-black gap-2 transition-all data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-lg flex items-center justify-center px-6 h-full"
-            >
-              <Settings2 className="h-4 w-4" /> {t('systemSetup')}
-            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -97,10 +92,6 @@ export default function TechnicalSetupPage() {
 
         <TabsContent value="geo" className="mt-8">
            <GeoPage />
-        </TabsContent>
-
-        <TabsContent value="setup" className="mt-8 max-w-4xl mx-auto">
-           <SeedTool />
         </TabsContent>
       </Tabs>
     </div>
