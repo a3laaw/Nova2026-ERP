@@ -55,6 +55,7 @@ export async function analyzeSupplierQuotes(input: AnalyzeSupplierQuotesInput): 
 
 const analyzeSupplierQuotesPrompt = ai.definePrompt({
   name: 'analyzeSupplierQuotesPrompt',
+  model: 'googleai/gemini-1.5-flash',
   input: { schema: AnalyzeSupplierQuotesInputSchema },
   output: { schema: AnalyzeSupplierQuotesOutputSchema },
   prompt: `You are an expert purchasing manager responsible for analyzing supplier quotations. Your goal is to extract key details from each quote and then provide a comprehensive comparison, highlighting significant differences and recommending the best option.

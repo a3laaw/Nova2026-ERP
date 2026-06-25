@@ -34,14 +34,10 @@ const AnalyzeEmployeeDocOutputSchema = z.object({
 });
 export type AnalyzeEmployeeDocOutput = z.infer<typeof AnalyzeEmployeeDocOutputSchema>;
 
-// Wrapper function to call the flow
-export async function analyzeEmployeeDoc(input: AnalyzeEmployeeDocInput): Promise<AnalyzeEmployeeDocOutput> {
-  return analyzeEmployeeDocFlow(input);
-}
-
 // Genkit Prompt Definition
 const analyzeEmployeeDocPrompt = ai.definePrompt({
   name: 'analyzeEmployeeDocPrompt',
+  model: 'googleai/gemini-1.5-flash',
   input: {schema: AnalyzeEmployeeDocInputSchema},
   output: {schema: AnalyzeEmployeeDocOutputSchema},
   prompt: `You are an AI HR assistant specialized in analyzing employee documents. Your task is to extract key information from the provided document and present it in a structured JSON format based on the output schema provided.
@@ -50,6 +46,11 @@ If a piece of information is not found, return an empty string or omit the field
 
 Document: {{media url=documentDataUri}}`,
 });
+
+// Wrapper function to call the flow
+export async function analyzeEmployeeDoc(input: AnalyzeEmployeeDocInput): Promise<AnalyzeEmployeeDocOutput> {
+  return analyzeEmployeeDocFlow(input);
+}
 
 // Genkit Flow Definition
 const analyzeEmployeeDocFlow = ai.defineFlow(

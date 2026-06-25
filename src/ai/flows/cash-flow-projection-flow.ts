@@ -59,6 +59,7 @@ export async function generateCashFlowProjection(input: GenerateCashFlowProjecti
 
 const cashFlowProjectionPrompt = ai.definePrompt({
   name: 'cashFlowProjectionPrompt',
+  model: 'googleai/gemini-1.5-flash',
   input: { schema: GenerateCashFlowProjectionInputSchema },
   output: { schema: GenerateCashFlowProjectionOutputSchema },
   prompt: `You are an expert financial manager specializing in construction and engineering firms.

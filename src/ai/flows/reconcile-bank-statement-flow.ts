@@ -54,6 +54,7 @@ export async function reconcileBankStatement(input: ReconcileBankStatementInput)
 // Genkit Prompt definition
 const reconcileBankStatementPrompt = ai.definePrompt({
   name: 'reconcileBankStatementPrompt',
+  model: 'googleai/gemini-1.5-flash',
   input: { schema: ReconcileBankStatementInputSchema },
   output: { schema: ReconcileBankStatementOutputSchema },
   prompt: `You are an expert accountant specializing in bank reconciliation. Your task is to compare bank statement entries with general ledger entries and identify matches, as well as highlight any discrepancies.

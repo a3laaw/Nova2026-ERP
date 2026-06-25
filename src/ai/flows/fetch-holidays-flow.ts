@@ -28,8 +28,12 @@ export type FetchHolidaysOutput = z.infer<typeof FetchHolidaysOutputSchema>;
 
 const fetchHolidaysPrompt = ai.definePrompt({
   name: 'fetchHolidaysPrompt',
+  model: 'googleai/gemini-1.5-flash',
   input: { schema: FetchHolidaysInputSchema },
   output: { schema: FetchHolidaysOutputSchema },
+  config: {
+    temperature: 0.1,
+  },
   prompt: `You are a high-precision administrative assistant for NovaFlow ERP.
   
   TASK:
@@ -54,7 +58,6 @@ const fetchHolidaysFlow = ai.defineFlow(
   },
   async (input) => {
     try {
-      // في Genkit 1.x، استدعاء البرومبت المعرف بـ ai.definePrompt يتم مباشرة كدالة
       const { output } = await fetchHolidaysPrompt(input);
 
       if (!output || !output.holidays) {

@@ -15,24 +15,14 @@ const TranslateOutputSchema = z.object({
   translatedText: z.string().describe('النص المترجم'),
 });
 
-export async function translateText(input: z.infer<typeof TranslateInputSchema>) {
-  if (!input.text.trim()) return { translatedText: '' };
-  try {
-    const { output } = await translatePrompt(input);
-    if (!output || !output.translatedText) {
-      return { translatedText: '' };
-    }
-    return { translatedText: output.translatedText.trim() };
-  } catch (error) {
-    console.error("Translation flow error:", error);
-    return { translatedText: '' };
-  }
-}
-
 const translatePrompt = ai.definePrompt({
   name: 'translatePrompt',
+  model: 'googleai/gemini-1.5-flash',
   input: { schema: TranslateInputSchema },
   output: { schema: TranslateOutputSchema },
+  config: {
+    temperature: 0,
+  },
   prompt: `You are a high-precision professional translator for an ERP system.
   
   TASK:
@@ -46,3 +36,17 @@ const translatePrompt = ai.definePrompt({
   
   TEXT: "{{{text}}}"`,
 });
+
+export async function translateText(input: z.infer<typeof TranslateInputSchema>) {
+  if (!input.text.trim()) return { translatedText: '' };
+  try {
+    const { output } = await translatePrompt(input);
+    if (!output || !output.translatedText) {
+      return { translatedText: '' };
+    }
+    return { translatedText: output.translatedText.trim() };
+  } catch (error) {
+    console.error("Translation flow error:", error);
+    return { translatedText: '' };
+  }
+}

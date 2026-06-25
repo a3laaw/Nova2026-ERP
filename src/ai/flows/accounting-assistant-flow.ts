@@ -40,6 +40,7 @@ export async function useAccountingAssistant(input: AccountingAssistantInput): P
 
 const accountingAssistantPrompt = ai.definePrompt({
   name: 'accountingAssistantPrompt',
+  model: 'googleai/gemini-1.5-flash',
   input: { schema: AccountingAssistantInputSchema },
   output: { schema: AccountingAssistantOutputSchema },
   prompt: `You are an expert accountant for Nova ERP. Your task is to assist users by either drafting balanced journal entries for transactions or providing clear accounting advice.
@@ -68,14 +69,13 @@ const accountingAssistantFlow = ai.defineFlow(
     outputSchema: AccountingAssistantOutputSchema,
   },
   async (input) => {
-    // Format the default Chart of Accounts for the prompt context.
     const coaAsString = defaultCoa
       .map((account) => `${account.name} (Type: ${account.type}, Code: ${account.code})`)
       .join('; ');
 
     const { output } = await accountingAssistantPrompt({
       description: input.description,
-      coaAsString: coaAsString, // Pass the formatted COA to the prompt
+      coaAsString: coaAsString,
     });
     return output!;
   }
