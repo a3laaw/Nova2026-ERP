@@ -1,5 +1,5 @@
 /**
- * @fileOverview خدمة التعامل مع Firestore لإعدادات مواعيد العمل.
+ * @fileOverview خدمة التعامل مع Firestore لإعدادات مواعيد العمل التخصصية.
  */
 
 'use client';
@@ -11,7 +11,7 @@ import {
   setDoc, 
   serverTimestamp 
 } from 'firebase/firestore';
-import { WorkHoursSettings } from '@/types/work-hours';
+import { WorkHoursSettings, DailySchedule } from '@/types/work-hours';
 import { format } from 'date-fns';
 
 export const WORK_HOURS_DOC_ID = 'work_hours';
@@ -42,28 +42,24 @@ export class WorkHoursService {
   }
 
   /**
-   * إعدادات افتراضية للشركات الجديدة
+   * إعدادات افتراضية للشركات الجديدة تشمل التخصصات الثلاثة
    */
   getDefaultSettings(): Omit<WorkHoursSettings, 'companyId'> {
+    const commonSchedule: DailySchedule = {
+      mode: 'single',
+      morningStartTime: "08:00",
+      morningEndTime: "13:00",
+      eveningStartTime: "14:00",
+      eveningEndTime: "17:00",
+      slotDurationMinutes: 60,
+      restDurationMinutes: 15,
+      bufferMinutes: 15
+    };
+
     return {
-      general: {
-        mode: 'single',
-        morningStartTime: "08:00",
-        morningEndTime: "13:00",
-        eveningStartTime: "14:00",
-        eveningEndTime: "17:00",
-        slotDurationMinutes: 30,
-        bufferMinutes: 15
-      },
-      architectural: {
-        mode: 'single',
-        morningStartTime: "08:00",
-        morningEndTime: "13:00",
-        eveningStartTime: "14:00",
-        eveningEndTime: "17:00",
-        slotDurationMinutes: 30,
-        bufferMinutes: 15
-      },
+      architectural: { ...commonSchedule },
+      meetingRooms: { ...commonSchedule, slotDurationMinutes: 30, restDurationMinutes: 5 },
+      fieldWork: { ...commonSchedule, mode: 'double', restDurationMinutes: 30 },
       holidays: ["Friday"],
       publicHolidays: [],
       halfDay: {
@@ -81,6 +77,7 @@ export class WorkHoursService {
         eveningStartTime: "20:00",
         eveningEndTime: "23:00",
         slotDurationMinutes: 30,
+        restDurationMinutes: 0,
         bufferMinutes: 0
       }
     };

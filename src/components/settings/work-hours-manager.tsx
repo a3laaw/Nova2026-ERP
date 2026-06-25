@@ -10,7 +10,7 @@ import {
   Clock, Calendar, MoonStar, 
   Loader2, Save, Sun, HardHat,
   Trash2, Zap, Sparkles,
-  CheckCircle2
+  CheckCircle2, Coffee, Users
 } from "lucide-react";
 import { useFirestore } from '@/firebase';
 import { useAuthContext } from '@/context/auth-context';
@@ -86,7 +86,7 @@ export function WorkHoursManager() {
     }
   };
 
-  const updateSchedule = (scope: 'general' | 'architectural', field: keyof DailySchedule, value: any) => {
+  const updateSchedule = (scope: keyof Pick<WorkHoursSettings, 'architectural' | 'meetingRooms' | 'fieldWork'>, field: keyof DailySchedule, value: any) => {
     if (!settings) return;
     setSettings({
       ...settings,
@@ -103,7 +103,7 @@ export function WorkHoursManager() {
 
   if (loading) return <div className="py-20 text-center"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary" /></div>;
 
-  const ScheduleCard = ({ scope, title, icon: Icon, colorClass, bgClass }: { scope: 'general' | 'architectural', title: string, icon: any, colorClass: string, bgClass: string }) => {
+  const ScheduleCard = ({ scope, title, icon: Icon, colorClass, bgClass }: { scope: keyof Pick<WorkHoursSettings, 'architectural' | 'meetingRooms' | 'fieldWork'>, title: string, icon: any, colorClass: string, bgClass: string }) => {
     const sched = settings?.[scope];
     if (!sched) return null;
 
@@ -122,7 +122,7 @@ export function WorkHoursManager() {
                     </CardDescription>
                  </div>
               </div>
-              <Badge className={cn("rounded-lg px-3 py-1 font-black uppercase text-[10px]", isDoubleShift ? "bg-blue-500 text-white" : "bg-primary text-white")}>
+              <Badge className={cn("rounded-lg px-4 py-1.5 font-black uppercase text-[10px]", isDoubleShift ? "bg-blue-500 text-white" : "bg-primary text-white")}>
                  {isDoubleShift ? t('doubleShift') : t('singleShift')}
               </Badge>
            </div>
@@ -172,13 +172,24 @@ export function WorkHoursManager() {
               </div>
            </div>
 
-           <div className="pt-6 border-t flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="space-y-1 flex-1">
-                 <Label className="text-[10px] font-black uppercase text-slate-400">{t('gracePeriod')}</Label>
-                 <Input type="number" value={sched.bufferMinutes} onChange={e => updateSchedule(scope, 'bufferMinutes', Number(e.target.value))} className="w-32 h-12 rounded-xl border-2 font-black text-lg" />
+           <div className="pt-6 border-t grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+              <div className="grid grid-cols-2 gap-4">
+                 <div className="space-y-1">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1">
+                       <Zap className="h-3 w-3" /> {t('gracePeriod')}
+                    </Label>
+                    <Input type="number" value={sched.bufferMinutes} onChange={e => updateSchedule(scope, 'bufferMinutes', Number(e.target.value))} className="h-12 rounded-xl border-2 font-black text-lg" />
+                 </div>
+                 <div className="space-y-1">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1">
+                       <Coffee className="h-3 w-3" /> {t('restDuration')}
+                    </Label>
+                    <Input type="number" value={sched.restDurationMinutes || 0} onChange={e => updateSchedule(scope, 'restDurationMinutes', Number(e.target.value))} className="h-12 rounded-xl border-2 font-black text-lg text-blue-600" />
+                 </div>
               </div>
-              <div className="bg-amber-50 p-5 rounded-3xl border-2 border-amber-100 max-w-sm flex items-start gap-3">
-                 <Zap className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+              
+              <div className="bg-amber-50 p-5 rounded-3xl border-2 border-amber-100 flex items-start gap-3">
+                 <Info className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                  <p className="text-[10px] font-bold text-amber-800 leading-relaxed">
                     {t('smartDetectHint')}
                  </p>
@@ -218,20 +229,27 @@ export function WorkHoursManager() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-1 gap-8">
-        <ScheduleCard 
-           scope="general" 
-           title={t('generalWorkingHours')} 
-           icon={Sun} 
-           colorClass="text-primary" 
-           bgClass="bg-primary/5" 
-        />
+      <div className="grid grid-cols-1 gap-8">
         <ScheduleCard 
            scope="architectural" 
            title={t('architecturalWorkingHours')} 
            icon={HardHat} 
+           colorClass="text-primary" 
+           bgClass="bg-primary/5" 
+        />
+        <ScheduleCard 
+           scope="meetingRooms" 
+           title={t('meetingRoomsWorkingHours')} 
+           icon={Users} 
            colorClass="text-blue-600" 
            bgClass="bg-blue-50/50" 
+        />
+        <ScheduleCard 
+           scope="fieldWork" 
+           title={t('fieldWorkWorkingHours')} 
+           icon={Zap} 
+           colorClass="text-emerald-600" 
+           bgClass="bg-emerald-50/50" 
         />
 
         <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">

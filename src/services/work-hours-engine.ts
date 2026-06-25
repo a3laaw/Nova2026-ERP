@@ -1,5 +1,5 @@
 /**
- * @fileOverview محرك حساب مواعيد العمل (Work Hours Engine).
+ * @fileOverview محرك حساب مواعيد العمل (Work Hours Engine) المطور لدعم الراحة بين المواعيد.
  */
 
 import { format, parse, addMinutes, startOfDay } from 'date-fns';
@@ -11,13 +11,13 @@ import {
 } from '@/types/work-hours';
 
 /**
- * توليد خانات زمنية بين وقتين
+ * توليد خانات زمنية بين وقتين مع احتساب مدة الموعد وفترة الراحة
  */
 export function generateTimeSlots(
   startTime: string, 
   endTime: string, 
   duration: number, 
-  buffer: number
+  rest: number
 ): string[] {
   if (!startTime || !endTime || startTime === endTime) return [];
   
@@ -30,8 +30,11 @@ export function generateTimeSlots(
 
     while (current < end) {
       slots.push(format(current, 'HH:mm'));
-      current = addMinutes(current, duration + buffer);
       
+      // الانتقال للموعد التالي: مدة الموعد + مدة الراحة
+      current = addMinutes(current, duration + rest);
+      
+      // التوقف إذا تجاوزنا وقت نهاية الدوام
       if (addMinutes(current, 0) > end) break;
     }
   } catch (e) {
@@ -61,11 +64,9 @@ export function isWithinRamadan(date: Date, config: WorkHoursSettings['ramadan']
  * التحقق من العطلة (أسبوعية أو رسمية محددة بتاريخ)
  */
 export function isHoliday(date: Date, settings: WorkHoursSettings): boolean {
-  // 1. فحص العطلة الأسبوعية
   const dayName = format(date, 'EEEE') as DayOfWeek;
   if (settings.holidays.includes(dayName)) return true;
 
-  // 2. فحص العطلات الرسمية المحددة بتاريخ
   const dateStr = format(date, 'yyyy-MM-dd');
   return settings.publicHolidays?.some(ph => ph.date === dateStr) || false;
 }
@@ -78,14 +79,14 @@ export function isHalfDay(date: Date, rule: WorkHoursSettings['halfDay']): boole
 }
 
 /**
- * المحرك الرئيسي: بناء خانات اليوم
+ * المحرك الرئيسي: بناء خانات اليوم بناءً على التخصص والراحة
  */
 export function buildDaySlots(
   date: Date, 
   settings: WorkHoursSettings, 
-  scope: 'general' | 'architectural'
+  scope: keyof Pick<WorkHoursSettings, 'architectural' | 'meetingRooms' | 'fieldWork'>
 ): TimeSlotsResult {
-  // 1. فحص العطلة (أسبوعية أو رسمية)
+  
   if (isHoliday(date, settings)) {
     return {
       morningSlots: [],
@@ -94,7 +95,8 @@ export function buildDaySlots(
       isHoliday: true,
       isHalfDay: false,
       isRamadan: false,
-      slotDurationMinutes: settings[scope].slotDurationMinutes
+      slotDurationMinutes: settings[scope].slotDurationMinutes,
+      restDurationMinutes: settings[scope].restDurationMinutes
     };
   }
 
@@ -104,13 +106,12 @@ export function buildDaySlots(
   let morningSlots: string[] = [];
   let eveningSlots: string[] = [];
 
-  // 2. تطبيق منطق رمضان (أولوية قصوى)
   if (inRamadan) {
     morningSlots = generateTimeSlots(
       settings.ramadan.morningStartTime,
       settings.ramadan.morningEndTime,
       settings.ramadan.slotDurationMinutes,
-      settings.ramadan.bufferMinutes
+      settings.ramadan.restDurationMinutes
     );
     
     if (settings.ramadan.mode === 'double') {
@@ -118,7 +119,7 @@ export function buildDaySlots(
         settings.ramadan.eveningStartTime,
         settings.ramadan.eveningEndTime,
         settings.ramadan.slotDurationMinutes,
-        settings.ramadan.bufferMinutes
+        settings.ramadan.restDurationMinutes
       );
     }
     
@@ -129,56 +130,58 @@ export function buildDaySlots(
       isHoliday: false,
       isHalfDay: false,
       isRamadan: true,
-      slotDurationMinutes: settings.ramadan.slotDurationMinutes
+      slotDurationMinutes: settings.ramadan.slotDurationMinutes,
+      restDurationMinutes: settings.ramadan.restDurationMinutes
     };
   }
 
-  // 3. تحديد المواعيد الخام (Default)
-  let schedule: Partial<DailySchedule> = { ...settings[scope] };
+  let schedule: DailySchedule = { ...settings[scope] };
 
-  // 4. تطبيق منطق نصف الدوام
   if (inHalfDay) {
     if (settings.halfDay.mode === 'morning_only') {
       morningSlots = generateTimeSlots(
-        schedule.morningStartTime!,
-        schedule.morningEndTime!,
-        schedule.slotDurationMinutes!,
-        schedule.bufferMinutes!
+        schedule.morningStartTime,
+        schedule.morningEndTime,
+        schedule.slotDurationMinutes,
+        schedule.restDurationMinutes
       );
       eveningSlots = [];
     } else {
       const customEnd = settings.halfDay.endTime;
+      const mEnd = customEnd < schedule.morningEndTime ? customEnd : schedule.morningEndTime;
       
-      const mEnd = customEnd < schedule.morningEndTime! ? customEnd : schedule.morningEndTime!;
       morningSlots = generateTimeSlots(
-        schedule.morningStartTime!,
+        schedule.morningStartTime,
         mEnd,
-        schedule.slotDurationMinutes!,
-        schedule.bufferMinutes!
+        schedule.slotDurationMinutes,
+        schedule.restDurationMinutes
       );
 
-      if (customEnd > schedule.eveningStartTime!) {
+      if (customEnd > schedule.eveningStartTime) {
         eveningSlots = generateTimeSlots(
-          schedule.eveningStartTime!,
+          schedule.eveningStartTime,
           customEnd,
-          schedule.slotDurationMinutes!,
-          schedule.bufferMinutes!
+          schedule.slotDurationMinutes,
+          schedule.restDurationMinutes
         );
       }
     }
   } else {
     morningSlots = generateTimeSlots(
-      schedule.morningStartTime!,
-      schedule.morningEndTime!,
-      schedule.slotDurationMinutes!,
-      schedule.bufferMinutes!
+      schedule.morningStartTime,
+      schedule.morningEndTime,
+      schedule.slotDurationMinutes,
+      schedule.restDurationMinutes
     );
-    eveningSlots = generateTimeSlots(
-      schedule.eveningStartTime!,
-      schedule.eveningEndTime!,
-      schedule.slotDurationMinutes!,
-      schedule.bufferMinutes!
-    );
+    
+    if (schedule.mode === 'double') {
+      eveningSlots = generateTimeSlots(
+        schedule.eveningStartTime,
+        schedule.eveningEndTime,
+        schedule.slotDurationMinutes,
+        schedule.restDurationMinutes
+      );
+    }
   }
 
   return {
@@ -188,6 +191,7 @@ export function buildDaySlots(
     isHoliday: false,
     isHalfDay: inHalfDay,
     isRamadan: false,
-    slotDurationMinutes: schedule.slotDurationMinutes!
+    slotDurationMinutes: schedule.slotDurationMinutes,
+    restDurationMinutes: schedule.restDurationMinutes
   };
 }

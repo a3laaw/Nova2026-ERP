@@ -1,17 +1,18 @@
 /**
- * @fileOverview تعريف واجهات البيانات لنظام مواعيد العمل الرسمي.
+ * @fileOverview تعريف واجهات البيانات لنظام مواعيد العمل الرسمي المطور.
  */
 
 export type DayOfWeek = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
 
 export interface DailySchedule {
-  mode: 'single' | 'double'; // جديد: تحديد نوع الدوام
+  mode: 'single' | 'double'; 
   morningStartTime: string; // HH:mm
   morningEndTime: string;
   eveningStartTime: string;
   eveningEndTime: string;
-  slotDurationMinutes: number;
-  bufferMinutes: number;
+  slotDurationMinutes: number; // مدة الموعد/البند
+  restDurationMinutes: number; // مدة الراحة بين المواعيد (جديد)
+  bufferMinutes: number; // فترة السماح في البصمة
 }
 
 export interface HalfDayRule {
@@ -30,6 +31,7 @@ export interface RamadanSchedule {
   eveningStartTime: string;
   eveningEndTime: string;
   slotDurationMinutes: number;
+  restDurationMinutes: number;
   bufferMinutes: number;
 }
 
@@ -40,8 +42,9 @@ export interface PublicHoliday {
 }
 
 export interface WorkHoursSettings {
-  general: DailySchedule;
-  architectural: DailySchedule;
+  architectural: DailySchedule; // المعماري
+  meetingRooms: DailySchedule;   // قاعات الاجتماعات
+  fieldWork: DailySchedule;      // العمل الميداني
   holidays: DayOfWeek[];
   publicHolidays: PublicHoliday[];
   halfDay: HalfDayRule;
@@ -59,4 +62,5 @@ export interface TimeSlotsResult {
   isHalfDay: boolean;
   isRamadan: boolean;
   slotDurationMinutes: number;
+  restDurationMinutes: number;
 }
