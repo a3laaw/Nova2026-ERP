@@ -10,7 +10,8 @@ import {
   Clock, Calendar, MoonStar, 
   Loader2, Save, Sun, HardHat,
   Trash2, Zap, Sparkles,
-  CheckCircle2, Coffee, Users
+  CheckCircle2, Coffee, Users,
+  Info
 } from "lucide-react";
 import { useFirestore } from '@/firebase';
 import { useAuthContext } from '@/context/auth-context';
