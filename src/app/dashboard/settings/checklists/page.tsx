@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Database, Building2, MapPin, Workflow, Settings2,
-  ListTree
+  ListTree, FolderTree
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useRouter } from 'next/navigation';
@@ -15,6 +15,7 @@ import DepartmentsPage from './departments/page';
 import GeoPage from './geo/page';
 import TechnicalPathsPage from './technical-paths/page';
 import GeneralListsPage from './general-lists/page';
+import BOQMasterPage from './boq-master/page';
 import { SeedTool } from './seed-tool';
 
 export default function TechnicalSetupPage() {
@@ -39,12 +40,18 @@ export default function TechnicalSetupPage() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" dir={dir}>
         <div className="overflow-x-auto pb-4 scrollbar-hide">
-          <TabsList className="flex w-fit min-w-full md:min-w-0 md:grid md:grid-cols-5 h-16 bg-white border border-primary/10 rounded-xl p-1.5 shadow-sm gap-2">
+          <TabsList className="flex w-fit min-w-full md:min-w-0 md:grid md:grid-cols-6 h-16 bg-white border border-primary/10 rounded-xl p-1.5 shadow-sm gap-2">
             <TabsTrigger 
               value="general" 
               className="tab-sovereign rounded-lg font-black gap-2 transition-all data-[state=active]:bg-[#F57C00] data-[state=active]:text-white data-[state=active]:shadow-lg flex items-center justify-center px-6 h-full"
             >
               <ListTree className="h-4 w-4" /> {t('referenceLists')}
+            </TabsTrigger>
+            <TabsTrigger 
+              value="boq_master" 
+              className="tab-sovereign rounded-lg font-black gap-2 transition-all data-[state=active]:bg-[#F57C00] data-[state=active]:text-white data-[state=active]:shadow-lg flex items-center justify-center px-6 h-full"
+            >
+              <FolderTree className="h-4 w-4" /> {isRtl ? 'قاموس الأعمال' : 'BOQ Master'}
             </TabsTrigger>
             <TabsTrigger 
               value="org" 
@@ -75,6 +82,10 @@ export default function TechnicalSetupPage() {
 
         <TabsContent value="general" className="mt-8">
           <GeneralListsPage />
+        </TabsContent>
+
+        <TabsContent value="boq_master" className="mt-8">
+          <BOQMasterPage />
         </TabsContent>
 
         <TabsContent value="org" className="mt-8">
