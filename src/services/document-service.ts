@@ -17,7 +17,7 @@ import {
 import { paths } from '@/firebase/multi-tenant';
 import { BOQTemplate, BOQTemplateItem, QuotationTemplate, ContractTemplate } from '@/types/templates';
 import { Quotation, Contract, BOQ, BOQItem } from '@/types/documents';
-import { Transaction, StageInstance } from '@/types/transaction';
+import { Transaction } from '@/types/transaction';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { ensureActionPermission } from '@/lib/permissions';
@@ -66,57 +66,8 @@ export class DocumentService {
   }
 
   /**
-   * استنساخ عرض سعر من قالب
-   */
-  async instantiateQuotationFromTemplate(templateId: string, transactionId: string, userId: string): Promise<string> {
-    const templateRef = doc(this.db, paths.quotationTemplates(this.companyId), templateId);
-    const transRef = doc(this.db, paths.transactions(this.companyId), transactionId);
-
-    const [templateSnap, transSnap] = await Promise.all([getDoc(templateRef), getDoc(transRef)]);
-
-    if (!templateSnap.exists() || !transSnap.exists()) {
-      throw new Error('MISSING_CONTEXT: القالب أو المعاملة غير موجودة.');
-    }
-
-    const template = templateSnap.data() as QuotationTemplate;
-    const transaction = transSnap.data() as Transaction;
-
-    const docRef = doc(collection(this.db, paths.quotations(this.companyId)));
-    const quotationData: Quotation = {
-      id: docRef.id,
-      transactionId,
-      clientId: transaction.clientId,
-      clientName: transaction.clientName,
-      templateId,
-      name: `${template.name} - ${transaction.transactionNumber}`,
-      introText: template.introText,
-      defaultTerms: template.defaultTerms,
-      validDays: template.validDays || 30,
-      pricingMode: template.pricingMode,
-      items: JSON.parse(JSON.stringify(template.items || [])), // Deep Copy
-      status: 'draft',
-      totalAmount: 0, 
-      version: 1,
-      companyId: this.companyId,
-      createdBy: userId,
-      updatedBy: userId,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    };
-
-    await setDoc(docRef, quotationData).catch(err => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: docRef.path, operation: 'create', requestResourceData: quotationData
-      }));
-      throw err;
-    });
-
-    return docRef.id;
-  }
-
-  /**
-   * استنساخ جدول كميات (BOQ) فعلي من قالب وربطه بالمعاملة أو المشروع
-   * محرك الاستنساخ السيادي - NovaFlow Core
+   * استنساخ جدول كميات (BOQ) فعلي من قالب وربطه بالمعاملة أو المشروع.
+   * يقوم بنسخ كافة البنود وتصفير الإنجاز الفعلي.
    */
   async instantiateBoqFromTemplate(
     templateId: string, 
@@ -143,7 +94,7 @@ export class DocumentService {
     const templateSnap = await getDoc(templateRef);
 
     if (!templateSnap.exists()) {
-      throw new Error('TEMPLATE_NOT_FOUND: القالب غير موجود في النظام.');
+      throw new Error('TEMPLATE_NOT_FOUND: القالب المختار غير موجود في النظام.');
     }
 
     const template = templateSnap.data() as BOQTemplate;
@@ -195,29 +146,35 @@ export class DocumentService {
       const runtimeItem: BOQItem = {
         id: itemRef.id,
         boqId,
-        transactionId: payload.transactionId || '', // الربط المباشر بالمعاملة
-        projectId: payload.projectId || '',         // الربط المباشر بالمشروع
-        workItemMasterId: item.workItemMasterId || '',
-        sectionId: item.sectionId,
-        sectionName: item.sectionName,
-        mainCategoryId: item.mainCategoryId,
-        mainCategoryName: item.mainCategoryName,
-        componentId: item.componentId,
-        componentName: item.componentName,
-        itemCode: item.itemCode || '',
-        description: item.description || item.name || '',
-        unit: item.unit,
-        unitTypeId: item.unitTypeId || '',
-        unitSymbol: item.unitSymbol || '',
+        transactionId: payload.transactionId || '',
+        projectId: payload.projectId || '',
+        
+        // البيانات المرجعية الديناميكية
+        boqReferenceNodeId: item.boqReferenceNodeId,
+        referenceCode: item.referenceCode,
+        referenceTitle: item.referenceTitle,
+        referenceDescription: item.referenceDescription,
+        parentId: item.parentId,
+        ancestorIds: item.ancestorIds || [],
+        ancestorTitles: item.ancestorTitles || [],
+        depth: item.depth || 0,
+
+        // الخصائص الفنية المنسوخة
+        unitTypeId: item.unitTypeId,
+        unitName: item.unitName,
+        unitSymbol: item.unitSymbol,
+        technicalStageId: item.technicalStageId,
+        billingTriggerGroup: item.billingTriggerGroup,
+        allowedItemCategoryIds: item.allowedItemCategoryIds,
+
+        // القيم المخططة والتنفيذية
         plannedQuantity: item.plannedQuantity || 0,
-        executedQuantity: 0, // تصفير الإنجاز الفعلي عند البدء
-        estimatedRate: item.estimatedRate || 0,
-        estimatedCostRate: item.estimatedCostRate || 0,
-        notes: item.notes || '',
-        technicalStageId: item.technicalStageId || '', // الربط بالمرحلة الفنية
-        billingTriggerGroup: item.billingTriggerGroup || '',
-        materialCodes: item.materialCodes || [],
+        executedQuantity: 0, // تصفير دائم عند البداية
+        estimatedRate: item.estimatedRate,
+        estimatedCostRate: item.estimatedCostRate,
+        notes: item.notes,
         order: item.order !== undefined ? item.order : 0,
+        
         companyId: this.companyId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
@@ -232,7 +189,7 @@ export class DocumentService {
       batch.set(timelineRef, {
         transactionId: payload.transactionId,
         type: 'system',
-        content: `تم إنشاء جدول كميات فعلي برقم ${boqNumber} من القالب المرجعي: ${template.name}`,
+        content: `تم إنشاء جدول كميات فعلي برقم ${boqNumber} من القالب: ${template.name}`,
         userId,
         userName,
         companyId: this.companyId,
@@ -249,5 +206,54 @@ export class DocumentService {
       }));
       throw err;
     }
+  }
+
+  /**
+   * استنساخ عرض سعر من قالب
+   */
+  async instantiateQuotationFromTemplate(templateId: string, transactionId: string, userId: string): Promise<string> {
+    const templateRef = doc(this.db, paths.quotationTemplates(this.companyId), templateId);
+    const transRef = doc(this.db, paths.transactions(this.companyId), transactionId);
+
+    const [templateSnap, transSnap] = await Promise.all([getDoc(templateRef), getDoc(transRef)]);
+
+    if (!templateSnap.exists() || !transSnap.exists()) {
+      throw new Error('MISSING_CONTEXT: القالب أو المعاملة غير موجودة.');
+    }
+
+    const template = templateSnap.data() as QuotationTemplate;
+    const transaction = transSnap.data() as Transaction;
+
+    const docRef = doc(collection(this.db, paths.quotations(this.companyId)));
+    const quotationData: Quotation = {
+      id: docRef.id,
+      transactionId,
+      clientId: transaction.clientId,
+      clientName: transaction.clientName,
+      templateId,
+      name: `${template.name} - ${transaction.transactionNumber}`,
+      introText: template.introText,
+      defaultTerms: template.defaultTerms,
+      validDays: template.validDays || 30,
+      pricingMode: template.pricingMode,
+      items: JSON.parse(JSON.stringify(template.items || [])),
+      status: 'draft',
+      totalAmount: 0, 
+      version: 1,
+      companyId: this.companyId,
+      createdBy: userId,
+      updatedBy: userId,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+
+    await setDoc(docRef, quotationData).catch(err => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: docRef.path, operation: 'create', requestResourceData: quotationData
+      }));
+      throw err;
+    });
+
+    return docRef.id;
   }
 }

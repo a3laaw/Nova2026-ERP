@@ -1,5 +1,6 @@
 /**
  * @fileOverview تعريف واجهات البيانات للمستندات الحية (Instantiated Documents).
+ * تم تحديثها لتتوافق مع المرجع الشجري الديناميكي الجديد لبنود BOQ.
  */
 
 import { BaseReference } from './reference';
@@ -42,34 +43,39 @@ export interface Contract extends BaseDocument {
 
 /**
  * بند المقايسة الفعلي (Runtime BOQ Item)
- * تم تحديثه ليشمل transactionId للربط المباشر بالمراحل
+ * تم تحديثه ليدعم النموذج الشجري الديناميكي (Dynamic Tree Structure)
  */
 export interface BOQItem extends BaseReference {
   id: string;
   boqId: string;
-  transactionId?: string; // رابط المعاملة المباشر
-  projectId?: string;     // رابط المشروع
-  workItemMasterId?: string;
-  sectionId: string;
-  sectionName: string;
-  mainCategoryId: string;
-  mainCategoryName: string;
-  componentId: string;
-  componentName: string;
-  itemCode?: string;
-  description: string;
-  unit: string;
+  transactionId?: string;
+  projectId?: string;
+  
+  // البيانات المرجعية المستنسخة من القاموس
+  boqReferenceNodeId: string;
+  referenceCode: string;
+  referenceTitle: string;
+  referenceDescription?: string;
+  parentId?: string | null;
+  ancestorIds: string[];
+  ancestorTitles?: string[];
+  depth: number;
+
+  // الخصائص الفنية
   unitTypeId?: string;
+  unitName?: string;
   unitSymbol?: string;
+  technicalStageId?: string;
+  billingTriggerGroup?: string;
+  allowedItemCategoryIds?: string[];
+
+  // الحقول التنفيذية والمالية
   plannedQuantity: number;
-  executedQuantity: number;
+  executedQuantity: number; // تبدأ دائماً بـ 0 عند الاستنساخ
   estimatedRate?: number;
   estimatedCostRate?: number;
   actualRate?: number;
   notes?: string;
-  technicalStageId?: string; // الرابط الجوهري بالمرحلة الفنية
-  billingTriggerGroup?: string;
-  materialCodes: string[];
   order: number;
 }
 
