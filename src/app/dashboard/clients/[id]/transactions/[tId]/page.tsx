@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,7 @@ import {
   History, ShieldCheck, HardHat, ListChecks, 
   Timer, LayoutGrid, CheckCircle2,
   AlertCircle, Lock, User, Printer, Play, Check, Save,
-  RotateCcw, Plus
+  RotateCcw, Plus, FileSpreadsheet, TrendingUp
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy } from 'firebase/firestore';
@@ -22,6 +21,7 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { Transaction, StageInstance, TransactionTimelineEvent } from '@/types/transaction';
 import { TransactionService } from '@/services/transaction-service';
+import { BOQExecutionService, StageProgressResult } from '@/services/boq-execution-service';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -38,6 +38,7 @@ export default function TransactionDetailsPage() {
   const companyId = globalUser?.companyId;
 
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [stageProgressMap, setStageProgressMap] = useState<Record<string, StageProgressResult>>({});
 
   const viewAccess = check('projects', 'view');
   const canEdit = check('projects', 'edit').can;
@@ -56,10 +57,17 @@ export default function TransactionDetailsPage() {
     return [...rawStages].sort((a, b) => (a.order || 0) - (b.order || 0));
   }, [rawStages]);
 
-  const timelineQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.transactionTimeline(companyId, transactionId)), orderBy('createdAt', 'desc')) : null, 
-  [db, companyId, transactionId]);
-  const { data: timeline, loading: timelineLoading } = useCollection<TransactionTimelineEvent>(timelineQuery);
+  const executionService = useMemo(() => db && companyId ? new BOQExecutionService(db, companyId, permissions) : null, [db, companyId, permissions]);
+
+  // تحديث بيانات التقدم للمراحل برمجياً
+  useEffect(() => {
+    if (executionService && stages.length > 0) {
+      stages.forEach(async (s) => {
+        const res = await executionService.getTechnicalStageProgress(transactionId, s.technicalStageId);
+        setStageProgressMap(prev => ({ ...prev, [s.technicalStageId]: res }));
+      });
+    }
+  }, [executionService, stages, transactionId]);
 
   const transactionService = useMemo(() => 
     db && companyId ? new TransactionService(db, companyId, permissions) : null, 
@@ -100,39 +108,24 @@ export default function TransactionDetailsPage() {
     }
   };
 
-  const handleCompleteStage = async (stageId: string) => {
+  const handleCompleteStage = async (stage: StageInstance) => {
     if (!transactionService || !user) return;
-    setProcessingId(stageId);
+    
+    // فحص الإنجاز الميداني من المقايسة قبل الإكمال
+    const boqProgress = stageProgressMap[stage.technicalStageId];
+    if (boqProgress && !boqProgress.canComplete) {
+      toast({ 
+        variant: "destructive", 
+        title: isRtl ? "إنجاز غير مكتمل" : "Incomplete Progress", 
+        description: boqProgress.reason 
+      });
+      return;
+    }
+
+    setProcessingId(stage.id!);
     try {
-      await transactionService.completeStage(transactionId, stageId, user.uid, user.displayName || 'User');
+      await transactionService.completeStage(transactionId, stage.id!, user.uid, user.displayName || 'User');
       toast({ title: isRtl ? "تم إنجاز المرحلة بنجاح" : "Stage Completed" });
-    } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
-    } finally {
-      setProcessingId(null);
-    }
-  };
-
-  const handleReopenStage = async (stageId: string) => {
-    if (!transactionService || !user) return;
-    setProcessingId(stageId);
-    try {
-      await transactionService.reopenStage(transactionId, stageId, user.uid, user.displayName || 'User');
-      toast({ title: isRtl ? "تم إعادة فتح المرحلة للمراجعة" : "Stage Reopened" });
-    } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
-    } finally {
-      setProcessingId(null);
-    }
-  };
-
-  const handleUpdateCount = async (stage: StageInstance) => {
-    if (!transactionService || !user) return;
-    const newCount = (stage.currentCount || 0) + 1;
-    setProcessingId(`count_${stage.id}`);
-    try {
-      await transactionService.updateStageCount(transactionId, stage.id!, newCount, user.uid, user.displayName || 'User');
-      toast({ title: isRtl ? "تم تحديث الإنجاز" : "Count Updated" });
     } catch (e) {
       toast({ variant: "destructive", title: t('error') });
     } finally {
@@ -172,40 +165,17 @@ export default function TransactionDetailsPage() {
         </div>
 
         <div className="flex gap-3 w-full md:w-auto">
+           <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="flex-1 md:flex-none h-11 px-6 rounded-xl bg-white border-2 font-black text-xs gap-2 text-primary border-primary/20">
+              <FileSpreadsheet className="h-4 w-4" /> {isRtl ? 'تتبع إنجاز المقايسة' : 'BOQ Progress'}
+           </Button>
            <Button variant="outline" size="sm" onClick={() => window.print()} className="flex-1 md:flex-none h-11 px-6 rounded-xl bg-white border-2 font-black text-xs gap-2">
               <Printer className="h-4 w-4" /> {isRtl ? 'طباعة' : 'Print'}
-           </Button>
-           <Button size="sm" className="flex-1 md:flex-none h-11 px-6 rounded-xl bg-primary text-white font-black text-xs shadow-lg shadow-primary/20">
-              {isRtl ? 'إرسال تحديث' : 'Send Update'}
            </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 space-y-8">
-           <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
-              <div className="bg-slate-50/50 p-8 border-b grid grid-cols-1 md:grid-cols-3 gap-8">
-                 <div className="text-start">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'العميل' : 'Client'}</p>
-                    <p className="text-sm font-black text-slate-800">{transaction.clientName}</p>
-                 </div>
-                 <div className="text-start">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'المهندس المسؤول' : 'Engineer'}</p>
-                    <p className="text-sm font-black text-slate-800 flex items-center gap-2">
-                       <HardHat className="h-4 w-4 text-primary" /> {transaction.assignedEngineerName}
-                    </p>
-                 </div>
-                 <div className="text-start">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'تاريخ البدء' : 'Start Date'}</p>
-                    <p className="text-sm font-black text-slate-800 font-mono">{transaction.createdAt?.toDate().toLocaleDateString()}</p>
-                 </div>
-              </div>
-              <CardContent className="p-8 text-start">
-                 <p className="text-[10px] font-black text-slate-400 uppercase mb-2">{isRtl ? 'وصف المتطلبات' : 'Requirements Description'}</p>
-                 <p className="text-slate-600 leading-relaxed italic">{transaction.description || (isRtl ? 'لا يوجد وصف.' : 'No description.')}</p>
-              </CardContent>
-           </Card>
-
            <div className="space-y-6">
               <div className="flex justify-between items-end px-2">
                  <div className="text-start">
@@ -224,10 +194,11 @@ export default function TransactionDetailsPage() {
                  {stages?.map((stage, idx) => {
                     const blocked = isStageBlocked(stage);
                     const predecessors = getRequiredPredecessors(stage);
+                    const boqProgress = stageProgressMap[stage.technicalStageId];
 
                     return (
                       <Card key={stage.id} className={cn(
-                        "border-0 shadow-lg rounded-[2rem] bg-white transition-all overflow-hidden border-s-8",
+                        "border-0 shadow-lg rounded-[2.5rem] bg-white transition-all overflow-hidden border-s-8",
                         stage.status === 'completed' ? 'border-s-emerald-500 opacity-80' : 
                         stage.status === 'in-progress' ? 'border-s-blue-500 ring-4 ring-blue-500/5' : 
                         blocked ? 'border-s-slate-100 opacity-60 bg-slate-50/50' : 'border-s-orange-300'
@@ -236,31 +207,56 @@ export default function TransactionDetailsPage() {
                            <div className="flex items-center gap-6 flex-1 text-start">
                               <div className={cn(
                                  "h-12 w-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-sm border",
-                                 stage.status === 'completed' ? <CheckCircle2 className="h-6 w-6" /> : (idx + 1)
+                                 stage.status === 'completed' ? "bg-emerald-500 text-white" : "bg-white"
                               )}>
                                  {stage.status === 'completed' ? <CheckCircle2 className="h-6 w-6" /> : (idx + 1)}
                               </div>
-                              <div className="space-y-1">
+                              <div className="space-y-1 flex-1">
                                  <div className="flex items-center gap-2">
                                     <h4 className="font-black text-lg text-slate-900 tracking-tight">{stage.name}</h4>
                                     {blocked && <Badge variant="outline" className="text-[7px] font-black bg-slate-100 text-slate-400 border-0 uppercase">Locked</Badge>}
                                  </div>
+                                 
+                                 {boqProgress && boqProgress.linkedItemsCount > 0 && (
+                                   <div className="mt-2 space-y-1.5">
+                                      <div className="flex justify-between text-[9px] font-black uppercase text-slate-400">
+                                         <span className="flex items-center gap-1"><TrendingUp className="h-2.5 w-2.5" /> {isRtl ? 'إنجاز البنود المرتبطة' : 'Linked BOQ Items'}</span>
+                                         <span>{boqProgress.progressPercent}%</span>
+                                      </div>
+                                      <Progress value={boqProgress.progressPercent} className="h-1.5" />
+                                   </div>
+                                 )}
+
                                  {blocked && predecessors.length > 0 && (
-                                   <div className="flex items-center gap-1.5 text-[9px] font-bold text-rose-400 bg-rose-50 px-2 py-0.5 rounded-lg w-fit">
+                                   <div className="flex items-center gap-1.5 text-[9px] font-bold text-rose-400 bg-rose-50 px-2 py-0.5 rounded-lg w-fit mt-2">
                                       <Lock className="h-2 w-2" />
                                       {isRtl ? 'بانتظار:' : 'Requires:'} {predecessors.map(p => p.name).join(', ')}
                                    </div>
                                  )}
-                                 <div className="flex flex-wrap gap-3 mt-1">
-                                    {stage.isNumeric && (
-                                       <div className="flex items-center gap-3">
-                                          <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 text-[10px] font-black border-emerald-100 border gap-1 px-3 py-1">
-                                             <ListChecks className="h-3 w-3" /> {isRtl ? 'الإنجاز:' : 'Qty:'} {stage.currentCount} / {stage.numericTarget}
-                                          </Badge>
-                                       </div>
-                                    )}
-                                 </div>
                               </div>
+                           </div>
+
+                           <div className="flex gap-2 shrink-0">
+                              {stage.status === 'pending' && !blocked && (
+                                 <Button 
+                                   onClick={() => handleStartStage(stage.id!)} 
+                                   disabled={processingId === stage.id}
+                                   className="h-11 px-6 rounded-xl bg-blue-600 text-white font-black text-xs gap-2"
+                                 >
+                                    {processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Play className="h-4 w-4" />}
+                                    {isRtl ? 'بدء العمل' : 'Start'}
+                                 </Button>
+                              )}
+                              {stage.status === 'in-progress' && (
+                                 <Button 
+                                   onClick={() => handleCompleteStage(stage)} 
+                                   disabled={processingId === stage.id}
+                                   className="h-11 px-6 rounded-xl bg-emerald-600 text-white font-black text-xs gap-2"
+                                 >
+                                    {processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Check className="h-4 w-4" />}
+                                    {isRtl ? 'إكمال المرحلة' : 'Complete'}
+                                 </Button>
+                              )}
                            </div>
                         </CardContent>
                       </Card>

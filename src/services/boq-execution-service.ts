@@ -8,24 +8,34 @@ import {
   query, 
   where, 
   serverTimestamp,
+  updateDoc,
   addDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
-import { BOQItem } from '@/types/documents';
+import { BOQItem, BOQ } from '@/types/documents';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 import { ensureActionPermission } from '@/lib/permissions';
 
+export interface ItemProgressResult {
+  plannedQuantity: number;
+  executedQuantity: number;
+  progressPercent: number;
+  remainingQuantity: number;
+  isOverExecuted: boolean;
+}
+
 export interface StageProgressResult {
-  canComplete: boolean;
-  reason?: string;
   linkedItemsCount: number;
   totalPlanned: number;
   totalExecuted: number;
-  percentage: number;
+  progressPercent: number;
+  canComplete: boolean;
+  reason?: string;
 }
 
 /**
- * خدمة الربط التنفيذي بين المقايسات والمراحل (BOQ Execution Service).
- * مسؤولة عن التحقق من الإنجاز الفعلي للبنود المرتبطة بكل مرحلة فنية.
+ * خدمة الربط التنفيذي وتتبع الإنجاز للمقايسات (BOQ Progress Tracking Service).
  */
 export class BOQExecutionService {
   constructor(
@@ -35,81 +45,136 @@ export class BOQExecutionService {
   ) {}
 
   /**
-   * جلب كافة بنود المقايسة المرتبطة بمرحلة فنية معينة داخل معاملة واحدة.
-   * يستخدم Collection Group Query برمجياً عبر الفلترة لتجنب تعقيد الفهارس.
+   * تحديث الكمية المنفذة لبند مقايسة فعلي
    */
-  async getBOQItemsByTechnicalStage(transactionId: string, technicalStageId: string): Promise<BOQItem[]> {
-    // 1. البحث عن المقايسة النشطة للمعاملة
-    const boqsRef = collection(this.db, paths.boqs(this.companyId));
-    const boqQuery = query(boqsRef, where('transactionId', '==', transactionId), where('status', '==', 'active'));
-    const boqSnap = await getDocs(boqQuery);
-    
-    // إذا لم توجد مقايسة نشطة، نبحث في المسودات
-    let finalBoqId = '';
-    if (!boqSnap.empty) {
-      finalBoqId = boqSnap.docs[0].id;
-    } else {
-      const draftQuery = query(boqsRef, where('transactionId', '==', transactionId), where('status', '==', 'draft'));
-      const draftSnap = await getDocs(draftQuery);
-      if (draftSnap.empty) return [];
-      finalBoqId = draftSnap.docs[0].id;
+  async updateBOQItemExecutedQuantity(
+    boqId: string, 
+    itemId: string, 
+    executedQuantity: number, 
+    userId: string,
+    userName: string
+  ) {
+    ensureActionPermission(this.permissions, 'projects:edit');
+
+    if (executedQuantity < 0) {
+      throw new Error('VALUE_NEGATIVE: لا يمكن إدخال كمية منفذة بالسالب.');
     }
 
-    // 2. جلب البنود المرتبطة بالمرحلة الفنية المطلوبة
-    const itemsRef = collection(this.db, paths.boqItems(this.companyId, finalBoqId));
-    const itemsQuery = query(itemsRef, where('technicalStageId', '==', technicalStageId));
-    const itemsSnap = await getDocs(itemsQuery);
+    const itemRef = doc(this.db, paths.boqItems(this.companyId, boqId), itemId);
+    const itemSnap = await getDocs(query(collection(this.db, paths.boqItems(this.companyId, boqId)), where('id', '==', itemId)));
+    
+    if (itemSnap.empty) throw new Error('ITEM_NOT_FOUND');
+    const itemData = itemSnap.docs[0].data() as BOQItem;
 
-    return itemsSnap.docs.map(d => ({ id: d.id, ...d.data() } as BOQItem));
+    const isOver = executedQuantity > itemData.plannedQuantity;
+    
+    const updateData = {
+      executedQuantity,
+      updatedBy: userId,
+      updatedAt: serverTimestamp()
+    };
+
+    await updateDoc(itemRef, updateData).catch(err => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: itemRef.path, operation: 'update', requestResourceData: updateData
+      }));
+      throw err;
+    });
+
+    // تسجيل الحدث في سجل المعاملة (Audit)
+    if (itemData.transactionId) {
+      const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, itemData.transactionId));
+      await addDoc(timelineRef, {
+        transactionId: itemData.transactionId,
+        type: 'numeric_update',
+        content: `تحديث إنجاز البنود: ${itemData.description} -> تم تنفيذ ${executedQuantity} ${itemData.unit} ${isOver ? '(تجاوز للكمية المخططة)' : ''}`,
+        userId,
+        userName,
+        companyId: this.companyId,
+        createdAt: serverTimestamp()
+      });
+    }
+
+    return { success: true, isOverExecuted: isOver };
   }
 
   /**
-   * محرك التحقق من إمكانية إكمال المرحلة بناءً على تقدم الـ BOQ.
-   * يطبق منطق "التحقق الميداني" قبل السماح للمهندس بإغلاق المرحلة.
+   * حساب تقدم بند واحد
    */
-  async canCompleteStageByBOQProgress(transactionId: string, technicalStageId: string): Promise<StageProgressResult> {
-    const items = await this.getBOQItemsByTechnicalStage(transactionId, technicalStageId);
-    
-    if (items.length === 0) {
-      return {
-        canComplete: true, // مسموح بالإكمال إذا لم تكن هناك بنود مرتبطة (مرحلة إدارية مثلاً)
-        linkedItemsCount: 0,
-        totalPlanned: 0,
-        totalExecuted: 0,
-        percentage: 100
-      };
-    }
-
-    const totalPlanned = items.reduce((sum, item) => sum + (item.plannedQuantity || 0), 0);
-    const totalExecuted = items.reduce((sum, item) => sum + (item.executedQuantity || 0), 0);
-    const percentage = totalPlanned > 0 ? (totalExecuted / totalPlanned) * 100 : 0;
-
-    // منطق التحقق: لا يمكن الإكمال إذا لم يتم تنفيذ أي كمية في البنود المرتبطة
-    const hasStartedExecution = totalExecuted > 0;
+  getBOQItemProgress(item: BOQItem): ItemProgressResult {
+    const planned = item.plannedQuantity || 0;
+    const executed = item.executedQuantity || 0;
+    const progress = planned > 0 ? (executed / planned) * 100 : 0;
     
     return {
-      canComplete: hasStartedExecution,
-      reason: hasStartedExecution ? undefined : "لا يمكن إكمال المرحلة لعدم وجود إنجاز فعلي مسجل في بنود المقايسة المرتبطة بها.",
-      linkedItemsCount: items.length,
-      totalPlanned,
-      totalExecuted,
-      percentage: Math.round(percentage * 100) / 100
+      plannedQuantity: planned,
+      executedQuantity: executed,
+      progressPercent: Math.round(progress * 100) / 100,
+      remainingQuantity: Math.max(0, planned - executed),
+      isOverExecuted: executed > planned
     };
   }
 
   /**
-   * توثيق حدث ربط أو تحقق في سجل المعاملة
+   * جلب ملخص تقدم المقايسة بالكامل
    */
-  async logBOQEvent(transactionId: string, content: string, userId: string, userName: string) {
-    const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
-    await addDoc(timelineRef, {
-      transactionId,
-      type: 'system',
-      content,
-      userId,
-      userName,
-      companyId: this.companyId,
-      createdAt: serverTimestamp()
-    });
+  async getBOQProgressSummary(boqId: string) {
+    const itemsSnap = await getDocs(collection(this.db, paths.boqItems(this.companyId, boqId)));
+    const items = itemsSnap.docs.map(d => d.data() as BOQItem);
+
+    const totalPlanned = items.reduce((sum, i) => sum + (i.plannedQuantity || 0), 0);
+    const totalExecuted = items.reduce((sum, i) => sum + (i.executedQuantity || 0), 0);
+    const overallProgress = totalPlanned > 0 ? (totalExecuted / totalPlanned) * 100 : 0;
+
+    return {
+      totalPlanned,
+      totalExecuted,
+      overallProgressPercent: Math.round(overallProgress * 100) / 100,
+      itemsCount: items.length,
+      completedItemsCount: items.filter(i => i.executedQuantity >= i.plannedQuantity).length
+    };
+  }
+
+  /**
+   * جلب تقدم الإنجاز لمرحلة فنية محددة داخل معاملة
+   * تستخدم للتحقق قبل إغلاق المرحلة
+   */
+  async getTechnicalStageProgress(transactionId: string, technicalStageId: string): Promise<StageProgressResult> {
+    // 1. البحث عن المقايسة المرتبطة بالمعاملة
+    const boqsRef = collection(this.db, paths.boqs(this.companyId));
+    const boqQuery = query(boqsRef, where('transactionId', '==', transactionId));
+    const boqSnap = await getDocs(boqQuery);
+    
+    if (boqSnap.empty) {
+      return { linkedItemsCount: 0, totalPlanned: 0, totalExecuted: 0, progressPercent: 100, canComplete: true };
+    }
+
+    const boqId = boqSnap.docs[0].id;
+
+    // 2. جلب البنود المرتبطة بهذه المرحلة
+    const itemsRef = collection(this.db, paths.boqItems(this.companyId, boqId));
+    const itemsQuery = query(itemsRef, where('technicalStageId', '==', technicalStageId));
+    const itemsSnap = await getDocs(itemsQuery);
+
+    if (itemsSnap.empty) {
+      return { linkedItemsCount: 0, totalPlanned: 0, totalExecuted: 0, progressPercent: 100, canComplete: true };
+    }
+
+    const items = itemsSnap.docs.map(d => d.data() as BOQItem);
+    const totalPlanned = items.reduce((sum, i) => sum + (i.plannedQuantity || 0), 0);
+    const totalExecuted = items.reduce((sum, i) => sum + (i.executedQuantity || 0), 0);
+    const progress = totalPlanned > 0 ? (totalExecuted / totalPlanned) * 100 : 0;
+
+    // قاعدة العمل: لا يمكن إغلاق المرحلة إذا كانت هناك بنود مرتبطة ولم يتم البدء في تنفيذها (0%)
+    const canComplete = totalExecuted > 0;
+
+    return {
+      linkedItemsCount: items.length,
+      totalPlanned,
+      totalExecuted,
+      progressPercent: Math.round(progress * 100) / 100,
+      canComplete,
+      reason: canComplete ? undefined : "يجب تسجيل إنجاز فعلي في بند واحد على الأقل من بنود المقايسة المرتبطة بهذه المرحلة قبل إغلاقها."
+    };
   }
 }
