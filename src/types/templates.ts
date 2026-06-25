@@ -79,7 +79,7 @@ export interface ContractTemplate extends BaseTemplate {
  */
 export interface BOQTemplateItem {
   id?: string;
-  workItemMasterId?: string; // رابط للقاموس المرجعي
+  workItemMasterId?: string; // رابط للقاموس المرجعي (Work Item Master)
   sectionId: string;
   sectionName: string;
   mainCategoryId: string;
@@ -91,6 +91,7 @@ export interface BOQTemplateItem {
   description: string;
   unit: string;
   unitSymbol?: string;
+  unitName?: string; // مسمى الوحدة للتأكيد
   unitTypeId?: string;
   plannedQuantity: number;
   executedQuantity: number;

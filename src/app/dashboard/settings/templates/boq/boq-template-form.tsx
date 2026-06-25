@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { 
   Select, 
@@ -15,12 +14,12 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { 
-  Save, X, Plus, Trash2, Loader2, ArrowRight,
+  Save, Plus, Trash2, Loader2, ArrowRight,
   Calculator, DollarSign, AlertTriangle, 
   ChevronRight, LayoutGrid, CheckCircle2,
-  Settings2, Boxes, Hammer, Search, Filter,
-  FileSearch, Archive, Package, FolderTree,
-  ChevronDown, Layers
+  Settings2, Boxes, Hammer, Search, 
+  FileSearch, FolderTree,
+  ChevronDown
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
@@ -53,7 +52,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
 
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<BOQTemplateItem[]>([]);
-  const [masterItems, setMasterItems] = useState<any[]>([]);
+  const [masterNodes, setMasterNodes] = useState<any[]>([]);
   const [templateLoading, setTemplateLoading] = useState(!!template);
   const [isMasterPickerOpen, setIsMasterPickerOpen] = useState(false);
   const [masterSearch, setMasterSearch] = useState("");
@@ -90,19 +89,43 @@ export function BOQTemplateForm({ template, onClose }: Props) {
       });
     }
     if (service) {
-      service.getWorkItemsMaster().then(setMasterItems);
+      service.getWorkItemsMaster().then(setMasterNodes);
     }
   }, [template, service]);
 
+  // محرك فك تشفير الهيكل المرجعي (Hierarchy Resolution)
+  const hydratedWorkItemsMaster = useMemo(() => {
+    const workItems = masterNodes.filter(n => n.nodeType === 'work_item');
+    return workItems.map(item => {
+      const component = masterNodes.find(n => n.id === item.parentId);
+      const category = component ? masterNodes.find(n => n.id === component.parentId) : null;
+      const section = category ? masterNodes.find(n => n.id === category.parentId) : null;
+      
+      return {
+        ...item,
+        sectionId: section?.id || 'UNSET',
+        sectionName: section?.title || 'Unknown Section',
+        mainCategoryId: category?.id || 'UNSET',
+        mainCategoryName: category?.title || 'Unknown Category',
+        componentId: component?.id || 'UNSET',
+        componentName: component?.title || 'Unknown Component',
+        // البحث عن البند الفعلي في الشجرة (لأغراض الفلترة)
+        name: item.title,
+        code: item.code
+      };
+    });
+  }, [masterNodes]);
+
   const boqTree = useMemo(() => transformToBOQTree(items), [items]);
 
-  // تحويل القاموس المرجعي إلى هيكل شجري للاختيار (رقم 2)
+  // بناء شجرة الاختيار المرجعية (Master Tree Explorer)
   const masterTree = useMemo(() => {
-    return transformToBOQTree(masterItems.filter(mi => 
-      mi.name?.toLowerCase().includes(masterSearch.toLowerCase()) || 
+    const filtered = hydratedWorkItemsMaster.filter(mi => 
+      mi.title?.toLowerCase().includes(masterSearch.toLowerCase()) || 
       mi.code?.toLowerCase().includes(masterSearch.toLowerCase())
-    ));
-  }, [masterItems, masterSearch]);
+    );
+    return transformToBOQTree(filtered as any);
+  }, [hydratedWorkItemsMaster, masterSearch]);
 
   const totalItemsCost = useMemo(() => {
     return items.reduce((acc, item) => acc + ((item.plannedQuantity || 0) * (item.estimatedRate || 0)), 0);
@@ -155,22 +178,25 @@ export function BOQTemplateForm({ template, onClose }: Props) {
       mainCategoryName: masterItem.mainCategoryName,
       componentId: masterItem.componentId,
       componentName: masterItem.componentName,
-      itemCode: masterItem.itemCode || masterItem.code,
-      description: masterItem.description || masterItem.name,
-      unit: masterItem.unit || masterItem.unitSymbol || masterItem.unitName || 'pcs',
+      itemCode: masterItem.code,
+      name: masterItem.title,
+      description: masterItem.title,
+      unit: masterItem.unitSymbol || masterItem.unitName || 'pcs',
+      unitName: masterItem.unitName,
+      unitSymbol: masterItem.unitSymbol,
       unitTypeId: masterItem.unitTypeId,
       plannedQuantity: 1,
       executedQuantity: 0,
-      estimatedRate: masterItem.estimatedRate || masterItem.lastPurchaseRate || 0,
+      estimatedRate: masterItem.estimatedRate || 0,
       estimatedCostRate: 0,
-      materialCodes: masterItem.materialCodes || [],
-      technicalStageId: masterItem.technicalStageId,
-      billingTriggerGroup: masterItem.billingTriggerGroup,
+      materialCodes: [],
+      technicalStageId: masterItem.technicalStageId || '',
+      billingTriggerGroup: masterItem.billingTriggerGroup || '',
       order: items.length,
       companyId: companyId!
     };
     setItems([...items, newItem]);
-    toast({ title: isRtl ? "تمت الإضافة للمقايسة" : "Added to BOQ" });
+    toast({ title: isRtl ? "تمت إضافة البند للمقايسة" : "Item Added to BOQ" });
   };
 
   const updateItem = (index: number, field: keyof BOQTemplateItem, value: any) => {
@@ -199,11 +225,11 @@ export function BOQTemplateForm({ template, onClose }: Props) {
           </Button>
           <div className="text-start">
              <h1 className="text-xl font-black font-headline text-slate-900 tracking-tight">{isRtl ? 'هندسة المقايسات القالبية' : 'BOQ Template Engineering'}</h1>
-             <p className="text-[10px] font-bold text-muted-foreground uppercase opacity-70 tracking-widest">Sovereign Tree-Based Item Selection</p>
+             <p className="text-[10px] font-bold text-muted-foreground uppercase opacity-70 tracking-widest">Master Reference Based Selection</p>
           </div>
         </div>
         <div className="flex gap-2">
-           <Button onClick={handleSave} disabled={loading} className="h-10 px-8 rounded-lg text-xs gap-2 shadow-lg bg-[#FFA000] text-white font-black">
+           <Button onClick={handleSave} disabled={loading} className="h-10 px-8 rounded-lg text-xs gap-2 shadow-lg bg-[#FFA000] text-white font-black hover:bg-[#F57C00]">
              {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
              {t('save')}
            </Button>
@@ -216,10 +242,10 @@ export function BOQTemplateForm({ template, onClose }: Props) {
            <div className="bg-slate-50 p-4 border-b flex items-center justify-between">
               <div className="flex items-center gap-2">
                  <Settings2 className="h-4 w-4 text-primary" />
-                 <h3 className="text-sm font-black font-headline text-slate-800">{isRtl ? 'هوية القالب' : 'Template ID'}</h3>
+                 <h3 className="text-sm font-black font-headline text-slate-800">{isRtl ? 'إعدادات القالب' : 'Template Settings'}</h3>
               </div>
               <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-lg border-2">
-                 <Label className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'افتراضي' : 'Default'}</Label>
+                 <Label className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'قالب افتراضي' : 'Default'}</Label>
                  <Switch checked={formData.isDefault || false} onCheckedChange={v => setFormData({...formData, isDefault: v})} className="scale-75" />
               </div>
            </div>
@@ -234,7 +260,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                     <Input value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value.toUpperCase().replace(/\s+/g, '_')})} className="h-10 rounded-xl border-2 font-mono" />
                  </div>
                  <div className="space-y-1.5">
-                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'إجمالي الميزانية (KWD)' : 'Total Budget (KWD)'}</Label>
+                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'إجمالي الميزانية المستهدفة (KWD)' : 'Target Budget (KWD)'}</Label>
                     <Input 
                         type="number" 
                         value={formData.baseAmount || 0} 
@@ -246,7 +272,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 pt-4 border-t border-slate-50">
                  <div className="space-y-1.5">
-                    <Label className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'النشاط' : 'Activity'}</Label>
+                    <Label className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'نوع النشاط' : 'Activity'}</Label>
                     <Select value={formData.activityTypeId} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: ''})}>
                        <SelectTrigger className="h-10 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
                        <SelectContent>
@@ -255,7 +281,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                     </Select>
                  </div>
                  <div className="space-y-1.5">
-                    <Label className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'الخدمة' : 'Service'}</Label>
+                    <Label className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'الخدمة الرئيسية' : 'Service'}</Label>
                     <Select disabled={!formData.activityTypeId} value={formData.serviceId} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: ''})}>
                        <SelectTrigger className="h-10 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
                        <SelectContent>
@@ -281,7 +307,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
            <div className="flex justify-between items-center px-4">
               <div className="text-start">
                  <h3 className="text-lg font-black font-headline flex items-center gap-2 text-slate-800"><LayoutGrid className="h-5 w-5 text-primary" /> {isRtl ? 'هيكلة بنود المقايسة' : 'BOQ Structure'}</h3>
-                 <p className="text-[10px] font-bold text-slate-400 italic">Grouped by Section / Category / Component</p>
+                 <p className="text-[10px] font-bold text-slate-400 italic">Select items from work master dictionary</p>
               </div>
               
               <Dialog open={isMasterPickerOpen} onOpenChange={setIsMasterPickerOpen}>
@@ -300,24 +326,23 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                       <div className="relative z-10 space-y-6">
                          <div>
                             <DialogTitle className="text-3xl font-black font-headline">{isRtl ? 'قاموس بنود العمل الهيكلي' : 'Work Item Master Tree'}</DialogTitle>
-                            <p className="text-slate-400 font-bold mt-2 uppercase text-[10px] tracking-[0.2em]">{isRtl ? 'تصفح وأضف البنود مباشرة من قلب الشجرة المرجعية' : 'Browse and add items directly from the structural core'}</p>
+                            <p className="text-slate-400 font-bold mt-2 uppercase text-[10px] tracking-[0.2em]">{isRtl ? 'تصفح وأضف البنود مباشرة من قلب الشجرة المرجعية' : 'Browse and add items directly from structural dictionary'}</p>
                          </div>
                          
                          <div className="relative group max-w-md">
-                            <div className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#e87c24] transition-colors">
+                            <div className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">
                                <Search className="h-5 w-5" />
                             </div>
                             <Input 
                                value={masterSearch}
                                onChange={e => setMasterSearch(e.target.value)}
                                placeholder={isRtl ? "فلترة البنود داخل الشجرة..." : "Filter items inside tree..."} 
-                               className="ps-12 h-12 rounded-xl bg-white/5 border-white/10 text-white font-bold text-sm focus:bg-white/10 focus:border-[#e87c24] transition-all" 
+                               className="ps-12 h-12 rounded-xl bg-white/5 border-white/10 text-white font-bold text-sm focus:bg-white/10 focus:border-primary transition-all" 
                             />
                          </div>
                       </div>
                    </div>
 
-                   {/* Master Tree Area (Option 2 - Choice Adopted) */}
                    <div className="p-8 max-h-[60vh] overflow-y-auto bg-slate-50/50 scrollbar-hide">
                       {masterTree.length === 0 ? (
                         <div className="py-20 text-center flex flex-col items-center gap-4 opacity-40">
@@ -370,7 +395,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                                                   {comp.children.map((item: any) => (
                                                     <div key={item.id} className="p-3 rounded-xl bg-white border border-slate-100 hover:border-primary/40 hover:shadow-md transition-all flex items-center justify-between group">
                                                        <div className="text-start">
-                                                          <p className="text-[11px] font-black text-slate-800 leading-tight">{item.description}</p>
+                                                          <p className="text-[11px] font-black text-slate-800 leading-tight">{item.title}</p>
                                                           <div className="flex items-center gap-2 mt-1">
                                                              <Badge variant="outline" className="bg-slate-50 text-[8px] font-mono border-slate-200 px-1">{item.code}</Badge>
                                                              <span className="text-[8px] font-bold text-slate-400 uppercase">{item.unitSymbol || item.unitName}</span>
@@ -379,7 +404,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                                                        <Button 
                                                          size="sm" 
                                                          onClick={() => addFromMaster(item)}
-                                                         className="h-8 rounded-lg bg-[#e87c24] hover:bg-[#FFB000] text-white font-black text-[9px] gap-1.5 px-3"
+                                                         className="h-8 rounded-lg bg-primary hover:bg-[#F57C00] text-white font-black text-[9px] gap-1.5 px-3"
                                                        >
                                                           <Plus className="h-3 w-3" /> {isRtl ? 'إضافة' : 'Add'}
                                                        </Button>
@@ -457,7 +482,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                                            <div className="grid grid-cols-4 gap-2 w-full lg:w-[400px]">
                                               <div className="space-y-1">
                                                  <Label className="text-[7px] font-black text-slate-400 uppercase text-center block">Unit</Label>
-                                                 <div className="h-8 flex items-center justify-center bg-slate-50 rounded-lg text-[10px] font-black text-slate-600 border">{item.unit}</div>
+                                                 <div className="h-8 flex items-center justify-center bg-slate-50 rounded-lg text-[10px] font-black text-slate-600 border font-mono">{item.unit}</div>
                                               </div>
                                               <div className="space-y-1">
                                                  <Label className="text-[7px] font-black text-slate-400 uppercase text-center block">Planned Qty</Label>
@@ -516,19 +541,19 @@ export function BOQTemplateForm({ template, onClose }: Props) {
               <div className="text-start">
                  <h4 className="font-black text-lg font-headline flex items-center gap-2">
                     {isMathValid ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : <AlertTriangle className="h-5 w-5 text-rose-600 animate-pulse" />}
-                    {isRtl ? 'حالة التوازن المالي' : 'Financial Status'}
+                    {isRtl ? 'توازن الميزانية' : 'Budget Balance'}
                  </h4>
                  <p className="text-[10px] font-bold opacity-60 leading-relaxed max-w-sm">
                     {isMathValid 
-                      ? (isRtl ? 'المقايسة في حالة توازن مطلق مع الميزانية التقديرية.' : 'Balanced. Template aggregated items match target budget.')
-                      : (isRtl ? `يوجد تباين قدره ${((formData.baseAmount || 0) - totalItemsCost).toFixed(3)} KWD عن ميزانية القالب.` : `Variance of ${((formData.baseAmount || 0) - totalItemsCost).toFixed(3)} KWD detected.`)}
+                      ? (isRtl ? 'المقايسة مطابقة تماماً للميزانية التقديرية للقالب.' : 'Template aggregated items match target budget.')
+                      : (isRtl ? `يوجد تباين بقيمة ${((formData.baseAmount || 0) - totalItemsCost).toFixed(3)} KWD عن ميزانية القالب.` : `Variance of ${((formData.baseAmount || 0) - totalItemsCost).toFixed(3)} KWD detected.`)}
                  </p>
               </div>
            </div>
            
            <Button onClick={handleSave} disabled={loading || !isMathValid} className="h-16 px-12 rounded-2xl bg-[#1e1b4b] text-white font-black text-lg shadow-xl hover:scale-105 transition-all gap-3 mt-6 md:mt-0">
-             {loading ? <Loader2 className="animate-spin" /> : <Save className="h-6 w-6 text-[#FFA000]" />}
-             {isRtl ? 'اعتماد وحفظ القالب' : 'Final Commit'}
+             {loading ? <Loader2 className="animate-spin" /> : <Save className="h-6 w-6 text-primary" />}
+             {isRtl ? 'اعتماد القالب' : 'Final Commit'}
            </Button>
         </div>
       </div>

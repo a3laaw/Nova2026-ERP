@@ -37,12 +37,12 @@ export class TemplateService {
   }
 
   /**
-   * جلب قاموس بنود العمل المرجعي
+   * جلب كافة عقد القاموس المرجعي لبناء الهيكل في الذاكرة
    */
   async getWorkItemsMaster() {
     const q = query(
       collection(this.db, paths.boqWorkItemsMaster(this.companyId)),
-      orderBy('sectionName')
+      orderBy('level') // الترتيب حسب المستوى يسهل عملية بناء الشجرة لاحقاً
     );
     const snap = await getDocs(q);
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
