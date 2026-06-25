@@ -61,10 +61,11 @@ export class BOQExecutionService {
     }
 
     const itemRef = doc(this.db, paths.boqItems(this.companyId, boqId), itemId);
-    const itemSnap = await getDocs(query(collection(this.db, paths.boqItems(this.companyId, boqId)), where('id', '==', itemId)));
     
-    if (itemSnap.empty) throw new Error('ITEM_NOT_FOUND');
-    const itemData = itemSnap.docs[0].data() as BOQItem;
+    // جلب البيانات الحالية للتحقق والتسجيل
+    const itemsSnap = await getDocs(query(collection(this.db, paths.boqItems(this.companyId, boqId)), where('id', '==', itemId)));
+    if (itemsSnap.empty) throw new Error('ITEM_NOT_FOUND');
+    const itemData = itemsSnap.docs[0].data() as BOQItem;
 
     const isOver = executedQuantity > itemData.plannedQuantity;
     
@@ -87,7 +88,7 @@ export class BOQExecutionService {
       await addDoc(timelineRef, {
         transactionId: itemData.transactionId,
         type: 'numeric_update',
-        content: `تحديث إنجاز البنود: ${itemData.description} -> تم تنفيذ ${executedQuantity} ${itemData.unit} ${isOver ? '(تجاوز للكمية المخططة)' : ''}`,
+        content: `تحديث إنجاز البنود: ${itemData.referenceTitle} -> تم تنفيذ ${executedQuantity} ${itemData.unitSymbol || ''} ${isOver ? '(تجاوز للكمية المخططة)' : ''}`,
         userId,
         userName,
         companyId: this.companyId,
@@ -99,7 +100,7 @@ export class BOQExecutionService {
   }
 
   /**
-   * حساب تقدم بند واحد
+   * حساب تقدم بند واحد (Runtime Helper)
    */
   getBOQItemProgress(item: BOQItem): ItemProgressResult {
     const planned = item.plannedQuantity || 0;
@@ -137,7 +138,7 @@ export class BOQExecutionService {
 
   /**
    * جلب تقدم الإنجاز لمرحلة فنية محددة داخل معاملة
-   * تستخدم للتحقق قبل إغلاق المرحلة
+   * تستخدم للتحقق قبل إغلاق المرحلة في TransactionService
    */
   async getTechnicalStageProgress(transactionId: string, technicalStageId: string): Promise<StageProgressResult> {
     // 1. البحث عن المقايسة المرتبطة بالمعاملة
@@ -146,6 +147,7 @@ export class BOQExecutionService {
     const boqSnap = await getDocs(boqQuery);
     
     if (boqSnap.empty) {
+      // إذا لم توجد مقايسة، نسمح بإكمال المرحلة (سلوك افتراضي مرن)
       return { linkedItemsCount: 0, totalPlanned: 0, totalExecuted: 0, progressPercent: 100, canComplete: true };
     }
 
@@ -157,6 +159,7 @@ export class BOQExecutionService {
     const itemsSnap = await getDocs(itemsQuery);
 
     if (itemsSnap.empty) {
+      // لا توجد بنود مرتبطة بهذه المرحلة تحديداً
       return { linkedItemsCount: 0, totalPlanned: 0, totalExecuted: 0, progressPercent: 100, canComplete: true };
     }
 
@@ -165,7 +168,8 @@ export class BOQExecutionService {
     const totalExecuted = items.reduce((sum, i) => sum + (i.executedQuantity || 0), 0);
     const progress = totalPlanned > 0 ? (totalExecuted / totalPlanned) * 100 : 0;
 
-    // قاعدة العمل: لا يمكن إغلاق المرحلة إذا كانت هناك بنود مرتبطة ولم يتم البدء في تنفيذها (0%)
+    // قاعدة العمل السيادية: لا يمكن إغلاق المرحلة إذا كانت هناك بنود مرتبطة ولم يتم البدء في تنفيذها (0%)
+    // يمكنك تشديدها لتكون 100% مستقبلاً
     const canComplete = totalExecuted > 0;
 
     return {
@@ -174,7 +178,7 @@ export class BOQExecutionService {
       totalExecuted,
       progressPercent: Math.round(progress * 100) / 100,
       canComplete,
-      reason: canComplete ? undefined : "يجب تسجيل إنجاز فعلي في بند واحد على الأقل من بنود المقايسة المرتبطة بهذه المرحلة قبل إغلاقها."
+      reason: canComplete ? undefined : "يجب تسجيل إنجاز مادي في بند واحد على الأقل من بنود المقايسة المرتبطة بهذه المرحلة قبل إغلاقها."
     };
   }
 }

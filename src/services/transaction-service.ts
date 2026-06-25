@@ -11,7 +11,8 @@ import {
   collection,
   query,
   orderBy,
-  updateDoc
+  updateDoc,
+  addDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { Transaction, TransactionTimelineEvent, StageInstance } from '@/types/transaction';
@@ -66,7 +67,6 @@ export class TransactionService {
       throw new Error('لا يمكن فتح المعاملة لعدم وجود مراحل عمل معرّفة لهذا المسار في مركز المراجع. يرجى إضافة مراحل للخدمة الفرعية أولاً.');
     }
 
-    // ترتيب برمجياً لضمان الدقة المطلقة (ترتيب هندسي وليس أبجدي)
     const sortedStages = stagesSnap.docs
       .map(d => ({ id: d.id, ...d.data() } as TechnicalStage))
       .sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -75,7 +75,6 @@ export class TransactionService {
     const currentCounter = clientData.transactionCounter || 0;
     const nextCounter = currentCounter + 1;
 
-    // الترقيم المهني المعتمد في NovaFlow (C-FileNum-01)
     const transactionNumber = `${clientData.fileNumber}-${nextCounter.toString().padStart(2, '0')}`;
 
     const batch = writeBatch(this.db);
@@ -105,14 +104,11 @@ export class TransactionService {
     };
 
     batch.set(transRef, transactionData);
-
-    // تحديث عداد العميل
     batch.update(clientRef, {
       transactionCounter: increment(1),
       updatedAt: serverTimestamp()
     });
 
-    // استنساخ مراحل العمل (Instantiation) مع تطهير البيانات والحفاظ على الترتيب
     sortedStages.forEach((stage, idx) => {
       const instanceRef = doc(collection(this.db, paths.transactionStages(this.companyId, transactionId)));
       const instanceData: StageInstance = {
@@ -141,7 +137,6 @@ export class TransactionService {
       batch.set(instanceRef, instanceData);
     });
 
-    // توثيق الافتتاح في سجل الجدول الزمني
     const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
     batch.set(timelineRef, {
       transactionId,
@@ -158,17 +153,12 @@ export class TransactionService {
       return transactionId;
     } catch (err: any) {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: transRef.path,
-        operation: 'write',
-        requestResourceData: transactionData
+        path: transRef.path, operation: 'write', requestResourceData: transactionData
       }));
       throw err;
     }
   }
 
-  /**
-   * بدء العمل على مرحلة
-   */
   async startStage(transactionId: string, stageId: string, userId: string, userName: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
     const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
@@ -176,16 +166,15 @@ export class TransactionService {
     if (!stageSnap.exists()) return;
     const stageData = stageSnap.data() as StageInstance;
 
-    const batch = writeBatch(this.db);
-    batch.update(stageRef, {
+    await updateDoc(stageRef, {
       status: 'in-progress',
       startedAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       updatedBy: userId
     });
 
-    const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
-    batch.set(timelineRef, {
+    const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
+    await addDoc(timelineRef, {
       transactionId,
       type: 'stage_start',
       content: `بدء التنفيذ الميداني لمرحلة: ${stageData.name}`,
@@ -194,8 +183,6 @@ export class TransactionService {
       companyId: this.companyId,
       createdAt: serverTimestamp()
     });
-
-    await batch.commit();
   }
 
   /**
@@ -214,12 +201,10 @@ export class TransactionService {
     const progress = await boqService.getTechnicalStageProgress(transactionId, stageData.technicalStageId);
     
     if (!progress.canComplete) {
-      // رمي خطأ يتضمن السبب لتعرضه الواجهة للمستخدم
       throw new Error(progress.reason || "لا يمكن إغلاق المرحلة لعدم كفاية الإنجاز في بنود المقايسة.");
     }
 
-    const batch = writeBatch(this.db);
-    batch.update(stageRef, {
+    await updateDoc(stageRef, {
       status: 'completed',
       completedAt: serverTimestamp(),
       completedBy: userId,
@@ -227,8 +212,8 @@ export class TransactionService {
       updatedBy: userId
     });
 
-    const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
-    batch.set(timelineRef, {
+    const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
+    await addDoc(timelineRef, {
       transactionId,
       type: 'stage_complete',
       content: `تم إنجاز مرحلة "${stageData.name}" بالكامل بعد التحقق من المقايسة.`,
@@ -237,77 +222,5 @@ export class TransactionService {
       companyId: this.companyId,
       createdAt: serverTimestamp()
     });
-
-    await batch.commit().catch(err => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: stageRef.path,
-        operation: 'update'
-      }));
-      throw err;
-    });
-  }
-
-  /**
-   * إعادة فتح مرحلة
-   */
-  async reopenStage(transactionId: string, stageId: string, userId: string, userName: string) {
-    ensureActionPermission(this.permissions, 'projects:edit');
-    const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
-    const stageSnap = await getDoc(stageRef);
-    if (!stageSnap.exists()) return;
-    const stageData = stageSnap.data() as StageInstance;
-
-    const batch = writeBatch(this.db);
-    batch.update(stageRef, {
-      status: 'in-progress',
-      completedAt: null,
-      completedBy: null,
-      updatedAt: serverTimestamp(),
-      updatedBy: userId
-    });
-
-    const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
-    batch.set(timelineRef, {
-      transactionId,
-      type: 'stage_reopen',
-      content: `إعادة فتح مرحلة "${stageData.name}" لمراجعة البيانات الميدانية.`,
-      userId,
-      userName,
-      companyId: this.companyId,
-      createdAt: serverTimestamp()
-    });
-
-    await batch.commit();
-  }
-
-  /**
-   * تحديث العداد الرقمي (+1)
-   */
-  async updateStageCount(transactionId: string, stageId: string, newCount: number, userId: string, userName: string) {
-    ensureActionPermission(this.permissions, 'projects:edit');
-    const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
-    const stageSnap = await getDoc(stageRef);
-    if (!stageSnap.exists()) return;
-    const stageData = stageSnap.data() as StageInstance;
-
-    const batch = writeBatch(this.db);
-    batch.update(stageRef, {
-      currentCount: newCount,
-      updatedAt: serverTimestamp(),
-      updatedBy: userId
-    });
-
-    const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
-    batch.set(timelineRef, {
-      transactionId,
-      type: 'numeric_update',
-      content: `تحديث الإنجاز في "${stageData.name}": تم رصد ${newCount} من إجمالي ${stageData.numericTarget}`,
-      userId,
-      userName,
-      companyId: this.companyId,
-      createdAt: serverTimestamp()
-    });
-
-    await batch.commit();
   }
 }
