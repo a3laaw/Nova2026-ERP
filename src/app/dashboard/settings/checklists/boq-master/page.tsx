@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -74,7 +75,6 @@ export default function BOQMasterPage() {
   const handleSave = async () => {
     if (!service || !user || !editingNode?.title) return;
     
-    // الترقيم والكود مطلوبان فقط للأب الأول (القسم)
     if (!editingNode.parentId && !editingNode.code) {
       toast({ variant: "destructive", title: isRtl ? "الكود مطلوب للقسم الرئيسي" : "Code required for root section" });
       return;
@@ -131,32 +131,32 @@ export default function BOQMasterPage() {
       <div key={node.id} className="space-y-1">
         <div 
           className={cn(
-            "flex items-center justify-between p-4 rounded-2xl border-2 transition-all group",
+            "flex items-center justify-between p-3 rounded-xl border transition-all group",
             node.nodeType === 'section' ? "bg-white border-slate-200 shadow-sm" :
-            node.nodeType === 'main_category' ? "bg-slate-50 border-slate-100 ms-6" :
-            node.nodeType === 'component' ? "bg-white border-slate-50 ms-12" : "bg-white border-dashed border-slate-100 ms-16"
+            node.nodeType === 'main_category' ? "bg-slate-50 border-slate-100 ms-4" :
+            node.nodeType === 'component' ? "bg-white border-slate-50 ms-8" : "bg-white border-dashed border-slate-100 ms-12"
           )}
         >
           <div className="flex items-center gap-3">
              <div onClick={() => toggleNode(node.id)} className="cursor-pointer">
                 {hasChildren ? (
-                   isExpanded ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className={cn("h-4 w-4 text-slate-400", isRtl && "rotate-180")} />
-                ) : <div className="w-4" />}
+                   isExpanded ? <ChevronDown className="h-3 w-3 text-slate-400" /> : <ChevronRight className={cn("h-3 w-3 text-slate-400", isRtl && "rotate-180")} />
+                ) : <div className="w-3" />}
              </div>
              {getNodeIcon(node.nodeType)}
              <div className="text-start">
                 <div className="flex items-center gap-2">
-                   <span className="text-[10px] font-black text-primary font-mono bg-primary/10 px-1.5 py-0.5 rounded">{pathPrefix}</span>
-                   <span className="text-xs font-black text-slate-800">{node.title}</span>
+                   <span className="text-[9px] font-black text-primary font-mono bg-primary/5 px-1 rounded">{pathPrefix}</span>
+                   <span className="text-xs font-bold text-slate-800">{node.title}</span>
                 </div>
-                <div className="flex items-center gap-2 mt-1">
-                   <span className="text-[9px] font-mono text-slate-400 uppercase tracking-tighter">REF: {node.code || pathPrefix}</span>
-                   {node.nodeType === 'work_item' && (
-                     <Badge variant="outline" className="h-4 px-1.5 text-[8px] bg-slate-50 text-primary uppercase border-primary/10">
-                       {node.unitSymbol || node.unitName}
-                     </Badge>
-                   )}
-                </div>
+                {node.nodeType === 'work_item' && (
+                   <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[8px] font-mono text-slate-400 uppercase tracking-tighter">REF: {node.code || pathPrefix}</span>
+                      <Badge variant="outline" className="h-3.5 px-1 text-[7px] bg-slate-50 text-primary border-primary/10">
+                        {node.unitSymbol || node.unitName}
+                      </Badge>
+                   </div>
+                )}
              </div>
           </div>
 
@@ -165,7 +165,7 @@ export default function BOQMasterPage() {
                <Button 
                  variant="ghost" 
                  size="icon" 
-                 className="h-8 w-8 text-primary hover:bg-primary/10"
+                 className="h-7 w-7 text-primary"
                  onClick={() => {
                    const childType = node.nodeType === 'section' ? 'main_category' : 
                                     node.nodeType === 'main_category' ? 'component' : 'work_item';
@@ -179,18 +179,18 @@ export default function BOQMasterPage() {
                    });
                  }}
                >
-                 <Plus className="h-4 w-4" />
+                 <Plus className="h-3.5 w-3.5" />
                </Button>
              )}
-             <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-400 hover:bg-blue-50" onClick={() => setEditingNode(node)}><Edit3 className="h-4 w-4" /></Button>
+             <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-500" onClick={() => setEditingNode(node)}><Edit3 className="h-3.5 w-3.5" /></Button>
              <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-8 w-8 text-rose-400 hover:bg-rose-50" 
+                className="h-7 w-7 text-rose-500" 
                 disabled={node.childrenCount > 0 || loadingAction?.startsWith('delete')}
                 onClick={() => handleDelete(node.id)}
              >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-3.5 w-3.5" />
              </Button>
           </div>
         </div>
@@ -200,45 +200,45 @@ export default function BOQMasterPage() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 text-start">
-      <div className="flex justify-between items-center px-2">
+    <div className="space-y-6 animate-in fade-in duration-500 text-start">
+      <div className="flex justify-between items-center px-1">
         <div>
-          <h2 className="text-2xl font-black font-headline flex items-center gap-3 text-slate-900">
-            <FolderTree className="h-7 w-7 text-primary" />
-            {isRtl ? 'قاموس بنود العمل الشجري' : 'Work Items Master Tree'}
+          <h2 className="text-xl font-black font-headline flex items-center gap-2 text-slate-900">
+            <FolderTree className="h-6 w-6 text-primary" />
+            {isRtl ? 'قاموس بنود العمل' : 'Work Items Master'}
           </h2>
-          <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">Structural Engineering WBS Registry</p>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Sovereign WBS Registry</p>
         </div>
         <Button 
           onClick={() => setEditingNode({ nodeType: 'section', level: 0, parentId: null, title: '', code: '', order: treeData.length })}
-          className="h-12 px-8 rounded-xl shadow-xl hover:scale-105 transition-all bg-primary text-white"
+          className="h-10 px-6 rounded-lg shadow-md hover:scale-105 transition-all"
         >
-          <Plus className="me-2 h-5 w-5" /> {isRtl ? 'إضافة قسم جذري' : 'New Section'}
+          <Plus className="me-2 h-4 w-4" /> {isRtl ? 'قسم جديد' : 'New Section'}
         </Button>
       </div>
 
-      <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
-         <CardHeader className="bg-slate-50 border-b p-8">
-            <div className="relative w-full max-w-sm">
-               <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
+      <Card className="border-0 shadow-xl rounded-2xl bg-white overflow-hidden ring-1 ring-black/5">
+         <CardHeader className="bg-slate-50/50 border-b p-4">
+            <div className="relative w-full max-w-xs">
+               <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
                <Input 
                  placeholder={t('search')} 
-                 className="ps-12 h-12 rounded-2xl border-slate-200 bg-white shadow-inner font-bold" 
+                 className="ps-9 h-10 rounded-xl border-slate-200 bg-white font-bold text-sm" 
                  value={searchTerm}
                  onChange={e => setSearchTerm(e.target.value)}
                />
             </div>
          </CardHeader>
-         <CardContent className="p-10 space-y-4 max-h-[70vh] overflow-y-auto scrollbar-hide">
+         <CardContent className="p-6 space-y-2 max-h-[70vh] overflow-y-auto scrollbar-hide">
             {loading ? (
-              <div className="py-20 text-center flex flex-col items-center gap-4">
-                 <Loader2 className="h-12 w-12 animate-spin text-primary/30" />
-                 <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">Indexing Sovereign Tree...</p>
+              <div className="py-20 text-center flex flex-col items-center gap-3">
+                 <Loader2 className="h-8 w-8 animate-spin text-primary/30" />
+                 <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Indexing Tree...</p>
               </div>
             ) : treeData.length === 0 ? (
-              <div className="py-32 text-center border-4 border-dashed rounded-[3rem] opacity-30 flex flex-col items-center gap-6">
-                 <div className="h-20 w-20 bg-slate-100 rounded-[2rem] flex items-center justify-center"><Info className="h-10 w-10 text-slate-300" /></div>
-                 <p className="font-black text-2xl text-slate-400">{isRtl ? 'القاموس فارغ حالياً' : 'Registry is Empty'}</p>
+              <div className="py-20 text-center border-2 border-dashed rounded-2xl opacity-40 flex flex-col items-center gap-4">
+                 <Info className="h-8 w-8 text-slate-300" />
+                 <p className="font-black text-lg text-slate-400">{isRtl ? 'القاموس فارغ' : 'Registry is Empty'}</p>
               </div>
             ) : (
               treeData.map((node, i) => renderNode(node, (i + 1).toString()))
@@ -247,86 +247,81 @@ export default function BOQMasterPage() {
       </Card>
 
       <Dialog open={!!editingNode} onOpenChange={open => !open && setEditingNode(null)}>
-         <DialogContent className="rounded-[3rem] p-0 overflow-hidden max-w-xl border-0 shadow-3xl bg-white" dir={dir}>
-            <div className="bg-primary/10 p-10 text-slate-900 text-start border-b">
-               <DialogTitle className="text-3xl font-black font-headline flex items-center gap-3">
-                  <ShieldCheck className="h-9 w-9 text-primary" />
+         <DialogContent className="rounded-2xl p-0 overflow-hidden max-w-lg border-0 shadow-2xl bg-white" dir={dir}>
+            <div className="bg-primary/5 p-6 text-slate-900 text-start border-b">
+               <DialogTitle className="text-xl font-black font-headline flex items-center gap-2">
+                  <ShieldCheck className="h-6 w-6 text-primary" />
                   {editingNode?.id ? (isRtl ? 'تعديل بيانات العقدة' : 'Edit Node') : (isRtl ? 'إضافة فرع جديد' : 'Add New Branch')}
                </DialogTitle>
-               <Badge className="mt-4 bg-primary text-white uppercase text-[9px] font-black px-4 py-1.5 rounded-full tracking-widest border-0">{editingNode?.nodeType}</Badge>
+               <Badge className="mt-2 bg-primary/10 text-primary uppercase text-[8px] font-black px-3 py-1 rounded-full border-0">{editingNode?.nodeType}</Badge>
             </div>
 
-            <div className="p-10 space-y-6 text-start bg-white max-h-[60vh] overflow-y-auto scrollbar-hide">
-               
-               {/* كود المرجع والترتيب يظهران فقط للأب الأول (الجذري) */}
+            <div className="p-6 space-y-4 text-start bg-white max-h-[60vh] overflow-y-auto scrollbar-hide">
                {!editingNode?.parentId && (
-                  <div className="grid grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-2 duration-300">
-                    <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('code')}</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                       <Label className="text-[10px] font-bold uppercase text-slate-400">{t('code')}</Label>
                        <Input 
                          value={editingNode?.code || ''} 
                          onChange={e => setEditingNode({...editingNode!, code: e.target.value.toUpperCase().replace(/\s+/g, '_')})} 
-                         className="h-14 rounded-2xl border-2 font-mono font-black text-primary bg-slate-50/50" 
-                         placeholder="e.g. CIVIL"
+                         className="h-10 rounded-xl border-2 font-mono font-bold text-primary" 
                        />
                     </div>
-                    <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('order')}</Label>
+                    <div className="space-y-1.5">
+                       <Label className="text-[10px] font-bold uppercase text-slate-400">{t('order')}</Label>
                        <Input 
                          type="number" 
                          value={editingNode?.order || 0} 
                          onChange={e => setEditingNode({...editingNode!, order: Number(e.target.value)})} 
-                         className="h-14 rounded-2xl border-2 font-black text-center" 
+                         className="h-10 rounded-xl border-2 font-bold text-center" 
                        />
                     </div>
                   </div>
                )}
 
-               <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'المسمى السيادي' : 'Sovereign Title'}</Label>
+               <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold uppercase text-slate-400">{isRtl ? 'المسمى السيادي' : 'Sovereign Title'}</Label>
                   <Input 
                     value={editingNode?.title || ''} 
                     onChange={e => setEditingNode({...editingNode!, title: e.target.value})} 
-                    className="h-16 rounded-2xl border-2 font-black text-xl bg-slate-50/30" 
+                    className="h-11 rounded-xl border-2 font-bold text-base bg-slate-50/30" 
                   />
                </div>
 
                {editingNode?.nodeType === 'work_item' && (
-                 <div className="space-y-6 animate-in slide-in-from-top-4 duration-300">
-                    <div className="p-8 rounded-[2.5rem] bg-slate-50/50 border-2 border-slate-100 shadow-inner space-y-6">
-                       <h4 className="font-black text-[10px] text-primary uppercase tracking-widest border-b pb-2 flex items-center gap-2">
-                          <Settings2 className="h-3 w-3" /> {isRtl ? 'المعايير التنفيذية والفوترة' : 'Execution Parameters'}
+                 <div className="space-y-4 animate-in slide-in-from-top-2">
+                    <div className="p-5 rounded-2xl bg-slate-50/50 border-2 border-slate-100 space-y-4">
+                       <h4 className="font-black text-[9px] text-primary uppercase tracking-widest flex items-center gap-2 border-b pb-2">
+                          <Settings2 className="h-3 w-3" /> {isRtl ? 'المعايير التنفيذية' : 'Execution Parameters'}
                        </h4>
                        
-                       <div className="grid grid-cols-1 gap-6">
-                          <div className="space-y-2">
-                             <Label className="text-[10px] font-black uppercase text-slate-400">{t('unitTypes')}</Label>
-                             <Select 
-                                value={editingNode.unitTypeId} 
-                                onValueChange={v => {
-                                   const unit = unitTypes?.find(ut => ut.id === v);
-                                   setEditingNode({
-                                      ...editingNode, 
-                                      unitTypeId: v, 
-                                      unitName: unit?.name,
-                                      unitSymbol: unit?.symbol
-                                   });
-                                }}
-                             >
-                                <SelectTrigger className="h-12 rounded-xl border-2 bg-white font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                                <SelectContent className="rounded-xl border-0 shadow-2xl">
-                                   {unitTypes?.map(ut => <SelectItem key={ut.id} value={ut.id!} className="font-bold text-xs py-3">{isRtl ? ut.name : ut.nameEn} ({ut.symbol})</SelectItem>)}
-                                </SelectContent>
-                             </Select>
-                          </div>
+                       <div className="space-y-1.5">
+                          <Label className="text-[10px] font-bold uppercase text-slate-400">{t('unitTypes')}</Label>
+                          <Select 
+                             value={editingNode.unitTypeId} 
+                             onValueChange={v => {
+                                const unit = unitTypes?.find(ut => ut.id === v);
+                                setEditingNode({
+                                   ...editingNode, 
+                                   unitTypeId: v, 
+                                   unitName: unit?.name,
+                                   unitSymbol: unit?.symbol
+                                });
+                             }}
+                          >
+                             <SelectTrigger className="h-10 rounded-lg border-2 bg-white font-bold text-xs"><SelectValue placeholder="..." /></SelectTrigger>
+                             <SelectContent className="rounded-xl border-0 shadow-2xl">
+                                {unitTypes?.map(ut => <SelectItem key={ut.id} value={ut.id!} className="font-bold text-xs">{isRtl ? ut.name : ut.nameEn} ({ut.symbol})</SelectItem>)}
+                             </SelectContent>
+                          </Select>
                        </div>
 
-                       <div className="space-y-2">
-                          <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الوصف الهندسي' : 'Technical Description'}</Label>
+                       <div className="space-y-1.5">
+                          <Label className="text-[10px] font-bold uppercase text-slate-400">{isRtl ? 'الوصف الهندسي' : 'Description'}</Label>
                           <Textarea 
                              value={editingNode.description || ''} 
                              onChange={e => setEditingNode({...editingNode, description: e.target.value})}
-                             className="min-h-[100px] rounded-2xl bg-white border-2 text-sm leading-relaxed" 
+                             className="min-h-[80px] rounded-xl bg-white border-2 text-xs font-bold leading-relaxed" 
                           />
                        </div>
                     </div>
@@ -334,9 +329,9 @@ export default function BOQMasterPage() {
                )}
             </div>
 
-            <DialogFooter className="p-10 bg-slate-50 border-t">
-               <Button onClick={handleSave} disabled={loadingAction === 'save'} className="w-full h-20 rounded-[2rem] bg-primary text-white font-black text-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all gap-4 border-b-8 border-orange-700">
-                  {loadingAction === 'save' ? <Loader2 className="animate-spin h-8 w-8" /> : <Save className="h-8 w-8" />}
+            <DialogFooter className="p-4 bg-slate-50 border-t">
+               <Button onClick={handleSave} disabled={loadingAction === 'save'} className="w-full h-12 rounded-xl font-bold shadow-lg gap-2 border-b-4 border-orange-700">
+                  {loadingAction === 'save' ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
                   {t('save')}
                </Button>
             </DialogFooter>
@@ -345,4 +340,3 @@ export default function BOQMasterPage() {
     </div>
   );
 }
-

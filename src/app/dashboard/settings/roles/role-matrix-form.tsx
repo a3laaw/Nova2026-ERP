@@ -1,5 +1,6 @@
+
 /**
- * @fileOverview واجهة مصفوفة الصلاحيات الذكية المطورة - النسخة المطهرة لونياً.
+ * @fileOverview واجهة مصفوفة الصلاحيات المدمجة والعملية (Compact Matrix Form).
  */
 
 'use client';
@@ -131,73 +132,73 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
   ];
 
   return (
-    <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500 pb-20">
-      <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
-        <CardHeader className="bg-primary/5 p-8 border-b flex flex-row items-center justify-between">
-           <div className="text-start">
-              <CardTitle className="text-2xl font-black font-headline flex items-center gap-3">
-                 <ShieldCheck className="h-8 w-8 text-primary" />
-                 {isRtl ? 'مصفوفة الصلاحيات الميدانية' : 'Field Permission Matrix'}
+    <div className="space-y-4 animate-in slide-in-from-bottom-2 duration-300 pb-10 text-start">
+      <Card className="border-0 shadow-xl rounded-2xl bg-white overflow-hidden ring-1 ring-black/5">
+        <CardHeader className="bg-primary/5 p-5 border-b flex flex-row items-center justify-between">
+           <div className="flex items-center gap-3">
+              <ShieldCheck className="h-6 w-6 text-primary" />
+              <CardTitle className="text-lg font-black font-headline">
+                 {isRtl ? 'مصفوفة الصلاحيات الميدانية' : 'Permission Matrix'}
               </CardTitle>
            </div>
-           <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-10 w-10 hover:bg-white"><X className="h-6 w-6" /></Button>
+           <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-8 w-8 hover:bg-white"><X className="h-4 w-4" /></Button>
         </CardHeader>
         
         <CardContent className="p-0">
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-10 bg-slate-50/50 border-b">
-              <div className="space-y-3 text-start">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-slate-50/30 border-b">
+              <div className="space-y-1.5">
                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('name')} (AR)</Label>
                  <Input 
                    value={formData.name} 
                    onChange={e => setFormData({...formData, name: e.target.value})} 
-                   className="h-14 rounded-2xl border-2 font-black text-lg bg-white" 
+                   className="h-10 rounded-lg border-2 font-bold text-sm bg-white" 
                  />
               </div>
-              <div className="space-y-3 text-start">
+              <div className="space-y-1.5">
                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('name')} (EN)</Label>
                  <Input 
                    value={formData.nameEn} 
                    onChange={e => setFormData({...formData, nameEn: e.target.value})} 
-                   className="h-14 rounded-2xl border-2 font-black text-lg bg-white text-start" 
+                   className="h-10 rounded-lg border-2 font-bold text-sm bg-white" 
                    dir="ltr" 
                  />
               </div>
            </div>
 
-           <div className="overflow-x-auto">
+           <div className="overflow-x-auto max-h-[60vh] scrollbar-hide">
               <Table>
-                 <TableHeader className="bg-slate-50/80">
+                 <TableHeader className="bg-slate-50/80 sticky top-0 z-10">
                     <TableRow>
-                       <TableHead className="py-6 ps-10 w-[240px] text-start font-black text-slate-900 uppercase text-[10px] tracking-widest">{isRtl ? 'المورد / الشاشة' : 'Module / Screen'}</TableHead>
-                       <TableHead className="text-start font-black text-slate-900 uppercase text-[10px] tracking-widest">{isRtl ? 'العمليات المتاحة والنطاق' : 'Available Actions & Scopes'}</TableHead>
+                       <TableHead className="py-4 ps-6 w-[200px] text-start font-black text-slate-900 uppercase text-[9px] tracking-widest">{isRtl ? 'المورد' : 'Module'}</TableHead>
+                       <TableHead className="text-start font-black text-slate-900 uppercase text-[9px] tracking-widest">{isRtl ? 'العمليات والنطاق' : 'Actions & Scopes'}</TableHead>
                     </TableRow>
                  </TableHeader>
                  <TableBody>
                     {SYSTEM_RESOURCES.map((resource) => (
-                       <TableRow key={resource.id} className="hover:bg-primary/[0.02] transition-colors border-b-slate-100 group">
-                          <TableCell className="py-8 ps-10 align-top">
-                             <div className="flex items-center gap-4">
-                                <div className="h-12 w-12 rounded-2xl bg-white border-2 border-slate-100 flex items-center justify-center text-primary shadow-sm group-hover:border-primary/20 transition-all">
-                                   <LayoutGrid className="h-6 w-6" />
+                       <TableRow key={resource.id} className="hover:bg-primary/[0.01] transition-colors border-b-slate-100 group">
+                          <TableCell className="py-5 ps-6 align-top">
+                             <div className="flex items-center gap-3">
+                                <div className="h-9 w-9 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-primary shadow-sm group-hover:border-primary/20 transition-all">
+                                   <LayoutGrid className="h-4 w-4" />
                                 </div>
                                 <div className="text-start">
-                                   <p className="font-black text-slate-900 text-base">{isRtl ? resource.labelAr : resource.labelEn}</p>
-                                   <Badge variant="secondary" className="text-[8px] font-black uppercase tracking-tighter bg-slate-100 text-slate-400 border-0 mt-1">
+                                   <p className="font-bold text-slate-900 text-xs">{isRtl ? resource.labelAr : resource.labelEn}</p>
+                                   <span className="text-[7px] font-black uppercase tracking-tighter text-slate-300">
                                       {resource.module}
-                                   </Badge>
+                                   </span>
                                 </div>
                              </div>
                           </TableCell>
-                          <TableCell className="py-8 pe-10">
-                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                          <TableCell className="py-5 pe-6">
+                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                 {resource.allowedActions.map((action) => {
                                    const currentScope = getScope(resource.id, action);
                                    const scopeInfo = SCOPES.find(s => s.value === currentScope);
 
                                    return (
-                                     <div key={action} className="flex items-center gap-3 bg-white p-2.5 rounded-2xl border-2 border-slate-50 shadow-sm hover:border-primary/10 transition-all">
-                                        <div className="min-w-[50px] text-start">
-                                           <span className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">
+                                     <div key={action} className="flex items-center gap-2 bg-white p-1.5 rounded-lg border border-slate-100 shadow-sm">
+                                        <div className="min-w-[40px] text-start">
+                                           <span className="text-[8px] font-black text-slate-400 uppercase">
                                               {isRtl ? ACTION_LABELS[action].ar : ACTION_LABELS[action].en}
                                            </span>
                                         </div>
@@ -206,24 +207,24 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
                                           onValueChange={(v: Scope) => setScope(resource.id, action, v)}
                                         >
                                            <SelectTrigger className={cn(
-                                             "h-10 rounded-xl border-2 text-[10px] font-black transition-all flex-1",
-                                             currentScope !== 'none' ? "border-primary/30 bg-primary/5 text-primary" : "bg-white border-slate-100 text-slate-400"
+                                             "h-8 rounded-md border text-[9px] font-black transition-all flex-1 px-2",
+                                             currentScope !== 'none' ? "border-primary/20 bg-primary/5 text-primary" : "bg-white border-slate-100 text-slate-300"
                                            )}>
                                               <SelectValue>
-                                                 <div className="flex items-center gap-2">
-                                                    {scopeInfo?.icon && <scopeInfo.icon className={cn("h-3 w-3", scopeInfo.color)} />}
+                                                 <div className="flex items-center gap-1.5">
+                                                    {scopeInfo?.icon && <scopeInfo.icon className={cn("h-2.5 w-2.5", scopeInfo.color)} />}
                                                     <span className="truncate">{scopeInfo?.label}</span>
                                                  </div>
                                               </SelectValue>
                                            </SelectTrigger>
-                                           <SelectContent className="rounded-2xl border-0 shadow-2xl bg-white">
+                                           <SelectContent className="rounded-xl border-0 shadow-2xl bg-white">
                                               {SCOPES.map(s => (
-                                                 <SelectItem key={s.value} value={s.value} className="font-bold text-xs py-3 px-4">
-                                                    <div className="flex items-center gap-3">
-                                                       <div className={cn("p-1.5 rounded-lg bg-slate-50", s.color)}>
-                                                          <s.icon className="h-3.5 w-3.5" />
+                                                 <SelectItem key={s.value} value={s.value} className="font-bold text-[10px] py-2 px-3">
+                                                    <div className="flex items-center gap-2">
+                                                       <div className={cn("p-1 rounded-md bg-slate-50", s.color)}>
+                                                          <s.icon className="h-3 w-3" />
                                                        </div>
-                                                       <span className="font-black">{s.label}</span>
+                                                       <span>{s.label}</span>
                                                     </div>
                                                  </SelectItem>
                                               ))}
@@ -240,17 +241,17 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
               </Table>
            </div>
 
-           <div className="p-10 bg-slate-50 border-t flex flex-col md:flex-row justify-end items-center gap-8">
-              <div className="flex gap-4 w-full md:w-auto">
-                 <Button variant="outline" onClick={onClose} className="flex-1 md:w-40 h-16 rounded-[1.5rem] font-black border-2 border-slate-200 bg-white">
+           <div className="p-6 bg-slate-50 border-t flex justify-end">
+              <div className="flex gap-3 w-full md:w-auto">
+                 <Button variant="outline" onClick={onClose} className="flex-1 md:w-32 h-11 rounded-xl font-bold text-xs bg-white">
                     {t('logout')}
                  </Button>
                  <Button 
                    onClick={handleSave} 
                    disabled={loading}
-                   className="flex-1 md:w-80 h-16 rounded-[1.5rem] bg-primary text-white font-black text-2xl shadow-2xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all gap-3 border-b-8 border-orange-700"
+                   className="flex-1 md:w-64 h-11 rounded-xl bg-primary text-white font-black text-sm shadow-lg gap-2 border-b-4 border-orange-700"
                  >
-                    {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
+                    {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
                     {t('save')}
                  </Button>
               </div>
