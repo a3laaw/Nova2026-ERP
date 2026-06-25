@@ -19,7 +19,7 @@ import {
   ChevronRight, LayoutGrid, CheckCircle2,
   Settings2, Boxes, Hammer, Search, 
   FileSearch, FolderTree,
-  ChevronDown
+  ChevronDown, DollarSign
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
@@ -225,7 +225,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
           </div>
         </div>
         <div className="flex gap-2">
-           <Button onClick={handleSave} disabled={loading} className="h-12 px-10 rounded-xl text-xs gap-2 shadow-lg bg-[#FFA000] text-white font-black hover:bg-[#F57C00]">
+           <Button onClick={handleSave} disabled={loading} className="h-12 px-10 rounded-xl text-xs gap-2 shadow-lg bg-primary text-white font-black hover:opacity-90 transition-all">
              {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
              {t('save')}
            </Button>
@@ -306,7 +306,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
               
               <Dialog open={isMasterPickerOpen} onOpenChange={setIsMasterPickerOpen}>
                 <DialogTrigger asChild>
-                  <Button className="rounded-xl bg-[#F57C00] text-white font-black h-14 px-10 gap-3 shadow-xl hover:scale-105 transition-all">
+                  <Button className="rounded-xl bg-primary text-white font-black h-14 px-10 gap-3 shadow-xl hover:scale-105 transition-all">
                      <FolderTree className="h-6 w-6" />
                      {isRtl ? 'مستكشف القاموس الهيكلي' : 'Open Master Tree'}
                   </Button>
@@ -401,7 +401,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                                                        <Button 
                                                          size="sm" 
                                                          onClick={() => addFromMaster(item)}
-                                                         className="h-9 rounded-xl bg-[#FFA000] hover:bg-[#F57C00] text-white font-black text-xs gap-2 px-5 shadow-lg"
+                                                         className="h-9 rounded-xl bg-primary hover:opacity-90 text-white font-black text-xs gap-2 px-5 shadow-lg"
                                                        >
                                                           <Plus className="h-4 w-4" /> {isRtl ? 'إضافة' : 'Add'}
                                                        </Button>
@@ -444,19 +444,19 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                 </div>
               ) : boqTree.map((section, sIdx) => (
                 <div key={section.id} className="space-y-6 animate-in slide-in-from-bottom-4">
-                   <div className="flex items-center gap-5 bg-slate-900 text-white p-6 rounded-3xl shadow-2xl relative overflow-hidden group">
-                      <div className="absolute top-0 right-0 p-4 opacity-10 rotate-12 group-hover:rotate-0 transition-transform"><LayoutGrid className="h-20 w-20" /></div>
-                      <div className="h-12 w-12 rounded-2xl bg-primary/20 flex items-center justify-center text-primary border-2 border-primary/20 font-black text-xl font-mono shadow-inner">{sIdx + 1}</div>
+                   <div className="flex items-center gap-5 bg-slate-50 border-2 border-slate-100 p-6 rounded-3xl shadow-xl relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 p-4 opacity-10 rotate-12 group-hover:rotate-0 transition-transform"><LayoutGrid className="h-20 w-20 text-primary" /></div>
+                      <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border-2 border-primary/20 font-black text-xl font-mono shadow-inner">{sIdx + 1}</div>
                       <div className="text-start relative z-10">
                          <span className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">H-SECTION</span>
-                         <h4 className="text-2xl font-black font-headline leading-tight">{section.name}</h4>
+                         <h4 className="text-2xl font-black font-headline text-slate-800 leading-tight">{section.name}</h4>
                       </div>
                    </div>
 
                    <div className="ms-8 space-y-10 border-s-4 border-slate-100 ps-10">
                       {section.children.map((category, cIdx) => (
                         <div key={category.id} className="space-y-6">
-                           <div className="flex items-center gap-4 bg-white p-4 rounded-2xl border-2 border-slate-100 shadow-sm">
+                           <div className="flex items-center gap-4 bg-white p-4 rounded-2xl border-2 border-slate-50 shadow-sm">
                               <div className="h-10 w-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border-2 border-blue-100 font-black text-sm font-mono">{sIdx + 1}.{cIdx + 1}</div>
                               <div className="text-start">
                                  <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Main Category</span>
@@ -467,7 +467,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                            <div className="ms-12 space-y-8 border-s-2 border-blue-50/50 ps-10">
                               {category.children.map((comp, cpIdx) => (
                                 <div key={comp.id} className="space-y-4">
-                                   <div className="flex items-center gap-3 text-slate-400 text-start">
+                                   <div className="flex items-center gap-3 text-slate-400 text-start px-2">
                                       <span className="text-[10px] font-black font-mono bg-slate-50 px-2 py-0.5 rounded">{sIdx + 1}.{cIdx + 1}.{cpIdx + 1}</span>
                                       <Hammer className="h-4 w-4" />
                                       <span className="text-[11px] font-black uppercase tracking-widest">{comp.name}</span>
@@ -554,8 +554,8 @@ export function BOQTemplateForm({ template, onClose }: Props) {
               </div>
            </div>
            
-           <Button onClick={handleSave} disabled={loading || !isMathValid} className="h-20 px-16 rounded-[2rem] bg-slate-900 text-white font-black text-2xl shadow-3xl hover:scale-105 transition-all gap-5 mt-8 md:mt-0 border-b-8 border-slate-700">
-             {loading ? <Loader2 className="animate-spin h-8 w-8" /> : <Save className="h-8 w-8 text-primary" />}
+           <Button onClick={handleSave} disabled={loading || !isMathValid} className="h-20 px-16 rounded-[2rem] bg-primary text-white font-black text-2xl shadow-3xl hover:scale-105 transition-all gap-5 mt-8 md:mt-0 border-b-8 border-orange-700">
+             {loading ? <Loader2 className="animate-spin h-8 w-8" /> : <Save className="h-8 w-8" />}
              {isRtl ? 'اعتماد وهندسة القالب' : 'Final Commit'}
            </Button>
         </div>
@@ -563,3 +563,4 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     </div>
   );
 }
+
