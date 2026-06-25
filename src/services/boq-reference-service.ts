@@ -13,7 +13,8 @@ import {
   where,
   orderBy,
   writeBatch,
-  increment
+  increment,
+  deleteDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { BOQReferenceNode } from '@/types/reference';
@@ -23,7 +24,7 @@ import { ensureActionPermission } from '@/lib/permissions';
 
 /**
  * خدمة إدارة المرجع الشجري الديناميكي لبنود BOQ (Dynamic Tree Service).
- * تدعم عدد غير محدود من المستويات مع حساب آلي للعمق والتبعية.
+ * تدعم التحديثات غير الحاجبة (Non-blocking) ونظام الأخطاء السياقي.
  */
 export class BOQReferenceService {
   constructor(
@@ -82,6 +83,7 @@ export class BOQReferenceService {
       });
     }
 
+    // تنفيذ متفائل بدون await
     batch.commit().catch(async (err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: nodeRef.path,
@@ -163,32 +165,6 @@ export class BOQReferenceService {
       collection(this.db, paths.boqReferenceNodes(this.companyId)),
       orderBy('depth'),
       orderBy('order')
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map(d => d.data() as BOQReferenceNode);
-  }
-
-  /**
-   * جلب الأبناء المباشرين لعقدة معينة
-   */
-  async listChildren(parentId: string | null) {
-    const q = query(
-      collection(this.db, paths.boqReferenceNodes(this.companyId)),
-      where('parentId', '==', parentId),
-      orderBy('order')
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map(d => d.data() as BOQReferenceNode);
-  }
-
-  /**
-   * جلب كافة العقد التنفيذية (Leaf Nodes) التي يمكن استخدامها في المقايسات
-   */
-  async listExecutableItems() {
-    const q = query(
-      collection(this.db, paths.boqReferenceNodes(this.companyId)),
-      where('isExecutable', '==', true),
-      where('isActive', '==', true)
     );
     const snap = await getDocs(q);
     return snap.docs.map(d => d.data() as BOQReferenceNode);

@@ -52,9 +52,9 @@ service cloud.firestore {
     }
 
     // --- قواعد المجموعات المشتركة (Collection Groups) ---
-    // ضروري لاستعلامات التقارير والربط الفني عبر كافة مستويات المنشأة
+    // تحديث سيادي: السماح بالوصول للمراحل الفنية عبر كافة المستويات لأغراض الربط في القاموس
     match /{path=**}/stages/{stageId} {
-      allow read: if belongsToCompany(resource.data.companyId);
+      allow read: if isAuthenticated() && belongsToCompany(resource.data.companyId);
     }
 
     // --- سجلات المنشأة (Multi-tenant) ---
@@ -62,40 +62,14 @@ service cloud.firestore {
     match /companies/{companyId} {
       allow read: if belongsToCompany(companyId);
       
-      // قواعد الموظفين: السماح للموظف بتحديث حالته الشخصية (للمغادرة والعودة)
+      // قواعد الموظفين
       match /employees/{empId} {
         allow read: if belongsToCompany(companyId);
         allow create, delete: if isAdmin(companyId);
         allow update: if isAdmin(companyId) || (isAuthenticated() && getUserData().employeeId == empId);
       }
 
-      // قواعد الإجازات: السماح للموظف بإدارة دورة حياة طلبه الشخصي
-      match /leaveRequests/{id} {
-        allow create: if belongsToCompany(companyId);
-        allow read: if belongsToCompany(companyId);
-        allow update: if isAdmin(companyId) || (belongsToCompany(companyId) && request.auth.uid == resource.data.createdBy);
-        allow delete: if isAdmin(companyId);
-      }
-
-      match /permissionRequests/{id} {
-        allow create: if belongsToCompany(companyId);
-        allow read: if belongsToCompany(companyId);
-        allow update: if isAdmin(companyId) || (belongsToCompany(companyId) && request.auth.uid == resource.data.createdBy);
-        allow delete: if isAdmin(companyId);
-      }
-
-      match /leads/{id} {
-        allow create: if belongsToCompany(companyId);
-        allow read, update: if belongsToCompany(companyId);
-        allow delete: if isAdmin(companyId);
-      }
-
-      match /attendance/{id} {
-        allow read: if belongsToCompany(companyId);
-        allow create, update: if isAdmin(companyId);
-      }
-
-      // الوصول العام للمدير على كافة المجموعات الأخرى (بما في ذلك المراجع الهندسية)
+      // الوصول العام للمدير على كافة المجموعات الأخرى
       match /{allSubCollections=**} {
         allow read: if belongsToCompany(companyId);
         allow write: if isAdmin(companyId);

@@ -26,6 +26,7 @@ export class TechnicalPathService {
 
   /**
    * جلب كافة المراحل الفنية المعرفة للمنشأة (لأغراض الربط في القاموس)
+   * تم تحصينها بقواعد الحماية العالمية
    */
   async getAllCompanyStages(): Promise<TechnicalStage[]> {
     const q = query(
@@ -37,11 +38,13 @@ export class TechnicalPathService {
     return getDocs(q)
       .then(snap => snap.docs.map(d => ({ id: d.id, ...d.data() } as TechnicalStage)))
       .catch(async (err) => {
-        if (err.code === 'permission-denied') {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({
+        // في حال فشل الصلاحيات، نطلق الخطأ السياقي السيادي لـ NovaFlow
+        if (err.code === 'permission-denied' || err.message.includes('permissions')) {
+          const permissionError = new FirestorePermissionError({
             path: 'collection_group_stages',
             operation: 'list',
-          } satisfies SecurityRuleContext));
+          } satisfies SecurityRuleContext);
+          errorEmitter.emit('permission-error', permissionError);
         }
         return [];
       });
