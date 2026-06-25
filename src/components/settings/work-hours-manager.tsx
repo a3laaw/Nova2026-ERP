@@ -12,16 +12,18 @@ import {
   Loader2, Save, Sun, HardHat,
   Trash2, Zap, Sparkles,
   CheckCircle2, Coffee, Users,
-  Info
+  Info, Plus, CalendarX
 } from "lucide-react";
 import { useFirestore } from '@/firebase';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { WorkHoursService } from '@/services/work-hours-service';
-import { WorkHoursSettings, DayOfWeek, DailySchedule } from '@/types/work-hours';
+import { WorkHoursSettings, DayOfWeek, DailySchedule, PublicHoliday } from '@/types/work-hours';
 import { fetchPublicHolidays } from '@/ai/flows/fetch-holidays-flow';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SmartDateInput } from '@/components/ui/smart-date-input';
 
 const DAYS: DayOfWeek[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -35,6 +37,9 @@ export function WorkHoursManager() {
   const [saving, setSaving] = useState(false);
   const [fetchingHolidays, setFetchingHolidays] = useState(false);
   const [settings, setSettings] = useState<WorkHoursSettings | null>(null);
+
+  // Manual Holiday Form State
+  const [newHoliday, setNewHoliday] = useState<PublicHoliday>({ date: '', name: '', nameEn: '' });
 
   const service = useMemo(() => 
     db && globalUser?.companyId ? new WorkHoursService(db, globalUser.companyId) : null, 
@@ -86,6 +91,19 @@ export function WorkHoursManager() {
     } finally {
       setFetchingHolidays(false);
     }
+  };
+
+  const addManualHoliday = () => {
+    if (!settings || !newHoliday.date || !newHoliday.name) return;
+    const updated = [...(settings.publicHolidays || []), newHoliday];
+    setSettings({ ...settings, publicHolidays: updated });
+    setNewHoliday({ date: '', name: '', nameEn: '' });
+  };
+
+  const removeHoliday = (index: number) => {
+    if (!settings) return;
+    const updated = settings.publicHolidays.filter((_, i) => i !== index);
+    setSettings({ ...settings, publicHolidays: updated });
   };
 
   const updateSchedule = (scope: keyof Pick<WorkHoursSettings, 'architectural' | 'meetingRooms' | 'fieldWork'>, field: keyof DailySchedule, value: any) => {
@@ -259,8 +277,51 @@ export function WorkHoursManager() {
            bgClass="bg-emerald-50/50" 
         />
 
+        {/* Half Day Rule Card */}
         <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
-          <CardHeader className="bg-amber-50/50 border-b p-8 text-start flex flex-row items-center justify-between">
+          <CardHeader className="bg-blue-50/30 border-b p-8 text-start flex flex-row items-center justify-between">
+             <div className="flex items-center gap-3">
+                <div className="p-3 bg-white rounded-2xl shadow-sm text-blue-600"><Clock className="h-6 w-6" /></div>
+                <div>
+                   <CardTitle className="text-xl font-black">{t('halfDayRule')}</CardTitle>
+                   <CardDescription className="font-bold">{isRtl ? 'تخصيص يوم في الأسبوع بنظام دوام مخفف.' : 'Set a specific weekday with reduced hours.'}</CardDescription>
+                </div>
+             </div>
+          </CardHeader>
+          <CardContent className="p-8 space-y-6 text-start">
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                   <Label className="text-[10px] font-black uppercase text-slate-400">{t('selectDay')}</Label>
+                   <Select value={settings?.halfDay.day || ''} onValueChange={(v: any) => setSettings({...settings!, halfDay: {...settings!.halfDay, day: v}})}>
+                      <SelectTrigger className="h-12 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
+                      <SelectContent>
+                         {DAYS.map(d => <SelectItem key={d} value={d} className="font-bold">{t(d)}</SelectItem>)}
+                      </SelectContent>
+                   </Select>
+                </div>
+                <div className="space-y-2">
+                   <Label className="text-[10px] font-black uppercase text-slate-400">{t('halfDayMode')}</Label>
+                   <Select value={settings?.halfDay.mode} onValueChange={(v: any) => setSettings({...settings!, halfDay: {...settings!.halfDay, mode: v}})}>
+                      <SelectTrigger className="h-12 rounded-xl border-2 font-bold"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                         <SelectItem value="morning_only" className="font-bold">{t('morningOnly')}</SelectItem>
+                         <SelectItem value="custom_end_time" className="font-bold">{t('customEndTime')}</SelectItem>
+                      </SelectContent>
+                   </Select>
+                </div>
+                {settings?.halfDay.mode === 'custom_end_time' && (
+                  <div className="space-y-2 animate-in slide-in-from-top-2">
+                     <Label className="text-[10px] font-black uppercase text-slate-400">{t('checkOutTime')}</Label>
+                     <Input type="time" value={settings.halfDay.endTime} onChange={e => setSettings({...settings!, halfDay: {...settings!.halfDay, endTime: e.target.value}})} className="h-12 rounded-xl border-2 font-bold" />
+                  </div>
+                )}
+             </div>
+          </CardContent>
+        </Card>
+
+        {/* Holidays & Manual Management */}
+        <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
+          <CardHeader className="bg-amber-50/50 border-b p-8 text-start">
              <div className="flex items-center gap-3">
                 <div className="p-3 bg-white rounded-2xl shadow-sm text-amber-600"><Calendar className="h-6 w-6" /></div>
                 <div>
@@ -291,22 +352,43 @@ export function WorkHoursManager() {
                 </div>
              </div>
 
-             {settings?.publicHolidays && settings.publicHolidays.length > 0 && (
-               <div className="pt-8 border-t">
-                  <p className="text-[10px] font-black text-slate-400 mb-6 uppercase tracking-widest">{t('scheduledPublicHolidays')}</p>
-                  <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                     {settings.publicHolidays.map((ph, idx) => (
-                        <div key={idx} className="p-4 rounded-2xl bg-slate-50 border-2 border-white shadow-inner flex justify-between items-center group hover:bg-emerald-50 transition-all">
+             <div className="pt-8 border-t space-y-6">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('scheduledPublicHolidays')}</p>
+                   <div className="flex gap-2 w-full md:w-auto">
+                      <div className="bg-slate-50 p-4 rounded-2xl border-2 flex-1 md:flex-none md:w-80 space-y-4">
+                         <div className="space-y-3">
+                            <h4 className="text-[10px] font-black uppercase text-primary">{t('addHolidayManually')}</h4>
+                            <SmartDateInput value={newHoliday.date} onChange={v => setNewHoliday({...newHoliday, date: v})} />
+                            <Input placeholder={t('holidayNameAr')} value={newHoliday.name} onChange={e => setNewHoliday({...newHoliday, name: e.target.value})} className="h-10 text-xs font-bold" />
+                            <Input placeholder={t('holidayNameEn')} value={newHoliday.nameEn} onChange={e => setNewHoliday({...newHoliday, nameEn: e.target.value})} className="h-10 text-xs font-bold" dir="ltr" />
+                            <Button onClick={addManualHoliday} disabled={!newHoliday.date || !newHoliday.name} className="w-full h-10 rounded-xl text-xs gap-2"><Plus className="h-3 w-3" /> {t('addEntry')}</Button>
+                         </div>
+                      </div>
+                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                   {settings?.publicHolidays && settings.publicHolidays.length > 0 ? (
+                     settings.publicHolidays.map((ph, idx) => (
+                        <div key={idx} className="p-4 rounded-2xl bg-slate-50 border-2 border-white shadow-inner flex justify-between items-center group hover:bg-rose-50 transition-all">
                            <div className="text-start">
-                              <p className="text-xs font-black text-slate-800 group-hover:text-emerald-700">{lang === 'ar' ? ph.name : ph.nameEn}</p>
+                              <p className="text-xs font-black text-slate-800 group-hover:text-rose-700">{lang === 'ar' ? ph.name : ph.nameEn}</p>
                               <p className="text-[9px] font-mono font-bold text-slate-400">{ph.date}</p>
                            </div>
-                           <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                           <Button variant="ghost" size="icon" onClick={() => removeHoliday(idx)} className="h-8 w-8 text-slate-300 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Trash2 className="h-4 w-4" />
+                           </Button>
                         </div>
-                     ))}
-                  </div>
-               </div>
-             )}
+                     ))
+                   ) : (
+                     <div className="col-span-full py-10 text-center border-2 border-dashed rounded-3xl bg-slate-50/50">
+                        <CalendarX className="h-8 w-8 mx-auto text-slate-200 mb-2" />
+                        <p className="text-xs font-bold text-slate-400 italic">{isRtl ? 'لا يوجد عطلات مجدولة.' : 'No scheduled holidays.'}</p>
+                     </div>
+                   )}
+                </div>
+             </div>
           </CardContent>
         </Card>
       </div>

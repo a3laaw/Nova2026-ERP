@@ -11,7 +11,7 @@ export interface DailySchedule {
   eveningStartTime: string;
   eveningEndTime: string;
   slotDurationMinutes: number; // مدة الموعد/البند
-  restDurationMinutes: number; // مدة الراحة بين المواعيد (جديد)
+  restDurationMinutes: number; // مدة الراحة بين المواعيد
   bufferMinutes: number; // فترة السماح في البصمة
 }
 
