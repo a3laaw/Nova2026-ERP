@@ -7,9 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
-  ArrowRight, Loader2, AlertCircle, Trash2, 
+  Loader2, AlertCircle, 
   History, ShieldCheck, FileText, Ban,
-  CheckCircle2, AlertTriangle, Calendar, Lock
+  AlertTriangle, Lock
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy } from 'firebase/firestore';
@@ -92,9 +92,6 @@ export default function EmployeeDetailsPage() {
     <div className="space-y-8" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" onClick={() => router.back()} className="h-12 w-12 p-0 rounded-2xl bg-white shadow-sm border hover:bg-slate-50">
-            <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-180")} />
-          </Button>
           <div className="text-start">
             <div className="flex items-center gap-3">
               <h1 className="text-3xl font-black font-headline">{employee.fullName}</h1>
@@ -191,17 +188,6 @@ export default function EmployeeDetailsPage() {
                                      <p className="text-xs font-bold text-slate-600">
                                         {isRtl ? 'تغيير في' : 'Changed'} <span className="text-slate-900 font-black">{log.field}</span>
                                      </p>
-                                     <div className="flex items-center gap-2 mt-1 text-[10px]">
-                                        <span className="text-slate-400 line-through">{log.oldValue?.toString()}</span>
-                                        <ArrowRight className={cn("h-2 w-2 text-primary", !isRtl && "rotate-0", isRtl && "rotate-180")} />
-                                        <span className="text-emerald-600 font-black">{log.newValue?.toString()}</span>
-                                     </div>
-                                  </div>
-                                  <div className="flex items-center gap-2 pt-2 border-t border-slate-50">
-                                     <div className="h-5 w-5 rounded-full bg-slate-100 flex items-center justify-center text-[8px] font-black uppercase text-slate-400">
-                                        {log.changedByName?.charAt(0)}
-                                     </div>
-                                     <span className="text-[9px] font-bold text-slate-400">{isRtl ? 'بواسطة:' : 'By:'} {log.changedByName}</span>
                                   </div>
                                </div>
                              ))
@@ -212,26 +198,6 @@ export default function EmployeeDetailsPage() {
                 </CardContent>
               </Card>
            )}
-
-           <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
-              <CardHeader className="bg-slate-50 border-b p-6 text-start">
-                <CardTitle className="text-sm font-black flex items-center gap-2">
-                   <FileText className="h-4 w-4 text-primary" /> {isRtl ? 'المستندات القانونية' : 'Documents'}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6 space-y-4 text-start">
-                 <div className="p-4 rounded-2xl bg-muted/30 border-2 border-dashed space-y-1">
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{isRtl ? 'حالة الإقامة' : 'Residency Status'}</p>
-                    <div className="flex items-center justify-between">
-                       <p className="text-sm font-black text-slate-800">{employee.residencyExpiry || '---'}</p>
-                       <Badge variant="outline" className="text-[9px] font-bold">{isRtl ? 'ساري' : 'Valid'}</Badge>
-                    </div>
-                 </div>
-                 <Button variant="outline" className="w-full rounded-xl font-bold h-10 text-xs border-2 border-slate-100">
-                    {isRtl ? 'عرض المرفقات' : 'View Attachments'}
-                 </Button>
-              </CardContent>
-           </Card>
         </div>
       </div>
     </div>

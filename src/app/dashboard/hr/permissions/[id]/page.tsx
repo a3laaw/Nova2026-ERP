@@ -1,14 +1,14 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
-  ArrowRight, Loader2, CheckCircle2, XCircle,
-  Clock, User, FileText, AlertTriangle,
-  History, ShieldCheck, Timer, Calendar
+  Loader2, CheckCircle2, XCircle,
+  User, History, ShieldCheck, Timer, Calendar, FileText
 } from "lucide-react";
 import { useFirestore, useDoc } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -28,7 +28,6 @@ export default function PermissionDetailsPage() {
   const { t, lang, dir } = useLanguage();
   const { permissions } = usePermissions();
   const db = useFirestore();
-  const router = useRouter();
   const isRtl = lang === 'ar';
 
   const [processing, setProcessing] = useState(false);
@@ -65,9 +64,6 @@ export default function PermissionDetailsPage() {
   return (
     <div className="space-y-8 max-w-5xl mx-auto pb-20 animate-in fade-in duration-500" dir={dir}>
       <div className="flex items-center gap-4">
-        <Button variant="ghost" onClick={() => router.push('/dashboard/hr/permissions')} className="h-12 w-12 p-0 rounded-2xl bg-white shadow-sm border hover:bg-slate-50">
-          <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-180")} />
-        </Button>
         <div className="text-start">
            <div className="flex items-center gap-3">
               <h1 className="text-3xl font-black font-headline text-slate-900">{isRtl ? 'تفاصيل الاستئذان' : 'Permission Details'}</h1>
@@ -75,7 +71,7 @@ export default function PermissionDetailsPage() {
                 "font-black px-4 py-1 rounded-xl shadow-sm",
                 request.status === 'approved' ? 'bg-emerald-500 text-white' : 
                 request.status === 'pending' ? 'bg-amber-50 text-amber-600 border-amber-200 border' : 
-                'bg-rose-500 text-white'
+                'bg-rose-50 text-white'
               )}>
                  {request.status.toUpperCase()}
               </Badge>
@@ -101,14 +97,7 @@ export default function PermissionDetailsPage() {
                         <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اسم الموظف' : 'Employee Name'}</Label>
                         <p className="text-xl font-black text-slate-900">{request.userName}</p>
                      </div>
-                     <div className="space-y-1">
-                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'التصنيف' : 'Type'}</Label>
-                        <Badge variant="secondary" className="block w-fit text-lg px-4 py-1 rounded-xl font-black bg-slate-100">
-                           {isRtl ? (request.type === 'late_arrival' ? 'حضور متأخر' : 'انصراف مبكر') : request.type.replace('_', ' ')}
-                        </Badge>
-                     </div>
                   </div>
-
                   <div className="p-8 rounded-[2rem] bg-slate-50/50 border-2 border-slate-100 flex flex-col md:flex-row justify-between items-center gap-8">
                      <div className="text-center md:text-start space-y-1">
                         <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'التاريخ' : 'Date'}</Label>
@@ -117,74 +106,18 @@ export default function PermissionDetailsPage() {
                            <p className="text-2xl font-black text-slate-900">{request.date}</p>
                         </div>
                      </div>
-                     <div className="h-10 w-10 rounded-full bg-white flex items-center justify-center shadow-sm text-slate-300">
-                        <Timer className="h-5 w-5" />
-                     </div>
-                     <div className="text-center md:text-end space-y-1">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الفترة الزمنية' : 'Time Slot'}</Label>
-                        <p className="text-2xl font-black text-slate-900">{request.startTime} - {request.endTime}</p>
-                     </div>
-                     <div className="px-8 border-s-2 border-slate-200 hidden md:block">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المدة بالساعة' : 'Hours'}</Label>
-                        <p className="text-4xl font-black text-primary">{request.durationHours}</p>
-                     </div>
-                  </div>
-
-                  <div className="space-y-4 pt-6 border-t border-slate-100">
-                     <div className="flex items-center gap-2 text-slate-800">
-                        <FileText className="h-5 w-5 text-primary" />
-                        <h4 className="font-black text-lg">{isRtl ? 'السبب / الملاحظات' : 'Reason / Notes'}</h4>
-                     </div>
-                     <p className="text-lg text-slate-600 bg-slate-50 p-6 rounded-2xl leading-relaxed italic border">
-                        {request.reason || (isRtl ? 'لا يوجد تفاصيل إضافية.' : 'No details provided.')}
-                     </p>
                   </div>
                </CardContent>
             </Card>
 
             {isAdmin && request.status === 'pending' && (
                <div className="flex gap-4">
-                  <Button 
-                    onClick={() => handleAction('approved')}
-                    disabled={processing}
-                    className="flex-1 h-20 rounded-[2rem] bg-emerald-600 text-white font-black text-2xl shadow-xl shadow-emerald-100 hover:scale-[1.02] active:scale-[0.98] transition-all gap-4"
-                  >
-                     {processing ? <Loader2 className="h-8 w-8 animate-spin" /> : <CheckCircle2 className="h-8 w-8" />}
+                  <Button onClick={() => handleAction('approved')} disabled={processing} className="flex-1 h-20 rounded-[2rem] bg-emerald-600 text-white font-black text-2xl shadow-xl shadow-emerald-100 hover:scale-[1.02] transition-all gap-4">
+                     {processing ? <Loader2 className="animate-spin" /> : <CheckCircle2 className="h-8 w-8" />}
                      {isRtl ? 'اعتماد الاستئذان' : 'Approve Request'}
-                  </Button>
-                  <Button 
-                    variant="outline"
-                    onClick={() => handleAction('rejected')}
-                    disabled={processing}
-                    className="flex-1 h-20 rounded-[2rem] border-2 border-rose-100 bg-white text-rose-600 font-black text-2xl hover:bg-rose-50 transition-all gap-4"
-                  >
-                     {processing ? <Loader2 className="animate-spin" /> : <XCircle className="h-8 w-8" />}
-                     {isRtl ? 'رفض الطلب' : 'Reject Request'}
                   </Button>
                </div>
             )}
-         </div>
-
-         <div className="space-y-6">
-            <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 text-start">
-               <CardHeader className="bg-slate-50 border-b p-6">
-                  <CardTitle className="text-sm font-black flex items-center gap-2">
-                     <History className="h-4 w-4 text-primary" /> {isRtl ? 'سجل التدقيق' : 'Audit Trail'}
-                  </CardTitle>
-               </CardHeader>
-               <CardContent className="p-6 space-y-4">
-                  <div className="flex justify-between items-center text-xs">
-                     <span className="font-bold text-slate-400">{isRtl ? 'تاريخ التقديم' : 'Submitted At'}</span>
-                     <span className="font-black text-slate-800">{request.createdAt?.toDate().toLocaleString()}</span>
-                  </div>
-                  {request.approvedAt && (
-                     <div className="flex justify-between items-center text-xs border-t pt-4">
-                        <span className="font-bold text-slate-400">{isRtl ? 'تاريخ المعالجة' : 'Processed At'}</span>
-                        <span className="font-black text-emerald-600">{request.approvedAt?.toDate().toLocaleString()}</span>
-                     </div>
-                  )}
-               </CardContent>
-            </Card>
          </div>
       </div>
     </div>

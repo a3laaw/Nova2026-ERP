@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -6,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
-  ArrowRight, Edit3, MapPin, Phone, 
+  Edit3, MapPin, Phone, 
   History, Loader2, Activity, PlayCircle, 
   Compass, Map as MapIcon, Target, Layers 
 } from "lucide-react";
@@ -52,12 +53,8 @@ export default function ClientDetailsPage() {
 
   return (
     <div className="space-y-6" dir={dir}>
-      {/* Header - Compact */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" onClick={() => router.push('/dashboard/clients')} className="h-9 w-9 p-0 rounded-xl bg-white shadow-sm border border-slate-200">
-            <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
-          </Button>
           <div className="text-start">
              <div className="flex items-center gap-3 flex-wrap">
                 <div className="px-3 h-8 rounded-lg bg-primary/5 flex items-center justify-center text-primary font-black text-xs border border-primary/10 w-fit min-w-fit">
@@ -79,7 +76,6 @@ export default function ClientDetailsPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content: Transactions & Map */}
         <div className="lg:col-span-2 space-y-6">
            <Card className="border-0 shadow-lg rounded-2xl bg-white overflow-hidden ring-1 ring-black/5">
               <CardHeader className="bg-slate-50/50 border-b p-4 text-start flex flex-row items-center justify-between">
@@ -104,7 +100,6 @@ export default function ClientDetailsPage() {
                              <p className="text-[9px] font-bold text-primary mt-0.5">{t.activityTypeName}</p>
                           </div>
                        </div>
-                       <ArrowRight className={cn("h-4 w-4 text-slate-200 group-hover:text-primary transition-all", isRtl && "rotate-180")} />
                     </div>
                  ))}
                  {!transactions?.length && <div className="py-12 text-center text-[10px] text-slate-300 font-bold italic">لا يوجد معاملات مسجلة.</div>}
@@ -135,7 +130,6 @@ export default function ClientDetailsPage() {
            </Card>
         </div>
 
-        {/* Timeline Log */}
         <Card className="border-0 shadow-lg rounded-2xl bg-white overflow-hidden flex flex-col min-h-[400px]">
            <CardHeader className="bg-slate-50/50 border-b p-4 flex items-center gap-2">
               <History className="h-4 w-4 text-primary" />

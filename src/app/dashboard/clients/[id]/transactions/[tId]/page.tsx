@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -7,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { 
-  ArrowRight, Activity, Clock, Loader2, 
+  Activity, Clock, Loader2, 
   History, ShieldCheck, HardHat, ListChecks, 
   Timer, LayoutGrid, CheckCircle2,
   AlertCircle, Lock, User, Printer, Play, Check, Save,
@@ -46,13 +47,11 @@ export default function TransactionDetailsPage() {
   [db, companyId, transactionId]);
   const { data: transaction, loading: transLoading } = useDoc<Transaction>(transRef);
 
-  // جلب المراحل مع ضمان الترتيب
   const stagesQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.transactionStages(companyId, transactionId)), orderBy('order')) : null, 
   [db, companyId, transactionId]);
   const { data: rawStages, loading: stagesLoading } = useCollection<StageInstance>(stagesQuery);
 
-  // ترتيب إضافي برمجي لضمان استقرار الواجهة (Extra Safety)
   const stages = useMemo(() => {
     return [...rawStages].sort((a, b) => (a.order || 0) - (b.order || 0));
   }, [rawStages]);
@@ -66,7 +65,6 @@ export default function TransactionDetailsPage() {
     db && companyId ? new TransactionService(db, companyId, permissions) : null, 
   [db, companyId, permissions]);
 
-  // --- محرك الاعتمادية الذكي ---
   const isStageBlocked = (stage: StageInstance) => {
     if (!stages) return false;
     return stages.some(other => 
@@ -148,16 +146,8 @@ export default function TransactionDetailsPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-20" dir={dir}>
-      
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-6">
         <div className="flex items-center gap-4">
-          <Button 
-            variant="ghost" 
-            onClick={() => router.push(`/dashboard/clients/${clientId}`)} 
-            className="h-12 w-12 p-0 rounded-2xl bg-white shadow-sm border hover:bg-slate-50 transition-all shrink-0"
-          >
-            <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-180")} />
-          </Button>
           <div className="text-start">
              <div className="flex items-center gap-4 flex-wrap">
                 <div className="h-12 px-5 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-black text-lg border-2 border-primary/20 shadow-inner">
@@ -192,9 +182,7 @@ export default function TransactionDetailsPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
         <div className="lg:col-span-8 space-y-8">
-           
            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
               <div className="bg-slate-50/50 p-8 border-b grid grid-cols-1 md:grid-cols-3 gap-8">
                  <div className="text-start">
@@ -248,8 +236,7 @@ export default function TransactionDetailsPage() {
                            <div className="flex items-center gap-6 flex-1 text-start">
                               <div className={cn(
                                  "h-12 w-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-sm border",
-                                 stage.status === 'completed' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 
-                                 blocked ? 'bg-slate-100 text-slate-300 border-slate-100' : 'bg-slate-50 border-slate-100 text-slate-400'
+                                 stage.status === 'completed' ? <CheckCircle2 className="h-6 w-6" /> : (idx + 1)
                               )}>
                                  {stage.status === 'completed' ? <CheckCircle2 className="h-6 w-6" /> : (idx + 1)}
                               </div>
@@ -258,93 +245,22 @@ export default function TransactionDetailsPage() {
                                     <h4 className="font-black text-lg text-slate-900 tracking-tight">{stage.name}</h4>
                                     {blocked && <Badge variant="outline" className="text-[7px] font-black bg-slate-100 text-slate-400 border-0 uppercase">Locked</Badge>}
                                  </div>
-
                                  {blocked && predecessors.length > 0 && (
                                    <div className="flex items-center gap-1.5 text-[9px] font-bold text-rose-400 bg-rose-50 px-2 py-0.5 rounded-lg w-fit">
                                       <Lock className="h-2 w-2" />
                                       {isRtl ? 'بانتظار:' : 'Requires:'} {predecessors.map(p => p.name).join(', ')}
                                    </div>
                                  )}
-
                                  <div className="flex flex-wrap gap-3 mt-1">
                                     {stage.isNumeric && (
                                        <div className="flex items-center gap-3">
                                           <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 text-[10px] font-black border-emerald-100 border gap-1 px-3 py-1">
                                              <ListChecks className="h-3 w-3" /> {isRtl ? 'الإنجاز:' : 'Qty:'} {stage.currentCount} / {stage.numericTarget}
                                           </Badge>
-                                          {canEdit && stage.status === 'in-progress' && (
-                                            <Button 
-                                              size="sm" 
-                                              variant="outline"
-                                              className="h-8 rounded-xl px-4 border-2 font-black text-[10px] gap-2 hover:bg-emerald-50 hover:text-emerald-600 transition-all shadow-sm bg-white"
-                                              onClick={() => handleUpdateCount(stage)}
-                                              disabled={processingId === `count_${stage.id}`}
-                                            >
-                                               {processingId === `count_${stage.id}` ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-                                               {isRtl ? 'تعديل' : 'Modify'}
-                                            </Button>
-                                          )}
                                        </div>
-                                    )}
-                                    {stage.isTimed && (
-                                       <Badge variant="secondary" className="bg-blue-50 text-blue-700 text-[10px] font-black border-blue-100 border gap-1">
-                                          <Timer className="h-3 w-3" /> {isRtl ? 'المستهدف:' : 'Goal:'} {stage.timeTargetDays} {isRtl ? 'يوم' : 'Days'}
-                                       </Badge>
                                     )}
                                  </div>
                               </div>
-                           </div>
-
-                           <div className="flex items-center gap-3">
-                              {canEdit && (
-                                <>
-                                  {stage.status === 'pending' && !blocked && (
-                                     <Button 
-                                       size="sm" 
-                                       onClick={() => handleStartStage(stage.id!)}
-                                       disabled={processingId === stage.id}
-                                       className="rounded-xl h-10 px-5 bg-blue-600 text-white font-black gap-2 shadow-lg shadow-blue-200"
-                                     >
-                                        {processingId === stage.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-                                        {isRtl ? 'بدء العمل' : 'Start'}
-                                     </Button>
-                                  )}
-                                  
-                                  {stage.status === 'in-progress' && (
-                                     <Button 
-                                       size="sm" 
-                                       onClick={() => handleCompleteStage(stage.id!)}
-                                       disabled={processingId === stage.id}
-                                       className="rounded-xl h-10 px-5 bg-emerald-600 text-white font-black gap-2 shadow-lg shadow-emerald-200"
-                                     >
-                                        {processingId === stage.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                                        {isRtl ? 'إنهاء المرحلة' : 'Complete'}
-                                     </Button>
-                                  )}
-
-                                  {stage.status === 'completed' && (
-                                     <Button 
-                                       size="sm" 
-                                       variant="outline"
-                                       onClick={() => handleReopenStage(stage.id!)}
-                                       disabled={processingId === stage.id}
-                                       className="rounded-xl h-10 px-4 border-2 font-black gap-2 text-rose-500 hover:bg-rose-50"
-                                     >
-                                        {processingId === stage.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-                                        {isRtl ? 'تراجع' : 'Undo'}
-                                     </Button>
-                                  )}
-                                </>
-                              )}
-
-                              <Badge className={cn(
-                                 "font-black px-4 py-1.5 rounded-xl border-0 shadow-inner text-[10px] uppercase",
-                                 stage.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 
-                                 stage.status === 'in-progress' ? 'bg-blue-100 text-blue-700' : 
-                                 blocked ? 'bg-slate-200 text-slate-400' : 'bg-orange-100 text-orange-700'
-                              )}>
-                                 {isRtl ? (blocked ? 'مقفلة' : stage.status) : (blocked ? 'Blocked' : stage.status)}
-                              </Badge>
                            </div>
                         </CardContent>
                       </Card>
@@ -353,74 +269,6 @@ export default function TransactionDetailsPage() {
               </div>
            </div>
         </div>
-
-        <div className="lg:col-span-4 space-y-8">
-           
-           <Card className="border-2 border-primary/10 shadow-xl rounded-[2.5rem] bg-white p-8 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform">
-                 <ShieldCheck className="h-24 w-24 text-primary" />
-              </div>
-              <div className="text-start relative z-10 space-y-6">
-                 <h3 className="text-primary font-black uppercase text-xs tracking-[0.2em]">{isRtl ? 'رادار الإنجاز اللحظي' : 'Completion Radar'}</h3>
-                 <div className="space-y-2">
-                    <p className="text-5xl font-black font-headline text-slate-900">{progressPercent}%</p>
-                    <p className="text-xs font-bold text-slate-400">{isRtl ? 'معدل إنجاز المسار الفني' : 'Pipeline completion rate'}</p>
-                 </div>
-                 <div className="pt-6 border-t border-slate-100 flex justify-between items-center text-[10px] font-black uppercase text-slate-400">
-                    <span>{isRtl ? 'المراحل:' : 'Stages:'} {stages?.length || 0}</span>
-                    <span className="text-emerald-500">{isRtl ? 'مكتمل:' : 'Done:'} {stages?.filter(s => s.status === 'completed').length || 0}</span>
-                 </div>
-              </div>
-           </Card>
-
-           <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden flex flex-col min-h-[500px]">
-              <CardHeader className="bg-slate-50 border-b p-6 flex items-center gap-3">
-                 <History className="h-5 w-5 text-primary" />
-                 <CardTitle className="text-sm font-black uppercase tracking-widest">{isRtl ? 'السجل الزمني للأحداث' : 'Transaction Timeline'}</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0 flex-1 overflow-y-auto max-h-[600px] scrollbar-hide text-start">
-                 <div className="relative p-6">
-                    <div className={cn("absolute top-0 bottom-0 w-[1.5px] bg-slate-100", isRtl ? "right-9" : "left-9")} />
-                    
-                    <div className="space-y-8">
-                       {timelineLoading ? <div className="p-10 text-center"><Loader2 className="animate-spin h-6 w-6 mx-auto opacity-20" /></div> : (
-                         timeline?.map((event) => (
-                           <div key={event.id} className="relative ps-10">
-                              <div className={cn(
-                                "absolute top-1 h-3 w-3 rounded-full border-2 border-white shadow-md z-10",
-                                event.type === 'system' ? 'bg-primary' : 
-                                event.type === 'stage_complete' ? 'bg-emerald-500' : 
-                                event.type === 'stage_reopen' ? 'bg-rose-500' :
-                                event.type === 'stage_start' ? 'bg-blue-500' : 'bg-slate-500',
-                                isRtl ? "right-0" : "left-0"
-                              )} />
-                              
-                              <div className="space-y-1">
-                                 <div className="flex justify-between items-center">
-                                    <span className="text-[8px] font-mono text-slate-400 font-bold uppercase">
-                                       {event.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </span>
-                                    <Badge variant="outline" className="text-[7px] font-black uppercase border-slate-100 h-4 px-2">
-                                       {event.type}
-                                    </Badge>
-                                 </div>
-                                 <p className="text-xs font-bold text-slate-700 leading-relaxed">{event.content}</p>
-                                 <div className="flex items-center gap-1.5 pt-1 text-[9px] font-black text-primary uppercase">
-                                    <User className="h-2.5 w-2.5" /> {event.userName}
-                                 </div>
-                              </div>
-                           </div>
-                         ))
-                       )}
-                       {!timeline?.length && !timelineLoading && (
-                         <div className="py-20 text-center text-[10px] text-slate-300 font-bold italic">لا يوجد أحداث مسجلة.</div>
-                       )}
-                    </div>
-                 </div>
-              </CardContent>
-           </Card>
-        </div>
-
       </div>
     </div>
   );

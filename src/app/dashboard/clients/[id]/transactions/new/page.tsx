@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -7,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Activity, ArrowRight, Loader2, CheckCircle2, Workflow, Layers, Boxes } from "lucide-react";
+import { Loader2, CheckCircle2, Workflow } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
@@ -19,7 +20,6 @@ import { ActivityType, Service, SubService } from '@/types/reference';
 import { Employee } from '@/types/hr';
 import { TransactionService } from '@/services/transaction-service';
 import { toast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
 
 export default function NewTransactionPage() {
   const clientId = useParams().id as string;
@@ -39,7 +39,6 @@ export default function NewTransactionPage() {
   const clientRef = useMemo(() => companyId && db ? doc(db, paths.clients(companyId), clientId) : null, [db, companyId, clientId]);
   const { data: client, loading: cLoading } = useDoc<Client>(clientRef);
 
-  // جلب المراجع الفنية
   const actQuery = useMemo(() => companyId && db ? query(collection(db, paths.activityTypes(companyId)), orderBy('name')) : null, [db, companyId]);
   const srvQuery = useMemo(() => companyId && db && form.activityTypeId ? query(collection(db, paths.services(companyId, form.activityTypeId)), orderBy('name')) : null, [db, companyId, form.activityTypeId]);
   const subQuery = useMemo(() => companyId && db && form.activityTypeId && form.serviceId ? query(collection(db, paths.subServices(companyId, form.activityTypeId, form.serviceId)), orderBy('name')) : null, [db, companyId, form.activityTypeId, form.serviceId]);
@@ -82,7 +81,6 @@ export default function NewTransactionPage() {
       
       router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}`);
     } catch (e: any) {
-      console.error("Create Transaction Error:", e);
       toast({ 
         variant: "destructive", 
         title: isRtl ? "فشل فتح المعاملة" : "Transaction Failed",
@@ -98,9 +96,6 @@ export default function NewTransactionPage() {
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-20 animate-in fade-in duration-500" dir={dir}>
       <div className="flex items-center gap-4 border-b pb-4">
-        <Button variant="ghost" onClick={() => router.back()} className="h-10 w-10 p-0 rounded-xl bg-white shadow-sm border border-slate-100">
-          <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
-        </Button>
         <div className="text-start">
            <h1 className="text-2xl font-black font-headline text-slate-900 tracking-tight">{isRtl ? 'فتح معاملة فنية جديدة' : 'New Technical Transaction'}</h1>
            <p className="text-muted-foreground text-[10px] font-bold opacity-70 italic">{client?.nameAr} | {client?.fileNumber}</p>

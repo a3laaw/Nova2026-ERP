@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -7,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { 
-  ArrowRight, HardHat, CheckCircle2, Clock, 
-  Loader2, AlertCircle, FileText, ChevronRight,
+  HardHat, CheckCircle2, Clock, 
+  Loader2, AlertCircle, FileText,
   ShieldCheck, LayoutGrid, DollarSign
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
@@ -71,9 +72,6 @@ export default function ProjectExecutionPage() {
     <div className="space-y-8" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" onClick={() => router.push('/dashboard/projects')} className="h-12 w-12 p-0 rounded-2xl bg-white shadow-sm border hover:bg-slate-50">
-            <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-180")} />
-          </Button>
           <div className="text-start">
             <div className="flex items-center gap-3">
               <h1 className="text-3xl font-black font-headline">{project.name}</h1>
@@ -104,7 +102,6 @@ export default function ProjectExecutionPage() {
                   </div>
                   <div className="text-end">
                      <span className="text-4xl font-black font-headline text-primary">{stats.percent}%</span>
-                     <p className="text-[10px] font-black text-muted-foreground uppercase tracking-tighter">{isRtl ? 'نسبة الإنجاز الكلية' : 'Total Progress'}</p>
                   </div>
                </div>
                <Progress value={stats.percent} className="h-3 rounded-full bg-slate-100" />
@@ -125,76 +122,13 @@ export default function ProjectExecutionPage() {
                        </div>
                        <div className="text-start">
                           <h4 className="font-black text-lg text-slate-800">{isRtl ? instance.name : instance.nameEn}</h4>
-                          <div className="flex gap-4 mt-1">
-                             {instance.isTimed && <span className="text-[10px] font-bold text-blue-600 flex items-center gap-1"><Clock className="h-3 w-3" /> {instance.timeTargetDays} {isRtl ? 'يوم مستهدف' : 'Days'}</span>}
-                             {instance.isNumeric && <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1"><LayoutGrid className="h-3 w-3" /> {isRtl ? 'مستهدف عددي:' : 'Target:'} {instance.numericTarget}</span>}
-                          </div>
                        </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                       {instance.status !== 'completed' && check('projects:edit') && (
-                         <Button onClick={() => handleCompleteStage(instance.id!)} className="rounded-xl font-bold bg-white text-primary border-2 border-primary/10 hover:bg-primary hover:text-white transition-all shadow-sm">
-                            {isRtl ? 'إكمال المرحلة' : 'Complete'}
-                         </Button>
-                       )}
-                       {instance.status === 'completed' && (
-                         <div className="text-end">
-                            <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">{isRtl ? 'تم الإنجاز' : 'Completed'}</p>
-                            <p className="text-[10px] text-muted-foreground font-bold">{instance.completedAt?.toDate().toLocaleDateString()}</p>
-                         </div>
-                       )}
                     </div>
                   </div>
                 ))
               )}
             </CardContent>
           </Card>
-        </div>
-
-        <div className="space-y-6">
-           <Card className="border-0 shadow-lg rounded-[2.5rem] bg-slate-900 text-white overflow-hidden">
-              <CardHeader className="bg-white/5 border-b border-white/5 p-8">
-                <CardTitle className="text-lg font-black flex items-center gap-2"><DollarSign className="h-5 w-5 text-emerald-400" /> {isRtl ? 'البيان المالي' : 'Financial Status'}</CardTitle>
-              </CardHeader>
-              <CardContent className="p-8 space-y-6 text-start">
-                 <div className="text-start">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{isRtl ? 'الميزانية الإجمالية' : 'Total Budget'}</p>
-                    <p className="text-4xl font-black font-headline text-emerald-400 mt-1">{project.budget?.toLocaleString()} <span className="text-sm">KWD</span></p>
-                 </div>
-                 <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/5">
-                    <div className="text-start">
-                       <p className="text-[10px] font-bold text-slate-500 uppercase">{isRtl ? 'المدفوع' : 'Paid'}</p>
-                       <p className="text-lg font-black text-slate-200">0.000</p>
-                    </div>
-                    <div className="text-start">
-                       <p className="text-[10px] font-bold text-slate-500 uppercase">{isRtl ? 'المستحق' : 'Due'}</p>
-                       <p className="text-lg font-black text-primary">0.000</p>
-                    </div>
-                 </div>
-              </CardContent>
-           </Card>
-
-           <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 text-start">
-              <CardHeader className="bg-slate-50 border-b p-6">
-                <CardTitle className="text-sm font-black flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> {isRtl ? 'تفاصيل الارتباط الفني' : 'Technical Link'}</CardTitle>
-              </CardHeader>
-              <CardContent className="p-6 space-y-4">
-                 <div className="p-4 rounded-2xl bg-muted/30 border-2 border-dashed space-y-1 text-start">
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{isRtl ? 'المسار التشغيلي' : 'Operational Path'}</p>
-                    <p className="text-sm font-black text-slate-800">{isRtl ? 'تم الربط آلياً مع المرجعيات' : 'Automatically linked to references'}</p>
-                 </div>
-                 <div className="space-y-3">
-                    <div className="flex justify-between items-center text-xs">
-                       <span className="font-bold text-muted-foreground">{isRtl ? 'إجمالي المراحل' : 'Total Stages'}</span>
-                       <span className="font-black">{stats.total}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-xs">
-                       <span className="font-bold text-muted-foreground">{isRtl ? 'المراحل المكتملة' : 'Completed'}</span>
-                       <span className="font-black text-emerald-600">{stats.completed}</span>
-                    </div>
-                 </div>
-              </CardContent>
-           </Card>
         </div>
       </div>
     </div>

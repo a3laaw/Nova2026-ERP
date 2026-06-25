@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -6,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
-  ArrowRight, Printer, FileText, 
+  Printer, FileText, 
   CalendarDays, ShieldCheck, Clock,
   DollarSign, Landmark, Gavel, Loader2
 } from "lucide-react";
@@ -20,10 +21,6 @@ import { cn } from '@/lib/utils';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
 import { format, addDays } from 'date-fns';
 
-/**
- * صفحة عرض وطباعة عرض السعر الرسمي (Active Quotation Document)
- * توضح هذه الصفحة أين تظهر خانات (المقدمة، الشروط، الصلاحية) عند الطباعة.
- */
 export default function QuotationViewPage() {
   const params = useParams();
   const clientId = params.id as string;
@@ -31,7 +28,6 @@ export default function QuotationViewPage() {
   const { globalUser } = useAuthContext();
   const { lang, dir, t } = useLanguage();
   const db = useFirestore();
-  const router = useRouter();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
@@ -41,7 +37,6 @@ export default function QuotationViewPage() {
 
   const { data: quote, loading } = useDoc<Quotation>(quoteRef);
 
-  // حساب تاريخ انتهاء الصلاحية بناءً على الخانة التي سألت عنها
   const expiryDate = useMemo(() => {
     if (!quote?.createdAt || !quote.validDays) return null;
     const createdDate = quote.createdAt.toDate();
@@ -53,16 +48,10 @@ export default function QuotationViewPage() {
 
   return (
     <div className="space-y-8 pb-20 animate-in fade-in duration-700" dir={dir}>
-      {/* هيدر التحكم (يختفي عند الطباعة) */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 print:hidden">
-        <div className="flex items-center gap-4 text-start">
-           <Button variant="ghost" onClick={() => router.back()} className="h-12 w-12 p-0 rounded-2xl bg-white shadow-sm border">
-             <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-180")} />
-           </Button>
-           <div>
-             <h1 className="text-3xl font-black font-headline">{isRtl ? 'معاينة عرض السعر' : 'Quotation Preview'}</h1>
-             <p className="text-xs font-bold text-muted-foreground">{quote.name}</p>
-           </div>
+        <div className="text-start">
+          <h1 className="text-3xl font-black font-headline">{isRtl ? 'معاينة عرض السعر' : 'Quotation Preview'}</h1>
+          <p className="text-xs font-bold text-muted-foreground">{quote.name}</p>
         </div>
         <div className="flex gap-4">
            <Button onClick={() => window.print()} className="rounded-2xl h-14 px-10 font-black gap-2 bg-primary text-white shadow-xl shadow-primary/20 hover:scale-105 transition-all">
@@ -73,8 +62,6 @@ export default function QuotationViewPage() {
 
       <PrintWrapper title={isRtl ? "عرض سعر رسمي" : "Official Quotation"}>
          <div className="space-y-10">
-            
-            {/* بيانات المستند المرجعية (تشمل تاريخ الصلاحية) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-b pb-8 border-slate-100">
                <div className="text-start space-y-3">
                   <div className="space-y-1">
@@ -91,7 +78,6 @@ export default function QuotationViewPage() {
                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'تاريخ الإصدار' : 'Issue Date'}</p>
                      <p className="text-sm font-black text-slate-800 font-mono">{quote.createdAt?.toDate().toLocaleDateString()}</p>
                   </div>
-                  {/* هنا يظهر حقل "صلاحية العرض" بعد حسابه */}
                   <div className="space-y-1">
                      <p className="text-[10px] font-black text-primary uppercase tracking-widest">{isRtl ? 'صلاحية العرض لغاية' : 'Valid Until'}</p>
                      <p className="text-sm font-black text-primary font-mono">{expiryDate || '---'}</p>
@@ -100,7 +86,6 @@ export default function QuotationViewPage() {
                </div>
             </div>
 
-            {/* هنا تظهر "مقدمة العرض" (Intro Text) */}
             {quote.introText && (
               <div className="text-start animate-in fade-in slide-in-from-top-2">
                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
@@ -112,7 +97,6 @@ export default function QuotationViewPage() {
               </div>
             )}
 
-            {/* جدول بنود الدفعات (Core Content) */}
             <div className="space-y-6 text-start">
                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                   <DollarSign className="h-3 w-3 text-emerald-500" /> {isRtl ? 'توصيف البنود المالية للدفعات' : 'Financial Milestones Breakdown'}
@@ -168,7 +152,6 @@ export default function QuotationViewPage() {
                </div>
             </div>
 
-            {/* هنا تظهر "الشروط والأحكام" (Terms & Conditions) */}
             {quote.defaultTerms && (
               <div className="text-start space-y-6 pt-10 border-t-2 border-dashed border-slate-100">
                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
@@ -182,7 +165,6 @@ export default function QuotationViewPage() {
               </div>
             )}
 
-            {/* تذييل الاعتماد (ختم وتوقيع) */}
             <div className="grid grid-cols-2 gap-20 pt-20">
                <div className="text-start space-y-12">
                   <div className="space-y-1">
@@ -199,7 +181,6 @@ export default function QuotationViewPage() {
                   </div>
                </div>
             </div>
-
          </div>
       </PrintWrapper>
     </div>

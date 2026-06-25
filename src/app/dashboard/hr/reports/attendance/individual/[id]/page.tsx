@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -6,9 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
-  ArrowRight, Loader2, ShieldCheck, Printer,
-  BarChart3, Clock, AlertTriangle, TrendingUp,
-  Calendar, CheckCircle2, History, Timer
+  Loader2, ShieldCheck, Printer,
+  History, Info
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, where, orderBy } from 'firebase/firestore';
@@ -24,7 +24,6 @@ export default function IndividualAttendanceReport() {
   const { globalUser } = useAuthContext();
   const { lang, dir } = useLanguage();
   const db = useFirestore();
-  const router = useRouter();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
@@ -41,7 +40,6 @@ export default function IndividualAttendanceReport() {
     if (!records.length) return { punctualityRate: 0, totalLateMins: 0, presentCount: 0, absentCount: 0 };
     const workDays = records.filter(r => !['weekend', 'holiday'].includes(r.status));
     const onTime = workDays.filter(r => r.status === 'present').length;
-    const late = workDays.filter(r => r.status === 'late').length;
     
     return {
       punctualityRate: workDays.length > 0 ? Math.round((onTime / workDays.length) * 100) : 0,
@@ -56,14 +54,9 @@ export default function IndividualAttendanceReport() {
   return (
     <div className="space-y-8 pb-20 animate-in fade-in duration-700" dir={dir}>
       <div className="flex items-center justify-between print:hidden">
-        <div className="flex items-center gap-4 text-start">
-           <Button variant="ghost" onClick={() => router.back()} className="h-12 w-12 p-0 rounded-2xl bg-white shadow-sm border">
-             <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-180")} />
-           </Button>
-           <div>
-             <h1 className="text-3xl font-black font-headline">{isRtl ? 'تحليل انضباط الموظف' : 'Punctuality Analysis'}</h1>
-             <p className="text-xs font-bold text-muted-foreground">{employee?.fullName} | {employee?.employeeNumber}</p>
-           </div>
+        <div className="text-start">
+          <h1 className="text-3xl font-black font-headline">{isRtl ? 'تحليل انضباط الموظف' : 'Punctuality Analysis'}</h1>
+          <p className="text-xs font-bold text-muted-foreground">{employee?.fullName} | {employee?.employeeNumber}</p>
         </div>
         <Button onClick={() => window.print()} className="rounded-xl h-12 px-6 font-black gap-2 bg-primary text-white">
            <Printer className="h-4 w-4" /> {isRtl ? 'طباعة التحليل' : 'Print Analysis'}
@@ -72,7 +65,6 @@ export default function IndividualAttendanceReport() {
 
       <PrintWrapper title={isRtl ? "تقرير الانضباط السلوكي والحضور" : "Attendance Discipline Report"}>
          <div className="space-y-10">
-            {/* Stats Hero */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                <Card className="border-0 shadow-lg rounded-[2rem] bg-slate-900 text-white p-8">
                   <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-2">{isRtl ? 'معدل الانضباط' : 'Punctuality Rate'}</p>
@@ -92,7 +84,6 @@ export default function IndividualAttendanceReport() {
                </Card>
             </div>
 
-            {/* Detailed Table */}
             <div className="space-y-6 text-start">
                <h3 className="font-black text-lg border-s-4 border-primary ps-3 flex items-center gap-2">
                   <History className="h-5 w-5 text-primary" /> {isRtl ? 'سجل الحركات التفصيلي' : 'Detailed Attendance Logs'}
@@ -104,7 +95,6 @@ export default function IndividualAttendanceReport() {
                            <th className="p-6 text-start">{isRtl ? 'التاريخ' : 'Date'}</th>
                            <th className="p-6 text-center">{isRtl ? 'الدخول' : 'In'}</th>
                            <th className="p-6 text-center">{isRtl ? 'الخروج' : 'Out'}</th>
-                           <th className="p-6 text-center">{isRtl ? 'التأخير (د)' : 'Late (m)'}</th>
                            <th className="p-6 text-end pe-10">{isRtl ? 'الحالة' : 'Status'}</th>
                         </tr>
                      </thead>
@@ -114,9 +104,6 @@ export default function IndividualAttendanceReport() {
                               <td className="p-6 font-bold text-slate-700">{rec.date}</td>
                               <td className="p-6 text-center font-mono font-black">{rec.checkIn || '--:--'}</td>
                               <td className="p-6 text-center font-mono font-black">{rec.checkOut || '--:--'}</td>
-                              <td className="p-6 text-center">
-                                 {rec.minutesLate ? <span className="font-black text-rose-600">+{rec.minutesLate}</span> : <span className="text-emerald-500 font-bold">On Time</span>}
-                              </td>
                               <td className="p-6 text-end pe-10">
                                  <Badge className={cn(
                                    "font-black text-[9px] uppercase px-3",
@@ -128,17 +115,6 @@ export default function IndividualAttendanceReport() {
                         ))}
                      </tbody>
                   </table>
-               </div>
-            </div>
-
-            {/* Note Section */}
-            <div className="p-8 rounded-[2rem] bg-blue-50 border-2 border-white shadow-inner flex items-start gap-4 text-start">
-               <Info className="h-6 w-6 text-blue-600 mt-1" />
-               <div className="space-y-1">
-                  <h5 className="font-black text-blue-900">{isRtl ? 'ملاحظة التدقيق السلوكي' : 'Behavioral Audit Note'}</h5>
-                  <p className="text-xs text-blue-700 font-bold leading-relaxed">
-                     {isRtl ? 'يتم احتساب هذا التقرير آلياً بناءً على إحداثيات البصمة المسجلة في السحاب ومقارنتها بساعات العمل المعتمدة للشركة. يرجى العلم أن التأخير المتكرر يؤثر على المكافأة السنوية.' : 'Calculated automatically based on cloud biometric logs vs org schedule. Chronic lateness affects annual performance reviews.'}
-                  </p>
                </div>
             </div>
          </div>

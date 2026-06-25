@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Loader2, UserPlus } from "lucide-react";
+import { Loader2, UserPlus } from "lucide-react";
 import { useFirestore } from '@/firebase';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
@@ -11,7 +12,6 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { HRService } from '@/services/hr-service';
 import { EmployeeForm } from '@/components/hr/employee-form';
 import { toast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
 
 export default function NewEmployeePage() {
   const { globalUser } = useAuthContext();
@@ -44,9 +44,6 @@ export default function NewEmployeePage() {
   return (
     <div className="space-y-8 max-w-5xl mx-auto" dir={dir}>
       <div className="flex items-center gap-4">
-        <Button variant="ghost" onClick={() => router.push('/dashboard/hr/employees')} className="h-12 w-12 p-0 rounded-2xl bg-white shadow-sm border hover:bg-slate-50">
-          <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-180")} />
-        </Button>
         <div className="text-start">
           <h1 className="text-3xl font-black font-headline flex items-center gap-3">
             <UserPlus className="h-8 w-8 text-primary" />

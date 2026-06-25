@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  Database, Building2, MapPin, Workflow, Settings2, ArrowRight,
+  Database, Building2, MapPin, Workflow, Settings2,
   ListTree
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
@@ -25,24 +26,14 @@ export default function TechnicalSetupPage() {
   return (
     <div className="space-y-8" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="flex items-center gap-4 text-start">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => router.push('/dashboard/settings')}
-            className="rounded-xl h-12 w-12 bg-white shadow-sm border border-primary/15"
-          >
-            <ArrowRight className={cn("h-5 w-5", isRtl ? "rotate-0" : "rotate-180")} />
-          </Button>
-          <div className="text-start">
-            <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
-              <Database className="h-10 w-10 text-primary" />
-              {t('checklists')}
-            </h1>
-            <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-              {isRtl ? 'إدارة الدستور التشغيلي والقواعد المرجعية الموحدة للنظام' : 'Manage operational constitution and unified system references'}
-            </p>
-          </div>
+        <div className="text-start">
+          <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
+            <Database className="h-10 w-10 text-primary" />
+            {t('checklists')}
+          </h1>
+          <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
+            {isRtl ? 'إدارة الدستور التشغيلي والقواعد المرجعية الموحدة للنظام' : 'Manage operational constitution and unified system references'}
+          </p>
         </div>
       </div>
 

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -5,17 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   LayoutTemplate, FileText, Gavel, FileSpreadsheet, 
-  ArrowRight, Sparkles, ChevronRight, Plus,
+  Sparkles, ChevronRight, Plus,
   ShieldCheck, Zap, Layers
 } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/context/language-context';
 import { cn } from '@/lib/utils';
 
-/**
- * مركز القوالب الموحد (Templates Hub)
- * يجمع عروض الأسعار، العقود، والمقايسات في واجهة سيادية واحدة.
- */
 export default function TemplatesHubPage() {
   const { t, lang, dir } = useLanguage();
   const router = useRouter();
@@ -57,24 +54,14 @@ export default function TemplatesHubPage() {
   return (
     <div className="space-y-10 animate-in fade-in duration-700" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        <div className="flex items-center gap-4">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => router.push('/dashboard/settings')}
-            className="rounded-xl h-12 w-12 bg-white shadow-sm border"
-          >
-            <ArrowRight className={cn("h-6 w-6", isRtl ? "rotate-0" : "rotate-180")} />
-          </Button>
-          <div className="text-start space-y-1">
-            <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
-              <LayoutTemplate className="h-10 w-10 text-primary" />
-              {t('templates')}
-            </h1>
-            <p className="text-muted-foreground font-bold text-sm opacity-80 italic">
-              {t('templatesDesc')}
-            </p>
-          </div>
+        <div className="text-start space-y-1">
+          <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
+            <LayoutTemplate className="h-10 w-10 text-primary" />
+            {t('templates')}
+          </h1>
+          <p className="text-muted-foreground font-bold text-sm opacity-80 italic">
+            {t('templatesDesc')}
+          </p>
         </div>
       </div>
 
@@ -92,7 +79,6 @@ export default function TemplatesHubPage() {
                </div>
                <div className="flex justify-between items-start">
                   <CardTitle className="text-2xl font-black font-headline text-slate-900">{module.title}</CardTitle>
-                  <Badge variant="secondary" className="bg-slate-50 text-slate-400 font-black text-[9px] uppercase tracking-widest">{module.count}</Badge>
                </div>
                <CardDescription className="text-base font-bold leading-relaxed mt-4">
                   {module.desc}
@@ -106,22 +92,6 @@ export default function TemplatesHubPage() {
             </CardContent>
           </Card>
         ))}
-      </div>
-
-      <div className="bg-slate-900 text-white rounded-[3rem] p-12 flex flex-col md:flex-row justify-between items-center gap-10 shadow-3xl relative overflow-hidden group">
-         <div className="absolute top-0 right-0 p-12 opacity-5 group-hover:rotate-12 transition-transform duration-700">
-            <Sparkles className="h-48 w-48 text-primary" />
-         </div>
-         <div className="text-start space-y-4 relative z-10">
-            <h2 className="text-3xl font-black font-headline tracking-tight">{isRtl ? 'المحرك الذكي للمستندات' : 'Smart Document Engine'}</h2>
-            <p className="text-slate-400 text-lg font-bold max-w-xl leading-relaxed">
-               {isRtl ? 'جميع القوالب التي تنشئها هنا مرتبطة آلياً بالمسارات الفنية لمشاريعك، مما يضمن أتمتة إصدار العروض والعقود الفعلية.' : 'All templates created here are automatically linked to technical paths, ensuring automated generation of quotes and contracts.'}
-            </p>
-            <div className="flex gap-6 pt-4">
-               <div className="flex items-center gap-2 text-primary font-black text-xs uppercase tracking-widest"><ShieldCheck className="h-4 w-4" /> Legal Compliance</div>
-               <div className="flex items-center gap-2 text-primary font-black text-xs uppercase tracking-widest"><Zap className="h-4 w-4" /> Auto-Instantiation</div>
-            </div>
-         </div>
       </div>
     </div>
   );

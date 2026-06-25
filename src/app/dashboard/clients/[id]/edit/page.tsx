@@ -1,14 +1,15 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Edit3, Loader2 } from "lucide-react";
+import { Edit3, Loader2 } from "lucide-react";
 import { useFirestore, useDoc } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
-import { usePermissions } from '@/hooks/use-permissions'; // استيراد الصلاحيات
+import { usePermissions } from '@/hooks/use-permissions';
 import { ClientService } from '@/services/client-service';
 import { ClientForm } from '@/components/clients/client-form';
 import { paths } from '@/firebase/multi-tenant';
@@ -21,7 +22,7 @@ export default function EditClientPage() {
   const clientId = params.id as string;
   const { globalUser, user } = useAuthContext();
   const { t, lang, dir } = useLanguage();
-  const { permissions } = usePermissions(); // جلب مصفوفة الصلاحيات
+  const { permissions } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
@@ -36,13 +37,11 @@ export default function EditClientPage() {
     if (!db || !companyId || !user) return;
     setSaving(true);
     try {
-      // تمرير الصلاحيات للخدمة لضمان السماح بالإجراء
       const service = new ClientService(db, companyId, permissions);
       await service.updateClient(clientId, data, user.uid, user.displayName || user.email || 'User');
       toast({ title: t('saved'), description: isRtl ? 'تم تحديث بيانات العميل بنجاح.' : 'Client data updated successfully.' });
       router.push(`/dashboard/clients/${clientId}`);
     } catch (e: any) {
-      console.error("Update Client Error:", e);
       toast({ 
         variant: "destructive", 
         title: t('error'), 
@@ -61,9 +60,6 @@ export default function EditClientPage() {
   return (
     <div className="space-y-8 max-w-5xl mx-auto pb-20 animate-in fade-in duration-500" dir={dir}>
       <div className="flex items-center gap-6 border-b pb-8 border-slate-100">
-        <Button variant="ghost" onClick={() => router.push(`/dashboard/clients/${clientId}`)} className="h-14 w-14 p-0 rounded-2xl bg-white shadow-sm border-2 hover:bg-slate-50 transition-all">
-          <ArrowRight className={cn("h-6 w-6", !isRtl && "rotate-180")} />
-        </Button>
         <div className="text-start">
           <h1 className="text-4xl font-black font-headline flex items-center gap-4 text-slate-900">
             <Edit3 className="h-10 w-10 text-primary" />

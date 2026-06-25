@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -10,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { 
   Building2, Image as ImageIcon, FileText, 
-  ArrowRight, Loader2, ShieldCheck, CheckCircle2,
+  Loader2, CheckCircle2,
   UploadCloud, X, Link as LinkIcon, Type
 } from "lucide-react";
 import { useFirestore } from '@/firebase';
@@ -156,11 +157,6 @@ export default function CompanyProfilePage() {
                 className="flex h-8 w-full rounded-lg border border-input bg-background px-3 py-1 text-[9px] font-mono ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 dir="ltr"
               />
-              {currentImage && !currentImage.startsWith('data:') && (
-                 <div className={cn("rounded-lg border bg-slate-50 overflow-hidden flex items-center justify-center", height)}>
-                    <img src={currentImage} alt="Preview" className="max-h-full max-w-full object-contain p-2" />
-                 </div>
-              )}
             </div>
           </TabsContent>
 
@@ -182,14 +178,6 @@ export default function CompanyProfilePage() {
   return (
     <div className="space-y-8" dir={dir}>
       <div className="flex items-center gap-4">
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={() => router.push('/dashboard/settings')}
-          className="rounded-xl h-10 w-10 bg-white shadow-sm border"
-        >
-          <ArrowRight className={cn("h-5 w-5", isRtl ? "rotate-0" : "rotate-180")} />
-        </Button>
         <div className="text-start">
           <h1 className="text-4xl font-black font-headline flex items-center gap-3">
             <Building2 className="h-10 w-10 text-primary" />
@@ -228,22 +216,6 @@ export default function CompanyProfilePage() {
                     className="h-11 rounded-xl bg-slate-50/50 border-slate-100 focus:bg-white" 
                   />
                 </div>
-                
-                <div className="space-y-2 text-start">
-                  <Label className="font-black text-xs text-slate-600">{t('licenseExpiry')}</Label>
-                  <SmartDateInput 
-                    value={formData.licenseExpiryDate}
-                    onChange={(val) => setFormData({...formData, licenseExpiryDate: val})}
-                  />
-                </div>
-
-                <div className="space-y-2 text-start">
-                  <Label className="font-black text-xs text-slate-600">{t('laborExpiry')}</Label>
-                  <SmartDateInput 
-                    value={formData.laborAuthorityExpiryDate}
-                    onChange={(val) => setFormData({...formData, laborAuthorityExpiryDate: val})}
-                  />
-                </div>
               </div>
 
               <div className="pt-6 border-t border-slate-50">
@@ -256,74 +228,6 @@ export default function CompanyProfilePage() {
               </div>
             </CardContent>
           </Card>
-        </div>
-
-        <div className="lg:col-span-4 space-y-6">
-           <Card className="border-2 border-primary/5 shadow-2xl rounded-[2rem] bg-white overflow-hidden flex flex-col min-h-[500px] ring-1 ring-black/5 animate-in fade-in slide-in-from-right-4 duration-500">
-              <div className="h-24 bg-slate-50/50 border-b relative flex items-center justify-center overflow-hidden shadow-inner p-3">
-                {formData.headerImageUrl ? (
-                   <img src={formData.headerImageUrl} className="w-full h-full object-contain" alt="Header" />
-                ) : formData.headerText ? (
-                   <p className="text-[9px] font-bold text-slate-600 text-center leading-tight break-words">{formData.headerText}</p>
-                ) : (
-                   <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">{isRtl ? 'معاينة الهيدر' : 'Header Preview'}</span>
-                )}
-              </div>
-
-              <div className="flex-1 p-8 text-center flex flex-col justify-center space-y-6">
-                <div className="w-24 h-24 bg-white rounded-[2rem] mx-auto flex items-center justify-center border-2 border-dashed border-slate-100 overflow-hidden shadow-lg ring-4 ring-slate-50/50 transition-all hover:scale-105">
-                  {formData.logoUrl ? (
-                    <img src={formData.logoUrl} alt="Logo" className="w-full h-full object-contain p-2" />
-                  ) : (
-                    <ImageIcon className="h-8 w-8 text-slate-200" />
-                  )}
-                </div>
-                <div className="space-y-1">
-                  <h3 className="text-xl font-black font-headline text-slate-900 tracking-tight">{formData.name || t('name')}</h3>
-                  <Badge variant="secondary" className="bg-emerald-50 text-emerald-600 text-[9px] font-black uppercase tracking-wider py-0.5 px-3 rounded-full mt-1">
-                    {t('active')}
-                  </Badge>
-                </div>
-                
-                <div className="space-y-3 pt-6 border-t border-slate-50 text-start">
-                   <div className="flex justify-between items-center text-[9px] font-black">
-                     <span className="text-slate-400 uppercase tracking-tighter">{t('commercialRegistry')}</span>
-                     <span className="font-mono text-slate-800">{formData.commercialRegistry || '---'}</span>
-                   </div>
-                   <div className="flex justify-between items-center text-[9px] font-black">
-                     <span className="text-slate-400 uppercase tracking-tighter">{t('licenseExpiry')}</span>
-                     <span className="text-primary">{formData.licenseExpiryDate || '---'}</span>
-                   </div>
-                </div>
-              </div>
-
-              <div className="h-16 bg-slate-50/50 border-t relative flex items-center justify-center overflow-hidden shadow-inner p-3">
-                {formData.footerImageUrl ? (
-                   <img src={formData.footerImageUrl} className="w-full h-full object-contain" alt="Footer" />
-                ) : formData.footerText ? (
-                   <p className="text-[8px] font-bold text-slate-500 text-center leading-tight break-words">{formData.footerText}</p>
-                ) : (
-                   <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">{isRtl ? 'معاينة الفوتر' : 'Footer Preview'}</span>
-                )}
-              </div>
-           </Card>
-
-           <div className="space-y-4">
-              <Button 
-                onClick={handleSave} 
-                disabled={saving}
-                className="w-full h-14 rounded-2xl font-black text-base bg-primary shadow-xl shadow-primary/20 hover:scale-[1.01] active:scale-[0.99] transition-all"
-              >
-                {saving ? <Loader2 className="animate-spin" /> : <CheckCircle2 className="me-2 h-5 w-5" />}
-                {t('saveChanges')}
-              </Button>
-              <div className="p-4 rounded-2xl bg-amber-50/50 border border-amber-100 flex items-start gap-3 shadow-sm">
-                 <ShieldCheck className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-                 <p className="text-[9px] font-bold text-amber-800 leading-relaxed text-start">
-                   {isRtl ? "ملاحظة: الصور أو النصوص المرفوعة ستظهر تلقائياً في ترويسة وتذييل كافة التقارير الرسمية الصادرة من النظام." : "Note: Images or text will automatically appear in the headers and footers of all official reports."}
-                 </p>
-              </div>
-           </div>
         </div>
       </div>
     </div>
