@@ -44,6 +44,7 @@ export interface CostTypeCategory extends BaseReferenceList {}
 export interface ActivityType extends BaseReference {
   code: string;
   name: string;
+  nameEn?: string;
   description?: string;
   order: number;
   isActive: boolean;
@@ -53,6 +54,7 @@ export interface Service extends BaseReference {
   activityTypeId: string;
   code: string;
   name: string;
+  nameEn?: string;
   description?: string;
   order: number;
   isActive: boolean;
@@ -63,6 +65,7 @@ export interface SubService extends BaseReference {
   serviceId: string;
   code: string;
   name: string;
+  nameEn?: string;
   description?: string;
   order: number;
   isActive: boolean;
@@ -74,7 +77,9 @@ export interface TechnicalStage extends BaseReference {
   subServiceId: string;
   code: string;
   name: string;
+  nameEn?: string;
   description?: string;
+  fullPathName?: string; // مسار النشاط والخدمة المخزن للعرض السريع
   order: number;
   isNumeric: boolean;
   numericTarget?: number | null;
@@ -139,6 +144,10 @@ export interface BOQReferenceNode extends BaseReference {
   isActive: boolean;
   createdBy?: string;
   updatedBy?: string;
+
+  // الربط بالأنشطة (للعقد الجذرية)
+  activityTypeIds?: string[];
+  activityTypeNames?: string[];
 
   // الحقول التنفيذية (تظهر لو العقدة executable)
   unitTypeId?: string;

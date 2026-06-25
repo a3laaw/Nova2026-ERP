@@ -9,7 +9,7 @@ import {
   Trash2, Edit3, ShieldCheck, Folder,
   Hammer, ChevronRight, ChevronDown,
   Info, Save, ListChecks, Settings2,
-  X, AlertTriangle, Workflow
+  X, AlertTriangle, Workflow, Checkbox as CheckboxIcon
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -19,12 +19,13 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { BOQReferenceService } from '@/services/boq-reference-service';
 import { TechnicalPathService } from '@/services/technical-path-service';
-import { BOQReferenceNode, UnitType, TechnicalStage } from '@/types/reference';
+import { BOQReferenceNode, UnitType, TechnicalStage, ActivityType } from '@/types/reference';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from '@/hooks/use-toast';
@@ -66,8 +67,13 @@ export default function BOQNodesPage() {
     companyId && db ? query(collection(db, paths.unitTypes(companyId)), orderBy('order')) : null, 
   [db, companyId]);
 
+  const activitiesQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.activityTypes(companyId)), orderBy('order')) : null, 
+  [db, companyId]);
+
   const { data: rawNodes, loading } = useCollection<BOQReferenceNode>(nodesQuery);
   const { data: unitTypes } = useCollection<UnitType>(unitTypesQuery);
+  const { data: activities } = useCollection<ActivityType>(activitiesQuery);
 
   const service = useMemo(() => 
     db && companyId ? new BOQReferenceService(db, companyId, permissions) : null, 
@@ -134,6 +140,23 @@ export default function BOQNodesPage() {
     setExpandedNodes(prev => prev.includes(id) ? prev.filter(n => n !== id) : [...prev, id]);
   };
 
+  const toggleActivity = (actId: string, actName: string) => {
+    if (!editingNode) return;
+    const currentIds = editingNode.activityTypeIds || [];
+    const currentNames = editingNode.activityTypeNames || [];
+    
+    let newIds, newNames;
+    if (currentIds.includes(actId)) {
+      newIds = currentIds.filter(id => id !== actId);
+      newNames = currentNames.filter(name => name !== actName);
+    } else {
+      newIds = [...currentIds, actId];
+      newNames = [...currentNames, actName];
+    }
+    
+    setEditingNode({ ...editingNode, activityTypeIds: newIds, activityTypeNames: newNames });
+  };
+
   const renderNode = (node: any, pathPrefix: string) => {
     const isExpanded = expandedNodes.includes(node.id);
     const hasChildren = node.childrenCount > 0;
@@ -166,9 +189,18 @@ export default function BOQNodesPage() {
                    <span className="text-xs font-bold text-slate-800">{node.title}</span>
                    {isExecutable && <Badge className="bg-emerald-100 text-emerald-700 text-[7px] font-black h-4 px-1.5 border-0">ITEM</Badge>}
                 </div>
-                {isExecutable && node.unitSymbol && (
-                  <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">{node.unitName} ({node.unitSymbol})</p>
-                )}
+                <div className="flex items-center gap-2 mt-0.5">
+                   {isExecutable && node.unitSymbol && (
+                     <span className="text-[9px] text-slate-400 font-bold uppercase">{node.unitName} ({node.unitSymbol})</span>
+                   )}
+                   {node.depth === 0 && node.activityTypeNames?.length > 0 && (
+                     <div className="flex gap-1">
+                        {node.activityTypeNames.map((name: string, i: number) => (
+                          <Badge key={i} variant="secondary" className="h-3 px-1 text-[7px] font-black uppercase bg-blue-50 text-blue-600 border-0">{name}</Badge>
+                        ))}
+                     </div>
+                   )}
+                </div>
              </div>
           </div>
 
@@ -222,7 +254,7 @@ export default function BOQNodesPage() {
         </div>
         {canCreate && (
            <Button 
-             onClick={() => setEditingNode({ parentId: null, nodeRole: 'group', isActive: true, isExecutable: false, order: treeData.length })}
+             onClick={() => setEditingNode({ parentId: null, nodeRole: 'group', isActive: true, isExecutable: false, order: treeData.length, activityTypeIds: [], activityTypeNames: [] })}
              className="h-12 px-8 rounded-xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-2"
            >
              <Plus className="h-5 w-5" /> {isRtl ? 'إضافة قسم رئيسي' : 'Add Root Node'}
@@ -278,6 +310,44 @@ export default function BOQNodesPage() {
             </div>
 
             <div className="p-6 space-y-5 text-start bg-white max-h-[65vh] overflow-y-auto scrollbar-hide">
+               
+               {/* قسم الأنشطة المرتبطة (يظهر فقط للجذور) */}
+               {!editingNode?.parentId && (
+                 <div className="p-5 rounded-2xl bg-blue-50/50 border-2 border-blue-100 space-y-4 animate-in fade-in duration-300">
+                    <h4 className="font-black text-[10px] text-blue-600 uppercase tracking-widest flex items-center gap-2">
+                       <ShieldCheck className="h-3.5 w-3.5" /> {isRtl ? 'الأنشطة المتاح بها هذا القسم' : 'Available Activities'}
+                    </h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                       {activities?.map(act => (
+                         <div 
+                           key={act.id} 
+                           onClick={() => toggleActivity(act.id!, isRtl ? act.name : (act.nameEn || act.name))}
+                           className={cn(
+                             "p-2.5 rounded-xl border-2 transition-all cursor-pointer flex items-center gap-2 group",
+                             editingNode.activityTypeIds?.includes(act.id!) 
+                               ? "bg-white border-blue-500 shadow-md" 
+                               : "bg-transparent border-slate-100 hover:border-blue-200"
+                           )}
+                         >
+                            <Checkbox 
+                              checked={editingNode.activityTypeIds?.includes(act.id!)} 
+                              className="h-4 w-4 pointer-events-none" 
+                            />
+                            <span className={cn(
+                              "text-[10px] font-black uppercase truncate",
+                              editingNode.activityTypeIds?.includes(act.id!) ? "text-blue-600" : "text-slate-400"
+                            )}>{isRtl ? act.name : (act.nameEn || act.name)}</span>
+                         </div>
+                       ))}
+                    </div>
+                    {editingNode.activityTypeIds?.length === 0 && (
+                      <p className="text-[9px] text-rose-500 font-bold italic flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" /> {isRtl ? 'يجب اختيار نشاط واحد على الأقل للقسم الرئيسي.' : 'At least one activity must be linked to root section.'}
+                      </p>
+                    )}
+                 </div>
+               )}
+
                {!editingNode?.parentId && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-1.5">
@@ -383,7 +453,7 @@ export default function BOQNodesPage() {
 
             <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-3">
                <Button variant="outline" onClick={() => setEditingNode(null)} className="flex-1 h-12 rounded-xl border-2 font-bold">إلغاء</Button>
-               <Button onClick={handleSave} disabled={loadingAction === 'save'} className="flex-[2] h-12 rounded-xl bg-primary text-white font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-2 border-b-4 border-orange-700">
+               <Button onClick={handleSave} disabled={loadingAction === 'save' || (!editingNode?.parentId && editingNode?.activityTypeIds?.length === 0)} className="flex-[2] h-12 rounded-xl bg-primary text-white font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-2 border-b-4 border-orange-700">
                   {loadingAction === 'save' ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
                   {t('save')}
                </Button>
