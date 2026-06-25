@@ -10,16 +10,14 @@ import { Switch } from "@/components/ui/switch";
 import { 
   Clock, Calendar, MoonStar, 
   Loader2, Save, Sun, HardHat,
-  Trash2, Zap, Sparkles,
-  CheckCircle2, Coffee, Users,
-  Info, Plus, CalendarX
+  Trash2, Zap, Coffee, Users,
+  Info, Plus, CalendarX, CheckCircle2
 } from "lucide-react";
 import { useFirestore } from '@/firebase';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { WorkHoursService } from '@/services/work-hours-service';
 import { WorkHoursSettings, DayOfWeek, DailySchedule, PublicHoliday } from '@/types/work-hours';
-import { fetchPublicHolidays } from '@/ai/flows/fetch-holidays-flow';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -35,7 +33,6 @@ export function WorkHoursManager() {
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [fetchingHolidays, setFetchingHolidays] = useState(false);
   const [settings, setSettings] = useState<WorkHoursSettings | null>(null);
 
   // Manual Holiday Form State
@@ -74,30 +71,6 @@ export function WorkHoursManager() {
       toast({ variant: "destructive", title: t('error'), description: t('saveFailed') });
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleAIFetchHolidays = async () => {
-    if (!settings) return;
-    setFetchingHolidays(true);
-    try {
-      const response = await fetchPublicHolidays({ country: 'الكويت', year: 2026 });
-      if (response && response.holidays) {
-        setSettings({ ...settings, publicHolidays: response.holidays });
-        toast({ 
-          title: isRtl ? "تم جلب البيانات" : "Holidays Fetched",
-          description: isRtl ? "تم تحديث قائمة العطلات بنجاح من الذكاء الاصطناعي." : "Holiday list updated successfully via AI."
-        });
-      }
-    } catch (error: any) {
-      console.error("AI Fetch Holidays Error:", error);
-      toast({ 
-        variant: "destructive", 
-        title: t('error'), 
-        description: isRtl ? "عذراً، واجه محرك الذكاء الاصطناعي مشكلة في جلب البيانات. يرجى المحاولة لاحقاً." : "AI engine encountered an error fetching holidays. Please try again."
-      });
-    } finally {
-      setFetchingHolidays(false);
     }
   };
 
@@ -151,12 +124,17 @@ export function WorkHoursManager() {
                  </div>
               </div>
               
-              <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-2xl border-2 shadow-inner">
-                 <Label className="text-[10px] font-black uppercase text-slate-400">{t('doubleShift')}</Label>
-                 <Switch 
-                   checked={isDoubleShift} 
-                   onCheckedChange={checked => updateSchedule(scope, 'mode', checked ? 'double' : 'single')} 
-                 />
+              <div className="flex items-center gap-3">
+                 <Badge className={cn("rounded-lg px-3 py-1 font-black uppercase text-[10px]", isDoubleShift ? "bg-blue-500 text-white" : "bg-primary text-white")}>
+                    {isDoubleShift ? (isRtl ? 'فترتين' : 'Double') : (isRtl ? 'فترة واحدة' : 'Single')}
+                 </Badge>
+                 <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-2xl border-2 shadow-inner">
+                    <Label className="text-[10px] font-black uppercase text-slate-400">{t('doubleShift')}</Label>
+                    <Switch 
+                      checked={isDoubleShift} 
+                      onCheckedChange={checked => updateSchedule(scope, 'mode', checked ? 'double' : 'single')} 
+                    />
+                 </div>
               </div>
            </div>
         </CardHeader>
@@ -246,15 +224,6 @@ export function WorkHoursManager() {
            </p>
         </div>
         <div className="flex gap-4">
-           <Button 
-             variant="outline"
-             onClick={handleAIFetchHolidays}
-             disabled={fetchingHolidays}
-             className="h-16 rounded-2xl border-2 font-black gap-3 px-8 shadow-sm hover:bg-slate-50 transition-all text-blue-600"
-           >
-              {fetchingHolidays ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
-              {t('fetchHolidaysAI')}
-           </Button>
            <Button onClick={handleSave} disabled={saving} className="bg-primary text-white font-black rounded-2xl px-10 h-16 text-lg shadow-xl shadow-primary/20 hover:scale-105 transition-all">
              {saving ? <Loader2 className="animate-spin me-2" /> : <Save className="me-2 h-5 w-5" />}
              {t('saveAllRules')}
@@ -334,7 +303,7 @@ export function WorkHoursManager() {
                 <div className="p-3 bg-white rounded-2xl shadow-sm text-amber-600"><Calendar className="h-6 w-6" /></div>
                 <div>
                    <CardTitle className="text-xl font-black">{t('holidays')}</CardTitle>
-                   <CardDescription className="font-bold">{t('holidaysDesc')}</CardDescription>
+                   <CardDescription className="font-bold">{isRtl ? 'إدارة العطلات الأسبوعية والرسمية.' : 'Manage weekly and public holidays.'}</CardDescription>
                 </div>
              </div>
           </CardHeader>
