@@ -31,7 +31,7 @@ import { toast } from '@/hooks/use-toast';
 export default function BOQMasterPage() {
   const { globalUser, user } = useAuthContext();
   const { t, lang, dir } = useLanguage();
-  const { check } = usePermissions();
+  const { check, permissions } = usePermissions(); // تم جلب permissions هنا
   const db = useFirestore();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
@@ -43,7 +43,7 @@ export default function BOQMasterPage() {
 
   const canEdit = check('ref', 'edit').can;
 
-  // Data Fetching
+  // جلب البيانات مع تثبيت الاستعلام لضمان استقرار الواجهة
   const nodesQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.boqWorkItemsMaster(companyId)), orderBy('level'), orderBy('order')) : null, 
   [db, companyId]);
@@ -55,25 +55,22 @@ export default function BOQMasterPage() {
   const { data: rawNodes, loading } = useCollection<BOQWorkItemMasterNode>(nodesQuery);
   const { data: unitTypes } = useCollection<UnitType>(unitTypesQuery);
 
+  // تم تمرير permissions هنا لحل مشكلة UNAUTHORIZED_ACTION
   const service = useMemo(() => 
-    db && companyId ? new BOQMasterService(db, companyId) : null, 
-  [db, companyId]);
+    db && companyId ? new BOQMasterService(db, companyId, permissions) : null, 
+  [db, companyId, permissions]);
 
-  // Tree Construction Logic
   const treeData = useMemo(() => {
     const nodes = rawNodes || [];
-    const rootNodes = nodes.filter(n => n.level === 0).sort((a, b) => a.order - b.order);
-    
     const buildTree = (parentId: string | null): any[] => {
       return nodes
         .filter(n => n.parentId === parentId)
-        .sort((a, b) => a.order - b.order)
+        .sort((a, b) => (a.order || 0) - (b.order || 0))
         .map(n => ({
           ...n,
           children: buildTree(n.id!)
         }));
     };
-
     return buildTree(null);
   }, [rawNodes]);
 
@@ -89,7 +86,11 @@ export default function BOQMasterPage() {
       toast({ title: t('saved') });
       setEditingNode(null);
     } catch (e: any) {
-      toast({ variant: "destructive", title: t('error'), description: e.message });
+      toast({ 
+        variant: "destructive", 
+        title: t('error'), 
+        description: e.message 
+      });
     } finally {
       setLoadingAction(null);
     }
@@ -242,7 +243,7 @@ export default function BOQMasterPage() {
 
       {/* Node Editor Dialog */}
       <Dialog open={!!editingNode} onOpenChange={open => !open && setEditingNode(null)}>
-         <DialogContent className="rounded-[3rem] p-0 overflow-hidden max-w-2xl border-0 shadow-3xl bg-white" dir={dir}>
+         <DialogContent className="rounded-[3rem] p-0 overflow-hidden max-w-xl border-0 shadow-3xl bg-white" dir={dir}>
             <div className="bg-slate-900 p-10 text-white text-start">
                <DialogTitle className="text-3xl font-black font-headline flex items-center gap-3">
                   <ShieldCheck className="h-9 w-9 text-primary" />
@@ -303,7 +304,7 @@ export default function BOQMasterPage() {
                              >
                                 <SelectTrigger className="h-11 rounded-xl border-2 bg-white font-bold"><SelectValue placeholder="..." /></SelectTrigger>
                                 <SelectContent className="rounded-xl">
-                                   {unitTypes?.map(ut => <SelectItem key={ut.id} value={ut.id!} className="font-bold">{isRtl ? ut.name : ut.nameEn} ({ut.symbol})</SelectItem>)}
+                                   {unitTypes?.map(ut => <SelectItem key={ut.id} value={ut.id!} className="font-bold text-xs py-3">{isRtl ? ut.name : ut.nameEn} ({ut.symbol})</SelectItem>)}
                                 </SelectContent>
                              </Select>
                           </div>
