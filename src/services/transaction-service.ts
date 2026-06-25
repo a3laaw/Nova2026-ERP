@@ -209,7 +209,6 @@ export class TransactionService {
       completedAt: serverTimestamp(),
       completedBy: userId,
       updatedAt: serverTimestamp(),
-      updatedBy: userId
     });
 
     const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
