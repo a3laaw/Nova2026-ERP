@@ -96,20 +96,19 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
-        <div className="bg-slate-900 p-8 text-white text-start flex items-center justify-between">
+        <div className="bg-primary/5 p-10 text-slate-900 text-start flex items-center justify-between border-b">
            <div className="flex items-center gap-4">
               <div className="h-12 w-12 bg-primary/20 rounded-2xl flex items-center justify-center text-primary shadow-lg ring-4 ring-primary/5">
                  <MapIcon className="h-7 w-7" />
               </div>
               <div>
                  <DialogTitle className="text-2xl font-black font-headline">{isRtl ? 'رادار تحديد المواقع' : 'Live Location Radar'}</DialogTitle>
-                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1">{isRtl ? 'قم بالبحث أو النقر على الخريطة لتثبيت الموقع' : 'Search or click on map to pin location'}</p>
+                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em] mt-1">{isRtl ? 'قم بالبحث أو النقر على الخريطة لتثبيت الموقع' : 'Search or click on map to pin location'}</p>
               </div>
            </div>
         </div>
 
-        <div className="p-8 space-y-6">
-           {/* شريط البحث والتحكم */}
+        <div className="p-10 space-y-6">
            <div className="flex gap-3">
               <div className="relative flex-1">
                  <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
@@ -133,7 +132,6 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
               </Button>
            </div>
 
-           {/* منطقة الخريطة */}
            <div className="h-[450px] w-full rounded-[2.5rem] overflow-hidden border-4 border-slate-50 shadow-2xl relative group">
               {isOpen && <MapView position={position} setPosition={setPosition} />}
               <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[1000] pointer-events-none">

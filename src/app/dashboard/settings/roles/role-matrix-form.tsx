@@ -1,5 +1,5 @@
 /**
- * @fileOverview واجهة مصفوفة الصلاحيات الذكية المطورة.
+ * @fileOverview واجهة مصفوفة الصلاحيات الذكية المطورة - النسخة المطهرة لونياً.
  */
 
 'use client';
@@ -168,8 +168,8 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
               <Table>
                  <TableHeader className="bg-slate-50/80">
                     <TableRow>
-                       <TableHead className="py-6 ps-10 w-[240px] text-start font-black text-[#1e1b4b] uppercase text-[10px] tracking-widest">{isRtl ? 'المورد / الشاشة' : 'Module / Screen'}</TableHead>
-                       <TableHead className="text-start font-black text-[#1e1b4b] uppercase text-[10px] tracking-widest">{isRtl ? 'العمليات المتاحة والنطاق' : 'Available Actions & Scopes'}</TableHead>
+                       <TableHead className="py-6 ps-10 w-[240px] text-start font-black text-slate-900 uppercase text-[10px] tracking-widest">{isRtl ? 'المورد / الشاشة' : 'Module / Screen'}</TableHead>
+                       <TableHead className="text-start font-black text-slate-900 uppercase text-[10px] tracking-widest">{isRtl ? 'العمليات المتاحة والنطاق' : 'Available Actions & Scopes'}</TableHead>
                     </TableRow>
                  </TableHeader>
                  <TableBody>
@@ -216,7 +216,7 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
                                                  </div>
                                               </SelectValue>
                                            </SelectTrigger>
-                                           <SelectContent className="rounded-2xl border-0 shadow-2xl">
+                                           <SelectContent className="rounded-2xl border-0 shadow-2xl bg-white">
                                               {SCOPES.map(s => (
                                                  <SelectItem key={s.value} value={s.value} className="font-bold text-xs py-3 px-4">
                                                     <div className="flex items-center gap-3">

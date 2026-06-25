@@ -48,7 +48,6 @@ export default function RegisterPage() {
       const trialEndDate = new Date();
       trialEndDate.setDate(trialEndDate.getDate() + 14);
 
-      // سجل الطلب
       const requestRef = doc(collection(db, 'company_requests'));
       batch.set(requestRef, {
         companyName: formData.companyName,
@@ -59,7 +58,6 @@ export default function RegisterPage() {
         createdAt: serverTimestamp(),
       });
 
-      // سجل المنشأة
       const companyRef = doc(db, 'companies', companyId);
       batch.set(companyRef, {
         name: formData.companyName,
@@ -71,7 +69,6 @@ export default function RegisterPage() {
         ownerUid: uid
       });
 
-      // السجل العالمي للمدير
       const globalUserRef = doc(db, 'global_users', uid);
       batch.set(globalUserRef, {
         companyId,
@@ -83,7 +80,6 @@ export default function RegisterPage() {
         updatedAt: serverTimestamp()
       });
 
-      // سجل المستخدم داخل المنشأة
       const tenantUserRef = doc(db, 'companies', companyId, 'users', uid);
       batch.set(tenantUserRef, {
         displayName: formData.contactName,
@@ -118,14 +114,14 @@ export default function RegisterPage() {
   if (isSubmitted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4" dir="rtl">
-        <Card className="w-full max-w-md border-0 shadow-2xl rounded-3xl overflow-hidden bg-white text-center">
+        <Card className="w-full max-w-md border-0 shadow-2xl rounded-[3rem] overflow-hidden bg-white text-center">
           <CardHeader className="pt-10">
             <div className="mx-auto w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4">
               <CheckCircle2 className="h-10 w-10" />
             </div>
-            <CardTitle className="text-2xl font-black font-headline">تم الإعداد بنجاح!</CardTitle>
-            <CardDescription className="text-lg">
-              جاري توجيهك إلى لوحة تحكم شركة <span className="font-bold text-primary">{formData.companyName}</span>...
+            <CardTitle className="text-2xl font-black font-headline text-slate-900">تم الإعداد بنجاح!</CardTitle>
+            <CardDescription className="text-lg font-bold text-slate-500">
+              جاري توجيهك إلى لوحة تحكم شركة <span className="text-primary">{formData.companyName}</span>...
             </CardDescription>
           </CardHeader>
           <CardContent className="pb-10">
@@ -139,33 +135,35 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#fdfaf3] p-6" dir="rtl">
       <Card className="w-full max-w-2xl border-0 shadow-3xl rounded-[3rem] overflow-hidden bg-white">
-        <CardHeader className="space-y-4 pt-10 pb-6 text-center bg-slate-900 text-white">
-          <div className="mx-auto w-16 h-16 bg-primary rounded-2xl flex items-center justify-center text-white shadow-xl mb-2 rotate-3">
-            <Building2 className="h-8 w-8" />
+        <CardHeader className="space-y-4 pt-12 pb-8 text-center bg-slate-50 border-b">
+          <div className="mx-auto w-20 h-20 bg-primary/10 rounded-[2rem] flex items-center justify-center text-primary shadow-inner mb-2 rotate-3 group hover:rotate-0 transition-transform duration-500">
+            <Building2 className="h-10 w-10" />
           </div>
-          <CardTitle className="text-3xl font-black font-headline">NovaFlow لأصحاب الأعمال</CardTitle>
-          <CardDescription className="text-slate-400 font-bold">سجل منشأتك الجديدة واحصل على 14 يوماً تجريبية مجانية</CardDescription>
+          <div className="space-y-2">
+            <CardTitle className="text-4xl font-black font-headline tracking-tighter text-slate-900">NovaFlow لأصحاب الأعمال</CardTitle>
+            <CardDescription className="text-slate-500 font-bold text-lg">سجل منشأتك الجديدة واحصل على 14 يوماً تجريبية مجانية</CardDescription>
+          </div>
         </CardHeader>
-        <CardContent className="p-10">
-          <form onSubmit={handleAutomaticProvisioning} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <CardContent className="p-12">
+          <form onSubmit={handleAutomaticProvisioning} className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-2 text-start">
-                <Label className="font-black text-xs text-slate-400 uppercase">اسم المنشأة / الشركة</Label>
+                <Label className="font-black text-xs text-slate-400 uppercase tracking-widest">اسم المنشأة / الشركة</Label>
                 <Input 
                   value={formData.companyName} 
                   onChange={(e) => setFormData({...formData, companyName: e.target.value})} 
                   required 
-                  className="h-12 rounded-xl border-2 font-bold" 
+                  className="h-14 rounded-2xl border-2 font-black text-lg bg-slate-50/50" 
                   placeholder="شركة المقاولات الحديثة"
                 />
               </div>
               <div className="space-y-2 text-start">
-                <Label className="font-black text-xs text-slate-400 uppercase">نوع النشاط</Label>
+                <Label className="font-black text-xs text-slate-400 uppercase tracking-widest">نوع النشاط</Label>
                 <Select value={formData.activity} onValueChange={(val) => setFormData({...formData, activity: val})}>
-                  <SelectTrigger className="h-12 rounded-xl border-2 font-bold">
+                  <SelectTrigger className="h-14 rounded-2xl border-2 font-black text-lg">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="rounded-2xl border-0 shadow-2xl">
                     <SelectItem value="construction" className="font-bold">مقاولات وإنشاءات</SelectItem>
                     <SelectItem value="consulting" className="font-bold">استشارات هندسية</SelectItem>
                     <SelectItem value="general" className="font-bold">تجارة عامة</SelectItem>
@@ -173,63 +171,63 @@ export default function RegisterPage() {
                 </Select>
               </div>
               <div className="space-y-2 text-start">
-                <Label className="font-black text-xs text-slate-400 uppercase">اسم المدير المسؤول</Label>
+                <Label className="font-black text-xs text-slate-400 uppercase tracking-widest">اسم المدير المسؤول</Label>
                 <Input 
                   value={formData.contactName} 
                   onChange={(e) => setFormData({...formData, contactName: e.target.value})} 
                   required 
-                  className="h-12 rounded-xl border-2 font-bold" 
+                  className="h-14 rounded-2xl border-2 font-bold bg-slate-50/50" 
                 />
               </div>
               <div className="space-y-2 text-start">
-                <Label className="font-black text-xs text-slate-400 uppercase">اسم المستخدم الفريد</Label>
+                <Label className="font-black text-xs text-slate-400 uppercase tracking-widest">اسم المستخدم (Login ID)</Label>
                 <Input 
                   value={formData.username} 
                   onChange={(e) => setFormData({...formData, username: e.target.value})} 
                   required 
-                  className="h-12 rounded-xl border-2 font-mono text-sm" 
+                  className="h-14 rounded-2xl border-2 font-mono text-primary bg-slate-50/50" 
                   placeholder="admin_nova"
                 />
               </div>
               <div className="space-y-2 text-start">
-                <Label className="font-black text-xs text-slate-400 uppercase">البريد الإلكتروني للشركة</Label>
+                <Label className="font-black text-xs text-slate-400 uppercase tracking-widest">البريد الإلكتروني للشركة</Label>
                 <Input 
                   type="email" 
                   value={formData.email} 
                   onChange={(e) => setFormData({...formData, email: e.target.value})} 
                   required 
-                  className="h-12 rounded-xl border-2 text-left" 
+                  className="h-14 rounded-2xl border-2 text-left bg-slate-50/50" 
                   dir="ltr"
                 />
               </div>
               <div className="space-y-2 text-start">
-                <Label className="font-black text-xs text-slate-400 uppercase">كلمة المرور</Label>
+                <Label className="font-black text-xs text-slate-400 uppercase tracking-widest">كلمة المرور</Label>
                 <div className="relative">
                   <Input 
                     type={showPassword ? "text" : "password"}
                     value={formData.password} 
                     onChange={(e) => setFormData({...formData, password: e.target.value})} 
                     required 
-                    className="h-12 rounded-xl border-2 text-left" 
+                    className="h-14 rounded-2xl border-2 text-left bg-slate-50/50" 
                     dir="ltr"
                   />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300">
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300">
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
               </div>
             </div>
             
-            <Button type="submit" disabled={loading} className="w-full h-16 bg-primary text-white rounded-2xl text-xl font-black shadow-xl shadow-primary/20 hover:scale-[1.01] transition-all">
-              {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : 'تفعيل المنشأة والبدء فوراً'}
+            <Button type="submit" disabled={loading} className="w-full h-20 bg-primary text-white rounded-[2rem] text-2xl font-black shadow-2xl shadow-primary/20 hover:scale-[1.01] transition-all border-b-8 border-orange-700 mt-6">
+              {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : 'تفعيل المنشأة والبدء فوراً'}
             </Button>
           </form>
         </CardContent>
-        <CardFooter className="pb-10 pt-4 justify-center flex-col space-y-4">
-          <Button variant="link" onClick={() => router.push('/login')} className="text-primary font-black">
-            لديك حساب شركة بالفعل؟ سجل دخولك <ArrowRight className="mr-2 h-4 w-4" />
+        <CardFooter className="pb-12 pt-4 justify-center flex-col space-y-4">
+          <Button variant="link" onClick={() => router.push('/login')} className="text-primary font-black text-lg">
+            لديك حساب شركة بالفعل؟ سجل دخولك <ArrowRight className="mr-2 h-5 w-5" />
           </Button>
-          <p className="text-[10px] text-muted-foreground text-center max-w-sm font-bold">
+          <p className="text-[11px] text-slate-400 text-center max-w-sm font-bold leading-relaxed">
             هذه الصفحة مخصصة لإنشاء **منشآت جديدة** فقط. إذا كنت موظفاً، يرجى طلب "رابط تفعيل حساب" من مدير النظام بشركتك.
           </p>
         </CardFooter>

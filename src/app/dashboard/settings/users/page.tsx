@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -43,7 +42,6 @@ export default function UsersManagementPage() {
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [showPassMap, setShowPassMap] = useState<Record<string, boolean>>({});
 
-  // فورم الإنشاء
   const [createForm, setCreateForm] = useState({
     employeeId: '',
     roleId: '',
@@ -52,7 +50,6 @@ export default function UsersManagementPage() {
     email: ''
   });
 
-  // فورم التعديل
   const [editForm, setEditForm] = useState({
     displayName: '',
     username: '',
@@ -72,7 +69,6 @@ export default function UsersManagementPage() {
   const { data: roles } = useCollection<Role>(rolesQuery);
   const { data: employees } = useCollection<Employee>(empsQuery);
 
-  // تحديث فورم التعديل عند اختيار مستخدم
   useEffect(() => {
     if (editingUser) {
       setEditForm({
@@ -178,8 +174,8 @@ export default function UsersManagementPage() {
                {isRtl ? 'إنشاء حساب موظف' : 'Create User'}
             </Button>
           </DialogTrigger>
-          <DialogContent className="rounded-[3rem] p-0 overflow-hidden max-w-xl border-0 shadow-3xl" dir={dir}>
-            <div className="bg-slate-900 p-10 text-white text-start">
+          <DialogContent className="rounded-[3rem] p-0 overflow-hidden max-w-xl border-0 shadow-3xl bg-white" dir={dir}>
+            <div className="bg-primary/5 p-10 text-slate-900 text-start border-b">
                <DialogTitle className="text-3xl font-black font-headline flex items-center gap-3">
                   <Key className="h-9 w-9 text-primary" />
                   {isRtl ? 'إعداد حساب دخول جديد' : 'Setup Login Account'}
@@ -196,7 +192,7 @@ export default function UsersManagementPage() {
                       <SelectTrigger className="h-14 rounded-2xl border-2 font-black">
                          <SelectValue placeholder="..." />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="rounded-xl border-0 shadow-2xl">
                          {employees?.map(e => <SelectItem key={e.id} value={e.id!} className="font-bold">{e.fullName}</SelectItem>)}
                       </SelectContent>
                    </Select>
@@ -211,7 +207,7 @@ export default function UsersManagementPage() {
                       <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'الدور الأمني' : 'Role'}</Label>
                       <Select value={createForm.roleId} onValueChange={v => setCreateForm({...createForm, roleId: v})}>
                          <SelectTrigger className="h-12 rounded-xl border-2 font-bold"><SelectValue /></SelectTrigger>
-                         <SelectContent>
+                         <SelectContent className="rounded-xl border-0 shadow-2xl">
                             {roles?.map(r => <SelectItem key={r.id} value={r.id!} className="font-bold">{isRtl ? r.name : r.nameEn}</SelectItem>)}
                          </SelectContent>
                       </Select>
@@ -228,7 +224,7 @@ export default function UsersManagementPage() {
                    <Input value={createForm.password} onChange={e => setCreateForm({...createForm, password: e.target.value})} className="h-14 rounded-xl border-2 font-mono text-lg text-primary" placeholder="P@ssw0rd123" />
                 </div>
 
-                <Button onClick={handleCreateAccount} disabled={loadingAction === 'creating'} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 mt-4">
+                <Button onClick={handleCreateAccount} disabled={loadingAction === 'creating'} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 mt-4 border-b-8 border-orange-700">
                    {loadingAction === 'creating' ? <Loader2 className="animate-spin h-6 w-6" /> : (isRtl ? 'إنشاء الحساب الآن' : 'Create Account Now')}
                 </Button>
             </div>
@@ -237,7 +233,7 @@ export default function UsersManagementPage() {
       </div>
 
       <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
-        <CardHeader className="bg-slate-50/50 border-b p-8 flex flex-row items-center justify-between">
+        <CardHeader className="bg-slate-50/50 border-b p-8 flex flex-row items-center justify-between gap-4">
            <div className="relative w-full max-w-md">
               <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
               <Input 
@@ -324,15 +320,14 @@ export default function UsersManagementPage() {
         </CardContent>
       </Card>
 
-      {/* مودال التعديل الشامل */}
       <Dialog open={!!editingUser} onOpenChange={open => !open && setEditingUser(null)}>
-         <DialogContent className="rounded-[3rem] p-0 overflow-hidden max-w-xl border-0 shadow-3xl" dir={dir}>
-            <div className="bg-primary p-10 text-white text-start">
+         <DialogContent className="rounded-[3rem] p-0 overflow-hidden max-w-xl border-0 shadow-3xl bg-white" dir={dir}>
+            <div className="bg-primary/5 p-10 text-slate-900 text-start border-b">
                <DialogTitle className="text-3xl font-black font-headline flex items-center gap-3">
-                  <UserCog className="h-9 w-9" />
+                  <UserCog className="h-9 w-9 text-primary" />
                   {isRtl ? 'تعديل حساب المستخدم' : 'Edit User Account'}
                </DialogTitle>
-               <p className="text-white/80 font-bold mt-2">{editingUser?.email}</p>
+               <p className="text-slate-500 font-bold mt-2">{editingUser?.email}</p>
             </div>
             
             <div className="p-10 space-y-6 text-start bg-white">
@@ -352,7 +347,7 @@ export default function UsersManagementPage() {
                         <SelectTrigger className="h-12 rounded-xl border-2 font-bold">
                            <SelectValue placeholder="..." />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="rounded-xl border-0 shadow-2xl">
                            {roles?.map(role => (
                              <SelectItem key={role.id} value={role.id!} className="font-bold">{isRtl ? role.name : role.nameEn}</SelectItem>
                            ))}
@@ -380,21 +375,12 @@ export default function UsersManagementPage() {
                   </div>
                </div>
 
-               <div className="pt-4 flex items-start gap-3 bg-amber-50 p-4 rounded-2xl border border-amber-100">
-                  <Info className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-                  <p className="text-[9px] font-bold text-amber-800 leading-relaxed">
-                     {isRtl 
-                       ? 'تنبيه: تغيير كلمة المرور هنا هو "تعديل إداري" للسجل. سيظهر للموظف في حسابه ليتمكن من استخدامه، وتأكد من إبلاغه بالبيانات الجديدة.' 
-                       : 'Warning: Changing password here is an administrative update. The employee will see it in their record for login purposes.'}
-                  </p>
-               </div>
-
                <Button 
                 onClick={handleUpdateAccount} 
                 disabled={loadingAction === editingUser?.id} 
-                className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20"
+                className="w-full h-20 rounded-[2rem] bg-primary text-white font-black text-2xl shadow-xl shadow-primary/20 border-b-8 border-orange-700"
                >
-                  {loadingAction === editingUser?.id ? <Loader2 className="animate-spin h-6 w-6" /> : (isRtl ? 'حفظ التغييرات' : 'Save Changes')}
+                  {loadingAction === editingUser?.id ? <Loader2 className="animate-spin h-8 w-8" /> : (isRtl ? 'حفظ التغييرات' : 'Save Changes')}
                </Button>
             </div>
          </DialogContent>

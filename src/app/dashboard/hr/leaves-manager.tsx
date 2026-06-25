@@ -21,7 +21,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { paths } from '@/firebase/multi-tenant';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -60,7 +60,6 @@ export function LeavesManager() {
   
   const { data: rawLeaves, loading } = useCollection<LeaveRequest>(leavesQuery);
 
-  // تصفية السجلات بناءً على الصلاحيات مع ضمان دقة الـ UID
   const leaves = useMemo(() => {
     if (!viewAccess.can) return [];
     return rawLeaves.filter(leave => canPerformOnRecord(
@@ -137,8 +136,6 @@ export function LeavesManager() {
                <TableBody>
                   {loading ? (
                     <TableRow><TableCell colSpan={6} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
-                  ) : leaves?.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="text-center py-20 italic text-muted-foreground font-bold">{isRtl ? 'لا توجد طلبات لعرضها حالياً.' : 'No leaves to display.'}</TableCell></TableRow>
                   ) : (
                     leaves?.map((leave) => (
                       <TableRow key={leave.id} className="hover:bg-slate-50 transition-colors group">
@@ -183,13 +180,13 @@ export function LeavesManager() {
       </Card>
 
       <Dialog open={!!processingLeave} onOpenChange={(open) => !open && setProcessingLeave(null)}>
-        <DialogContent className="rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl" dir={dir}>
-           <div className="bg-slate-900 p-10 text-white text-start">
+        <DialogContent className="rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
+           <div className="bg-primary/5 p-10 text-slate-900 text-start border-b">
               <DialogTitle className="text-3xl font-black font-headline flex items-center gap-3">
                  <Clock className="h-9 w-9 text-primary" />
                  {isRtl ? 'قرار الإدارة وتصحيح البيانات' : 'Admin Decision & Correction'}
               </DialogTitle>
-              <p className="text-slate-400 font-bold mt-2">{isRtl ? `طلب الموظف: ${processingLeave?.userName}` : `Employee: ${processingLeave?.userName}`}</p>
+              <p className="text-slate-500 font-bold mt-2">{isRtl ? `طلب الموظف: ${processingLeave?.userName}` : `Employee: ${processingLeave?.userName}`}</p>
            </div>
            
            <div className="p-10 space-y-8 text-start bg-white">
@@ -246,7 +243,7 @@ export function LeavesManager() {
               <Button 
                 onClick={() => handleAction('approved')}
                 disabled={isProcessing}
-                className="flex-1 h-16 rounded-2xl bg-emerald-600 text-white font-black text-lg hover:bg-emerald-700 shadow-xl shadow-emerald-100 transition-all gap-2"
+                className="flex-1 h-16 rounded-2xl bg-emerald-600 text-white font-black text-lg hover:bg-emerald-700 shadow-xl shadow-emerald-100 transition-all gap-2 border-b-8 border-emerald-800"
               >
                  {isProcessing ? <Loader2 className="animate-spin h-5 w-5" /> : <CheckCircle2 className="me-2 h-6 w-6" />}
                  {isRtl ? 'اعتماد وصرف' : 'Approve'}
