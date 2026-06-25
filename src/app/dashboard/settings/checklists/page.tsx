@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Database, Building2, MapPin, Workflow, Settings2,
-  ListTree, FolderTree
+  ListTree, FolderTree, GitBranch
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useRouter } from 'next/navigation';
@@ -15,13 +15,12 @@ import DepartmentsPage from './departments/page';
 import GeoPage from './geo/page';
 import TechnicalPathsPage from './technical-paths/page';
 import GeneralListsPage from './general-lists/page';
-import BOQMasterPage from './boq-master/page';
+import BOQNodesPage from './boq-nodes/page';
 import { SeedTool } from './seed-tool';
 
 export default function TechnicalSetupPage() {
   const { t, lang, dir } = useLanguage();
   const [activeTab, setActiveTab] = useState("general");
-  const router = useRouter();
   const isRtl = lang === 'ar';
 
   return (
@@ -48,10 +47,10 @@ export default function TechnicalSetupPage() {
               <ListTree className="h-4 w-4" /> {t('referenceLists')}
             </TabsTrigger>
             <TabsTrigger 
-              value="boq_master" 
+              value="boq_nodes" 
               className="tab-sovereign rounded-lg font-black gap-2 transition-all data-[state=active]:bg-[#F57C00] data-[state=active]:text-white data-[state=active]:shadow-lg flex items-center justify-center px-6 h-full"
             >
-              <FolderTree className="h-4 w-4" /> {isRtl ? 'قاموس الأعمال' : 'BOQ Master'}
+              <GitBranch className="h-4 w-4" /> {isRtl ? 'شجرة الأعمال' : 'BOQ Master Tree'}
             </TabsTrigger>
             <TabsTrigger 
               value="org" 
@@ -84,8 +83,8 @@ export default function TechnicalSetupPage() {
           <GeneralListsPage />
         </TabsContent>
 
-        <TabsContent value="boq_master" className="mt-8">
-          <BOQMasterPage />
+        <TabsContent value="boq_nodes" className="mt-8">
+          <BOQNodesPage />
         </TabsContent>
 
         <TabsContent value="org" className="mt-8">
