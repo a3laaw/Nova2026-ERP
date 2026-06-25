@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -20,7 +19,7 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { BOQReferenceService } from '@/services/boq-reference-service';
 import { TechnicalPathService } from '@/services/technical-path-service';
-import { BOQReferenceNode, UnitType, ItemCategory, TechnicalStage } from '@/types/reference';
+import { BOQReferenceNode, UnitType, TechnicalStage } from '@/types/reference';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -74,15 +73,11 @@ export default function BOQNodesPage() {
     db && companyId ? new BOQReferenceService(db, companyId, permissions) : null, 
   [db, companyId, permissions]);
 
-  // جلب كافة المراحل الفنية للربط
+  // جلب كافة المراحل الفنية المعرفة في النظام للربط
   useEffect(() => {
     if (db && companyId) {
       const tpService = new TechnicalPathService(db, companyId);
-      tpService.getAllCompanyStages()
-        .then(setAllStages)
-        .catch(() => {
-          // الخطأ يعالج داخلياً عبر الباعث، لا حاجة لتعطيل الواجهة
-        });
+      tpService.getAllCompanyStages().then(setAllStages);
     }
   }, [db, companyId]);
 
@@ -100,7 +95,7 @@ export default function BOQNodesPage() {
     return buildTree(null);
   }, [rawNodes]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!service || !user || !editingNode?.title) return;
     
     if (!editingNode.parentId && !editingNode.code) {
@@ -111,9 +106,9 @@ export default function BOQNodesPage() {
     setLoadingAction('save');
     try {
       if (editingNode.id) {
-        service.updateBOQReferenceNode(editingNode.id, editingNode, user.uid);
+        await service.updateBOQReferenceNode(editingNode.id, editingNode, user.uid);
       } else {
-        service.createBOQReferenceNode(editingNode, user.uid);
+        await service.createBOQReferenceNode(editingNode, user.uid);
       }
       toast({ title: t('saved') });
       setEditingNode(null);
@@ -122,11 +117,11 @@ export default function BOQNodesPage() {
     }
   };
 
-  const handleFinalDelete = () => {
+  const handleFinalDelete = async () => {
     if (!service || !deletingId) return;
     setLoadingAction(`delete_${deletingId}`);
     try {
-      service.deleteBOQReferenceNode(deletingId);
+      await service.deleteBOQReferenceNode(deletingId);
       toast({ title: t('deleted') });
       setDeletingId(null);
     } catch (e: any) {
@@ -358,13 +353,15 @@ export default function BOQNodesPage() {
                             value={editingNode.technicalStageId} 
                             onValueChange={v => setEditingNode({...editingNode!, technicalStageId: v})}
                           >
-                             <SelectTrigger className="h-11 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
+                             <SelectTrigger className="h-11 rounded-xl border-2 font-bold bg-white">
+                                <SelectValue placeholder={allStages.length === 0 ? (isRtl ? "لا توجد مراحل معرفة" : "No stages found") : "..."} />
+                             </SelectTrigger>
                              <SelectContent className="rounded-xl border-2 shadow-2xl">
                                 {allStages.map(stage => (
-                                   <SelectItem key={stage.id} value={stage.id!} className="font-bold text-xs py-2">
+                                   <SelectItem key={stage.id} value={stage.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
                                       <div className="flex flex-col text-start">
                                          <span className="flex items-center gap-1"><Workflow className="h-2.5 w-2.5 text-primary" /> {stage.name}</span>
-                                         <span className="text-[8px] text-slate-400 uppercase">CODE: {stage.code}</span>
+                                         <span className="text-[8px] text-slate-400 uppercase tracking-tighter mt-0.5">CODE: {stage.code}</span>
                                       </div>
                                    </SelectItem>
                                 ))}
