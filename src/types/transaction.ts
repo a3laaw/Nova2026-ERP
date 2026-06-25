@@ -27,10 +27,25 @@ export interface Transaction extends BaseReference {
 export interface TransactionTimelineEvent extends BaseReference {
   id?: string;
   transactionId: string;
-  type: 'system' | 'stage_start' | 'stage_complete' | 'comment';
+  type: 'system' | 'stage_start' | 'stage_complete' | 'comment' | 'numeric_update';
   content: string;
   userId: string;
   userName: string;
+}
+
+export type CommentType = 'general' | 'note' | 'warning' | 'instruction';
+
+export interface TransactionComment extends BaseReference {
+  id?: string;
+  transactionId: string;
+  stageInstanceId?: string | null;
+  content: string;
+  commentType: CommentType;
+  createdBy: string;
+  createdByName: string;
+  isEdited?: boolean;
+  isPinned?: boolean;
+  parentCommentId?: string | null;
 }
 
 export interface StageInstance extends BaseReference {
@@ -53,4 +68,6 @@ export interface StageInstance extends BaseReference {
   activityTypeId: string;
   serviceId: string;
   subServiceId: string;
+  startedAt?: any;
+  completedAt?: any;
 }

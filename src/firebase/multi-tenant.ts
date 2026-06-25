@@ -62,6 +62,8 @@ export const paths = {
   transactions: (companyId: string) => getTenantPath(companyId, 'transactions'),
   transactionStages: (companyId: string, tId: string) => `${getTenantPath(companyId, 'transactions')}/${tId}/stageInstances`,
   transactionTimeline: (companyId: string, tId: string) => `${getTenantPath(companyId, 'transactions')}/${tId}/timeline`,
+  transactionComments: (companyId: string, tId: string) => `${getTenantPath(companyId, 'transactions')}/${tId}/comments`,
+  stageComments: (companyId: string, tId: string, sId: string) => `${getTenantPath(companyId, 'transactions')}/${tId}/stageInstances/${sId}/comments`,
 
   // المرجع الشجري الديناميكي الجديد لبنود BOQ
   boqReferenceNodes: (companyId: string) => getTenantPath(companyId, 'boqReferenceNodes'),
