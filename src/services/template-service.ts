@@ -4,16 +4,12 @@ import {
   Firestore, 
   collection, 
   doc, 
-  addDoc, 
   updateDoc, 
-  deleteDoc, 
   serverTimestamp,
   query,
   getDocs,
   writeBatch,
-  where,
   orderBy,
-  setDoc,
   getDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
@@ -25,7 +21,7 @@ import { BOQReferenceNode } from '@/types/reference';
 
 /**
  * خدمة إدارة القوالب المركزية (Template Service).
- * موحدة لتعمل حصراً مع مرجع boqReferenceNodes.
+ * تعمل حصراً مع مرجع boqReferenceNodes كمصدر وحيد للحقيقة.
  */
 export class TemplateService {
   constructor(
@@ -56,7 +52,7 @@ export class TemplateService {
   }
 
   /**
-   * حفظ قالب المقايسة مع كافة بنوده الديناميكية في عملية واحدة
+   * حفظ قالب المقايسة مع كافة بنوده الديناميكية
    */
   async saveBOQTemplateWithItems(templateId: string | null, templateData: Partial<BOQTemplate>, items: BOQTemplateItem[], userId: string) {
     ensureActionPermission(this.userPermissions, 'ref:edit');
@@ -74,6 +70,7 @@ export class TemplateService {
       updatedAt: serverTimestamp(),
       ...(templateId ? {} : { createdBy: userId, createdAt: serverTimestamp(), version: 1, isActive: true })
     };
+    
     // مسح مصفوفة العناصر من الرأس لضمان تخزينها فقط في المجموعة الفرعية
     delete (headData as any).items;
 
@@ -82,7 +79,7 @@ export class TemplateService {
     // 2. تحديث البنود في المجموعة الفرعية (Flat Subcollection)
     const itemsCollection = collection(this.db, paths.boqTemplateItems(this.companyId, finalTemplateId));
     
-    // مسح البنود القديمة (في حال التعديل) لضمان نظافة الهيكل
+    // مسح البنود القديمة لضمان نظافة الهيكل المنسوخ
     if (templateId) {
       const oldItemsSnap = await getDocs(itemsCollection);
       oldItemsSnap.docs.forEach(d => batch.delete(d.ref));

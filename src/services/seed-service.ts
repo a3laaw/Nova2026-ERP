@@ -19,7 +19,7 @@ import { BOQReferenceNode } from '@/types/reference';
 
 /**
  * خدمة تهيئة النظام (Seed Service).
- * تم تحديثها لضمان ضخ هيكل شجري موحد في boqReferenceNodes.
+ * تم تحديثها لضمان ضخ هيكل شجري موحد في boqReferenceNodes كمصدر وحيد للحقيقة.
  */
 export class SeedService {
   constructor(private db: Firestore, private companyId: string) {}
@@ -77,7 +77,7 @@ export class SeedService {
       }
     }
 
-    // 3. الهيكل الفني الرباعي للمسارات
+    // 3. الهيكل الفني الرباعي للمسارات وتخزين مراجع الأنشطة
     const activityRefs: Record<string, string> = {};
     for (const act of SEED_DATA.activityTypes) {
       const actRef = doc(collection(this.db, paths.activityTypes(this.companyId)));
@@ -139,8 +139,7 @@ export class SeedService {
       }
     }
 
-    // 4. ضخ القاموس الهندسي الشجري الموحد (Unified Tree)
-    // نقوم ببناء هيكل افتراضي في boqReferenceNodes
+    // 4. ضخ القاموس الهندسي الشجري الموحد (Unified Tree) في المرجع الجديد
     const rootCivilRef = doc(collection(this.db, paths.boqReferenceNodes(this.companyId)));
     batch.set(rootCivilRef, {
       code: 'CIVIL_WORKS',
@@ -148,17 +147,18 @@ export class SeedService {
       parentId: null,
       depth: 0,
       ancestorIds: [],
-      childrenCount: 2,
+      childrenCount: 1,
       nodeRole: 'group',
       isExecutable: false,
       isActive: true,
       activityTypeIds: [activityRefs['CONSULTING'] || ''],
+      activityTypeNames: ['استشارات هندسية'],
       order: 1,
       companyId: this.companyId,
       createdAt: serverTimestamp()
     } as BOQReferenceNode);
 
-    // إضافة بند تنفيذي تحت الجذر (مثال)
+    // إضافة بند تنفيذي تحت الجذر (الحفريات)
     const excavationRef = doc(collection(this.db, paths.boqReferenceNodes(this.companyId)));
     batch.set(excavationRef, {
       code: 'EXC_001',
@@ -178,7 +178,7 @@ export class SeedService {
       createdAt: serverTimestamp()
     } as BOQReferenceNode);
 
-    // تنفيذ الـ Batch (الهياكل والقواميس)
+    // تنفيذ الـ Batch (الهياكل والقواميس الموحدة)
     await batch.commit().catch(async (err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: 'batch_seed_unified', operation: 'write'
@@ -192,7 +192,7 @@ export class SeedService {
   }
 
   async isSystemSeeded() {
-    const q = query(collection(this.db, paths.activityTypes(this.companyId)), limit(1));
+    const q = query(collection(this.db, paths.boqReferenceNodes(this.companyId)), limit(1));
     const snap = await getDocs(q);
     return !snap.empty;
   }

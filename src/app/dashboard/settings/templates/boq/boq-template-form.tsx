@@ -31,12 +31,11 @@ import { paths } from '@/firebase/multi-tenant';
 import { BOQTemplate, BOQTemplateItem, BOQTreeNode } from '@/types/templates';
 import { ActivityType, Service, SubService, BOQReferenceNode } from '@/types/reference';
 import { TemplateService } from '@/services/template-service';
-import { BOQReferenceService } from '@/services/boq-reference-service';
 import { transformToBOQTree } from '@/lib/boq-tree-utils';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 
 interface Props {
   template: BOQTemplate | null;
@@ -71,7 +70,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     }
   );
 
-  // جلب البيانات المرجعية للتصنيف
+  // 1. جلب الأنشطة والخدمات للتصنيف
   const actQuery = useMemo(() => companyId && db ? query(collection(db, paths.activityTypes(companyId)), orderBy('order')) : null, [db, companyId]);
   const srvQuery = useMemo(() => companyId && db && formData.activityTypeId ? query(collection(db, paths.services(companyId, formData.activityTypeId)), orderBy('order')) : null, [db, companyId, formData.activityTypeId]);
   const subQuery = useMemo(() => companyId && db && formData.activityTypeId && formData.serviceId ? query(collection(db, paths.subServices(companyId, formData.activityTypeId, formData.serviceId)), orderBy('order')) : null, [db, companyId, formData.activityTypeId, formData.serviceId]);
@@ -80,7 +79,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
   const { data: services } = useCollection<Service>(srvQuery);
   const { data: subServices } = useCollection<SubService>(subQuery);
 
-  // جلب كافة العقد المرجعية للـ Picker
+  // 2. جلب كافة العقد من المرجع الموحد boqReferenceNodes
   const masterNodesQuery = useMemo(() => companyId && db ? query(collection(db, paths.boqReferenceNodes(companyId)), orderBy('depth')) : null, [db, companyId]);
   const { data: rawMasterNodes, loading: masterLoading } = useCollection<BOQReferenceNode>(masterNodesQuery);
 
@@ -95,17 +94,17 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     }
   }, [template, service]);
 
-  // بناء شجرة المقايسة الحالية
+  // بناء شجرة المقايسة الحالية للعرض
   const boqTree = useMemo(() => transformToBOQTree(items), [items]);
 
-  // بناء شجرة الاختيار (Picker Tree)
+  // بناء شجرة مستكشف القاموس (Picker Tree)
   const pickerTree = useMemo(() => {
     if (!rawMasterNodes) return [];
     const buildTree = (parentId: string | null): any[] => {
       return rawMasterNodes
         .filter(n => (n.parentId || null) === parentId)
         .filter(n => masterSearch ? (n.title.toLowerCase().includes(masterSearch.toLowerCase()) || n.code.toLowerCase().includes(masterSearch.toLowerCase())) : true)
-        .sort((a, b) => a.order - b.order)
+        .sort((a, b) => (a.order || 0) - (b.order || 0))
         .map(n => ({ ...n, children: buildTree(n.id!) }));
     };
     return buildTree(null);
@@ -151,7 +150,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
       return;
     }
 
-    // استخراج مسميات الأسلاف للعرض السريع (Snapshot)
+    // استخراج مسميات الأسلاف للعرض السريع (Hierarchy Path)
     const ancestorTitles = node.ancestorIds?.map(id => {
        const parent = rawMasterNodes?.find(m => m.id === id);
        return parent?.title || 'Unknown';
@@ -174,7 +173,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
       allowedItemCategoryIds: node.allowedItemCategoryIds,
       plannedQuantity: 1,
       executedQuantity: 0,
-      estimatedRate: 0,
+      estimatedRate: node.estimatedRate || 0,
       estimatedCostRate: 0,
       order: items.length,
       companyId: companyId!
@@ -228,7 +227,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
               className={cn("h-8 rounded-lg text-[10px] font-black gap-1.5", isAdded ? "bg-slate-100 text-slate-400" : "bg-primary text-white")}
             >
               {isAdded ? <CheckCircle2 className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
-              {isAdded ? (isRtl ? 'مضاف' : 'Added') : (isRtl ? 'إضافة للمقايسة' : 'Add')}
+              {isAdded ? (isRtl ? 'مضاف' : 'Added') : (isRtl ? 'إضافة' : 'Add')}
             </Button>
           )}
         </div>
@@ -239,7 +238,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
 
   const renderBOQTreeNode = (node: BOQTreeNode) => {
     return (
-      <div key={node.id} className="space-y-4 mb-6">
+      <div key={node.id} className="space-y-4 mb-6 animate-in slide-in-from-top-2">
         <div className="flex items-center gap-4 bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl shadow-sm" style={{ marginInlineStart: `${node.depth * 24}px` }}>
            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-black text-xs">{node.depth + 1}</div>
            <h4 className="font-black text-slate-800">{node.title}</h4>
