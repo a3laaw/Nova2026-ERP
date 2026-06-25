@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { 
   Clock, Calendar, MoonStar, 
   Loader2, Save, Sun, HardHat,
-  Trash2, Info, Zap, Sparkles,
+  Trash2, Zap, Sparkles,
   CheckCircle2
 } from "lucide-react";
 import { useFirestore } from '@/firebase';
@@ -75,7 +75,7 @@ export function WorkHoursManager() {
       const response = await fetchPublicHolidays({ country: 'الكويت', year: 2026 });
       if (response.holidays) {
         setSettings({ ...settings, publicHolidays: response.holidays });
-        toast({ title: lang === 'ar' ? "تم تحديث العطلات" : "Holidays Updated", description: lang === 'ar' ? "تم جلب عطلات 2026 آلياً بالذكاء الاصطناعي." : "2026 holidays fetched via AI." });
+        toast({ title: t('saved') });
       }
     } catch (e) {
       toast({ variant: "destructive", title: t('error') });
@@ -105,7 +105,7 @@ export function WorkHoursManager() {
     const sched = settings?.[scope];
     if (!sched) return null;
 
-    const isDoubleShift = !!sched.eveningStartTime && sched.eveningStartTime !== "00:00";
+    const isDoubleShift = !!sched.eveningStartTime && sched.eveningStartTime !== "00:00" && sched.eveningStartTime !== "";
 
     return (
       <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
@@ -116,14 +116,12 @@ export function WorkHoursManager() {
                  <div>
                     <CardTitle className="text-xl font-black">{title}</CardTitle>
                     <CardDescription className="font-bold">
-                       {isDoubleShift 
-                         ? (lang === 'ar' ? 'تم اكتشاف نظام فترتين (صباحي/مسائي).' : 'Split-shift system detected.')
-                         : (lang === 'ar' ? 'نظام فترة واحدة مستمرة.' : 'Continuous single-shift system.')}
+                       {isDoubleShift ? t('shiftDetectMsg') : t('singleShiftMsg')}
                     </CardDescription>
                  </div>
               </div>
               <Badge className={cn("rounded-lg px-3 py-1 font-black uppercase text-[10px]", isDoubleShift ? "bg-blue-500 text-white" : "bg-primary text-white")}>
-                 {isDoubleShift ? (lang === 'ar' ? 'فترتين' : 'Double') : (lang === 'ar' ? 'فترة واحدة' : 'Single')}
+                 {isDoubleShift ? t('doubleShift') : t('singleShift')}
               </Badge>
            </div>
         </CardHeader>
@@ -132,15 +130,15 @@ export function WorkHoursManager() {
               <div className="p-6 rounded-[2rem] bg-slate-50 border-2 border-white shadow-sm space-y-4">
                  <div className="flex items-center gap-2 text-primary font-black">
                     <Sun className="h-4 w-4" />
-                    <span className="text-[10px] uppercase tracking-widest">{lang === 'ar' ? 'الفترة الأولى (أساسي)' : 'Period 1 (Primary)'}</span>
+                    <span className="text-[10px] uppercase tracking-widest">{t('morningShift')}</span>
                  </div>
                  <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                       <Label className="text-[9px] font-bold text-slate-400">{lang === 'ar' ? 'وقت الدخول' : 'Start'}</Label>
+                       <Label className="text-[9px] font-bold text-slate-400">{t('checkInTime')}</Label>
                        <Input type="time" value={sched.morningStartTime} onChange={e => updateSchedule(scope, 'morningStartTime', e.target.value)} className="h-10 rounded-lg border-2 font-bold" />
                     </div>
                     <div className="space-y-1">
-                       <Label className="text-[9px] font-bold text-slate-400">{lang === 'ar' ? 'وقت الانصراف' : 'End'}</Label>
+                       <Label className="text-[9px] font-bold text-slate-400">{t('checkOutTime')}</Label>
                        <Input type="time" value={sched.morningEndTime} onChange={e => updateSchedule(scope, 'morningEndTime', e.target.value)} className="h-10 rounded-lg border-2 font-bold" />
                     </div>
                  </div>
@@ -150,7 +148,7 @@ export function WorkHoursManager() {
                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-blue-600 font-black">
                        <MoonStar className="h-4 w-4" />
-                       <span className="text-[10px] uppercase tracking-widest">{lang === 'ar' ? 'الفترة الثانية (اختياري)' : 'Period 2 (Optional)'}</span>
+                       <span className="text-[10px] uppercase tracking-widest">{t('eveningShift')}</span>
                     </div>
                     {isDoubleShift && (
                        <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-300 hover:text-rose-500" onClick={() => {
@@ -161,11 +159,11 @@ export function WorkHoursManager() {
                  </div>
                  <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                       <Label className="text-[9px] font-bold text-slate-400">{lang === 'ar' ? 'وقت الدخول' : 'Start'}</Label>
+                       <Label className="text-[9px] font-bold text-slate-400">{t('checkInTime')}</Label>
                        <Input type="time" value={sched.eveningStartTime || ''} onChange={e => updateSchedule(scope, 'eveningStartTime', e.target.value)} className="h-10 rounded-lg border-2 font-bold bg-white" />
                     </div>
                     <div className="space-y-1">
-                       <Label className="text-[9px] font-bold text-slate-400">{lang === 'ar' ? 'وقت الانصراف' : 'End'}</Label>
+                       <Label className="text-[9px] font-bold text-slate-400">{t('checkOutTime')}</Label>
                        <Input type="time" value={sched.eveningEndTime || ''} onChange={e => updateSchedule(scope, 'eveningEndTime', e.target.value)} className="h-10 rounded-lg border-2 font-bold bg-white" />
                     </div>
                  </div>
@@ -174,15 +172,13 @@ export function WorkHoursManager() {
 
            <div className="pt-6 border-t flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="space-y-1 flex-1">
-                 <Label className="text-[10px] font-black uppercase text-slate-400">{lang === 'ar' ? 'فترة السماح قبل احتساب التأخير (بالدقائق)' : 'Grace Period (Minutes)'}</Label>
+                 <Label className="text-[10px] font-black uppercase text-slate-400">{t('gracePeriod')}</Label>
                  <Input type="number" value={sched.bufferMinutes} onChange={e => updateSchedule(scope, 'bufferMinutes', Number(e.target.value))} className="w-32 h-12 rounded-xl border-2 font-black text-lg" />
               </div>
               <div className="bg-amber-50 p-5 rounded-3xl border-2 border-amber-100 max-w-sm flex items-start gap-3">
                  <Zap className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                  <p className="text-[10px] font-bold text-amber-800 leading-relaxed">
-                    {lang === 'ar' 
-                      ? 'النظام ذكي! سيقوم بمقارنة بصمة الموظف بأقرب وقت دخول (صباحي أو مسائي) لتحديد التأخير الفعلي تلقائياً.' 
-                      : 'Smart detection! The system compares check-ins to the nearest period start to auto-detect lateness.'}
+                    {t('smartDetectHint')}
                  </p>
               </div>
            </div>
@@ -200,7 +196,7 @@ export function WorkHoursManager() {
              {t('workHours')}
            </h1>
            <p className="text-muted-foreground font-bold text-sm mt-1 opacity-80 italic">
-             {lang === 'ar' ? 'تحديد نظام الفترات والورديات للمنظمة.' : 'Define shifts and work system for the org.'}
+             {t('workHoursDesc')}
            </p>
         </div>
         <div className="flex gap-4">
@@ -242,13 +238,13 @@ export function WorkHoursManager() {
                 <div className="p-3 bg-white rounded-2xl shadow-sm text-amber-600"><Calendar className="h-6 w-6" /></div>
                 <div>
                    <CardTitle className="text-xl font-black">{t('holidays')}</CardTitle>
-                   <CardDescription className="font-bold">{lang === 'ar' ? 'إدارة العطلات الأسبوعية والرسمية.' : 'Manage weekly and public holidays.'}</CardDescription>
+                   <CardDescription className="font-bold">{isRtl ? 'إدارة العطلات الأسبوعية والرسمية.' : 'Manage weekly and public holidays.'}</CardDescription>
                 </div>
              </div>
           </CardHeader>
           <CardContent className="p-8 space-y-10 text-start">
              <div>
-                <p className="text-[10px] font-black text-slate-400 mb-6 uppercase tracking-widest">{lang === 'ar' ? 'أيام الراحة الأسبوعية (ثابتة)' : 'Weekly Holidays (Static)'}</p>
+                <p className="text-[10px] font-black text-slate-400 mb-6 uppercase tracking-widest">{isRtl ? 'أيام الراحة الأسبوعية (ثابتة)' : 'Weekly Holidays (Static)'}</p>
                 <div className="flex flex-wrap gap-3">
                    {DAYS.map(day => (
                       <div 
@@ -270,7 +266,7 @@ export function WorkHoursManager() {
 
              {settings?.publicHolidays && settings.publicHolidays.length > 0 && (
                <div className="pt-8 border-t">
-                  <p className="text-[10px] font-black text-slate-400 mb-6 uppercase tracking-widest">{lang === 'ar' ? 'العطلات الرسمية المجدولة (2026)' : 'Scheduled Public Holidays (2026)'}</p>
+                  <p className="text-[10px] font-black text-slate-400 mb-6 uppercase tracking-widest">{isRtl ? 'العطلات الرسمية المجدولة (2026)' : 'Scheduled Public Holidays (2026)'}</p>
                   <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                      {settings.publicHolidays.map((ph, idx) => (
                         <div key={idx} className="p-4 rounded-2xl bg-slate-50 border-2 border-white shadow-inner flex justify-between items-center group hover:bg-emerald-50 transition-all">
