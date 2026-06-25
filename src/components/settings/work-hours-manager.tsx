@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { 
   Clock, Calendar, MoonStar, 
   Loader2, Save, Sun, HardHat,
@@ -108,7 +109,7 @@ export function WorkHoursManager() {
     const sched = settings?.[scope];
     if (!sched) return null;
 
-    const isDoubleShift = !!sched.eveningStartTime && sched.eveningStartTime !== "00:00" && sched.eveningStartTime !== "";
+    const isDoubleShift = sched.mode === 'double';
 
     return (
       <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
@@ -123,9 +124,14 @@ export function WorkHoursManager() {
                     </CardDescription>
                  </div>
               </div>
-              <Badge className={cn("rounded-lg px-4 py-1.5 font-black uppercase text-[10px]", isDoubleShift ? "bg-blue-500 text-white" : "bg-primary text-white")}>
-                 {isDoubleShift ? t('doubleShift') : t('singleShift')}
-              </Badge>
+              
+              <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-2xl border-2 shadow-inner">
+                 <Label className="text-[10px] font-black uppercase text-slate-400">{t('doubleShift')}</Label>
+                 <Switch 
+                   checked={isDoubleShift} 
+                   onCheckedChange={checked => updateSchedule(scope, 'mode', checked ? 'double' : 'single')} 
+                 />
+              </div>
            </div>
         </CardHeader>
         <CardContent className="p-8 space-y-8 text-start">
@@ -147,30 +153,30 @@ export function WorkHoursManager() {
                  </div>
               </div>
 
-              <div className="p-6 rounded-[2rem] bg-blue-50/50 border-2 border-white shadow-sm space-y-4">
-                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-blue-600 font-black">
-                       <MoonStar className="h-4 w-4" />
-                       <span className="text-[10px] uppercase tracking-widest">{t('eveningShift')}</span>
-                    </div>
-                    {isDoubleShift && (
-                       <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-300 hover:text-rose-500" onClick={() => {
-                          updateSchedule(scope, 'eveningStartTime', '');
-                          updateSchedule(scope, 'eveningEndTime', '');
-                       }}><Trash2 className="h-3 w-3" /></Button>
-                    )}
-                 </div>
-                 <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                       <Label className="text-[9px] font-bold text-slate-400">{t('checkInTime')}</Label>
-                       <Input type="time" value={sched.eveningStartTime || ''} onChange={e => updateSchedule(scope, 'eveningStartTime', e.target.value)} className="h-10 rounded-lg border-2 font-bold bg-white" />
-                    </div>
-                    <div className="space-y-1">
-                       <Label className="text-[9px] font-bold text-slate-400">{t('checkOutTime')}</Label>
-                       <Input type="time" value={sched.eveningEndTime || ''} onChange={e => updateSchedule(scope, 'eveningEndTime', e.target.value)} className="h-10 rounded-lg border-2 font-bold bg-white" />
-                    </div>
-                 </div>
-              </div>
+              {isDoubleShift ? (
+                <div className="p-6 rounded-[2rem] bg-blue-50/50 border-2 border-white shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                   <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-blue-600 font-black">
+                         <MoonStar className="h-4 w-4" />
+                         <span className="text-[10px] uppercase tracking-widest">{t('eveningShift')}</span>
+                      </div>
+                   </div>
+                   <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                         <Label className="text-[9px] font-bold text-slate-400">{t('checkInTime')}</Label>
+                         <Input type="time" value={sched.eveningStartTime || ''} onChange={e => updateSchedule(scope, 'eveningStartTime', e.target.value)} className="h-10 rounded-lg border-2 font-bold bg-white" />
+                      </div>
+                      <div className="space-y-1">
+                         <Label className="text-[9px] font-bold text-slate-400">{t('checkOutTime')}</Label>
+                         <Input type="time" value={sched.eveningEndTime || ''} onChange={e => updateSchedule(scope, 'eveningEndTime', e.target.value)} className="h-10 rounded-lg border-2 font-bold bg-white" />
+                      </div>
+                   </div>
+                </div>
+              ) : (
+                <div className="p-6 rounded-[2rem] bg-slate-50/30 border-2 border-dashed border-slate-200 flex items-center justify-center text-center opacity-60">
+                   <p className="text-[10px] font-bold text-slate-400 italic">{t('singleShiftActiveMsg')}</p>
+                </div>
+              )}
            </div>
 
            <div className="pt-6 border-t grid grid-cols-1 md:grid-cols-2 gap-6 items-center">

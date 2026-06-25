@@ -25,10 +25,11 @@ export class WorkHoursService {
 
   async getSettings(): Promise<WorkHoursSettings | null> {
     const snap = await getDoc(this.getDocRef());
+    const defaults = this.getDefaultSettings();
+
     if (snap.exists()) {
       const data = snap.data() as WorkHoursSettings;
-      const defaults = this.getDefaultSettings();
-      // ضمان وجود كافة التخصصات (Migration Support)
+      // ضمان وجود كافة التخصصات والحقول الجديدة (Migration Support)
       return {
         ...defaults,
         ...data,
@@ -51,7 +52,7 @@ export class WorkHoursService {
   }
 
   /**
-   * إعدادات افتراضية للشركات الجديدة تشمل التخصصات الثلاثة
+   * إعدادات افتراضية للشركات الجديدة تشمل التخصصات الثلاثة والوضع المرن
    */
   getDefaultSettings(): Omit<WorkHoursSettings, 'companyId'> {
     const commonSchedule: DailySchedule = {
@@ -66,9 +67,9 @@ export class WorkHoursService {
     };
 
     return {
-      architectural: { ...commonSchedule },
+      architectural: { ...commonSchedule }, // افتراضي فترة واحدة للمكتب
       meetingRooms: { ...commonSchedule, slotDurationMinutes: 30, restDurationMinutes: 5 },
-      fieldWork: { ...commonSchedule, mode: 'double', restDurationMinutes: 30 },
+      fieldWork: { ...commonSchedule, mode: 'double', restDurationMinutes: 30 }, // افتراضي فترتين للميدان
       holidays: ["Friday"],
       publicHolidays: [],
       halfDay: {

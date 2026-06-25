@@ -42,7 +42,7 @@ export interface PublicHoliday {
 }
 
 export interface WorkHoursSettings {
-  architectural: DailySchedule; // المعماري
+  architectural: DailySchedule; // المعماري (مكتبي)
   meetingRooms: DailySchedule;   // قاعات الاجتماعات
   fieldWork: DailySchedule;      // العمل الميداني
   holidays: DayOfWeek[];
