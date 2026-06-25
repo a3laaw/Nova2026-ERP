@@ -73,7 +73,6 @@ export default function BOQNodesPage() {
     db && companyId ? new BOQReferenceService(db, companyId, permissions) : null, 
   [db, companyId, permissions]);
 
-  // جلب كافة المراحل الفنية المعرفة في النظام للربط
   useEffect(() => {
     if (db && companyId) {
       const tpService = new TechnicalPathService(db, companyId);
@@ -361,7 +360,7 @@ export default function BOQNodesPage() {
                                    <SelectItem key={stage.id} value={stage.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
                                       <div className="flex flex-col text-start">
                                          <span className="flex items-center gap-1"><Workflow className="h-2.5 w-2.5 text-primary" /> {stage.name}</span>
-                                         <span className="text-[8px] text-slate-400 uppercase tracking-tighter mt-0.5">CODE: {stage.code}</span>
+                                         {stage.fullPathName && <span className="text-[8px] text-slate-400 font-bold mt-0.5">{stage.fullPathName}</span>}
                                       </div>
                                    </SelectItem>
                                 ))}

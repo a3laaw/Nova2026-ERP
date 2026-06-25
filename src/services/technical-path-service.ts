@@ -27,8 +27,7 @@ export class TechnicalPathService {
   constructor(private db: Firestore, private companyId: string) {}
 
   /**
-   * جلب كافة المراحل الفنية المعرفة للمنشأة (المصدر المغلذي للقوائم المنسدلة)
-   * تستخدم استعلام collectionGroup للبحث في كافة أعماق الشجرة الفنية
+   * جلب كافة المراحل الفنية المعرفة للمنشأة مع مسارها الهيكلي
    */
   async getAllCompanyStages(): Promise<TechnicalStage[]> {
     const q = query(
@@ -40,7 +39,6 @@ export class TechnicalPathService {
     return getDocs(q)
       .then(snap => snap.docs.map(d => ({ id: d.id, ...d.data() } as TechnicalStage)))
       .catch(async (err) => {
-        // إطلاق الخطأ السياقي السيادي في حال فشل الصلاحيات أو الفهرسة
         if (err.code === 'permission-denied' || err.message.includes('permissions')) {
           const permissionError = new FirestorePermissionError({
             path: 'collection_group_stages',

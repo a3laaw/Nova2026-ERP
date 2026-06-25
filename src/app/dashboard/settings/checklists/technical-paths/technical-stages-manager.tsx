@@ -69,7 +69,11 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
       nextStageIds: form.nextStageIds || [], 
       name: form.name || '', 
       nameEn: form.nameEn || '', 
-      description: form.description || '' 
+      description: form.description || '',
+      // تخزين مسار التتبع لسهولة الربط في القاموس
+      fullPathName: isRtl 
+        ? `${activityType.name} > ${mainService.name}` 
+        : `${activityType.nameEn} > ${mainService.nameEn}`
     };
 
     try {
