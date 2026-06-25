@@ -82,12 +82,20 @@ export function WorkHoursManager() {
     setFetchingHolidays(true);
     try {
       const response = await fetchPublicHolidays({ country: 'الكويت', year: 2026 });
-      if (response.holidays) {
+      if (response && response.holidays) {
         setSettings({ ...settings, publicHolidays: response.holidays });
-        toast({ title: t('saved') });
+        toast({ 
+          title: isRtl ? "تم جلب البيانات" : "Holidays Fetched",
+          description: isRtl ? "تم تحديث قائمة العطلات بنجاح من الذكاء الاصطناعي." : "Holiday list updated successfully via AI."
+        });
       }
-    } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
+    } catch (error: any) {
+      console.error("AI Fetch Holidays Error:", error);
+      toast({ 
+        variant: "destructive", 
+        title: t('error'), 
+        description: isRtl ? "عذراً، واجه محرك الذكاء الاصطناعي مشكلة في جلب البيانات. يرجى المحاولة لاحقاً." : "AI engine encountered an error fetching holidays. Please try again."
+      });
     } finally {
       setFetchingHolidays(false);
     }

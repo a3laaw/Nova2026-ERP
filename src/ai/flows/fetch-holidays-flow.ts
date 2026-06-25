@@ -1,8 +1,8 @@
 'use server';
 /**
- * @fileOverview محرك البحث الذكي عن العطلات الرسمية.
+ * @fileOverview محرك البحث الذكي عن العطلات الرسمية المطور.
  * 
- * - fetchPublicHolidays - دالة لجلب العطلات الرسمية لدولة معينة.
+ * - fetchPublicHolidays - دالة لجلب العطلات الرسمية لدولة معينة باستخدام تقنيات Genkit.
  */
 
 import { ai } from '@/ai/genkit';
@@ -14,9 +14,9 @@ const FetchHolidaysInputSchema = z.object({
 });
 
 const HolidaySchema = z.object({
-  date: z.string().describe('تاريخ العطلة بصيغة YYYY-MM-DD'),
-  name: z.string().describe('اسم العطلة بالعربية'),
-  nameEn: z.string().describe('اسم العطلة بالإنجليزية'),
+  date: z.string().describe('تاريخ العطلة بصيغة YYYY-MM-DD فقط'),
+  name: z.string().describe('اسم العطلة الرسمي باللغة العربية'),
+  nameEn: z.string().describe('اسم العطلة الرسمي باللغة الإنجليزية'),
 });
 
 const FetchHolidaysOutputSchema = z.object({
@@ -30,16 +30,17 @@ const fetchHolidaysPrompt = ai.definePrompt({
   name: 'fetchHolidaysPrompt',
   input: { schema: FetchHolidaysInputSchema },
   output: { schema: FetchHolidaysOutputSchema },
-  prompt: `You are an expert administrative assistant for an ERP system.
+  prompt: `You are a high-precision administrative assistant for NovaFlow ERP.
   
   TASK:
-  Find all official public holidays for {{{country}}} in the year {{year}}.
+  Provide a list of all official public and religious holidays for {{{country}}} in the year {{year}}.
   
-  RULES:
-  1. Return the output strictly in the requested JSON format.
-  2. Include major national and religious holidays (e.g., Eid Al-Fitr, National Day).
-  3. Format dates strictly as YYYY-MM-DD.
-  4. Ensure names are professional and correctly spelled in both Arabic and English.
+  STRICT RULES:
+  1. Return ONLY a valid JSON object matching the requested output schema.
+  2. The "date" field MUST be in exactly "YYYY-MM-DD" format.
+  3. Include major national holidays (National Day, Liberation Day) and religious ones (Eid Al-Fitr, Eid Al-Adha, Islamic New Year, Prophet's Birthday).
+  4. Ensure Arabic names are formal and professional.
+  5. If specific dates for lunar holidays (Eids) are estimated, provide the most likely dates for {{year}}.
   
   COUNTRY: "{{{country}}}"
   YEAR: {{year}}`,
@@ -52,11 +53,23 @@ const fetchHolidaysFlow = ai.defineFlow(
     outputSchema: FetchHolidaysOutputSchema,
   },
   async (input) => {
-    const { output } = await fetchHolidaysPrompt(input);
-    if (!output) {
-      throw new Error('Failed to generate holidays list');
+    try {
+      const { output } = await ai.generate({
+        prompt: fetchHolidaysPrompt(input),
+        config: {
+          temperature: 0.1, // تقليل العشوائية لضمان دقة التنسيق
+        }
+      });
+
+      if (!output || !output.holidays) {
+        throw new Error('AI failed to generate a structured holiday list.');
+      }
+
+      return output;
+    } catch (error) {
+      console.error("Genkit Flow Error (fetchHolidays):", error);
+      throw error;
     }
-    return output;
   }
 );
 
