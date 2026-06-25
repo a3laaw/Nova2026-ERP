@@ -19,7 +19,7 @@ import {
   Calculator, DollarSign, AlertTriangle, 
   ChevronRight, LayoutGrid, CheckCircle2,
   Settings2, Boxes, Hammer, Search, Filter,
-  FileSearch, Archive
+  FileSearch, Archive, Package
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
@@ -194,7 +194,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
           </div>
         </div>
         <div className="flex gap-2">
-           <Button onClick={handleSave} disabled={loading} className="btn-nova-primary h-10 px-8 rounded-lg text-xs gap-2 shadow-lg">
+           <Button onClick={handleSave} disabled={loading} className="h-10 px-8 rounded-lg text-xs gap-2 shadow-lg bg-[#FFA000] text-white font-black">
              {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
              {t('save')}
            </Button>
@@ -282,45 +282,72 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                      {isRtl ? 'إضافة بند من القاموس المرجعي' : 'Pick from Work Master'}
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl max-w-3xl" dir={dir}>
-                   <div className="bg-slate-900 p-8 text-white text-start">
-                      <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3">
-                         <Archive className="h-8 w-8 text-primary" />
-                         {isRtl ? 'قاموس بنود العمل السيادي' : 'Work Items Master'}
-                      </DialogTitle>
-                      <div className="relative mt-6">
-                         <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500" />
-                         <Input 
-                            value={masterSearch}
-                            onChange={e => setMasterSearch(e.target.value)}
-                            placeholder={isRtl ? "البحث في القاموس..." : "Search master items..."} 
-                            className="ps-12 h-14 rounded-2xl bg-white/5 border-white/10 text-white font-bold" 
-                         />
+                <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl max-w-2xl bg-white" dir={dir}>
+                   {/* Header matching the image: Dark navy, specific icon alignment */}
+                   <div className="bg-[#1e1b4b] p-10 text-white text-start relative overflow-hidden">
+                      <div className="absolute top-8 end-8 text-primary opacity-80">
+                         <Package className="h-8 w-8" />
+                      </div>
+                      
+                      <div className="relative z-10 space-y-6">
+                         <div className="flex flex-col gap-1">
+                            <DialogTitle className="text-2xl font-black font-headline hidden">قاموس بنود العمل</DialogTitle>
+                         </div>
+                         
+                         {/* Search bar matching the image style: thick border on focus */}
+                         <div className="relative group">
+                            <div className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#e87c24] transition-colors">
+                               <Search className="h-6 w-6" />
+                            </div>
+                            <Input 
+                               value={masterSearch}
+                               onChange={e => setMasterSearch(e.target.value)}
+                               placeholder={isRtl ? "البحث في القاموس..." : "Search items..."} 
+                               className="ps-14 h-16 rounded-2xl bg-white/5 border-white/10 text-white font-bold text-lg focus:bg-white/10 focus:border-[#e87c24] focus:ring-4 focus:ring-[#e87c24]/20 transition-all placeholder:text-slate-500" 
+                            />
+                         </div>
                       </div>
                    </div>
-                   <div className="p-4 max-h-[500px] overflow-y-auto bg-slate-50">
-                      <div className="grid grid-cols-1 gap-3">
-                         {filteredMaster.map((mi) => (
-                           <div key={mi.id} onClick={() => addFromMaster(mi)} className="p-4 rounded-2xl bg-white border-2 border-transparent hover:border-primary/30 hover:shadow-lg transition-all cursor-pointer group flex justify-between items-center">
-                              <div className="text-start">
-                                 <div className="flex items-center gap-2">
-                                    <Badge variant="outline" className="bg-slate-50 text-[8px] font-black font-mono">{mi.code}</Badge>
-                                    <h4 className="font-black text-sm text-slate-800">{mi.name}</h4>
-                                 </div>
-                                 <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-tighter">
-                                    {mi.sectionName} / {mi.mainCategoryName}
-                                 </p>
-                              </div>
-                              <Plus className="h-5 w-5 text-slate-300 group-hover:text-primary transition-colors" />
-                           </div>
-                         ))}
-                         {filteredMaster.length === 0 && (
-                            <div className="py-20 text-center text-slate-400 font-bold italic">لا توجد نتائج مطابقة لبحثك.</div>
-                         )}
-                      </div>
+
+                   {/* Content area: results or empty state exactly like the image */}
+                   <div className="p-10 min-h-[400px] flex flex-col bg-white">
+                      {filteredMaster.length > 0 ? (
+                        <div className="grid grid-cols-1 gap-4 max-h-[450px] overflow-y-auto pr-2 scrollbar-hide">
+                           {filteredMaster.map((mi) => (
+                             <div key={mi.id} onClick={() => addFromMaster(mi)} className="p-5 rounded-2xl bg-white border-2 border-slate-50 hover:border-primary/30 hover:shadow-lg transition-all cursor-pointer group flex justify-between items-center">
+                                <div className="text-start">
+                                   <div className="flex items-center gap-3">
+                                      <Badge variant="outline" className="bg-slate-50 text-[9px] font-black font-mono border-slate-200">{mi.code}</Badge>
+                                      <h4 className="font-black text-base text-slate-800 group-hover:text-primary">{mi.name}</h4>
+                                   </div>
+                                   <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-widest">
+                                      {mi.sectionName} <ChevronRight className="inline h-2 w-2 mx-1" /> {mi.mainCategoryName}
+                                   </p>
+                                </div>
+                                <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-primary/10 group-hover:text-primary transition-all">
+                                   <Plus className="h-6 w-6" />
+                                </div>
+                             </div>
+                           ))}
+                        </div>
+                      ) : (
+                        <div className="flex-1 flex flex-col items-center justify-center text-center opacity-60">
+                           <h3 className="text-2xl font-black text-slate-400 tracking-tight">
+                              {isRtl ? 'لا توجد نتائج مطابقة لبحثك.' : 'No results found matching your search.'}
+                           </h3>
+                        </div>
+                      )}
                    </div>
-                   <DialogFooter className="p-6 bg-white border-t">
-                      <Button variant="outline" onClick={() => setIsMasterPickerOpen(false)} className="rounded-xl h-12 px-8 font-bold">إغلاق</Button>
+
+                   {/* Footer matching the image style */}
+                   <DialogFooter className="p-8 bg-slate-50/50 border-t flex flex-row justify-start">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setIsMasterPickerOpen(false)} 
+                        className="h-14 px-10 rounded-2xl border-2 border-[#FFA000]/30 text-[#FFA000] font-black text-lg bg-white hover:bg-[#FFA000]/5 transition-all"
+                      >
+                        {isRtl ? 'إغلاق' : 'Close'}
+                      </Button>
                    </DialogFooter>
                 </DialogContent>
               </Dialog>
@@ -441,8 +468,8 @@ export function BOQTemplateForm({ template, onClose }: Props) {
               </div>
            </div>
            
-           <Button onClick={handleSave} disabled={loading || !isMathValid} className="h-16 px-12 rounded-2xl bg-[#1e1b4b] text-white font-black text-lg shadow-2xl hover:scale-105 transition-all gap-3 mt-6 md:mt-0">
-             {loading ? <Loader2 className="animate-spin" /> : <Save className="h-6 w-6 text-primary" />}
+           <Button onClick={handleSave} disabled={loading || !isMathValid} className="h-16 px-12 rounded-2xl bg-[#1e1b4b] text-white font-black text-lg shadow-xl hover:scale-105 transition-all gap-3 mt-6 md:mt-0">
+             {loading ? <Loader2 className="animate-spin" /> : <Save className="h-6 w-6 text-[#FFA000]" />}
              {isRtl ? 'اعتماد وحفظ القالب' : 'Final Commit'}
            </Button>
         </div>
