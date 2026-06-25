@@ -11,7 +11,9 @@ import {
   writeBatch,
   getDocs,
   query,
-  orderBy
+  orderBy,
+  collectionGroup,
+  where
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -20,6 +22,19 @@ import { ActivityType, Service, SubService, TechnicalStage } from '@/types/refer
 
 export class TechnicalPathService {
   constructor(private db: Firestore, private companyId: string) {}
+
+  /**
+   * جلب كافة المراحل الفنية المعرفة للمنشأة (لأغراض الربط في القاموس)
+   */
+  async getAllCompanyStages(): Promise<TechnicalStage[]> {
+    const q = query(
+      collectionGroup(this.db, 'stages'),
+      where('companyId', '==', this.companyId),
+      orderBy('order')
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as TechnicalStage));
+  }
 
   async addActivityType(data: Omit<ActivityType, 'id' | 'createdAt' | 'updatedAt' | 'companyId'>) {
     const path = paths.activityTypes(this.companyId);
@@ -129,9 +144,6 @@ export class TechnicalPathService {
     });
   }
 
-  /**
-   * محرك الترتيب الذكي: يقوم بتبديل الترتيب بين مرحلتين في عملية ذرية واحدة.
-   */
   async reorderStages(actId: string, srvId: string, subId: string, stages: TechnicalStage[]) {
     const batch = writeBatch(this.db);
     const path = paths.technicalStages(this.companyId, actId, srvId, subId);
