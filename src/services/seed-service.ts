@@ -15,7 +15,12 @@ import { SEED_DATA } from '@/lib/seed-data';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { ReferenceListService } from './reference-list-service';
+import { BOQReferenceNode } from '@/types/reference';
 
+/**
+ * خدمة تهيئة النظام (Seed Service).
+ * تم تحديثها لضمان ضخ هيكل شجري موحد في boqReferenceNodes.
+ */
 export class SeedService {
   constructor(private db: Firestore, private companyId: string) {}
 
@@ -72,9 +77,11 @@ export class SeedService {
       }
     }
 
-    // 3. الهيكل الفني الرباعي
+    // 3. الهيكل الفني الرباعي للمسارات
+    const activityRefs: Record<string, string> = {};
     for (const act of SEED_DATA.activityTypes) {
       const actRef = doc(collection(this.db, paths.activityTypes(this.companyId)));
+      activityRefs[act.code] = actRef.id;
       batch.set(actRef, {
         code: act.code,
         name: act.name,
@@ -132,22 +139,49 @@ export class SeedService {
       }
     }
 
-    // 4. ضخ قاموس بنود العمل السيادي (BOQ Work Items Master)
-    const masterItemsRef = collection(this.db, paths.boqWorkItemsMaster(this.companyId));
-    for (const item of SEED_DATA.boqWorkItemsMaster) {
-      const itemRef = doc(masterItemsRef);
-      batch.set(itemRef, {
-        ...item,
-        companyId: this.companyId,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
-    }
+    // 4. ضخ القاموس الهندسي الشجري الموحد (Unified Tree)
+    // نقوم ببناء هيكل افتراضي في boqReferenceNodes
+    const rootCivilRef = doc(collection(this.db, paths.boqReferenceNodes(this.companyId)));
+    batch.set(rootCivilRef, {
+      code: 'CIVIL_WORKS',
+      title: 'الأعمال المدنية والإنشائية',
+      parentId: null,
+      depth: 0,
+      ancestorIds: [],
+      childrenCount: 2,
+      nodeRole: 'group',
+      isExecutable: false,
+      isActive: true,
+      activityTypeIds: [activityRefs['CONSULTING'] || ''],
+      order: 1,
+      companyId: this.companyId,
+      createdAt: serverTimestamp()
+    } as BOQReferenceNode);
 
-    // تنفيذ الـ Batch الأول (الهياكل والقواميس)
+    // إضافة بند تنفيذي تحت الجذر (مثال)
+    const excavationRef = doc(collection(this.db, paths.boqReferenceNodes(this.companyId)));
+    batch.set(excavationRef, {
+      code: 'EXC_001',
+      title: 'حفريات القواعد والأساسات',
+      parentId: rootCivilRef.id,
+      depth: 1,
+      ancestorIds: [rootCivilRef.id],
+      childrenCount: 0,
+      nodeRole: 'work_item',
+      isExecutable: true,
+      isActive: true,
+      unitName: 'متر مكعب',
+      unitSymbol: 'CUM',
+      estimatedRate: 2.5,
+      order: 1,
+      companyId: this.companyId,
+      createdAt: serverTimestamp()
+    } as BOQReferenceNode);
+
+    // تنفيذ الـ Batch (الهياكل والقواميس)
     await batch.commit().catch(async (err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: 'batch_seed_structures', operation: 'write'
+        path: 'batch_seed_unified', operation: 'write'
       }));
       throw err;
     });

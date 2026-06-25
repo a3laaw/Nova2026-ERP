@@ -21,7 +21,12 @@ import { TemplateType, BaseTemplate, BOQTemplate, BOQTemplateItem } from '@/type
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { ensureActionPermission } from '@/lib/permissions';
+import { BOQReferenceNode } from '@/types/reference';
 
+/**
+ * خدمة إدارة القوالب المركزية (Template Service).
+ * موحدة لتعمل حصراً مع مرجع boqReferenceNodes.
+ */
 export class TemplateService {
   constructor(
     private db: Firestore, 
@@ -38,16 +43,16 @@ export class TemplateService {
   }
 
   /**
-   * جلب العقد المرجعية لتسهيل بناء الشجرة
+   * جلب العقد المرجعية من المصدر الموحد (boqReferenceNodes)
    */
-  async getWorkItemsMaster() {
+  async getWorkItemsMaster(): Promise<BOQReferenceNode[]> {
     const q = query(
       collection(this.db, paths.boqReferenceNodes(this.companyId)),
       orderBy('depth'),
       orderBy('order')
     );
     const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as BOQReferenceNode));
   }
 
   /**
@@ -77,7 +82,7 @@ export class TemplateService {
     // 2. تحديث البنود في المجموعة الفرعية (Flat Subcollection)
     const itemsCollection = collection(this.db, paths.boqTemplateItems(this.companyId, finalTemplateId));
     
-    // مسح البنود القديمة (في حال التعديل)
+    // مسح البنود القديمة (في حال التعديل) لضمان نظافة الهيكل
     if (templateId) {
       const oldItemsSnap = await getDocs(itemsCollection);
       oldItemsSnap.docs.forEach(d => batch.delete(d.ref));

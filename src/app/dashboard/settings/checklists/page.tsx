@@ -1,16 +1,12 @@
-
 'use client';
 
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Database, Building2, MapPin, Workflow, Settings2,
-  ListTree, FolderTree, GitBranch
+  ListTree, GitBranch
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import DepartmentsPage from './departments/page';
 import GeoPage from './geo/page';
 import TechnicalPathsPage from './technical-paths/page';
@@ -18,6 +14,10 @@ import GeneralListsPage from './general-lists/page';
 import BOQNodesPage from './boq-nodes/page';
 import { SeedTool } from './seed-tool';
 
+/**
+ * محطة الإعدادات الفنية (Technical Setup Hub)
+ * تم توحيد إدارة القاموس الهندسي في "شجرة الأعمال" (BOQNodesPage).
+ */
 export default function TechnicalSetupPage() {
   const { t, lang, dir } = useLanguage();
   const [activeTab, setActiveTab] = useState("general");

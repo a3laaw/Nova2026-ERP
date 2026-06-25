@@ -1,5 +1,5 @@
 /**
- * @fileOverview تعريف واجهات البيانات المرجعية لنظام Nova ERP (الهيكل الرباعي الجديد والقوائم الموحدة).
+ * @fileOverview تعريف واجهات البيانات المرجعية لنظام Nova ERP (الهيكل الموحد والقاموس السيادي).
  */
 
 export interface BaseReference {
@@ -31,16 +31,12 @@ export interface UnitType extends BaseReferenceList {
 }
 
 export interface PaymentMethod extends BaseReferenceList {}
-
 export interface PaymentConditionType extends BaseReferenceList {}
-
 export interface MilestoneTimingType extends BaseReferenceList {}
-
 export interface ItemCategory extends BaseReferenceList {}
-
 export interface CostTypeCategory extends BaseReferenceList {}
 
-// الهياكل الهندسية الرباعية الحالية
+// الهياكل الهندسية الرباعية للمسارات الفنية
 export interface ActivityType extends BaseReference {
   code: string;
   name: string;
@@ -79,7 +75,7 @@ export interface TechnicalStage extends BaseReference {
   name: string;
   nameEn?: string;
   description?: string;
-  fullPathName?: string; // مسار النشاط والخدمة المخزن للعرض السريع
+  fullPathName?: string;
   order: number;
   isNumeric: boolean;
   numericTarget?: number | null;
@@ -125,8 +121,7 @@ export interface Area extends BaseReference {
 }
 
 /**
- * --- المرجع الشجري الديناميكي لبنود BOQ ---
- * يمثل Node واحدة في الشجرة المرجعية المرنة للمنشأة.
+ * --- المرجع الشجري الديناميكي الموحد لبنود BOQ (Source of Truth) ---
  */
 export type BOQNodeRole = 'group' | 'work_item';
 
@@ -149,37 +144,12 @@ export interface BOQReferenceNode extends BaseReference {
   activityTypeIds?: string[];
   activityTypeNames?: string[];
 
-  // الحقول التنفيذية (تظهر لو العقدة executable)
-  unitTypeId?: string;
-  unitName?: string;
-  unitSymbol?: string;
-  technicalStageId?: string;  // المرحلة الفنية المرتبطة افتراضياً
-  billingTriggerGroup?: string;
-  allowedItemCategoryIds?: string[];
-  allowedItemCategoryNames?: string[];
-}
-
-/**
- * @deprecated استخدام BOQReferenceNode بدلاً منه في المعمارية الجديدة
- */
-export type WorkItemNodeType = 'section' | 'main_category' | 'component' | 'work_item';
-
-export interface BOQWorkItemMasterNode extends BaseReference {
-  code: string;
-  title: string;
-  parentId: string | null;
-  nodeType: WorkItemNodeType;
-  level: number;
-  order: number;
-  childrenCount: number;
-  isActive: boolean;
-  createdBy?: string;
-  updatedBy?: string;
+  // الخصائص الفنية والتنفيذية
   unitTypeId?: string;
   unitName?: string;
   unitSymbol?: string;
   technicalStageId?: string;
+  estimatedRate?: number;     // السعر المرجعي التقديري
   billingTriggerGroup?: string;
-  description?: string;
-  estimatedRate?: number;
+  allowedItemCategoryIds?: string[];
 }
