@@ -101,8 +101,8 @@ export default function TransactionDetailsPage() {
     try {
       await transactionService.startStage(transactionId, stageId, user.uid, user.displayName || 'User');
       toast({ title: isRtl ? "تم بدء العمل" : "Stage Started" });
-    } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
       setProcessingId(null);
     }
@@ -111,23 +111,18 @@ export default function TransactionDetailsPage() {
   const handleCompleteStage = async (stage: StageInstance) => {
     if (!transactionService || !user) return;
     
-    // فحص الإنجاز الميداني من المقايسة قبل الإكمال
-    const boqProgress = stageProgressMap[stage.technicalStageId];
-    if (boqProgress && !boqProgress.canComplete) {
-      toast({ 
-        variant: "destructive", 
-        title: isRtl ? "إنجاز غير مكتمل" : "Incomplete Progress", 
-        description: boqProgress.reason 
-      });
-      return;
-    }
-
     setProcessingId(stage.id!);
     try {
+      // استدعاء الخدمة التي ستقوم بالتحقق من BOQ قبل الإغلاق
       await transactionService.completeStage(transactionId, stage.id!, user.uid, user.displayName || 'User');
       toast({ title: isRtl ? "تم إنجاز المرحلة بنجاح" : "Stage Completed" });
-    } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
+    } catch (e: any) {
+      // التقاط وعرض رسالة الرفض القادمة من محرك التحقق (مثل: يجب تسجيل إنجاز فعلي...)
+      toast({ 
+        variant: "destructive", 
+        title: isRtl ? "تعذر إغلاق المرحلة" : "Cannot Close Stage", 
+        description: e.message 
+      });
     } finally {
       setProcessingId(null);
     }

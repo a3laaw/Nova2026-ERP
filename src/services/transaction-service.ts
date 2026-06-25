@@ -19,6 +19,7 @@ import { TechnicalStage } from '@/types/reference';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { ensureActionPermission } from '@/lib/permissions';
+import { BOQExecutionService } from './boq-execution-service';
 
 /**
  * خدمة إدارة المعاملات الفنية (Technical Transactions Service).
@@ -198,14 +199,24 @@ export class TransactionService {
   }
 
   /**
-   * إكمال مرحلة
+   * إكمال مرحلة (مشروط بإنجاز بنود المقايسة)
    */
   async completeStage(transactionId: string, stageId: string, userId: string, userName: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
+    
     const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
     const stageSnap = await getDoc(stageRef);
     if (!stageSnap.exists()) return;
     const stageData = stageSnap.data() as StageInstance;
+
+    // 1. التحقق السيادي من إنجاز بنود المقايسة المرتبطة بهذه المرحلة
+    const boqService = new BOQExecutionService(this.db, this.companyId, this.permissions);
+    const progress = await boqService.getTechnicalStageProgress(transactionId, stageData.technicalStageId);
+    
+    if (!progress.canComplete) {
+      // رمي خطأ يتضمن السبب لتعرضه الواجهة للمستخدم
+      throw new Error(progress.reason || "لا يمكن إغلاق المرحلة لعدم كفاية الإنجاز في بنود المقايسة.");
+    }
 
     const batch = writeBatch(this.db);
     batch.update(stageRef, {
@@ -220,14 +231,20 @@ export class TransactionService {
     batch.set(timelineRef, {
       transactionId,
       type: 'stage_complete',
-      content: `تم إنجاز مرحلة "${stageData.name}" بالكامل.`,
+      content: `تم إنجاز مرحلة "${stageData.name}" بالكامل بعد التحقق من المقايسة.`,
       userId,
       userName,
       companyId: this.companyId,
       createdAt: serverTimestamp()
     });
 
-    await batch.commit();
+    await batch.commit().catch(err => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: stageRef.path,
+        operation: 'update'
+      }));
+      throw err;
+    });
   }
 
   /**
