@@ -63,7 +63,10 @@ export const paths = {
   transactionStages: (companyId: string, tId: string) => `${getTenantPath(companyId, 'transactions')}/${tId}/stageInstances`,
   transactionTimeline: (companyId: string, tId: string) => `${getTenantPath(companyId, 'transactions')}/${tId}/timeline`,
 
-  // قاموس بنود العمل السيادي (Master BOQ Items)
+  // المرجع الشجري الديناميكي الجديد لبنود BOQ
+  boqReferenceNodes: (companyId: string) => getTenantPath(companyId, 'boqReferenceNodes'),
+
+  // قاموس بنود العمل السيادي (القديم - سيتم ترحيله للموديل الجديد)
   boqWorkItemsMaster: (companyId: string) => getTenantPath(companyId, 'boqWorkItemsMaster'),
 
   // مكتبة القوالب (Template Library)

@@ -120,31 +120,57 @@ export interface Area extends BaseReference {
 }
 
 /**
- * --- مرجع بنود BOQ الشجري السيادي ---
- * يمثل Node واحدة في الشجرة المرجعية لبنود العمل الخاصة بالمنشأة.
- * المسار في Firestore: companies/{companyId}/boqWorkItemsMaster/{nodeId}
+ * --- المرجع الشجري الديناميكي لبنود BOQ ---
+ * يمثل Node واحدة في الشجرة المرجعية المرنة للمنشأة.
  */
+export type BOQNodeRole = 'group' | 'work_item';
 
-export type WorkItemNodeType = 'section' | 'main_category' | 'component' | 'work_item';
-
-export interface BOQWorkItemMasterNode extends BaseReference {
-  code: string;               // كود البند الموحد (مثل CONC-001)
-  title: string;              // مسمى العقدة (سواء قسم أو بند عمل)
-  parentId: string | null;    // مرجع العقدة الأب (null للجذور/Sections)
-  nodeType: WorkItemNodeType; // نوع العقدة في الهيكل
-  level: number;              // المستوى العمقي (0: Section, 1: Category, 2: Component, 3: Item)
-  order: number;              // الترتيب داخل المستوى الواحد
-  childrenCount: number;      // عدد الأبناء المباشرين (للمراقبة السريعة)
+export interface BOQReferenceNode extends BaseReference {
+  code: string;               // كود البند الموحد
+  title: string;              // مسمى العقدة
+  description?: string;       // وصف تفصيلي
+  parentId: string | null;    // مرجع العقدة الأب
+  order: number;              // الترتيب داخل المستوى
+  childrenCount: number;      // عدد الأبناء المباشرين
+  depth: number;              // مستوى العمق (0 للجذر)
+  ancestorIds: string[];      // مصفوفة كافة الأباء في المسار العلوي
+  nodeRole: BOQNodeRole;      // دور العقدة (مجموعة أم بند تنفيذ)
+  isExecutable: boolean;      // هل يمكن استخدامها كبند تنفيذ فعلي؟
   isActive: boolean;
   createdBy?: string;
   updatedBy?: string;
 
-  // حقول إضافية خاصة فقط عندما يكون nodeType === 'work_item'
-  unitTypeId?: string;        // معرف وحدة القياس المرجعي
-  unitName?: string;          // مسمى الوحدة (للعرض السريع)
-  unitSymbol?: string;        // رمز الوحدة (m2, kg, etc)
-  technicalStageId?: string;  // معرف المرحلة الفنية الافتراضية المرتبطة
-  billingTriggerGroup?: string; // مجموعة تحفيز الفوترة
-  description?: string;       // وصف تفصيلي لبند العمل
-  estimatedRate?: number;     // السعر التقديري المرجعي للبيع
+  // الحقول التنفيذية (تظهر لو العقدة executable)
+  unitTypeId?: string;
+  unitName?: string;
+  unitSymbol?: string;
+  technicalStageId?: string;  // المرحلة الفنية المرتبطة افتراضياً
+  billingTriggerGroup?: string;
+  allowedItemCategoryIds?: string[];
+  allowedItemCategoryNames?: string[];
+}
+
+/**
+ * @deprecated استخدام BOQReferenceNode بدلاً منه في المعمارية الجديدة
+ */
+export type WorkItemNodeType = 'section' | 'main_category' | 'component' | 'work_item';
+
+export interface BOQWorkItemMasterNode extends BaseReference {
+  code: string;
+  title: string;
+  parentId: string | null;
+  nodeType: WorkItemNodeType;
+  level: number;
+  order: number;
+  childrenCount: number;
+  isActive: boolean;
+  createdBy?: string;
+  updatedBy?: string;
+  unitTypeId?: string;
+  unitName?: string;
+  unitSymbol?: string;
+  technicalStageId?: string;
+  billingTriggerGroup?: string;
+  description?: string;
+  estimatedRate?: number;
 }
