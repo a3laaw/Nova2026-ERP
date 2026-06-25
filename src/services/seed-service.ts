@@ -132,7 +132,19 @@ export class SeedService {
       }
     }
 
-    // تنفيذ الـ Batch الأول (الهياكل)
+    // 4. ضخ قاموس بنود العمل السيادي (BOQ Work Items Master)
+    const masterItemsRef = collection(this.db, paths.boqWorkItemsMaster(this.companyId));
+    for (const item of SEED_DATA.boqWorkItemsMaster) {
+      const itemRef = doc(masterItemsRef);
+      batch.set(itemRef, {
+        ...item,
+        companyId: this.companyId,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+    }
+
+    // تنفيذ الـ Batch الأول (الهياكل والقواميس)
     await batch.commit().catch(async (err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: 'batch_seed_structures', operation: 'write'
@@ -140,7 +152,7 @@ export class SeedService {
       throw err;
     });
 
-    // 4. ضخ القوائم المرجعية الموحدة (عبر الخدمة المخصصة)
+    // 5. ضخ القوائم المرجعية الموحدة (عبر الخدمة المخصصة)
     const refListService = new ReferenceListService(this.db, this.companyId);
     await refListService.seedAllLists('SYSTEM_ADMIN');
   }
