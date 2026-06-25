@@ -19,7 +19,8 @@ import {
   Calculator, DollarSign, AlertTriangle, 
   ChevronRight, LayoutGrid, CheckCircle2,
   Settings2, Boxes, Hammer, Search, Filter,
-  FileSearch, Archive, Package
+  FileSearch, Archive, Package, FolderTree,
+  ChevronDown, Layers
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
@@ -35,6 +36,7 @@ import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface Props {
   template: BOQTemplate | null;
@@ -55,6 +57,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
   const [templateLoading, setTemplateLoading] = useState(!!template);
   const [isMasterPickerOpen, setIsMasterPickerOpen] = useState(false);
   const [masterSearch, setMasterSearch] = useState("");
+  const [expandedNodes, setExpandedNodes] = useState<string[]>([]);
   
   const [formData, setFormData] = useState<Partial<BOQTemplate>>(
     template || {
@@ -92,6 +95,14 @@ export function BOQTemplateForm({ template, onClose }: Props) {
   }, [template, service]);
 
   const boqTree = useMemo(() => transformToBOQTree(items), [items]);
+
+  // تحويل القاموس المرجعي إلى هيكل شجري للاختيار (رقم 2)
+  const masterTree = useMemo(() => {
+    return transformToBOQTree(masterItems.filter(mi => 
+      mi.name?.toLowerCase().includes(masterSearch.toLowerCase()) || 
+      mi.code?.toLowerCase().includes(masterSearch.toLowerCase())
+    ));
+  }, [masterItems, masterSearch]);
 
   const totalItemsCost = useMemo(() => {
     return items.reduce((acc, item) => acc + ((item.plannedQuantity || 0) * (item.estimatedRate || 0)), 0);
@@ -144,13 +155,13 @@ export function BOQTemplateForm({ template, onClose }: Props) {
       mainCategoryName: masterItem.mainCategoryName,
       componentId: masterItem.componentId,
       componentName: masterItem.componentName,
-      itemCode: masterItem.code,
+      itemCode: masterItem.itemCode || masterItem.code,
       description: masterItem.description || masterItem.name,
-      unit: masterItem.unitSymbol || masterItem.unitName || 'pcs',
+      unit: masterItem.unit || masterItem.unitSymbol || masterItem.unitName || 'pcs',
       unitTypeId: masterItem.unitTypeId,
       plannedQuantity: 1,
       executedQuantity: 0,
-      estimatedRate: masterItem.lastPurchaseRate || 0,
+      estimatedRate: masterItem.estimatedRate || masterItem.lastPurchaseRate || 0,
       estimatedCostRate: 0,
       materialCodes: masterItem.materialCodes || [],
       technicalStageId: masterItem.technicalStageId,
@@ -159,7 +170,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
       companyId: companyId!
     };
     setItems([...items, newItem]);
-    toast({ title: isRtl ? "تمت الإضافة من القاموس" : "Added from master" });
+    toast({ title: isRtl ? "تمت الإضافة للمقايسة" : "Added to BOQ" });
   };
 
   const updateItem = (index: number, field: keyof BOQTemplateItem, value: any) => {
@@ -172,11 +183,9 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     setItems(items.filter((_, i) => i !== index));
   };
 
-  const filteredMaster = masterItems.filter(mi => 
-    mi.name?.toLowerCase().includes(masterSearch.toLowerCase()) || 
-    mi.code?.toLowerCase().includes(masterSearch.toLowerCase()) ||
-    mi.sectionName?.toLowerCase().includes(masterSearch.toLowerCase())
-  );
+  const toggleNode = (id: string) => {
+    setExpandedNodes(prev => prev.includes(id) ? prev.filter(n => n !== id) : [...prev, id]);
+  };
 
   if (templateLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
@@ -190,7 +199,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
           </Button>
           <div className="text-start">
              <h1 className="text-xl font-black font-headline text-slate-900 tracking-tight">{isRtl ? 'هندسة المقايسات القالبية' : 'BOQ Template Engineering'}</h1>
-             <p className="text-[10px] font-bold text-muted-foreground uppercase opacity-70 tracking-widest">Master-Driven Item Selection</p>
+             <p className="text-[10px] font-bold text-muted-foreground uppercase opacity-70 tracking-widest">Sovereign Tree-Based Item Selection</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -201,7 +210,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         {/* Template Settings Card */}
         <Card className="border-0 shadow-lg rounded-[1.5rem] bg-white overflow-hidden ring-1 ring-black/5">
            <div className="bg-slate-50 p-4 border-b flex items-center justify-between">
@@ -278,82 +287,131 @@ export function BOQTemplateForm({ template, onClose }: Props) {
               <Dialog open={isMasterPickerOpen} onOpenChange={setIsMasterPickerOpen}>
                 <DialogTrigger asChild>
                   <Button className="rounded-xl bg-[#1e1b4b] text-white font-black h-12 px-8 gap-3 shadow-xl hover:scale-105 transition-all">
-                     <FileSearch className="h-5 w-5 text-primary" />
-                     {isRtl ? 'إضافة بند من القاموس المرجعي' : 'Pick from Work Master'}
+                     <FolderTree className="h-5 w-5 text-primary" />
+                     {isRtl ? 'مستكشف القاموس الهيكلي' : 'Open Master Tree'}
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl max-w-2xl bg-white" dir={dir}>
-                   {/* Header matching the image: Dark navy, specific icon alignment */}
+                <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl max-w-4xl bg-white" dir={dir}>
                    <div className="bg-[#1e1b4b] p-10 text-white text-start relative overflow-hidden">
-                      <div className="absolute top-8 end-8 text-primary opacity-80">
-                         <Package className="h-8 w-8" />
+                      <div className="absolute top-8 end-8 text-primary opacity-20">
+                         <FolderTree className="h-32 w-32" />
                       </div>
                       
                       <div className="relative z-10 space-y-6">
-                         <div className="flex flex-col gap-1">
-                            <DialogTitle className="text-2xl font-black font-headline hidden">قاموس بنود العمل</DialogTitle>
+                         <div>
+                            <DialogTitle className="text-3xl font-black font-headline">{isRtl ? 'قاموس بنود العمل الهيكلي' : 'Work Item Master Tree'}</DialogTitle>
+                            <p className="text-slate-400 font-bold mt-2 uppercase text-[10px] tracking-[0.2em]">{isRtl ? 'تصفح وأضف البنود مباشرة من قلب الشجرة المرجعية' : 'Browse and add items directly from the structural core'}</p>
                          </div>
                          
-                         {/* Search bar matching the image style: thick border on focus */}
-                         <div className="relative group">
+                         <div className="relative group max-w-md">
                             <div className="absolute start-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#e87c24] transition-colors">
-                               <Search className="h-6 w-6" />
+                               <Search className="h-5 w-5" />
                             </div>
                             <Input 
                                value={masterSearch}
                                onChange={e => setMasterSearch(e.target.value)}
-                               placeholder={isRtl ? "البحث في القاموس..." : "Search items..."} 
-                               className="ps-14 h-16 rounded-2xl bg-white/5 border-white/10 text-white font-bold text-lg focus:bg-white/10 focus:border-[#e87c24] focus:ring-4 focus:ring-[#e87c24]/20 transition-all placeholder:text-slate-500" 
+                               placeholder={isRtl ? "فلترة البنود داخل الشجرة..." : "Filter items inside tree..."} 
+                               className="ps-12 h-12 rounded-xl bg-white/5 border-white/10 text-white font-bold text-sm focus:bg-white/10 focus:border-[#e87c24] transition-all" 
                             />
                          </div>
                       </div>
                    </div>
 
-                   {/* Content area: results or empty state exactly like the image */}
-                   <div className="p-10 min-h-[400px] flex flex-col bg-white">
-                      {filteredMaster.length > 0 ? (
-                        <div className="grid grid-cols-1 gap-4 max-h-[450px] overflow-y-auto pr-2 scrollbar-hide">
-                           {filteredMaster.map((mi) => (
-                             <div key={mi.id} onClick={() => addFromMaster(mi)} className="p-5 rounded-2xl bg-white border-2 border-slate-50 hover:border-primary/30 hover:shadow-lg transition-all cursor-pointer group flex justify-between items-center">
-                                <div className="text-start">
-                                   <div className="flex items-center gap-3">
-                                      <Badge variant="outline" className="bg-slate-50 text-[9px] font-black font-mono border-slate-200">{mi.code}</Badge>
-                                      <h4 className="font-black text-base text-slate-800 group-hover:text-primary">{mi.name}</h4>
-                                   </div>
-                                   <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-widest">
-                                      {mi.sectionName} <ChevronRight className="inline h-2 w-2 mx-1" /> {mi.mainCategoryName}
-                                   </p>
-                                </div>
-                                <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-primary/10 group-hover:text-primary transition-all">
-                                   <Plus className="h-6 w-6" />
-                                </div>
-                             </div>
-                           ))}
+                   {/* Master Tree Area (Option 2 - Choice Adopted) */}
+                   <div className="p-8 max-h-[60vh] overflow-y-auto bg-slate-50/50 scrollbar-hide">
+                      {masterTree.length === 0 ? (
+                        <div className="py-20 text-center flex flex-col items-center gap-4 opacity-40">
+                           <FileSearch className="h-12 w-12 text-slate-300" />
+                           <p className="font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'لا توجد بنود مطابقة' : 'No items found'}</p>
                         </div>
                       ) : (
-                        <div className="flex-1 flex flex-col items-center justify-center text-center opacity-60">
-                           <h3 className="text-2xl font-black text-slate-400 tracking-tight">
-                              {isRtl ? 'لا توجد نتائج مطابقة لبحثك.' : 'No results found matching your search.'}
-                           </h3>
+                        <div className="space-y-6">
+                           {masterTree.map((section) => (
+                             <Collapsible 
+                               key={section.id} 
+                               open={expandedNodes.includes(section.id) || masterSearch.length > 0} 
+                               onOpenChange={() => toggleNode(section.id)}
+                               className="space-y-2"
+                             >
+                               <CollapsibleTrigger asChild>
+                                  <div className="flex items-center gap-3 p-4 rounded-2xl bg-white border-2 border-slate-100 shadow-sm cursor-pointer hover:border-primary/30 transition-all group">
+                                     <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
+                                        <LayoutGrid className="h-4 w-4" />
+                                     </div>
+                                     <div className="flex-1 text-start">
+                                        <h4 className="font-black text-sm text-slate-800">{section.name}</h4>
+                                     </div>
+                                     <ChevronDown className={cn("h-4 w-4 text-slate-300 transition-transform", (expandedNodes.includes(section.id) || masterSearch.length > 0) && "rotate-180")} />
+                                  </div>
+                               </CollapsibleTrigger>
+                               <CollapsibleContent className="ms-6 ps-6 border-s-2 border-slate-100 space-y-4 pt-2">
+                                  {section.children.map((category) => (
+                                    <Collapsible 
+                                      key={category.id} 
+                                      open={expandedNodes.includes(category.id) || masterSearch.length > 0}
+                                      onOpenChange={() => toggleNode(category.id)}
+                                      className="space-y-2"
+                                    >
+                                       <CollapsibleTrigger asChild>
+                                          <div className="flex items-center gap-2 p-3 rounded-xl bg-blue-50/50 border border-blue-100 cursor-pointer hover:bg-blue-50 transition-all">
+                                             <Boxes className="h-3.5 w-3.5 text-blue-600" />
+                                             <span className="flex-1 text-xs font-black text-blue-900 text-start">{category.name}</span>
+                                             <ChevronDown className={cn("h-3 w-3 text-blue-300 transition-transform", (expandedNodes.includes(category.id) || masterSearch.length > 0) && "rotate-180")} />
+                                          </div>
+                                       </CollapsibleTrigger>
+                                       <CollapsibleContent className="ms-4 ps-4 border-s border-blue-100 space-y-3 pt-2">
+                                          {category.children.map((comp) => (
+                                            <div key={comp.id} className="space-y-2">
+                                               <div className="flex items-center gap-2 text-slate-400 text-start px-2">
+                                                  <Hammer className="h-3 w-3" />
+                                                  <span className="text-[9px] font-black uppercase tracking-tighter">{comp.name}</span>
+                                               </div>
+                                               <div className="grid grid-cols-1 gap-2">
+                                                  {comp.children.map((item: any) => (
+                                                    <div key={item.id} className="p-3 rounded-xl bg-white border border-slate-100 hover:border-primary/40 hover:shadow-md transition-all flex items-center justify-between group">
+                                                       <div className="text-start">
+                                                          <p className="text-[11px] font-black text-slate-800 leading-tight">{item.description}</p>
+                                                          <div className="flex items-center gap-2 mt-1">
+                                                             <Badge variant="outline" className="bg-slate-50 text-[8px] font-mono border-slate-200 px-1">{item.code}</Badge>
+                                                             <span className="text-[8px] font-bold text-slate-400 uppercase">{item.unitSymbol || item.unitName}</span>
+                                                          </div>
+                                                       </div>
+                                                       <Button 
+                                                         size="sm" 
+                                                         onClick={() => addFromMaster(item)}
+                                                         className="h-8 rounded-lg bg-[#e87c24] hover:bg-[#FFB000] text-white font-black text-[9px] gap-1.5 px-3"
+                                                       >
+                                                          <Plus className="h-3 w-3" /> {isRtl ? 'إضافة' : 'Add'}
+                                                       </Button>
+                                                    </div>
+                                                  ))}
+                                               </div>
+                                            </div>
+                                          ))}
+                                       </CollapsibleContent>
+                                    </Collapsible>
+                                  ))}
+                               </CollapsibleContent>
+                             </Collapsible>
+                           ))}
                         </div>
                       )}
                    </div>
 
-                   {/* Footer matching the image style */}
-                   <DialogFooter className="p-8 bg-slate-50/50 border-t flex flex-row justify-start">
+                   <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row justify-start">
                       <Button 
                         variant="outline" 
                         onClick={() => setIsMasterPickerOpen(false)} 
-                        className="h-14 px-10 rounded-2xl border-2 border-[#FFA000]/30 text-[#FFA000] font-black text-lg bg-white hover:bg-[#FFA000]/5 transition-all"
+                        className="h-12 px-8 rounded-xl border-2 border-slate-200 font-black text-sm bg-white"
                       >
-                        {isRtl ? 'إغلاق' : 'Close'}
+                        {isRtl ? 'إغلاق المستكشف' : 'Close Explorer'}
                       </Button>
                    </DialogFooter>
                 </DialogContent>
               </Dialog>
            </div>
 
-           {/* Rendering the Groups */}
+           {/* Rendering the Groups in the Main Form */}
            <div className="space-y-10">
               {boqTree.length === 0 ? (
                 <div className="py-32 text-center bg-white rounded-[3rem] border-4 border-dashed border-slate-100 flex flex-col items-center gap-6 opacity-30 animate-pulse">
@@ -419,7 +477,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                                                    className="h-8 border-2 rounded-lg text-center font-black text-[10px] text-emerald-600 bg-emerald-50/10" 
                                                  />
                                               </div>
-                                              <div className="flex items-end justify-center pb-1">
+                                              <div className="flex items-end justify-center pb-1.5">
                                                  <Button 
                                                    variant="ghost" 
                                                    size="icon" 
