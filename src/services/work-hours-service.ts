@@ -26,7 +26,16 @@ export class WorkHoursService {
   async getSettings(): Promise<WorkHoursSettings | null> {
     const snap = await getDoc(this.getDocRef());
     if (snap.exists()) {
-      return snap.data() as WorkHoursSettings;
+      const data = snap.data() as WorkHoursSettings;
+      const defaults = this.getDefaultSettings();
+      // ضمان وجود كافة التخصصات (Migration Support)
+      return {
+        ...defaults,
+        ...data,
+        architectural: { ...defaults.architectural, ...data.architectural },
+        meetingRooms: { ...defaults.meetingRooms, ...data.meetingRooms },
+        fieldWork: { ...defaults.fieldWork, ...data.fieldWork },
+      } as WorkHoursSettings;
     }
     return null;
   }
