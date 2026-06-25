@@ -27,6 +27,8 @@ export function WorkHoursManager() {
   const { globalUser, user } = useAuthContext();
   const { t, dir, lang } = useLanguage();
   const db = useFirestore();
+  const isRtl = lang === 'ar';
+  
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [fetchingHolidays, setFetchingHolidays] = useState(false);
@@ -207,7 +209,7 @@ export function WorkHoursManager() {
              className="h-16 rounded-2xl border-2 font-black gap-3 px-8 shadow-sm hover:bg-slate-50 transition-all text-blue-600"
            >
               {fetchingHolidays ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
-              {lang === 'ar' ? 'جلب عطلات 2026 بالـ AI' : 'Fetch 2026 Holidays'}
+              {t('fetchHolidaysAI')}
            </Button>
            <Button onClick={handleSave} disabled={saving} className="bg-primary text-white font-black rounded-2xl px-10 h-16 text-lg shadow-xl shadow-primary/20 hover:scale-105 transition-all">
              {saving ? <Loader2 className="animate-spin me-2" /> : <Save className="me-2 h-5 w-5" />}
@@ -238,13 +240,13 @@ export function WorkHoursManager() {
                 <div className="p-3 bg-white rounded-2xl shadow-sm text-amber-600"><Calendar className="h-6 w-6" /></div>
                 <div>
                    <CardTitle className="text-xl font-black">{t('holidays')}</CardTitle>
-                   <CardDescription className="font-bold">{isRtl ? 'إدارة العطلات الأسبوعية والرسمية.' : 'Manage weekly and public holidays.'}</CardDescription>
+                   <CardDescription className="font-bold">{t('holidaysDesc')}</CardDescription>
                 </div>
              </div>
           </CardHeader>
           <CardContent className="p-8 space-y-10 text-start">
              <div>
-                <p className="text-[10px] font-black text-slate-400 mb-6 uppercase tracking-widest">{isRtl ? 'أيام الراحة الأسبوعية (ثابتة)' : 'Weekly Holidays (Static)'}</p>
+                <p className="text-[10px] font-black text-slate-400 mb-6 uppercase tracking-widest">{t('weeklyHolidaysStatic')}</p>
                 <div className="flex flex-wrap gap-3">
                    {DAYS.map(day => (
                       <div 
@@ -266,7 +268,7 @@ export function WorkHoursManager() {
 
              {settings?.publicHolidays && settings.publicHolidays.length > 0 && (
                <div className="pt-8 border-t">
-                  <p className="text-[10px] font-black text-slate-400 mb-6 uppercase tracking-widest">{isRtl ? 'العطلات الرسمية المجدولة (2026)' : 'Scheduled Public Holidays (2026)'}</p>
+                  <p className="text-[10px] font-black text-slate-400 mb-6 uppercase tracking-widest">{t('scheduledPublicHolidays')}</p>
                   <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                      {settings.publicHolidays.map((ph, idx) => (
                         <div key={idx} className="p-4 rounded-2xl bg-slate-50 border-2 border-white shadow-inner flex justify-between items-center group hover:bg-emerald-50 transition-all">
