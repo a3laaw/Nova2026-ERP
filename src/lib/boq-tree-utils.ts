@@ -1,79 +1,76 @@
 /**
- * @fileOverview أدوات تحويل بيانات المقايسات المسطحة إلى هيكل شجري.
- * - transformToBOQTree: المحرك الرئيسي لتحويل المصفوفة المسطحة إلى شجرة هندسية.
+ * @fileOverview أدوات تحويل بيانات المقايسات الديناميكية إلى هيكل شجري للعرض.
+ * يعتمد على ancestorIds لبناء المجموعات بشكل هرمي.
  */
 
-import { 
-  BOQTemplateItem, 
-  BOQTreeSection, 
-  BOQTreeMainCategory, 
-  BOQTreeComponent 
-} from '@/types/templates';
+import { BOQTemplateItem, BOQTreeNode } from '@/types/templates';
 
 /**
- * تحويل مصفوفة بنود المقايسة المسطحة إلى هيكل شجري ثلاثي المستويات + البنود النهائية.
- * الترتيب يتم بناءً على حقل 'order' في كل مستوى.
+ * تحويل مصفوفة بنود المقايسة المسطحة إلى هيكل شجري ديناميكي.
+ * يقوم بتجميع البنود تحت آبائهم الافتراضيين بناءً على ancestorIds و ancestorTitles.
  */
-export function transformToBOQTree(items: BOQTemplateItem[]): BOQTreeSection[] {
-  const sectionsMap: Record<string, BOQTreeSection> = {};
+export function transformToBOQTree(items: BOQTemplateItem[]): BOQTreeNode[] {
+  const rootNodes: BOQTreeNode[] = [];
+  const nodesMap: Record<string, BOQTreeNode> = {};
 
-  items.forEach((item, index) => {
-    // 1. معالجة مستوى القسم (Section)
-    if (!sectionsMap[item.sectionId]) {
-      sectionsMap[item.sectionId] = {
-        id: item.sectionId,
-        name: item.sectionName,
-        order: item.order, 
-        children: []
-      };
+  // 1. معالجة كافة البنود وبناء الهيكل المحيط بها
+  items.forEach((item) => {
+    const ancestors = item.ancestorIds || [];
+    const titles = item.ancestorTitles || [];
+
+    let currentParent: BOQTreeNode | null = null;
+
+    // بناء/تتبع مسار الأسلاف
+    ancestors.forEach((id, idx) => {
+      if (!nodesMap[id]) {
+        const newNode: BOQTreeNode = {
+          id,
+          title: titles[idx] || `Section ${idx + 1}`,
+          depth: idx,
+          order: 0, // سيتم ترتيبه لاحقاً
+          children: [],
+          items: []
+        };
+        nodesMap[id] = newNode;
+
+        if (idx === 0) {
+          rootNodes.push(newNode);
+        } else if (currentParent) {
+          currentParent.children.push(newNode);
+        }
+      }
+      currentParent = nodesMap[id];
+    });
+
+    // إضافة البند الفعلي إلى مجموعته الأخيرة
+    if (currentParent) {
+      (currentParent as BOQTreeNode).items.push(item);
+    } else {
+      // حالة نادرة: بند بدون أسلاف (Root Item)
+      const orphanId = `orphan_${item.boqReferenceNodeId}`;
+      if (!nodesMap[orphanId]) {
+        const orphanNode: BOQTreeNode = {
+          id: orphanId,
+          title: item.referenceTitle,
+          depth: 0,
+          order: item.order,
+          children: [],
+          items: [item]
+        };
+        nodesMap[orphanId] = orphanNode;
+        rootNodes.push(orphanNode);
+      }
     }
-    const section = sectionsMap[item.sectionId];
-
-    // 2. معالجة مستوى الفئة الرئيسية (Main Category)
-    let mainCategory = section.children.find(c => c.id === item.mainCategoryId);
-    if (!mainCategory) {
-      mainCategory = {
-        id: item.mainCategoryId,
-        name: item.mainCategoryName,
-        order: item.order,
-        children: []
-      };
-      section.children.push(mainCategory);
-    }
-
-    // 3. معالجة مستوى العنصر (Component)
-    let component = mainCategory.children.find(c => c.id === item.componentId);
-    if (!component) {
-      component = {
-        id: item.componentId,
-        name: item.componentName,
-        order: item.order,
-        children: []
-      };
-      mainCategory.children.push(component);
-    }
-
-    // 4. إضافة البند النهائي (Leaf Node) مع الاحتفاظ بالفهرس الأصلي للتعديل
-    component.children.push({ ...item, originalIndex: index } as any);
   });
 
-  // فرز كافة المستويات بناءً على حقل الترتيب (Order)
-  const sortedSections = Object.values(sectionsMap)
-    .sort((a, b) => a.order - b.order)
-    .map(section => ({
-      ...section,
-      children: section.children
-        .sort((a, b) => a.order - b.order)
-        .map(category => ({
-          ...category,
-          children: category.children
-            .sort((a, b) => a.order - b.order)
-            .map(comp => ({
-              ...comp,
-              children: comp.children.sort((a, b) => (a as any).order - (b as any).order)
-            }))
-        }))
-    }));
+  // 2. دالة الفرز العميق
+  const sortNode = (node: BOQTreeNode) => {
+    node.children.sort((a, b) => a.order - b.order);
+    node.items.sort((a, b) => a.order - b.order);
+    node.children.forEach(sortNode);
+  };
 
-  return sortedSections;
+  rootNodes.sort((a, b) => a.order - b.order).forEach(sortNode);
+
+  return rootNodes;
 }

@@ -13,7 +13,8 @@ import {
   writeBatch,
   where,
   orderBy,
-  setDoc
+  setDoc,
+  getDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { TemplateType, BaseTemplate, BOQTemplate, BOQTemplateItem } from '@/types/templates';
@@ -37,19 +38,20 @@ export class TemplateService {
   }
 
   /**
-   * جلب كافة عقد القاموس المرجعي لبناء الهيكل في الذاكرة
+   * جلب العقد المرجعية لتسهيل بناء الشجرة
    */
   async getWorkItemsMaster() {
     const q = query(
-      collection(this.db, paths.boqWorkItemsMaster(this.companyId)),
-      orderBy('level') // الترتيب حسب المستوى يسهل عملية بناء الشجرة لاحقاً
+      collection(this.db, paths.boqReferenceNodes(this.companyId)),
+      orderBy('depth'),
+      orderBy('order')
     );
     const snap = await getDocs(q);
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   }
 
   /**
-   * حفظ قالب المقايسة مع كافة بنوده في عملية واحدة (Batch Save)
+   * حفظ قالب المقايسة مع كافة بنوده الديناميكية في عملية واحدة
    */
   async saveBOQTemplateWithItems(templateId: string | null, templateData: Partial<BOQTemplate>, items: BOQTemplateItem[], userId: string) {
     ensureActionPermission(this.userPermissions, 'ref:edit');
@@ -67,31 +69,40 @@ export class TemplateService {
       updatedAt: serverTimestamp(),
       ...(templateId ? {} : { createdBy: userId, createdAt: serverTimestamp(), version: 1, isActive: true })
     };
+    // مسح مصفوفة العناصر من الرأس لضمان تخزينها فقط في المجموعة الفرعية
+    delete (headData as any).items;
+
     batch.set(templateRef, headData, { merge: true });
 
-    // 2. معالجة البنود في المجموعة الفرعية (Sync Mode)
+    // 2. تحديث البنود في المجموعة الفرعية (Flat Subcollection)
     const itemsCollection = collection(this.db, paths.boqTemplateItems(this.companyId, finalTemplateId));
     
-    const oldItemsSnap = await getDocs(itemsCollection);
-    oldItemsSnap.docs.forEach(d => batch.delete(d.ref));
+    // مسح البنود القديمة (في حال التعديل)
+    if (templateId) {
+      const oldItemsSnap = await getDocs(itemsCollection);
+      oldItemsSnap.docs.forEach(d => batch.delete(d.ref));
+    }
 
     items.forEach((item, idx) => {
       const itemRef = doc(itemsCollection);
-      batch.set(itemRef, {
+      const itemToSave = {
         ...item,
         id: itemRef.id,
         order: idx,
         companyId: this.companyId,
-        createdAt: serverTimestamp(),
+        createdAt: item.createdAt || serverTimestamp(),
         updatedAt: serverTimestamp()
-      });
+      };
+      batch.set(itemRef, itemToSave);
     });
 
     try {
       await batch.commit();
       return finalTemplateId;
-    } catch (err) {
-      this.handleError(templateRef.path, templateId ? 'update' : 'create', headData);
+    } catch (err: any) {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: templateRef.path, operation: templateId ? 'update' : 'create', requestResourceData: headData,
+      }));
       throw err;
     }
   }
@@ -132,11 +143,5 @@ export class TemplateService {
       isActive: true,
       version: 1
     });
-  }
-
-  private handleError(path: string, operation: any, data?: any) {
-    errorEmitter.emit('permission-error', new FirestorePermissionError({
-      path, operation, requestResourceData: data,
-    }));
   }
 }

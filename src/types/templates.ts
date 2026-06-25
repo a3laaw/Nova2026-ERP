@@ -1,6 +1,6 @@
 /**
  * @fileOverview تعريف واجهات البيانات لمكتبة القوالب في نظام NovaFlow ERP.
- * تم تحديث الهياكل لتشمل جداول الكميات (BOQ) بالهيكل الرباعي المعتمد.
+ * تم تحديث الهياكل لتتوافق مع المرجع الشجري الديناميكي الجديد لبنود BOQ.
  */
 
 import { BaseReference } from './reference';
@@ -75,60 +75,48 @@ export interface ContractTemplate extends BaseTemplate {
 }
 
 /**
- * بنية بند جدول الكميات المطور (Flat Firestore Structure)
+ * بنية بند جدول الكميات المطور (Dynamic Reference Structure)
+ * تم إلغاء المستويات الثابتة والاعتماد على العقد المرجعية
  */
 export interface BOQTemplateItem {
   id?: string;
-  workItemMasterId?: string; // رابط للقاموس المرجعي (Work Item Master)
-  sectionId: string;
-  sectionName: string;
-  mainCategoryId: string;
-  mainCategoryName: string;
-  componentId: string;
-  componentName: string;
-  itemCode?: string;
-  name?: string;
-  description: string;
-  unit: string;
-  unitSymbol?: string;
-  unitName?: string; // مسمى الوحدة للتأكيد
+  boqReferenceNodeId: string;   // الرابط بالقاموس المرجعي
+  referenceCode: string;         // كود البند المرجعي
+  referenceTitle: string;        // مسمى البند المرجعي
+  referenceDescription?: string; 
+  parentId: string | null;       // الأب المباشر في الشجرة
+  ancestorIds: string[];         // سلسلة النسب الكاملة
+  ancestorTitles?: string[];     // مسميات الأسلاف (للعرض السريع)
+  depth: number;                 // مستوى العمق
+
   unitTypeId?: string;
+  unitName?: string;
+  unitSymbol?: string;
+  technicalStageId?: string;
+  billingTriggerGroup?: string;
+  allowedItemCategoryIds?: string[];
+
   plannedQuantity: number;
   executedQuantity: number;
   estimatedRate?: number;
   estimatedCostRate?: number;
   notes?: string;
   order: number;
-  technicalStageId?: string;
-  billingTriggerGroup?: string;
-  materialCodes: string[];
   companyId: string;
   createdAt?: any;
   updatedAt?: any;
 }
 
 /**
- * الهيكل الشجري لعرض المقايسات في الواجهة
+ * الهيكل الشجري لعرض المقايسات في الواجهة (Generic Tree Node)
  */
-export interface BOQTreeComponent {
+export interface BOQTreeNode {
   id: string;
-  name: string;
+  title: string;
+  depth: number;
   order: number;
-  children: BOQTemplateItem[];
-}
-
-export interface BOQTreeMainCategory {
-  id: string;
-  name: string;
-  order: number;
-  children: BOQTreeComponent[];
-}
-
-export interface BOQTreeSection {
-  id: string;
-  name: string;
-  order: number;
-  children: BOQTreeMainCategory[];
+  children: BOQTreeNode[];
+  items: BOQTemplateItem[]; // البنود التنفيذية التابعة لهذه العقدة
 }
 
 export interface BOQTemplate extends BaseTemplate {
