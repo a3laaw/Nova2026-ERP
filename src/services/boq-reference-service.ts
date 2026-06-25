@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -17,7 +18,7 @@ import {
 import { paths } from '@/firebase/multi-tenant';
 import { BOQReferenceNode } from '@/types/reference';
 import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { ensureActionPermission } from '@/lib/permissions';
 
 /**
@@ -81,17 +82,15 @@ export class BOQReferenceService {
       });
     }
 
-    try {
-      await batch.commit();
-      return nodeRef.id;
-    } catch (err: any) {
+    batch.commit().catch(async (err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: nodeRef.path,
         operation: 'create',
         requestResourceData: nodeData
-      }));
-      throw err;
-    }
+      } satisfies SecurityRuleContext));
+    });
+
+    return nodeRef.id;
   }
 
   /**
@@ -112,13 +111,12 @@ export class BOQReferenceService {
     delete (updateData as any).ancestorIds;
     delete (updateData as any).depth;
 
-    return updateDoc(nodeRef, updateData).catch(err => {
+    updateDoc(nodeRef, updateData).catch(err => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: nodeRef.path,
         operation: 'update',
         requestResourceData: updateData
-      }));
-      throw err;
+      } satisfies SecurityRuleContext));
     });
   }
 
@@ -149,12 +147,11 @@ export class BOQReferenceService {
       });
     }
 
-    return batch.commit().catch(err => {
+    batch.commit().catch(err => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: nodeRef.path,
         operation: 'delete'
-      }));
-      throw err;
+      } satisfies SecurityRuleContext));
     });
   }
 

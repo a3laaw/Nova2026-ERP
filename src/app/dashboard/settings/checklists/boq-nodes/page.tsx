@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -66,13 +67,8 @@ export default function BOQNodesPage() {
     companyId && db ? query(collection(db, paths.unitTypes(companyId)), orderBy('order')) : null, 
   [db, companyId]);
 
-  const itemCatsQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.itemCategories(companyId)), orderBy('order')) : null, 
-  [db, companyId]);
-
   const { data: rawNodes, loading } = useCollection<BOQReferenceNode>(nodesQuery);
   const { data: unitTypes } = useCollection<UnitType>(unitTypesQuery);
-  const { data: itemCategories } = useCollection<ItemCategory>(itemCatsQuery);
 
   const service = useMemo(() => 
     db && companyId ? new BOQReferenceService(db, companyId, permissions) : null, 
@@ -82,7 +78,11 @@ export default function BOQNodesPage() {
   useEffect(() => {
     if (db && companyId) {
       const tpService = new TechnicalPathService(db, companyId);
-      tpService.getAllCompanyStages().then(setAllStages);
+      tpService.getAllCompanyStages()
+        .then(setAllStages)
+        .catch(() => {
+          // الخطأ يعالج داخلياً عبر الباعث، لا حاجة لتعطيل الواجهة
+        });
     }
   }, [db, companyId]);
 
@@ -100,10 +100,9 @@ export default function BOQNodesPage() {
     return buildTree(null);
   }, [rawNodes]);
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!service || !user || !editingNode?.title) return;
     
-    // الكود إلزامي فقط للـ Root Nodes (Sections) لضمان الترقيم الهرمي WBS
     if (!editingNode.parentId && !editingNode.code) {
       toast({ variant: "destructive", title: isRtl ? "الكود مطلوب للقسم الرئيسي" : "Code required for root section" });
       return;
@@ -112,24 +111,22 @@ export default function BOQNodesPage() {
     setLoadingAction('save');
     try {
       if (editingNode.id) {
-        await service.updateBOQReferenceNode(editingNode.id, editingNode, user.uid);
+        service.updateBOQReferenceNode(editingNode.id, editingNode, user.uid);
       } else {
-        await service.createBOQReferenceNode(editingNode, user.uid);
+        service.createBOQReferenceNode(editingNode, user.uid);
       }
       toast({ title: t('saved') });
       setEditingNode(null);
-    } catch (e: any) {
-      toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
       setLoadingAction(null);
     }
   };
 
-  const handleFinalDelete = async () => {
+  const handleFinalDelete = () => {
     if (!service || !deletingId) return;
     setLoadingAction(`delete_${deletingId}`);
     try {
-      await service.deleteBOQReferenceNode(deletingId);
+      service.deleteBOQReferenceNode(deletingId);
       toast({ title: t('deleted') });
       setDeletingId(null);
     } catch (e: any) {
@@ -287,7 +284,6 @@ export default function BOQNodesPage() {
             </div>
 
             <div className="p-6 space-y-5 text-start bg-white max-h-[65vh] overflow-y-auto scrollbar-hide">
-               {/* تظهر حقول الكود والترتيب فقط في المستوى الجذري (الآباء الأوائل) */}
                {!editingNode?.parentId && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-1.5">

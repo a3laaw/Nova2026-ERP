@@ -51,6 +51,12 @@ service cloud.firestore {
        allow read, write: if isDeveloper();
     }
 
+    // --- قواعد المجموعات المشتركة (Collection Groups) ---
+    // ضروري لاستعلامات التقارير والربط الفني عبر كافة مستويات المنشأة
+    match /{path=**}/stages/{stageId} {
+      allow read: if belongsToCompany(resource.data.companyId);
+    }
+
     // --- سجلات المنشأة (Multi-tenant) ---
     
     match /companies/{companyId} {
@@ -89,7 +95,7 @@ service cloud.firestore {
         allow create, update: if isAdmin(companyId);
       }
 
-      // الوصول العام للمدير على كافة المجموعات الأخرى
+      // الوصول العام للمدير على كافة المجموعات الأخرى (بما في ذلك المراجع الهندسية)
       match /{allSubCollections=**} {
         allow read: if belongsToCompany(companyId);
         allow write: if isAdmin(companyId);
