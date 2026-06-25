@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -257,7 +256,7 @@ export default function BOQMasterPage() {
             </div>
 
             <div className="p-6 space-y-4 text-start bg-white max-h-[60vh] overflow-y-auto scrollbar-hide">
-               {!editingNode?.parentId && (
+               {editingNode && editingNode.parentId === null && (
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                        <Label className="text-[10px] font-bold uppercase text-slate-400">{t('code')}</Label>

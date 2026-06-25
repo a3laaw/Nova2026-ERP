@@ -312,7 +312,7 @@ export default function BOQNodesPage() {
             <div className="p-6 space-y-5 text-start bg-white max-h-[65vh] overflow-y-auto scrollbar-hide">
                
                {/* قسم الأنشطة المرتبطة (يظهر فقط للجذور) */}
-               {!editingNode?.parentId && (
+               {editingNode && editingNode.parentId === null && (
                  <div className="p-5 rounded-2xl bg-blue-50/50 border-2 border-blue-100 space-y-4 animate-in fade-in duration-300">
                     <h4 className="font-black text-[10px] text-blue-600 uppercase tracking-widest flex items-center gap-2">
                        <ShieldCheck className="h-3.5 w-3.5" /> {isRtl ? 'الأنشطة المتاح بها هذا القسم' : 'Available Activities'}
@@ -324,23 +324,23 @@ export default function BOQNodesPage() {
                            onClick={() => toggleActivity(act.id!, isRtl ? act.name : (act.nameEn || act.name))}
                            className={cn(
                              "p-2.5 rounded-xl border-2 transition-all cursor-pointer flex items-center gap-2 group",
-                             editingNode.activityTypeIds?.includes(act.id!) 
+                             editingNode?.activityTypeIds?.includes(act.id!) 
                                ? "bg-white border-blue-500 shadow-md" 
                                : "bg-transparent border-slate-100 hover:border-blue-200"
                            )}
                          >
                             <Checkbox 
-                              checked={editingNode.activityTypeIds?.includes(act.id!)} 
+                              checked={editingNode?.activityTypeIds?.includes(act.id!) || false} 
                               className="h-4 w-4 pointer-events-none" 
                             />
                             <span className={cn(
                               "text-[10px] font-black uppercase truncate",
-                              editingNode.activityTypeIds?.includes(act.id!) ? "text-blue-600" : "text-slate-400"
+                              editingNode?.activityTypeIds?.includes(act.id!) ? "text-blue-600" : "text-slate-400"
                             )}>{isRtl ? act.name : (act.nameEn || act.name)}</span>
                          </div>
                        ))}
                     </div>
-                    {editingNode.activityTypeIds?.length === 0 && (
+                    {editingNode?.activityTypeIds?.length === 0 && (
                       <p className="text-[9px] text-rose-500 font-bold italic flex items-center gap-1">
                         <AlertTriangle className="h-3 w-3" /> {isRtl ? 'يجب اختيار نشاط واحد على الأقل للقسم الرئيسي.' : 'At least one activity must be linked to root section.'}
                       </p>
@@ -348,7 +348,7 @@ export default function BOQNodesPage() {
                  </div>
                )}
 
-               {!editingNode?.parentId && (
+               {editingNode && editingNode.parentId === null && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-1.5">
                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('code')}</Label>
@@ -453,7 +453,7 @@ export default function BOQNodesPage() {
 
             <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-3">
                <Button variant="outline" onClick={() => setEditingNode(null)} className="flex-1 h-12 rounded-xl border-2 font-bold">إلغاء</Button>
-               <Button onClick={handleSave} disabled={loadingAction === 'save' || (!editingNode?.parentId && editingNode?.activityTypeIds?.length === 0)} className="flex-[2] h-12 rounded-xl bg-primary text-white font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-2 border-b-4 border-orange-700">
+               <Button onClick={handleSave} disabled={loadingAction === 'save' || (editingNode?.parentId === null && editingNode?.activityTypeIds?.length === 0)} className="flex-[2] h-12 rounded-xl bg-primary text-white font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-2 border-b-4 border-orange-700">
                   {loadingAction === 'save' ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
                   {t('save')}
                </Button>
