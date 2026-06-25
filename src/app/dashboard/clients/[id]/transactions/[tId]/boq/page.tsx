@@ -10,7 +10,8 @@ import { Progress } from "@/components/ui/progress";
 import { 
   FileSpreadsheet, ArrowRight, Loader2, Save, 
   CheckCircle2, AlertTriangle, LayoutGrid, Boxes, 
-  Hammer, Calculator, TrendingUp
+  Hammer, Calculator, TrendingUp, Package, 
+  ArrowDownRight, Info
 } from "lucide-react";
 import { useFirestore, useCollection, useDoc } from '@/firebase';
 import { collection, query, where, doc } from 'firebase/firestore';
@@ -21,6 +22,7 @@ import { paths } from '@/firebase/multi-tenant';
 import { BOQ, BOQItem } from '@/types/documents';
 import { Transaction } from '@/types/transaction';
 import { BOQExecutionService } from '@/services/boq-execution-service';
+import { BOQInventoryLinkService, BOQItemMaterialVariance } from '@/services/boq-inventory-link-service';
 import { transformToBOQTree } from '@/lib/boq-tree-utils';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -38,6 +40,7 @@ export default function TransactionBOQProgressPage() {
   const companyId = globalUser?.companyId;
 
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [varianceMap, setVarianceMap] = useState<Record<string, BOQItemMaterialVariance>>({});
 
   // 1. جلب رأس المعاملة
   const transRef = useMemo(() => companyId && db ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
@@ -55,6 +58,17 @@ export default function TransactionBOQProgressPage() {
   const boqTree = useMemo(() => transformToBOQTree(items || []), [items]);
   
   const executionService = useMemo(() => db && companyId ? new BOQExecutionService(db, companyId, permissions) : null, [db, companyId, permissions]);
+  const inventoryLinkService = useMemo(() => db && companyId ? new BOQInventoryLinkService(db, companyId) : null, [db, companyId]);
+
+  // 4. جلب تحليلات المخزون لكل بند
+  useEffect(() => {
+    if (inventoryLinkService && items.length > 0) {
+      items.forEach(async (item) => {
+        const variance = await inventoryLinkService.getBOQItemMaterialVariance(item);
+        setVarianceMap(prev => ({ ...prev, [item.id]: variance }));
+      });
+    }
+  }, [inventoryLinkService, items]);
 
   const handleUpdateQuantity = async (itemId: string, val: number) => {
     if (!executionService || !activeBoq || !user) return;
@@ -122,31 +136,58 @@ export default function TransactionBOQProgressPage() {
                           <div key={comp.id} className="space-y-4">
                              {comp.children.map((item: any) => {
                                const progress = executionService?.getBOQItemProgress(item as BOQItem);
+                               const invUsage = varianceMap[item.id];
+
                                return (
-                                 <Card key={item.id} className="border-0 shadow-lg rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/5 group">
-                                    <CardContent className="p-6 flex flex-col lg:flex-row items-center justify-between gap-8">
-                                       <div className="flex-1 space-y-2 w-full text-start">
+                                 <Card key={item.id} className="border-0 shadow-lg rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 group">
+                                    <CardContent className="p-6 flex flex-col lg:flex-row items-stretch justify-between gap-8">
+                                       <div className="flex-1 space-y-2 text-start">
                                           <div className="flex items-center gap-3">
                                              <Badge variant="outline" className="font-mono text-[8px] border-slate-200 text-slate-400">#{item.itemCode}</Badge>
                                              <h4 className="font-black text-slate-800 text-base leading-tight">{item.description}</h4>
                                           </div>
+                                          
+                                          {/* التنفيذ الميداني */}
                                           <div className="flex items-center gap-4">
                                              <div className="flex-1">
                                                 <div className="flex justify-between text-[10px] font-black uppercase text-slate-400 mb-1">
-                                                   <span>{isRtl ? 'نسبة الإنجاز' : 'Progress'}</span>
+                                                   <span>{isRtl ? 'نسبة الإنجاز الميداني' : 'Field Progress'}</span>
                                                    <span className={cn(progress?.isOverExecuted ? "text-rose-600" : "text-primary")}>{progress?.progressPercent}%</span>
                                                 </div>
                                                 <Progress value={progress?.progressPercent} className={cn("h-2", progress?.isOverExecuted ? "bg-rose-100 [&>div]:bg-rose-500" : "")} />
                                              </div>
                                              <div className="text-center px-4 border-s-2">
                                                 <p className="text-[8px] font-black text-slate-400 uppercase">{isRtl ? 'المخطط' : 'Planned'}</p>
-                                                <p className="font-black text-slate-800">{item.plannedQuantity} <span className="text-[8px]">{item.unit}</span></p>
+                                                <p className="font-black text-slate-800 text-xs">{item.plannedQuantity} <span className="text-[8px]">{item.unit}</span></p>
                                              </div>
                                           </div>
+
+                                          {/* الربط المخزني التحليلي */}
+                                          {invUsage && (
+                                            <div className="mt-4 p-4 rounded-2xl bg-blue-50/50 border-2 border-white shadow-sm flex items-center justify-between">
+                                               <div className="flex items-center gap-3 text-blue-600">
+                                                  <Package className="h-4 w-4" />
+                                                  <span className="text-[9px] font-black uppercase tracking-tighter">{isRtl ? 'الاستهلاك الفعلي للمواد' : 'Actual Material Issue'}</span>
+                                               </div>
+                                               <div className="flex items-center gap-4">
+                                                  <div className="text-end">
+                                                     <p className="text-[10px] font-black text-slate-600">{invUsage.actualIssuedQuantity} <span className="text-[8px] uppercase">{item.unit}</span></p>
+                                                     {invUsage.variance !== 0 && (
+                                                       <span className={cn(
+                                                         "text-[8px] font-black px-1.5 py-0.5 rounded",
+                                                         invUsage.varianceStatus === 'excess' ? "bg-rose-500 text-white" : "bg-amber-500 text-white"
+                                                       )}>
+                                                          {invUsage.variance > 0 ? `+${invUsage.variance}` : invUsage.variance} Variance
+                                                       </span>
+                                                     )}
+                                                  </div>
+                                               </div>
+                                            </div>
+                                          )}
                                        </div>
 
                                        <div className="w-full lg:w-[280px] bg-slate-50 p-5 rounded-3xl border-2 border-white shadow-inner flex flex-col gap-4">
-                                          <div className="space-y-1.5">
+                                          <div className="space-y-1.5 text-start">
                                              <Label className="text-[9px] font-black uppercase text-slate-400 block">{isRtl ? 'الكمية المنفذة فعلياً' : 'Actual Executed Qty'}</Label>
                                              <div className="relative">
                                                 <Input 

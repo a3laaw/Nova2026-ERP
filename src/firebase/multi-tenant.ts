@@ -46,6 +46,7 @@ export const paths = {
   // المخازن والمخزون
   warehouses: (companyId: string) => getTenantPath(companyId, 'warehouses'),
   inventoryItems: (companyId: string) => getTenantPath(companyId, 'inventoryItems'),
+  inventoryTransactions: (companyId: string) => getTenantPath(companyId, 'inventoryTransactions'), // حركات الصرف والاستلام
   assetAssignments: (companyId: string) => getTenantPath(companyId, 'assetAssignments'),
 
   // الموردين (المشتريات)
