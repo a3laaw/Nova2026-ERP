@@ -9,9 +9,9 @@ import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/s
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar"
 import { UserNav } from "@/components/layout/user-nav"
 import { NotificationBell } from "@/components/layout/notification-bell"
-import { Loader2, Languages, Search } from 'lucide-react';
+import { BreadcrumbNav } from "@/components/layout/breadcrumb-nav"
+import { Loader2, Languages } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
 export default function DashboardLayout({
@@ -42,7 +42,7 @@ export default function DashboardLayout({
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-[#F8F9FA] overflow-x-hidden" dir={dir}>
-        {/* RIGHT SIDEBAR - UNTOUCHED AS REQUESTED */}
+        {/* RIGHT SIDEBAR */}
         <div className="print:hidden">
           <DashboardSidebar />
         </div>
@@ -51,14 +51,10 @@ export default function DashboardLayout({
           <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-white/90 backdrop-blur-md px-6 print:hidden shadow-sm">
             <SidebarTrigger className={cn("text-slate-600 hover:bg-slate-100 rounded-lg shrink-0", isRtl ? "rotate-0" : "rotate-180")} />
             
-            <div className="flex-1 hidden md:flex items-center">
-              <div className="relative w-full max-w-xs">
-                <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input 
-                  placeholder={t('search')} 
-                  className="bg-slate-100/70 border-none rounded-xl h-10 ps-10 text-xs font-bold focus:bg-white transition-all ring-0 focus-visible:ring-0" 
-                />
-              </div>
+            <div className="flex-1 flex items-center gap-4 overflow-hidden">
+              <div className="h-6 w-[1.5px] bg-slate-100 rounded-full mx-2 hidden md:block" />
+              {/* شريط المسار وزر الرجوع العالمي */}
+              <BreadcrumbNav />
             </div>
 
             <div className="flex items-center gap-4 shrink-0">
