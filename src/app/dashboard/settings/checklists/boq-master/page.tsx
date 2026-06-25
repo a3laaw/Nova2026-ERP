@@ -31,7 +31,7 @@ import { toast } from '@/hooks/use-toast';
 export default function BOQMasterPage() {
   const { globalUser, user } = useAuthContext();
   const { t, lang, dir } = useLanguage();
-  const { check, permissions } = usePermissions(); // تم جلب permissions هنا
+  const { check, permissions } = usePermissions();
   const db = useFirestore();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
@@ -43,9 +43,9 @@ export default function BOQMasterPage() {
 
   const canEdit = check('ref', 'edit').can;
 
-  // جلب البيانات مع تثبيت الاستعلام لضمان استقرار الواجهة
+  // استعلام مبسط بدون ترتيب مزدوج لتجنب الحاجة لفهارس مركبة (Index requirement)
   const nodesQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.boqWorkItemsMaster(companyId)), orderBy('level'), orderBy('order')) : null, 
+    companyId && db ? query(collection(db, paths.boqWorkItemsMaster(companyId))) : null, 
   [db, companyId]);
 
   const unitTypesQuery = useMemo(() => 
@@ -55,22 +55,24 @@ export default function BOQMasterPage() {
   const { data: rawNodes, loading } = useCollection<BOQWorkItemMasterNode>(nodesQuery);
   const { data: unitTypes } = useCollection<UnitType>(unitTypesQuery);
 
-  // تم تمرير permissions هنا لحل مشكلة UNAUTHORIZED_ACTION
   const service = useMemo(() => 
     db && companyId ? new BOQMasterService(db, companyId, permissions) : null, 
   [db, companyId, permissions]);
 
+  // محرك بناء الشجرة مع الترتيب في الذاكرة (In-memory sorting)
   const treeData = useMemo(() => {
     const nodes = rawNodes || [];
+    
     const buildTree = (parentId: string | null): any[] => {
       return nodes
-        .filter(n => n.parentId === parentId)
+        .filter(n => (n.parentId || null) === parentId)
         .sort((a, b) => (a.order || 0) - (b.order || 0))
         .map(n => ({
           ...n,
           children: buildTree(n.id!)
         }));
     };
+
     return buildTree(null);
   }, [rawNodes]);
 
@@ -255,7 +257,7 @@ export default function BOQMasterPage() {
             <div className="p-10 space-y-6 text-start bg-white max-h-[60vh] overflow-y-auto scrollbar-hide">
                <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
-                     <Label className="text-[10px] font-black uppercase text-slate-400">{t('code')}</Label>
+                     <Label className="text-xs font-black uppercase text-slate-400">{t('code')}</Label>
                      <Input 
                        value={editingNode?.code || ''} 
                        onChange={e => setEditingNode({...editingNode!, code: e.target.value.toUpperCase().replace(/\s+/g, '_')})} 
@@ -342,3 +344,4 @@ export default function BOQMasterPage() {
     </div>
   );
 }
+
