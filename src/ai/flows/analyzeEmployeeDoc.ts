@@ -59,18 +59,16 @@ const analyzeEmployeeDocFlow = ai.defineFlow(
     outputSchema: AnalyzeEmployeeDocOutputSchema,
   },
   async (input) => {
-    const {output} = await ai.generate({
-      prompt: analyzeEmployeeDocPrompt(input),
-      // استخدام نموذج 1.5 المستقر بدلاً من 2.5
-      model: 'googleai/gemini-1.5-flash',
-      config: {
-        responseModalities: ['TEXT'],
-      },
-    });
+    try {
+      const { output } = await analyzeEmployeeDocPrompt(input);
 
-    if (!output) {
-      throw new Error('Failed to extract information from the document.');
+      if (!output) {
+        throw new Error('Failed to extract information from the document.');
+      }
+      return output;
+    } catch (error) {
+      console.error("Genkit Flow Error (analyzeEmployeeDoc):", error);
+      throw error;
     }
-    return output;
   }
 );

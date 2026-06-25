@@ -14,7 +14,7 @@ const FetchHolidaysInputSchema = z.object({
 });
 
 const HolidaySchema = z.object({
-  date: z.string().describe('تاريخ العطلة بصيغة YYYY-MM-DD فقط'),
+  date: z.string().describe('تاريخ العلطة بصيغة YYYY-MM-DD فقط'),
   name: z.string().describe('اسم العطلة الرسمي باللغة العربية'),
   nameEn: z.string().describe('اسم العطلة الرسمي باللغة الإنجليزية'),
 });
@@ -54,12 +54,8 @@ const fetchHolidaysFlow = ai.defineFlow(
   },
   async (input) => {
     try {
-      const { output } = await ai.generate({
-        prompt: fetchHolidaysPrompt(input),
-        config: {
-          temperature: 0.1, // تقليل العشوائية لضمان دقة التنسيق
-        }
-      });
+      // في Genkit 1.x، استدعاء البرومبت المعرف بـ ai.definePrompt يتم مباشرة كدالة
+      const { output } = await fetchHolidaysPrompt(input);
 
       if (!output || !output.holidays) {
         throw new Error('AI failed to generate a structured holiday list.');
