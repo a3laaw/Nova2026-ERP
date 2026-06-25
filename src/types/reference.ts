@@ -118,3 +118,33 @@ export interface Area extends BaseReference {
   order: number;
   isActive: boolean;
 }
+
+/**
+ * --- مرجع بنود BOQ الشجري السيادي ---
+ * يمثل Node واحدة في الشجرة المرجعية لبنود العمل الخاصة بالمنشأة.
+ * المسار في Firestore: companies/{companyId}/boqWorkItemsMaster/{nodeId}
+ */
+
+export type WorkItemNodeType = 'section' | 'main_category' | 'component' | 'work_item';
+
+export interface BOQWorkItemMasterNode extends BaseReference {
+  code: string;               // كود البند الموحد (مثل CONC-001)
+  title: string;              // مسمى العقدة (سواء قسم أو بند عمل)
+  parentId: string | null;    // مرجع العقدة الأب (null للجذور/Sections)
+  nodeType: WorkItemNodeType; // نوع العقدة في الهيكل
+  level: number;              // المستوى العمقي (0: Section, 1: Category, 2: Component, 3: Item)
+  order: number;              // الترتيب داخل المستوى الواحد
+  childrenCount: number;      // عدد الأبناء المباشرين (للمراقبة السريعة)
+  isActive: boolean;
+  createdBy?: string;
+  updatedBy?: string;
+
+  // حقول إضافية خاصة فقط عندما يكون nodeType === 'work_item'
+  unitTypeId?: string;        // معرف وحدة القياس المرجعي
+  unitName?: string;          // مسمى الوحدة (للعرض السريع)
+  unitSymbol?: string;        // رمز الوحدة (m2, kg, etc)
+  technicalStageId?: string;  // معرف المرحلة الفنية الافتراضية المرتبطة
+  billingTriggerGroup?: string; // مجموعة تحفيز الفوترة
+  description?: string;       // وصف تفصيلي لبند العمل
+  estimatedRate?: number;     // السعر التقديري المرجعي للبيع
+}
