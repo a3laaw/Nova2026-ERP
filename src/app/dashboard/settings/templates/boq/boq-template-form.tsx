@@ -19,14 +19,12 @@ import {
   CheckCircle2,
   GitBranch,
   Search, 
-  FileSearch, FolderTree,
+  FolderTree,
   ChevronDown, ChevronRight,
   LayoutGrid,
-  Zap,
-  ShieldCheck,
   Target,
   Layers,
-  X
+  Settings2
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
@@ -180,7 +178,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     };
 
     setItems([...items, newItem]);
-    toast({ title: isRtl ? "تمت الإضافة للمقايسة" : "Added to BOQ" });
   };
 
   const removeItem = (idx: number) => {
@@ -224,7 +221,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
               size="sm" 
               onClick={() => addFromMaster(node)} 
               disabled={isAdded}
-              className={cn("h-7 rounded-lg text-[9px] font-black gap-1.5 transition-all", isAdded ? "bg-slate-100 text-slate-300" : "bg-[#FFA000] text-white")}
+              className={cn("h-7 rounded-lg text-[9px] font-black gap-1.5 transition-all", isAdded ? "bg-slate-100 text-slate-300" : "bg-primary text-white")}
             >
               {isAdded ? <CheckCircle2 className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
               {isAdded ? (isRtl ? 'مضاف' : 'Added') : (isRtl ? 'إضافة' : 'Add')}
@@ -258,15 +255,15 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                   <div className="grid grid-cols-4 gap-4 w-full md:w-[400px]">
                      <div className="space-y-1 text-center">
                         <Label className="text-[8px] font-black uppercase text-slate-400">Unit</Label>
-                        <div className="h-9 flex items-center justify-center bg-slate-50 rounded-lg text-[10px] font-black border">{item.unitSymbol || '---'}</div>
+                        <div className="h-10 flex items-center justify-center bg-slate-50 rounded-xl text-[10px] font-black border">{item.unitSymbol || '---'}</div>
                      </div>
                      <div className="space-y-1 text-center">
                         <Label className="text-[8px] font-black uppercase text-slate-400">Qty</Label>
-                        <Input type="number" value={item.plannedQuantity} onChange={e => updateItem(originalIdx, 'plannedQuantity', Number(e.target.value))} className="h-9 rounded-lg text-center font-black text-xs" />
+                        <Input type="number" value={item.plannedQuantity} onChange={e => updateItem(originalIdx, 'plannedQuantity', Number(e.target.value))} className="h-10 rounded-xl text-center font-black text-sm border-2" />
                      </div>
                      <div className="space-y-1 text-center">
                         <Label className="text-[8px] font-black uppercase text-slate-400">Rate</Label>
-                        <Input type="number" value={item.estimatedRate} onChange={e => updateItem(originalIdx, 'estimatedRate', Number(e.target.value))} className="h-9 rounded-lg text-center font-black text-xs text-emerald-600" />
+                        <Input type="number" value={item.estimatedRate} onChange={e => updateItem(originalIdx, 'estimatedRate', Number(e.target.value))} className="h-10 rounded-xl text-center font-black text-sm text-emerald-600 border-2" />
                      </div>
                      <div className="flex items-end justify-center pb-0.5">
                         <Button variant="ghost" size="icon" onClick={() => removeItem(originalIdx)} className="h-8 w-8 text-rose-300 hover:text-rose-600"><Trash2 className="h-4 w-4" /></Button>
@@ -284,10 +281,10 @@ export function BOQTemplateForm({ template, onClose }: Props) {
   if (templateLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20" dir={dir}>
+    <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20 text-start" dir={dir}>
       
-      {/* Page Action Bar */}
-      <div className="flex items-center justify-between border-b pb-6 sticky top-0 bg-[#F8F9FA]/90 backdrop-blur-sm z-[50]">
+      {/* Action Bar */}
+      <div className="flex items-center justify-between border-b pb-6 sticky top-0 bg-[#F8F9FA]/90 backdrop-blur-md z-[50]">
         <div className="flex items-center gap-4">
           <Button variant="ghost" onClick={onClose} className="h-10 w-10 p-0 rounded-xl bg-white border shadow-sm">
             <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-180")} />
@@ -297,119 +294,117 @@ export function BOQTemplateForm({ template, onClose }: Props) {
              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{isRtl ? 'تصميم القالب المرجعي' : 'Design Master Template'}</p>
           </div>
         </div>
-        <div className="flex gap-3">
-           <Button onClick={handleSave} disabled={loading} className="h-11 px-8 rounded-xl bg-[#FFA000] text-white font-black shadow-lg shadow-orange-500/10 gap-2">
-              {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
-              {t('save')}
-           </Button>
-        </div>
+        <Button onClick={handleSave} disabled={loading} className="h-11 px-10 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 gap-2 border-b-4 border-orange-700 hover:scale-[1.02] transition-all">
+          {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
+          {t('save')}
+        </Button>
       </div>
 
-      {/* Main Grid: Stacked for better clarity */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         
-        {/* Left Column: Metadata & Budget */}
+        {/* Unified Sidebar Card (Merging Identity, Budget & Scope) */}
         <div className="lg:col-span-1 space-y-6">
-           <Card className="border-0 shadow-xl rounded-[2rem] bg-white ring-1 ring-black/5 overflow-hidden">
+           <Card className="border-0 shadow-2xl rounded-[2rem] bg-white ring-1 ring-black/5 overflow-hidden sticky top-28">
               <CardHeader className="bg-slate-50/50 border-b p-6">
-                 <CardTitle className="text-sm font-black flex items-center gap-2">
-                    <Target className="h-4 w-4 text-primary" />
-                    {isRtl ? 'تعريف القالب' : 'Template Identity'}
+                 <CardTitle className="text-sm font-black flex items-center gap-2 text-slate-800 uppercase tracking-widest">
+                    <Settings2 className="h-4 w-4 text-primary" />
+                    {isRtl ? 'إعدادات القالب' : 'Template Settings'}
                  </CardTitle>
               </CardHeader>
-              <CardContent className="p-6 space-y-5 text-start">
-                 <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">{t('name')}</Label>
-                    <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-11 rounded-xl border-2 font-bold" />
-                 </div>
-                 <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'كود المرجع' : 'Code'}</Label>
-                    <Input value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value.toUpperCase()})} className="h-11 rounded-xl border-2 font-mono font-black text-primary" />
-                 </div>
-                 <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border">
-                    <div className="space-y-0.5">
-                       <Label className="text-xs font-black">{isRtl ? 'قالب افتراضي' : 'Default'}</Label>
-                       <p className="text-[9px] text-slate-400 font-bold">Auto-select for activity</p>
+              <CardContent className="p-6 space-y-6">
+                 
+                 {/* Section 1: Basic Identity */}
+                 <div className="space-y-4">
+                    <div className="space-y-1.5">
+                       <Label className="text-[10px] font-black uppercase text-slate-400">{t('name')}</Label>
+                       <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-10 rounded-lg border-2 font-bold text-sm" />
                     </div>
-                    <Switch checked={formData.isDefault || false} onCheckedChange={v => setFormData({...formData, isDefault: v})} />
+                    <div className="grid grid-cols-2 gap-4">
+                       <div className="space-y-1.5">
+                          <Label className="text-[10px] font-black uppercase text-slate-400">Code</Label>
+                          <Input value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value.toUpperCase()})} className="h-10 rounded-lg border-2 font-mono font-black text-primary text-xs" />
+                       </div>
+                       <div className="flex items-center justify-between p-2 bg-slate-50 rounded-xl border">
+                          <Label className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'افتراضي' : 'Default'}</Label>
+                          <Switch checked={formData.isDefault || false} onCheckedChange={v => setFormData({...formData, isDefault: v})} />
+                       </div>
+                    </div>
                  </div>
-              </CardContent>
-           </Card>
 
-           {/* Budget Summary Card - Replaces Floating Bar */}
-           <Card className={cn(
-             "border-0 shadow-2xl rounded-[2.5rem] overflow-hidden transition-all",
-             isMathValid ? "bg-emerald-600 text-white" : "bg-indigo-900 text-white"
-           )}>
-              <CardContent className="p-8 space-y-6 text-center">
-                 <div className="space-y-1">
-                    <Label className="text-[10px] font-black uppercase opacity-60 tracking-widest">{isRtl ? 'الميزانية المستهدفة (Lumpsum)' : 'Target Budget'}</Label>
-                    <div className="flex items-center justify-center gap-3">
+                 <div className="h-[1px] bg-slate-100" />
+
+                 {/* Section 2: Budgeting (The "Green Box" reimagined) */}
+                 <div className={cn(
+                   "p-5 rounded-[1.5rem] transition-all space-y-4 relative overflow-hidden",
+                   isMathValid ? "bg-emerald-600 text-white" : "bg-indigo-900 text-white"
+                 )}>
+                    <div className="flex justify-between items-center relative z-10">
+                       <p className="text-[9px] font-black uppercase opacity-60 tracking-widest">{isRtl ? 'الميزانية المستهدفة' : 'Target Budget'}</p>
+                       <div className={cn(
+                         "flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[8px] font-black uppercase",
+                         isMathValid ? "bg-white/20" : "bg-rose-500/50"
+                       )}>
+                          {isMathValid ? <CheckCircle2 className="h-2.5 w-2.5" /> : <AlertTriangle className="h-2.5 w-2.5" />}
+                          {isMathValid ? (isRtl ? 'متزنة' : 'Balanced') : (isRtl ? 'فرق مالي' : 'Mismatch')}
+                       </div>
+                    </div>
+                    <div className="flex items-center gap-3 relative z-10">
                        <Input 
                          type="number" 
                          value={formData.baseAmount || 0} 
                          onChange={e => setFormData({...formData, baseAmount: Number(e.target.value)})} 
-                         className="h-14 w-32 rounded-xl border-0 bg-white/10 text-white font-black text-2xl text-center"
+                         className="h-10 w-24 rounded-lg border-0 bg-white/20 text-white font-black text-lg text-center"
                        />
-                       <span className="font-black text-xl opacity-40">KWD</span>
+                       <div className="flex-1 text-end">
+                          <p className="text-[8px] font-black uppercase opacity-60">{isRtl ? 'مجموع البنود' : 'Item Totals'}</p>
+                          <p className="text-xl font-black">{totalItemsValue.toLocaleString()} <span className="text-[10px] opacity-40">KWD</span></p>
+                       </div>
                     </div>
                  </div>
-                 
-                 <div className="h-[1px] bg-white/10 w-full" />
 
-                 <div className="space-y-1">
-                    <p className="text-[10px] font-black uppercase opacity-60">{isRtl ? 'مجموع البنود الحالية' : 'Current Aggregated'}</p>
-                    <p className="text-3xl font-black">{totalItemsValue.toLocaleString()} <span className="text-xs opacity-40">KWD</span></p>
-                 </div>
+                 <div className="h-[1px] bg-slate-100" />
 
-                 <div className={cn(
-                   "p-3 rounded-xl flex items-center justify-center gap-2 text-[10px] font-black uppercase",
-                   isMathValid ? "bg-white/20" : "bg-rose-500/50"
-                 )}>
-                    {isMathValid ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
-                    {isMathValid ? (isRtl ? 'المقايسة متزنة' : 'Balanced') : (isRtl ? 'فرق في الميزانية' : 'Mismatch')}
+                 {/* Section 3: Scope Classification */}
+                 <div className="space-y-4">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                       <Layers className="h-3 w-3" /> {isRtl ? 'تصنيف الظهور' : 'Classification'}
+                    </Label>
+                    <div className="grid grid-cols-1 gap-3">
+                       <div className="space-y-1">
+                          <Label className="text-[9px] font-bold text-slate-400">Activity</Label>
+                          <Select value={formData.activityTypeId} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: ''})}>
+                             <SelectTrigger className="h-9 rounded-lg font-bold text-xs bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
+                             <SelectContent className="rounded-xl">{activities?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold text-xs">{isRtl ? a.name : a.nameEn}</SelectItem>)}</SelectContent>
+                          </Select>
+                       </div>
+                       <div className="space-y-1">
+                          <Label className="text-[9px] font-bold text-slate-400">Service</Label>
+                          <Select value={formData.serviceId} disabled={!formData.activityTypeId} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: ''})}>
+                             <SelectTrigger className="h-9 rounded-lg font-bold text-xs bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
+                             <SelectContent className="rounded-xl">{services?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs">{isRtl ? s.name : s.nameEn}</SelectItem>)}</SelectContent>
+                          </Select>
+                       </div>
+                    </div>
                  </div>
               </CardContent>
            </Card>
-
-           <div className="space-y-4">
-              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                 <Layers className="h-3 w-3" /> {isRtl ? 'نطاق ظهور القالب' : 'Template Scope'}
-              </Label>
-              <div className="space-y-3 bg-white p-6 rounded-[2rem] shadow-sm border ring-1 ring-black/5">
-                 <div className="space-y-1.5">
-                    <Label className="text-[9px] font-bold text-slate-400">Activity</Label>
-                    <Select value={formData.activityTypeId} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: ''})}>
-                       <SelectTrigger className="h-10 rounded-xl font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                       <SelectContent>{activities?.map(a => <SelectItem key={a.id} value={a.id!}>{isRtl ? a.name : a.nameEn}</SelectItem>)}</SelectContent>
-                    </Select>
-                 </div>
-                 <div className="space-y-1.5">
-                    <Label className="text-[9px] font-bold text-slate-400">Service</Label>
-                    <Select value={formData.serviceId} disabled={!formData.activityTypeId} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: ''})}>
-                       <SelectTrigger className="h-10 rounded-xl font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                       <SelectContent>{services?.map(s => <SelectItem key={s.id} value={s.id!}>{isRtl ? s.name : s.nameEn}</SelectItem>)}</SelectContent>
-                    </Select>
-                 </div>
-              </div>
-           </div>
         </div>
 
-        {/* Right Column: BOQ Tree Construction */}
-        <div className="lg:col-span-2 space-y-6">
-           <div className="flex justify-between items-center bg-white p-6 rounded-[2.5rem] shadow-lg ring-1 ring-black/5">
+        {/* Main Content Area: BOQ Tree */}
+        <div className="lg:col-span-3 space-y-6">
+           <div className="flex justify-between items-center bg-white p-6 rounded-[2.5rem] shadow-xl ring-1 ring-black/5">
               <div className="text-start">
-                 <h3 className="text-lg font-black flex items-center gap-2">
-                    <GitBranch className="h-5 w-5 text-primary" />
-                    {isRtl ? 'هيكلة بنود المقايسة' : 'BOQ Construction'}
+                 <h3 className="text-xl font-black font-headline flex items-center gap-3">
+                    <GitBranch className="h-6 w-6 text-primary" />
+                    {isRtl ? 'هيكلة بنود المقايسة' : 'BOQ Structure'}
                  </h3>
-                 <p className="text-[10px] font-bold text-slate-400 uppercase">{isRtl ? 'بناء الهيكل من القاموس السيادي' : 'Building from registry'}</p>
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{isRtl ? 'بناء الهيكل من القاموس السيادي' : 'Building from sovereign registry'}</p>
               </div>
 
               <Dialog open={isPickerOpen} onOpenChange={setIsMasterPickerOpen}>
                  <DialogTrigger asChild>
                     <Button className="h-12 px-8 rounded-xl bg-slate-900 text-white font-black shadow-xl gap-2 hover:scale-[1.02] transition-all">
-                       <FolderTree className="h-5 w-5 text-[#FFA000]" />
+                       <FolderTree className="h-5 w-5 text-primary" />
                        {isRtl ? 'مستكشف القاموس' : 'Reference Explorer'}
                     </Button>
                  </DialogTrigger>
@@ -426,11 +421,14 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                     </div>
                     <div className="p-6 max-h-[60vh] overflow-y-auto scrollbar-hide bg-slate-50/20">
                        {masterLoading ? (
-                         <div className="py-20 text-center"><Loader2 className="animate-spin mx-auto text-primary" /></div>
+                         <div className="py-20 text-center flex flex-col items-center gap-4">
+                            <Loader2 className="animate-spin h-10 w-10 text-primary" />
+                            <p className="text-xs font-black text-slate-300 uppercase">Loading Master Tree...</p>
+                         </div>
                        ) : pickerTree.map(renderPickerNode)}
                     </div>
                     <DialogFooter className="p-6 bg-slate-50 border-t">
-                       <Button variant="outline" onClick={() => setIsMasterPickerOpen(false)} className="rounded-xl font-bold h-11">إغلاق</Button>
+                       <Button variant="outline" onClick={() => setIsMasterPickerOpen(false)} className="rounded-xl font-bold h-11 px-8">إغلاق</Button>
                     </DialogFooter>
                  </DialogContent>
               </Dialog>
@@ -438,9 +436,9 @@ export function BOQTemplateForm({ template, onClose }: Props) {
 
            <div className="space-y-6">
               {items.length === 0 ? (
-                <div className="py-40 text-center flex flex-col items-center gap-6 opacity-20 border-4 border-dashed rounded-[3rem] bg-white">
+                <div className="py-48 text-center flex flex-col items-center gap-6 opacity-20 border-4 border-dashed rounded-[3rem] bg-white">
                    <LayoutGrid className="h-20 w-20" />
-                   <p className="text-xl font-black uppercase tracking-[0.2em]">{isRtl ? 'المقايسة فارغة' : 'Empty BOQ'}</p>
+                   <p className="text-xl font-black uppercase tracking-[0.2em]">{isRtl ? 'المقايسة فارغة حالياً' : 'Empty BOQ Template'}</p>
                 </div>
               ) : (
                 boqTree.map(renderBOQTreeNode)
@@ -452,3 +450,4 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     </div>
   );
 }
+
