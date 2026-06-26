@@ -10,7 +10,7 @@ import {
   getDocs,
   writeBatch,
   orderBy,
-  getDoc
+  deleteDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { TemplateType, BaseTemplate, BOQTemplate, BOQTemplateItem } from '@/types/templates';
@@ -21,7 +21,7 @@ import { BOQReferenceNode } from '@/types/reference';
 
 /**
  * خدمة إدارة القوالب المركزية (Template Service).
- * تعمل حصراً مع مرجع boqReferenceNodes كمصدر وحيد للحقيقة.
+ * تم تنظيفها بالكامل لتعمل حصراً مع المرجع الشجري boqReferenceNodes.
  */
 export class TemplateService {
   constructor(
@@ -52,7 +52,7 @@ export class TemplateService {
   }
 
   /**
-   * حفظ قالب المقايسة مع كافة بنوده الديناميكية
+   * حفظ قالب المقايسة مع البنود من الشجرة الموحدة
    */
   async saveBOQTemplateWithItems(templateId: string | null, templateData: Partial<BOQTemplate>, items: BOQTemplateItem[], userId: string) {
     ensureActionPermission(this.userPermissions, 'ref:edit');
@@ -62,7 +62,6 @@ export class TemplateService {
     const finalTemplateId = templateId || doc(boqCollection).id;
     const templateRef = doc(boqCollection, finalTemplateId);
 
-    // 1. معالجة رأس القالب
     const headData = {
       ...templateData,
       companyId: this.companyId,
@@ -71,15 +70,11 @@ export class TemplateService {
       ...(templateId ? {} : { createdBy: userId, createdAt: serverTimestamp(), version: 1, isActive: true })
     };
     
-    // مسح مصفوفة العناصر من الرأس لضمان تخزينها فقط في المجموعة الفرعية
     delete (headData as any).items;
-
     batch.set(templateRef, headData, { merge: true });
 
-    // 2. تحديث البنود في المجموعة الفرعية (Flat Subcollection)
     const itemsCollection = collection(this.db, paths.boqTemplateItems(this.companyId, finalTemplateId));
     
-    // مسح البنود القديمة لضمان نظافة الهيكل المنسوخ
     if (templateId) {
       const oldItemsSnap = await getDocs(itemsCollection);
       oldItemsSnap.docs.forEach(d => batch.delete(d.ref));
@@ -103,7 +98,7 @@ export class TemplateService {
       return finalTemplateId;
     } catch (err: any) {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: templateRef.path, operation: templateId ? 'update' : 'create', requestResourceData: headData,
+        path: templateRef.path, operation: templateId ? 'update' : 'create'
       }));
       throw err;
     }

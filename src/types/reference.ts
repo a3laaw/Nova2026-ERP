@@ -1,5 +1,6 @@
 /**
  * @fileOverview تعريف واجهات البيانات المرجعية لنظام Nova ERP (الهيكل الموحد والقاموس السيادي).
+ * تم تنظيف الملف من كافة المراجع الهيكلية القديمة.
  */
 
 export interface BaseReference {
@@ -122,6 +123,7 @@ export interface Area extends BaseReference {
 
 /**
  * --- المرجع الشجري الديناميكي الموحد لبنود BOQ (Single Source of Truth) ---
+ * المصدر السيادي الوحيد لكافة بنود الأعمال في النظام.
  */
 export type BOQNodeRole = 'group' | 'work_item';
 
@@ -140,7 +142,7 @@ export interface BOQReferenceNode extends BaseReference {
   createdBy?: string;
   updatedBy?: string;
 
-  // الربط بالأنشطة والخدمات (للعقد الجذرية)
+  // الربط التشغيلي (للجذور والطبقات العليا)
   allowedActivityTypeIds?: string[];
   allowedActivityTypeNames?: string[];
   allowedServiceIds?: string[];

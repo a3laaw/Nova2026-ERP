@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  Database, Building2, MapPin, Workflow, Settings2,
+  Database, Building2, MapPin, Workflow, 
   ListTree, GitBranch
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
@@ -12,12 +12,10 @@ import GeoPage from './geo/page';
 import TechnicalPathsPage from './technical-paths/page';
 import GeneralListsPage from './general-lists/page';
 import BOQNodesPage from './boq-nodes/page';
-import { SeedTool } from './seed-tool';
 
 /**
- * محطة الإعدادات الفنية (Technical Setup Hub)
- * تم توحيد إدارة القاموس الهندسي في "شجرة الأعمال" (BOQNodesPage).
- * تم حذف التبويب القديم لضمان نظافة المعمارية.
+ * محطة الإعدادات الفنية (Technical Setup Hub).
+ * تم تنظيف التبويبات المكررة وتثبيت "شجرة الأعمال" كمصدر وحيد لإدارة القاموس الهندسي.
  */
 export default function TechnicalSetupPage() {
   const { t, lang, dir } = useLanguage();

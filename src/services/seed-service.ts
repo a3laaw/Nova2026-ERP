@@ -18,8 +18,8 @@ import { ReferenceListService } from './reference-list-service';
 import { BOQReferenceNode } from '@/types/reference';
 
 /**
- * خدمة تهيئة النظام (Seed Service).
- * تقوم بضخ هيكل واقعي في boqReferenceNodes يربط النشاط والخدمة بالبنود التنفيذية.
+ * خدمة تهيئة النظام الموحدة (Consolidated Seed Service).
+ * تقوم بضخ البيانات المرجعية حصراً في الهياكل الجديدة boqReferenceNodes.
  */
 export class SeedService {
   constructor(private db: Firestore, private companyId: string) {}
@@ -77,7 +77,7 @@ export class SeedService {
       }
     }
 
-    // 3. الهيكل الفني الرباعي وتخزين مراجع الأنشطة والخدمات
+    // 3. الهيكل الفني الرباعي (المسارات)
     const activityRefs: Record<string, string> = {};
     const serviceRefs: Record<string, string> = {};
 
@@ -142,7 +142,7 @@ export class SeedService {
       }
     }
 
-    // 4. ضخ القاموس الهندسي الشجري الموحد (Unified Tree) - الفهم النهائي
+    // 4. ضخ القاموس الهندسي الشجري الموحد (The Only BOQ Reference)
     const rootCivilRef = doc(collection(this.db, paths.boqReferenceNodes(this.companyId)));
     batch.set(rootCivilRef, {
       code: 'CONSTRUCTION_ROOT',
@@ -163,7 +163,6 @@ export class SeedService {
       createdAt: serverTimestamp()
     } as BOQReferenceNode);
 
-    // إضافة بند تنفيذي واقعي (أعمال الحفريات)
     const excavationRef = doc(collection(this.db, paths.boqReferenceNodes(this.companyId)));
     batch.set(excavationRef, {
       code: 'EXC_STR_01',
@@ -178,21 +177,19 @@ export class SeedService {
       unitName: 'متر مكعب',
       unitSymbol: 'CUM',
       estimatedRate: 2.5,
-      allowedItemCategoryIds: ['CIVIL_MAT'], // ربط بتصنيف مدني
+      allowedItemCategoryIds: ['CIVIL_MAT'],
       order: 1,
       companyId: this.companyId,
       createdAt: serverTimestamp()
     } as BOQReferenceNode);
 
-    // تنفيذ الـ Batch (الهياكل والقواميس الموحدة)
     await batch.commit().catch(async (err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: 'batch_seed_final_alignment', operation: 'write'
+        path: 'seed_final_purge', operation: 'write'
       }));
       throw err;
     });
 
-    // 5. ضخ القوائم المرجعية الموحدة (عبر الخدمة المخصصة)
     const refListService = new ReferenceListService(this.db, this.companyId);
     await refListService.seedAllLists('SYSTEM_ADMIN');
   }
