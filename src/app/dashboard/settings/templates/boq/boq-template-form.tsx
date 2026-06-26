@@ -70,7 +70,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     }
   );
 
-  // 1. جلب الأنشطة والخدمات للتصنيف
   const actQuery = useMemo(() => companyId && db ? query(collection(db, paths.activityTypes(companyId)), orderBy('order')) : null, [db, companyId]);
   const srvQuery = useMemo(() => companyId && db && formData.activityTypeId ? query(collection(db, paths.services(companyId, formData.activityTypeId)), orderBy('order')) : null, [db, companyId, formData.activityTypeId]);
   const subQuery = useMemo(() => companyId && db && formData.activityTypeId && formData.serviceId ? query(collection(db, paths.subServices(companyId, formData.activityTypeId, formData.serviceId)), orderBy('order')) : null, [db, companyId, formData.activityTypeId, formData.serviceId]);
@@ -79,7 +78,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
   const { data: services } = useCollection<Service>(srvQuery);
   const { data: subServices } = useCollection<SubService>(subQuery);
 
-  // 2. جلب كافة العقد من المرجع الموحد boqReferenceNodes
   const masterNodesQuery = useMemo(() => companyId && db ? query(collection(db, paths.boqReferenceNodes(companyId)), orderBy('depth')) : null, [db, companyId]);
   const { data: rawMasterNodes, loading: masterLoading } = useCollection<BOQReferenceNode>(masterNodesQuery);
 
@@ -94,10 +92,8 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     }
   }, [template, service]);
 
-  // بناء شجرة المقايسة الحالية للعرض
   const boqTree = useMemo(() => transformToBOQTree(items), [items]);
 
-  // بناء شجرة مستكشف القاموس (Picker Tree)
   const pickerTree = useMemo(() => {
     if (!rawMasterNodes) return [];
     const buildTree = (parentId: string | null): any[] => {
@@ -150,7 +146,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
       return;
     }
 
-    // استخراج مسميات الأسلاف للعرض السريع (Hierarchy Path)
     const ancestorTitles = node.ancestorIds?.map(id => {
        const parent = rawMasterNodes?.find(m => m.id === id);
        return parent?.title || 'Unknown';
@@ -168,7 +163,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
       unitTypeId: node.unitTypeId,
       unitName: node.unitName,
       unitSymbol: node.unitSymbol,
-      technicalStageId: node.technicalStageId,
+      technicalStageId: node.defaultTechnicalStageId, // استخدام الحقل المعياري الجديد
       billingTriggerGroup: node.billingTriggerGroup,
       allowedItemCategoryIds: node.allowedItemCategoryIds,
       plannedQuantity: 1,
@@ -259,7 +254,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                   <div className="grid grid-cols-4 gap-3 w-full lg:w-[400px]">
                      <div className="space-y-1 text-center">
                         <Label className="text-[8px] font-black uppercase text-slate-400">Unit</Label>
-                        <div className="h-9 flex items-center justify-center bg-slate-50 rounded-lg text-[10px] font-black border-2">{item.unitSymbol || item.unit}</div>
+                        <div className="h-9 flex items-center justify-center bg-slate-50 rounded-lg text-[10px] font-black border-2">{item.unitSymbol || item.unitName || '---'}</div>
                      </div>
                      <div className="space-y-1 text-center">
                         <Label className="text-[8px] font-black uppercase text-slate-400">Planned</Label>
@@ -282,6 +277,8 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     );
   };
 
+  if (templateLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20 text-start" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4">
@@ -301,7 +298,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
       </div>
 
       <div className="grid grid-cols-1 gap-6">
-        {/* Header Config Card */}
         <Card className="border-0 shadow-lg rounded-[1.5rem] bg-white overflow-hidden ring-1 ring-black/5">
            <CardContent className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -325,7 +321,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
            </CardContent>
         </Card>
 
-        {/* Dynamic Items Builder */}
         <div className="space-y-6">
            <div className="flex justify-between items-center px-4">
               <div className="text-start">
@@ -375,7 +370,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
               </Dialog>
            </div>
 
-           {/* BOQ Content (Hierarchical View) */}
            <Card className="border-0 shadow-xl rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/5 min-h-[400px]">
               <CardContent className="p-8">
                  {items.length === 0 ? (
@@ -392,7 +386,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
            </Card>
         </div>
 
-        {/* Footer Budget Bar */}
         <div className={cn(
           "sticky bottom-6 p-6 rounded-[2rem] border-4 border-dashed flex flex-col md:flex-row items-center justify-between shadow-2xl backdrop-blur-md transition-all duration-500 z-50",
           isMathValid ? "bg-emerald-50/90 border-emerald-200" : "bg-rose-50/90 border-rose-200"

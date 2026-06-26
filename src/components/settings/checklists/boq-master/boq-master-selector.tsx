@@ -28,36 +28,34 @@ import { Badge } from '@/components/ui/badge';
 interface Props {
   onSelect: (node: BOQReferenceNode) => void;
   className?: string;
-  activityTypeId?: string; // لفلترة البنود حسب النشاط (اختياري)
+  activityTypeId?: string; 
+  serviceId?: string; // فلترة بالخدمة للربط المباشر
 }
 
 /**
- * مكون منتقي بنود BOQ الموحد (Unified Reference Picker).
- * تم تحديثه ليعتمد حصراً على المرجع الشجري الموحد boqReferenceNodes.
+ * مكون منتقي بنود BOQ الشجري (Hierarchical Reference Explorer).
+ * يلتزم بالهيكل الموحد الجديد boqReferenceNodes.
  */
-export function BOQMasterSelector({ onSelect, className, activityTypeId }: Props) {
+export function BOQMasterSelector({ onSelect, className, activityTypeId, serviceId }: Props) {
   const { globalUser } = useAuthContext();
   const { lang, dir } = useLanguage();
   const db = useFirestore();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
-  // مستويات الاختيار (تصفية ديناميكية هرمية)
   const [selectedParentId, setSelectedParentId] = useState<string>("");
 
-  // 1. جلب الجذور (Level 0) مع فلترة النشاط إذا وجدت
+  // 1. جلب الجذور (Level 0)
   const rootsQuery = useMemo(() => {
     if (!companyId || !db) return null;
-    let q = query(
+    return query(
       collection(db, paths.boqReferenceNodes(companyId)),
       where('parentId', '==', null),
       orderBy('order')
     );
-    // ملاحظة: الفلترة حسب النشاط قد تتطلب فهرس مركب، لذا نكتفي بالفلترة البرمجية إذا لزم الأمر
-    return q;
   }, [db, companyId]);
 
-  // 2. جلب الأبناء للعقدة المختارة
+  // 2. جلب الأبناء
   const childrenQuery = useMemo(() => 
     companyId && db && selectedParentId ? query(
       collection(db, paths.boqReferenceNodes(companyId)),
@@ -68,29 +66,29 @@ export function BOQMasterSelector({ onSelect, className, activityTypeId }: Props
   const { data: roots, loading: rootsLoading } = useCollection<BOQReferenceNode>(rootsQuery);
   const { data: rawChildren, loading: childrenLoading } = useCollection<BOQReferenceNode>(childrenQuery);
 
-  // فلترة الجذور حسب النشاط (In-memory filter لتجنب تعقيد الفهارس في المرحلة الحالية)
+  // فلترة الجذور حسب النشاط أو الخدمة (Sovereign Context)
   const filteredRoots = useMemo(() => {
-    if (!roots || !activityTypeId) return roots;
-    return roots.filter(r => !r.activityTypeIds || r.activityTypeIds.includes(activityTypeId));
-  }, [roots, activityTypeId]);
+    if (!roots) return [];
+    return roots.filter(r => {
+      const matchAct = !activityTypeId || (r.allowedActivityTypeIds && r.allowedActivityTypeIds.includes(activityTypeId));
+      const matchSrv = !serviceId || (r.allowedServiceIds && r.allowedServiceIds.includes(serviceId));
+      return matchAct || matchSrv;
+    });
+  }, [roots, activityTypeId, serviceId]);
 
   return (
     <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-4 items-end", className)}>
       
-      {/* اختيار القسم (الجذور) */}
       <div className="space-y-2 text-start relative">
         <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1.5">
           <LayoutGrid className="h-3 w-3" /> {isRtl ? 'القسم الرئيسي' : 'Root Section'}
         </Label>
-        <Select 
-          value={selectedParentId} 
-          onValueChange={setSelectedParentId}
-        >
+        <Select value={selectedParentId} onValueChange={setSelectedParentId}>
           <SelectTrigger className="h-11 rounded-xl border-2 font-bold bg-slate-50/50">
             <SelectValue placeholder={rootsLoading ? "..." : "---"} />
           </SelectTrigger>
           <SelectContent className="rounded-xl border-2 shadow-2xl">
-            {filteredRoots?.map(s => (
+            {filteredRoots.map(s => (
               <SelectItem key={s.id} value={s.id!} className="font-bold text-xs py-3">
                 {s.title}
               </SelectItem>
@@ -99,7 +97,6 @@ export function BOQMasterSelector({ onSelect, className, activityTypeId }: Props
         </Select>
       </div>
 
-      {/* اختيار البند النهائي أو المجموعة الفرعية */}
       <div className="space-y-2 text-start relative">
         <Label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1.5">
           <ListChecks className="h-3 w-3 text-primary" /> {isRtl ? 'البنود المتاحة' : 'Available Items'}
@@ -109,12 +106,8 @@ export function BOQMasterSelector({ onSelect, className, activityTypeId }: Props
           onValueChange={(id) => {
             const node = rawChildren?.find(i => i.id === id);
             if (node) {
-               if (node.isExecutable) {
-                  onSelect(node);
-               } else {
-                  // إذا كانت مجموعة، ننتقل للتعمق فيها
-                  setSelectedParentId(node.id!);
-               }
+               if (node.isExecutable) onSelect(node);
+               else setSelectedParentId(node.id!);
             }
           }}
         >
@@ -131,11 +124,8 @@ export function BOQMasterSelector({ onSelect, className, activityTypeId }: Props
                          {node.isExecutable ? 'ITEM' : 'GROUP'}
                       </Badge>
                    </div>
-                   {node.isExecutable && (
-                     <div className="flex items-center gap-2">
-                        <span className="text-[9px] text-slate-400 font-bold uppercase">{node.unitName} ({node.unitSymbol})</span>
-                        <span className="text-[8px] text-primary/60 font-black">Ref: {node.code}</span>
-                     </div>
+                   {node.isExecutable && node.unitSymbol && (
+                     <span className="text-[9px] text-slate-400 font-bold uppercase">{node.unitName} ({node.unitSymbol})</span>
                    )}
                 </div>
               </SelectItem>

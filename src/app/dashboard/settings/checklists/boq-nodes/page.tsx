@@ -9,17 +9,18 @@ import {
   Trash2, Edit3, ShieldCheck, Folder,
   Hammer, ChevronRight, ChevronDown,
   Info, Save, ListChecks, Settings2,
-  X, AlertTriangle, Workflow, Checkbox as CheckboxIcon
+  X, AlertTriangle, Workflow, Checkbox as CheckboxIcon,
+  Package, Boxes
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, collectionGroup, where } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { BOQReferenceService } from '@/services/boq-reference-service';
 import { TechnicalPathService } from '@/services/technical-path-service';
-import { BOQReferenceNode, UnitType, TechnicalStage, ActivityType } from '@/types/reference';
+import { BOQReferenceNode, UnitType, TechnicalStage, ActivityType, Service, ItemCategory } from '@/types/reference';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -71,9 +72,21 @@ export default function BOQNodesPage() {
     companyId && db ? query(collection(db, paths.activityTypes(companyId)), orderBy('order')) : null, 
   [db, companyId]);
 
+  const itemCatsQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.itemCategories(companyId)), orderBy('order')) : null, 
+  [db, companyId]);
+
   const { data: rawNodes, loading } = useCollection<BOQReferenceNode>(nodesQuery);
   const { data: unitTypes } = useCollection<UnitType>(unitTypesQuery);
   const { data: activities } = useCollection<ActivityType>(activitiesQuery);
+  const { data: itemCategories } = useCollection<ItemCategory>(itemCatsQuery);
+
+  // جلب الخدمات للربط
+  const servicesQuery = useMemo(() => {
+    if (!companyId || !db) return null;
+    return query(collectionGroup(db, 'services'), where('companyId', '==', companyId), orderBy('order'));
+  }, [db, companyId]);
+  const { data: allServices } = useCollection<Service>(servicesQuery);
 
   const service = useMemo(() => 
     db && companyId ? new BOQReferenceService(db, companyId, permissions) : null, 
@@ -103,8 +116,8 @@ export default function BOQNodesPage() {
   const handleSave = async () => {
     if (!service || !user || !editingNode?.title) return;
     
-    if (!editingNode.parentId && !editingNode.code) {
-      toast({ variant: "destructive", title: isRtl ? "الكود مطلوب للقسم الرئيسي" : "Code required for root section" });
+    if (editingNode.parentId === null && (!editingNode.allowedActivityTypeIds || editingNode.allowedActivityTypeIds.length === 0)) {
+      toast({ variant: "destructive", title: isRtl ? "يجب ربط القسم بنشاط واحد على الأقل" : "Root node must be linked to at least one activity" });
       return;
     }
 
@@ -129,8 +142,6 @@ export default function BOQNodesPage() {
       await service.deleteBOQReferenceNode(deletingId);
       toast({ title: t('deleted') });
       setDeletingId(null);
-    } catch (e: any) {
-      toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
       setLoadingAction(null);
     }
@@ -140,27 +151,27 @@ export default function BOQNodesPage() {
     setExpandedNodes(prev => prev.includes(id) ? prev.filter(n => n !== id) : [...prev, id]);
   };
 
-  const toggleActivity = (actId: string, actName: string) => {
+  const toggleMultiSelect = (fieldId: 'allowedActivityTypeIds' | 'allowedServiceIds' | 'allowedItemCategoryIds', fieldName: 'allowedActivityTypeNames' | 'allowedServiceNames', id: string, name: string) => {
     if (!editingNode) return;
-    const currentIds = editingNode.activityTypeIds || [];
-    const currentNames = editingNode.activityTypeNames || [];
+    const currentIds = (editingNode as any)[fieldId] || [];
+    const currentNames = (editingNode as any)[fieldName] || [];
     
     let newIds, newNames;
-    if (currentIds.includes(actId)) {
-      newIds = currentIds.filter(id => id !== actId);
-      newNames = currentNames.filter(name => name !== actName);
+    if (currentIds.includes(id)) {
+      newIds = currentIds.filter((x: string) => x !== id);
+      newNames = currentNames.filter((x: string) => x !== name);
     } else {
-      newIds = [...currentIds, actId];
-      newNames = [...currentNames, actName];
+      newIds = [...currentIds, id];
+      newNames = [...currentNames, name];
     }
     
-    setEditingNode({ ...editingNode, activityTypeIds: newIds, activityTypeNames: newNames });
+    setEditingNode({ ...editingNode, [fieldId]: newIds, [fieldName]: newNames });
   };
 
   const renderNode = (node: any, pathPrefix: string) => {
     const isExpanded = expandedNodes.includes(node.id);
     const hasChildren = node.childrenCount > 0;
-    const isExecutable = node.isExecutable || node.nodeRole === 'work_item';
+    const isExecutable = node.isExecutable;
 
     return (
       <div key={node.id} className="space-y-1">
@@ -173,9 +184,7 @@ export default function BOQNodesPage() {
         >
           <div className="flex items-center gap-3">
              <div onClick={() => toggleNode(node.id)} className="cursor-pointer text-slate-400 hover:text-primary">
-                {hasChildren ? (
-                   isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className={cn("h-4 w-4", isRtl && "rotate-180")} />
-                ) : <div className="w-4" />}
+                {hasChildren ? (isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className={cn("h-4 w-4", isRtl && "rotate-180")} />) : <div className="w-4" />}
              </div>
              <div className={cn(
                "h-8 w-8 rounded-lg flex items-center justify-center shadow-sm",
@@ -189,16 +198,14 @@ export default function BOQNodesPage() {
                    <span className="text-xs font-bold text-slate-800">{node.title}</span>
                    {isExecutable && <Badge className="bg-emerald-100 text-emerald-700 text-[7px] font-black h-4 px-1.5 border-0">ITEM</Badge>}
                 </div>
-                <div className="flex items-center gap-2 mt-0.5">
+                <div className="flex flex-wrap gap-1 mt-1">
                    {isExecutable && node.unitSymbol && (
-                     <span className="text-[9px] text-slate-400 font-bold uppercase">{node.unitName} ({node.unitSymbol})</span>
+                     <span className="text-[8px] text-slate-400 font-bold uppercase">{node.unitName} ({node.unitSymbol})</span>
                    )}
-                   {node.depth === 0 && node.activityTypeNames?.length > 0 && (
-                     <div className="flex gap-1">
-                        {node.activityTypeNames.map((name: string, i: number) => (
-                          <Badge key={i} variant="secondary" className="h-3 px-1 text-[7px] font-black uppercase bg-blue-50 text-blue-600 border-0">{name}</Badge>
-                        ))}
-                     </div>
+                   {node.depth === 0 && node.allowedServiceNames?.length > 0 && (
+                      node.allowedServiceNames.map((name: string, i: number) => (
+                        <Badge key={i} variant="secondary" className="h-3 px-1 text-[7px] font-black uppercase bg-blue-50 text-blue-600 border-0">{name}</Badge>
+                      ))
                    )}
                 </div>
              </div>
@@ -248,13 +255,13 @@ export default function BOQNodesPage() {
         <div>
           <h2 className="text-2xl font-black font-headline flex items-center gap-3 text-slate-900">
             <GitBranch className="h-7 w-7 text-primary" />
-            {isRtl ? 'القاموس الهندسي الشجري' : 'Dynamic BOQ Master'}
+            {isRtl ? 'شجرة بنود الأعمال المرجعية' : 'Sovereign BOQ Tree'}
           </h2>
-          <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">{isRtl ? 'بناء وتخصيص هيكل بنود الأعمال السيادي' : 'Build & customize sovereign work item structure'}</p>
+          <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">Master WBS Reference Management</p>
         </div>
         {canCreate && (
            <Button 
-             onClick={() => setEditingNode({ parentId: null, nodeRole: 'group', isActive: true, isExecutable: false, order: treeData.length, activityTypeIds: [], activityTypeNames: [] })}
+             onClick={() => setEditingNode({ parentId: null, nodeRole: 'group', isActive: true, isExecutable: false, order: treeData.length, allowedActivityTypeIds: [], allowedActivityTypeNames: [], allowedServiceIds: [], allowedServiceNames: [] })}
              className="h-12 px-8 rounded-xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-2"
            >
              <Plus className="h-5 w-5" /> {isRtl ? 'إضافة قسم رئيسي' : 'Add Root Node'}
@@ -272,14 +279,6 @@ export default function BOQNodesPage() {
                  value={searchTerm}
                  onChange={e => setSearchTerm(e.target.value)}
                />
-            </div>
-            <div className="flex items-center gap-3">
-               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-500 font-black text-[9px] uppercase">
-                  <Folder className="h-3 w-3" /> {isRtl ? 'مجلدات' : 'Groups'}
-               </div>
-               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 font-black text-[9px] uppercase border border-emerald-100">
-                  <Hammer className="h-3 w-3" /> {isRtl ? 'بنود تنفيذية' : 'Items'}
-               </div>
             </div>
          </CardHeader>
          <CardContent className="p-6 space-y-2 max-h-[70vh] overflow-y-auto scrollbar-hide">
@@ -300,76 +299,88 @@ export default function BOQNodesPage() {
       </Card>
 
       <Dialog open={!!editingNode} onOpenChange={open => !open && setEditingNode(null)}>
-         <DialogContent className="rounded-xl p-0 overflow-hidden max-w-2xl border-0 shadow-3xl bg-white" dir={dir}>
+         <DialogContent className="rounded-xl p-0 overflow-hidden max-w-3xl border-0 shadow-3xl bg-white" dir={dir}>
             <div className="bg-slate-50 p-6 text-slate-900 text-start border-b">
                <DialogTitle className="text-xl font-black font-headline flex items-center gap-3">
                   <Settings2 className="h-6 w-6 text-primary" />
-                  {editingNode?.id ? (isRtl ? 'تعديل بيانات العقدة' : 'Edit Node Data') : (isRtl ? 'إضافة فرع جديد للهيكل' : 'Add New Node')}
+                  {editingNode?.id ? (isRtl ? 'تعديل بيانات العقدة المرجعية' : 'Edit Reference Node') : (isRtl ? 'إضافة فرع جديد للهيكل' : 'Add New Node')}
                </DialogTitle>
-               <p className="text-slate-400 font-bold text-[10px] mt-1 uppercase tracking-widest">{isRtl ? 'تخصيص الخصائص الهندسية والتنفيذية' : 'Configure engineering & execution props'}</p>
             </div>
 
-            <div className="p-6 space-y-5 text-start bg-white max-h-[65vh] overflow-y-auto scrollbar-hide">
+            <div className="p-8 space-y-6 text-start bg-white max-h-[70vh] overflow-y-auto scrollbar-hide">
                
-               {/* قسم الأنشطة المرتبطة (يظهر فقط للجذور) */}
+               {/* الربط التشغيلي (للجذور) */}
                {editingNode && editingNode.parentId === null && (
-                 <div className="p-5 rounded-2xl bg-blue-50/50 border-2 border-blue-100 space-y-4 animate-in fade-in duration-300">
-                    <h4 className="font-black text-[10px] text-blue-600 uppercase tracking-widest flex items-center gap-2">
-                       <ShieldCheck className="h-3.5 w-3.5" /> {isRtl ? 'الأنشطة المتاح بها هذا القسم' : 'Available Activities'}
-                    </h4>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                       {activities?.map(act => (
-                         <div 
-                           key={act.id} 
-                           onClick={() => toggleActivity(act.id!, isRtl ? act.name : (act.nameEn || act.name))}
-                           className={cn(
-                             "p-2.5 rounded-xl border-2 transition-all cursor-pointer flex items-center gap-2 group",
-                             editingNode?.activityTypeIds?.includes(act.id!) 
-                               ? "bg-white border-blue-500 shadow-md" 
-                               : "bg-transparent border-slate-100 hover:border-blue-200"
-                           )}
-                         >
-                            <Checkbox 
-                              checked={editingNode?.activityTypeIds?.includes(act.id!) || false} 
-                              className="h-4 w-4 pointer-events-none" 
-                            />
-                            <span className={cn(
-                              "text-[10px] font-black uppercase truncate",
-                              editingNode?.activityTypeIds?.includes(act.id!) ? "text-blue-600" : "text-slate-400"
-                            )}>{isRtl ? act.name : (act.nameEn || act.name)}</span>
-                         </div>
-                       ))}
+                 <div className="space-y-6 animate-in fade-in duration-300">
+                    {/* اختيار الأنشطة */}
+                    <div className="p-5 rounded-2xl bg-blue-50/50 border-2 border-blue-100 space-y-4">
+                       <h4 className="font-black text-[10px] text-blue-600 uppercase tracking-widest flex items-center gap-2">
+                          <ShieldCheck className="h-3.5 w-3.5" /> {isRtl ? 'الأنشطة المتاح بها هذا القسم' : 'Allowed Activities'}
+                       </h4>
+                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          {activities?.map(act => (
+                            <div 
+                              key={act.id} 
+                              onClick={() => toggleMultiSelect('allowedActivityTypeIds', 'allowedActivityTypeNames', act.id!, isRtl ? act.name : (act.nameEn || act.name))}
+                              className={cn(
+                                "p-2.5 rounded-xl border-2 transition-all cursor-pointer flex items-center gap-2 group",
+                                editingNode?.allowedActivityTypeIds?.includes(act.id!) 
+                                  ? "bg-white border-blue-500 shadow-md" 
+                                  : "bg-transparent border-slate-100 hover:border-blue-200"
+                              )}
+                            >
+                               <Checkbox checked={editingNode?.allowedActivityTypeIds?.includes(act.id!) || false} className="h-4 w-4 pointer-events-none" />
+                               <span className={cn("text-[10px] font-black uppercase truncate", editingNode?.allowedActivityTypeIds?.includes(act.id!) ? "text-blue-600" : "text-slate-400")}>{isRtl ? act.name : (act.nameEn || act.name)}</span>
+                            </div>
+                          ))}
+                       </div>
                     </div>
-                    {editingNode?.activityTypeIds?.length === 0 && (
-                      <p className="text-[9px] text-rose-500 font-bold italic flex items-center gap-1">
-                        <AlertTriangle className="h-3 w-3" /> {isRtl ? 'يجب اختيار نشاط واحد على الأقل للقسم الرئيسي.' : 'At least one activity must be linked to root section.'}
-                      </p>
-                    )}
+
+                    {/* اختيار الخدمات */}
+                    <div className="p-5 rounded-2xl bg-indigo-50/50 border-2 border-indigo-100 space-y-4">
+                       <h4 className="font-black text-[10px] text-indigo-600 uppercase tracking-widest flex items-center gap-2">
+                          <Workflow className="h-3.5 w-3.5" /> {isRtl ? 'الخدمات التشغيلية المرتبطة' : 'Allowed Services'}
+                       </h4>
+                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {allServices?.map(srv => (
+                            <div 
+                              key={srv.id} 
+                              onClick={() => toggleMultiSelect('allowedServiceIds', 'allowedServiceNames', srv.id!, isRtl ? srv.name : (srv.nameEn || srv.name))}
+                              className={cn(
+                                "p-2.5 rounded-xl border-2 transition-all cursor-pointer flex items-center gap-2 group",
+                                editingNode?.allowedServiceIds?.includes(srv.id!) 
+                                  ? "bg-white border-indigo-500 shadow-md" 
+                                  : "bg-transparent border-slate-100 hover:border-indigo-200"
+                              )}
+                            >
+                               <Checkbox checked={editingNode?.allowedServiceIds?.includes(srv.id!) || false} className="h-4 w-4 pointer-events-none" />
+                               <span className={cn("text-[10px] font-black uppercase truncate", editingNode?.allowedServiceIds?.includes(srv.id!) ? "text-indigo-600" : "text-slate-400")}>{isRtl ? srv.name : (srv.nameEn || srv.name)}</span>
+                            </div>
+                          ))}
+                       </div>
+                    </div>
                  </div>
                )}
 
-               {editingNode && editingNode.parentId === null && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-1.5">
-                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('code')}</Label>
-                       <Input 
-                         value={editingNode?.code || ''} 
-                         onChange={e => setEditingNode({...editingNode!, code: e.target.value.toUpperCase().replace(/\s+/g, '_')})} 
-                         className="h-11 rounded-xl border-2 font-mono font-black text-primary" 
-                         placeholder="E.G. CIVIL_01"
-                       />
-                    </div>
-                    <div className="space-y-1.5">
-                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'ترتيب الظهور' : 'Order'}</Label>
-                       <Input 
-                         type="number" 
-                         value={editingNode?.order || 0} 
-                         onChange={e => setEditingNode({...editingNode!, order: Number(e.target.value)})} 
-                         className="h-11 rounded-xl border-2 font-bold" 
-                       />
-                    </div>
-                  </div>
-               )}
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('code')}</Label>
+                    <Input 
+                      value={editingNode?.code || ''} 
+                      onChange={e => setEditingNode({...editingNode!, code: e.target.value.toUpperCase().replace(/\s+/g, '_')})} 
+                      className="h-11 rounded-xl border-2 font-mono font-black text-primary" 
+                    />
+                 </div>
+                 <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'ترتيب الظهور' : 'Display Order'}</Label>
+                    <Input 
+                      type="number" 
+                      value={editingNode?.order || 0} 
+                      onChange={e => setEditingNode({...editingNode!, order: Number(e.target.value)})} 
+                      className="h-11 rounded-xl border-2 font-bold" 
+                    />
+                 </div>
+               </div>
 
                <div className="space-y-1.5">
                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'المسمى الهندسي' : 'Node Title'}</Label>
@@ -389,7 +400,6 @@ export default function BOQNodesPage() {
                           onCheckedChange={v => setEditingNode({...editingNode!, isExecutable: v, nodeRole: v ? 'work_item' : 'group'})} 
                         />
                      </div>
-                     <p className="text-[8px] text-slate-400 font-bold leading-tight">{isRtl ? 'تفعيل هذا الخيار يحول العقدة إلى بند صرف فعلي يحمل وحدات قياس ومراحل فنية.' : 'Enabling this makes the node a billable item with units and stages.'}</p>
                   </div>
                   <div className="flex items-center justify-between border-s md:ps-6">
                      <Label className="font-black text-xs text-slate-700">{t('isActive')}</Label>
@@ -398,8 +408,33 @@ export default function BOQNodesPage() {
                </div>
 
                {editingNode?.isExecutable && (
-                 <div className="space-y-5 animate-in slide-in-from-top-4 duration-500">
+                 <div className="space-y-6 animate-in slide-in-from-top-4 duration-500">
                     <div className="h-[1px] bg-slate-100 w-full" />
+                    
+                    {/* الربط بالمخازن */}
+                    <div className="p-5 rounded-2xl bg-emerald-50/30 border-2 border-emerald-100 space-y-4">
+                       <h4 className="font-black text-[10px] text-emerald-600 uppercase tracking-widest flex items-center gap-2">
+                          <Package className="h-3.5 w-3.5" /> {isRtl ? 'تصنيفات الأصناف المخزنية المتاحة' : 'Linked Item Categories'}
+                       </h4>
+                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          {itemCategories?.map(cat => (
+                            <div 
+                              key={cat.id} 
+                              onClick={() => toggleMultiSelect('allowedItemCategoryIds', 'name' as any, cat.id!, cat.name)}
+                              className={cn(
+                                "p-2 rounded-xl border-2 transition-all cursor-pointer flex items-center gap-2",
+                                editingNode?.allowedItemCategoryIds?.includes(cat.id!) 
+                                  ? "bg-white border-emerald-500 shadow-md" 
+                                  : "bg-transparent border-slate-100 hover:border-emerald-200"
+                              )}
+                            >
+                               <Checkbox checked={editingNode?.allowedItemCategoryIds?.includes(cat.id!) || false} className="h-3 w-3 pointer-events-none" />
+                               <span className={cn("text-[9px] font-black uppercase truncate", editingNode?.allowedItemCategoryIds?.includes(cat.id!) ? "text-emerald-600" : "text-slate-400")}>{cat.name}</span>
+                            </div>
+                          ))}
+                       </div>
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                        <div className="space-y-1.5">
                           <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'وحدة القياس المعتمدة' : 'Standard Unit'}</Label>
@@ -417,13 +452,13 @@ export default function BOQNodesPage() {
                           </Select>
                        </div>
                        <div className="space-y-1.5">
-                          <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المرحلة الفنية المرتبطة' : 'Default Stage'}</Label>
+                          <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المرحلة الفنية الافتراضية' : 'Default Stage'}</Label>
                           <Select 
-                            value={editingNode.technicalStageId} 
-                            onValueChange={v => setEditingNode({...editingNode!, technicalStageId: v})}
+                            value={editingNode.defaultTechnicalStageId} 
+                            onValueChange={v => setEditingNode({...editingNode!, defaultTechnicalStageId: v})}
                           >
                              <SelectTrigger className="h-11 rounded-xl border-2 font-bold bg-white">
-                                <SelectValue placeholder={allStages.length === 0 ? (isRtl ? "لا توجد مراحل معرفة" : "No stages found") : "..."} />
+                                <SelectValue placeholder="..." />
                              </SelectTrigger>
                              <SelectContent className="rounded-xl border-2 shadow-2xl">
                                 {allStages.map(stage => (
@@ -453,7 +488,7 @@ export default function BOQNodesPage() {
 
             <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-3">
                <Button variant="outline" onClick={() => setEditingNode(null)} className="flex-1 h-12 rounded-xl border-2 font-bold">إلغاء</Button>
-               <Button onClick={handleSave} disabled={loadingAction === 'save' || (editingNode?.parentId === null && editingNode?.activityTypeIds?.length === 0)} className="flex-[2] h-12 rounded-xl bg-primary text-white font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-2 border-b-4 border-orange-700">
+               <Button onClick={handleSave} disabled={loadingAction === 'save'} className="flex-[2] h-12 rounded-xl bg-primary text-white font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-2 border-b-4 border-orange-700">
                   {loadingAction === 'save' ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
                   {t('save')}
                </Button>

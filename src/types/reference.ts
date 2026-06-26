@@ -140,16 +140,18 @@ export interface BOQReferenceNode extends BaseReference {
   createdBy?: string;
   updatedBy?: string;
 
-  // الربط بالأنشطة (للعقد الجذرية)
-  activityTypeIds?: string[];
-  activityTypeNames?: string[];
+  // الربط بالأنشطة والخدمات (للعقد الجذرية)
+  allowedActivityTypeIds?: string[];
+  allowedActivityTypeNames?: string[];
+  allowedServiceIds?: string[];
+  allowedServiceNames?: string[];
 
-  // الخصائص الفنية والتنفيذية
+  // الخصائص الفنية والتنفيذية للبنود (Executable Items)
   unitTypeId?: string;
   unitName?: string;
   unitSymbol?: string;
-  technicalStageId?: string;
-  estimatedRate?: number;     // السعر المرجعي التقديري
+  defaultTechnicalStageId?: string; // المرحلة الافتراضية للربط
+  estimatedRate?: number;           // السعر المرجعي التقديري
   billingTriggerGroup?: string;
-  allowedItemCategoryIds?: string[];
+  allowedItemCategoryIds?: string[]; // تصنيف الأصناف (مخزني)
 }
