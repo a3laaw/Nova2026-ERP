@@ -229,20 +229,26 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     );
   };
 
+  /**
+   * دالة العرض الشجري لبنود المقايسة مع الترقيم الهرمي الدقيق.
+   */
   const renderBOQTreeNode = (node: BOQTreeNode, prefix: string) => {
     return (
-      <div key={node.id} className="space-y-4 mb-8 animate-in slide-in-from-top-2">
-        <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-2xl border-2 border-white shadow-sm" style={{ marginInlineStart: `${node.depth * 24}px` }}>
-           <div className="h-9 min-w-[36px] px-2 rounded-xl bg-primary/5 border-2 border-primary/10 flex items-center justify-center text-primary font-black text-[11px] font-mono shadow-inner">
+      <div key={node.id} className="space-y-4 mb-6 animate-in slide-in-from-top-2">
+        {/* رأس القسم المرجعي */}
+        <div className="flex items-center gap-4 bg-slate-100/50 p-4 rounded-2xl border-2 border-white shadow-sm" style={{ marginInlineStart: `${node.depth * 24}px` }}>
+           <div className="h-9 min-w-[40px] px-2 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black text-[11px] font-mono shadow-lg">
              {prefix}
            </div>
-           <div className="h-8 w-8 rounded-lg bg-orange-100/50 flex items-center justify-center text-orange-600">
+           <div className="h-8 w-8 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600">
              <Folder className="h-4 w-4" />
            </div>
-           <h4 className="font-black text-slate-800 text-base tracking-tight">{node.title}</h4>
+           <h4 className="font-black text-slate-900 text-base tracking-tight">{node.title}</h4>
         </div>
         
+        {/* محتوى القسم: البنود ثم الأقسام الفرعية */}
         <div className="space-y-4">
+           {/* 1. عرض البنود التنفيذية التابعة لهذا القسم مباشرة (1.1.1.1) */}
            {node.items.map((item, iIdx) => {
              const originalIdx = items.findIndex(i => i.boqReferenceNodeId === item.boqReferenceNodeId);
              const itemPrefix = `${prefix}.${iIdx + 1}`;
@@ -250,7 +256,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
              return (
                <div key={`${item.boqReferenceNodeId}-${originalIdx}`} className="p-6 rounded-[2rem] bg-white border border-slate-100 shadow-xl ring-1 ring-black/[0.02] flex flex-col md:flex-row gap-8 items-center group transition-all hover:ring-primary/20" style={{ marginInlineStart: `${(node.depth + 1) * 24}px` }}>
                   <div className="flex-1 text-start flex items-center gap-4">
-                     <div className="h-8 min-w-[32px] px-2 rounded-lg bg-slate-50 border flex items-center justify-center text-slate-400 font-black text-[9px] font-mono">
+                     <div className="h-8 min-w-[36px] px-2 rounded-lg bg-primary/5 border border-primary/20 flex items-center justify-center text-primary font-black text-[10px] font-mono">
                         {itemPrefix}
                      </div>
                      <div className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-sm">
@@ -258,7 +264,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                      </div>
                      <div>
                         <div className="flex items-center gap-2">
-                           <Badge variant="outline" className="text-[8px] font-mono border-slate-200 text-slate-300 font-bold">#{item.referenceCode}</Badge>
+                           <Badge variant="outline" className="text-[8px] font-mono border-slate-200 text-slate-400 font-bold">#{item.referenceCode}</Badge>
                            <h5 className="text-base font-black text-slate-800 tracking-tight leading-none">{item.referenceTitle}</h5>
                         </div>
                         {item.unitSymbol && <span className="text-[10px] font-bold text-slate-400 mt-1 block uppercase">Unit: {item.unitSymbol}</span>}
@@ -299,7 +305,13 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                </div>
              );
            })}
-           {node.children.map((c, cIdx) => renderBOQTreeNode(c, `${prefix}.${cIdx + 1}`))}
+
+           {/* 2. عرض الأقسام الفرعية (1.1.2) مع إزاحة الترقيم إذا وجدت بنود سابقة */}
+           {node.children.map((c, cIdx) => {
+              // الترقيم الهرمي للأقسام الفرعية يتبع تتابع البنود لو وجدت في نفس المستوى
+              const childIndex = node.items.length + cIdx + 1;
+              return renderBOQTreeNode(c, `${prefix}.${childIndex}`);
+           })}
         </div>
       </div>
     );
@@ -403,7 +415,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
            </Card>
         </div>
 
-        {/* Main Content area */}
+        {/* Main Content area: الشجرة الهرمية */}
         <div className="lg:col-span-3 space-y-8">
            <div className="flex justify-between items-center bg-white p-6 rounded-[2.5rem] shadow-xl ring-1 ring-black/5">
               <div className="text-start">
