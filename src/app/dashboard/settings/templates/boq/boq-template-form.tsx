@@ -266,11 +266,11 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                      </div>
                      <div className="space-y-1.5 text-center">
                         <Label className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'الكمية' : 'Planned'}</Label>
-                        <Input type="number" value={item.plannedQuantity} onChange={e => updateItem(originalIdx, 'plannedQuantity', Number(e.target.value)} className="h-11 rounded-xl text-center font-black text-base border-2" />
+                        <Input type="number" value={item.plannedQuantity} onChange={e => updateItem(originalIdx, 'plannedQuantity', Number(e.target.value))} className="h-11 rounded-xl text-center font-black text-base border-2" />
                      </div>
                      <div className="space-y-1.5 text-center">
                         <Label className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'الفئة' : 'Rate'}</Label>
-                        <Input type="number" value={item.estimatedRate} onChange={e => updateItem(originalIdx, 'estimatedRate', Number(e.target.value)} className="h-11 rounded-xl text-center font-black text-base text-emerald-600 border-2" />
+                        <Input type="number" value={item.estimatedRate} onChange={e => updateItem(originalIdx, 'estimatedRate', Number(e.target.value))} className="h-11 rounded-xl text-center font-black text-base text-emerald-600 border-2" />
                      </div>
                      <div className="flex items-end justify-center pb-1">
                         <Button variant="ghost" size="icon" onClick={() => removeItem(originalIdx)} className="h-11 w-11 rounded-xl text-rose-300 hover:text-rose-600 hover:bg-rose-50 transition-all"><Trash2 className="h-5 w-5" /></Button>
