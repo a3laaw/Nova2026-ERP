@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -233,11 +232,9 @@ export function BOQTemplateForm({ template, onClose }: Props) {
   };
 
   /**
-   * دالة العرض الجدولي الشجري (Tree Grid Row Renderer)
+   * دالة العرض الجدولي الشجري المطور (Odoo Style)
    */
   const renderBOQTreeRows = (node: BOQTreeNode, prefix: string): React.ReactNode => {
-    const isSection = node.items.length > 0 || node.children.length > 0;
-    
     return (
       <React.Fragment key={node.id}>
         {/* صف القسم (Group Header) */}
@@ -253,10 +250,10 @@ export function BOQTemplateForm({ template, onClose }: Props) {
           <TableCell colSpan={6}></TableCell>
         </TableRow>
 
-        {/* عرض البنود التنفيذية التابعة لهذا القسم */}
+        {/* صفوف البنود التنفيذية */}
         {node.items.map((item, iIdx) => {
           const originalIdx = items.findIndex(i => i.boqReferenceNodeId === item.boqReferenceNodeId);
-          const itemPrefix = `${prefix}.${iIdx + 1}`;
+          const itemPrefix = `${prefix.replace('.0', '')}.${iIdx + 1}`;
           const totalAmount = (item.plannedQuantity || 0) * (item.estimatedRate || 0);
 
           return (
@@ -303,7 +300,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
           );
         })}
 
-        {/* عرض الأقسام الفرعية */}
+        {/* تكرار للأبناء */}
         {node.children.map((child, cIdx) => {
           const childPrefix = `${prefix.replace('.0', '')}.${node.items.length + cIdx + 1}`;
           return renderBOQTreeRows(child, childPrefix);
@@ -324,7 +321,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
             <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
           </Button>
           <div className="text-start">
-             <h1 className="text-lg font-black text-slate-900 leading-tight">{isRtl ? 'هندسة القوالب الشجرية' : 'BOQ Template Engineering'}</h1>
+             <h1 className="text-lg font-black text-slate-900 leading-none">{isRtl ? 'هندسة القوالب الشجرية' : 'BOQ Template Engineering'}</h1>
              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{formData.name || 'Untitled Template'}</p>
           </div>
         </div>
@@ -338,7 +335,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start px-1">
         
-        {/* Left Sidebar: Controls & Metadata */}
+        {/* Sidebar Controls */}
         <div className="lg:col-span-3 space-y-6">
            <Card className="border-0 shadow-lg rounded-2xl bg-white overflow-hidden ring-1 ring-black/5">
               <CardHeader className="bg-slate-50 border-b p-5">
@@ -365,7 +362,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                     </div>
                  </div>
 
-                 {/* Financial Stats Widget */}
+                 {/* Smart Budget Widget */}
                  <div className={cn(
                    "p-5 rounded-2xl transition-all space-y-4 relative overflow-hidden shadow-md",
                    isMathValid ? "bg-emerald-600 text-white" : "bg-[#1e1b4b] text-white"
@@ -444,7 +441,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
            </Card>
         </div>
 
-        {/* Right Area: The Tree Grid */}
+        {/* Tree Grid Area */}
         <div className="lg:col-span-9 space-y-4">
            <div className="bg-white rounded-2xl shadow-xl border border-primary/10 overflow-hidden flex flex-col">
               <Table>
