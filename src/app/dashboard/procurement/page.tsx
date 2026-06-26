@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo } from 'react';
@@ -8,27 +7,46 @@ import { Button } from "@/components/ui/button";
 import { 
   Truck, ShoppingCart, FileSearch, Package, 
   ArrowUpRight, Sparkles, TrendingUp, BarChart3,
-  Users, Plus, Clock
+  Users, Plus, Clock, FileText, ShoppingBag
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
+import { useFirestore, useCollection } from '@/firebase';
+import { collection, query, orderBy, limit } from 'firebase/firestore';
+import { useAuthContext } from '@/context/auth-context';
+import { paths } from '@/firebase/multi-tenant';
+import { PurchaseOrder } from '@/types/procurement';
 import { cn } from '@/lib/utils';
 
 export default function ProcurementDashboard() {
-  const { t, lang, dir } = useLanguage();
+  const { globalUser } = useAuthContext();
+  const { lang, dir, t } = useLanguage();
+  const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
+  const companyId = globalUser?.companyId;
+
+  const ordersQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.purchaseOrders(companyId)), orderBy('createdAt', 'desc'), limit(5)) : null, 
+  [db, companyId]);
+
+  const suppliersQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.suppliers(companyId))) : null, 
+  [db, companyId]);
+
+  const { data: orders } = useCollection<PurchaseOrder>(ordersQuery);
+  const { data: suppliers } = useCollection<any>(suppliersQuery);
 
   const stats = [
-    { title: isRtl ? 'الموردين النشطين' : 'Active Suppliers', val: '24', icon: Truck, color: 'text-orange-600', bg: 'bg-orange-50' },
-    { title: isRtl ? 'أوامر الشراء (الشهر)' : 'POs This Month', val: '18', icon: ShoppingCart, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { title: isRtl ? 'إجمالي المشتريات' : 'Total Spend', val: '12,450', icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { title: isRtl ? 'الموردين النشطين' : 'Active Suppliers', val: suppliers?.length || 0, icon: Truck, color: 'text-orange-600', bg: 'bg-orange-50' },
+    { title: isRtl ? 'أوامر الشراء (POs)' : 'Purchase Orders', val: orders?.length || 0, icon: ShoppingCart, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { title: isRtl ? 'إجمالي المشتريات' : 'Total Spend', val: orders?.reduce((acc, o) => acc + (o.totalAmount || 0), 0).toLocaleString(), icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
     { title: isRtl ? 'عروض قيد التحليل' : 'Pending Quotes', val: '5', icon: FileSearch, color: 'text-amber-600', bg: 'bg-amber-50' },
   ];
 
   const quickActions = [
-    { title: isRtl ? 'تحليل عرض سعر ذكي' : 'AI Quote Analysis', desc: isRtl ? 'مقارنة عروض الموردين بالذكاء الاصطناعي' : 'Compare quotes using AI', icon: Sparkles, path: '/dashboard/procurement/quotes', primary: true },
-    { title: isRtl ? 'إضافة مورد جديد' : 'New Supplier', desc: isRtl ? 'تسجيل مورد في سلسلة التوريد' : 'Register a new supplier', icon: Plus, path: '/dashboard/procurement/suppliers', primary: false },
-    { title: isRtl ? 'أمر شراء ميداني' : 'New LPO', desc: isRtl ? 'إصدار أمر شراء لمواد الموقع' : 'Issue a Local Purchase Order', icon: Package, path: '/dashboard/procurement', primary: false },
+    { title: isRtl ? 'تحليل عرض سعر ذكي' : 'AI Quote Analysis', desc: isRtl ? 'مقارنة عروض الموردين بالذكاء الاصطناعي' : 'Compare quotes using AI', icon: Sparkles, path: '/dashboard/ai', primary: true },
+    { title: isRtl ? 'إصدار أمر شراء' : 'New Purchase Order', desc: isRtl ? 'إنشاء أمر توريد رسمي لمورد' : 'Issue an official PO', icon: ShoppingBag, path: '/dashboard/procurement/orders/new', primary: false },
+    { title: isRtl ? 'سجل الأوامر' : 'Orders History', desc: isRtl ? 'عرض ومتابعة كافة الطلبات' : 'View all purchase history', icon: FileText, path: '/dashboard/procurement/orders', primary: false },
   ];
 
   return (
@@ -88,9 +106,23 @@ export default function ProcurementDashboard() {
                </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-               <div className="p-20 text-center text-slate-300 italic font-bold">
-                  {isRtl ? 'لا يوجد أوامر شراء نشطة حالياً.' : 'No active purchase orders found.'}
-               </div>
+               {orders && orders.length > 0 ? (
+                 <div className="divide-y">
+                   {orders.map(o => (
+                     <div key={o.id} onClick={() => router.push(`/dashboard/procurement/orders/${o.id}`)} className="p-5 flex items-center justify-between hover:bg-slate-50 cursor-pointer transition-colors">
+                        <div className="text-start">
+                           <p className="font-black text-slate-800 text-sm">{o.poNumber}</p>
+                           <p className="text-[10px] font-bold text-slate-400">{o.supplierName}</p>
+                        </div>
+                        <Badge variant="outline" className="text-[8px] font-black uppercase">{o.status}</Badge>
+                     </div>
+                   ))}
+                 </div>
+               ) : (
+                 <div className="p-20 text-center text-slate-300 italic font-bold">
+                    {isRtl ? 'لا يوجد أوامر شراء نشطة حالياً.' : 'No active purchase orders found.'}
+                 </div>
+               )}
             </CardContent>
          </Card>
 
