@@ -142,7 +142,7 @@ export class SeedService {
       }
     }
 
-    // 4. ضخ القاموس الهندسي الشجري الموحد (The Only BOQ Reference)
+    // 4. ضخ القاموس الهندسي الشجري الموحد (boqReferenceNodes)
     const rootCivilRef = doc(collection(this.db, paths.boqReferenceNodes(this.companyId)));
     batch.set(rootCivilRef, {
       code: 'CONSTRUCTION_ROOT',

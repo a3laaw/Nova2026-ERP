@@ -10,7 +10,8 @@ import {
   getDocs,
   writeBatch,
   orderBy,
-  deleteDoc
+  deleteDoc,
+  addDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { TemplateType, BaseTemplate, BOQTemplate, BOQTemplateItem } from '@/types/templates';
@@ -21,7 +22,7 @@ import { BOQReferenceNode } from '@/types/reference';
 
 /**
  * خدمة إدارة القوالب المركزية (Template Service).
- * تم تنظيفها بالكامل لتعمل حصراً مع المرجع الشجري boqReferenceNodes.
+ * تعتمد حصراً على المرجع الشجري الموحد boqReferenceNodes.
  */
 export class TemplateService {
   constructor(
@@ -70,16 +71,19 @@ export class TemplateService {
       ...(templateId ? {} : { createdBy: userId, createdAt: serverTimestamp(), version: 1, isActive: true })
     };
     
+    // إزالة البنود من رأس القالب لتخزينها في المجموعة الفرعية
     delete (headData as any).items;
     batch.set(templateRef, headData, { merge: true });
 
     const itemsCollection = collection(this.db, paths.boqTemplateItems(this.companyId, finalTemplateId));
     
+    // إذا كان تحديثاً، نحذف البنود القديمة أولاً
     if (templateId) {
       const oldItemsSnap = await getDocs(itemsCollection);
       oldItemsSnap.docs.forEach(d => batch.delete(d.ref));
     }
 
+    // إضافة البنود الجديدة مع كامل مسارها المرجعي
     items.forEach((item, idx) => {
       const itemRef = doc(itemsCollection);
       const itemToSave = {
@@ -130,7 +134,8 @@ export class TemplateService {
   async addTemplate(type: TemplateType, data: Partial<BaseTemplate>, userId: string) {
     ensureActionPermission(this.userPermissions, 'ref:edit');
     const path = this.getCollectionPath(type);
-    return addDoc(collection(this.db, path), {
+    const collRef = collection(this.db, path);
+    return addDoc(collRef, {
       ...data,
       companyId: this.companyId,
       createdBy: userId,

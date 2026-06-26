@@ -163,7 +163,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
       unitTypeId: node.unitTypeId,
       unitName: node.unitName,
       unitSymbol: node.unitSymbol,
-      technicalStageId: node.defaultTechnicalStageId, // استخدام الحقل المعياري الجديد
+      technicalStageId: node.defaultTechnicalStageId,
       billingTriggerGroup: node.billingTriggerGroup,
       allowedItemCategoryIds: node.allowedItemCategoryIds,
       plannedQuantity: 1,
