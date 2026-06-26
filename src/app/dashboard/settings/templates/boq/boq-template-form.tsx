@@ -32,7 +32,7 @@ import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, doc, getDoc } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { BOQTemplate, BOQTemplateItem, BOQTreeNode } from '@/types/templates';
 import { ActivityType, Service, SubService, BOQReferenceNode } from '@/types/reference';
@@ -78,11 +78,9 @@ export function BOQTemplateForm({ template, onClose }: Props) {
 
   const actQuery = useMemo(() => companyId && db ? query(collection(db, paths.activityTypes(companyId)), orderBy('order')) : null, [db, companyId]);
   const srvQuery = useMemo(() => companyId && db && formData.activityTypeId ? query(collection(db, paths.services(companyId, formData.activityTypeId)), orderBy('order')) : null, [db, companyId, formData.activityTypeId]);
-  const subQuery = useMemo(() => companyId && db && formData.activityTypeId && formData.serviceId ? query(collection(db, paths.subServices(companyId, formData.activityTypeId, formData.serviceId)), orderBy('order')) : null, [db, companyId, formData.activityTypeId, formData.serviceId]);
 
   const { data: activities } = useCollection<ActivityType>(actQuery);
   const { data: services } = useCollection<Service>(srvQuery);
-  const { data: subServices } = useCollection<SubService>(subQuery);
 
   const masterNodesQuery = useMemo(() => companyId && db ? query(collection(db, paths.boqReferenceNodes(companyId)), orderBy('depth')) : null, [db, companyId]);
   const { data: rawMasterNodes, loading: masterLoading } = useCollection<BOQReferenceNode>(masterNodesQuery);
@@ -114,13 +112,11 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     try {
       const selectedAct = activities?.find(a => a.id === formData.activityTypeId);
       const selectedSrv = services?.find(s => s.id === formData.serviceId);
-      const selectedSub = subServices?.find(ss => ss.id === formData.subServiceId);
 
       const finalData = {
         ...formData,
         activityTypeName: (isRtl ? selectedAct?.name : selectedAct?.nameEn) || '',
         serviceName: (isRtl ? selectedSrv?.name : selectedSrv?.nameEn) || '',
-        subServiceName: (isRtl ? selectedSub?.name : selectedSub?.nameEn) || '',
       };
 
       await service.saveBOQTemplateWithItems(template?.id || null, finalData as any, items as any, user.uid);
@@ -157,8 +153,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
       unitName: node.unitName,
       unitSymbol: node.unitSymbol,
       technicalStageId: node.defaultTechnicalStageId,
-      billingTriggerGroup: node.billingTriggerGroup,
-      allowedItemCategoryIds: node.allowedItemCategoryIds,
       plannedQuantity: 1,
       executedQuantity: 0,
       estimatedRate: node.estimatedRate || 0,
@@ -235,13 +229,9 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     );
   };
 
-  /**
-   * دالة العرض الهرمي مع نظام الترقيم التسلسلي (Prefix-based)
-   */
   const renderBOQTreeNode = (node: BOQTreeNode, prefix: string) => {
     return (
-      <div key={node.id} className="space-y-4 mb-6 animate-in slide-in-from-top-2">
-        {/* هيدر القسم مع الترقيم الهرمي */}
+      <div key={node.id} className="space-y-4 mb-8 animate-in slide-in-from-top-2">
         <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-2xl border-2 border-white shadow-sm" style={{ marginInlineStart: `${node.depth * 24}px` }}>
            <div className="h-9 min-w-[36px] px-2 rounded-xl bg-primary/5 border-2 border-primary/10 flex items-center justify-center text-primary font-black text-[11px] font-mono shadow-inner">
              {prefix}
@@ -252,10 +242,9 @@ export function BOQTemplateForm({ template, onClose }: Props) {
            <h4 className="font-black text-slate-800 text-base tracking-tight">{node.title}</h4>
         </div>
         
-        {/* البنود والابناء */}
         <div className="space-y-4">
            {node.items.map((item, iIdx) => {
-             const originalIdx = items.indexOf(item);
+             const originalIdx = items.findIndex(i => i.boqReferenceNodeId === item.boqReferenceNodeId);
              const itemPrefix = `${prefix}.${iIdx + 1}`;
              
              return (
@@ -278,7 +267,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
 
                   <div className="flex items-center gap-6 bg-slate-50 p-4 rounded-3xl border-2 border-white shadow-inner">
                      <div className="space-y-1 text-center">
-                        <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'الكمية' : 'Qty'}</Label>
+                        <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'الكمية' : 'Planned'}</Label>
                         <Input 
                           type="number" 
                           value={item.plannedQuantity} 
@@ -310,8 +299,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                </div>
              );
            })}
-
-           {/* استدعاء تكراري للأبناء مع تحديث الترقيم */}
            {node.children.map((c, cIdx) => renderBOQTreeNode(c, `${prefix}.${cIdx + 1}`))}
         </div>
       </div>
@@ -321,16 +308,15 @@ export function BOQTemplateForm({ template, onClose }: Props) {
   if (templateLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-10 animate-in fade-in duration-500 pb-20 text-start" dir={dir}>
+    <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20 text-start" dir={dir}>
       
-      {/* Sovereign Header */}
       <div className="flex items-center justify-between border-b-2 border-slate-100 pb-6 sticky top-0 bg-[#F8F9FA]/90 backdrop-blur-md z-[50]">
         <div className="flex items-center gap-4">
           <Button variant="ghost" onClick={onClose} className="h-12 w-12 p-0 rounded-2xl bg-white border-2 shadow-sm hover:border-primary/20 transition-all">
             <ArrowRight className={cn("h-6 w-6", !isRtl && "rotate-180")} />
           </Button>
           <div className="text-start">
-             <h1 className="text-3xl font-black font-headline text-slate-900 tracking-tight">{isRtl ? 'هندسة المقايسة الشجرية' : 'BOQ Tree Engineering'}</h1>
+             <h1 className="text-3xl font-black font-headline text-slate-900 tracking-tight">{isRtl ? 'هندسة القوالب الشجرية' : 'BOQ Template Engineering'}</h1>
              <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">{isRtl ? 'تصميم القالب المرجعي السيادي' : 'Master Template Design'}</p>
           </div>
         </div>
@@ -340,83 +326,76 @@ export function BOQTemplateForm({ template, onClose }: Props) {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-10 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
         
-        {/* Left Control Panel: Identity & Financials */}
-        <div className="lg:col-span-1 space-y-8">
-           <Card className="border-0 shadow-2xl rounded-[3rem] bg-white ring-1 ring-black/5 overflow-hidden sticky top-28">
-              <CardHeader className="bg-slate-900 p-8 text-white text-start">
-                 <CardTitle className="text-sm font-black flex items-center gap-3 uppercase tracking-widest text-primary">
-                    <Settings2 className="h-5 w-5" />
+        {/* Sidebar: Metadata & Financial Widget */}
+        <div className="lg:col-span-1 space-y-6 sticky top-28">
+           <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
+              <CardHeader className="bg-slate-900 p-6 text-white text-start">
+                 <CardTitle className="text-xs font-black flex items-center gap-3 uppercase tracking-widest text-primary">
+                    <Settings2 className="h-4 w-4" />
                     {isRtl ? 'إدارة المعايير' : 'Control Center'}
                  </CardTitle>
               </CardHeader>
-              <CardContent className="p-8 space-y-8">
+              <CardContent className="p-6 space-y-6">
                  
                  <div className="space-y-4">
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('name')}</Label>
-                       <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-12 rounded-xl border-2 font-black text-base bg-slate-50/50" />
+                       <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-10 rounded-xl border-2 font-bold text-sm bg-slate-50/50" />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                       <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-3">
+                       <div className="space-y-1.5">
                           <Label className="text-[10px] font-black uppercase text-slate-400">Code</Label>
-                          <Input value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value.toUpperCase()})} className="h-12 rounded-xl border-2 font-mono font-black text-primary" />
+                          <Input value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value.toUpperCase()})} className="h-10 rounded-xl border-2 font-mono font-black text-primary text-xs" />
                        </div>
-                       <div className="flex items-center justify-between p-3 bg-slate-100/50 rounded-2xl border-2">
-                          <Label className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'افتراضي' : 'Default'}</Label>
+                       <div className="flex items-center justify-between p-2 bg-slate-100/50 rounded-xl border-2">
+                          <Label className="text-[8px] font-black uppercase text-slate-400">{isRtl ? 'افتراضي' : 'Def'}</Label>
                           <Switch checked={formData.isDefault || false} onCheckedChange={v => setFormData({...formData, isDefault: v})} />
                        </div>
                     </div>
                  </div>
 
-                 <div className="h-[1px] bg-slate-100" />
-
-                 {/* Integrated Budget Widget */}
+                 {/* Compact Financial Widget */}
                  <div className={cn(
-                   "p-8 rounded-[2.5rem] transition-all space-y-6 relative overflow-hidden shadow-xl",
+                   "p-6 rounded-[2rem] transition-all space-y-4 relative overflow-hidden shadow-lg",
                    isMathValid ? "bg-emerald-600 text-white" : "bg-indigo-900 text-white"
                  )}>
-                    <div className="absolute top-0 right-0 p-6 opacity-10"><Calculator className="h-32 w-32" /></div>
-                    <div className="relative z-10 space-y-2">
-                       <p className="text-[10px] font-black uppercase opacity-60 tracking-[0.2em]">{isRtl ? 'الميزانية المستهدفة' : 'Target Budget'}</p>
-                       <div className="flex items-center gap-3">
-                          <Input 
-                            type="number" 
-                            value={formData.baseAmount || 0} 
-                            onChange={e => setFormData({...formData, baseAmount: Number(e.target.value)})} 
-                            className="h-14 rounded-2xl border-0 bg-white/20 text-white font-black text-2xl text-center shadow-inner"
-                          />
-                       </div>
+                    <div className="relative z-10 space-y-1">
+                       <p className="text-[9px] font-black uppercase opacity-60 tracking-widest">{isRtl ? 'الميزانية المستهدفة' : 'Target Budget'}</p>
+                       <Input 
+                         type="number" 
+                         value={formData.baseAmount || 0} 
+                         onChange={e => setFormData({...formData, baseAmount: Number(e.target.value)})} 
+                         className="h-12 rounded-xl border-0 bg-white/20 text-white font-black text-xl text-center shadow-inner"
+                       />
                     </div>
-                    <div className="relative z-10 pt-4 border-t border-white/10 flex justify-between items-center">
+                    <div className="relative z-10 pt-3 border-t border-white/10 flex justify-between items-center">
                        <div className="text-start">
-                          <p className="text-[9px] font-black uppercase opacity-60">{isRtl ? 'المجموع الحالي' : 'Items Sum'}</p>
-                          <p className="text-2xl font-black">{totalItemsValue.toLocaleString()} <span className="text-xs font-bold opacity-40">KWD</span></p>
+                          <p className="text-[8px] font-black uppercase opacity-60">{isRtl ? 'المجموع الحالي' : 'Items Sum'}</p>
+                          <p className="text-lg font-black">{totalItemsValue.toLocaleString()}</p>
                        </div>
                        <div className={cn(
-                         "h-10 w-10 rounded-2xl flex items-center justify-center shadow-lg transition-transform hover:rotate-12",
+                         "h-8 w-8 rounded-xl flex items-center justify-center shadow-lg",
                          isMathValid ? "bg-white text-emerald-600" : "bg-rose-500 text-white"
                        )}>
-                          {isMathValid ? <CheckCircle2 className="h-6 w-6" /> : <AlertTriangle className="h-6 w-6" />}
+                          {isMathValid ? <CheckCircle2 className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
                        </div>
                     </div>
                  </div>
 
-                 <div className="h-[1px] bg-slate-100" />
-
-                 <div className="space-y-4">
+                 <div className="space-y-4 pt-4 border-t border-slate-50">
                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                       <Layers className="h-3 w-3" /> {isRtl ? 'نطاق الظهور' : 'Visibility Scope'}
+                       <Layers className="h-3 w-3" /> {isRtl ? 'نطاق الظهور' : 'Visibility'}
                     </Label>
-                    <div className="space-y-3">
-                       <Select value={formData.activityTypeId} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: ''})}>
-                          <SelectTrigger className="h-11 rounded-xl font-black text-xs bg-slate-50/50 border-2"><SelectValue placeholder="Activity" /></SelectTrigger>
-                          <SelectContent className="rounded-2xl">{activities?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold text-xs">{isRtl ? a.name : a.nameEn}</SelectItem>)}</SelectContent>
+                    <div className="space-y-2">
+                       <Select value={formData.activityTypeId} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: ''})}>
+                          <SelectTrigger className="h-10 rounded-xl font-black text-xs bg-slate-50/50 border-2"><SelectValue placeholder="Activity" /></SelectTrigger>
+                          <SelectContent className="rounded-xl">{activities?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold text-xs">{isRtl ? a.name : a.nameEn}</SelectItem>)}</SelectContent>
                        </Select>
-                       <Select value={formData.serviceId} disabled={!formData.activityTypeId} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: ''})}>
-                          <SelectTrigger className="h-11 rounded-xl font-black text-xs bg-slate-50/50 border-2"><SelectValue placeholder="Service" /></SelectTrigger>
-                          <SelectContent className="rounded-2xl">{services?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs">{isRtl ? s.name : s.nameEn}</SelectItem>)}</SelectContent>
+                       <Select value={formData.serviceId} disabled={!formData.activityTypeId} onValueChange={v => setFormData({...formData, serviceId: v})}>
+                          <SelectTrigger className="h-10 rounded-xl font-black text-xs bg-slate-50/50 border-2"><SelectValue placeholder="Service" /></SelectTrigger>
+                          <SelectContent className="rounded-xl">{services?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs">{isRtl ? s.name : s.nameEn}</SelectItem>)}</SelectContent>
                        </Select>
                     </div>
                  </div>
@@ -424,21 +403,21 @@ export function BOQTemplateForm({ template, onClose }: Props) {
            </Card>
         </div>
 
-        {/* Right Content Area: Hierarchical Tree Builder */}
-        <div className="lg:col-span-3 space-y-10">
-           <div className="flex justify-between items-center bg-white p-8 rounded-[3rem] shadow-2xl ring-1 ring-black/5">
+        {/* Main Content area */}
+        <div className="lg:col-span-3 space-y-8">
+           <div className="flex justify-between items-center bg-white p-6 rounded-[2.5rem] shadow-xl ring-1 ring-black/5">
               <div className="text-start">
-                 <h3 className="text-2xl font-black font-headline flex items-center gap-4 text-slate-900">
-                    <GitBranch className="h-8 w-8 text-primary" />
+                 <h3 className="text-xl font-black font-headline flex items-center gap-3 text-slate-900">
+                    <GitBranch className="h-6 w-6 text-primary" />
                     {isRtl ? 'هيكلة بنود المقايسة' : 'BOQ Structure'}
                  </h3>
-                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1 opacity-60">Building the Sovereign Tree</p>
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 opacity-60">Building the Sovereign Tree</p>
               </div>
 
               <Dialog open={isPickerOpen} onOpenChange={setIsMasterPickerOpen}>
                  <DialogTrigger asChild>
-                    <Button className="h-16 px-10 rounded-2xl bg-slate-900 text-white font-black shadow-2xl gap-3 hover:scale-105 transition-all">
-                       <FolderTree className="h-6 w-6 text-primary" />
+                    <Button className="h-14 px-8 rounded-2xl bg-slate-900 text-white font-black shadow-xl gap-3 hover:scale-105 transition-all">
+                       <FolderTree className="h-5 w-5 text-primary" />
                        {isRtl ? 'مستكشف القاموس' : 'Reference Explorer'}
                     </Button>
                  </DialogTrigger>
@@ -461,19 +440,18 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                          </div>
                        ) : pickerTree.map(renderPickerNode)}
                     </div>
-                    <DialogFooter className="p-8 bg-slate-50 border-t flex justify-center">
-                       <Button variant="outline" onClick={() => setIsMasterPickerOpen(false)} className="rounded-xl font-black h-12 px-12 border-2">إغلاق المستكشف</Button>
+                    <DialogFooter className="p-8 bg-slate-50 border-t">
+                       <Button variant="outline" onClick={() => setIsMasterPickerOpen(false)} className="rounded-xl font-black h-12 px-8">إغلاق</Button>
                     </DialogFooter>
                  </DialogContent>
               </Dialog>
            </div>
 
-           {/* The BOQ Tree Rendering with Prefixes */}
-           <div className="space-y-10">
+           <div className="space-y-6">
               {items.length === 0 ? (
                 <div className="py-64 text-center flex flex-col items-center gap-8 opacity-20 border-4 border-dashed border-slate-200 rounded-[4rem] bg-white shadow-inner">
-                   <LayoutGrid className="h-32 w-32" />
-                   <p className="text-2xl font-black uppercase tracking-[0.3em]">{isRtl ? 'المقايسة فارغة' : 'Empty Template'}</p>
+                   <LayoutGrid className="h-24 w-24" />
+                   <p className="text-xl font-black uppercase tracking-[0.3em]">{isRtl ? 'المقايسة فارغة' : 'Empty Template'}</p>
                 </div>
               ) : (
                 boqTree.map((node, idx) => renderBOQTreeNode(node, (idx + 1).toString()))
