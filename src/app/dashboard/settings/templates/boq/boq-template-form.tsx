@@ -27,7 +27,6 @@ import {
   Settings2,
   Folder,
   Hammer,
-  FileText,
   DollarSign
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
@@ -131,6 +130,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     }
   };
 
+  // تحصين دالة الإضافة لمنع خطأ undefined في Firebase
   const addFromMaster = (node: BOQReferenceNode) => {
     if (items.some(i => i.boqReferenceNodeId === node.id)) {
       toast({ variant: "destructive", title: isRtl ? "البند موجود مسبقاً" : "Item already added" });
@@ -144,17 +144,17 @@ export function BOQTemplateForm({ template, onClose }: Props) {
 
     const newItem: BOQTemplateItem = {
       boqReferenceNodeId: node.id!,
-      referenceCode: node.code,
-      referenceTitle: node.title,
-      referenceDescription: node.description,
+      referenceCode: node.code || '',
+      referenceTitle: node.title || '',
+      referenceDescription: node.description || '', // منع Undefined
       parentId: node.parentId || null,
       ancestorIds: node.ancestorIds || [],
       ancestorTitles,
-      depth: node.depth,
-      unitTypeId: node.unitTypeId,
-      unitName: node.unitName,
-      unitSymbol: node.unitSymbol,
-      technicalStageId: node.defaultTechnicalStageId,
+      depth: node.depth || 0,
+      unitTypeId: node.unitTypeId || '',
+      unitName: node.unitName || '',
+      unitSymbol: node.unitSymbol || '',
+      technicalStageId: node.defaultTechnicalStageId || '',
       plannedQuantity: 1,
       executedQuantity: 0,
       estimatedRate: node.estimatedRate || 0,
@@ -231,9 +231,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     );
   };
 
-  /**
-   * دالة العرض الجدولي الشجري المطور (Odoo Style)
-   */
   const renderBOQTreeRows = (node: BOQTreeNode, prefix: string): React.ReactNode => {
     return (
       <React.Fragment key={node.id}>
@@ -253,17 +250,24 @@ export function BOQTemplateForm({ template, onClose }: Props) {
         {/* صفوف البنود التنفيذية */}
         {node.items.map((item, iIdx) => {
           const originalIdx = items.findIndex(i => i.boqReferenceNodeId === item.boqReferenceNodeId);
-          const itemPrefix = `${prefix.replace('.0', '')}.${iIdx + 1}`;
+          const itemPrefix = `${prefix}.${iIdx + 1}`; // ترقيم هرمي مباشر
           const totalAmount = (item.plannedQuantity || 0) * (item.estimatedRate || 0);
 
           return (
-            <TableRow key={`${item.boqReferenceNodeId}-${originalIdx}`} className="hover:bg-primary/[0.02] transition-colors border-b-slate-50">
+            <TableRow key={`${item.boqReferenceNodeId}-${originalIdx}`} className="hover:bg-primary/[0.02] transition-colors border-b-slate-50 group/item">
               <TableCell className="font-mono text-[10px] font-bold text-slate-300 ps-8">{itemPrefix}</TableCell>
               <TableCell className="font-mono text-[10px] font-black text-primary/60">{item.referenceCode}</TableCell>
               <TableCell className="text-xs font-bold text-slate-700" style={{ paddingInlineStart: `${(node.depth + 1) * 20 + 16}px` }}>
                 {item.referenceTitle}
               </TableCell>
-              <TableCell className="text-[10px] text-slate-400 font-bold max-w-[200px] truncate">{item.referenceDescription || '-'}</TableCell>
+              <TableCell className="p-1 min-w-[150px]">
+                <Input 
+                  value={item.referenceDescription || ''} 
+                  onChange={e => updateItem(originalIdx, 'referenceDescription', e.target.value)}
+                  className="h-8 rounded-lg text-[10px] border-transparent hover:border-slate-200 bg-transparent focus:bg-white"
+                  placeholder={isRtl ? "المواصفة..." : "Spec..."}
+                />
+              </TableCell>
               <TableCell className="text-center font-black text-[10px] text-slate-400 uppercase">{item.unitSymbol || item.unitName || '-'}</TableCell>
               <TableCell className="p-1 w-[100px]">
                 <Input 
@@ -300,9 +304,9 @@ export function BOQTemplateForm({ template, onClose }: Props) {
           );
         })}
 
-        {/* تكرار للأبناء */}
+        {/* التكرار للأبناء */}
         {node.children.map((child, cIdx) => {
-          const childPrefix = `${prefix.replace('.0', '')}.${node.items.length + cIdx + 1}`;
+          const childPrefix = `${prefix}.${node.items.length + cIdx + 1}`;
           return renderBOQTreeRows(child, childPrefix);
         })}
       </React.Fragment>
@@ -367,7 +371,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                    "p-5 rounded-2xl transition-all space-y-4 relative overflow-hidden shadow-md",
                    isMathValid ? "bg-emerald-600 text-white" : "bg-[#1e1b4b] text-white"
                  )}>
-                    <div className="relative z-10 space-y-1">
+                    <div className="relative z-10 space-y-1 text-start">
                        <p className="text-[9px] font-black uppercase opacity-60 tracking-widest">{isRtl ? 'الميزانية المستهدفة' : 'Target Budget'}</p>
                        <Input 
                          type="number" 
@@ -469,7 +473,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    boqTree.map((node, idx) => renderBOQTreeRows(node, (idx + 1).toString() + ".0"))
+                    boqTree.map((node, idx) => renderBOQTreeRows(node, (idx + 1).toString()))
                   )}
                 </TableBody>
               </Table>
