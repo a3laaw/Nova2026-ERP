@@ -36,7 +36,7 @@ interface Props {
 }
 
 export function CommentSection({ transactionId, stageInstanceId, path, title, compact = false }: Props) {
-  const { user } = useAuthContext();
+  const { user, globalUser } = useAuthContext();
   const { lang, dir } = useLanguage();
   const { permissions } = usePermissions();
   const db = useFirestore();
@@ -44,7 +44,6 @@ export function CommentSection({ transactionId, stageInstanceId, path, title, co
 
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
 
   const commentsQuery = useMemo(() => 
     db ? query(collection(db, path), orderBy('createdAt', 'asc')) : null, 
@@ -53,8 +52,8 @@ export function CommentSection({ transactionId, stageInstanceId, path, title, co
   const { data: comments, loading: commentsLoading } = useCollection<TransactionComment>(commentsQuery);
 
   const commentService = useMemo(() => 
-    db && user ? new CommentService(db, '', permissions) : null, 
-  [db, user, permissions]);
+    db && globalUser?.companyId ? new CommentService(db, globalUser.companyId, permissions) : null, 
+  [db, globalUser, permissions]);
 
   const handleSubmit = async () => {
     if (!commentService || !user || !content.trim()) return;
@@ -151,7 +150,7 @@ export function CommentSection({ transactionId, stageInstanceId, path, title, co
              size="icon" 
              className="h-11 w-11 rounded-xl bg-primary text-white shadow-lg shadow-primary/20 shrink-0"
            >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className={cn("h-5 w-5", isRtl && "rotate-180")} />}
+              {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Send className={cn("h-5 w-5", isRtl && "rotate-180")} />}
            </Button>
         </CardContent>
       </Card>
