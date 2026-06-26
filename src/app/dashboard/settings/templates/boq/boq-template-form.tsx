@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -130,7 +131,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     }
   };
 
-  // تحصين دالة الإضافة لمنع خطأ undefined في Firebase
   const addFromMaster = (node: BOQReferenceNode) => {
     if (items.some(i => i.boqReferenceNodeId === node.id)) {
       toast({ variant: "destructive", title: isRtl ? "البند موجود مسبقاً" : "Item already added" });
@@ -139,14 +139,14 @@ export function BOQTemplateForm({ template, onClose }: Props) {
 
     const ancestorTitles = node.ancestorIds?.map(id => {
        const parent = rawMasterNodes?.find(m => m.id === id);
-       return parent?.title || 'Unknown';
+       return parent?.title || '---';
     }) || [];
 
     const newItem: BOQTemplateItem = {
       boqReferenceNodeId: node.id!,
       referenceCode: node.code || '',
       referenceTitle: node.title || '',
-      referenceDescription: node.description || '', // منع Undefined
+      referenceDescription: node.description || '', // الحماية من الـ undefined
       parentId: node.parentId || null,
       ancestorIds: node.ancestorIds || [],
       ancestorTitles,
@@ -234,7 +234,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
   const renderBOQTreeRows = (node: BOQTreeNode, prefix: string): React.ReactNode => {
     return (
       <React.Fragment key={node.id}>
-        {/* صف القسم (Group Header) */}
         <TableRow className="bg-slate-50/80 hover:bg-slate-100 border-b-2 border-white group/row">
           <TableCell className="font-mono text-[11px] font-black text-slate-400 ps-6 w-[80px]">{prefix}</TableCell>
           <TableCell className="w-[120px] font-mono text-[10px] font-bold text-slate-400">---</TableCell>
@@ -247,10 +246,9 @@ export function BOQTemplateForm({ template, onClose }: Props) {
           <TableCell colSpan={6}></TableCell>
         </TableRow>
 
-        {/* صفوف البنود التنفيذية */}
         {node.items.map((item, iIdx) => {
           const originalIdx = items.findIndex(i => i.boqReferenceNodeId === item.boqReferenceNodeId);
-          const itemPrefix = `${prefix}.${iIdx + 1}`; // ترقيم هرمي مباشر
+          const itemPrefix = `${prefix}.${iIdx + 1}`; 
           const totalAmount = (item.plannedQuantity || 0) * (item.estimatedRate || 0);
 
           return (
@@ -260,12 +258,12 @@ export function BOQTemplateForm({ template, onClose }: Props) {
               <TableCell className="text-xs font-bold text-slate-700" style={{ paddingInlineStart: `${(node.depth + 1) * 20 + 16}px` }}>
                 {item.referenceTitle}
               </TableCell>
-              <TableCell className="p-1 min-w-[150px]">
+              <TableCell className="p-1 min-w-[200px]">
                 <Input 
                   value={item.referenceDescription || ''} 
                   onChange={e => updateItem(originalIdx, 'referenceDescription', e.target.value)}
                   className="h-8 rounded-lg text-[10px] border-transparent hover:border-slate-200 bg-transparent focus:bg-white"
-                  placeholder={isRtl ? "المواصفة..." : "Spec..."}
+                  placeholder={isRtl ? "المواصفة التفصيلية..." : "Technical Spec..."}
                 />
               </TableCell>
               <TableCell className="text-center font-black text-[10px] text-slate-400 uppercase">{item.unitSymbol || item.unitName || '-'}</TableCell>
@@ -304,7 +302,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
           );
         })}
 
-        {/* التكرار للأبناء */}
         {node.children.map((child, cIdx) => {
           const childPrefix = `${prefix}.${node.items.length + cIdx + 1}`;
           return renderBOQTreeRows(child, childPrefix);
@@ -317,8 +314,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
 
   return (
     <div className="max-w-full space-y-6 animate-in fade-in duration-500 pb-20 text-start" dir={dir}>
-      
-      {/* Header Bar */}
       <div className="flex items-center justify-between border-b bg-white p-4 rounded-xl shadow-sm sticky top-0 z-[50]">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 border rounded-lg">
@@ -338,8 +333,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start px-1">
-        
-        {/* Sidebar Controls */}
         <div className="lg:col-span-3 space-y-6">
            <Card className="border-0 shadow-lg rounded-2xl bg-white overflow-hidden ring-1 ring-black/5">
               <CardHeader className="bg-slate-50 border-b p-5">
@@ -366,7 +359,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                     </div>
                  </div>
 
-                 {/* Smart Budget Widget */}
                  <div className={cn(
                    "p-5 rounded-2xl transition-all space-y-4 relative overflow-hidden shadow-md",
                    isMathValid ? "bg-emerald-600 text-white" : "bg-[#1e1b4b] text-white"
@@ -412,10 +404,10 @@ export function BOQTemplateForm({ template, onClose }: Props) {
 
                  <Dialog open={isPickerOpen} onOpenChange={setIsMasterPickerOpen}>
                     <DialogTrigger asChild>
-                       <Button className="w-full h-14 rounded-xl bg-slate-900 text-white font-black shadow-xl gap-3 hover:scale-105 transition-all mt-4">
+                       <button type="button" className="w-full h-14 rounded-xl bg-slate-900 text-white font-black shadow-xl gap-3 hover:scale-105 transition-all mt-4 flex items-center justify-center">
                           <FolderTree className="h-5 w-5 text-primary" />
                           {isRtl ? 'مستكشف القاموس' : 'Reference Explorer'}
-                       </Button>
+                       </button>
                     </DialogTrigger>
                     <DialogContent className="max-w-4xl rounded-2xl p-0 overflow-hidden bg-white border-0 shadow-3xl" dir={dir}>
                        <div className="bg-slate-50 p-8 text-slate-900 text-start border-b">
@@ -437,7 +429,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                           ) : pickerTree.map(renderPickerNode)}
                        </div>
                        <DialogFooter className="p-6 bg-slate-50 border-t">
-                          <Button variant="outline" onClick={() => setIsMasterPickerOpen(false)} className="rounded-xl font-black h-10 px-8">إغلاق</Button>
+                          <Button variant="outline" type="button" onClick={() => setIsMasterPickerOpen(false)} className="rounded-xl font-black h-10 px-8">إغلاق</Button>
                        </DialogFooter>
                     </DialogContent>
                  </Dialog>
@@ -445,7 +437,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
            </Card>
         </div>
 
-        {/* Tree Grid Area */}
         <div className="lg:col-span-9 space-y-4">
            <div className="bg-white rounded-2xl shadow-xl border border-primary/10 overflow-hidden flex flex-col">
               <Table>
@@ -479,7 +470,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
               </Table>
            </div>
         </div>
-
       </div>
     </div>
   );

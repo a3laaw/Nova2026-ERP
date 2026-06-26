@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -81,7 +82,6 @@ export default function BOQNodesPage() {
   const { data: activities } = useCollection<ActivityType>(activitiesQuery);
   const { data: itemCategories } = useCollection<ItemCategory>(itemCatsQuery);
 
-  // جلب الخدمات للربط
   const servicesQuery = useMemo(() => {
     if (!companyId || !db) return null;
     return query(collectionGroup(db, 'services'), where('companyId', '==', companyId), orderBy('order'));
@@ -309,10 +309,8 @@ export default function BOQNodesPage() {
 
             <div className="p-8 space-y-6 text-start bg-white max-h-[70vh] overflow-y-auto scrollbar-hide">
                
-               {/* الربط التشغيلي (للجذور) */}
                {editingNode && editingNode.parentId === null && (
                  <div className="space-y-6 animate-in fade-in duration-300">
-                    {/* اختيار الأنشطة */}
                     <div className="p-5 rounded-2xl bg-blue-50/50 border-2 border-blue-100 space-y-4">
                        <h4 className="font-black text-[10px] text-blue-600 uppercase tracking-widest flex items-center gap-2">
                           <ShieldCheck className="h-3.5 w-3.5" /> {isRtl ? 'الأنشطة المتاح بها هذا القسم' : 'Allowed Activities'}
@@ -336,7 +334,6 @@ export default function BOQNodesPage() {
                        </div>
                     </div>
 
-                    {/* اختيار الخدمات */}
                     <div className="p-5 rounded-2xl bg-indigo-50/50 border-2 border-indigo-100 space-y-4">
                        <h4 className="font-black text-[10px] text-indigo-600 uppercase tracking-widest flex items-center gap-2">
                           <Workflow className="h-3.5 w-3.5" /> {isRtl ? 'الخدمات التشغيلية المرتبطة' : 'Allowed Services'}
@@ -354,7 +351,7 @@ export default function BOQNodesPage() {
                               )}
                             >
                                <Checkbox checked={editingNode?.allowedServiceIds?.includes(srv.id!) || false} className="h-4 w-4 pointer-events-none" />
-                               <span className={cn("text-[10px] font-black uppercase truncate", editingNode?.allowedServiceIds?.includes(srv.id!) ? "text-indigo-600" : "text-slate-400")}>{isRtl ? srv.name : (srv.nameEn || srv.name)}</span>
+                               <span className={cn("text-[10px] font-black uppercase truncate", editingNode?.allowedServiceIds?.includes(srv.id!) ? "text-indigo-600" : "text-slate-400")}>{srv.name}</span>
                             </div>
                           ))}
                        </div>
@@ -391,6 +388,16 @@ export default function BOQNodesPage() {
                   />
                </div>
 
+               <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'وصف المواصفات الفنية المرجعية' : 'Master Specifications Description'}</Label>
+                  <Textarea 
+                    value={editingNode?.description || ''} 
+                    onChange={e => setEditingNode({...editingNode!, description: e.target.value})} 
+                    className="min-h-[100px] rounded-xl border-2 p-4 text-xs font-bold leading-relaxed resize-none bg-slate-50/50 focus:bg-white transition-all" 
+                    placeholder={isRtl ? "اكتب هنا المواصفة القياسية لهذا البند..." : "Enter standard specifications..."}
+                  />
+               </div>
+
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-slate-50 rounded-2xl border-2 border-white shadow-inner">
                   <div className="space-y-2">
                      <div className="flex items-center justify-between">
@@ -411,7 +418,6 @@ export default function BOQNodesPage() {
                  <div className="space-y-6 animate-in slide-in-from-top-4 duration-500">
                     <div className="h-[1px] bg-slate-100 w-full" />
                     
-                    {/* الربط بالمخازن */}
                     <div className="p-5 rounded-2xl bg-emerald-50/30 border-2 border-emerald-100 space-y-4">
                        <h4 className="font-black text-[10px] text-emerald-600 uppercase tracking-widest flex items-center gap-2">
                           <Package className="h-3.5 w-3.5" /> {isRtl ? 'تصنيفات الأصناف المخزنية المتاحة' : 'Linked Item Categories'}
@@ -472,15 +478,6 @@ export default function BOQNodesPage() {
                              </SelectContent>
                           </Select>
                        </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                       <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'وصف المواصفات الفنية' : 'Engineering Specifications'}</Label>
-                       <Textarea 
-                         value={editingNode.description || ''} 
-                         onChange={e => setEditingNode({...editingNode!, description: e.target.value})} 
-                         className="min-h-[80px] rounded-xl border-2 p-3 text-xs font-bold leading-relaxed resize-none bg-slate-50/50 focus:bg-white transition-all" 
-                       />
                     </div>
                  </div>
                )}
