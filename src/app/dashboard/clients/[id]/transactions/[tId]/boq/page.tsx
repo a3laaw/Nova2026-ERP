@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -7,11 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   FileSpreadsheet, ArrowRight, Loader2, Save, 
   CheckCircle2, AlertTriangle, LayoutGrid, Boxes, 
   Hammer, Calculator, TrendingUp, ChevronDown, ChevronRight,
-  Printer, MoreVertical, Search, Filter
+  Printer, MoreVertical, Search, Filter, Folder,
+  Target, Activity
 } from "lucide-react";
 import { useFirestore, useCollection, useDoc } from '@/firebase';
 import { collection, query, where, doc } from 'firebase/firestore';
@@ -23,6 +26,7 @@ import { BOQ, BOQItem } from '@/types/documents';
 import { Transaction } from '@/types/transaction';
 import { BOQExecutionService } from '@/services/boq-execution-service';
 import { transformToBOQTree } from '@/lib/boq-tree-utils';
+import { BOQTreeNode } from '@/types/templates';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -39,7 +43,6 @@ export default function TransactionBOQProgressPage() {
   const companyId = globalUser?.companyId;
 
   const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
 
   // 1. Data Fetching
   const transRef = useMemo(() => companyId && db ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
@@ -55,10 +58,6 @@ export default function TransactionBOQProgressPage() {
   const boqTree = useMemo(() => transformToBOQTree(items || []), [items]);
   
   const executionService = useMemo(() => db && companyId ? new BOQExecutionService(db, companyId, permissions) : null, [db, companyId, permissions]);
-
-  const toggleNode = (id: string) => {
-    setExpandedNodes(prev => ({ ...prev, [id]: !prev[id] }));
-  };
 
   const handleUpdateQuantity = async (itemId: string, val: number) => {
     if (!executionService || !activeBoq || !user) return;
@@ -90,6 +89,82 @@ export default function TransactionBOQProgressPage() {
     };
   }, [items]);
 
+  /**
+   * دالة العرض الجدولي الشجري المنظم (Tree Grid) لمتابعة الإنجاز
+   */
+  const renderExecutionTreeRows = (node: BOQTreeNode, prefix: string): React.ReactNode => {
+    return (
+      <React.Fragment key={node.id}>
+        {/* صف القسم (Group Header) */}
+        <TableRow className="bg-slate-50 hover:bg-slate-100 border-b-2 border-white">
+          <TableCell className="font-mono text-[11px] font-black text-slate-400 ps-6 w-[80px]">{prefix}</TableCell>
+          <TableCell className="w-[100px] font-mono text-[10px] font-bold text-slate-400">---</TableCell>
+          <TableCell className="font-black text-slate-800 text-sm py-4" style={{ paddingInlineStart: `${node.depth * 20 + 16}px` }}>
+            <div className="flex items-center gap-2">
+              <Folder className="h-4 w-4 text-orange-400" />
+              {node.title}
+            </div>
+          </TableCell>
+          <TableCell colSpan={6}></TableCell>
+        </TableRow>
+
+        {/* صفوف البنود التنفيذية لمتابعة الكميات */}
+        {node.items.map((item, iIdx) => {
+          const itemPrefix = `${prefix.replace('.0', '')}.${iIdx + 1}`;
+          const progress = executionService?.getBOQItemProgress(item as any);
+          const isOver = progress?.isOverExecuted;
+          const totalPlanned = (item.plannedQuantity || 0) * (item.estimatedRate || 0);
+
+          return (
+            <TableRow key={item.id} className="hover:bg-primary/[0.02] transition-colors border-b-slate-100 group/item">
+              <TableCell className="font-mono text-[10px] font-bold text-slate-300 ps-8">{itemPrefix}</TableCell>
+              <TableCell className="font-mono text-[10px] font-black text-primary/60">{item.referenceCode}</TableCell>
+              <TableCell className="text-xs font-bold text-slate-700" style={{ paddingInlineStart: `${(node.depth + 1) * 20 + 16}px` }}>
+                {item.referenceTitle}
+              </TableCell>
+              <TableCell className="text-center font-black text-[10px] text-slate-400 uppercase">{item.unitSymbol || item.unitName || '-'}</TableCell>
+              <TableCell className="text-center font-mono font-black text-slate-500 text-xs">{item.plannedQuantity}</TableCell>
+              <TableCell className="p-1 w-[120px]">
+                <div className="relative">
+                  <Input 
+                    type="number" 
+                    defaultValue={item.executedQuantity}
+                    onBlur={(e) => handleUpdateQuantity(item.id!, Number(e.target.value))}
+                    className={cn(
+                      "h-8 rounded-lg border-2 font-black text-center text-xs transition-all",
+                      isOver ? "border-rose-200 bg-rose-50 text-rose-600" : "bg-white"
+                    )} 
+                  />
+                  {updatingId === item.id && <Loader2 className="absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 animate-spin text-primary" />}
+                </div>
+              </TableCell>
+              <TableCell className="text-center font-mono font-bold text-slate-400 text-xs">
+                {item.estimatedRate?.toLocaleString()}
+              </TableCell>
+              <TableCell className="text-end font-mono font-black text-slate-800 text-xs">
+                {totalPlanned.toLocaleString()}
+              </TableCell>
+              <TableCell className="pe-6 w-[120px]">
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[8px] font-black uppercase text-slate-400">
+                    <span>{progress?.progressPercent}%</span>
+                  </div>
+                  <Progress value={progress?.progressPercent} className="h-1 bg-slate-100 [&>div]:bg-primary" />
+                </div>
+              </TableCell>
+            </TableRow>
+          );
+        })}
+
+        {/* العودية للأقسام الفرعية */}
+        {node.children.map((child, cIdx) => {
+          const childPrefix = `${prefix.replace('.0', '')}.${node.items.length + cIdx + 1}`;
+          return renderExecutionTreeRows(child, childPrefix);
+        })}
+      </React.Fragment>
+    );
+  };
+
   if (boqLoading || itemsLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
   if (!activeBoq) return (
@@ -103,15 +178,15 @@ export default function TransactionBOQProgressPage() {
   return (
     <div className="flex flex-col h-full space-y-4 animate-in fade-in duration-500" dir={dir}>
       
-      {/* 1. Minimal Header (Nova x Odoo Style) */}
+      {/* Professional Header Bar */}
       <header className="flex flex-row items-center justify-between gap-4 bg-white p-4 rounded-xl shadow-sm border border-primary/10">
         <div className="flex items-center gap-4">
-           <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-9 w-9 rounded-lg border">
+           <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-10 w-10 rounded-lg border">
               <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
            </Button>
            <div className="text-start">
               <div className="flex items-center gap-2">
-                 <h1 className="text-lg font-black text-slate-900 leading-none">{activeBoq.boqNumber}</h1>
+                 <h1 className="text-base font-black text-slate-900 leading-none">{activeBoq.boqNumber}</h1>
                  <Badge variant="outline" className="text-[8px] h-4 font-black uppercase bg-primary/5 text-primary border-primary/20">{activeBoq.status}</Badge>
               </div>
               <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">
@@ -125,51 +200,54 @@ export default function TransactionBOQProgressPage() {
               <Printer className="h-3.5 w-3.5" /> {isRtl ? 'طباعة' : 'Print'}
            </Button>
            <Button className="h-9 px-4 rounded-lg font-black text-xs gap-2">
-              <Save className="h-3.5 w-3.5" /> {isRtl ? 'حفظ المسودة' : 'Save Draft'}
+              <Save className="h-3.5 w-3.5" /> {isRtl ? 'حفظ' : 'Save'}
            </Button>
         </div>
       </header>
 
-      {/* 2. Main Tree Grid Container */}
+      {/* Main execution Grid */}
       <div className="flex-1 bg-white rounded-xl shadow-xl border border-primary/5 overflow-hidden flex flex-col">
-         {/* Table Header */}
-         <div className="grid grid-cols-12 bg-slate-50 border-b p-3 px-6 text-[10px] font-black text-slate-500 uppercase tracking-widest text-start">
-            <div className="col-span-1">#</div>
-            <div className="col-span-4">{isRtl ? 'بند العمل / الوصف' : 'Work Item / Title'}</div>
-            <div className="col-span-1 text-center">{isRtl ? 'الوحدة' : 'Unit'}</div>
-            <div className="col-span-1 text-center">{isRtl ? 'مخطط' : 'Planned'}</div>
-            <div className="col-span-2 text-center">{isRtl ? 'منجز فعلي' : 'Executed'}</div>
-            <div className="col-span-1 text-end">{isRtl ? 'الفئة' : 'Rate'}</div>
-            <div className="col-span-2 text-end pe-4">{isRtl ? 'إجمالي (مخطط)' : 'Total'}</div>
-         </div>
+         <Table>
+           <TableHeader className="bg-slate-50 border-b-2">
+             <TableRow>
+               <TableHead className="ps-6 w-[80px]">S.No</TableHead>
+               <TableHead className="w-[100px]">Code</TableHead>
+               <TableHead>{isRtl ? 'بند العمل / الوصف' : 'Item Description'}</TableHead>
+               <TableHead className="text-center w-[60px]">{isRtl ? 'الوحدة' : 'Unit'}</TableHead>
+               <TableHead className="text-center w-[80px]">{isRtl ? 'مخطط' : 'Plan'}</TableHead>
+               <TableHead className="text-center w-[120px]">{isRtl ? 'المنفذ' : 'Actual'}</TableHead>
+               <TableHead className="text-center w-[100px]">{isRtl ? 'الفئة' : 'Rate'}</TableHead>
+               <TableHead className="text-end w-[120px]">{isRtl ? 'الإجمالي' : 'Total'}</TableHead>
+               <TableHead className="pe-6 w-[120px]">{isRtl ? 'الإنجاز' : 'Progress'}</TableHead>
+             </TableRow>
+           </TableHeader>
+           <TableBody className="max-h-[60vh] overflow-y-auto">
+              {boqTree.map((node, idx) => renderExecutionTreeRows(node, (idx + 1).toString() + ".0"))}
+           </TableBody>
+         </Table>
 
-         {/* Scrollable Tree Content */}
-         <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide p-2 space-y-1">
-            {boqTree.map((node, idx) => renderRowRecursive(node, (idx + 1).toString()))}
-         </div>
-
-         {/* 3. Bottom Summary Bar (Odoo Logic) */}
-         <footer className="bg-slate-900 text-white p-5 px-8 flex flex-col md:flex-row justify-between items-center gap-6 rounded-b-xl shadow-2xl">
-            <div className="flex items-center gap-10">
+         {/* Bottom Global Summary Bar (Odoo Style) */}
+         <footer className="bg-[#1e1b4b] text-white p-6 px-10 flex flex-col md:flex-row justify-between items-center gap-8 rounded-b-xl shadow-2xl">
+            <div className="flex items-center gap-12">
                <div className="text-start">
-                  <p className="text-[8px] font-black text-primary uppercase tracking-widest mb-1">{isRtl ? 'إجمالي الميزانية المخططة' : 'Total Planned Budget'}</p>
+                  <p className="text-[9px] font-black text-primary uppercase tracking-widest mb-1">{isRtl ? 'إجمالي الميزانية المخططة' : 'Total Planned Budget'}</p>
                   <h3 className="text-2xl font-black font-headline">{overallStats.totalPlanned.toLocaleString()} <span className="text-xs text-white/40">KWD</span></h3>
                </div>
-               <div className="text-start border-s border-white/10 ps-10">
-                  <p className="text-[8px] font-black text-emerald-400 uppercase tracking-widest mb-1">{isRtl ? 'القيمة المنفذة حالياً' : 'Total Executed Value'}</p>
+               <div className="text-start border-s border-white/10 ps-12">
+                  <p className="text-[9px] font-black text-emerald-400 uppercase tracking-widest mb-1">{isRtl ? 'القيمة المنفذة حالياً' : 'Total Executed Value'}</p>
                   <h3 className="text-2xl font-black font-headline text-emerald-400">{overallStats.totalExecuted.toLocaleString()} <span className="text-xs">KWD</span></h3>
                </div>
             </div>
 
-            <div className="flex items-center gap-6 w-full md:w-auto">
+            <div className="flex items-center gap-8 w-full md:w-auto bg-white/5 p-4 rounded-2xl border border-white/10">
                <div className="flex-1 md:w-48 space-y-2">
-                  <div className="flex justify-between text-[10px] font-black uppercase">
-                     <span>{isRtl ? 'إنجاز المشروع' : 'Project Progress'}</span>
-                     <span>{overallStats.progress}%</span>
+                  <div className="flex justify-between text-[9px] font-black uppercase">
+                     <span className="text-slate-400">{isRtl ? 'إنجاز المشروع' : 'Completion'}</span>
+                     <span className="text-primary">{overallStats.progress}%</span>
                   </div>
-                  <Progress value={overallStats.progress} className="h-1.5 bg-white/10 [&>div]:bg-primary" />
+                  <Progress value={overallStats.progress} className="h-1.5 bg-white/10 [&>div]:bg-primary shadow-inner" />
                </div>
-               <div className="h-12 w-12 rounded-2xl bg-primary/20 flex items-center justify-center text-primary shadow-inner">
+               <div className="h-12 w-12 rounded-2xl bg-primary/20 flex items-center justify-center text-primary shadow-lg ring-4 ring-primary/5">
                   <TrendingUp className="h-6 w-6" />
                </div>
             </div>
@@ -177,95 +255,4 @@ export default function TransactionBOQProgressPage() {
       </div>
     </div>
   );
-
-  // Recursive Renderer for Odoo-style Tree
-  function renderRowRecursive(node: any, prefix: string) {
-    const isExpanded = expandedNodes[node.id] !== false; // Default to true if not set
-    const hasChildren = node.children.length > 0 || node.items.length > 0;
-
-    return (
-      <div key={node.id} className="space-y-1">
-        {/* Parent Group Row */}
-        <div 
-          className={cn(
-            "grid grid-cols-12 p-2.5 rounded-lg transition-all border border-transparent",
-            "bg-slate-50/80 hover:bg-slate-100 group cursor-pointer"
-          )}
-          onClick={() => toggleNode(node.id)}
-        >
-          <div className="col-span-1 font-mono text-[10px] font-black text-slate-400 ps-4">
-             {prefix}
-          </div>
-          <div className="col-span-4 flex items-center gap-2">
-             <div className="text-primary/40 group-hover:text-primary transition-colors">
-                {hasChildren ? (isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className={cn("h-4 w-4", isRtl && "rotate-180")} />) : <div className="w-4" />}
-             </div>
-             <span className="text-xs font-black text-slate-700 truncate">{node.title}</span>
-          </div>
-          <div className="col-span-7" />
-        </div>
-
-        {/* Children (Sub-nodes and Items) */}
-        {isExpanded && (
-          <div className="space-y-1">
-             {/* Render Nested Children */}
-             {node.children.map((child: any, cIdx: number) => renderRowRecursive(child, `${prefix}.${cIdx + 1}`))}
-
-             {/* Render Final Work Items */}
-             {node.items.map((item: BOQItem, iIdx: number) => {
-               const itemPrefix = `${prefix}.${iIdx + 1}`;
-               const progress = executionService?.getBOQItemProgress(item);
-               const isOver = progress?.isOverExecuted;
-
-               return (
-                 <div key={item.id} className="grid grid-cols-12 p-2 px-3 rounded-lg bg-white border border-slate-100 hover:border-primary/20 hover:shadow-sm transition-all group items-center">
-                    <div className="col-span-1 font-mono text-[9px] font-bold text-slate-300 ps-6">
-                       {itemPrefix}
-                    </div>
-                    <div className="col-span-4 flex flex-col text-start">
-                       <span className="text-xs font-bold text-slate-800 leading-tight">{item.referenceTitle}</span>
-                       <span className="text-[8px] font-mono text-slate-400 mt-0.5 tracking-tighter">REF: {item.referenceCode}</span>
-                    </div>
-                    <div className="col-span-1 text-center font-black text-[10px] text-slate-400 uppercase">
-                       {item.unitSymbol || item.unitName}
-                    </div>
-                    <div className="col-span-1 text-center font-mono font-black text-slate-500 text-xs">
-                       {item.plannedQuantity}
-                    </div>
-                    <div className="col-span-2 px-4">
-                       <div className="relative">
-                          <Input 
-                            type="number" 
-                            defaultValue={item.executedQuantity}
-                            onBlur={(e) => handleUpdateQuantity(item.id!, Number(e.target.value))}
-                            className={cn(
-                              "h-8 rounded-lg border-2 font-black text-center text-xs transition-all",
-                              isOver ? "border-rose-200 bg-rose-50 text-rose-600" : "bg-slate-50/50"
-                            )} 
-                          />
-                          {updatingId === item.id && <Loader2 className="absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 animate-spin text-primary" />}
-                          {isOver && <AlertTriangle className="absolute -top-1 -right-1 h-3 w-3 text-rose-500 shadow-sm" />}
-                       </div>
-                    </div>
-                    <div className="col-span-1 text-end font-mono font-bold text-slate-400 text-[10px]">
-                       {item.estimatedRate?.toLocaleString()}
-                    </div>
-                    <div className="col-span-2 text-end pe-4">
-                       <div className="flex flex-col items-end">
-                          <span className="font-mono font-black text-slate-800 text-xs">
-                             {((item.plannedQuantity || 0) * (item.estimatedRate || 0)).toLocaleString()}
-                          </span>
-                          <div className="w-16 mt-1">
-                             <Progress value={progress?.progressPercent} className="h-0.5 bg-slate-100" />
-                          </div>
-                       </div>
-                    </div>
-                 </div>
-               );
-             })}
-          </div>
-        )}
-      </div>
-    );
-  }
 }

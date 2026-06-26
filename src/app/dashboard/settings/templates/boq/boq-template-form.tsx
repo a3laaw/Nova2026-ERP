@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -6,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   Select, 
   SelectContent, 
@@ -22,20 +24,21 @@ import {
   FolderTree,
   ChevronDown, ChevronRight,
   LayoutGrid,
-  Target,
   Layers,
   Settings2,
   Folder,
-  Hammer
+  Hammer,
+  FileText,
+  DollarSign
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, doc, getDoc } from 'firebase/firestore';
+import { collection, query, orderBy, doc } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { BOQTemplate, BOQTemplateItem, BOQTreeNode } from '@/types/templates';
-import { ActivityType, Service, SubService, BOQReferenceNode } from '@/types/reference';
+import { ActivityType, Service, BOQReferenceNode } from '@/types/reference';
 import { TemplateService } from '@/services/template-service';
 import { transformToBOQTree } from '@/lib/boq-tree-utils';
 import { toast } from '@/hooks/use-toast';
@@ -213,15 +216,15 @@ export function BOQTemplateForm({ template, onClose }: Props) {
              </div>
           </div>
           {node.isExecutable && (
-            <Button 
-              size="sm" 
+            <button 
+              type="button"
               onClick={() => addFromMaster(node)} 
               disabled={isAdded}
-              className={cn("h-7 rounded-lg text-[9px] font-black gap-1.5 transition-all", isAdded ? "bg-slate-100 text-slate-300" : "bg-primary text-white")}
+              className={cn("h-7 px-3 rounded-lg text-[9px] font-black gap-1.5 transition-all flex items-center", isAdded ? "bg-slate-100 text-slate-300" : "bg-primary text-white hover:bg-orange-600")}
             >
               {isAdded ? <CheckCircle2 className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
               {isAdded ? (isRtl ? 'مضاف' : 'Added') : (isRtl ? 'إضافة' : 'Add')}
-            </Button>
+            </button>
           )}
         </div>
         {isExpanded && node.children.map((c: any) => renderPickerNode(c))}
@@ -230,148 +233,142 @@ export function BOQTemplateForm({ template, onClose }: Props) {
   };
 
   /**
-   * دالة العرض الشجري لبنود المقايسة مع الترقيم الهرمي الدقيق.
+   * دالة العرض الجدولي الشجري (Tree Grid Row Renderer)
    */
-  const renderBOQTreeNode = (node: BOQTreeNode, prefix: string) => {
+  const renderBOQTreeRows = (node: BOQTreeNode, prefix: string): React.ReactNode => {
+    const isSection = node.items.length > 0 || node.children.length > 0;
+    
     return (
-      <div key={node.id} className="space-y-4 mb-6 animate-in slide-in-from-top-2">
-        {/* رأس القسم المرجعي */}
-        <div className="flex items-center gap-4 bg-slate-100/50 p-4 rounded-2xl border-2 border-white shadow-sm" style={{ marginInlineStart: `${node.depth * 24}px` }}>
-           <div className="h-9 min-w-[40px] px-2 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black text-[11px] font-mono shadow-lg">
-             {prefix}
-           </div>
-           <div className="h-8 w-8 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600">
-             <Folder className="h-4 w-4" />
-           </div>
-           <h4 className="font-black text-slate-900 text-base tracking-tight">{node.title}</h4>
-        </div>
-        
-        {/* محتوى القسم: البنود ثم الأقسام الفرعية */}
-        <div className="space-y-4">
-           {/* 1. عرض البنود التنفيذية التابعة لهذا القسم مباشرة (1.1.1.1) */}
-           {node.items.map((item, iIdx) => {
-             const originalIdx = items.findIndex(i => i.boqReferenceNodeId === item.boqReferenceNodeId);
-             const itemPrefix = `${prefix}.${iIdx + 1}`;
-             
-             return (
-               <div key={`${item.boqReferenceNodeId}-${originalIdx}`} className="p-6 rounded-[2rem] bg-white border border-slate-100 shadow-xl ring-1 ring-black/[0.02] flex flex-col md:flex-row gap-8 items-center group transition-all hover:ring-primary/20" style={{ marginInlineStart: `${(node.depth + 1) * 24}px` }}>
-                  <div className="flex-1 text-start flex items-center gap-4">
-                     <div className="h-8 min-w-[36px] px-2 rounded-lg bg-primary/5 border border-primary/20 flex items-center justify-center text-primary font-black text-[10px] font-mono">
-                        {itemPrefix}
-                     </div>
-                     <div className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-sm">
-                        <Hammer className="h-5 w-5" />
-                     </div>
-                     <div>
-                        <div className="flex items-center gap-2">
-                           <Badge variant="outline" className="text-[8px] font-mono border-slate-200 text-slate-400 font-bold">#{item.referenceCode}</Badge>
-                           <h5 className="text-base font-black text-slate-800 tracking-tight leading-none">{item.referenceTitle}</h5>
-                        </div>
-                        {item.unitSymbol && <span className="text-[10px] font-bold text-slate-400 mt-1 block uppercase">Unit: {item.unitSymbol}</span>}
-                     </div>
-                  </div>
+      <React.Fragment key={node.id}>
+        {/* صف القسم (Group Header) */}
+        <TableRow className="bg-slate-50/80 hover:bg-slate-100 border-b-2 border-white group/row">
+          <TableCell className="font-mono text-[11px] font-black text-slate-400 ps-6 w-[80px]">{prefix}</TableCell>
+          <TableCell className="w-[120px] font-mono text-[10px] font-bold text-slate-400">---</TableCell>
+          <TableCell className="font-black text-slate-900 text-sm py-4" style={{ paddingInlineStart: `${node.depth * 20 + 16}px` }}>
+            <div className="flex items-center gap-2">
+              <Folder className="h-3.5 w-3.5 text-orange-400" />
+              {node.title}
+            </div>
+          </TableCell>
+          <TableCell colSpan={6}></TableCell>
+        </TableRow>
 
-                  <div className="flex items-center gap-6 bg-slate-50 p-4 rounded-3xl border-2 border-white shadow-inner">
-                     <div className="space-y-1 text-center">
-                        <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'الكمية' : 'Planned'}</Label>
-                        <Input 
-                          type="number" 
-                          value={item.plannedQuantity} 
-                          onChange={e => updateItem(originalIdx, 'plannedQuantity', Number(e.target.value))} 
-                          className="h-11 w-24 rounded-xl text-center font-black text-lg border-2 bg-white" 
-                        />
-                     </div>
-                     <div className="space-y-1 text-center border-s-2 border-white ps-6">
-                        <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'الفئة' : 'Rate'}</Label>
-                        <Input 
-                          type="number" 
-                          step="0.001"
-                          value={item.estimatedRate} 
-                          onChange={e => updateItem(originalIdx, 'estimatedRate', Number(e.target.value))} 
-                          className="h-11 w-24 rounded-xl text-center font-black text-lg text-emerald-600 border-2 bg-white" 
-                        />
-                     </div>
-                     <div className="flex items-center justify-center ps-4">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => removeItem(originalIdx)} 
-                          className="h-10 w-10 rounded-xl text-rose-300 hover:text-rose-600 hover:bg-rose-50"
-                        >
-                           <Trash2 className="h-5 w-5" />
-                        </Button>
-                     </div>
-                  </div>
-               </div>
-             );
-           })}
+        {/* عرض البنود التنفيذية التابعة لهذا القسم */}
+        {node.items.map((item, iIdx) => {
+          const originalIdx = items.findIndex(i => i.boqReferenceNodeId === item.boqReferenceNodeId);
+          const itemPrefix = `${prefix}.${iIdx + 1}`;
+          const totalAmount = (item.plannedQuantity || 0) * (item.estimatedRate || 0);
 
-           {/* 2. عرض الأقسام الفرعية (1.1.2) مع إزاحة الترقيم إذا وجدت بنود سابقة */}
-           {node.children.map((c, cIdx) => {
-              // الترقيم الهرمي للأقسام الفرعية يتبع تتابع البنود لو وجدت في نفس المستوى
-              const childIndex = node.items.length + cIdx + 1;
-              return renderBOQTreeNode(c, `${prefix}.${childIndex}`);
-           })}
-        </div>
-      </div>
+          return (
+            <TableRow key={`${item.boqReferenceNodeId}-${originalIdx}`} className="hover:bg-primary/[0.02] transition-colors border-b-slate-50">
+              <TableCell className="font-mono text-[10px] font-bold text-slate-300 ps-8">{itemPrefix}</TableCell>
+              <TableCell className="font-mono text-[10px] font-black text-primary/60">{item.referenceCode}</TableCell>
+              <TableCell className="text-xs font-bold text-slate-700" style={{ paddingInlineStart: `${(node.depth + 1) * 20 + 16}px` }}>
+                {item.referenceTitle}
+              </TableCell>
+              <TableCell className="text-[10px] text-slate-400 font-bold max-w-[200px] truncate">{item.referenceDescription || '-'}</TableCell>
+              <TableCell className="text-center font-black text-[10px] text-slate-400 uppercase">{item.unitSymbol || item.unitName || '-'}</TableCell>
+              <TableCell className="p-1 w-[100px]">
+                <Input 
+                  type="number" 
+                  value={item.plannedQuantity} 
+                  onChange={e => updateItem(originalIdx, 'plannedQuantity', Number(e.target.value))} 
+                  className="h-8 rounded-lg text-center font-black text-xs border-2 bg-slate-50/50" 
+                />
+              </TableCell>
+              <TableCell className="p-1 w-[100px]">
+                <Input 
+                  type="number" 
+                  step="0.001"
+                  value={item.estimatedRate} 
+                  onChange={e => updateItem(originalIdx, 'estimatedRate', Number(e.target.value))} 
+                  className="h-8 rounded-lg text-center font-black text-xs text-emerald-600 border-2 bg-slate-50/50" 
+                />
+              </TableCell>
+              <TableCell className="text-end font-mono font-black text-slate-900 text-xs pe-4">
+                {totalAmount.toLocaleString()}
+              </TableCell>
+              <TableCell className="w-[50px] text-center">
+                <Button 
+                  type="button"
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => removeItem(originalIdx)} 
+                  className="h-7 w-7 rounded-lg text-rose-300 hover:text-rose-600 hover:bg-rose-50"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </TableCell>
+            </TableRow>
+          );
+        })}
+
+        {/* عرض الأقسام الفرعية */}
+        {node.children.map((child, cIdx) => {
+          const childPrefix = `${prefix.replace('.0', '')}.${node.items.length + cIdx + 1}`;
+          return renderBOQTreeRows(child, childPrefix);
+        })}
+      </React.Fragment>
     );
   };
 
   if (templateLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20 text-start" dir={dir}>
+    <div className="max-w-full space-y-6 animate-in fade-in duration-500 pb-20 text-start" dir={dir}>
       
-      <div className="flex items-center justify-between border-b-2 border-slate-100 pb-6 sticky top-0 bg-[#F8F9FA]/90 backdrop-blur-md z-[50]">
+      {/* Header Bar */}
+      <div className="flex items-center justify-between border-b bg-white p-4 rounded-xl shadow-sm sticky top-0 z-[50]">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" onClick={onClose} className="h-12 w-12 p-0 rounded-2xl bg-white border-2 shadow-sm hover:border-primary/20 transition-all">
-            <ArrowRight className={cn("h-6 w-6", !isRtl && "rotate-180")} />
+          <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 border rounded-lg">
+            <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
           </Button>
           <div className="text-start">
-             <h1 className="text-3xl font-black font-headline text-slate-900 tracking-tight">{isRtl ? 'هندسة القوالب الشجرية' : 'BOQ Template Engineering'}</h1>
-             <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">{isRtl ? 'تصميم القالب المرجعي السيادي' : 'Master Template Design'}</p>
+             <h1 className="text-lg font-black text-slate-900 leading-tight">{isRtl ? 'هندسة القوالب الشجرية' : 'BOQ Template Engineering'}</h1>
+             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{formData.name || 'Untitled Template'}</p>
           </div>
         </div>
-        <Button onClick={handleSave} disabled={loading} className="h-14 px-12 rounded-2xl bg-primary text-white font-black text-lg shadow-xl shadow-primary/20 gap-3 border-b-8 border-orange-700 hover:scale-[1.02] transition-all">
-          {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
-          {t('save')}
-        </Button>
+        <div className="flex items-center gap-3">
+           <Button onClick={handleSave} disabled={loading} className="h-10 px-8 rounded-lg bg-primary text-white font-black text-sm shadow-lg shadow-primary/20 gap-2 border-b-4 border-orange-700">
+             {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
+             {t('save')}
+           </Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start px-1">
         
-        {/* Sidebar: Metadata & Financial Widget */}
-        <div className="lg:col-span-1 space-y-6 sticky top-28">
-           <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
-              <CardHeader className="bg-slate-900 p-6 text-white text-start">
-                 <CardTitle className="text-xs font-black flex items-center gap-3 uppercase tracking-widest text-primary">
-                    <Settings2 className="h-4 w-4" />
-                    {isRtl ? 'إدارة المعايير' : 'Control Center'}
+        {/* Left Sidebar: Controls & Metadata */}
+        <div className="lg:col-span-3 space-y-6">
+           <Card className="border-0 shadow-lg rounded-2xl bg-white overflow-hidden ring-1 ring-black/5">
+              <CardHeader className="bg-slate-50 border-b p-5">
+                 <CardTitle className="text-xs font-black flex items-center gap-2 uppercase tracking-widest text-slate-500">
+                    <Settings2 className="h-3.5 w-3.5 text-primary" />
+                    {isRtl ? 'إعدادات القالب' : 'Template Config'}
                  </CardTitle>
               </CardHeader>
-              <CardContent className="p-6 space-y-6">
-                 
+              <CardContent className="p-5 space-y-6">
                  <div className="space-y-4">
                     <div className="space-y-1.5">
                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('name')}</Label>
-                       <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-10 rounded-xl border-2 font-bold text-sm bg-slate-50/50" />
+                       <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-10 rounded-lg border-2 font-bold text-sm" />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                        <div className="space-y-1.5">
                           <Label className="text-[10px] font-black uppercase text-slate-400">Code</Label>
-                          <Input value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value.toUpperCase()})} className="h-10 rounded-xl border-2 font-mono font-black text-primary text-xs" />
+                          <Input value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value.toUpperCase()})} className="h-10 rounded-lg border-2 font-mono font-black text-primary text-xs" />
                        </div>
-                       <div className="flex items-center justify-between p-2 bg-slate-100/50 rounded-xl border-2">
-                          <Label className="text-[8px] font-black uppercase text-slate-400">{isRtl ? 'افتراضي' : 'Def'}</Label>
+                       <div className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border-2">
+                          <Label className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'افتراضي' : 'Def'}</Label>
                           <Switch checked={formData.isDefault || false} onCheckedChange={v => setFormData({...formData, isDefault: v})} />
                        </div>
                     </div>
                  </div>
 
-                 {/* Compact Financial Widget */}
+                 {/* Financial Stats Widget */}
                  <div className={cn(
-                   "p-6 rounded-[2rem] transition-all space-y-4 relative overflow-hidden shadow-lg",
-                   isMathValid ? "bg-emerald-600 text-white" : "bg-indigo-900 text-white"
+                   "p-5 rounded-2xl transition-all space-y-4 relative overflow-hidden shadow-md",
+                   isMathValid ? "bg-emerald-600 text-white" : "bg-[#1e1b4b] text-white"
                  )}>
                     <div className="relative z-10 space-y-1">
                        <p className="text-[9px] font-black uppercase opacity-60 tracking-widest">{isRtl ? 'الميزانية المستهدفة' : 'Target Budget'}</p>
@@ -379,95 +376,106 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                          type="number" 
                          value={formData.baseAmount || 0} 
                          onChange={e => setFormData({...formData, baseAmount: Number(e.target.value)})} 
-                         className="h-12 rounded-xl border-0 bg-white/20 text-white font-black text-xl text-center shadow-inner"
+                         className="h-10 rounded-lg border-0 bg-white/20 text-white font-black text-lg text-center"
                        />
                     </div>
                     <div className="relative z-10 pt-3 border-t border-white/10 flex justify-between items-center">
                        <div className="text-start">
-                          <p className="text-[8px] font-black uppercase opacity-60">{isRtl ? 'المجموع الحالي' : 'Items Sum'}</p>
-                          <p className="text-lg font-black">{totalItemsValue.toLocaleString()}</p>
+                          <p className="text-[8px] font-black uppercase opacity-60">{isRtl ? 'إجمالي البنود' : 'Current Sum'}</p>
+                          <p className="text-base font-black">{totalItemsValue.toLocaleString()}</p>
                        </div>
                        <div className={cn(
-                         "h-8 w-8 rounded-xl flex items-center justify-center shadow-lg",
-                         isMathValid ? "bg-white text-emerald-600" : "bg-rose-500 text-white"
+                         "h-7 w-7 rounded-lg flex items-center justify-center shadow-lg",
+                         isMathValid ? "bg-white text-emerald-600" : "bg-orange-500 text-white"
                        )}>
-                          {isMathValid ? <CheckCircle2 className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
+                          {isMathValid ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
                        </div>
                     </div>
                  </div>
 
                  <div className="space-y-4 pt-4 border-t border-slate-50">
                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                       <Layers className="h-3 w-3" /> {isRtl ? 'نطاق الظهور' : 'Visibility'}
+                       <Layers className="h-3 w-3" /> {isRtl ? 'نطاق الظهور' : 'Visibility Context'}
                     </Label>
                     <div className="space-y-2">
                        <Select value={formData.activityTypeId} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: ''})}>
-                          <SelectTrigger className="h-10 rounded-xl font-black text-xs bg-slate-50/50 border-2"><SelectValue placeholder="Activity" /></SelectTrigger>
+                          <SelectTrigger className="h-10 rounded-lg font-bold text-xs bg-slate-50 border-2"><SelectValue placeholder="Activity" /></SelectTrigger>
                           <SelectContent className="rounded-xl">{activities?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold text-xs">{isRtl ? a.name : a.nameEn}</SelectItem>)}</SelectContent>
                        </Select>
                        <Select value={formData.serviceId} disabled={!formData.activityTypeId} onValueChange={v => setFormData({...formData, serviceId: v})}>
-                          <SelectTrigger className="h-10 rounded-xl font-black text-xs bg-slate-50/50 border-2"><SelectValue placeholder="Service" /></SelectTrigger>
+                          <SelectTrigger className="h-10 rounded-lg font-bold text-xs bg-slate-50 border-2"><SelectValue placeholder="Service" /></SelectTrigger>
                           <SelectContent className="rounded-xl">{services?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs">{isRtl ? s.name : s.nameEn}</SelectItem>)}</SelectContent>
                        </Select>
                     </div>
                  </div>
+
+                 <Dialog open={isPickerOpen} onOpenChange={setIsMasterPickerOpen}>
+                    <DialogTrigger asChild>
+                       <Button className="w-full h-14 rounded-xl bg-slate-900 text-white font-black shadow-xl gap-3 hover:scale-105 transition-all mt-4">
+                          <FolderTree className="h-5 w-5 text-primary" />
+                          {isRtl ? 'مستكشف القاموس' : 'Reference Explorer'}
+                       </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-4xl rounded-2xl p-0 overflow-hidden bg-white border-0 shadow-3xl" dir={dir}>
+                       <div className="bg-slate-50 p-8 text-slate-900 text-start border-b">
+                          <DialogTitle className="text-2xl font-black font-headline flex items-center gap-4">
+                             <GitBranch className="h-8 w-8 text-primary" />
+                             {isRtl ? 'القاموس الهندسي الموحد' : 'Sovereign Reference'}
+                          </DialogTitle>
+                          <div className="relative mt-4">
+                             <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
+                             <Input value={masterSearch} onChange={e => setMasterSearch(e.target.value)} placeholder={isRtl ? "ابحث بالاسم أو الكود..." : "Search..."} className="ps-12 h-12 rounded-xl border-2 font-bold" />
+                          </div>
+                       </div>
+                       <div className="p-6 max-h-[50vh] overflow-y-auto scrollbar-hide bg-slate-50/20">
+                          {masterLoading ? (
+                            <div className="py-20 text-center flex flex-col items-center gap-4">
+                               <Loader2 className="animate-spin h-10 w-10 text-primary" />
+                               <p className="text-xs font-black text-slate-300 uppercase tracking-widest italic">Indexing Registry...</p>
+                            </div>
+                          ) : pickerTree.map(renderPickerNode)}
+                       </div>
+                       <DialogFooter className="p-6 bg-slate-50 border-t">
+                          <Button variant="outline" onClick={() => setIsMasterPickerOpen(false)} className="rounded-xl font-black h-10 px-8">إغلاق</Button>
+                       </DialogFooter>
+                    </DialogContent>
+                 </Dialog>
               </CardContent>
            </Card>
         </div>
 
-        {/* Main Content area: الشجرة الهرمية */}
-        <div className="lg:col-span-3 space-y-8">
-           <div className="flex justify-between items-center bg-white p-6 rounded-[2.5rem] shadow-xl ring-1 ring-black/5">
-              <div className="text-start">
-                 <h3 className="text-xl font-black font-headline flex items-center gap-3 text-slate-900">
-                    <GitBranch className="h-6 w-6 text-primary" />
-                    {isRtl ? 'هيكلة بنود المقايسة' : 'BOQ Structure'}
-                 </h3>
-                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 opacity-60">Building the Sovereign Tree</p>
-              </div>
-
-              <Dialog open={isPickerOpen} onOpenChange={setIsMasterPickerOpen}>
-                 <DialogTrigger asChild>
-                    <Button className="h-14 px-8 rounded-2xl bg-slate-900 text-white font-black shadow-xl gap-3 hover:scale-105 transition-all">
-                       <FolderTree className="h-5 w-5 text-primary" />
-                       {isRtl ? 'مستكشف القاموس' : 'Reference Explorer'}
-                    </Button>
-                 </DialogTrigger>
-                 <DialogContent className="max-w-4xl rounded-[3rem] p-0 overflow-hidden bg-white border-0 shadow-3xl" dir={dir}>
-                    <div className="bg-slate-50 p-10 text-slate-900 text-start border-b">
-                       <DialogTitle className="text-3xl font-black font-headline flex items-center gap-4">
-                          <GitBranch className="h-10 w-10 text-primary" />
-                          {isRtl ? 'القاموس الهندسي الموحد' : 'Sovereign Reference'}
-                       </DialogTitle>
-                       <div className="relative mt-6">
-                          <Search className="absolute start-5 top-1/2 -translate-y-1/2 h-6 w-6 text-slate-300" />
-                          <Input value={masterSearch} onChange={e => setMasterSearch(e.target.value)} placeholder={isRtl ? "ابحث بالاسم أو الكود المرجعي..." : "Search..."} className="ps-14 h-16 rounded-3xl border-2 text-lg font-bold" />
-                       </div>
-                    </div>
-                    <div className="p-8 max-h-[60vh] overflow-y-auto scrollbar-hide bg-slate-50/20">
-                       {masterLoading ? (
-                         <div className="py-24 text-center flex flex-col items-center gap-4">
-                            <Loader2 className="animate-spin h-12 w-12 text-primary" />
-                            <p className="text-sm font-black text-slate-300 uppercase tracking-widest">Indexing Master Registry...</p>
+        {/* Right Area: The Tree Grid */}
+        <div className="lg:col-span-9 space-y-4">
+           <div className="bg-white rounded-2xl shadow-xl border border-primary/10 overflow-hidden flex flex-col">
+              <Table>
+                <TableHeader className="bg-slate-50 border-b-2">
+                  <TableRow>
+                    <TableHead className="ps-6 w-[80px]">S.No</TableHead>
+                    <TableHead className="w-[120px]">Code</TableHead>
+                    <TableHead>{isRtl ? 'بند العمل / الوصف' : 'Item Description'}</TableHead>
+                    <TableHead>{isRtl ? 'المواصفة' : 'Specification'}</TableHead>
+                    <TableHead className="text-center w-[60px]">{isRtl ? 'الوحدة' : 'Unit'}</TableHead>
+                    <TableHead className="text-center w-[100px]">{isRtl ? 'الكمية' : 'Qty'}</TableHead>
+                    <TableHead className="text-center w-[100px]">{isRtl ? 'الفئة' : 'Rate'}</TableHead>
+                    <TableHead className="text-end pe-6 w-[120px]">{isRtl ? 'الإجمالي' : 'Total'}</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {items.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={9} className="py-40 text-center opacity-20">
+                         <div className="flex flex-col items-center gap-6">
+                            <LayoutGrid className="h-20 w-20" />
+                            <p className="text-xl font-black uppercase tracking-[0.3em]">{isRtl ? 'المقايسة فارغة' : 'Template is Empty'}</p>
                          </div>
-                       ) : pickerTree.map(renderPickerNode)}
-                    </div>
-                    <DialogFooter className="p-8 bg-slate-50 border-t">
-                       <Button variant="outline" onClick={() => setIsMasterPickerOpen(false)} className="rounded-xl font-black h-12 px-8">إغلاق</Button>
-                    </DialogFooter>
-                 </DialogContent>
-              </Dialog>
-           </div>
-
-           <div className="space-y-6">
-              {items.length === 0 ? (
-                <div className="py-64 text-center flex flex-col items-center gap-8 opacity-20 border-4 border-dashed border-slate-200 rounded-[4rem] bg-white shadow-inner">
-                   <LayoutGrid className="h-24 w-24" />
-                   <p className="text-xl font-black uppercase tracking-[0.3em]">{isRtl ? 'المقايسة فارغة' : 'Empty Template'}</p>
-                </div>
-              ) : (
-                boqTree.map((node, idx) => renderBOQTreeNode(node, (idx + 1).toString()))
-              )}
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    boqTree.map((node, idx) => renderBOQTreeRows(node, (idx + 1).toString() + ".0"))
+                  )}
+                </TableBody>
+              </Table>
            </div>
         </div>
 
