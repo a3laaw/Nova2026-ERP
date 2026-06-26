@@ -16,17 +16,18 @@ import {
 import { 
   Save, Plus, Trash2, Loader2, ArrowRight,
   Calculator, AlertTriangle, 
-  ChevronRight, LayoutGrid, CheckCircle2,
-  Settings2, Boxes, Hammer, Search, 
+  CheckCircle2,
+  GitBranch,
+  Search, 
   FileSearch, FolderTree,
-  ChevronDown, DollarSign, GitBranch,
-  Info, X
+  ChevronDown, ChevronRight,
+  LayoutGrid
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, doc, getDoc } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { BOQTemplate, BOQTemplateItem, BOQTreeNode } from '@/types/templates';
 import { ActivityType, Service, SubService, BOQReferenceNode } from '@/types/reference';
@@ -125,9 +126,9 @@ export function BOQTemplateForm({ template, onClose }: Props) {
 
       const finalData = {
         ...formData,
-        activityTypeName: isRtl ? selectedAct?.name : selectedAct?.nameEn,
-        serviceName: isRtl ? selectedSrv?.name : selectedSrv?.nameEn,
-        subServiceName: isRtl ? selectedSub?.name : selectedSub?.nameEn,
+        activityTypeName: (isRtl ? selectedAct?.name : selectedAct?.nameEn) || '',
+        serviceName: (isRtl ? selectedSrv?.name : selectedSrv?.nameEn) || '',
+        subServiceName: (isRtl ? selectedSub?.name : selectedSub?.nameEn) || '',
       };
 
       await service.saveBOQTemplateWithItems(template?.id || null, finalData as any, items as any, user.uid);
@@ -156,7 +157,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
       referenceCode: node.code,
       referenceTitle: node.title,
       referenceDescription: node.description,
-      parentId: node.parentId,
+      parentId: node.parentId || null,
       ancestorIds: node.ancestorIds || [],
       ancestorTitles,
       depth: node.depth,
@@ -299,7 +300,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
 
       <div className="grid grid-cols-1 gap-6">
         <Card className="border-0 shadow-lg rounded-[1.5rem] bg-white overflow-hidden ring-1 ring-black/5">
-           <CardContent className="p-6">
+           <CardContent className="p-6 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                  <div className="space-y-1.5">
                     <Label className="text-[10px] font-black uppercase text-slate-400">{t('name')}</Label>
@@ -317,6 +318,37 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                     <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'قالب افتراضي' : 'Default'}</Label>
                     <Switch checked={formData.isDefault || false} onCheckedChange={v => setFormData({...formData, isDefault: v})} />
                  </div>
+              </div>
+
+              {/* Path Categorization (Critical Fix) */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-slate-50">
+                  <div className="space-y-1.5">
+                     <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'النشاط الرئيسي' : 'Activity Type'}</Label>
+                     <Select value={formData.activityTypeId} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: ''})}>
+                        <SelectTrigger className="h-11 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                           {activities?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{isRtl ? a.name : a.nameEn}</SelectItem>)}
+                        </SelectContent>
+                     </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                     <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الخدمة التشغيلية' : 'Service'}</Label>
+                     <Select disabled={!formData.activityTypeId} value={formData.serviceId} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: ''})}>
+                        <SelectTrigger className="h-11 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                           {services?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold">{isRtl ? s.name : s.nameEn}</SelectItem>)}
+                        </SelectContent>
+                     </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                     <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المسار الفرعي' : 'Sub-Service'}</Label>
+                     <Select disabled={!formData.serviceId} value={formData.subServiceId} onValueChange={v => setFormData({...formData, subServiceId: v})}>
+                        <SelectTrigger className="h-11 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                           {subServices?.map(ss => <SelectItem key={ss.id} value={ss.id!} className="font-bold">{isRtl ? ss.name : ss.nameEn}</SelectItem>)}
+                        </SelectContent>
+                     </Select>
+                  </div>
               </div>
            </CardContent>
         </Card>
