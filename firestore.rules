@@ -52,9 +52,13 @@ service cloud.firestore {
     }
 
     // --- قواعد المجموعات المشتركة (Collection Groups) ---
-    // تحديث سيادي: السماح بالوصول للمراحل الفنية عبر كافة المستويات لأغراض الربط في القاموس
+    // تحديث سيادي: السماح بالوصول للخدمات والمراحل الفنية عبر كافة المستويات لأغراض الربط في القاموس
     match /{path=**}/stages/{stageId} {
-      allow read: if isAuthenticated() && belongsToCompany(resource.data.companyId);
+      allow read: if isAuthenticated() && (isDeveloper() || (exists(/databases/$(database)/documents/global_users/$(request.auth.uid)) && getUserData().companyId == resource.data.companyId));
+    }
+    
+    match /{path=**}/services/{serviceId} {
+      allow read: if isAuthenticated() && (isDeveloper() || (exists(/databases/$(database)/documents/global_users/$(request.auth.uid)) && getUserData().companyId == resource.data.companyId));
     }
 
     // --- سجلات المنشأة (Multi-tenant) ---
