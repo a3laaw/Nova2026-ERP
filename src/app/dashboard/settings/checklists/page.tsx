@@ -15,7 +15,7 @@ import BOQNodesPage from './boq-nodes/page';
 
 /**
  * محطة الإعدادات الفنية (Technical Setup Hub).
- * تم تنظيف التبويبات المكررة وتثبيت "شجرة الأعمال" كمصدر وحيد لإدارة القاموس الهندسي.
+ * مركز التحكم في القواميس المرجعية والقاموس الهندسي الشجري السيادي.
  */
 export default function TechnicalSetupPage() {
   const { t, lang, dir } = useLanguage();

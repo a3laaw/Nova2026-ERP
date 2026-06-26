@@ -54,7 +54,7 @@ export const paths = {
   purchaseOrders: (companyId: string) => getTenantPath(companyId, 'purchaseOrders'),
   poItems: (companyId: string, poId: string) => `${getTenantPath(companyId, 'purchaseOrders')}/${poId}/items`,
 
-  // المسارات الفنية والتشغيلية (The Technical Core)
+  // المسارات الفنية والتشغيلية (The Technical Core - Workflows)
   activityTypes: (companyId: string) => getTenantPath(companyId, 'activityTypes'),
   services: (companyId: string, actId: string) => `${getTenantPath(companyId, 'activityTypes')}/${actId}/services`,
   subServices: (companyId: string, actId: string, srvId: string) => `${getTenantPath(companyId, 'activityTypes')}/${actId}/services/${srvId}/subServices`,
@@ -67,7 +67,7 @@ export const paths = {
   transactionComments: (companyId: string, tId: string) => `${getTenantPath(companyId, 'transactions')}/${tId}/comments`,
   stageComments: (companyId: string, tId: string, sId: string) => `${getTenantPath(companyId, 'transactions')}/${tId}/stageInstances/${sId}/comments`,
 
-  // المرجع الشجري الديناميكي الموحد لبنود BOQ (Single Source of Truth)
+  // المرجع الشجري الديناميكي الموحد لبنود BOQ (The Registry - Single Source of Truth)
   boqReferenceNodes: (companyId: string) => getTenantPath(companyId, 'boqReferenceNodes'),
 
   // مكتبة القوالب (Template Library)

@@ -1,5 +1,5 @@
 /**
- * @fileOverview This component is deprecated. 
- * Please use BOQReferenceSelector from @/components/settings/checklists/boq-reference.
+ * @fileOverview THIS COMPONENT IS DELETED. 
+ * Replaced by src/components/settings/checklists/boq-reference/boq-reference-selector.tsx.
  */
-export const BOQMasterSelectorDeprecated = true;
+export {};

@@ -1,5 +1,5 @@
 /**
- * @fileOverview This service is deprecated. 
- * Please use BOQReferenceService or TemplateService which now manage the sovereign tree.
+ * @fileOverview THIS FILE IS DELETED. 
+ * The functionality has been moved to BOQReferenceService.
  */
-export const BOQMasterServiceDeprecated = true;
+export {};
