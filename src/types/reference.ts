@@ -146,6 +146,9 @@ export interface BOQReferenceNode extends BaseReference {
   allowedActivityTypeNames?: string[];
   allowedServiceIds?: string[];
   allowedServiceNames?: string[];
+  
+  // وراثة الخدمات
+  inheritServices?: boolean;   // هل ترث الخدمات من الأب؟
 
   // الخصائص الفنية والتنفيذية للبنود (Executable Items)
   unitTypeId?: string;

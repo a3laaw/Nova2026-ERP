@@ -10,7 +10,7 @@ import {
   Hammer, ChevronRight, ChevronDown,
   Info, Save, ListChecks, Settings2,
   X, AlertTriangle, Workflow, Checkbox as CheckboxIcon,
-  Package, Boxes
+  Package, Boxes, RotateCcw
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, collectionGroup, where } from 'firebase/firestore';
@@ -30,6 +30,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from '@/hooks/use-toast';
+import { resolveNodeEffectiveServices } from '@/lib/boq-tree-utils';
 import { 
   AlertDialog, 
   AlertDialogAction, 
@@ -100,7 +101,7 @@ export default function BOQNodesPage() {
       const tpService = new TechnicalPathService(db, companyId);
       tpService.getAllCompanyStages().then(setAllStages);
     }
-  }, [db, companyId, editingNode]); // تحديث القائمة عند فتح المودال لضمان توفر البيانات
+  }, [db, companyId, editingNode]);
 
   const treeData = useMemo(() => {
     const nodes = rawNodes || [];
@@ -119,11 +120,6 @@ export default function BOQNodesPage() {
   const handleSave = async () => {
     if (!service || !user || !editingNode?.title) return;
     
-    if (editingNode.parentId === null && (!editingNode.allowedActivityTypeIds || editingNode.allowedActivityTypeIds.length === 0)) {
-      toast({ variant: "destructive", title: isRtl ? "يجب ربط القسم بنشاط واحد على الأقل" : "Root node must be linked to at least one activity" });
-      return;
-    }
-
     setLoadingAction('save');
     try {
       if (editingNode.id) {
@@ -175,6 +171,9 @@ export default function BOQNodesPage() {
     const isExpanded = expandedNodes.includes(node.id);
     const hasChildren = node.childrenCount > 0;
     const isExecutable = node.isExecutable;
+    
+    // حل الخدمات الفعالة للعرض
+    const effectiveServices = resolveNodeEffectiveServices(node.id, rawNodes || []);
 
     return (
       <div key={node.id} className="space-y-1">
@@ -205,10 +204,17 @@ export default function BOQNodesPage() {
                    {isExecutable && node.unitSymbol && (
                      <span className="text-[8px] text-slate-400 font-bold uppercase">{node.unitName} ({node.unitSymbol})</span>
                    )}
-                   {node.depth === 0 && node.allowedServiceNames?.length > 0 && (
-                      node.allowedServiceNames.map((name: string, i: number) => (
-                        <Badge key={i} variant="secondary" className="h-3 px-1 text-[7px] font-black uppercase bg-blue-50 text-blue-600 border-0">{name}</Badge>
-                      ))
+                   
+                   {/* عرض حالة الوراثة والخدمات */}
+                   {effectiveServices.serviceIds.length > 0 && (
+                     <div className="flex items-center gap-1">
+                        {effectiveServices.isInherited && <RotateCcw className="h-2.5 w-2.5 text-slate-300" />}
+                        {effectiveServices.serviceNames.map((name: string, i: number) => (
+                           <Badge key={i} variant="secondary" className={cn("h-3 px-1 text-[7px] font-black uppercase border-0", effectiveServices.isInherited ? "bg-slate-100 text-slate-400" : "bg-blue-50 text-blue-600")}>
+                             {name}
+                           </Badge>
+                        ))}
+                     </div>
                    )}
                 </div>
              </div>
@@ -225,6 +231,7 @@ export default function BOQNodesPage() {
                     nodeRole: 'group', 
                     isActive: true, 
                     isExecutable: false,
+                    inheritServices: true, // افتراضي يرث من الأب
                     order: node.childrenCount 
                  })}
                >
@@ -264,7 +271,7 @@ export default function BOQNodesPage() {
         </div>
         {canCreate && (
            <Button 
-             onClick={() => setEditingNode({ parentId: null, nodeRole: 'group', isActive: true, isExecutable: false, order: treeData.length, allowedActivityTypeIds: [], allowedActivityTypeNames: [], allowedServiceIds: [], allowedServiceNames: [] })}
+             onClick={() => setEditingNode({ parentId: null, nodeRole: 'group', isActive: true, isExecutable: false, inheritServices: false, order: treeData.length, allowedActivityTypeIds: [], allowedActivityTypeNames: [], allowedServiceIds: [], allowedServiceNames: [] })}
              className="h-12 px-8 rounded-xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-2"
            >
              <Plus className="h-5 w-5" /> {isRtl ? 'إضافة قسم رئيسي' : 'Add Root Node'}
@@ -312,11 +319,22 @@ export default function BOQNodesPage() {
 
             <div className="p-8 space-y-6 text-start bg-white max-h-[70vh] overflow-y-auto scrollbar-hide">
                
-               {editingNode && editingNode.parentId === null && (
+               <div className="p-5 rounded-2xl bg-slate-50 border-2 border-slate-100 flex items-center justify-between">
+                  <div className="space-y-1">
+                     <Label className="font-black text-xs text-slate-700">{isRtl ? 'وراثة الخدمات من الأب' : 'Inherit Services from Parent'}</Label>
+                     <p className="text-[9px] text-slate-400 font-bold leading-tight">{isRtl ? 'عند التفعيل، سيرث هذا القسم والبنود التابعة له ربط الخدمات من أقرب أب معرف.' : 'Propagation of services from nearest defined ancestor.'}</p>
+                  </div>
+                  <Switch 
+                     checked={editingNode?.inheritServices !== false} 
+                     onCheckedChange={v => setEditingNode({...editingNode!, inheritServices: v})} 
+                  />
+               </div>
+
+               {(!editingNode?.inheritServices || editingNode?.parentId === null) && (
                  <div className="space-y-6 animate-in fade-in duration-300">
                     <div className="p-5 rounded-2xl bg-blue-50/50 border-2 border-blue-100 space-y-4">
                        <h4 className="font-black text-[10px] text-blue-600 uppercase tracking-widest flex items-center gap-2">
-                          <ShieldCheck className="h-3.5 w-3.5" /> {isRtl ? 'الأنشطة المتاح بها هذا القسم' : 'Allowed Activities'}
+                          <ShieldCheck className="h-3.5 w-3.5" /> {isRtl ? 'الأنشطة المتاح بها هذا القسم (تعريف مباشر)' : 'Allowed Activities (Direct)'}
                        </h4>
                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                           {activities?.map(act => (
@@ -339,7 +357,7 @@ export default function BOQNodesPage() {
 
                     <div className="p-5 rounded-2xl bg-indigo-50/50 border-2 border-indigo-100 space-y-4">
                        <h4 className="font-black text-[10px] text-indigo-600 uppercase tracking-widest flex items-center gap-2">
-                          <Workflow className="h-3.5 w-3.5" /> {isRtl ? 'الخدمات التشغيلية المرتبطة' : 'Allowed Services'}
+                          <Workflow className="h-3.5 w-3.5" /> {isRtl ? 'الخدمات التشغيلية المرتبطة (تعريف مباشر)' : 'Allowed Services (Direct)'}
                        </h4>
                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {allServices?.map(srv => (

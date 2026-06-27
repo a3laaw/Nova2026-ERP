@@ -14,7 +14,8 @@ import {
   LayoutGrid, 
   ListChecks,
   ChevronRight,
-  Info
+  Info,
+  RotateCcw
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
@@ -24,6 +25,7 @@ import { paths } from '@/firebase/multi-tenant';
 import { BOQReferenceNode } from '@/types/reference';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { resolveNodeEffectiveServices } from '@/lib/boq-tree-utils';
 
 interface Props {
   onSelect: (node: BOQReferenceNode) => void;
@@ -34,7 +36,7 @@ interface Props {
 
 /**
  * مكون منتقي بنود BOQ الشجري السيادي (Hierarchical Reference Selector).
- * يعتمد حصرياً على boqReferenceNodes.
+ * تم تحديثه ليدعم وراثة الخدمات عند الفلترة.
  */
 export function BOQReferenceSelector({ onSelect, className, activityTypeId, serviceId }: Props) {
   const { globalUser } = useAuthContext();
@@ -45,36 +47,39 @@ export function BOQReferenceSelector({ onSelect, className, activityTypeId, serv
 
   const [selectedParentId, setSelectedParentId] = useState<string>("");
 
-  // 1. جلب الجذور (Level 0)
-  const rootsQuery = useMemo(() => {
+  // 1. جلب كافة العقد (لتمكين حل الوراثة برمجياً في الذاكرة)
+  const nodesQuery = useMemo(() => {
     if (!companyId || !db) return null;
-    return query(
-      collection(db, paths.boqReferenceNodes(companyId)),
-      where('parentId', '==', null),
-      orderBy('order')
-    );
+    return query(collection(db, paths.boqReferenceNodes(companyId)), orderBy('order'));
   }, [db, companyId]);
 
-  // 2. جلب الأبناء للعقدة المختارة
-  const childrenQuery = useMemo(() => 
-    companyId && db && selectedParentId ? query(
-      collection(db, paths.boqReferenceNodes(companyId)),
-      where('parentId', '==', selectedParentId),
-      orderBy('order')
-    ) : null, [db, companyId, selectedParentId]);
+  const { data: allNodes, loading: nodesLoading } = useCollection<BOQReferenceNode>(nodesQuery);
 
-  const { data: roots, loading: rootsLoading } = useCollection<BOQReferenceNode>(rootsQuery);
-  const { data: rawChildren, loading: childrenLoading } = useCollection<BOQReferenceNode>(childrenQuery);
-
-  // فلترة الجذور حسب النشاط أو الخدمة المحددة (سياق القالب)
+  // 2. تصفية الجذور (Depth 0) بناءً على الخدمات الموروثة أو المعرفة
   const filteredRoots = useMemo(() => {
-    if (!roots) return [];
-    return roots.filter(r => {
-      const matchAct = !activityTypeId || (r.allowedActivityTypeIds && r.allowedActivityTypeIds.includes(activityTypeId));
-      const matchSrv = !serviceId || (r.allowedServiceIds && r.allowedServiceIds.includes(serviceId));
-      return matchAct || matchSrv;
+    if (!allNodes) return [];
+    
+    return allNodes.filter(node => node.depth === 0).filter(node => {
+      // إذا لم يكن هناك فلتر محدد، نعرض الكل
+      if (!activityTypeId && !serviceId) return true;
+
+      // حل الخدمات الفعالة للعقدة الحالية
+      const effective = resolveNodeEffectiveServices(node.id!, allNodes);
+      
+      const matchService = !serviceId || effective.serviceIds.includes(serviceId);
+      
+      // ملاحظة: الأنشطة حالياً تتبع نفس منطق الوراثة
+      const matchActivity = !activityTypeId || (node.allowedActivityTypeIds && node.allowedActivityTypeIds.includes(activityTypeId));
+
+      return matchService && matchActivity;
     });
-  }, [roots, activityTypeId, serviceId]);
+  }, [allNodes, activityTypeId, serviceId]);
+
+  // 3. جلب الأبناء المباشرين للعقدة المختارة
+  const currentChildren = useMemo(() => {
+    if (!selectedParentId || !allNodes) return [];
+    return allNodes.filter(n => n.parentId === selectedParentId);
+  }, [selectedParentId, allNodes]);
 
   return (
     <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-4 items-end", className)}>
@@ -85,7 +90,7 @@ export function BOQReferenceSelector({ onSelect, className, activityTypeId, serv
         </Label>
         <Select value={selectedParentId} onValueChange={setSelectedParentId}>
           <SelectTrigger className="h-11 rounded-xl border-2 font-bold bg-slate-50/50">
-            <SelectValue placeholder={rootsLoading ? "..." : "---"} />
+            <SelectValue placeholder={nodesLoading ? "..." : "---"} />
           </SelectTrigger>
           <SelectContent className="rounded-xl border-2 shadow-2xl">
             {filteredRoots.map(s => (
@@ -104,7 +109,7 @@ export function BOQReferenceSelector({ onSelect, className, activityTypeId, serv
         <Select 
           disabled={!selectedParentId}
           onValueChange={(id) => {
-            const node = rawChildren?.find(i => i.id === id);
+            const node = allNodes?.find(i => i.id === id);
             if (node) {
                if (node.isExecutable) onSelect(node);
                else setSelectedParentId(node.id!);
@@ -112,29 +117,36 @@ export function BOQReferenceSelector({ onSelect, className, activityTypeId, serv
           }}
         >
           <SelectTrigger className="h-11 rounded-xl border-2 font-black bg-primary/5 text-primary border-primary/20">
-            <SelectValue placeholder={childrenLoading ? "..." : "---"} />
+            <SelectValue placeholder={nodesLoading ? "..." : "---"} />
           </SelectTrigger>
           <SelectContent className="rounded-xl border-2 shadow-2xl">
-            {rawChildren?.map(node => (
-              <SelectItem key={node.id} value={node.id!} className="font-black text-xs py-4 border-b last:border-0 border-slate-50">
-                <div className="flex flex-col gap-1">
-                   <div className="flex items-center justify-between gap-4">
-                      <span>{node.title}</span>
-                      <Badge className={cn("text-[8px] border-0 px-1.5 h-4", node.isExecutable ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700")}>
-                         {node.isExecutable ? 'ITEM' : 'GROUP'}
-                      </Badge>
-                   </div>
-                   {node.isExecutable && node.unitSymbol && (
-                     <span className="text-[9px] text-slate-400 font-bold uppercase">{node.unitName} ({node.unitSymbol})</span>
-                   )}
-                </div>
-              </SelectItem>
-            ))}
+            {currentChildren.map(node => {
+               const effective = resolveNodeEffectiveServices(node.id!, allNodes || []);
+               
+               return (
+                  <SelectItem key={node.id} value={node.id!} className="font-black text-xs py-4 border-b last:border-0 border-slate-50">
+                    <div className="flex flex-col gap-1">
+                       <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-2">
+                             <span>{node.title}</span>
+                             {effective.isInherited && <RotateCcw className="h-2.5 w-2.5 text-slate-300" />}
+                          </div>
+                          <Badge className={cn("text-[8px] border-0 px-1.5 h-4", node.isExecutable ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700")}>
+                             {node.isExecutable ? 'ITEM' : 'GROUP'}
+                          </Badge>
+                       </div>
+                       {node.isExecutable && node.unitSymbol && (
+                         <span className="text-[9px] text-slate-400 font-bold uppercase">{node.unitName} ({node.unitSymbol})</span>
+                       )}
+                    </div>
+                  </SelectItem>
+               );
+            })}
           </SelectContent>
         </Select>
       </div>
 
-      {(rootsLoading || childrenLoading) && (
+      {nodesLoading && (
         <div className="absolute inset-0 bg-white/20 backdrop-blur-[1px] flex items-center justify-center rounded-xl pointer-events-none z-50">
            <Loader2 className="h-6 w-6 animate-spin text-primary" />
         </div>
@@ -142,3 +154,4 @@ export function BOQReferenceSelector({ onSelect, className, activityTypeId, serv
     </div>
   );
 }
+
