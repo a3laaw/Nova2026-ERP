@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -24,7 +23,7 @@ import { ensureActionPermission } from '@/lib/permissions';
 
 /**
  * خدمة إدارة المرجع الشجري الديناميكي لبنود BOQ (Dynamic Tree Service).
- * تدعم التحديثات غير الحاجبة (Non-blocking) ونظام الأخطاء السياقي.
+ * تدعم الوراثة التشغيلية (Activity/Service/SubService) وحماية البيانات.
  */
 export class BOQReferenceService {
   constructor(
@@ -34,7 +33,7 @@ export class BOQReferenceService {
   ) {}
 
   /**
-   * إنشاء عقدة جديدة في الشجرة الديناميكية
+   * إنشاء عقدة جديدة في الشجرة الديناميكية مع معالجة الوراثة التشغيلية
    */
   async createBOQReferenceNode(data: Partial<BOQReferenceNode>, userId: string) {
     ensureActionPermission(this.userPermissions, 'ref:create');
@@ -44,19 +43,33 @@ export class BOQReferenceService {
     
     let depth = 0;
     let ancestorIds: string[] = [];
+    let inheritedContext: Partial<BOQReferenceNode> = {};
 
-    // 1. حساب العمق والأسلاف إذا كان للعقدة أب
+    // 1. معالجة الوراثة من الأب
     if (data.parentId) {
       const parentSnap = await getDoc(doc(this.db, paths.boqReferenceNodes(this.companyId), data.parentId));
       if (parentSnap.exists()) {
         const parentData = parentSnap.data() as BOQReferenceNode;
         depth = (parentData.depth || 0) + 1;
         ancestorIds = [...(parentData.ancestorIds || []), parentSnap.id];
+
+        // وراثة السياق التشغيلي إذا لم يتم تعريفه في الطلب الحالي وكان مسموحاً بالوراثة
+        if (data.inheritServices !== false) {
+          inheritedContext = {
+            activityTypeId: parentData.activityTypeId,
+            activityTypeName: parentData.activityTypeName,
+            serviceId: parentData.serviceId,
+            serviceName: parentData.serviceName,
+            subServiceId: parentData.subServiceId,
+            subServiceName: parentData.subServiceName
+          };
+        }
       }
     }
 
     const nodeData: BOQReferenceNode = {
-      ...data,
+      ...inheritedContext, // القيم الموروثة أولاً
+      ...data,            // القيم المدخلة يدوياً تطغى على الموروثة
       id: nodeRef.id,
       companyId: this.companyId,
       depth,
@@ -83,13 +96,13 @@ export class BOQReferenceService {
       });
     }
 
-    // تنفيذ متفائل بدون await
-    batch.commit().catch(async (err) => {
+    await batch.commit().catch(async (err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: nodeRef.path,
         operation: 'create',
         requestResourceData: nodeData
       } satisfies SecurityRuleContext));
+      throw err;
     });
 
     return nodeRef.id;
@@ -113,18 +126,16 @@ export class BOQReferenceService {
     delete (updateData as any).ancestorIds;
     delete (updateData as any).depth;
 
-    updateDoc(nodeRef, updateData).catch(err => {
+    await updateDoc(nodeRef, updateData).catch(err => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: nodeRef.path,
         operation: 'update',
         requestResourceData: updateData
       } satisfies SecurityRuleContext));
+      throw err;
     });
   }
 
-  /**
-   * حذف عقدة من الشجرة
-   */
   async deleteBOQReferenceNode(id: string) {
     ensureActionPermission(this.userPermissions, 'ref:delete');
     const nodeRef = doc(this.db, paths.boqReferenceNodes(this.companyId), id);
@@ -134,13 +145,12 @@ export class BOQReferenceService {
     const node = snap.data() as BOQReferenceNode;
 
     if (node.childrenCount > 0) {
-      throw new Error('NODE_HAS_CHILDREN: لا يمكن حذف عنصر يحتوي على فروع تابعة. يرجى حذف الفروع أولاً.');
+      throw new Error('NODE_HAS_CHILDREN: لا يمكن حذف عنصر يحتوي على فروع تابعة.');
     }
 
     const batch = writeBatch(this.db);
     batch.delete(nodeRef);
 
-    // تقليل عداد الأبناء في الأب
     if (node.parentId) {
       const parentRef = doc(this.db, paths.boqReferenceNodes(this.companyId), node.parentId);
       batch.update(parentRef, { 
@@ -149,29 +159,6 @@ export class BOQReferenceService {
       });
     }
 
-    batch.commit().catch(err => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: nodeRef.path,
-        operation: 'delete'
-      } satisfies SecurityRuleContext));
-    });
-  }
-
-  /**
-   * جلب كافة العقد المرجعية مرتبة حسب المسار الهرمي
-   */
-  async listBOQReferenceNodes() {
-    const q = query(
-      collection(this.db, paths.boqReferenceNodes(this.companyId)),
-      orderBy('depth'),
-      orderBy('order')
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map(d => d.data() as BOQReferenceNode);
-  }
-
-  async getNodeById(id: string) {
-    const snap = await getDoc(doc(this.db, paths.boqReferenceNodes(this.companyId), id));
-    return snap.exists() ? (snap.data() as BOQReferenceNode) : null;
+    await batch.commit();
   }
 }

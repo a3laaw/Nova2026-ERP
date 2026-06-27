@@ -141,20 +141,22 @@ export interface BOQReferenceNode extends BaseReference {
   createdBy?: string;
   updatedBy?: string;
 
-  // الربط التشغيلي (للجذور والطبقات العليا)
-  allowedActivityTypeIds?: string[];
-  allowedActivityTypeNames?: string[];
-  allowedServiceIds?: string[];
-  allowedServiceNames?: string[];
+  // الربط التشغيلي (للجذور والطبقات العليا) - موروث أو معرف مباشرة
+  activityTypeId?: string;
+  activityTypeName?: string;
+  serviceId?: string;
+  serviceName?: string;
+  subServiceId?: string;
+  subServiceName?: string;
   
   // وراثة الخدمات
-  inheritServices?: boolean;   // هل ترث الخدمات من الأب؟
+  inheritServices?: boolean;   // هل ترث الربط التشغيلي من الأب؟
 
   // الخصائص الفنية والتنفيذية للبنود (Executable Items)
   unitTypeId?: string;
   unitName?: string;
   unitSymbol?: string;
-  defaultTechnicalStageId?: string; // المرحلة الافتراضية للربط
+  technicalStageId?: string;        // المرحلة الفنية الدقيقة المرتبطة (داخل المسار المذكور أعلاه)
   estimatedRate?: number;           // السعر المرجعي التقديري
   billingTriggerGroup?: string;
   allowedItemCategoryIds?: string[]; // تصنيف الأصناف (مخزني)
