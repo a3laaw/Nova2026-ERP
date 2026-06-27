@@ -28,7 +28,8 @@ import {
   Folder,
   Hammer,
   DollarSign,
-  X
+  X,
+  Target
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
@@ -70,16 +71,15 @@ export function BOQTemplateForm({ template, onClose }: Props) {
       name: '',
       code: '',
       baseAmount: 0,
-      activityTypeIds: [], // مصفوفة للاختيار المتعدد
-      serviceIds: [],      // مصفوفة للاختيار المتعدد
+      activityTypeIds: [], 
+      serviceIds: [],      
       isDefault: false,
       isActive: true
     }
   );
 
-  // جلب البيانات المرجعية
   const actQuery = useMemo(() => companyId && db ? query(collection(db, paths.activityTypes(companyId)), orderBy('order')) : null, [db, companyId]);
-  const srvQuery = useMemo(() => companyId && db ? query(collection(db, paths.services(companyId, 'ANY')), orderBy('order')) : null, [db, companyId]); // سيتم الفلترة برمجياً
+  const srvQuery = useMemo(() => companyId && db ? query(collection(db, paths.services(companyId, 'ANY')), orderBy('order')) : null, [db, companyId]); 
 
   const { data: activities } = useCollection<ActivityType>(actQuery);
   const { data: allServices } = useCollection<Service>(srvQuery);
@@ -112,7 +112,12 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     
     setLoading(true);
     try {
-      await service.saveBOQTemplateWithItems(template?.id || null, formData as any, items as any, user.uid);
+      // تحصين البيانات ضد undefined قبل الحفظ
+      const sanitizedItems = items.map(item => ({
+        ...item,
+        referenceDescription: item.referenceDescription || ""
+      }));
+      await service.saveBOQTemplateWithItems(template?.id || null, formData as any, sanitizedItems as any, user.uid);
       toast({ title: t('saved') });
       onClose();
     } catch (e: any) {
@@ -137,7 +142,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
       boqReferenceNodeId: node.id!,
       referenceCode: node.code || '',
       referenceTitle: node.title || '',
-      referenceDescription: node.description || '', // تحصين ضد undefined
+      referenceDescription: node.description || '', 
       parentId: node.parentId || null,
       ancestorIds: node.ancestorIds || [],
       ancestorTitles,
@@ -468,44 +473,58 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                     </div>
                  </div>
               </div>
-
-              <Dialog open={isPickerOpen} onOpenChange={setIsMasterPickerOpen}>
-                 <DialogTrigger asChild>
-                    <button type="button" className="w-full h-16 rounded-2xl bg-slate-900 text-white font-black shadow-xl gap-4 hover:scale-105 transition-all mt-6 flex items-center justify-center group">
-                       <FolderTree className="h-6 w-6 text-primary group-hover:rotate-12 transition-transform" />
-                       {isRtl ? 'مستكشف القاموس السيادي' : 'Registry Explorer'}
-                    </button>
-                 </DialogTrigger>
-                 <DialogContent className="max-w-4xl rounded-[2.5rem] p-0 overflow-hidden bg-white border-0 shadow-3xl" dir={dir}>
-                    <div className="bg-slate-50 p-10 text-slate-900 text-start border-b">
-                       <DialogTitle className="text-3xl font-black font-headline flex items-center gap-4">
-                          <GitBranch className="h-8 w-8 text-primary" />
-                          {isRtl ? 'القاموس الهندسي الموحد' : 'Sovereign Reference Registry'}
-                       </DialogTitle>
-                       <div className="relative mt-6">
-                          <Search className="absolute start-5 top-1/2 -translate-y-1/2 h-6 w-6 text-slate-300" />
-                          <Input value={masterSearch} onChange={e => setMasterSearch(e.target.value)} placeholder={isRtl ? "ابحث بالاسم أو الكود المرجعي..." : "Search registry..."} className="ps-14 h-14 rounded-2xl border-2 font-black text-lg focus:bg-white shadow-inner" />
-                       </div>
-                    </div>
-                    <div className="p-8 max-h-[50vh] overflow-y-auto scrollbar-hide bg-slate-50/20">
-                       {masterLoading ? (
-                         <div className="py-20 text-center flex flex-col items-center gap-4">
-                            <Loader2 className="animate-spin h-12 w-12 text-primary/20" />
-                            <p className="text-xs font-black text-slate-300 uppercase tracking-widest italic">Indexing Registry...</p>
-                         </div>
-                       ) : pickerTree.map(renderPickerNode)}
-                    </div>
-                    <DialogFooter className="p-8 bg-slate-50 border-t flex justify-end">
-                       <Button variant="outline" type="button" onClick={() => setIsMasterPickerOpen(false)} className="rounded-xl font-black h-12 px-10">إغلاق</Button>
-                    </DialogFooter>
-                 </DialogContent>
-              </Dialog>
            </div>
         </aside>
 
         {/* Main BOQ Grid */}
         <main className="lg:col-span-9 overflow-auto bg-white/40 p-6 scrollbar-hide">
            <div className="bg-white rounded-3xl shadow-2xl border border-primary/5 overflow-hidden flex flex-col h-full min-h-[600px]">
+              
+              {/* Table Toolbar with Small Distinctive Explorer Button */}
+              <div className="p-4 bg-slate-50/50 border-b flex items-center justify-between">
+                 <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                       <LayoutGrid className="h-4 w-4" />
+                    </div>
+                    <h3 className="font-black text-sm text-slate-700">{isRtl ? 'بنود وجداول الأعمال المعتمدة' : 'BOQ Work Items Grid'}</h3>
+                 </div>
+
+                 <Dialog open={isPickerOpen} onOpenChange={setIsMasterPickerOpen}>
+                    <DialogTrigger asChild>
+                       <Button 
+                         type="button" 
+                         className="h-9 px-5 rounded-xl bg-[#1e1b4b] text-white font-black text-[10px] gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all group"
+                       >
+                          <FolderTree className="h-3.5 w-3.5 text-primary group-hover:rotate-12 transition-transform" />
+                          {isRtl ? 'مستكشف القاموس السيادي' : 'Registry Explorer'}
+                       </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-4xl rounded-[2.5rem] p-0 overflow-hidden bg-white border-0 shadow-3xl" dir={dir}>
+                       <div className="bg-slate-50 p-10 text-slate-900 text-start border-b">
+                          <DialogTitle className="text-3xl font-black font-headline flex items-center gap-4">
+                             <GitBranch className="h-8 w-8 text-primary" />
+                             {isRtl ? 'القاموس الهندسي الموحد' : 'Sovereign Reference Registry'}
+                          </DialogTitle>
+                          <div className="relative mt-6">
+                             <Search className="absolute start-5 top-1/2 -translate-y-1/2 h-6 w-6 text-slate-300" />
+                             <Input value={masterSearch} onChange={e => setMasterSearch(e.target.value)} placeholder={isRtl ? "ابحث بالاسم أو الكود المرجعي..." : "Search registry..."} className="ps-14 h-14 rounded-2xl border-2 font-black text-lg focus:bg-white shadow-inner" />
+                          </div>
+                       </div>
+                       <div className="p-8 max-h-[50vh] overflow-y-auto scrollbar-hide bg-slate-50/20">
+                          {masterLoading ? (
+                            <div className="py-20 text-center flex flex-col items-center gap-4">
+                               <Loader2 className="animate-spin h-12 w-12 text-primary/20" />
+                               <p className="text-xs font-black text-slate-300 uppercase tracking-widest italic">Indexing Registry...</p>
+                            </div>
+                          ) : pickerTree.map(renderPickerNode)}
+                       </div>
+                       <DialogFooter className="p-8 bg-slate-50 border-t flex justify-end">
+                          <Button variant="outline" type="button" onClick={() => setIsMasterPickerOpen(false)} className="rounded-xl font-black h-12 px-10">إغلاق</Button>
+                       </DialogFooter>
+                    </DialogContent>
+                 </Dialog>
+              </div>
+
               <Table>
                 <TableHeader className="bg-slate-900 sticky top-0 z-20">
                   <TableRow className="hover:bg-slate-900 border-0">
@@ -542,3 +561,4 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     </div>
   );
 }
+
