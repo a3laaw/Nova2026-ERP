@@ -10,7 +10,7 @@ import {
   Trash2, Edit3, ShieldCheck, Folder,
   Hammer, ChevronRight, ChevronDown,
   Save, Settings2, Workflow,
-  RotateCcw, Package, MapPin
+  RotateCcw, MapPin
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, getDocs } from 'firebase/firestore';
@@ -18,7 +18,7 @@ import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
-import { BOQReferenceNode, UnitType, TechnicalStage, ActivityType, Service, SubService } from '@/types/reference';
+import { BOQReferenceNode, UnitType, TechnicalStage, ActivityType } from '@/types/reference';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -61,7 +61,7 @@ export default function BOQNodesPage() {
   const canCreate = check('ref', 'create').can;
   const canDelete = check('ref', 'delete').can;
 
-  // Data Fetching
+  // 1. جلب البيانات الأساسية
   const nodesQuery = useMemo(() => companyId && db ? query(collection(db, paths.boqReferenceNodes(companyId))) : null, [db, companyId]);
   const unitTypesQuery = useMemo(() => companyId && db ? query(collection(db, paths.unitTypes(companyId)), orderBy('order')) : null, [db, companyId]);
   const activitiesQuery = useMemo(() => companyId && db ? query(collection(db, paths.activityTypes(companyId)), orderBy('order')) : null, [db, companyId]);
@@ -70,13 +70,14 @@ export default function BOQNodesPage() {
   const { data: unitTypes } = useCollection<UnitType>(unitTypesQuery);
   const { data: activities } = useCollection<ActivityType>(activitiesQuery);
 
-  // حل بيانات الأب للوراثة اللحظية
+  const referenceService = useMemo(() => db && companyId ? new BOQReferenceService(db, companyId, permissions) : null, [db, companyId, permissions]);
+
+  // 2. حل السياق التشغيلي الموروث (Inheritance Resolver)
   const parentNode = useMemo(() => {
     if (!editingNode?.parentId || !rawNodes) return null;
     return rawNodes.find(n => n.id === editingNode.parentId);
   }, [editingNode?.parentId, rawNodes]);
 
-  // المسار التشغيلي الفعال (محلول من الأب أو العقدة نفسها)
   const effectiveContext = useMemo(() => {
     if (!editingNode) return null;
     return {
@@ -87,11 +88,10 @@ export default function BOQNodesPage() {
       subServiceId: editingNode.subServiceId || parentNode?.subServiceId,
       subServiceName: editingNode.subServiceName || parentNode?.subServiceName,
     };
-  }, [editingNode, parentNode]);
+  }, [editingNode?.activityTypeId, editingNode?.serviceId, editingNode?.subServiceId, parentNode]);
 
-  const referenceService = useMemo(() => db && companyId ? new BOQReferenceService(db, companyId, permissions) : null, [db, companyId, permissions]);
-
-  // جلب المراحل بناءً على المسار الفعال
+  // 3. جلب المراحل الفنية (Optimized Fetching)
+  // تم فصل الاستدعاء عن المسمى (Title) لمنع الحلقات اللانهائية
   useEffect(() => {
     const subId = effectiveContext?.subServiceId;
     const actId = effectiveContext?.activityTypeId;
@@ -99,7 +99,6 @@ export default function BOQNodesPage() {
 
     if (db && companyId && subId && actId && srvId && editingNode?.isExecutable) {
       setLoadingStages(true);
-      const tpService = new TechnicalPathService(db, companyId);
       const path = paths.technicalStages(companyId, actId, srvId, subId);
       getDocs(collection(db, path))
         .then(snap => setAvailableStages(snap.docs.map(d => ({ id: d.id, ...d.data() } as TechnicalStage))))
@@ -108,7 +107,7 @@ export default function BOQNodesPage() {
     } else {
       setAvailableStages([]);
     }
-  }, [db, companyId, effectiveContext, editingNode?.isExecutable]);
+  }, [db, companyId, effectiveContext?.subServiceId, editingNode?.isExecutable]);
 
   const treeData = useMemo(() => {
     const nodes = rawNodes || [];
@@ -125,7 +124,6 @@ export default function BOQNodesPage() {
     if (!referenceService || !user || !editingNode?.title) return;
     setLoadingAction('save');
     try {
-      // التأكد من حفظ البيانات الموروثة فعلياً في السجل الجديد لضمان الاستقرار
       const finalData = {
         ...effectiveContext,
         ...editingNode,
@@ -223,72 +221,6 @@ export default function BOQNodesPage() {
     );
   };
 
-  // مخرجات الـ JSX للجزء التشغيلي الموروث لضمان عدم وجود شرطات فارغة
-  const ContextDisplay = () => {
-    if (!editingNode) return null;
-    return (
-      <div className="p-6 bg-slate-50 rounded-2xl border-2 border-white shadow-inner space-y-6">
-        <h4 className="font-black text-[11px] text-slate-500 uppercase tracking-widest flex items-center gap-2">
-           <Workflow className="h-4 w-4 text-primary" /> {isRtl ? 'الارتباط التشغيلي (توريث)' : 'Operational Context'}
-        </h4>
-
-        {editingNode.parentId ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-in fade-in">
-             <div className="space-y-1">
-                <Label className="text-[9px] font-black uppercase text-slate-400">النشاط</Label>
-                <p className="text-xs font-black text-blue-600 bg-white px-3 py-2 rounded-lg border">{effectiveContext?.activityTypeName || '---'}</p>
-             </div>
-             <div className="space-y-1">
-                <Label className="text-[9px] font-black uppercase text-slate-400">الخدمة</Label>
-                <p className="text-xs font-black text-orange-600 bg-white px-3 py-2 rounded-lg border">{effectiveContext?.serviceName || '---'}</p>
-             </div>
-             <div className="space-y-1">
-                <Label className="text-[9px] font-black uppercase text-slate-400">المسار الفني</Label>
-                <p className="text-xs font-black text-emerald-600 bg-white px-3 py-2 rounded-lg border">{effectiveContext?.subServiceName || '---'}</p>
-             </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-             <div className="space-y-1.5 text-start">
-                <Label className="text-[9px] font-black uppercase text-slate-400">النشاط</Label>
-                <Select value={editingNode.activityTypeId || ''} onValueChange={v => {
-                    const a = activities?.find(x => x.id === v);
-                    setEditingNode({...editingNode!, activityTypeId: v, activityTypeName: a?.name});
-                }}>
-                   <SelectTrigger className="h-10 rounded-lg border-2 bg-white text-xs font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                   <SelectContent>{activities?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold text-xs">{isRtl ? a.name : a.nameEn}</SelectItem>)}</SelectContent>
-                </Select>
-             </div>
-             {/* ... يتم تفعيل البقية حسب الحاجة للعقد الجذرية فقط ... */}
-          </div>
-        )}
-
-        {editingNode.isExecutable && (
-          <div className="pt-4 border-t border-slate-200 animate-in slide-in-from-top-2">
-             <div className="space-y-1.5 text-start">
-                <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
-                   <MapPin className="h-3 w-3" /> المرحلة الفنية المرتبطة (يدوياً)
-                </Label>
-                <Select 
-                  disabled={!effectiveContext?.subServiceId}
-                  value={editingNode.technicalStageId || 'NONE'} 
-                  onValueChange={v => setEditingNode({...editingNode!, technicalStageId: v === 'NONE' ? '' : v})}
-                >
-                   <SelectTrigger className="h-12 rounded-xl border-2 font-black bg-white shadow-sm ring-2 ring-primary/5">
-                      <SelectValue placeholder={loadingStages ? "جاري التحميل..." : "--- اختر المرحلة ---"} />
-                   </SelectTrigger>
-                   <SelectContent className="rounded-xl border-2 shadow-2xl">
-                      <SelectItem value="NONE" className="font-bold text-xs">بدون ارتباط</SelectItem>
-                      {availableStages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs py-2">{isRtl ? s.name : s.nameEn}</SelectItem>)}
-                   </SelectContent>
-                </Select>
-             </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
   return (
     <div className="space-y-6 text-start animate-in fade-in duration-500">
       <div className="flex justify-between items-center px-1">
@@ -363,8 +295,49 @@ export default function BOQNodesPage() {
                   </div>
                </div>
 
-               {/* عرض السياق التشغيلي الموروث أو المختار */}
-               <ContextDisplay />
+               <div className="p-6 bg-slate-50 rounded-2xl border-2 border-white shadow-inner space-y-6">
+                  <h4 className="font-black text-[11px] text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                     <Workflow className="h-4 w-4 text-primary" /> {isRtl ? 'الارتباط التشغيلي (توريث)' : 'Operational Context'}
+                  </h4>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                     <div className="space-y-1">
+                        <Label className="text-[9px] font-black uppercase text-slate-400">النشاط</Label>
+                        <p className="text-xs font-black text-blue-600 bg-white px-3 py-2 rounded-lg border min-h-[32px]">{effectiveContext?.activityTypeName || '---'}</p>
+                     </div>
+                     <div className="space-y-1">
+                        <Label className="text-[9px] font-black uppercase text-slate-400">الخدمة</Label>
+                        <p className="text-xs font-black text-orange-600 bg-white px-3 py-2 rounded-lg border min-h-[32px]">{effectiveContext?.serviceName || '---'}</p>
+                     </div>
+                     <div className="space-y-1">
+                        <Label className="text-[9px] font-black uppercase text-slate-400">المسار الفني</Label>
+                        <p className="text-xs font-black text-emerald-600 bg-white px-3 py-2 rounded-lg border min-h-[32px]">{effectiveContext?.subServiceName || '---'}</p>
+                     </div>
+                  </div>
+
+                  {editingNode?.isExecutable && (
+                    <div className="pt-4 border-t border-slate-200 animate-in slide-in-from-top-2">
+                       <div className="space-y-1.5 text-start">
+                          <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
+                             <MapPin className="h-3 w-3" /> المرحلة الفنية المرتبطة (يدوياً)
+                          </Label>
+                          <Select 
+                            disabled={!effectiveContext?.subServiceId}
+                            value={editingNode.technicalStageId || 'NONE'} 
+                            onValueChange={v => setEditingNode({...editingNode!, technicalStageId: v === 'NONE' ? '' : v})}
+                          >
+                             <SelectTrigger className="h-12 rounded-xl border-2 font-black bg-white shadow-sm ring-2 ring-primary/5">
+                                <SelectValue placeholder={loadingStages ? "جاري التحميل..." : "--- اختر المرحلة ---"} />
+                             </SelectTrigger>
+                             <SelectContent className="rounded-xl border-2 shadow-2xl">
+                                <SelectItem value="NONE" className="font-bold text-xs">بدون ارتباط</SelectItem>
+                                {availableStages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs py-2">{isRtl ? s.name : s.nameEn}</SelectItem>)}
+                             </SelectContent>
+                          </Select>
+                       </div>
+                    </div>
+                  )}
+               </div>
 
                {editingNode?.isExecutable && (
                  <div className="grid grid-cols-2 gap-4 animate-in fade-in">
