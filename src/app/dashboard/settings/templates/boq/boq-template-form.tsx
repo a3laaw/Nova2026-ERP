@@ -9,12 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Save, Plus, Trash2, Loader2, ArrowRight,
   Calculator, AlertTriangle, 
@@ -28,13 +27,14 @@ import {
   Settings2,
   Folder,
   Hammer,
-  DollarSign
+  DollarSign,
+  X
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, doc } from 'firebase/firestore';
+import { collection, query, orderBy } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { BOQTemplate, BOQTemplateItem, BOQTreeNode } from '@/types/templates';
 import { ActivityType, Service, BOQReferenceNode } from '@/types/reference';
@@ -65,24 +65,24 @@ export function BOQTemplateForm({ template, onClose }: Props) {
   const [masterSearch, setMasterSearch] = useState("");
   const [expandedNodes, setExpandedNodes] = useState<string[]>([]);
   
-  const [formData, setFormData] = useState<Partial<BOQTemplate>>(
+  const [formData, setFormData] = useState<any>(
     template || {
       name: '',
       code: '',
       baseAmount: 0,
-      activityTypeId: '',
-      serviceId: '',
-      subServiceId: '',
+      activityTypeIds: [], // مصفوفة للاختيار المتعدد
+      serviceIds: [],      // مصفوفة للاختيار المتعدد
       isDefault: false,
       isActive: true
     }
   );
 
+  // جلب البيانات المرجعية
   const actQuery = useMemo(() => companyId && db ? query(collection(db, paths.activityTypes(companyId)), orderBy('order')) : null, [db, companyId]);
-  const srvQuery = useMemo(() => companyId && db && formData.activityTypeId ? query(collection(db, paths.services(companyId, formData.activityTypeId)), orderBy('order')) : null, [db, companyId, formData.activityTypeId]);
+  const srvQuery = useMemo(() => companyId && db ? query(collection(db, paths.services(companyId, 'ANY')), orderBy('order')) : null, [db, companyId]); // سيتم الفلترة برمجياً
 
   const { data: activities } = useCollection<ActivityType>(actQuery);
-  const { data: services } = useCollection<Service>(srvQuery);
+  const { data: allServices } = useCollection<Service>(srvQuery);
 
   const masterNodesQuery = useMemo(() => companyId && db ? query(collection(db, paths.boqReferenceNodes(companyId)), orderBy('depth')) : null, [db, companyId]);
   const { data: rawMasterNodes, loading: masterLoading } = useCollection<BOQReferenceNode>(masterNodesQuery);
@@ -112,16 +112,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     
     setLoading(true);
     try {
-      const selectedAct = activities?.find(a => a.id === formData.activityTypeId);
-      const selectedSrv = services?.find(s => s.id === formData.serviceId);
-
-      const finalData = {
-        ...formData,
-        activityTypeName: (isRtl ? selectedAct?.name : selectedAct?.nameEn) || '',
-        serviceName: (isRtl ? selectedSrv?.name : selectedSrv?.nameEn) || '',
-      };
-
-      await service.saveBOQTemplateWithItems(template?.id || null, finalData as any, items as any, user.uid);
+      await service.saveBOQTemplateWithItems(template?.id || null, formData as any, items as any, user.uid);
       toast({ title: t('saved') });
       onClose();
     } catch (e: any) {
@@ -146,7 +137,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
       boqReferenceNodeId: node.id!,
       referenceCode: node.code || '',
       referenceTitle: node.title || '',
-      referenceDescription: node.description || '', // الحماية من الـ undefined
+      referenceDescription: node.description || '', // تحصين ضد undefined
       parentId: node.parentId || null,
       ancestorIds: node.ancestorIds || [],
       ancestorTitles,
@@ -174,6 +165,12 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     const newItems = [...items];
     (newItems[idx] as any)[field] = val;
     setItems(newItems);
+  };
+
+  const toggleMultiSelect = (field: string, id: string) => {
+    const current = formData[field] || [];
+    const updated = current.includes(id) ? current.filter((x: string) => x !== id) : [...current, id];
+    setFormData({ ...formData, [field]: updated });
   };
 
   const toggleNode = (id: string) => {
@@ -249,7 +246,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
         {node.items.map((item, iIdx) => {
           const originalIdx = items.findIndex(i => i.boqReferenceNodeId === item.boqReferenceNodeId);
           const itemPrefix = `${prefix}.${iIdx + 1}`; 
-          const totalAmount = (item.plannedQuantity || 0) * (item.estimatedRate || 0);
+          const subtotal = (item.plannedQuantity || 0) * (item.estimatedRate || 0);
 
           return (
             <TableRow key={`${item.boqReferenceNodeId}-${originalIdx}`} className="hover:bg-primary/[0.02] transition-colors border-b-slate-50 group/item">
@@ -285,7 +282,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                 />
               </TableCell>
               <TableCell className="text-end font-mono font-black text-slate-900 text-xs pe-4">
-                {totalAmount.toLocaleString()}
+                {subtotal.toLocaleString()}
               </TableCell>
               <TableCell className="w-[50px] text-center">
                 <Button 
@@ -313,153 +310,224 @@ export function BOQTemplateForm({ template, onClose }: Props) {
   if (templateLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
   return (
-    <div className="max-w-full space-y-6 animate-in fade-in duration-500 pb-20 text-start" dir={dir}>
-      <div className="flex items-center justify-between border-b bg-white p-4 rounded-xl shadow-sm sticky top-0 z-[50]">
+    <div className="flex flex-col h-full bg-[#fdfaf3]" dir={dir}>
+      
+      {/* Top Action Bar */}
+      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-white/80 backdrop-blur-md px-6 shadow-sm">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 border rounded-lg">
-            <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
+          <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 border rounded-xl hover:bg-slate-50">
+             <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
           </Button>
           <div className="text-start">
              <h1 className="text-lg font-black text-slate-900 leading-none">{isRtl ? 'هندسة القوالب الشجرية' : 'BOQ Template Engineering'}</h1>
-             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{formData.name || 'Untitled Template'}</p>
+             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{formData.name || 'Draft Template'}</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-           <Button onClick={handleSave} disabled={loading} className="h-10 px-8 rounded-lg bg-primary text-white font-black text-sm shadow-lg shadow-primary/20 gap-2 border-b-4 border-orange-700">
-             {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
-             {t('save')}
-           </Button>
-        </div>
-      </div>
+        <Button onClick={handleSave} disabled={loading} className="h-11 px-10 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 gap-2 border-b-4 border-orange-700 hover:scale-[1.02] transition-all">
+          {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />}
+          {t('save')}
+        </Button>
+      </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start px-1">
-        <div className="lg:col-span-3 space-y-6">
-           <Card className="border-0 shadow-lg rounded-2xl bg-white overflow-hidden ring-1 ring-black/5">
-              <CardHeader className="bg-slate-50 border-b p-5">
-                 <CardTitle className="text-xs font-black flex items-center gap-2 uppercase tracking-widest text-slate-500">
-                    <Settings2 className="h-3.5 w-3.5 text-primary" />
-                    {isRtl ? 'إعدادات القالب' : 'Template Config'}
-                 </CardTitle>
-              </CardHeader>
-              <CardContent className="p-5 space-y-6">
-                 <div className="space-y-4">
-                    <div className="space-y-1.5">
-                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('name')}</Label>
-                       <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-10 rounded-lg border-2 font-bold text-sm" />
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
+        
+        {/* Control Sidebar */}
+        <aside className="lg:col-span-3 border-e bg-white overflow-y-auto p-6 space-y-8 scrollbar-hide">
+           <div className="space-y-6">
+              <div className="space-y-4">
+                 <div className="space-y-1.5 text-start">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('name')}</Label>
+                    <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-11 rounded-xl border-2 font-bold" />
+                 </div>
+                 <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5 text-start">
+                       <Label className="text-[10px] font-black uppercase text-slate-400">Code</Label>
+                       <Input value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value.toUpperCase()})} className="h-11 rounded-xl border-2 font-mono font-black text-primary text-xs" />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                       <div className="space-y-1.5">
-                          <Label className="text-[10px] font-black uppercase text-slate-400">Code</Label>
-                          <Input value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value.toUpperCase()})} className="h-10 rounded-lg border-2 font-mono font-black text-primary text-xs" />
-                       </div>
-                       <div className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border-2">
-                          <Label className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'افتراضي' : 'Def'}</Label>
-                          <Switch checked={formData.isDefault || false} onCheckedChange={v => setFormData({...formData, isDefault: v})} />
-                       </div>
+                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border-2">
+                       <Label className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'افتراضي' : 'Default'}</Label>
+                       <Switch checked={formData.isDefault || false} onCheckedChange={v => setFormData({...formData, isDefault: v})} />
                     </div>
                  </div>
+              </div>
 
-                 <div className={cn(
-                   "p-5 rounded-2xl transition-all space-y-4 relative overflow-hidden shadow-md",
-                   isMathValid ? "bg-emerald-600 text-white" : "bg-[#1e1b4b] text-white"
-                 )}>
-                    <div className="relative z-10 space-y-1 text-start">
-                       <p className="text-[9px] font-black uppercase opacity-60 tracking-widest">{isRtl ? 'الميزانية المستهدفة' : 'Target Budget'}</p>
-                       <Input 
-                         type="number" 
-                         value={formData.baseAmount || 0} 
-                         onChange={e => setFormData({...formData, baseAmount: Number(e.target.value)})} 
-                         className="h-10 rounded-lg border-0 bg-white/20 text-white font-black text-lg text-center"
-                       />
+              {/* Financial Status Widget */}
+              <div className={cn(
+                "p-6 rounded-[2.5rem] transition-all space-y-4 relative overflow-hidden shadow-2xl ring-1 ring-black/5",
+                isMathValid ? "bg-emerald-600 text-white" : "bg-[#1e1b4b] text-white"
+              )}>
+                 <div className="absolute top-0 right-0 p-6 opacity-10"><Calculator className="h-24 w-24" /></div>
+                 <div className="relative z-10 space-y-2 text-start">
+                    <p className="text-[10px] font-black uppercase opacity-60 tracking-[0.2em]">{isRtl ? 'الميزانية المستهدفة' : 'Target Budget'}</p>
+                    <Input 
+                      type="number" 
+                      value={formData.baseAmount || 0} 
+                      onChange={e => setFormData({...formData, baseAmount: Number(e.target.value)})} 
+                      className="h-12 rounded-2xl border-0 bg-white/20 text-white font-black text-2xl text-center shadow-inner focus:ring-2 focus:ring-white/30"
+                    />
+                 </div>
+                 <div className="relative z-10 pt-4 border-t border-white/10 flex justify-between items-end">
+                    <div className="text-start">
+                       <p className="text-[8px] font-black uppercase opacity-60">{isRtl ? 'إجمالي البنود الحالية' : 'Current Sum'}</p>
+                       <p className="text-xl font-black">{totalItemsValue.toLocaleString()} <span className="text-[10px] opacity-40">KWD</span></p>
                     </div>
-                    <div className="relative z-10 pt-3 border-t border-white/10 flex justify-between items-center">
-                       <div className="text-start">
-                          <p className="text-[8px] font-black uppercase opacity-60">{isRtl ? 'إجمالي البنود' : 'Current Sum'}</p>
-                          <p className="text-base font-black">{totalItemsValue.toLocaleString()}</p>
-                       </div>
-                       <div className={cn(
-                         "h-7 w-7 rounded-lg flex items-center justify-center shadow-lg",
-                         isMathValid ? "bg-white text-emerald-600" : "bg-orange-500 text-white"
-                       )}>
-                          {isMathValid ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
-                       </div>
+                    <div className={cn(
+                      "h-10 w-10 rounded-2xl flex items-center justify-center shadow-lg transition-transform",
+                      isMathValid ? "bg-white text-emerald-600 rotate-12" : "bg-orange-500 text-white animate-pulse"
+                    )}>
+                       {isMathValid ? <CheckCircle2 className="h-6 w-6" /> : <AlertTriangle className="h-6 w-6" />}
                     </div>
                  </div>
+              </div>
 
-                 <div className="space-y-4 pt-4 border-t border-slate-50">
+              {/* Multi-Select Technical Path Context */}
+              <div className="space-y-6 pt-6 border-t">
+                 <div className="space-y-3 text-start">
                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                       <Layers className="h-3 w-3" /> {isRtl ? 'نطاق الظهور' : 'Visibility Context'}
+                       <LayoutGrid className="h-3 w-3 text-primary" /> {isRtl ? 'الأنشطة المرتبطة' : 'Linked Activities'}
                     </Label>
-                    <div className="space-y-2">
-                       <Select value={formData.activityTypeId} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: ''})}>
-                          <SelectTrigger className="h-10 rounded-lg font-bold text-xs bg-slate-50 border-2"><SelectValue placeholder="Activity" /></SelectTrigger>
-                          <SelectContent className="rounded-xl">{activities?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold text-xs">{isRtl ? a.name : a.nameEn}</SelectItem>)}</SelectContent>
-                       </Select>
-                       <Select value={formData.serviceId} disabled={!formData.activityTypeId} onValueChange={v => setFormData({...formData, serviceId: v})}>
-                          <SelectTrigger className="h-10 rounded-lg font-bold text-xs bg-slate-50 border-2"><SelectValue placeholder="Service" /></SelectTrigger>
-                          <SelectContent className="rounded-xl">{services?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs">{isRtl ? s.name : s.nameEn}</SelectItem>)}</SelectContent>
-                       </Select>
+                    <Popover>
+                       <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full h-12 rounded-xl justify-between border-2 bg-slate-50/50 hover:bg-white transition-all font-bold px-4">
+                             <div className="flex gap-1 overflow-hidden">
+                                {formData.activityTypeIds?.length > 0 ? (
+                                  <Badge className="bg-primary text-white font-black text-[9px]">{formData.activityTypeIds.length} {isRtl ? 'مختار' : 'Selected'}</Badge>
+                                ) : <span className="text-slate-400 text-xs">...</span>}
+                             </div>
+                             <ChevronDown className="h-4 w-4 opacity-30" />
+                          </Button>
+                       </PopoverTrigger>
+                       <PopoverContent className="w-64 p-2 rounded-2xl border-2 shadow-2xl" align="start">
+                          <div className="space-y-1 max-h-[300px] overflow-y-auto p-1">
+                             {activities?.map(act => (
+                               <div 
+                                 key={act.id} 
+                                 onClick={() => toggleMultiSelect('activityTypeIds', act.id!)}
+                                 className="flex items-center gap-3 p-3 rounded-xl hover:bg-primary/5 cursor-pointer transition-colors"
+                               >
+                                  <Checkbox checked={formData.activityTypeIds?.includes(act.id!)} className="h-4 w-4" />
+                                  <span className="text-xs font-bold text-slate-700">{isRtl ? act.name : act.nameEn}</span>
+                               </div>
+                             ))}
+                          </div>
+                       </PopoverContent>
+                    </Popover>
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                       {formData.activityTypeIds?.map((id: string) => {
+                          const act = activities?.find(a => a.id === id);
+                          return (
+                            <Badge key={id} variant="secondary" className="bg-primary/5 text-primary border-0 font-black text-[8px] uppercase gap-1">
+                               {isRtl ? act?.name : act?.nameEn}
+                               <X className="h-2.5 w-2.5 cursor-pointer hover:text-rose-500" onClick={() => toggleMultiSelect('activityTypeIds', id)} />
+                            </Badge>
+                          );
+                       })}
                     </div>
                  </div>
 
-                 <Dialog open={isPickerOpen} onOpenChange={setIsMasterPickerOpen}>
-                    <DialogTrigger asChild>
-                       <button type="button" className="w-full h-14 rounded-xl bg-slate-900 text-white font-black shadow-xl gap-3 hover:scale-105 transition-all mt-4 flex items-center justify-center">
-                          <FolderTree className="h-5 w-5 text-primary" />
-                          {isRtl ? 'مستكشف القاموس' : 'Reference Explorer'}
-                       </button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-4xl rounded-2xl p-0 overflow-hidden bg-white border-0 shadow-3xl" dir={dir}>
-                       <div className="bg-slate-50 p-8 text-slate-900 text-start border-b">
-                          <DialogTitle className="text-2xl font-black font-headline flex items-center gap-4">
-                             <GitBranch className="h-8 w-8 text-primary" />
-                             {isRtl ? 'القاموس الهندسي الموحد' : 'Sovereign Reference'}
-                          </DialogTitle>
-                          <div className="relative mt-4">
-                             <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
-                             <Input value={masterSearch} onChange={e => setMasterSearch(e.target.value)} placeholder={isRtl ? "ابحث بالاسم أو الكود..." : "Search..."} className="ps-12 h-12 rounded-xl border-2 font-bold" />
+                 <div className="space-y-3 text-start">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                       <Layers className="h-3 w-3 text-primary" /> {isRtl ? 'الخدمات المرتبطة' : 'Linked Services'}
+                    </Label>
+                    <Popover>
+                       <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full h-12 rounded-xl justify-between border-2 bg-slate-50/50 hover:bg-white transition-all font-bold px-4">
+                             <div className="flex gap-1 overflow-hidden">
+                                {formData.serviceIds?.length > 0 ? (
+                                  <Badge className="bg-blue-600 text-white font-black text-[9px]">{formData.serviceIds.length} {isRtl ? 'مختار' : 'Selected'}</Badge>
+                                ) : <span className="text-slate-400 text-xs">...</span>}
+                             </div>
+                             <ChevronDown className="h-4 w-4 opacity-30" />
+                          </Button>
+                       </PopoverTrigger>
+                       <PopoverContent className="w-64 p-2 rounded-2xl border-2 shadow-2xl" align="start">
+                          <div className="space-y-1 max-h-[300px] overflow-y-auto p-1">
+                             {allServices?.map(srv => (
+                               <div 
+                                 key={srv.id} 
+                                 onClick={() => toggleMultiSelect('serviceIds', srv.id!)}
+                                 className="flex items-center gap-3 p-3 rounded-xl hover:bg-blue-50 cursor-pointer transition-colors"
+                               >
+                                  <Checkbox checked={formData.serviceIds?.includes(srv.id!)} className="h-4 w-4" />
+                                  <span className="text-xs font-bold text-slate-700">{isRtl ? srv.name : srv.nameEn}</span>
+                               </div>
+                             ))}
                           </div>
-                       </div>
-                       <div className="p-6 max-h-[50vh] overflow-y-auto scrollbar-hide bg-slate-50/20">
-                          {masterLoading ? (
-                            <div className="py-20 text-center flex flex-col items-center gap-4">
-                               <Loader2 className="animate-spin h-10 w-10 text-primary" />
-                               <p className="text-xs font-black text-slate-300 uppercase tracking-widest italic">Indexing Registry...</p>
-                            </div>
-                          ) : pickerTree.map(renderPickerNode)}
-                       </div>
-                       <DialogFooter className="p-6 bg-slate-50 border-t">
-                          <Button variant="outline" type="button" onClick={() => setIsMasterPickerOpen(false)} className="rounded-xl font-black h-10 px-8">إغلاق</Button>
-                       </DialogFooter>
-                    </DialogContent>
-                 </Dialog>
-              </CardContent>
-           </Card>
-        </div>
+                       </PopoverContent>
+                    </Popover>
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                       {formData.serviceIds?.map((id: string) => {
+                          const srv = allServices?.find(s => s.id === id);
+                          return (
+                            <Badge key={id} variant="secondary" className="bg-blue-50 text-blue-600 border-0 font-black text-[8px] uppercase gap-1">
+                               {isRtl ? srv?.name : srv?.nameEn}
+                               <X className="h-2.5 w-2.5 cursor-pointer hover:text-rose-500" onClick={() => toggleMultiSelect('serviceIds', id)} />
+                            </Badge>
+                          );
+                       })}
+                    </div>
+                 </div>
+              </div>
 
-        <div className="lg:col-span-9 space-y-4">
-           <div className="bg-white rounded-2xl shadow-xl border border-primary/10 overflow-hidden flex flex-col">
+              <Dialog open={isPickerOpen} onOpenChange={setIsMasterPickerOpen}>
+                 <DialogTrigger asChild>
+                    <button type="button" className="w-full h-16 rounded-2xl bg-slate-900 text-white font-black shadow-xl gap-4 hover:scale-105 transition-all mt-6 flex items-center justify-center group">
+                       <FolderTree className="h-6 w-6 text-primary group-hover:rotate-12 transition-transform" />
+                       {isRtl ? 'مستكشف القاموس السيادي' : 'Registry Explorer'}
+                    </button>
+                 </DialogTrigger>
+                 <DialogContent className="max-w-4xl rounded-[2.5rem] p-0 overflow-hidden bg-white border-0 shadow-3xl" dir={dir}>
+                    <div className="bg-slate-50 p-10 text-slate-900 text-start border-b">
+                       <DialogTitle className="text-3xl font-black font-headline flex items-center gap-4">
+                          <GitBranch className="h-8 w-8 text-primary" />
+                          {isRtl ? 'القاموس الهندسي الموحد' : 'Sovereign Reference Registry'}
+                       </DialogTitle>
+                       <div className="relative mt-6">
+                          <Search className="absolute start-5 top-1/2 -translate-y-1/2 h-6 w-6 text-slate-300" />
+                          <Input value={masterSearch} onChange={e => setMasterSearch(e.target.value)} placeholder={isRtl ? "ابحث بالاسم أو الكود المرجعي..." : "Search registry..."} className="ps-14 h-14 rounded-2xl border-2 font-black text-lg focus:bg-white shadow-inner" />
+                       </div>
+                    </div>
+                    <div className="p-8 max-h-[50vh] overflow-y-auto scrollbar-hide bg-slate-50/20">
+                       {masterLoading ? (
+                         <div className="py-20 text-center flex flex-col items-center gap-4">
+                            <Loader2 className="animate-spin h-12 w-12 text-primary/20" />
+                            <p className="text-xs font-black text-slate-300 uppercase tracking-widest italic">Indexing Registry...</p>
+                         </div>
+                       ) : pickerTree.map(renderPickerNode)}
+                    </div>
+                    <DialogFooter className="p-8 bg-slate-50 border-t flex justify-end">
+                       <Button variant="outline" type="button" onClick={() => setIsMasterPickerOpen(false)} className="rounded-xl font-black h-12 px-10">إغلاق</Button>
+                    </DialogFooter>
+                 </DialogContent>
+              </Dialog>
+           </div>
+        </aside>
+
+        {/* Main BOQ Grid */}
+        <main className="lg:col-span-9 overflow-auto bg-white/40 p-6 scrollbar-hide">
+           <div className="bg-white rounded-3xl shadow-2xl border border-primary/5 overflow-hidden flex flex-col h-full min-h-[600px]">
               <Table>
-                <TableHeader className="bg-slate-50 border-b-2">
-                  <TableRow>
-                    <TableHead className="ps-6 w-[80px]">S.No</TableHead>
-                    <TableHead className="w-[120px]">Code</TableHead>
-                    <TableHead>{isRtl ? 'بند العمل / الوصف' : 'Item Description'}</TableHead>
-                    <TableHead>{isRtl ? 'المواصفة' : 'Specification'}</TableHead>
-                    <TableHead className="text-center w-[60px]">{isRtl ? 'الوحدة' : 'Unit'}</TableHead>
-                    <TableHead className="text-center w-[100px]">{isRtl ? 'الكمية' : 'Qty'}</TableHead>
-                    <TableHead className="text-center w-[100px]">{isRtl ? 'الفئة' : 'Rate'}</TableHead>
-                    <TableHead className="text-end pe-6 w-[120px]">{isRtl ? 'الإجمالي' : 'Total'}</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
+                <TableHeader className="bg-slate-900 sticky top-0 z-20">
+                  <TableRow className="hover:bg-slate-900 border-0">
+                    <TableHead className="ps-6 w-[80px] text-white/40 font-mono text-[10px]">S.No</TableHead>
+                    <TableHead className="w-[120px] text-white/40 font-mono text-[10px]">Registry Code</TableHead>
+                    <TableHead className="text-white font-black text-xs">{isRtl ? 'وصف بند العمل' : 'Work Item Description'}</TableHead>
+                    <TableHead className="text-white font-black text-xs">{isRtl ? 'المواصفة الفنية' : 'Technical Specification'}</TableHead>
+                    <TableHead className="text-center w-[70px] text-white font-black text-xs">{isRtl ? 'الوحدة' : 'Unit'}</TableHead>
+                    <TableHead className="text-center w-[100px] text-white font-black text-xs">{isRtl ? 'الكمية' : 'Qty'}</TableHead>
+                    <TableHead className="text-center w-[120px] text-white font-black text-xs">{isRtl ? 'الفئة (د.ك)' : 'Rate (KWD)'}</TableHead>
+                    <TableHead className="text-end pe-8 w-[140px] text-white font-black text-xs">{isRtl ? 'الإجمالي' : 'Subtotal'}</TableHead>
+                    <TableHead className="w-[60px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {items.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="py-40 text-center opacity-20">
-                         <div className="flex flex-col items-center gap-6">
-                            <LayoutGrid className="h-20 w-20" />
-                            <p className="text-xl font-black uppercase tracking-[0.3em]">{isRtl ? 'المقايسة فارغة' : 'Template is Empty'}</p>
+                      <TableCell colSpan={9} className="py-60 text-center opacity-20">
+                         <div className="flex flex-col items-center gap-8">
+                            <LayoutGrid className="h-24 w-24 text-slate-300" />
+                            <p className="text-2xl font-black uppercase tracking-[0.4em] text-slate-400">{isRtl ? 'المقايسة فارغة' : 'Grid is Empty'}</p>
+                            <p className="text-xs font-bold -mt-4">{isRtl ? 'استخدم مستكشف القاموس لإضافة البنود' : 'Use Explorer to add items'}</p>
                          </div>
                       </TableCell>
                     </TableRow>
@@ -469,7 +537,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                 </TableBody>
               </Table>
            </div>
-        </div>
+        </main>
       </div>
     </div>
   );
