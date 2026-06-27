@@ -18,7 +18,7 @@ export interface BaseReferenceList extends BaseReference {
   nameEn?: string;
   description?: string;
   isSystem: boolean;   // هل السجل مضاف بواسطة النظام؟
-  isEditable: boolean; // هل يسمح للشركة بتعديل الاسم/الوصف؟
+  isEditable: boolean; // هل يسمح للشركة بتعديل الاسم/الوصف?
   isActive: boolean;   // هل السجل متاح للاستخدام في القوائم؟
   order: number;
   createdBy?: string;
@@ -156,7 +156,11 @@ export interface BOQReferenceNode extends BaseReference {
   unitTypeId?: string;
   unitName?: string;
   unitSymbol?: string;
-  technicalStageId?: string;        // المرحلة الفنية الدقيقة المرتبطة (داخل المسار المذكور أعلاه)
+  
+  // الارتباط الفني المطور (متعدد)
+  technicalStageId?: string;        // المرحلة الفنية الافتراضية (Default)
+  technicalStageIds?: string[];     // كافة المراحل المرتبطة بهذا البند
+  
   estimatedRate?: number;           // السعر المرجعي التقديري
   billingTriggerGroup?: string;
   allowedItemCategoryIds?: string[]; // تصنيف الأصناف (مخزني)
