@@ -324,7 +324,6 @@ export default function BOQNodesPage() {
                   </h4>
 
                   {editingNode?.parentId ? (
-                    // عرض البيانات الموروثة بشكل غير قابل للتعديل للأبناء
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-in fade-in">
                        <div className="space-y-1">
                           <Label className="text-[9px] font-black uppercase text-slate-400">النشاط</Label>
@@ -340,7 +339,6 @@ export default function BOQNodesPage() {
                        </div>
                     </div>
                   ) : (
-                    // السماح بالاختيار فقط للعقد الجذرية (Roots)
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                        <div className="space-y-1.5">
                           <Label className="text-[9px] font-black uppercase text-slate-400">النشاط</Label>
@@ -399,7 +397,7 @@ export default function BOQNodesPage() {
                     <div className="pt-4 border-t border-slate-200 animate-in slide-in-from-top-2">
                        <div className="space-y-1.5">
                           <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
-                             <MapPin className="h-3 w-3" /> المرحلة الفنية المرتبطة (تلقائياً)
+                             <MapPin className="h-3 w-3" /> المرحلة الفنية المرتبطة (يدوياً)
                           </Label>
                           <Select 
                             disabled={!editingNode?.subServiceId}
