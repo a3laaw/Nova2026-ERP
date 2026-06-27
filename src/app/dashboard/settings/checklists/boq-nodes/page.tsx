@@ -80,7 +80,6 @@ export default function BOQNodesPage() {
   const canCreate = check('ref', 'create').can;
   const canDelete = check('ref', 'delete').can;
 
-  // 1. جلب البيانات الأساسية
   const nodesQuery = useMemo(() => companyId && db ? query(collection(db, paths.boqReferenceNodes(companyId))) : null, [db, companyId]);
   const unitTypesQuery = useMemo(() => companyId && db ? query(collection(db, paths.unitTypes(companyId)), orderBy('order')) : null, [db, companyId]);
   const activitiesQuery = useMemo(() => companyId && db ? query(collection(db, paths.activityTypes(companyId)), orderBy('order')) : null, [db, companyId]);
@@ -91,7 +90,6 @@ export default function BOQNodesPage() {
 
   const referenceService = useMemo(() => db && companyId ? new BOQReferenceService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
-  // 2. حل السياق التشغيلي الفعال (Recursive Context Resolution)
   const resolveInheritedContext = (nodeId: string | null): any => {
     if (!nodeId || !rawNodes) return { activityTypeId: '', activityTypeName: '', serviceId: '', serviceName: '', subServiceId: '', subServiceName: '' };
     const node = rawNodes.find(n => n.id === nodeId);
@@ -127,7 +125,6 @@ export default function BOQNodesPage() {
     return { ...inherited, isInherited: !!editingNode.parentId };
   }, [editingNode, rawNodes]);
 
-  // 3. جلب القوائم التابعة للنشاط (في حال التعديل المحلي للفروع)
   const [activeServices, setActiveServices] = useState<any[]>([]);
   const [activeSubs, setActiveSubs] = useState<any[]>([]);
 
@@ -147,7 +144,6 @@ export default function BOQNodesPage() {
     }
   }, [db, companyId, editingNode?.serviceId, effectiveContext?.isInherited]);
 
-  // 4. جلب المراحل الفنية بناءً على المسار الفعال
   useEffect(() => {
     const subId = effectiveContext?.subServiceId;
     const actId = effectiveContext?.activityTypeId;
@@ -183,7 +179,6 @@ export default function BOQNodesPage() {
     if (!referenceService || !user || !editingNode?.title) return;
     setLoadingAction('save');
     try {
-      // تثبيت البيانات الموروثة لضمان استقرار السجل التنفيذي
       const finalData = {
         ...editingNode,
         activityTypeId: effectiveContext?.activityTypeId || editingNode.activityTypeId || '',
@@ -192,7 +187,6 @@ export default function BOQNodesPage() {
         serviceName: effectiveContext?.serviceName || editingNode.serviceName || '',
         subServiceId: effectiveContext?.subServiceId || editingNode.subServiceId || '',
         subServiceName: effectiveContext?.subServiceName || editingNode.subServiceName || '',
-        // تنظيف حقل المرحلة الوحيدة (للتوافق) والمصفوفة المتعددة
         technicalStageId: editingNode.technicalStageId || '',
         technicalStageIds: editingNode.technicalStageIds || []
       };
@@ -227,35 +221,26 @@ export default function BOQNodesPage() {
     setExpandedNodes(prev => prev.includes(id) ? prev.filter(n => n !== id) : [...prev, id]);
   };
 
-  const toggleStageInSelection = (stageId: string) => {
+  const toggleStageInSelection = (e: React.MouseEvent, stageId: string) => {
+    // منع إغلاق القائمة عند النقر
+    e.preventDefault();
+    e.stopPropagation();
+
     if (!editingNode) return;
-    const current = editingNode.technicalStageIds || [];
+    
+    const current = [...(editingNode.technicalStageIds || [])];
     let updated: string[];
     
     if (current.includes(stageId)) {
       updated = current.filter(id => id !== stageId);
-      // إذا حذفنا المرحلة الافتراضية، نقوم بتصفيرها أو إسناد أول واحدة متبقية
-      if (editingNode.technicalStageId === stageId) {
-        setEditingNode({
-          ...editingNode, 
-          technicalStageIds: updated, 
-          technicalStageId: updated[0] || ''
-        });
-      } else {
-        setEditingNode({
-          ...editingNode, 
-          technicalStageIds: updated
-        });
-      }
+      // تحديث المرحلة الافتراضية إذا تم حذفها
+      const newDefault = editingNode.technicalStageId === stageId ? (updated[0] || '') : editingNode.technicalStageId;
+      setEditingNode({ ...editingNode, technicalStageIds: updated, technicalStageId: newDefault });
     } else {
       updated = [...current, stageId];
-      // إذا كانت هذه هي المرحلة الأولى المختارة، نجعلها الافتراضية تلقائياً
-      const newDefault = editingNode.technicalStageId || updated[0];
-      setEditingNode({
-        ...editingNode, 
-        technicalStageIds: updated,
-        technicalStageId: newDefault
-      });
+      // تعيين كافتراضية إذا كانت الأولى
+      const newDefault = !editingNode.technicalStageId ? stageId : editingNode.technicalStageId;
+      setEditingNode({ ...editingNode, technicalStageIds: updated, technicalStageId: newDefault });
     }
   };
 
@@ -397,7 +382,6 @@ export default function BOQNodesPage() {
                   </div>
                </div>
 
-               {/* الربط التشغيلي (وراثة البيانات الكبرى) */}
                <div className="p-6 bg-slate-50 rounded-2xl border-2 border-white shadow-inner space-y-6">
                   <h4 className="font-black text-[11px] text-slate-500 uppercase tracking-widest flex items-center gap-2">
                      <Workflow className="h-4 w-4 text-primary" /> {isRtl ? 'الارتباط التشغيلي الموروث' : 'Operational Context Inheritance'}
@@ -468,7 +452,6 @@ export default function BOQNodesPage() {
                           
                           {effectiveContext?.subServiceId ? (
                             <div className="space-y-4">
-                               {/* منتقي المراحل المتعدد (Popover Style) */}
                                <Popover>
                                   <PopoverTrigger asChild>
                                      <Button variant="outline" className="w-full h-12 rounded-xl justify-between border-2 bg-white font-black text-xs px-4">
@@ -483,38 +466,38 @@ export default function BOQNodesPage() {
                                   <PopoverContent className="w-[400px] p-2 rounded-2xl border-2 shadow-2xl" align="start">
                                      <ScrollArea className="h-64">
                                         <div className="space-y-1 p-2">
-                                           {availableStages.map(stage => (
-                                              <div 
-                                                key={stage.id} 
-                                                onClick={(e) => {
-                                                  e.preventDefault();
-                                                  e.stopPropagation();
-                                                  toggleStageInSelection(stage.id!);
-                                                }}
-                                                className={cn(
-                                                  "flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all border-2 mb-1",
-                                                  editingNode.technicalStageIds?.includes(stage.id!) ? "bg-primary/5 border-primary/20" : "bg-white border-transparent hover:bg-slate-50"
-                                                )}
-                                              >
-                                                 <div className="flex items-center gap-3">
-                                                    <Checkbox 
-                                                      checked={editingNode.technicalStageIds?.includes(stage.id!)} 
-                                                      onCheckedChange={() => toggleStageInSelection(stage.id!)}
-                                                    />
-                                                    <div className="text-start">
-                                                       <p className="font-black text-xs text-slate-800">{isRtl ? stage.name : stage.nameEn}</p>
-                                                       <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">{stage.code}</span>
-                                                    </div>
-                                                 </div>
-                                                 {editingNode.technicalStageId === stage.id && <Badge className="bg-emerald-500 text-white text-[7px] font-black h-4">DEFAULT</Badge>}
-                                              </div>
-                                           ))}
+                                           {loadingStages ? (
+                                              <div className="p-10 text-center"><Loader2 className="animate-spin h-6 w-6 mx-auto text-primary/30" /></div>
+                                           ) : availableStages.map(stage => {
+                                              const isChecked = editingNode.technicalStageIds?.includes(stage.id!);
+                                              return (
+                                                <div 
+                                                  key={stage.id} 
+                                                  onClick={(e) => toggleStageInSelection(e, stage.id!)}
+                                                  className={cn(
+                                                    "flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all border-2 mb-1",
+                                                    isChecked ? "bg-primary/5 border-primary/20" : "bg-white border-transparent hover:bg-slate-50"
+                                                  )}
+                                                >
+                                                   <div className="flex items-center gap-3">
+                                                      <Checkbox 
+                                                        checked={isChecked} 
+                                                        onCheckedChange={() => {}} // المعالجة تتم في div العلوي
+                                                      />
+                                                      <div className="text-start">
+                                                         <p className="font-black text-xs text-slate-800">{isRtl ? stage.name : stage.nameEn}</p>
+                                                         <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">{stage.code}</span>
+                                                      </div>
+                                                   </div>
+                                                   {editingNode.technicalStageId === stage.id && <Badge className="bg-emerald-500 text-white text-[7px] font-black h-4">DEFAULT</Badge>}
+                                                </div>
+                                              );
+                                           })}
                                         </div>
                                      </ScrollArea>
                                   </PopoverContent>
                                </Popover>
 
-                               {/* تحديد المرحلة الافتراضية (Default Selector) */}
                                {editingNode.technicalStageIds && editingNode.technicalStageIds.length > 1 && (
                                  <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 animate-in zoom-in-95">
                                     <Label className="text-[9px] font-black uppercase text-primary mb-3 block">{isRtl ? 'المرحلة الافتراضية (للإسناد التلقائي)' : 'Primary Default Stage'}</Label>
@@ -614,3 +597,4 @@ export default function BOQNodesPage() {
     </div>
   );
 }
+
