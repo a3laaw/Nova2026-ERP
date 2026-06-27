@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -12,13 +13,11 @@ import {
   RotateCcw, Package, MapPin
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, collectionGroup, where } from 'firebase/firestore';
+import { collection, query, orderBy, collectionGroup, where, getDocs } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
-import { BOQReferenceService } from '@/services/boq-reference-service';
-import { TechnicalPathService } from '@/services/technical-path-service';
 import { BOQReferenceNode, UnitType, TechnicalStage, ActivityType, Service, SubService, ItemCategory } from '@/types/reference';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -39,6 +38,8 @@ import {
   AlertDialogHeader, 
   AlertDialogTitle 
 } from "@/components/ui/alert-dialog";
+import { BOQReferenceService } from '@/services/boq-reference-service';
+import { TechnicalPathService } from '@/services/technical-path-service';
 
 export default function BOQNodesPage() {
   const { globalUser, user } = useAuthContext();
@@ -54,7 +55,6 @@ export default function BOQNodesPage() {
   const [expandedNodes, setExpandedNodes] = useState<string[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   
-  // States for cascaded pickers
   const [availableStages, setAvailableStages] = useState<TechnicalStage[]>([]);
   const [loadingStages, setLoadingStages] = useState(false);
 
@@ -66,31 +66,29 @@ export default function BOQNodesPage() {
   const nodesQuery = useMemo(() => companyId && db ? query(collection(db, paths.boqReferenceNodes(companyId))) : null, [db, companyId]);
   const unitTypesQuery = useMemo(() => companyId && db ? query(collection(db, paths.unitTypes(companyId)), orderBy('order')) : null, [db, companyId]);
   const activitiesQuery = useMemo(() => companyId && db ? query(collection(db, paths.activityTypes(companyId)), orderBy('order')) : null, [db, companyId]);
-  const itemCatsQuery = useMemo(() => companyId && db ? query(collection(db, paths.itemCategories(companyId)), orderBy('order')) : null, [db, companyId]);
-
+  
   const { data: rawNodes, loading } = useCollection<BOQReferenceNode>(nodesQuery);
   const { data: unitTypes } = useCollection<UnitType>(unitTypesQuery);
   const { data: activities } = useCollection<ActivityType>(activitiesQuery);
-  const { data: itemCategories } = useCollection<ItemCategory>(itemCatsQuery);
 
-  // Cascaded Data Fetching
+  // Cascaded Data Fetching for Root Nodes
   const servicesQuery = useMemo(() => {
-    if (!companyId || !db || !editingNode?.activityTypeId) return null;
+    if (!companyId || !db || !editingNode?.activityTypeId || editingNode?.parentId) return null;
     return query(collection(db, paths.services(companyId, editingNode.activityTypeId)), orderBy('order'));
-  }, [db, companyId, editingNode?.activityTypeId]);
+  }, [db, companyId, editingNode?.activityTypeId, editingNode?.parentId]);
   const { data: services } = useCollection<Service>(servicesQuery);
 
   const subServicesQuery = useMemo(() => {
-    if (!companyId || !db || !editingNode?.activityTypeId || !editingNode?.serviceId) return null;
+    if (!companyId || !db || !editingNode?.activityTypeId || !editingNode?.serviceId || editingNode?.parentId) return null;
     return query(collection(db, paths.subServices(companyId, editingNode.activityTypeId, editingNode.serviceId)), orderBy('order'));
-  }, [db, companyId, editingNode?.activityTypeId, editingNode?.serviceId]);
+  }, [db, companyId, editingNode?.activityTypeId, editingNode?.serviceId, editingNode?.parentId]);
   const { data: subServices } = useCollection<SubService>(subServicesQuery);
 
   const referenceService = useMemo(() => db && companyId ? new BOQReferenceService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
-  // Fetch stages when SubService is selected
+  // Fetch stages when Node is Executable (Inherited SubService is used)
   useEffect(() => {
-    if (db && companyId && editingNode?.subServiceId && editingNode.activityTypeId && editingNode.serviceId) {
+    if (db && companyId && editingNode?.subServiceId && editingNode.activityTypeId && editingNode.serviceId && editingNode.isExecutable) {
       setLoadingStages(true);
       const tpService = new TechnicalPathService(db, companyId);
       const path = paths.technicalStages(companyId, editingNode.activityTypeId, editingNode.serviceId, editingNode.subServiceId);
@@ -100,7 +98,7 @@ export default function BOQNodesPage() {
     } else {
       setAvailableStages([]);
     }
-  }, [db, companyId, editingNode?.subServiceId, editingNode?.activityTypeId, editingNode?.serviceId]);
+  }, [db, companyId, editingNode?.subServiceId, editingNode?.activityTypeId, editingNode?.serviceId, editingNode?.isExecutable]);
 
   const treeData = useMemo(() => {
     const nodes = rawNodes || [];
@@ -188,28 +186,19 @@ export default function BOQNodesPage() {
                        {node.subServiceName}
                      </Badge>
                    )}
-                   {node.technicalStageId && (
-                     <Badge variant="secondary" className="h-3 px-1 text-[7px] font-black uppercase bg-emerald-50 text-emerald-600 border-0">
-                       <Workflow className="h-2 w-2 me-0.5" /> STAGE
-                     </Badge>
-                   )}
                 </div>
              </div>
           </div>
 
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
              {canCreate && !isExecutable && (
-               <Button 
-                 variant="ghost" 
-                 size="icon" 
-                 className="h-8 w-8 text-primary"
+               <button 
                  onClick={() => setEditingNode({ 
                     parentId: node.id, 
                     nodeRole: 'group', 
                     isActive: true, 
                     isExecutable: false,
                     inheritServices: true,
-                    // التوريث المسبق للتجربة
                     activityTypeId: node.activityTypeId,
                     activityTypeName: node.activityTypeName,
                     serviceId: node.serviceId,
@@ -218,15 +207,16 @@ export default function BOQNodesPage() {
                     subServiceName: node.subServiceName,
                     order: node.childrenCount 
                  })}
+                 className="h-8 w-8 rounded-lg flex items-center justify-center text-primary hover:bg-primary/10 transition-colors"
                >
                  <Plus className="h-4 w-4" />
-               </Button>
+               </button>
              )}
              {canEdit && (
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500" onClick={() => setEditingNode(node)}><Edit3 className="h-4 w-4" /></Button>
+                <button className="h-8 w-8 rounded-lg flex items-center justify-center text-blue-500 hover:bg-blue-50 transition-colors" onClick={() => setEditingNode(node)}><Edit3 className="h-4 w-4" /></button>
              )}
              {canDelete && (
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-rose-500" disabled={node.childrenCount > 0} onClick={() => setDeletingId(node.id!)}><Trash2 className="h-4 w-4" /></Button>
+                <button className="h-8 w-8 rounded-lg flex items-center justify-center text-rose-500 hover:bg-rose-50 transition-colors" disabled={node.childrenCount > 0} onClick={() => setDeletingId(node.id!)}><Trash2 className="h-4 w-4" /></button>
              )}
           </div>
         </div>
@@ -294,7 +284,7 @@ export default function BOQNodesPage() {
                <Badge className="bg-primary/10 text-primary border-0 font-black">{editingNode?.isExecutable ? 'WORK ITEM' : 'GROUP'}</Badge>
             </div>
 
-            <div className="p-8 space-y-6 text-start bg-white max-h-[70vh] overflow-y-auto scrollbar-hide">
+            <div className="p-8 space-y-6 text-start bg-white max-h-[75vh] overflow-y-auto scrollbar-hide">
                
                <div className="space-y-4">
                   <div className="space-y-1.5">
@@ -327,77 +317,97 @@ export default function BOQNodesPage() {
                   </div>
                </div>
 
-               {/* Operational Context Section */}
+               {/* الارتباط التشغيلي (وراثة تلقائية للأبناء) */}
                <div className="p-6 bg-slate-50 rounded-2xl border-2 border-white shadow-inner space-y-6">
                   <h4 className="font-black text-[11px] text-slate-500 uppercase tracking-widest flex items-center gap-2">
                      <Workflow className="h-4 w-4 text-primary" /> {isRtl ? 'الارتباط التشغيلي (الوراثة)' : 'Operational Context'}
                   </h4>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                     <div className="space-y-1.5">
-                        <Label className="text-[9px] font-black uppercase text-slate-400">النشاط</Label>
-                        <Select 
-                          value={editingNode?.activityTypeId || ''} 
-                          onValueChange={v => {
-                            const act = activities?.find(a => a.id === v);
-                            setEditingNode({...editingNode!, activityTypeId: v, activityTypeName: act?.name, serviceId: '', serviceName: '', subServiceId: '', subServiceName: ''});
-                          }}
-                        >
-                           <SelectTrigger className="h-10 rounded-lg border-2 font-bold bg-white text-xs"><SelectValue placeholder="..." /></SelectTrigger>
-                           <SelectContent className="rounded-xl">
-                              {activities?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold text-xs">{isRtl ? a.name : a.nameEn}</SelectItem>)}
-                           </SelectContent>
-                        </Select>
-                     </div>
+                  {editingNode?.parentId ? (
+                    // عرض البيانات الموروثة بشكل غير قابل للتعديل للأبناء
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-in fade-in">
+                       <div className="space-y-1">
+                          <Label className="text-[9px] font-black uppercase text-slate-400">النشاط</Label>
+                          <p className="text-xs font-black text-blue-600 bg-blue-50/50 px-3 py-2 rounded-lg border border-blue-100">{editingNode.activityTypeName || '---'}</p>
+                       </div>
+                       <div className="space-y-1">
+                          <Label className="text-[9px] font-black uppercase text-slate-400">الخدمة</Label>
+                          <p className="text-xs font-black text-orange-600 bg-orange-50/50 px-3 py-2 rounded-lg border border-orange-100">{editingNode.serviceName || '---'}</p>
+                       </div>
+                       <div className="space-y-1">
+                          <Label className="text-[9px] font-black uppercase text-slate-400">المسار الفني</Label>
+                          <p className="text-xs font-black text-emerald-600 bg-emerald-50/50 px-3 py-2 rounded-lg border border-emerald-100">{editingNode.subServiceName || '---'}</p>
+                       </div>
+                    </div>
+                  ) : (
+                    // السماح بالاختيار فقط للعقد الجذرية (Roots)
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                       <div className="space-y-1.5">
+                          <Label className="text-[9px] font-black uppercase text-slate-400">النشاط</Label>
+                          <Select 
+                            value={editingNode?.activityTypeId || ''} 
+                            onValueChange={v => {
+                              const act = activities?.find(a => a.id === v);
+                              setEditingNode({...editingNode!, activityTypeId: v, activityTypeName: act?.name, serviceId: '', serviceName: '', subServiceId: '', subServiceName: ''});
+                            }}
+                          >
+                             <SelectTrigger className="h-10 rounded-lg border-2 font-bold bg-white text-xs"><SelectValue placeholder="..." /></SelectTrigger>
+                             <SelectContent className="rounded-xl">
+                                {activities?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold text-xs">{isRtl ? a.name : a.nameEn}</SelectItem>)}
+                             </SelectContent>
+                          </Select>
+                       </div>
 
-                     <div className="space-y-1.5">
-                        <Label className="text-[9px] font-black uppercase text-slate-400">الخدمة</Label>
-                        <Select 
-                          disabled={!editingNode?.activityTypeId}
-                          value={editingNode?.serviceId || ''} 
-                          onValueChange={v => {
-                            const srv = services?.find(s => s.id === v);
-                            setEditingNode({...editingNode!, serviceId: v, serviceName: srv?.name, subServiceId: '', subServiceName: ''});
-                          }}
-                        >
-                           <SelectTrigger className="h-10 rounded-lg border-2 font-bold bg-white text-xs"><SelectValue placeholder="..." /></SelectTrigger>
-                           <SelectContent className="rounded-xl">
-                              {services?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs">{isRtl ? s.name : s.nameEn}</SelectItem>)}
-                           </SelectContent>
-                        </Select>
-                     </div>
+                       <div className="space-y-1.5">
+                          <Label className="text-[9px] font-black uppercase text-slate-400">الخدمة</Label>
+                          <Select 
+                            disabled={!editingNode?.activityTypeId}
+                            value={editingNode?.serviceId || ''} 
+                            onValueChange={v => {
+                              const srv = services?.find(s => s.id === v);
+                              setEditingNode({...editingNode!, serviceId: v, serviceName: srv?.name, subServiceId: '', subServiceName: ''});
+                            }}
+                          >
+                             <SelectTrigger className="h-10 rounded-lg border-2 font-bold bg-white text-xs"><SelectValue placeholder="..." /></SelectTrigger>
+                             <SelectContent className="rounded-xl">
+                                {services?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs">{isRtl ? s.name : s.nameEn}</SelectItem>)}
+                             </SelectContent>
+                          </Select>
+                       </div>
 
-                     <div className="space-y-1.5">
-                        <Label className="text-[9px] font-black uppercase text-slate-400">المسار الفني</Label>
-                        <Select 
-                          disabled={!editingNode?.serviceId}
-                          value={editingNode?.subServiceId || ''} 
-                          onValueChange={v => {
-                            const sub = subServices?.find(s => s.id === v);
-                            setEditingNode({...editingNode!, subServiceId: v, subServiceName: sub?.name});
-                          }}
-                        >
-                           <SelectTrigger className="h-10 rounded-lg border-2 font-bold bg-white text-xs"><SelectValue placeholder="..." /></SelectTrigger>
-                           <SelectContent className="rounded-xl">
-                              {subServices?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs">{isRtl ? s.name : s.nameEn}</SelectItem>)}
-                           </SelectContent>
-                        </Select>
-                     </div>
-                  </div>
+                       <div className="space-y-1.5">
+                          <Label className="text-[9px] font-black uppercase text-slate-400">المسار الفني</Label>
+                          <Select 
+                            disabled={!editingNode?.serviceId}
+                            value={editingNode?.subServiceId || ''} 
+                            onValueChange={v => {
+                              const sub = subServices?.find(s => s.id === v);
+                              setEditingNode({...editingNode!, subServiceId: v, subServiceName: sub?.name});
+                            }}
+                          >
+                             <SelectTrigger className="h-10 rounded-lg border-2 font-bold bg-white text-xs"><SelectValue placeholder="..." /></SelectTrigger>
+                             <SelectContent className="rounded-xl">
+                                {subServices?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs">{isRtl ? s.name : s.nameEn}</SelectItem>)}
+                             </SelectContent>
+                          </Select>
+                       </div>
+                    </div>
+                  )}
 
+                  {/* المرحلة الفنية الدقيقة: القائمة الوحيدة المتاحة للبنود التنفيذية */}
                   {editingNode?.isExecutable && (
                     <div className="pt-4 border-t border-slate-200 animate-in slide-in-from-top-2">
                        <div className="space-y-1.5">
                           <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
-                             <MapPin className="h-3 w-3" /> المرحلة الفنية الدقيقة (Stage)
+                             <MapPin className="h-3 w-3" /> المرحلة الفنية المرتبطة (تلقائياً)
                           </Label>
                           <Select 
                             disabled={!editingNode?.subServiceId}
                             value={editingNode?.technicalStageId || ''} 
                             onValueChange={v => setEditingNode({...editingNode!, technicalStageId: v})}
                           >
-                             <SelectTrigger className="h-11 rounded-xl border-2 font-black bg-white shadow-sm ring-2 ring-primary/5">
-                                <SelectValue placeholder={loadingStages ? "جاري التحميل..." : (isRtl ? "اختر المرحلة من المسار..." : "Select Stage...")} />
+                             <SelectTrigger className="h-12 rounded-xl border-2 font-black bg-white shadow-sm ring-2 ring-primary/5">
+                                <SelectValue placeholder={loadingStages ? "جاري التحميل..." : (isRtl ? "اختر المرحلة من المسار الموروث..." : "Select Stage...")} />
                              </SelectTrigger>
                              <SelectContent className="rounded-xl border-2 shadow-2xl">
                                 {loadingStages ? <div className="p-4 text-center"><Loader2 className="animate-spin h-5 w-5 mx-auto text-primary" /></div> : 
@@ -488,6 +498,3 @@ export default function BOQNodesPage() {
     </div>
   );
 }
-
-// Helper components for Select would go here...
-import { getDocs } from 'firebase/firestore';
