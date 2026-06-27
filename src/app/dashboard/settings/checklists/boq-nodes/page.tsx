@@ -8,9 +8,8 @@ import {
   GitBranch, Plus, Loader2, Search, 
   Trash2, Edit3, ShieldCheck, Folder,
   Hammer, ChevronRight, ChevronDown,
-  Info, Save, ListChecks, Settings2,
-  X, AlertTriangle, Workflow, Checkbox as CheckboxIcon,
-  Package, Boxes, RotateCcw
+  Save, Settings2,
+  Workflow, RotateCcw, Package
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, collectionGroup, where } from 'firebase/firestore';
@@ -56,6 +55,7 @@ export default function BOQNodesPage() {
   const [expandedNodes, setExpandedNodes] = useState<string[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [allStages, setAllStages] = useState<TechnicalStage[]>([]);
+  const [loadingStages, setLoadingStages] = useState(false);
 
   const canEdit = check('ref', 'edit').can;
   const canCreate = check('ref', 'create').can;
@@ -96,12 +96,16 @@ export default function BOQNodesPage() {
     db && companyId ? new BOQReferenceService(db, companyId, permissions) : null, 
   [db, companyId, permissions]);
 
+  // جلب المراحل الفنية مرة واحدة عند الحاجة فقط (عند فتح المودال)
   useEffect(() => {
-    if (db && companyId) {
+    if (db && companyId && editingNode) {
+      setLoadingStages(true);
       const tpService = new TechnicalPathService(db, companyId);
-      tpService.getAllCompanyStages().then(setAllStages);
+      tpService.getAllCompanyStages()
+        .then(setAllStages)
+        .finally(() => setLoadingStages(false));
     }
-  }, [db, companyId, editingNode]);
+  }, [db, companyId, !!editingNode]);
 
   const treeData = useMemo(() => {
     const nodes = rawNodes || [];
@@ -185,7 +189,7 @@ export default function BOQNodesPage() {
           style={{ marginInlineStart: `${node.depth * 20}px` }}
         >
           <div className="flex items-center gap-3">
-             <div onClick={() => toggleNode(node.id)} className="cursor-pointer text-slate-400 hover:text-primary">
+             <div onClick={() => toggleNode(node.id)} className="cursor-pointer text-slate-400 hover:text-primary transition-colors">
                 {hasChildren ? (isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className={cn("h-4 w-4", isRtl && "rotate-180")} />) : <div className="w-4" />}
              </div>
              <div className={cn(
@@ -205,7 +209,6 @@ export default function BOQNodesPage() {
                      <span className="text-[8px] text-slate-400 font-bold uppercase">{node.unitName} ({node.unitSymbol})</span>
                    )}
                    
-                   {/* عرض حالة الوراثة والخدمات */}
                    {effectiveServices.serviceIds.length > 0 && (
                      <div className="flex items-center gap-1">
                         {effectiveServices.isInherited && <RotateCcw className="h-2.5 w-2.5 text-slate-300" />}
@@ -231,7 +234,7 @@ export default function BOQNodesPage() {
                     nodeRole: 'group', 
                     isActive: true, 
                     isExecutable: false,
-                    inheritServices: true, // افتراضي يرث من الأب
+                    inheritServices: true,
                     order: node.childrenCount 
                  })}
                >
@@ -334,7 +337,7 @@ export default function BOQNodesPage() {
                  <div className="space-y-6 animate-in fade-in duration-300">
                     <div className="p-5 rounded-2xl bg-blue-50/50 border-2 border-blue-100 space-y-4">
                        <h4 className="font-black text-[10px] text-blue-600 uppercase tracking-widest flex items-center gap-2">
-                          <ShieldCheck className="h-3.5 w-3.5" /> {isRtl ? 'الأنشطة المتاح بها هذا القسم (تعريف مباشر)' : 'Allowed Activities (Direct)'}
+                          <ShieldCheck className="h-3.5 w-3.5" /> {isRtl ? 'الأنشطة المتاح بها هذا القسم' : 'Allowed Activities'}
                        </h4>
                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                           {activities?.map(act => (
@@ -357,7 +360,7 @@ export default function BOQNodesPage() {
 
                     <div className="p-5 rounded-2xl bg-indigo-50/50 border-2 border-indigo-100 space-y-4">
                        <h4 className="font-black text-[10px] text-indigo-600 uppercase tracking-widest flex items-center gap-2">
-                          <Workflow className="h-3.5 w-3.5" /> {isRtl ? 'الخدمات التشغيلية المرتبطة (تعريف مباشر)' : 'Allowed Services (Direct)'}
+                          <Workflow className="h-3.5 w-3.5" /> {isRtl ? 'الخدمات التشغيلية المرتبطة' : 'Allowed Services'}
                        </h4>
                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {allServices?.map(srv => (
@@ -485,18 +488,24 @@ export default function BOQNodesPage() {
                             onValueChange={v => setEditingNode({...editingNode!, defaultTechnicalStageId: v === "NONE" ? "" : v})}
                           >
                              <SelectTrigger className="h-11 rounded-xl border-2 font-bold bg-white">
-                                <SelectValue placeholder="..." />
+                                <SelectValue placeholder={loadingStages ? "جاري التحميل..." : "..."} />
                              </SelectTrigger>
                              <SelectContent className="rounded-xl border-2 shadow-2xl max-h-[300px]">
                                 <SelectItem value="NONE" className="font-black text-slate-400 text-xs">{isRtl ? 'بدون ارتباط فني' : 'No Default Link'}</SelectItem>
-                                {allStages.map(stage => (
-                                   <SelectItem key={stage.id} value={stage.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
-                                      <div className="flex flex-col text-start">
-                                         <span className="flex items-center gap-1"><Workflow className="h-2.5 w-2.5 text-primary" /> {stage.name}</span>
-                                         {stage.fullPathName && <span className="text-[8px] text-slate-400 font-bold mt-0.5">{stage.fullPathName}</span>}
-                                      </div>
-                                   </SelectItem>
-                                ))}
+                                {loadingStages ? (
+                                  <div className="p-4 text-center"><Loader2 className="h-4 w-4 animate-spin mx-auto text-primary" /></div>
+                                ) : allStages.length === 0 ? (
+                                  <div className="p-4 text-center text-[10px] text-slate-400">{isRtl ? 'لا توجد مراحل (يرجى فحص الفهرس)' : 'No stages found'}</div>
+                                ) : (
+                                  allStages.map(stage => (
+                                     <SelectItem key={stage.id} value={stage.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
+                                        <div className="flex flex-col text-start">
+                                           <span className="flex items-center gap-1"><Workflow className="h-2.5 w-2.5 text-primary" /> {stage.name}</span>
+                                           {stage.fullPathName && <span className="text-[8px] text-slate-400 font-bold mt-0.5">{stage.fullPathName}</span>}
+                                        </div>
+                                     </SelectItem>
+                                  ))
+                                )}
                              </SelectContent>
                           </Select>
                        </div>
@@ -537,4 +546,3 @@ export default function BOQNodesPage() {
     </div>
   );
 }
-

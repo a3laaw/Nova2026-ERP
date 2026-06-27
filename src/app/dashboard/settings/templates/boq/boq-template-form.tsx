@@ -26,7 +26,6 @@ import {
   Folder,
   Hammer,
   DollarSign,
-  X,
   Workflow
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
@@ -66,6 +65,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
   const [masterSearch, setMasterSearch] = useState("");
   const [expandedNodes, setExpandedNodes] = useState<string[]>([]);
   const [allStages, setAllStages] = useState<TechnicalStage[]>([]);
+  const [loadingStages, setLoadingStages] = useState(false);
   
   const [formData, setFormData] = useState<any>(
     template || {
@@ -81,7 +81,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
 
   const actQuery = useMemo(() => companyId && db ? query(collection(db, paths.activityTypes(companyId)), orderBy('order')) : null, [db, companyId]);
   
-  // إزالة orderBy لتجنب أخطاء الفهارس المفقودة في البداية
   const srvQuery = useMemo(() => {
     if (!companyId || !db) return null;
     return query(collectionGroup(db, 'services'), where('companyId', '==', companyId));
@@ -106,12 +105,18 @@ export function BOQTemplateForm({ template, onClose }: Props) {
         setTemplateLoading(false);
       });
     }
-    
+  }, [template?.id, service]);
+
+  // جلب المراحل الفنية مرة واحدة فقط
+  useEffect(() => {
     if (db && companyId) {
+      setLoadingStages(true);
       const tpService = new TechnicalPathService(db, companyId);
-      tpService.getAllCompanyStages().then(setAllStages);
+      tpService.getAllCompanyStages()
+        .then(setAllStages)
+        .finally(() => setLoadingStages(false));
     }
-  }, [template, service, db, companyId]);
+  }, [db, companyId]);
 
   const boqTree = useMemo(() => transformToBOQTree(items), [items]);
 
@@ -291,18 +296,22 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                    onValueChange={(v) => updateItem(originalIdx, 'technicalStageId', v === 'NONE' ? '' : v)}
                  >
                     <SelectTrigger className="h-8 rounded-lg text-[9px] font-black border-transparent hover:border-primary/30 bg-primary/5 text-primary">
-                       <SelectValue placeholder={isRtl ? "ارتباط فني..." : "Link Stage..."} />
+                       <SelectValue placeholder={loadingStages ? "جاري التحميل..." : (isRtl ? "ارتباط فني..." : "Link Stage...")} />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl border-2 shadow-2xl">
                        <SelectItem value="NONE" className="font-bold text-[10px]">{isRtl ? 'بدون ارتباط' : 'No Link'}</SelectItem>
-                       {allStages.map(s => (
-                          <SelectItem key={s.id} value={s.id!} className="font-bold text-[10px] py-2">
-                             <div className="flex flex-col text-start">
-                                <span className="flex items-center gap-1"><Workflow className="h-2.5 w-2.5" /> {s.name}</span>
-                                <span className="text-[7px] text-slate-400">{s.fullPathName}</span>
-                             </div>
-                          </SelectItem>
-                       ))}
+                       {loadingStages ? (
+                         <div className="p-2 text-center"><Loader2 className="h-3 w-3 animate-spin mx-auto text-primary" /></div>
+                       ) : (
+                         allStages.map(s => (
+                           <SelectItem key={s.id} value={s.id!} className="font-bold text-[10px] py-2">
+                              <div className="flex flex-col text-start">
+                                 <span className="flex items-center gap-1"><Workflow className="h-2.5 w-2.5 text-primary" /> {s.name}</span>
+                                 <span className="text-[7px] text-slate-400">{s.fullPathName}</span>
+                              </div>
+                           </SelectItem>
+                         ))
+                       )}
                     </SelectContent>
                  </Select>
               </TableCell>
@@ -328,15 +337,13 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                 {subtotal.toLocaleString()}
               </TableCell>
               <TableCell className="w-[50px] text-center">
-                <Button 
+                <button 
                   type="button"
-                  variant="ghost" 
-                  size="icon" 
                   onClick={() => removeItem(originalIdx)} 
-                  className="h-7 w-7 rounded-lg text-rose-300 hover:text-rose-600 hover:bg-rose-50"
+                  className="h-7 w-7 flex items-center justify-center rounded-lg text-rose-300 hover:text-rose-600 hover:bg-rose-50 transition-colors"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                </button>
               </TableCell>
             </TableRow>
           );

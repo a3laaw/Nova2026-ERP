@@ -31,22 +31,22 @@ export class TechnicalPathService {
    * تم تبسيط الاستعلام لتجنب الحاجة لفهارس مركبة لضمان العمل الفوري.
    */
   async getAllCompanyStages(): Promise<TechnicalStage[]> {
-    // ملاحظة: أزلنا orderBy لتجنب الحاجة لفهرس COLLECTION_GROUP_ASC يدوي
-    const q = query(
-      collectionGroup(this.db, 'stages'),
-      where('companyId', '==', this.companyId)
-    );
-    
-    return getDocs(q)
-      .then(snap => {
-        const stages = snap.docs.map(d => ({ id: d.id, ...d.data() } as TechnicalStage));
-        // فرز يدوي في الذاكرة لتوفير الفهارس
-        return stages.sort((a, b) => (a.order || 0) - (b.order || 0));
-      })
-      .catch(async (err) => {
-        console.warn("Stages index might be missing, returning empty list. Error:", err.message);
-        return [];
-      });
+    try {
+      // ملاحظة: أزلنا orderBy لتجنب الحاجة لفهرس COLLECTION_GROUP_ASC يدوي
+      const q = query(
+        collectionGroup(this.db, 'stages'),
+        where('companyId', '==', this.companyId)
+      );
+      
+      const snap = await getDocs(q);
+      const stages = snap.docs.map(d => ({ id: d.id, ...d.data() } as TechnicalStage));
+      
+      // فرز يدوي في الذاكرة لتوفير الفهارس وضمان الترتيب الصحيح
+      return stages.sort((a, b) => (a.order || 0) - (b.order || 0));
+    } catch (err: any) {
+      console.warn("Stages collectionGroup query failed, this is usually due to a missing index or empty database. Error:", err.message);
+      return [];
+    }
   }
 
   async addActivityType(data: Omit<ActivityType, 'id' | 'createdAt' | 'updatedAt' | 'companyId'>) {
