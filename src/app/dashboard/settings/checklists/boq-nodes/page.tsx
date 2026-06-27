@@ -13,7 +13,7 @@ import {
   RotateCcw, MapPin
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, doc, getDoc } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -38,7 +38,6 @@ import {
   AlertDialogTitle 
 } from "@/components/ui/alert-dialog";
 import { BOQReferenceService } from '@/services/boq-reference-service';
-import { TechnicalPathService } from '@/services/technical-path-service';
 
 export default function BOQNodesPage() {
   const { globalUser, user } = useAuthContext();
@@ -72,26 +71,67 @@ export default function BOQNodesPage() {
 
   const referenceService = useMemo(() => db && companyId ? new BOQReferenceService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
-  // 2. حل السياق التشغيلي الموروث (Inheritance Resolver)
-  const parentNode = useMemo(() => {
-    if (!editingNode?.parentId || !rawNodes) return null;
-    return rawNodes.find(n => n.id === editingNode.parentId);
-  }, [editingNode?.parentId, rawNodes]);
+  // 2. حل السياق التشغيلي الموروث لحظياً (Real-time Context Resolution)
+  // هذه الدالة تصعد في الشجرة حتى تجد أقرب بيانات تشغيلية
+  const resolveInheritedContext = (nodeId: string | null): any => {
+    if (!nodeId || !rawNodes) return { activityTypeId: '', serviceId: '', subServiceId: '' };
+    const node = rawNodes.find(n => n.id === nodeId);
+    if (!node) return { activityTypeId: '', serviceId: '', subServiceId: '' };
+
+    // إذا كان لدى العقدة مسار فني، نتوقف هنا
+    if (node.subServiceId) {
+      return {
+        activityTypeId: node.activityTypeId,
+        activityTypeName: node.activityTypeName,
+        serviceId: node.serviceId,
+        serviceName: node.serviceName,
+        subServiceId: node.subServiceId,
+        subServiceName: node.subServiceName
+      };
+    }
+    // وإلا نصعد للأب
+    return resolveInheritedContext(node.parentId);
+  };
 
   const effectiveContext = useMemo(() => {
     if (!editingNode) return null;
-    return {
-      activityTypeId: editingNode.activityTypeId || parentNode?.activityTypeId,
-      activityTypeName: editingNode.activityTypeName || parentNode?.activityTypeName,
-      serviceId: editingNode.serviceId || parentNode?.serviceId,
-      serviceName: editingNode.serviceName || parentNode?.serviceName,
-      subServiceId: editingNode.subServiceId || parentNode?.subServiceId,
-      subServiceName: editingNode.subServiceName || parentNode?.subServiceName,
-    };
-  }, [editingNode?.activityTypeId, editingNode?.serviceId, editingNode?.subServiceId, parentNode]);
+    // إذا كانت العقدة تمتلك بياناتها، نستخدمها، وإلا نبحث في الآباء
+    if (editingNode.subServiceId) {
+       return {
+         activityTypeId: editingNode.activityTypeId,
+         activityTypeName: editingNode.activityTypeName,
+         serviceId: editingNode.serviceId,
+         serviceName: editingNode.serviceName,
+         subServiceId: editingNode.subServiceId,
+         subServiceName: editingNode.subServiceName,
+         isInherited: false
+       };
+    }
+    const inherited = resolveInheritedContext(editingNode.parentId);
+    return { ...inherited, isInherited: true };
+  }, [editingNode, rawNodes]);
 
-  // 3. جلب المراحل الفنية (Optimized Fetching)
-  // تم فصل الاستدعاء عن المسمى (Title) لمنع الحلقات اللانهائية
+  // 3. جلب الخدمات الخاصة بالنشاط المختار (فقط عند اختيار نشاط جديد يدوياً)
+  const [activeServices, setActiveServices] = useState<any[]>([]);
+  const [activeSubs, setActiveSubs] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (db && companyId && editingNode?.activityTypeId && !effectiveContext?.isInherited) {
+      getDocs(query(collection(db, paths.services(companyId, editingNode.activityTypeId)), orderBy('order')))
+        .then(snap => setActiveServices(snap.docs.map(d => ({id: d.id, ...d.data()}))))
+        .catch(() => setActiveServices([]));
+    }
+  }, [db, companyId, editingNode?.activityTypeId, effectiveContext?.isInherited]);
+
+  useEffect(() => {
+    if (db && companyId && editingNode?.activityTypeId && editingNode?.serviceId && !effectiveContext?.isInherited) {
+      getDocs(query(collection(db, paths.subServices(companyId, editingNode.activityTypeId, editingNode.serviceId)), orderBy('order')))
+        .then(snap => setActiveSubs(snap.docs.map(d => ({id: d.id, ...d.data()}))))
+        .catch(() => setActiveSubs([]));
+    }
+  }, [db, companyId, editingNode?.serviceId, effectiveContext?.isInherited]);
+
+  // 4. جلب المراحل الفنية بناءً على السياق الفعال (الموروث أو المختار)
   useEffect(() => {
     const subId = effectiveContext?.subServiceId;
     const actId = effectiveContext?.activityTypeId;
@@ -125,9 +165,18 @@ export default function BOQNodesPage() {
     setLoadingAction('save');
     try {
       const finalData = {
-        ...effectiveContext,
         ...editingNode,
-        technicalStageId: editingNode.technicalStageId || ""
+        // إذا كانت العقدة ترث، لا نحفظ القيم محلياً لتجنب التضارب، نتركها موروثة
+        // إلا إذا أردنا تثبيتها (الخيار المفضل للفلترة السريعة)
+        ...(effectiveContext?.isInherited ? {
+            activityTypeId: effectiveContext.activityTypeId,
+            activityTypeName: effectiveContext.activityTypeName,
+            serviceId: effectiveContext.serviceId,
+            serviceName: effectiveContext.serviceName,
+            subServiceId: effectiveContext.subServiceId,
+            subServiceName: effectiveContext.subServiceName,
+        } : {}),
+        technicalStageId: editingNode.technicalStageId === 'NONE' ? "" : (editingNode.technicalStageId || "")
       };
 
       if (editingNode.id) {
@@ -295,25 +344,67 @@ export default function BOQNodesPage() {
                   </div>
                </div>
 
+               {/* منطقة الربط التشغيلي (الوراثة الذكية) */}
                <div className="p-6 bg-slate-50 rounded-2xl border-2 border-white shadow-inner space-y-6">
                   <h4 className="font-black text-[11px] text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                     <Workflow className="h-4 w-4 text-primary" /> {isRtl ? 'الارتباط التشغيلي (توريث)' : 'Operational Context'}
+                     <Workflow className="h-4 w-4 text-primary" /> {isRtl ? 'الارتباط التشغيلي (وراثة)' : 'Operational Context'}
                   </h4>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                     <div className="space-y-1">
-                        <Label className="text-[9px] font-black uppercase text-slate-400">النشاط</Label>
-                        <p className="text-xs font-black text-blue-600 bg-white px-3 py-2 rounded-lg border min-h-[32px]">{effectiveContext?.activityTypeName || '---'}</p>
-                     </div>
-                     <div className="space-y-1">
-                        <Label className="text-[9px] font-black uppercase text-slate-400">الخدمة</Label>
-                        <p className="text-xs font-black text-orange-600 bg-white px-3 py-2 rounded-lg border min-h-[32px]">{effectiveContext?.serviceName || '---'}</p>
-                     </div>
-                     <div className="space-y-1">
-                        <Label className="text-[9px] font-black uppercase text-slate-400">المسار الفني</Label>
-                        <p className="text-xs font-black text-emerald-600 bg-white px-3 py-2 rounded-lg border min-h-[32px]">{effectiveContext?.subServiceName || '---'}</p>
-                     </div>
-                  </div>
+                  {editingNode?.parentId ? (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-in fade-in">
+                       <div className="space-y-1">
+                          <Label className="text-[9px] font-black uppercase text-slate-400">النشاط</Label>
+                          <div className="text-xs font-black text-blue-600 bg-white px-3 py-2 rounded-lg border flex items-center gap-2">
+                             <RotateCcw className="h-2.5 w-2.5 opacity-30" /> {effectiveContext?.activityTypeName || '---'}
+                          </div>
+                       </div>
+                       <div className="space-y-1">
+                          <Label className="text-[9px] font-black uppercase text-slate-400">الخدمة</Label>
+                          <div className="text-xs font-black text-orange-600 bg-white px-3 py-2 rounded-lg border flex items-center gap-2">
+                             <RotateCcw className="h-2.5 w-2.5 opacity-30" /> {effectiveContext?.serviceName || '---'}
+                          </div>
+                       </div>
+                       <div className="space-y-1">
+                          <Label className="text-[9px] font-black uppercase text-slate-400">المسار الفني</Label>
+                          <div className="text-xs font-black text-emerald-600 bg-white px-3 py-2 rounded-lg border flex items-center gap-2">
+                             <RotateCcw className="h-2.5 w-2.5 opacity-30" /> {effectiveContext?.subServiceName || '---'}
+                          </div>
+                       </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                       <div className="space-y-1.5">
+                          <Label className="text-[10px] font-black">النشاط</Label>
+                          <Select value={editingNode?.activityTypeId || ''} onValueChange={v => {
+                             const act = activities?.find(a => a.id === v);
+                             setEditingNode({...editingNode!, activityTypeId: v, activityTypeName: act?.name || '', serviceId: '', subServiceId: ''});
+                          }}>
+                             <SelectTrigger className="h-10 rounded-lg border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
+                             <SelectContent>{activities?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{isRtl ? a.name : a.nameEn}</SelectItem>)}</SelectContent>
+                          </Select>
+                       </div>
+                       <div className="space-y-1.5">
+                          <Label className="text-[10px] font-black">الخدمة</Label>
+                          <Select disabled={!editingNode?.activityTypeId} value={editingNode?.serviceId || ''} onValueChange={v => {
+                             const srv = activeServices.find(s => s.id === v);
+                             setEditingNode({...editingNode!, serviceId: v, serviceName: srv?.name || '', subServiceId: ''});
+                          }}>
+                             <SelectTrigger className="h-10 rounded-lg border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
+                             <SelectContent>{activeServices.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold">{isRtl ? s.name : s.nameEn}</SelectItem>)}</SelectContent>
+                          </Select>
+                       </div>
+                       <div className="space-y-1.5">
+                          <Label className="text-[10px] font-black">المسار</Label>
+                          <Select disabled={!editingNode?.serviceId} value={editingNode?.subServiceId || ''} onValueChange={v => {
+                             const sub = activeSubs.find(s => s.id === v);
+                             setEditingNode({...editingNode!, subServiceId: v, subServiceName: sub?.name || ''});
+                          }}>
+                             <SelectTrigger className="h-10 rounded-lg border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
+                             <SelectContent>{activeSubs.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold">{isRtl ? s.name : s.nameEn}</SelectItem>)}</SelectContent>
+                          </Select>
+                       </div>
+                    </div>
+                  )}
 
                   {editingNode?.isExecutable && (
                     <div className="pt-4 border-t border-slate-200 animate-in slide-in-from-top-2">
@@ -323,8 +414,8 @@ export default function BOQNodesPage() {
                           </Label>
                           <Select 
                             disabled={!effectiveContext?.subServiceId}
-                            value={editingNode.technicalStageId || 'NONE'} 
-                            onValueChange={v => setEditingNode({...editingNode!, technicalStageId: v === 'NONE' ? '' : v})}
+                            value={editingNode?.technicalStageId || 'NONE'} 
+                            onValueChange={v => setEditingNode({...editingNode!, technicalStageId: v})}
                           >
                              <SelectTrigger className="h-12 rounded-xl border-2 font-black bg-white shadow-sm ring-2 ring-primary/5">
                                 <SelectValue placeholder={loadingStages ? "جاري التحميل..." : "--- اختر المرحلة ---"} />
