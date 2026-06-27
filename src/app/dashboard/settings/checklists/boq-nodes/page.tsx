@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -230,17 +231,32 @@ export default function BOQNodesPage() {
     if (!editingNode) return;
     const current = editingNode.technicalStageIds || [];
     let updated: string[];
+    
     if (current.includes(stageId)) {
       updated = current.filter(id => id !== stageId);
-      // إذا حذفنا المرحلة الافتراضية، نقوم بتصفيرها
+      // إذا حذفنا المرحلة الافتراضية، نقوم بتصفيرها أو إسناد أول واحدة متبقية
       if (editingNode.technicalStageId === stageId) {
-        setEditingNode({...editingNode, technicalStageIds: updated, technicalStageId: updated[0] || ''});
-        return;
+        setEditingNode({
+          ...editingNode, 
+          technicalStageIds: updated, 
+          technicalStageId: updated[0] || ''
+        });
+      } else {
+        setEditingNode({
+          ...editingNode, 
+          technicalStageIds: updated
+        });
       }
     } else {
       updated = [...current, stageId];
+      // إذا كانت هذه هي المرحلة الأولى المختارة، نجعلها الافتراضية تلقائياً
+      const newDefault = editingNode.technicalStageId || updated[0];
+      setEditingNode({
+        ...editingNode, 
+        technicalStageIds: updated,
+        technicalStageId: newDefault
+      });
     }
-    setEditingNode({...editingNode, technicalStageIds: updated});
   };
 
   const renderNode = (node: any, pathPrefix: string) => {
@@ -273,7 +289,7 @@ export default function BOQNodesPage() {
                    <span className="text-xs font-bold text-slate-800">{node.title}</span>
                    {isExecutable && (
                      <Badge className="bg-emerald-100 text-emerald-700 text-[7px] font-black h-4 px-1.5 border-0">
-                       {node.technicalStageIds?.length || 0 > 1 ? 'MULTI-STAGE' : 'ITEM'}
+                       {node.technicalStageIds?.length > 1 ? 'MULTI-STAGE' : 'ITEM'}
                      </Badge>
                    )}
                 </div>
@@ -470,14 +486,21 @@ export default function BOQNodesPage() {
                                            {availableStages.map(stage => (
                                               <div 
                                                 key={stage.id} 
-                                                onClick={() => toggleStageInSelection(stage.id!)}
+                                                onClick={(e) => {
+                                                  e.preventDefault();
+                                                  e.stopPropagation();
+                                                  toggleStageInSelection(stage.id!);
+                                                }}
                                                 className={cn(
                                                   "flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all border-2 mb-1",
                                                   editingNode.technicalStageIds?.includes(stage.id!) ? "bg-primary/5 border-primary/20" : "bg-white border-transparent hover:bg-slate-50"
                                                 )}
                                               >
                                                  <div className="flex items-center gap-3">
-                                                    <Checkbox checked={editingNode.technicalStageIds?.includes(stage.id!)} className="pointer-events-none" />
+                                                    <Checkbox 
+                                                      checked={editingNode.technicalStageIds?.includes(stage.id!)} 
+                                                      onCheckedChange={() => toggleStageInSelection(stage.id!)}
+                                                    />
                                                     <div className="text-start">
                                                        <p className="font-black text-xs text-slate-800">{isRtl ? stage.name : stage.nameEn}</p>
                                                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">{stage.code}</span>
