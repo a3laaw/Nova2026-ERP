@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -24,7 +23,6 @@ import {
   ChevronDown, ChevronRight,
   LayoutGrid,
   Layers,
-  Settings2,
   Folder,
   Hammer,
   DollarSign,
@@ -81,20 +79,23 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     }
   );
 
-  // استعلامات البيانات المرجعية
   const actQuery = useMemo(() => companyId && db ? query(collection(db, paths.activityTypes(companyId)), orderBy('order')) : null, [db, companyId]);
   
-  // إصلاح جلب الخدمات باستخدام collectionGroup لتعمل القائمة المنسدلة بفعالية
+  // إزالة orderBy لتجنب أخطاء الفهارس المفقودة في البداية
   const srvQuery = useMemo(() => {
     if (!companyId || !db) return null;
-    return query(collectionGroup(db, 'services'), where('companyId', '==', companyId), orderBy('order'));
+    return query(collectionGroup(db, 'services'), where('companyId', '==', companyId));
   }, [db, companyId]);
 
   const masterNodesQuery = useMemo(() => companyId && db ? query(collection(db, paths.boqReferenceNodes(companyId)), orderBy('depth')) : null, [db, companyId]);
 
   const { data: activities } = useCollection<ActivityType>(actQuery);
-  const { data: allServices } = useCollection<Service>(srvQuery);
+  const { data: rawAllServices } = useCollection<Service>(srvQuery);
   const { data: rawMasterNodes, loading: masterLoading } = useCollection<BOQReferenceNode>(masterNodesQuery);
+
+  const allServices = useMemo(() => {
+    return [...(rawAllServices || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
+  }, [rawAllServices]);
 
   const service = useMemo(() => db && companyId ? new TemplateService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
@@ -106,7 +107,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
       });
     }
     
-    // جلب كافة المراحل الفنية المتاحة للربط الميداني في الجدول
     if (db && companyId) {
       const tpService = new TechnicalPathService(db, companyId);
       tpService.getAllCompanyStages().then(setAllStages);
@@ -127,7 +127,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     
     setLoading(true);
     try {
-      // تحصين البيانات ضد undefined قبل الحفظ لـ Firebase
       const sanitizedItems = items.map(item => ({
         ...item,
         referenceDescription: item.referenceDescription || "",
@@ -254,7 +253,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
   const renderBOQTreeRows = (node: BOQTreeNode, prefix: string): React.ReactNode => {
     return (
       <React.Fragment key={node.id}>
-        {/* صف القسم (Group Header) */}
         <TableRow className="bg-slate-50/80 hover:bg-slate-100 border-b-2 border-white group/row">
           <TableCell className="font-mono text-[11px] font-black text-slate-400 ps-6 w-[80px]">{prefix}</TableCell>
           <TableCell className="w-[100px] font-mono text-[10px] font-bold text-slate-400">---</TableCell>
@@ -267,10 +265,8 @@ export function BOQTemplateForm({ template, onClose }: Props) {
           <TableCell colSpan={7}></TableCell>
         </TableRow>
 
-        {/* صفوف البنود التنفيذية */}
         {node.items.map((item, iIdx) => {
           const originalIdx = items.findIndex(i => i.boqReferenceNodeId === item.boqReferenceNodeId);
-          // الترقيم الهرمي الصحيح: رقم الأب يتبعه رقم البند
           const itemPrefix = `${prefix}.${iIdx + 1}`; 
           const subtotal = (item.plannedQuantity || 0) * (item.estimatedRate || 0);
 
@@ -290,10 +286,9 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                 />
               </TableCell>
               <TableCell className="p-1 min-w-[150px]">
-                 {/* الربط الفني المباشر لكل بند في المقايسة */}
                  <Select 
-                   value={item.technicalStageId || ''} 
-                   onValueChange={(v) => updateItem(originalIdx, 'technicalStageId', v)}
+                   value={item.technicalStageId || 'NONE'} 
+                   onValueChange={(v) => updateItem(originalIdx, 'technicalStageId', v === 'NONE' ? '' : v)}
                  >
                     <SelectTrigger className="h-8 rounded-lg text-[9px] font-black border-transparent hover:border-primary/30 bg-primary/5 text-primary">
                        <SelectValue placeholder={isRtl ? "ارتباط فني..." : "Link Stage..."} />
@@ -347,7 +342,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
           );
         })}
 
-        {/* العودية للأقسام الفرعية */}
         {node.children.map((child, cIdx) => {
           const childPrefix = `${prefix}.${node.items.length + cIdx + 1}`;
           return renderBOQTreeRows(child, childPrefix);
@@ -360,8 +354,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
 
   return (
     <div className="flex flex-col h-full bg-[#fdfaf3]" dir={dir}>
-      
-      {/* الشريط العلوي الثابت للإجراءات */}
       <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-white/80 backdrop-blur-md px-6 shadow-sm">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 border rounded-xl hover:bg-slate-50">
@@ -379,8 +371,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
       </header>
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
-        
-        {/* اللوحة الجانبية السيادية الموحدة */}
         <aside className="lg:col-span-3 border-e bg-white overflow-y-auto p-6 space-y-8 scrollbar-hide">
            <div className="space-y-6">
               <div className="space-y-4">
@@ -400,7 +390,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                  </div>
               </div>
 
-              {/* ويدجت الميزانية الإحصائي الذكي */}
               <div className={cn(
                 "p-6 rounded-[2.5rem] transition-all space-y-4 relative overflow-hidden shadow-2xl ring-1 ring-black/5",
                 isMathValid ? "bg-emerald-600 text-white" : "bg-[#1e1b4b] text-white"
@@ -429,7 +418,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                  </div>
               </div>
 
-              {/* قوائم الاختيار المتعدد للمسارات الفنية */}
               <div className="space-y-6 pt-6 border-t">
                  <div className="space-y-3 text-start">
                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
@@ -461,17 +449,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                           </div>
                        </PopoverContent>
                     </Popover>
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                       {formData.activityTypeIds?.map((id: string) => {
-                          const act = activities?.find(a => a.id === id);
-                          return (
-                            <Badge key={id} variant="secondary" className="bg-primary/5 text-primary border-0 font-black text-[8px] uppercase gap-1">
-                               {isRtl ? act?.name : act?.nameEn}
-                               <X className="h-2.5 w-2.5 cursor-pointer hover:text-rose-500" onClick={() => toggleMultiSelect('activityTypeIds', id)} />
-                            </Badge>
-                          );
-                       })}
-                    </div>
                  </div>
 
                  <div className="space-y-3 text-start">
@@ -504,26 +481,13 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                           </div>
                        </PopoverContent>
                     </Popover>
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                       {formData.serviceIds?.map((id: string) => {
-                          const srv = allServices?.find(s => s.id === id);
-                          return (
-                            <Badge key={id} variant="secondary" className="bg-blue-50 text-blue-600 border-0 font-black text-[8px] uppercase gap-1">
-                               {isRtl ? srv?.name : srv?.nameEn}
-                               <X className="h-2.5 w-2.5 cursor-pointer hover:text-rose-500" onClick={() => toggleMultiSelect('serviceIds', id)} />
-                            </Badge>
-                          );
-                       })}
-                    </div>
                  </div>
               </div>
            </div>
         </aside>
 
-        {/* شبكة المقايسة المركزية (Odoo Style) */}
         <main className="lg:col-span-9 overflow-auto bg-white/40 p-6 scrollbar-hide">
            <div className="bg-white rounded-3xl shadow-2xl border border-primary/5 overflow-hidden flex flex-col h-full min-h-[600px]">
-              
               <div className="p-4 bg-slate-50/50 border-b flex items-center justify-between">
                  <div className="flex items-center gap-3">
                     <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
@@ -534,13 +498,13 @@ export function BOQTemplateForm({ template, onClose }: Props) {
 
                  <Dialog open={isPickerOpen} onOpenChange={setIsMasterPickerOpen}>
                     <DialogTrigger asChild>
-                       <Button 
+                       <button 
                          type="button" 
-                         className="h-9 px-5 rounded-xl bg-[#1e1b4b] text-white font-black text-[10px] gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all group"
+                         className="h-9 px-5 rounded-xl bg-[#1e1b4b] text-white font-black text-[10px] gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all group flex items-center"
                        >
                           <FolderTree className="h-3.5 w-3.5 text-primary group-hover:rotate-12 transition-transform" />
                           {isRtl ? 'مستكشف القاموس السيادي' : 'Registry Explorer'}
-                       </Button>
+                       </button>
                     </DialogTrigger>
                     <DialogContent className="max-w-4xl rounded-[2.5rem] p-0 overflow-hidden bg-white border-0 shadow-3xl" dir={dir}>
                        <div className="bg-slate-50 p-10 text-slate-900 text-start border-b">

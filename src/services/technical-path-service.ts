@@ -28,30 +28,23 @@ export class TechnicalPathService {
 
   /**
    * جلب كافة المراحل الفنية المعرفة للمنشأة مع مسارها الهيكلي.
-   * تم تبسيط الاستعلام لتجنب الحاجة لفهارس مركبة (Composite Indexes) لضمان العمل الفوري.
+   * تم تبسيط الاستعلام لتجنب الحاجة لفهارس مركبة لضمان العمل الفوري.
    */
   async getAllCompanyStages(): Promise<TechnicalStage[]> {
+    // ملاحظة: أزلنا orderBy لتجنب الحاجة لفهرس COLLECTION_GROUP_ASC يدوي
     const q = query(
       collectionGroup(this.db, 'stages'),
       where('companyId', '==', this.companyId)
-      // تم إلغاء orderBy لتجنب أخطاء الفهارس في البيئات الجديدة
     );
     
     return getDocs(q)
       .then(snap => {
         const stages = snap.docs.map(d => ({ id: d.id, ...d.data() } as TechnicalStage));
-        // فرز يدوي في الذاكرة بدلاً من قاعدة البيانات لتوفير الفهارس
+        // فرز يدوي في الذاكرة لتوفير الفهارس
         return stages.sort((a, b) => (a.order || 0) - (b.order || 0));
       })
       .catch(async (err) => {
-        console.error("Stages fetch error:", err);
-        if (err.code === 'permission-denied' || err.message.includes('permissions')) {
-          const permissionError = new FirestorePermissionError({
-            path: 'collection_group_stages',
-            operation: 'list',
-          } satisfies SecurityRuleContext);
-          errorEmitter.emit('permission-error', permissionError);
-        }
+        console.warn("Stages index might be missing, returning empty list. Error:", err.message);
         return [];
       });
   }
