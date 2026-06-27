@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -84,9 +83,13 @@ export default function BOQNodesPage() {
 
   const servicesQuery = useMemo(() => {
     if (!companyId || !db) return null;
-    return query(collectionGroup(db, 'services'), where('companyId', '==', companyId), orderBy('order'));
+    return query(collectionGroup(db, 'services'), where('companyId', '==', companyId));
   }, [db, companyId]);
-  const { data: allServices } = useCollection<Service>(servicesQuery);
+  const { data: rawAllServices } = useCollection<Service>(servicesQuery);
+  
+  const allServices = useMemo(() => {
+    return [...(rawAllServices || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
+  }, [rawAllServices]);
 
   const service = useMemo(() => 
     db && companyId ? new BOQReferenceService(db, companyId, permissions) : null, 
@@ -97,7 +100,7 @@ export default function BOQNodesPage() {
       const tpService = new TechnicalPathService(db, companyId);
       tpService.getAllCompanyStages().then(setAllStages);
     }
-  }, [db, companyId]);
+  }, [db, companyId, editingNode]); // تحديث القائمة عند فتح المودال لضمان توفر البيانات
 
   const treeData = useMemo(() => {
     const nodes = rawNodes || [];
@@ -460,13 +463,14 @@ export default function BOQNodesPage() {
                        <div className="space-y-1.5">
                           <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المرحلة الفنية الافتراضية' : 'Default Stage'}</Label>
                           <Select 
-                            value={editingNode.defaultTechnicalStageId} 
-                            onValueChange={v => setEditingNode({...editingNode!, defaultTechnicalStageId: v})}
+                            value={editingNode.defaultTechnicalStageId || "NONE"} 
+                            onValueChange={v => setEditingNode({...editingNode!, defaultTechnicalStageId: v === "NONE" ? "" : v})}
                           >
                              <SelectTrigger className="h-11 rounded-xl border-2 font-bold bg-white">
                                 <SelectValue placeholder="..." />
                              </SelectTrigger>
-                             <SelectContent className="rounded-xl border-2 shadow-2xl">
+                             <SelectContent className="rounded-xl border-2 shadow-2xl max-h-[300px]">
+                                <SelectItem value="NONE" className="font-black text-slate-400 text-xs">{isRtl ? 'بدون ارتباط فني' : 'No Default Link'}</SelectItem>
                                 {allStages.map(stage => (
                                    <SelectItem key={stage.id} value={stage.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
                                       <div className="flex flex-col text-start">
@@ -515,3 +519,4 @@ export default function BOQNodesPage() {
     </div>
   );
 }
+

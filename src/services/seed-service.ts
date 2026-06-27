@@ -132,6 +132,7 @@ export class SeedService {
               activityTypeId: actRef.id,
               serviceId: srvRef.id,
               subServiceId: subRef.id,
+              fullPathName: `${act.name} > ${srv.name}`,
               isActive: true,
               companyId: this.companyId,
               createdAt: serverTimestamp(),
