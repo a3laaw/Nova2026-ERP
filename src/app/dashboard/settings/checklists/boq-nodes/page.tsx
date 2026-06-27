@@ -10,10 +10,10 @@ import {
   Trash2, Edit3, ShieldCheck, Folder,
   Hammer, ChevronRight, ChevronDown,
   Save, Settings2, Workflow,
-  RotateCcw, MapPin
+  RotateCcw, MapPin, AlertTriangle
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, doc } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -71,14 +71,13 @@ export default function BOQNodesPage() {
 
   const referenceService = useMemo(() => db && companyId ? new BOQReferenceService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
-  // 2. حل السياق التشغيلي الموروث لحظياً (Real-time Context Resolution)
-  // هذه الدالة تصعد في الشجرة حتى تجد أقرب بيانات تشغيلية
+  // 2. حل السياق التشغيلي الفعال (Recursive Context Resolution)
   const resolveInheritedContext = (nodeId: string | null): any => {
-    if (!nodeId || !rawNodes) return { activityTypeId: '', serviceId: '', subServiceId: '' };
+    if (!nodeId || !rawNodes) return { activityTypeId: '', activityTypeName: '', serviceId: '', serviceName: '', subServiceId: '', subServiceName: '' };
     const node = rawNodes.find(n => n.id === nodeId);
-    if (!node) return { activityTypeId: '', serviceId: '', subServiceId: '' };
+    if (!node) return { activityTypeId: '', activityTypeName: '', serviceId: '', serviceName: '', subServiceId: '', subServiceName: '' };
 
-    // إذا كان لدى العقدة مسار فني، نتوقف هنا
+    // إذا كانت العقدة تمتلك بيانات المسار الفني، نستخدمها
     if (node.subServiceId) {
       return {
         activityTypeId: node.activityTypeId,
@@ -89,13 +88,14 @@ export default function BOQNodesPage() {
         subServiceName: node.subServiceName
       };
     }
-    // وإلا نصعد للأب
+    // وإلا نصعد للأب للبحث عن المسار
     return resolveInheritedContext(node.parentId);
   };
 
   const effectiveContext = useMemo(() => {
     if (!editingNode) return null;
-    // إذا كانت العقدة تمتلك بياناتها، نستخدمها، وإلا نبحث في الآباء
+    
+    // أ. إذا كانت العقدة الحالية تمتلك مساراً فنياً معرفاً يدوياً
     if (editingNode.subServiceId) {
        return {
          activityTypeId: editingNode.activityTypeId,
@@ -107,11 +107,13 @@ export default function BOQNodesPage() {
          isInherited: false
        };
     }
+
+    // ب. وإلا، ابحث في الأسلاف
     const inherited = resolveInheritedContext(editingNode.parentId);
-    return { ...inherited, isInherited: true };
+    return { ...inherited, isInherited: !!editingNode.parentId };
   }, [editingNode, rawNodes]);
 
-  // 3. جلب الخدمات الخاصة بالنشاط المختار (فقط عند اختيار نشاط جديد يدوياً)
+  // 3. جلب الخدمات الخاصة بالنشاط المختار (فقط للجذور أو العقد غير الموروثة)
   const [activeServices, setActiveServices] = useState<any[]>([]);
   const [activeSubs, setActiveSubs] = useState<any[]>([]);
 
@@ -141,7 +143,10 @@ export default function BOQNodesPage() {
       setLoadingStages(true);
       const path = paths.technicalStages(companyId, actId, srvId, subId);
       getDocs(collection(db, path))
-        .then(snap => setAvailableStages(snap.docs.map(d => ({ id: d.id, ...d.data() } as TechnicalStage))))
+        .then(snap => {
+           const stages = snap.docs.map(d => ({ id: d.id, ...d.data() } as TechnicalStage));
+           setAvailableStages(stages.sort((a,b) => (a.order || 0) - (b.order || 0)));
+        })
         .catch(() => setAvailableStages([]))
         .finally(() => setLoadingStages(false));
     } else {
@@ -164,18 +169,15 @@ export default function BOQNodesPage() {
     if (!referenceService || !user || !editingNode?.title) return;
     setLoadingAction('save');
     try {
+      // تثبيت البيانات الموروثة عند الحفظ لضمان استمرارية الربط الفني
       const finalData = {
         ...editingNode,
-        // إذا كانت العقدة ترث، لا نحفظ القيم محلياً لتجنب التضارب، نتركها موروثة
-        // إلا إذا أردنا تثبيتها (الخيار المفضل للفلترة السريعة)
-        ...(effectiveContext?.isInherited ? {
-            activityTypeId: effectiveContext.activityTypeId,
-            activityTypeName: effectiveContext.activityTypeName,
-            serviceId: effectiveContext.serviceId,
-            serviceName: effectiveContext.serviceName,
-            subServiceId: effectiveContext.subServiceId,
-            subServiceName: effectiveContext.subServiceName,
-        } : {}),
+        activityTypeId: effectiveContext?.activityTypeId || editingNode.activityTypeId || '',
+        activityTypeName: effectiveContext?.activityTypeName || editingNode.activityTypeName || '',
+        serviceId: effectiveContext?.serviceId || editingNode.serviceId || '',
+        serviceName: effectiveContext?.serviceName || editingNode.serviceName || '',
+        subServiceId: effectiveContext?.subServiceId || editingNode.subServiceId || '',
+        subServiceName: effectiveContext?.subServiceName || editingNode.subServiceName || '',
         technicalStageId: editingNode.technicalStageId === 'NONE' ? "" : (editingNode.technicalStageId || "")
       };
 
@@ -261,13 +263,17 @@ export default function BOQNodesPage() {
                  <Plus className="h-4 w-4" />
                </button>
              )}
-             {canEdit && <button className="h-8 w-8 rounded-lg flex items-center justify-center text-blue-500 hover:bg-blue-50" onClick={() => setEditingNode(node)}><Edit3 className="h-4 w-4" /></button>}
+             {canEdit && <button className="h-8 w-8 rounded-lg flex items-center justify-center text-blue-500 hover:bg-blue-50" onClick={() => setEditingUser(node)}><Edit3 className="h-4 w-4" /></button>}
              {canDelete && <button className="h-8 w-8 rounded-lg flex items-center justify-center text-rose-500 hover:bg-rose-50" disabled={node.childrenCount > 0} onClick={() => setDeletingId(node.id!)}><Trash2 className="h-4 w-4" /></button>}
           </div>
         </div>
         {isExpanded && node.children.map((child: any, idx: number) => renderNode(child, `${pathPrefix}.${idx + 1}`))}
       </div>
     );
+  };
+
+  const setEditingUser = (node: any) => {
+    setEditingNode(node);
   };
 
   return (
@@ -344,30 +350,30 @@ export default function BOQNodesPage() {
                   </div>
                </div>
 
-               {/* منطقة الربط التشغيلي (الوراثة الذكية) */}
+               {/* منطقة الربط التشغيلي (وراثة السياق) */}
                <div className="p-6 bg-slate-50 rounded-2xl border-2 border-white shadow-inner space-y-6">
                   <h4 className="font-black text-[11px] text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                     <Workflow className="h-4 w-4 text-primary" /> {isRtl ? 'الارتباط التشغيلي (وراثة)' : 'Operational Context'}
+                     <Workflow className="h-4 w-4 text-primary" /> {isRtl ? 'الارتباط التشغيلي (الموروث أو المختار)' : 'Operational Context'}
                   </h4>
 
-                  {editingNode?.parentId ? (
+                  {editingNode?.parentId && effectiveContext?.isInherited ? (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-in fade-in">
                        <div className="space-y-1">
                           <Label className="text-[9px] font-black uppercase text-slate-400">النشاط</Label>
-                          <div className="text-xs font-black text-blue-600 bg-white px-3 py-2 rounded-lg border flex items-center gap-2">
-                             <RotateCcw className="h-2.5 w-2.5 opacity-30" /> {effectiveContext?.activityTypeName || '---'}
+                          <div className="text-[11px] font-black text-blue-600 bg-white px-3 py-2 rounded-lg border flex items-center gap-2">
+                             <RotateCcw className="h-2.5 w-2.5 opacity-30" /> {effectiveContext.activityTypeName || '---'}
                           </div>
                        </div>
                        <div className="space-y-1">
                           <Label className="text-[9px] font-black uppercase text-slate-400">الخدمة</Label>
-                          <div className="text-xs font-black text-orange-600 bg-white px-3 py-2 rounded-lg border flex items-center gap-2">
-                             <RotateCcw className="h-2.5 w-2.5 opacity-30" /> {effectiveContext?.serviceName || '---'}
+                          <div className="text-[11px] font-black text-orange-600 bg-white px-3 py-2 rounded-lg border flex items-center gap-2">
+                             <RotateCcw className="h-2.5 w-2.5 opacity-30" /> {effectiveContext.serviceName || '---'}
                           </div>
                        </div>
                        <div className="space-y-1">
                           <Label className="text-[9px] font-black uppercase text-slate-400">المسار الفني</Label>
-                          <div className="text-xs font-black text-emerald-600 bg-white px-3 py-2 rounded-lg border flex items-center gap-2">
-                             <RotateCcw className="h-2.5 w-2.5 opacity-30" /> {effectiveContext?.subServiceName || '---'}
+                          <div className="text-[11px] font-black text-emerald-600 bg-white px-3 py-2 rounded-lg border flex items-center gap-2">
+                             <RotateCcw className="h-2.5 w-2.5 opacity-30" /> {effectiveContext.subServiceName || '---'}
                           </div>
                        </div>
                     </div>
@@ -410,7 +416,7 @@ export default function BOQNodesPage() {
                     <div className="pt-4 border-t border-slate-200 animate-in slide-in-from-top-2">
                        <div className="space-y-1.5 text-start">
                           <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
-                             <MapPin className="h-3 w-3" /> المرحلة الفنية المرتبطة (يدوياً)
+                             <MapPin className="h-3 w-3" /> مرحلة التنفيذ المرتبطة
                           </Label>
                           <Select 
                             disabled={!effectiveContext?.subServiceId}
@@ -425,6 +431,15 @@ export default function BOQNodesPage() {
                                 {availableStages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs py-2">{isRtl ? s.name : s.nameEn}</SelectItem>)}
                              </SelectContent>
                           </Select>
+                          
+                          {!effectiveContext?.subServiceId && (
+                            <div className="flex items-center gap-2 text-rose-500 mt-2 p-3 bg-rose-50 rounded-xl border border-rose-100">
+                               <AlertTriangle className="h-4 w-4" />
+                               <span className="text-[10px] font-bold">
+                                  {isRtl ? 'يجب تحديد النشاط والخدمة والمسار الفني العام أولاً (على مستوى العقدة أو الأب)' : 'Must define Activity, Service and Pipeline first (on this node or ancestor)'}
+                               </span>
+                            </div>
+                          )}
                        </div>
                     </div>
                   )}
@@ -481,7 +496,7 @@ export default function BOQNodesPage() {
           <AlertDialogHeader>
              <div className="mx-auto w-16 h-16 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mb-4"><Trash2 className="h-8 w-8" /></div>
              <AlertDialogTitle className="text-start font-black text-2xl text-slate-900">{t('confirmDelete')}</AlertDialogTitle>
-             <AlertDialogDescription className="text-start font-bold text-slate-400 mt-1">{isRtl ? 'سيتم إزالة العقدة من المرجع نهائياً.' : 'This node will be removed from the master reference permanently.'}</AlertDialogDescription>
+             <AlertDialogDescription className="text-start font-bold text-slate-400 mt-1">{isRtl ? 'سيتم إزالة العقدة من المرجع نهائياً.' : 'This will permanently remove the record.'}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-8 gap-3 flex flex-row">
             <AlertDialogCancel className="flex-1 h-11 rounded-xl font-bold border-2 bg-white">إلغاء</AlertDialogCancel>
@@ -492,3 +507,4 @@ export default function BOQNodesPage() {
     </div>
   );
 }
+
