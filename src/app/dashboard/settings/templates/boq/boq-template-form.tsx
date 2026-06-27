@@ -29,22 +29,24 @@ import {
   Hammer,
   DollarSign,
   X,
-  Target
+  Workflow
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, collectionGroup, where } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { BOQTemplate, BOQTemplateItem, BOQTreeNode } from '@/types/templates';
-import { ActivityType, Service, BOQReferenceNode } from '@/types/reference';
+import { ActivityType, Service, BOQReferenceNode, TechnicalStage } from '@/types/reference';
 import { TemplateService } from '@/services/template-service';
+import { TechnicalPathService } from '@/services/technical-path-service';
 import { transformToBOQTree } from '@/lib/boq-tree-utils';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Props {
   template: BOQTemplate | null;
@@ -65,6 +67,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
   const [isPickerOpen, setIsMasterPickerOpen] = useState(false);
   const [masterSearch, setMasterSearch] = useState("");
   const [expandedNodes, setExpandedNodes] = useState<string[]>([]);
+  const [allStages, setAllStages] = useState<TechnicalStage[]>([]);
   
   const [formData, setFormData] = useState<any>(
     template || {
@@ -78,13 +81,19 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     }
   );
 
+  // استعلامات البيانات المرجعية
   const actQuery = useMemo(() => companyId && db ? query(collection(db, paths.activityTypes(companyId)), orderBy('order')) : null, [db, companyId]);
-  const srvQuery = useMemo(() => companyId && db ? query(collection(db, paths.services(companyId, 'ANY')), orderBy('order')) : null, [db, companyId]); 
+  
+  // إصلاح جلب الخدمات باستخدام collectionGroup لتعمل القائمة المنسدلة بفعالية
+  const srvQuery = useMemo(() => {
+    if (!companyId || !db) return null;
+    return query(collectionGroup(db, 'services'), where('companyId', '==', companyId), orderBy('order'));
+  }, [db, companyId]);
+
+  const masterNodesQuery = useMemo(() => companyId && db ? query(collection(db, paths.boqReferenceNodes(companyId)), orderBy('depth')) : null, [db, companyId]);
 
   const { data: activities } = useCollection<ActivityType>(actQuery);
   const { data: allServices } = useCollection<Service>(srvQuery);
-
-  const masterNodesQuery = useMemo(() => companyId && db ? query(collection(db, paths.boqReferenceNodes(companyId)), orderBy('depth')) : null, [db, companyId]);
   const { data: rawMasterNodes, loading: masterLoading } = useCollection<BOQReferenceNode>(masterNodesQuery);
 
   const service = useMemo(() => db && companyId ? new TemplateService(db, companyId, permissions) : null, [db, companyId, permissions]);
@@ -96,7 +105,13 @@ export function BOQTemplateForm({ template, onClose }: Props) {
         setTemplateLoading(false);
       });
     }
-  }, [template, service]);
+    
+    // جلب كافة المراحل الفنية المتاحة للربط الميداني في الجدول
+    if (db && companyId) {
+      const tpService = new TechnicalPathService(db, companyId);
+      tpService.getAllCompanyStages().then(setAllStages);
+    }
+  }, [template, service, db, companyId]);
 
   const boqTree = useMemo(() => transformToBOQTree(items), [items]);
 
@@ -112,11 +127,14 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     
     setLoading(true);
     try {
-      // تحصين البيانات ضد undefined قبل الحفظ
+      // تحصين البيانات ضد undefined قبل الحفظ لـ Firebase
       const sanitizedItems = items.map(item => ({
         ...item,
-        referenceDescription: item.referenceDescription || ""
+        referenceDescription: item.referenceDescription || "",
+        technicalStageId: item.technicalStageId || "",
+        unitSymbol: item.unitSymbol || ""
       }));
+      
       await service.saveBOQTemplateWithItems(template?.id || null, formData as any, sanitizedItems as any, user.uid);
       toast({ title: t('saved') });
       onClose();
@@ -236,20 +254,23 @@ export function BOQTemplateForm({ template, onClose }: Props) {
   const renderBOQTreeRows = (node: BOQTreeNode, prefix: string): React.ReactNode => {
     return (
       <React.Fragment key={node.id}>
+        {/* صف القسم (Group Header) */}
         <TableRow className="bg-slate-50/80 hover:bg-slate-100 border-b-2 border-white group/row">
           <TableCell className="font-mono text-[11px] font-black text-slate-400 ps-6 w-[80px]">{prefix}</TableCell>
-          <TableCell className="w-[120px] font-mono text-[10px] font-bold text-slate-400">---</TableCell>
+          <TableCell className="w-[100px] font-mono text-[10px] font-bold text-slate-400">---</TableCell>
           <TableCell className="font-black text-slate-900 text-sm py-4" style={{ paddingInlineStart: `${node.depth * 20 + 16}px` }}>
             <div className="flex items-center gap-2">
               <Folder className="h-3.5 w-3.5 text-orange-400" />
               {node.title}
             </div>
           </TableCell>
-          <TableCell colSpan={6}></TableCell>
+          <TableCell colSpan={7}></TableCell>
         </TableRow>
 
+        {/* صفوف البنود التنفيذية */}
         {node.items.map((item, iIdx) => {
           const originalIdx = items.findIndex(i => i.boqReferenceNodeId === item.boqReferenceNodeId);
+          // الترقيم الهرمي الصحيح: رقم الأب يتبعه رقم البند
           const itemPrefix = `${prefix}.${iIdx + 1}`; 
           const subtotal = (item.plannedQuantity || 0) * (item.estimatedRate || 0);
 
@@ -260,16 +281,38 @@ export function BOQTemplateForm({ template, onClose }: Props) {
               <TableCell className="text-xs font-bold text-slate-700" style={{ paddingInlineStart: `${(node.depth + 1) * 20 + 16}px` }}>
                 {item.referenceTitle}
               </TableCell>
-              <TableCell className="p-1 min-w-[200px]">
+              <TableCell className="p-1 min-w-[150px]">
                 <Input 
                   value={item.referenceDescription || ''} 
                   onChange={e => updateItem(originalIdx, 'referenceDescription', e.target.value)}
                   className="h-8 rounded-lg text-[10px] border-transparent hover:border-slate-200 bg-transparent focus:bg-white"
-                  placeholder={isRtl ? "المواصفة التفصيلية..." : "Technical Spec..."}
+                  placeholder={isRtl ? "المواصفة..." : "Spec..."}
                 />
               </TableCell>
+              <TableCell className="p-1 min-w-[150px]">
+                 {/* الربط الفني المباشر لكل بند في المقايسة */}
+                 <Select 
+                   value={item.technicalStageId || ''} 
+                   onValueChange={(v) => updateItem(originalIdx, 'technicalStageId', v)}
+                 >
+                    <SelectTrigger className="h-8 rounded-lg text-[9px] font-black border-transparent hover:border-primary/30 bg-primary/5 text-primary">
+                       <SelectValue placeholder={isRtl ? "ارتباط فني..." : "Link Stage..."} />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-2 shadow-2xl">
+                       <SelectItem value="NONE" className="font-bold text-[10px]">{isRtl ? 'بدون ارتباط' : 'No Link'}</SelectItem>
+                       {allStages.map(s => (
+                          <SelectItem key={s.id} value={s.id!} className="font-bold text-[10px] py-2">
+                             <div className="flex flex-col text-start">
+                                <span className="flex items-center gap-1"><Workflow className="h-2.5 w-2.5" /> {s.name}</span>
+                                <span className="text-[7px] text-slate-400">{s.fullPathName}</span>
+                             </div>
+                          </SelectItem>
+                       ))}
+                    </SelectContent>
+                 </Select>
+              </TableCell>
               <TableCell className="text-center font-black text-[10px] text-slate-400 uppercase">{item.unitSymbol || item.unitName || '-'}</TableCell>
-              <TableCell className="p-1 w-[100px]">
+              <TableCell className="p-1 w-[80px]">
                 <Input 
                   type="number" 
                   value={item.plannedQuantity} 
@@ -304,6 +347,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
           );
         })}
 
+        {/* العودية للأقسام الفرعية */}
         {node.children.map((child, cIdx) => {
           const childPrefix = `${prefix}.${node.items.length + cIdx + 1}`;
           return renderBOQTreeRows(child, childPrefix);
@@ -317,7 +361,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
   return (
     <div className="flex flex-col h-full bg-[#fdfaf3]" dir={dir}>
       
-      {/* Top Action Bar */}
+      {/* الشريط العلوي الثابت للإجراءات */}
       <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-white/80 backdrop-blur-md px-6 shadow-sm">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 border rounded-xl hover:bg-slate-50">
@@ -336,7 +380,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
         
-        {/* Control Sidebar */}
+        {/* اللوحة الجانبية السيادية الموحدة */}
         <aside className="lg:col-span-3 border-e bg-white overflow-y-auto p-6 space-y-8 scrollbar-hide">
            <div className="space-y-6">
               <div className="space-y-4">
@@ -356,7 +400,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                  </div>
               </div>
 
-              {/* Financial Status Widget */}
+              {/* ويدجت الميزانية الإحصائي الذكي */}
               <div className={cn(
                 "p-6 rounded-[2.5rem] transition-all space-y-4 relative overflow-hidden shadow-2xl ring-1 ring-black/5",
                 isMathValid ? "bg-emerald-600 text-white" : "bg-[#1e1b4b] text-white"
@@ -385,7 +429,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                  </div>
               </div>
 
-              {/* Multi-Select Technical Path Context */}
+              {/* قوائم الاختيار المتعدد للمسارات الفنية */}
               <div className="space-y-6 pt-6 border-t">
                  <div className="space-y-3 text-start">
                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
@@ -476,11 +520,10 @@ export function BOQTemplateForm({ template, onClose }: Props) {
            </div>
         </aside>
 
-        {/* Main BOQ Grid */}
+        {/* شبكة المقايسة المركزية (Odoo Style) */}
         <main className="lg:col-span-9 overflow-auto bg-white/40 p-6 scrollbar-hide">
            <div className="bg-white rounded-3xl shadow-2xl border border-primary/5 overflow-hidden flex flex-col h-full min-h-[600px]">
               
-              {/* Table Toolbar with Small Distinctive Explorer Button */}
               <div className="p-4 bg-slate-50/50 border-b flex items-center justify-between">
                  <div className="flex items-center gap-3">
                     <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
@@ -529,20 +572,21 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                 <TableHeader className="bg-slate-900 sticky top-0 z-20">
                   <TableRow className="hover:bg-slate-900 border-0">
                     <TableHead className="ps-6 w-[80px] text-white/40 font-mono text-[10px]">S.No</TableHead>
-                    <TableHead className="w-[120px] text-white/40 font-mono text-[10px]">Registry Code</TableHead>
+                    <TableHead className="w-[100px] text-white/40 font-mono text-[10px]">Code</TableHead>
                     <TableHead className="text-white font-black text-xs">{isRtl ? 'وصف بند العمل' : 'Work Item Description'}</TableHead>
                     <TableHead className="text-white font-black text-xs">{isRtl ? 'المواصفة الفنية' : 'Technical Specification'}</TableHead>
-                    <TableHead className="text-center w-[70px] text-white font-black text-xs">{isRtl ? 'الوحدة' : 'Unit'}</TableHead>
-                    <TableHead className="text-center w-[100px] text-white font-black text-xs">{isRtl ? 'الكمية' : 'Qty'}</TableHead>
-                    <TableHead className="text-center w-[120px] text-white font-black text-xs">{isRtl ? 'الفئة (د.ك)' : 'Rate (KWD)'}</TableHead>
-                    <TableHead className="text-end pe-8 w-[140px] text-white font-black text-xs">{isRtl ? 'الإجمالي' : 'Subtotal'}</TableHead>
+                    <TableHead className="text-white font-black text-xs">{isRtl ? 'الارتباط الفني' : 'Technical Link'}</TableHead>
+                    <TableHead className="text-center w-[60px] text-white font-black text-xs">{isRtl ? 'الوحدة' : 'Unit'}</TableHead>
+                    <TableHead className="text-center w-[80px] text-white font-black text-xs">{isRtl ? 'الكمية' : 'Qty'}</TableHead>
+                    <TableHead className="text-center w-[100px] text-white font-black text-xs">{isRtl ? 'الفئة (د.ك)' : 'Rate (KWD)'}</TableHead>
+                    <TableHead className="text-end pe-8 w-[120px] text-white font-black text-xs">{isRtl ? 'الإجمالي' : 'Subtotal'}</TableHead>
                     <TableHead className="w-[60px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {items.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="py-60 text-center opacity-20">
+                      <TableCell colSpan={10} className="py-60 text-center opacity-20">
                          <div className="flex flex-col items-center gap-8">
                             <LayoutGrid className="h-24 w-24 text-slate-300" />
                             <p className="text-2xl font-black uppercase tracking-[0.4em] text-slate-400">{isRtl ? 'المقايسة فارغة' : 'Grid is Empty'}</p>
@@ -561,4 +605,3 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     </div>
   );
 }
-
