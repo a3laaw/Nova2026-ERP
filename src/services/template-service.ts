@@ -54,6 +54,7 @@ export class TemplateService {
 
   /**
    * حفظ قالب المقايسة مع البنود من الشجرة الموحدة
+   * تم تحسينه لضمان تخزين مفاتيح المطابقة الفنية للبحث الافتراضي
    */
   async saveBOQTemplateWithItems(templateId: string | null, templateData: Partial<BOQTemplate>, items: BOQTemplateItem[], userId: string) {
     ensureActionPermission(this.userPermissions, 'ref:edit');
@@ -69,15 +70,21 @@ export class TemplateService {
 
     const headData = {
       ...templateData,
+      // ضمان تخزين مفاتيح المطابقة الفنية كحقول مستقلة في قاعدة البيانات للبحث
+      activityTypeId: templateData.activityTypeId || '',
+      serviceId: templateData.serviceId || '',
+      subServiceId: templateData.subServiceId || '',
+      isDefault: !!templateData.isDefault,
+      isActive: templateData.isActive !== false, // الافتراضي نشط إذا لم يحدد غير ذلك
       itemsCount,
       sectionsCount,
       companyId: this.companyId,
       updatedBy: userId,
       updatedAt: serverTimestamp(),
-      ...(templateId ? {} : { createdBy: userId, createdAt: serverTimestamp(), version: 1, isActive: true })
+      ...(templateId ? {} : { createdBy: userId, createdAt: serverTimestamp(), version: 1 })
     };
     
-    // إزالة البنود من رأس القالب لتخزينها في المجموعة الفرعية
+    // إزالة البنود من رأس القالب لتخزينها في المجموعة الفرعية (نظافة المعمارية)
     delete (headData as any).items;
     batch.set(templateRef, headData, { merge: true });
 

@@ -206,21 +206,38 @@ export default function TransactionDetailsPage() {
   };
 
   const handleCreateBOQ = async () => {
-    if (!documentService || !transaction || !user || !companyId) return;
+    if (!documentService || !transaction || !user || !companyId || !db) return;
     setIsCreatingBoq(true);
     try {
-      // 1. البحث عن القالب الافتراضي للمسار الفني (SubService)
+      // 1. البحث عن القالب الافتراضي المطابق تماماً لسياق المعاملة
       const templatesRef = collection(db, paths.boqTemplates(companyId));
+      
+      // المطابقة الصارمة: النشاط + الخدمة + المسار الفني + الافتراضي + النشط
       const q = query(
         templatesRef, 
+        where('activityTypeId', '==', transaction.activityTypeId),
+        where('serviceId', '==', transaction.serviceId),
         where('subServiceId', '==', transaction.subServiceId),
         where('isDefault', '==', true),
+        where('isActive', '==', true),
         limit(1)
       );
+      
       const snap = await getDocs(q);
       
       if (snap.empty) {
-        throw new Error(isRtl ? 'لا يوجد قالب مقايسة افتراضي لهذا المسار الفني. يرجى مراجعة إعدادات القوالب.' : 'No default BOQ template found for this technical path.');
+        // تشخيص القيم المستخدمة في البحث لتسهيل التتبع للمطور والمدير
+        console.warn("Default BOQ Template lookup failed for context:", {
+          activityTypeId: transaction.activityTypeId,
+          serviceId: transaction.serviceId,
+          subServiceId: transaction.subServiceId,
+          isDefault: true,
+          isActive: true
+        });
+
+        throw new Error(isRtl 
+          ? 'لم يتم العثور على BOQ Template افتراضي مطابق لنفس النشاط والخدمة والمسار الفني. يرجى التأكد من ضبط القالب كـ "افتراضي" و "نشط" في الإعدادات.' 
+          : 'No active default BOQ template found matching the transaction context. Please verify template settings.');
       }
 
       const template = snap.docs[0].data() as BOQTemplate;
