@@ -11,7 +11,8 @@ import {
   ShieldCheck, HardHat, CheckCircle2,
   Lock, Printer, Play, Check,
   FileSpreadsheet, TrendingUp, MessageSquare,
-  ChevronDown, Hammer, Plus, Save
+  ChevronDown, Hammer, Plus, Save,
+  AlertTriangle
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where } from 'firebase/firestore';
@@ -342,7 +343,7 @@ export default function TransactionDetailsPage() {
 
                                  {stage.status === 'pending' && !blocked && (
                                     <Button 
-                                      onClick={() => handleStartStage(stage.id!)} 
+                                      onClick={handleStartStage(stage.id!)} 
                                       disabled={processingId === stage.id}
                                       className="h-11 px-6 rounded-xl bg-blue-600 text-white font-black text-xs gap-2 shadow-lg shadow-blue-900/10"
                                     >
