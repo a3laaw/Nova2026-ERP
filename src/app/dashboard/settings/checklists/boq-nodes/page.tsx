@@ -493,13 +493,12 @@ export default function BOQNodesPage() {
                                               availableStages.map(stage => {
                                                 const isChecked = editingNode.technicalStageIds?.includes(stage.id!);
                                                 return (
-                                                  <button 
-                                                    type="button"
+                                                  <div 
                                                     key={stage.id} 
                                                     onMouseDown={(e) => e.preventDefault()}
                                                     onClick={() => handleToggleStage(stage.id!)}
                                                     className={cn(
-                                                      "w-full flex items-center justify-between p-3 rounded-xl transition-all border-2 mb-1 text-start",
+                                                      "w-full flex items-center justify-between p-3 rounded-xl transition-all border-2 mb-1 text-start cursor-pointer",
                                                       isChecked ? "bg-primary/5 border-primary/20" : "bg-white border-transparent hover:bg-slate-50"
                                                     )}
                                                   >
@@ -514,7 +513,7 @@ export default function BOQNodesPage() {
                                                         </div>
                                                      </div>
                                                      {editingNode.technicalStageId === stage.id && <Badge className="bg-emerald-500 text-white text-[7px] font-black h-4">DEFAULT</Badge>}
-                                                  </button>
+                                                  </div>
                                                 );
                                               })
                                            )}
@@ -622,3 +621,4 @@ export default function BOQNodesPage() {
     </div>
   );
 }
+
