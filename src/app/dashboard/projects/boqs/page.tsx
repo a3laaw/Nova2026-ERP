@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -37,11 +38,13 @@ export default function BOQExplorerPage() {
 
   const { data: boqs, loading } = useCollection<BOQ>(boqsQuery);
 
-  const filtered = (boqs || []).filter(boq => 
-    boq.boqNumber.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    boq.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    boq.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filtered = useMemo(() => {
+    return (boqs || []).filter(boq => 
+      (boq.boqNumber || "").toLowerCase().includes(searchTerm.toLowerCase()) || 
+      (boq.clientName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (boq.name || "").toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [boqs, searchTerm]);
 
   const totals = useMemo(() => {
     return {
@@ -57,7 +60,7 @@ export default function BOQExplorerPage() {
         <div className="text-start">
           <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
             <FileSpreadsheet className="h-10 w-10 text-primary" />
-            {isRtl ? 'مستكشف المقايسات المركزي' : 'BOQ Central Explorer'}
+            {t('boqExplorer')}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
             {isRtl ? 'رقابة شاملة على ميزانيات المشاريع وتتبع الإنجاز المالي والميداني.' : 'Unified oversight of project budgets and field execution tracking.'}
@@ -101,7 +104,7 @@ export default function BOQExplorerPage() {
                   <span>{isRtl ? 'معدل التغطية' : 'Coverage'}</span>
                   <span>78%</span>
                </div>
-               <Progress value={78} className="h-1.5 bg-white/10 [&>div]:bg-primary" />
+               <Progress value={78} className="h-1.5 bg-white/10" />
             </div>
          </Card>
       </div>

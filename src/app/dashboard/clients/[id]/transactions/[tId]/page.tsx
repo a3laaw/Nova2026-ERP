@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -119,7 +120,10 @@ export default function TransactionDetailsPage() {
       
       await Promise.all(promises);
       if (active) {
-        setStageProgressMap(results);
+        setStageProgressMap(prev => {
+            const hasChanged = JSON.stringify(prev) !== JSON.stringify(results);
+            return hasChanged ? results : prev;
+        });
       }
     }
     
@@ -132,21 +136,21 @@ export default function TransactionDetailsPage() {
   [db, companyId, permissions]);
 
   // --- Helpers ---
-  const isStageBlocked = (stage: StageInstance) => {
+  const isStageBlocked = useCallback((stage: StageInstance) => {
     if (!stages) return false;
     return stages.some(other => 
       other.nextStageIds?.includes(stage.technicalStageId) && 
       other.status !== 'completed'
     );
-  };
+  }, [stages]);
 
-  const getRequiredPredecessors = (stage: StageInstance) => {
+  const getRequiredPredecessors = useCallback((stage: StageInstance) => {
     if (!stages) return [];
     return stages.filter(other => 
       other.nextStageIds?.includes(stage.technicalStageId) && 
       other.status !== 'completed'
     );
-  };
+  }, [stages]);
 
   const progressPercent = useMemo(() => {
     if (!stages?.length) return 0;
