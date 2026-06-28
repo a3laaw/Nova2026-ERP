@@ -13,7 +13,7 @@ import {
   Calendar, FileText, Package,
   Layers, FileSearch, Truck,
   Building2, ChevronLeft, Settings2, ChevronDown,
-  Database
+  Database, FileSpreadsheet
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
@@ -60,6 +60,7 @@ export function DashboardSidebar() {
       resource: 'projects',
       subItems: [
         { title: t('activeProjects'), url: "/dashboard/projects", icon: Layers },
+        { title: t('boqExplorer'), url: "/dashboard/projects/boqs", icon: FileSpreadsheet },
         { title: t('reports'), url: "/dashboard/reports", icon: FileText },
       ]
     },
