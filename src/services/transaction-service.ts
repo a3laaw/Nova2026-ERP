@@ -19,7 +19,7 @@ import { Transaction, TransactionTimelineEvent, StageInstance } from '@/types/tr
 import { TechnicalStage } from '@/types/reference';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { ensureActionPermission } from '@/lib/permissions';
+import { ensureActionPermission } from '@/lib/permissions/engine';
 import { BOQExecutionService } from './boq-execution-service';
 
 /**

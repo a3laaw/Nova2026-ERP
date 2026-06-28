@@ -1,9 +1,9 @@
 /**
- * @fileOverview محرك اتخاذ القرار الأمني السيادي.
+ * @fileOverview محرك اتخاذ القرار الأمني السيادي الموحد.
  * يقوم بالربط النهائي بين صلاحية الدور (Action) والسياق المكاني للموظف (Department ID).
  */
 
-import { RoleMatrix, Action, Scope } from './types';
+import { RoleMatrix, Action, Scope, PermissionCode } from './types';
 
 export interface AccessResult {
   can: boolean;
@@ -53,6 +53,19 @@ export function canViewModule(role: RoleMatrix | null, resourceId: string): bool
 }
 
 /**
+ * دالة الإنفاذ (Enforcement): ترمي خطأ إذا لم تتوفر الصلاحية.
+ * تستخدم في الخدمات البرمجية (Services) لحماية العمليات.
+ */
+export function ensureActionPermission(permissions: string[], requiredCode: string) {
+  if (!permissions) return false;
+  if (permissions.includes('*')) return true;
+  if (!permissions.includes(requiredCode)) {
+    throw new Error(`UNAUTHORIZED_ACTION: Missing required permission [${requiredCode}]`);
+  }
+  return true;
+}
+
+/**
  * دالة الإنفاذ الميداني (The Real Link):
  * تربط القسم المرجعي للموظف بالقسم المرجعي للسجل.
  */
@@ -68,7 +81,6 @@ export function canPerformOnRecord(
   
   // إذا كان النطاق "القسم": نقارن الـ IDs المرجعية حصراً
   if (access.scope === 'dept') {
-    // التحقق من أن الموظف والسجل يتبعان لنفس كود القسم المرجعي
     return !!(
       currentUser.departmentId && 
       record.departmentId && 

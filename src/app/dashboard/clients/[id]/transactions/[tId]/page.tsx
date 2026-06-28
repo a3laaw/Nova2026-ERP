@@ -95,7 +95,6 @@ export default function TransactionDetailsPage() {
   [db, companyId, transactionId]);
   const { data: rawStages, loading: stagesLoading } = useCollection<StageInstance>(stagesQuery);
 
-  // جلب المقايسة المرتبطة بالمعاملة
   const boqQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', transactionId), limit(1)) : null, 
   [db, companyId, transactionId]);
@@ -108,29 +107,37 @@ export default function TransactionDetailsPage() {
   const { data: boqItems } = useCollection<BOQItem>(itemsQuery);
 
   const stages = useMemo(() => {
-    return [...rawStages].sort((a, b) => (a.order || 0) - (b.order || 0));
+    return [...(rawStages || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
   }, [rawStages]);
 
   const executionService = useMemo(() => db && companyId ? new BOQExecutionService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
-  // تحديث نسب الإنجاز للمراحل بشكل تجميعي (Batch Update) لمنع كثرة إعادة الرسم
+  // Batch progress fetching to avoid re-render loops
   useEffect(() => {
     let active = true;
     async function fetchAllProgress() {
-      if (!executionService || stages.length === 0) return;
+      if (!executionService || !stages || stages.length === 0) return;
       
-      const results: Record<string, StageProgressResult> = {};
-      const promises = stages.map(async (s) => {
-        const res = await executionService.getTechnicalStageProgress(transactionId, s.technicalStageId);
-        results[s.technicalStageId] = res;
-      });
-      
-      await Promise.all(promises);
-      if (active) {
-        setStageProgressMap(prev => {
+      try {
+        const results: Record<string, StageProgressResult> = {};
+        const promises = stages.map(async (s) => {
+          const res = await executionService.getTechnicalStageProgress(transactionId, s.technicalStageId);
+          return { id: s.technicalStageId, res };
+        });
+        
+        const resolved = await Promise.all(promises);
+        resolved.forEach(item => {
+          results[item.id] = item.res;
+        });
+
+        if (active) {
+          setStageProgressMap(prev => {
             const hasChanged = JSON.stringify(prev) !== JSON.stringify(results);
             return hasChanged ? results : prev;
-        });
+          });
+        }
+      } catch (e) {
+        console.error("Progress fetch error:", e);
       }
     }
     
@@ -193,10 +200,10 @@ export default function TransactionDetailsPage() {
   };
 
   const handleCompleteStage = async (stage: StageInstance) => {
-    if (!transactionService || !user) return;
-    setProcessingId(stage.id!);
+    if (!transactionService || !user || !stage.id) return;
+    setProcessingId(stage.id);
     try {
-      await transactionService.completeStage(transactionId, stage.id!, user.uid, user.displayName || 'User');
+      await transactionService.completeStage(transactionId, stage.id, user.uid, user.displayName || 'User');
       toast({ title: isRtl ? "تم إنجاز المرحلة بنجاح" : "Stage Completed" });
     } catch (e: any) {
       toast({ variant: "destructive", title: isRtl ? "تعذر إغلاق المرحلة" : "Cannot Close Stage", description: e.message });
@@ -209,40 +216,28 @@ export default function TransactionDetailsPage() {
     if (!documentService || !transaction || !user || !companyId || !db) return;
     setIsCreatingBoq(true);
     try {
-      // 1. البحث عن القالب الافتراضي المطابق تماماً لسياق المعاملة
       const templatesRef = collection(db, paths.boqTemplates(companyId));
-      
-      // المطابقة الصارمة: النشاط + الخدمة + المسار الفني + الافتراضي + النشط
       const q = query(
         templatesRef, 
-        where('activityTypeId', '==', transaction.activityTypeId),
-        where('serviceId', '==', transaction.serviceId),
-        where('subServiceId', '==', transaction.subServiceId),
+        where('activityTypeId', '==', transaction.activityTypeId || ''),
+        where('serviceId', '==', transaction.serviceId || ''),
+        where('subServiceId', '==', transaction.subServiceId || ''),
         where('isDefault', '==', true),
         where('isActive', '==', true),
         limit(1)
       );
       
       const snap = await getDocs(q);
-      
       if (snap.empty) {
-        // تشخيص القيم المستخدمة في البحث لتسهيل التتبع للمطور والمدير
-        console.warn("Default BOQ Template lookup failed for context:", {
-          activityTypeId: transaction.activityTypeId,
-          serviceId: transaction.serviceId,
-          subServiceId: transaction.subServiceId,
-          isDefault: true,
-          isActive: true
+        console.warn("Matching template not found for:", {
+          act: transaction.activityTypeId,
+          srv: transaction.serviceId,
+          sub: transaction.subServiceId
         });
-
-        throw new Error(isRtl 
-          ? 'لم يتم العثور على BOQ Template افتراضي مطابق لنفس النشاط والخدمة والمسار الفني. يرجى التأكد من ضبط القالب كـ "افتراضي" و "نشط" في الإعدادات.' 
-          : 'No active default BOQ template found matching the transaction context. Please verify template settings.');
+        throw new Error(isRtl ? 'لم يتم العثور على قالب BOQ افتراضي مطابق.' : 'No matching default BOQ template found.');
       }
 
       const template = snap.docs[0].data() as BOQTemplate;
-
-      // 2. استنساخ المقايسة والبنود
       await documentService.instantiateBoqFromTemplate(
         snap.docs[0].id,
         {
@@ -258,7 +253,7 @@ export default function TransactionDetailsPage() {
         user.displayName || 'User'
       );
 
-      toast({ title: isRtl ? "تم إنشاء المقايسة التنفيذية بنجاح" : "Executive BOQ Created Successfully" });
+      toast({ title: isRtl ? "تم إنشاء المقايسة التنفيذية بنجاح" : "BOQ Created" });
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
@@ -267,8 +262,7 @@ export default function TransactionDetailsPage() {
   };
 
   const handleRecordProgress = async () => {
-    if (!executionService || !activeBoq || !user || !selectedItemId || progressQty <= 0) {
-      toast({ variant: "destructive", title: isRtl ? "بيانات ناقصة" : "Missing Info", description: isRtl ? "يرجى اختيار البند وإدخال كمية صحيحة." : "Select item and valid quantity." });
+    if (!executionService || !activeBoq || !user || !selectedItemId || !targetStage || progressQty <= 0) {
       return;
     }
 
@@ -277,7 +271,7 @@ export default function TransactionDetailsPage() {
       await executionService.recordBOQItemExecution(
         activeBoq.id,
         selectedItemId,
-        targetStage!.technicalStageId,
+        targetStage.technicalStageId,
         progressQty,
         user.uid,
         user.displayName || 'User',
@@ -306,30 +300,25 @@ export default function TransactionDetailsPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-20" dir={dir}>
-      {/* Header Bar */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-6">
-        <div className="flex items-center gap-4">
-          <div className="text-start">
-             <div className="flex items-center gap-4 flex-wrap">
-                <div className="h-12 px-5 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-black text-lg border-2 border-primary/20 shadow-inner">
-                   {transaction.transactionNumber}
-                </div>
-                <div>
-                   <h1 className="text-2xl font-black font-headline text-slate-900 tracking-tight leading-tight">{transaction.subServiceName}</h1>
-                   <div className="flex items-center gap-3 mt-1">
-                      <Badge className={cn(
-                          "font-black px-3 py-0.5 rounded-lg border-0 shadow-sm uppercase text-[9px]",
-                          transaction.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-white'
-                      )}>
-                          {transaction.status}
-                      </Badge>
-                      <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1">
-                          <Activity className="h-3 w-3 text-primary" /> {transaction.activityTypeName}
-                      </span>
-                   </div>
-                </div>
-             </div>
-          </div>
+        <div className="flex items-center gap-4 text-start">
+           <div className="h-12 px-5 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-black text-lg border-2 border-primary/20 shadow-inner">
+              {transaction.transactionNumber}
+           </div>
+           <div>
+              <h1 className="text-2xl font-black font-headline text-slate-900 tracking-tight leading-tight">{transaction.subServiceName}</h1>
+              <div className="flex items-center gap-3 mt-1">
+                 <Badge className={cn(
+                     "font-black px-3 py-0.5 rounded-lg border-0 shadow-sm uppercase text-[9px]",
+                     transaction.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-white'
+                 )}>
+                     {transaction.status}
+                 </Badge>
+                 <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1">
+                     <Activity className="h-3 w-3 text-primary" /> {transaction.activityTypeName}
+                 </span>
+              </div>
+           </div>
         </div>
 
         <div className="flex gap-3 w-full md:w-auto">
@@ -343,10 +332,7 @@ export default function TransactionDetailsPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Main Pipeline (Left) */}
         <div className="lg:col-span-8 space-y-8">
-           
-           {/* BOQ Runtime Status Card */}
            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
               <div className="bg-slate-900 p-8 text-white flex flex-col md:flex-row justify-between items-center gap-6">
                  <div className="flex items-center gap-4 text-start">
@@ -390,7 +376,7 @@ export default function TransactionDetailsPage() {
                        <TrendingUp className="h-6 w-6 text-primary" />
                        {isRtl ? 'مسار التنفيذ الميداني المعتمد' : 'Execution Pipeline'}
                     </h3>
-                    <p className="text-xs font-bold text-slate-400">{isRtl ? 'متابعة مراحل العمل بالتسلسل الهندسي' : 'Tracking stages in strict sequence'}</p>
+                    <p className="text-xs font-bold text-slate-400">{isRtl ? 'متابعة مراحل العمل بالتسلسل الهندسي' : 'Tracking stages'}</p>
                  </div>
                  <div className="text-end">
                     <span className="text-4xl font-black font-headline text-primary">{progressPercent}%</span>
@@ -398,7 +384,7 @@ export default function TransactionDetailsPage() {
               </div>
               
               <div className="space-y-4">
-                 {stages?.map((stage, idx) => {
+                 {stages.map((stage, idx) => {
                     const blocked = isStageBlocked(stage);
                     const predecessors = getRequiredPredecessors(stage);
                     const boqProgress = stageProgressMap[stage.technicalStageId];
@@ -446,7 +432,6 @@ export default function TransactionDetailsPage() {
                               </div>
 
                               <div className="flex gap-2 shrink-0">
-                                 {/* زر تسجيل الإنجاز المرحلي - يظهر فقط في حالة in-progress */}
                                  {stage.status === 'in-progress' && editAccess.can && (
                                     <Button 
                                       onClick={() => { setTargetStage(stage); setIsRecordOpen(true); }}
@@ -511,7 +496,6 @@ export default function TransactionDetailsPage() {
            </div>
         </div>
 
-        {/* Sidebar (Right) */}
         <div className="lg:col-span-4 space-y-8">
            <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 flex flex-col h-full min-h-[600px]">
               <CardHeader className="bg-slate-50/50 border-b p-6">
@@ -519,7 +503,7 @@ export default function TransactionDetailsPage() {
                     <MessageSquare className="h-4 w-4 text-primary" />
                     {isRtl ? 'غرفة عمليات المعاملة' : 'Transaction War Room'}
                  </CardTitle>
-                 <CardDescription className="font-bold text-[10px] mt-1">{isRtl ? 'نقاشات عامة غير مرتبطة بمرحلة معينة.' : 'General discussions non-stage specific.'}</CardDescription>
+                 <CardDescription className="font-bold text-[10px] mt-1">{isRtl ? 'نقاشات عامة غير مرتبطة بمرحلة معينة.' : 'General discussions.'}</CardDescription>
               </CardHeader>
               <CardContent className="p-6 flex-1">
                  <CommentSection 
@@ -547,7 +531,6 @@ export default function TransactionDetailsPage() {
                   <div className="p-10 text-center border-2 border-dashed rounded-3xl bg-slate-50">
                      <AlertTriangle className="h-10 w-10 mx-auto text-amber-500 mb-4" />
                      <p className="font-black text-slate-600">{isRtl ? "لا توجد مقايسة مرتبطة بهذه المعاملة" : "No BOQ linked to this transaction"}</p>
-                     <p className="text-[10px] text-slate-400 font-bold mt-2 italic">{isRtl ? "يرجى إنشاء المقايسة من القالب في قسم 'المقايسة التنفيذية' أولاً." : "Please create a BOQ from template first."}</p>
                   </div>
                ) : (
                  <>
@@ -562,9 +545,7 @@ export default function TransactionDetailsPage() {
                                <div className="p-6 text-center space-y-3">
                                   <Info className="h-6 w-6 mx-auto text-blue-400" />
                                   <p className="text-[10px] font-bold text-slate-400 italic leading-relaxed">
-                                     {isRtl 
-                                       ? "لا توجد بنود مرتبطة بهذه المرحلة في القاموس المرجعي. يرجى ربط البنود في الإعدادات > شجرة الأعمال." 
-                                       : "No items linked to this stage in registry."}
+                                     {isRtl ? "لا توجد بنود مرتبطة بهذه المرحلة في القاموس المرجعي." : "No items linked to this stage in registry."}
                                   </p>
                                </div>
                              ) : (

@@ -5,7 +5,7 @@ import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-lea
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// إصلاح مشكلة أيقونات Leaflet الافتراضية مع Next.js
+// Fix for Leaflet default icons in Next.js using absolute unpkg URLs
 const DefaultIcon = L.icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
@@ -19,7 +19,7 @@ interface MapViewProps {
   setPosition: (pos: [number, number]) => void;
 }
 
-// مكون داخلي لتحريك الكاميرا عند تغيير الموقع
+// Sub-component to move camera when position changes
 function ChangeView({ center }: { center: [number, number] }) {
   const map = useMap();
   useEffect(() => {
@@ -30,7 +30,7 @@ function ChangeView({ center }: { center: [number, number] }) {
   return null;
 }
 
-// مكون داخلي لالتقاط النقرات على الخريطة
+// Sub-component to capture map clicks
 function MapEvents({ onMapClick }: { onMapClick: (lat: number, lng: number) => void }) {
   useMapEvents({
     click: (e) => {
