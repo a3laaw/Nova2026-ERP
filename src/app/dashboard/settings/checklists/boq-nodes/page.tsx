@@ -41,11 +41,6 @@ import {
     SelectTrigger, 
     SelectValue 
 } from "@/components/ui/select";
-import { 
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover";
 import { toast } from '@/hooks/use-toast';
 import { 
   AlertDialog, 
@@ -72,7 +67,10 @@ export default function BOQNodesPage() {
   const [editingNode, setEditingNode] = useState<Partial<BOQReferenceNode> | null>(null);
   const [expandedNodes, setExpandedNodes] = useState<string[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [stagesPopoverOpen, setStagesPopoverOpen] = useState(false);
+  
+  // States for the Inline Stage Picker
+  const [showStagePicker, setShowStagePicker] = useState(false);
+  const [stageSearch, setStageSearch] = useState('');
   
   const [availableStages, setAvailableStages] = useState<TechnicalStage[]>([]);
   const [loadingStages, setLoadingStages] = useState(false);
@@ -165,6 +163,17 @@ export default function BOQNodesPage() {
     }
   }, [db, companyId, effectiveContext?.subServiceId, editingNode?.isExecutable]);
 
+  const filteredStages = useMemo(() => {
+    const q = stageSearch.trim().toLowerCase();
+    if (!q) return availableStages;
+
+    return availableStages.filter(stage =>
+      [stage.name, stage.nameEn, stage.code]
+        .filter(Boolean)
+        .some(v => String(v).toLowerCase().includes(q))
+    );
+  }, [availableStages, stageSearch]);
+
   const treeData = useMemo(() => {
     const nodes = rawNodes || [];
     const buildTree = (parentId: string | null): any[] => {
@@ -181,13 +190,9 @@ export default function BOQNodesPage() {
       if (!prev) return prev;
 
       const current = prev.technicalStageIds || [];
-      let updated: string[];
-
-      if (current.includes(stageId)) {
-        updated = current.filter(id => id !== stageId);
-      } else {
-        updated = [...current, stageId];
-      }
+      const updated = current.includes(stageId)
+        ? current.filter(id => id !== stageId)
+        : [...current, stageId];
 
       const nextDefault =
         updated.length === 0
@@ -359,7 +364,16 @@ export default function BOQNodesPage() {
          </CardContent>
       </Card>
 
-      <Dialog open={!!editingNode} onOpenChange={open => !open && setEditingNode(null)}>
+      <Dialog 
+        open={!!editingNode} 
+        onOpenChange={open => {
+          if (!open) {
+            setEditingNode(null);
+            setShowStagePicker(false);
+            setStageSearch('');
+          }
+        }}
+      >
          <DialogContent className="rounded-xl p-0 overflow-hidden max-w-2xl border-0 shadow-3xl bg-white" dir={dir}>
             <div className="bg-slate-50 p-6 text-slate-900 text-start border-b flex items-center justify-between">
                <DialogTitle className="text-xl font-black font-headline flex items-center gap-3">
@@ -457,71 +471,152 @@ export default function BOQNodesPage() {
                           </Label>
                           
                           {effectiveContext?.subServiceId ? (
-                            <div className="space-y-4">
-                               <Popover open={stagesPopoverOpen} onOpenChange={setStagesPopoverOpen}>
-                                  <PopoverTrigger asChild>
-                                     <Button 
-                                       type="button"
-                                       variant="outline" 
-                                       className="w-full h-12 rounded-xl justify-between border-2 bg-white font-black text-xs px-4"
-                                     >
-                                        <div className="flex gap-1 overflow-hidden">
-                                           {editingNode.technicalStageIds?.length ? (
-                                             <Badge className="bg-primary text-white border-0 text-[10px] font-black">{editingNode.technicalStageIds.length} {isRtl ? 'مختار' : 'Selected'}</Badge>
-                                           ) : <span className="text-slate-400">{isRtl ? '--- اختر مرحلة واحدة أو أكثر ---' : '--- Select one or more stages ---'}</span>}
-                                        </div>
-                                        <ChevronDown className="h-4 w-4 opacity-30" />
-                                     </Button>
-                                  </PopoverTrigger>
-                                  <PopoverContent 
-                                    className="w-[400px] p-2 rounded-2xl border-2 shadow-2xl bg-white" 
-                                    align="start"
-                                    sideOffset={8}
-                                    onOpenAutoFocus={(e) => e.preventDefault()}
-                                    onCloseAutoFocus={(e) => e.preventDefault()}
-                                  >
-                                     <ScrollArea className="h-64">
-                                        <div className="space-y-1 p-2">
-                                           {loadingStages ? (
-                                              <div className="p-10 text-center"><Loader2 className="animate-spin h-6 w-6 mx-auto text-primary/30" /></div>
-                                           ) : availableStages.length === 0 ? (
-                                              <div className="p-6 text-center text-xs font-bold text-slate-400">
-                                                {isRtl ? 'لا توجد مراحل متاحة لهذا المسار الفني' : 'No stages available for this technical path'}
-                                              </div>
-                                           ) : (
-                                              availableStages.map(stage => {
-                                                const isChecked = editingNode.technicalStageIds?.includes(stage.id!);
-                                                return (
-                                                  <div 
-                                                    key={stage.id} 
-                                                    onPointerDown={(e) => e.stopPropagation()}
-                                                    onClick={() => handleToggleStage(stage.id!)}
-                                                    className={cn(
-                                                      "w-full flex items-center justify-between p-3 rounded-xl transition-all border-2 mb-1 text-start cursor-pointer",
-                                                      isChecked ? "bg-primary/5 border-primary/20" : "bg-white border-transparent hover:bg-slate-50"
-                                                    )}
-                                                  >
-                                                     <div className="flex items-center gap-3">
-                                                        <Checkbox 
-                                                          checked={isChecked} 
-                                                          className="pointer-events-none"
-                                                        />
-                                                        <div className="text-start">
-                                                           <p className="font-black text-xs text-slate-800">{isRtl ? stage.name : (stage.nameEn || stage.name)}</p>
-                                                           <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">{stage.code}</span>
-                                                        </div>
-                                                     </div>
-                                                     {editingNode.technicalStageId === stage.id && <Badge className="bg-emerald-500 text-white text-[7px] font-black h-4">DEFAULT</Badge>}
-                                                  </div>
-                                                );
-                                              })
-                                           )}
-                                        </div>
-                                     </ScrollArea>
-                                  </PopoverContent>
-                               </Popover>
+                            <div className="space-y-3">
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  onClick={() => setShowStagePicker(v => !v)}
+                                  className="flex-1 h-12 rounded-xl justify-between border-2 bg-white font-black text-xs px-4"
+                                >
+                                  <div className="flex gap-2 overflow-hidden items-center">
+                                    {editingNode?.technicalStageIds?.length ? (
+                                      <>
+                                        <Badge className="bg-primary text-white border-0 text-[10px] font-black">
+                                          {editingNode.technicalStageIds.length} {isRtl ? 'مختار' : 'Selected'}
+                                        </Badge>
+                                        <span className="text-slate-500 truncate">
+                                          {isRtl ? 'اضغط لعرض/تعديل المراحل' : 'Click to review/edit stages'}
+                                        </span>
+                                      </>
+                                    ) : (
+                                      <span className="text-slate-400">
+                                        {isRtl ? '--- اختر مرحلة واحدة أو أكثر ---' : '--- Select one or more stages ---'}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <ChevronDown className={cn("h-4 w-4 opacity-40 transition-transform", showStagePicker && "rotate-180")} />
+                                </Button>
 
-                               {editingNode.technicalStageIds && editingNode.technicalStageIds.length > 1 && (
+                                {!!editingNode?.technicalStageIds?.length && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={() =>
+                                      setEditingNode(prev =>
+                                        prev
+                                          ? { ...prev, technicalStageIds: [], technicalStageId: '' }
+                                          : prev
+                                      )
+                                    }
+                                    className="h-12 rounded-xl px-4 text-rose-600 hover:bg-rose-50"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+
+                              {showStagePicker && (
+                                <div className="rounded-2xl border-2 bg-white p-3 shadow-sm space-y-3 animate-in fade-in-0 zoom-in-95">
+                                  <Input
+                                    value={stageSearch}
+                                    onChange={(e) => setStageSearch(e.target.value)}
+                                    placeholder={isRtl ? 'ابحث باسم المرحلة أو الكود...' : 'Search by stage name or code...'}
+                                    className="h-10 rounded-xl border-2 font-bold"
+                                  />
+
+                                  <ScrollArea className="h-64 rounded-xl border bg-slate-50/40">
+                                    <div className="p-2 space-y-1">
+                                      {loadingStages ? (
+                                        <div className="p-10 text-center">
+                                          <Loader2 className="animate-spin h-6 w-6 mx-auto text-primary/30" />
+                                        </div>
+                                      ) : filteredStages.length === 0 ? (
+                                        <div className="p-6 text-center text-xs font-bold text-slate-400">
+                                          {isRtl ? 'لا توجد مراحل مطابقة' : 'No matching stages'}
+                                        </div>
+                                      ) : (
+                                        filteredStages.map(stage => {
+                                          const isChecked = editingNode?.technicalStageIds?.includes(stage.id!);
+
+                                          return (
+                                            <div
+                                              key={stage.id}
+                                              role="button"
+                                              tabIndex={0}
+                                              onClick={() => handleToggleStage(stage.id!)}
+                                              onKeyDown={(e) => {
+                                                if (e.key === 'Enter' || e.key === ' ') {
+                                                  e.preventDefault();
+                                                  handleToggleStage(stage.id!);
+                                                }
+                                              }}
+                                              className={cn(
+                                                "w-full flex items-center justify-between p-3 rounded-xl transition-all border-2 cursor-pointer text-start",
+                                                isChecked
+                                                  ? "bg-primary/5 border-primary/20"
+                                                  : "bg-white border-transparent hover:bg-slate-50"
+                                              )}
+                                            >
+                                              <div className="flex items-center gap-3 min-w-0">
+                                                <Checkbox
+                                                  checked={isChecked}
+                                                  className="pointer-events-none"
+                                                />
+
+                                                <div className="text-start min-w-0">
+                                                  <p className="font-black text-xs text-slate-800 truncate">
+                                                    {isRtl ? stage.name : (stage.nameEn || stage.name)}
+                                                  </p>
+                                                  <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">
+                                                    {stage.code}
+                                                  </span>
+                                                </div>
+                                              </div>
+
+                                              <div className="flex items-center gap-2 shrink-0">
+                                                {editingNode?.technicalStageId === stage.id && (
+                                                  <Badge className="bg-emerald-500 text-white text-[7px] font-black h-4">
+                                                    DEFAULT
+                                                  </Badge>
+                                                )}
+                                              </div>
+                                            </div>
+                                          );
+                                        })
+                                      )}
+                                    </div>
+                                  </ScrollArea>
+
+                                  <div className="flex items-center justify-between gap-2">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      onClick={() =>
+                                        setEditingNode(prev =>
+                                          prev
+                                            ? { ...prev, technicalStageIds: [], technicalStageId: '' }
+                                            : prev
+                                        )
+                                      }
+                                      className="text-rose-600 hover:bg-rose-50 text-xs font-black"
+                                    >
+                                      {isRtl ? 'مسح الكل' : 'Clear All'}
+                                    </Button>
+
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      onClick={() => setShowStagePicker(false)}
+                                      className="rounded-xl h-9 text-xs font-black"
+                                    >
+                                      {isRtl ? 'تم' : 'Done'}
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+
+                              {editingNode?.technicalStageIds && editingNode.technicalStageIds.length > 1 && (
                                  <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 animate-in zoom-in-95">
                                     <Label className="text-[9px] font-black uppercase text-primary mb-3 block">{isRtl ? 'المرحلة الافتراضية (للإسناد التلقائي)' : 'Primary Default Stage'}</Label>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -530,7 +625,7 @@ export default function BOQNodesPage() {
                                           return (
                                             <div 
                                               key={id}
-                                              onClick={() => setEditingNode({...editingNode, technicalStageId: id})}
+                                              onClick={() => setEditingNode({...editingNode!, technicalStageId: id})}
                                               className={cn(
                                                 "p-3 rounded-xl cursor-pointer transition-all flex items-center justify-between border-2",
                                                 editingNode.technicalStageId === id ? "bg-white border-primary shadow-sm" : "bg-white/50 border-slate-100 opacity-60"
@@ -543,7 +638,7 @@ export default function BOQNodesPage() {
                                        })}
                                     </div>
                                  </div>
-                               )}
+                              )}
                             </div>
                           ) : (
                             <div className="flex items-center gap-2 text-rose-500 p-4 bg-rose-50 rounded-2xl border border-rose-100">
