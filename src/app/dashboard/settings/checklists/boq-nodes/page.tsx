@@ -11,7 +11,8 @@ import {
   Hammer, ChevronRight, ChevronDown,
   Save, Settings2, Workflow,
   RotateCcw, MapPin, AlertTriangle,
-  CheckCircle2, X
+  CheckCircle2, X, Info,
+  ExternalLink
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, getDocs, doc } from 'firebase/firestore';
@@ -237,7 +238,6 @@ export default function BOQNodesPage() {
     const selectedStages = editingNode.technicalStageIds || [];
 
     if (selectedStages.length > 0) {
-      // إذا كانت فارغة أو القيمة الحالية لم تعد ضمن المختارين، نختار أول عنصر
       if (!finalDefaultStageId || !selectedStages.includes(finalDefaultStageId)) {
         finalDefaultStageId = selectedStages[0];
       }
@@ -491,7 +491,7 @@ export default function BOQNodesPage() {
                              setEditingNode({...editingNode!, subServiceId: v, subServiceName: sub?.name || ''});
                           }}>
                              <SelectTrigger className="h-10 rounded-lg border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                             <SelectContent className="rounded-xl">{activeSubs.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold">{isRtl ? s.name : s.nameEn}</SelectItem>)}</SelectContent>
+                             <SelectContent className="rounded-xl">{activeSubs.map(s => <SelectItem key={s.id} value={s.id!} className="font-black text-xs">{isRtl ? s.name : s.nameEn}</SelectItem>)}</SelectContent>
                           </Select>
                        </div>
                     </div>
@@ -503,6 +503,15 @@ export default function BOQNodesPage() {
                           <Label className="text-[11px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
                              <MapPin className="h-3.5 w-3.5" /> ربط مراحل التنفيذ الميداني (متعدد)
                           </Label>
+
+                          <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-start gap-3 mb-2">
+                             <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+                             <p className="text-[10px] text-blue-700 font-bold leading-relaxed">
+                                {isRtl 
+                                  ? 'هام: اختر المراحل الفنية التي يُسمح للمهندس بتسجيل إنجاز هذا البند فيها داخل الموقع.' 
+                                  : 'Select which technical stages allow engineers to record execution for this item in the field.'}
+                             </p>
+                          </div>
                           
                           {effectiveContext?.subServiceId ? (
                             <div className="space-y-3">
@@ -567,7 +576,7 @@ export default function BOQNodesPage() {
                                         </div>
                                       ) : filteredStages.length === 0 ? (
                                         <div className="p-6 text-center text-xs font-bold text-slate-400">
-                                          {isRtl ? 'لا توجد مراحل مطابقة' : 'No matching stages'}
+                                          {isRtl ? 'لا توجد مراحل مطابقة في هذا المسار' : 'No matching stages in this path'}
                                         </div>
                                       ) : (
                                         filteredStages.map(stage => {
@@ -611,7 +620,7 @@ export default function BOQNodesPage() {
                                               <div className="flex items-center gap-2 shrink-0">
                                                 {editingNode?.technicalStageId === stage.id && (
                                                   <Badge className="bg-emerald-500 text-white text-[7px] font-black h-4">
-                                                    DEFAULT
+                                                    PRIMARY
                                                   </Badge>
                                                 )}
                                               </div>
@@ -651,8 +660,11 @@ export default function BOQNodesPage() {
                               )}
 
                               {editingNode?.technicalStageIds && editingNode.technicalStageIds.length > 1 && (
-                                 <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 animate-in zoom-in-95">
-                                    <Label className="text-[9px] font-black uppercase text-primary mb-3 block">{isRtl ? 'المرحلة الافتراضية (للإسناد التلقائي)' : 'Primary Default Stage'}</Label>
+                                 <div className="p-5 bg-primary/5 rounded-2xl border border-primary/10 animate-in zoom-in-95">
+                                    <div className="flex items-center justify-between mb-3">
+                                       <Label className="text-[9px] font-black uppercase text-primary tracking-widest">{isRtl ? 'المرحلة الفنية الافتراضية' : 'Primary Default Stage'}</Label>
+                                       <Badge variant="outline" className="text-[7px] font-black border-primary/20 bg-white">AUTO-ASSIGN KEY</Badge>
+                                    </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                        {editingNode.technicalStageIds.map(id => {
                                           const stage = availableStages.find(s => s.id === id);
@@ -675,11 +687,14 @@ export default function BOQNodesPage() {
                               )}
                             </div>
                           ) : (
-                            <div className="flex items-center gap-2 text-rose-500 p-4 bg-rose-50 rounded-2xl border border-rose-100">
-                               <AlertTriangle className="h-5 w-5" />
-                               <span className="text-[10px] font-bold">
-                                  {isRtl ? 'يجب تحديد المسار الفني العام (SubService) للأب أولاً لتتمكن من ربط مراحل التنفيذ.' : 'Inherited Technical Path (SubService) missing. Link ancestor first.'}
-                               </span>
+                            <div className="flex items-center gap-3 text-rose-500 p-5 bg-rose-50 rounded-2xl border border-rose-100 ring-4 ring-rose-50/50">
+                               <AlertTriangle className="h-5 w-5 shrink-0" />
+                               <div className="text-start">
+                                  <p className="text-[10px] font-black uppercase">عزل تشغيلي مفقود</p>
+                                  <p className="text-[10px] font-bold text-rose-600/80 leading-relaxed">
+                                     {isRtl ? 'يجب تحديد المسار الفني (SubService) للأب أولاً لتتمكن من ربط البند بمراحل التنفيذ.' : 'Inherited Technical Path missing. Link parent to a workflow first.'}
+                                  </p>
+                               </div>
                             </div>
                           )}
                        </div>
@@ -711,9 +726,12 @@ export default function BOQNodesPage() {
                   <Textarea value={editingNode?.description || ''} onChange={e => setEditingNode({...editingNode!, description: e.target.value})} className="min-h-[100px] rounded-xl border-2 p-4 text-xs font-bold leading-relaxed resize-none bg-slate-50/50" />
                </div>
 
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-slate-900 text-white rounded-2xl shadow-xl">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-5 bg-slate-900 text-white rounded-2xl shadow-xl">
                   <div className="flex items-center justify-between">
-                     <Label className="font-black text-xs uppercase tracking-tighter">{isRtl ? 'بند تنفيذي (Item)' : 'Executable Work Item'}</Label>
+                     <div className="space-y-0.5">
+                        <Label className="font-black text-xs uppercase tracking-tighter">{isRtl ? 'بند تنفيذي (Item)' : 'Executable Item'}</Label>
+                        <p className="text-[8px] text-slate-400 font-bold">يسمح بتسجيل الإنجاز والميزانية</p>
+                     </div>
                      <Switch checked={editingNode?.isExecutable || false} onCheckedChange={v => setEditingNode({...editingNode!, isExecutable: v, nodeRole: v ? 'work_item' : 'group'})} />
                   </div>
                   <div className="flex items-center justify-between border-s border-white/10 md:ps-6">
@@ -749,3 +767,4 @@ export default function BOQNodesPage() {
     </div>
   );
 }
+
