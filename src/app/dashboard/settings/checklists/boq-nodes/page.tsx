@@ -211,18 +211,52 @@ export default function BOQNodesPage() {
 
   const handleSave = async () => {
     if (!referenceService || !user || !editingNode?.title) return;
+
+    // --- Validation Logic ---
+    const actId = effectiveContext?.activityTypeId || editingNode.activityTypeId;
+    const srvId = effectiveContext?.serviceId || editingNode.serviceId;
+    const subId = effectiveContext?.subServiceId || editingNode.subServiceId;
+
+    if (editingNode.isExecutable) {
+      if (!editingNode.unitTypeId) {
+        toast({ variant: "destructive", title: isRtl ? "تنبيه" : "Alert", description: isRtl ? "يجب اختيار وحدة قياس للبند التنفيذي" : "Unit type is required for executable items" });
+        return;
+      }
+      if (!actId || !srvId || !subId) {
+        toast({ variant: "destructive", title: isRtl ? "تنبيه" : "Alert", description: isRtl ? "يجب اكتمال النشاط والخدمة والمسار الفني أولاً" : "Activity, Service, and Sub-Service must be set" });
+        return;
+      }
+      if (!editingNode.technicalStageIds || editingNode.technicalStageIds.length === 0) {
+        toast({ variant: "destructive", title: isRtl ? "تنبيه" : "Alert", description: isRtl ? "يجب اختيار مرحلة فنية واحدة على الأقل" : "At least one technical stage must be selected" });
+        return;
+      }
+    }
+
+    // --- Default Stage Sanitization ---
+    let finalDefaultStageId = editingNode.technicalStageId || '';
+    const selectedStages = editingNode.technicalStageIds || [];
+
+    if (selectedStages.length > 0) {
+      // إذا كانت فارغة أو القيمة الحالية لم تعد ضمن المختارين، نختار أول عنصر
+      if (!finalDefaultStageId || !selectedStages.includes(finalDefaultStageId)) {
+        finalDefaultStageId = selectedStages[0];
+      }
+    } else {
+      finalDefaultStageId = '';
+    }
+
     setLoadingAction('save');
     try {
       const finalData = {
         ...editingNode,
-        activityTypeId: effectiveContext?.activityTypeId || editingNode.activityTypeId || '',
+        activityTypeId: actId || '',
         activityTypeName: effectiveContext?.activityTypeName || editingNode.activityTypeName || '',
-        serviceId: effectiveContext?.serviceId || editingNode.serviceId || '',
+        serviceId: srvId || '',
         serviceName: effectiveContext?.serviceName || editingNode.serviceName || '',
-        subServiceId: effectiveContext?.subServiceId || editingNode.subServiceId || '',
+        subServiceId: subId || '',
         subServiceName: effectiveContext?.subServiceName || editingNode.subServiceName || '',
-        technicalStageId: editingNode.technicalStageId || '',
-        technicalStageIds: editingNode.technicalStageIds || []
+        technicalStageId: finalDefaultStageId,
+        technicalStageIds: selectedStages
       };
 
       if (editingNode.id) {
