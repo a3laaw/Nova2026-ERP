@@ -37,7 +37,7 @@ export interface BaseTemplate extends BaseReference {
   activityTypeName?: string;
   serviceId: string;
   serviceName?: string;
-  subServiceId?: string;
+  subServiceId: string;
   subServiceName?: string;
   version: number;
   isDefault: boolean;
@@ -76,23 +76,23 @@ export interface ContractTemplate extends BaseTemplate {
 
 /**
  * بنية بند جدول الكميات المطور (Dynamic Reference Structure)
- * تم إلغاء المستويات الثابتة والاعتماد على العقد المرجعية
  */
 export interface BOQTemplateItem {
   id?: string;
-  boqReferenceNodeId: string;   // الرابط بالقاموس المرجعي
-  referenceCode: string;         // كود البند المرجعي
-  referenceTitle: string;        // مسمى البند المرجعي
+  boqReferenceNodeId: string;   
+  referenceCode: string;         
+  referenceTitle: string;        
   referenceDescription?: string; 
-  parentId: string | null;       // الأب المباشر في الشجرة
-  ancestorIds: string[];         // سلسلة النسب الكاملة
-  ancestorTitles?: string[];     // مسميات الأسلاف (للعرض السريع)
-  depth: number;                 // مستوى العمق
+  parentId: string | null;       
+  ancestorIds: string[];         
+  ancestorTitles?: string[];     
+  depth: number;                 
 
   unitTypeId?: string;
   unitName?: string;
   unitSymbol?: string;
   technicalStageId?: string;
+  technicalStageIds?: string[]; // دعم الارتباط المتعدد
   billingTriggerGroup?: string;
   allowedItemCategoryIds?: string[];
 
@@ -108,7 +108,7 @@ export interface BOQTemplateItem {
 }
 
 /**
- * الهيكل الشجري لعرض المقايسات في الواجهة (Generic Tree Node)
+ * الهيكل الشجري لعرض المقايسات في الواجهة
  */
 export interface BOQTreeNode {
   id: string;
@@ -116,12 +116,15 @@ export interface BOQTreeNode {
   depth: number;
   order: number;
   children: BOQTreeNode[];
-  items: BOQTemplateItem[]; // البنود التنفيذية التابعة لهذه العقدة
+  items: BOQTemplateItem[]; 
 }
 
 export interface BOQTemplate extends BaseTemplate {
   measurementMode?: MeasurementMode;
-  itemsCount?: number;    // عدد البنود التنفيذية
-  sectionsCount?: number; // عدد الأقسام/المجموعات
-  items?: BOQTemplateItem[]; 
+  itemsCount?: number;    
+  sectionsCount?: number; 
+  items?: BOQTemplateItem[];
+  // حقول المطابقة المتعددة (للعرض والفلترة)
+  activityTypeIds?: string[];
+  serviceIds?: string[];
 }

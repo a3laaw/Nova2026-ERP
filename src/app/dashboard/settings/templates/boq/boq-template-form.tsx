@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -24,18 +24,17 @@ import {
   LayoutGrid,
   Layers,
   Folder,
-  Hammer,
-  DollarSign,
-  Workflow
+  Workflow,
+  Target
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, collectionGroup, where } from 'firebase/firestore';
+import { collection, query, orderBy, collectionGroup, where, getDocs } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { BOQTemplate, BOQTemplateItem, BOQTreeNode } from '@/types/templates';
-import { ActivityType, Service, BOQReferenceNode, TechnicalStage } from '@/types/reference';
+import { ActivityType, Service, SubService, BOQReferenceNode, TechnicalStage } from '@/types/reference';
 import { TemplateService } from '@/services/template-service';
 import { TechnicalPathService } from '@/services/technical-path-service';
 import { transformToBOQTree } from '@/lib/boq-tree-utils';
@@ -66,12 +65,16 @@ export function BOQTemplateForm({ template, onClose }: Props) {
   const [expandedNodes, setExpandedNodes] = useState<string[]>([]);
   const [allStages, setAllStages] = useState<TechnicalStage[]>([]);
   const [loadingStages, setLoadingStages] = useState(false);
+  const [activeSubs, setActiveSubs] = useState<SubService[]>([]);
   
   const [formData, setFormData] = useState<any>(
     template || {
       name: '',
       code: '',
       baseAmount: 0,
+      activityTypeId: '',
+      serviceId: '',
+      subServiceId: '',
       activityTypeIds: [], 
       serviceIds: [],      
       isDefault: false,
@@ -96,6 +99,17 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     return [...(rawAllServices || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
   }, [rawAllServices]);
 
+  // تحديث قائمة المسارات الفرعية عند تغيير الخدمة الأساسية
+  useEffect(() => {
+    if (db && companyId && formData.activityTypeId && formData.serviceId) {
+      getDocs(query(collection(db, paths.subServices(companyId, formData.activityTypeId, formData.serviceId)), orderBy('order')))
+        .then(snap => setActiveSubs(snap.docs.map(d => ({ id: d.id, ...d.data() } as SubService))))
+        .catch(() => setActiveSubs([]));
+    } else {
+      setActiveSubs([]);
+    }
+  }, [db, companyId, formData.activityTypeId, formData.serviceId]);
+
   const service = useMemo(() => db && companyId ? new TemplateService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
   useEffect(() => {
@@ -107,7 +121,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     }
   }, [template?.id, service]);
 
-  // جلب المراحل الفنية مرة واحدة فقط
   useEffect(() => {
     if (db && companyId) {
       setLoadingStages(true);
@@ -129,6 +142,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
   const handleSave = async () => {
     if (!db || !companyId || !user || !service) return;
     if (!formData.name) return toast({ variant: "destructive", title: isRtl ? "الاسم مطلوب" : "Name required" });
+    if (!formData.subServiceId) return toast({ variant: "destructive", title: isRtl ? "يجب اختيار المسار الفني المباشر للربط" : "Direct Technical Path is required" });
     
     setLoading(true);
     try {
@@ -172,7 +186,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
       unitTypeId: node.unitTypeId || '',
       unitName: node.unitName || '',
       unitSymbol: node.unitSymbol || '',
-      technicalStageId: node.defaultTechnicalStageId || '',
+      technicalStageId: node.technicalStageId || '',
       plannedQuantity: 1,
       executedQuantity: 0,
       estimatedRate: node.estimatedRate || 0,
@@ -425,10 +439,53 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                  </div>
               </div>
 
+              {/* تحسين قسم الارتباط المباشر لضمان نجاح عملية السحب (Matching Logic) */}
               <div className="space-y-6 pt-6 border-t">
                  <div className="space-y-3 text-start">
+                    <Label className="text-[11px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
+                       <Target className="h-4 w-4" /> {isRtl ? 'المطابقة والربط المباشر' : 'Direct Matching Key'}
+                    </Label>
+                    <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 space-y-4">
+                       <div className="space-y-2">
+                          <Label className="text-[9px] font-black text-slate-500 uppercase">{isRtl ? 'النشاط الرئيسي' : 'Activity Type'}</Label>
+                          <Select value={formData.activityTypeId} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: ''})}>
+                             <SelectTrigger className="h-10 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
+                             <SelectContent className="rounded-xl">
+                                {activities?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{isRtl ? a.name : a.nameEn}</SelectItem>)}
+                             </SelectContent>
+                          </Select>
+                       </div>
+                       <div className="space-y-2">
+                          <Label className="text-[9px] font-black text-slate-500 uppercase">{isRtl ? 'الخدمة الأساسية' : 'Main Service'}</Label>
+                          <Select disabled={!formData.activityTypeId} value={formData.serviceId} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: ''})}>
+                             <SelectTrigger className="h-10 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
+                             <SelectContent className="rounded-xl">
+                                {allServices.filter(s => s.activityTypeId === formData.activityTypeId).map(s => <SelectItem key={s.id} value={s.id!} className="font-bold">{isRtl ? s.name : s.nameEn}</SelectItem>)}
+                             </SelectContent>
+                          </Select>
+                       </div>
+                       <div className="space-y-2">
+                          <Label className="text-[9px] font-black text-slate-500 uppercase">{isRtl ? 'المسار الفني الدقيق (حلقة الوصل)' : 'Specific Technical Path'}</Label>
+                          <Select disabled={!formData.serviceId} value={formData.subServiceId} onValueChange={v => {
+                             const sub = activeSubs.find(s => s.id === v);
+                             setFormData({...formData, subServiceId: v, subServiceName: sub?.name || ''});
+                          }}>
+                             <SelectTrigger className="h-10 rounded-xl border-2 font-black bg-white"><SelectValue placeholder="..." /></SelectTrigger>
+                             <SelectContent className="rounded-xl">
+                                {activeSubs.map(s => <SelectItem key={s.id} value={s.id!} className="font-black text-xs">{isRtl ? s.name : s.nameEn}</SelectItem>)}
+                             </SelectContent>
+                          </Select>
+                          <p className="text-[8px] font-bold text-slate-400 italic mt-1">
+                             {isRtl ? 'هذا الحقل هو المسؤول عن ظهور القالب داخل معاملات العميل.' : 'This field enables the template to appear in client transactions.'}
+                          </p>
+                       </div>
+                    </div>
+                 </div>
+
+                 {/* حقول المطابقة المتعددة (للفلترة والعرض الإضافي) */}
+                 <div className="space-y-3 text-start pt-4 border-t border-dashed">
                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                       <LayoutGrid className="h-3 w-3 text-primary" /> {isRtl ? 'الأنشطة المرتبطة' : 'Linked Activities'}
+                       <LayoutGrid className="h-3 w-3" /> {isRtl ? 'الأنشطة المرتبطة (إضافي)' : 'Also Linked To'}
                     </Label>
                     <Popover>
                        <PopoverTrigger asChild>
@@ -451,38 +508,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                                >
                                   <Checkbox checked={formData.activityTypeIds?.includes(act.id!)} className="h-4 w-4" />
                                   <span className="text-xs font-bold text-slate-700">{isRtl ? act.name : act.nameEn}</span>
-                               </div>
-                             ))}
-                          </div>
-                       </PopoverContent>
-                    </Popover>
-                 </div>
-
-                 <div className="space-y-3 text-start">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                       <Layers className="h-3 w-3 text-primary" /> {isRtl ? 'الخدمات المرتبطة' : 'Linked Services'}
-                    </Label>
-                    <Popover>
-                       <PopoverTrigger asChild>
-                          <Button variant="outline" className="w-full h-12 rounded-xl justify-between border-2 bg-slate-50/50 hover:bg-white transition-all font-bold px-4">
-                             <div className="flex gap-1 overflow-hidden">
-                                {formData.serviceIds?.length > 0 ? (
-                                  <Badge className="bg-blue-600 text-white font-black text-[9px]">{formData.serviceIds.length} {isRtl ? 'مختار' : 'Selected'}</Badge>
-                                ) : <span className="text-slate-400 text-xs">...</span>}
-                             </div>
-                             <ChevronDown className="h-4 w-4 opacity-30" />
-                          </Button>
-                       </PopoverTrigger>
-                       <PopoverContent className="w-64 p-2 rounded-2xl border-2 shadow-2xl" align="start">
-                          <div className="space-y-1 max-h-[300px] overflow-y-auto p-1">
-                             {allServices?.map(srv => (
-                               <div 
-                                 key={srv.id} 
-                                 onClick={() => toggleMultiSelect('serviceIds', srv.id!)}
-                                 className="flex items-center gap-3 p-3 rounded-xl hover:bg-blue-50 cursor-pointer transition-colors"
-                               >
-                                  <Checkbox checked={formData.serviceIds?.includes(srv.id!)} className="h-4 w-4" />
-                                  <span className="text-xs font-bold text-slate-700">{isRtl ? srv.name : srv.nameEn}</span>
                                </div>
                              ))}
                           </div>
