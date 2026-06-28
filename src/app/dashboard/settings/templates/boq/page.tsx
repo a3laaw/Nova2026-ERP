@@ -139,12 +139,12 @@ export default function BOQTemplatesPage() {
                     </TableCell>
                     <TableCell className="text-center">
                        <Badge variant="outline" className="font-black text-[9px] px-3 border-2">
-                          {temp.sections?.length || 0}
+                          {temp.sectionsCount || 0}
                        </Badge>
                     </TableCell>
                     <TableCell className="text-center">
                        <Badge variant="secondary" className="font-black text-[9px] px-3 bg-blue-50 text-blue-600 border-0">
-                          {temp.items?.length || 0} {isRtl ? 'بند' : 'Items'}
+                          {temp.itemsCount || 0} {isRtl ? 'بند' : 'Items'}
                        </Badge>
                     </TableCell>
                     <TableCell className="text-center">

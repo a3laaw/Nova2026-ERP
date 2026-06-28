@@ -121,5 +121,7 @@ export interface BOQTreeNode {
 
 export interface BOQTemplate extends BaseTemplate {
   measurementMode?: MeasurementMode;
+  itemsCount?: number;    // عدد البنود التنفيذية
+  sectionsCount?: number; // عدد الأقسام/المجموعات
   items?: BOQTemplateItem[]; 
 }

@@ -63,8 +63,14 @@ export class TemplateService {
     const finalTemplateId = templateId || doc(boqCollection).id;
     const templateRef = doc(boqCollection, finalTemplateId);
 
+    // حساب العدادات للتخزين في الرأس لسرعة العرض في القائمة
+    const itemsCount = items.length;
+    const sectionsCount = new Set(items.flatMap(i => i.ancestorIds || [])).size;
+
     const headData = {
       ...templateData,
+      itemsCount,
+      sectionsCount,
       companyId: this.companyId,
       updatedBy: userId,
       updatedAt: serverTimestamp(),
