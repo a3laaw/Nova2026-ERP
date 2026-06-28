@@ -90,6 +90,7 @@ export default function BOQNodesPage() {
 
   const referenceService = useMemo(() => db && companyId ? new BOQReferenceService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
+  // دالة حل الوراثة التشغيلية للعرض والربط الفني
   const resolveInheritedContext = (nodeId: string | null): any => {
     if (!nodeId || !rawNodes) return { activityTypeId: '', activityTypeName: '', serviceId: '', serviceName: '', subServiceId: '', subServiceName: '' };
     const node = rawNodes.find(n => n.id === nodeId);
@@ -110,6 +111,7 @@ export default function BOQNodesPage() {
 
   const effectiveContext = useMemo(() => {
     if (!editingNode) return null;
+    // إذا كان البند يحمل مساراً بالفعل (معرف صراحة)
     if (editingNode.subServiceId) {
        return {
          activityTypeId: editingNode.activityTypeId,
@@ -121,13 +123,15 @@ export default function BOQNodesPage() {
          isInherited: false
        };
     }
-    const inherited = resolveInheritedContext(editingNode.parentId);
+    // وإلا نبحث عنه في الآباء
+    const inherited = resolveInheritedContext(editingNode.parentId || null);
     return { ...inherited, isInherited: !!editingNode.parentId };
   }, [editingNode, rawNodes]);
 
   const [activeServices, setActiveServices] = useState<any[]>([]);
   const [activeSubs, setActiveSubs] = useState<any[]>([]);
 
+  // جلب الخدمات والمسارات للربط اليدوي (فقط للجذور أو من يريد override)
   useEffect(() => {
     if (db && companyId && editingNode?.activityTypeId && !effectiveContext?.isInherited) {
       getDocs(query(collection(db, paths.services(companyId, editingNode.activityTypeId)), orderBy('order')))
@@ -144,6 +148,7 @@ export default function BOQNodesPage() {
     }
   }, [db, companyId, editingNode?.serviceId, effectiveContext?.isInherited]);
 
+  // جلب المراحل الفنية المتاحة بناءً على المسار الفني الفعال
   useEffect(() => {
     const subId = effectiveContext?.subServiceId;
     const actId = effectiveContext?.activityTypeId;
@@ -221,11 +226,7 @@ export default function BOQNodesPage() {
     setExpandedNodes(prev => prev.includes(id) ? prev.filter(n => n !== id) : [...prev, id]);
   };
 
-  const toggleStageInSelection = (e: React.MouseEvent, stageId: string) => {
-    // منع إغلاق القائمة عند النقر
-    e.preventDefault();
-    e.stopPropagation();
-
+  const handleToggleStage = (stageId: string) => {
     if (!editingNode) return;
     
     const current = [...(editingNode.technicalStageIds || [])];
@@ -463,7 +464,13 @@ export default function BOQNodesPage() {
                                         <ChevronDown className="h-4 w-4 opacity-30" />
                                      </Button>
                                   </PopoverTrigger>
-                                  <PopoverContent className="w-[400px] p-2 rounded-2xl border-2 shadow-2xl" align="start">
+                                  <PopoverContent 
+                                    className="w-[400px] p-2 rounded-2xl border-2 shadow-2xl bg-white" 
+                                    align="start"
+                                    onPointerDownOutside={(e) => {
+                                      // منع إغلاق القائمة عند النقر خارجها إذا كان الهدف عنصراً داخلياً
+                                    }}
+                                  >
                                      <ScrollArea className="h-64">
                                         <div className="space-y-1 p-2">
                                            {loadingStages ? (
@@ -473,7 +480,15 @@ export default function BOQNodesPage() {
                                               return (
                                                 <div 
                                                   key={stage.id} 
-                                                  onClick={(e) => toggleStageInSelection(e, stage.id!)}
+                                                  onPointerDown={(e) => {
+                                                    // أهمية قصوى: منع Radix من إغلاق الـ Popover
+                                                    e.stopPropagation();
+                                                  }}
+                                                  onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    handleToggleStage(stage.id!);
+                                                  }}
                                                   className={cn(
                                                     "flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all border-2 mb-1",
                                                     isChecked ? "bg-primary/5 border-primary/20" : "bg-white border-transparent hover:bg-slate-50"
@@ -482,7 +497,7 @@ export default function BOQNodesPage() {
                                                    <div className="flex items-center gap-3">
                                                       <Checkbox 
                                                         checked={isChecked} 
-                                                        onCheckedChange={() => {}} // المعالجة تتم في div العلوي
+                                                        onCheckedChange={() => handleToggleStage(stage.id!)}
                                                       />
                                                       <div className="text-start">
                                                          <p className="font-black text-xs text-slate-800">{isRtl ? stage.name : stage.nameEn}</p>
@@ -597,4 +612,3 @@ export default function BOQNodesPage() {
     </div>
   );
 }
-
