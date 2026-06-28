@@ -15,7 +15,8 @@ import {
   AlertTriangle,
   Layers,
   Sparkles,
-  Search
+  Search,
+  ArrowRight
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where, getDocs, limit } from 'firebase/firestore';
@@ -111,7 +112,7 @@ export default function TransactionDetailsPage() {
 
   const executionService = useMemo(() => db && companyId ? new BOQExecutionService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
-  // تحديث نسب الإنجاز للمراحل
+  // تحديث نسب الإنجاز للمراحل بشكل تجميعي (Batch Update) لمنع كثرة إعادة الرسم
   useEffect(() => {
     let active = true;
     async function fetchAllProgress() {
@@ -207,7 +208,7 @@ export default function TransactionDetailsPage() {
     if (!documentService || !transaction || !user || !companyId) return;
     setIsCreatingBoq(true);
     try {
-      // 1. البحث عن القالب الافتراضي للمسار الفني
+      // 1. البحث عن القالب الافتراضي للمسار الفني (SubService)
       const templatesRef = collection(db, paths.boqTemplates(companyId));
       const q = query(
         templatesRef, 
