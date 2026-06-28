@@ -31,7 +31,7 @@ import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, collectionGroup, where, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, collectionGroup, where, getDocs, doc } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { BOQTemplate, BOQTemplateItem, BOQTreeNode } from '@/types/templates';
 import { ActivityType, Service, SubService, BOQReferenceNode, TechnicalStage } from '@/types/reference';
@@ -145,13 +145,24 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     
     setLoading(true);
     try {
-      const sanitizedItems = items.map(item => ({
-        ...item,
-        referenceDescription: item.referenceDescription || "",
-        technicalStageId: item.technicalStageId || "",
-        technicalStageIds: item.technicalStageIds || [],
-        unitSymbol: item.unitSymbol || ""
-      }));
+      const sanitizedItems = items.map(item => {
+        // ضمان أن مصفوفة المراحل غير فارغة إذا كانت هناك مرحلة واحدة مرتبطة
+        const normalizedStageIds =
+          item.technicalStageIds && item.technicalStageIds.length > 0
+            ? item.technicalStageIds
+            : (item.technicalStageId ? [item.technicalStageId] : []);
+
+        const normalizedDefaultStageId =
+          item.technicalStageId || (normalizedStageIds.length > 0 ? normalizedStageIds[0] : '');
+
+        return {
+          ...item,
+          referenceDescription: item.referenceDescription || "",
+          technicalStageId: normalizedDefaultStageId,
+          technicalStageIds: normalizedStageIds,
+          unitSymbol: item.unitSymbol || ""
+        };
+      });
       
       await service.saveBOQTemplateWithItems(template?.id || null, formData as any, sanitizedItems as any, user.uid);
       toast({ title: t('saved') });
@@ -174,7 +185,19 @@ export function BOQTemplateForm({ template, onClose }: Props) {
        return parent?.title || '---';
     }) || [];
 
-    // تصحيح: نسخ مصفوفة technicalStageIds بالكامل لضمان عمل الربط الميداني
+    // الربط الفني المعقد: دعم المسميات المختلفة لضمان انتقال الروابط من المرجع للقالب
+    const normalizedStageIds =
+      Array.isArray((node as any).technicalStageIds) && (node as any).technicalStageIds.length > 0
+        ? (node as any).technicalStageIds
+        : (((node as any).defaultTechnicalStageId || (node as any).technicalStageId)
+            ? [((node as any).defaultTechnicalStageId || (node as any).technicalStageId)]
+            : []);
+
+    const normalizedDefaultStageId =
+      (node as any).defaultTechnicalStageId ||
+      (node as any).technicalStageId ||
+      (normalizedStageIds.length > 0 ? normalizedStageIds[0] : '');
+
     const newItem: BOQTemplateItem = {
       boqReferenceNodeId: node.id!,
       referenceCode: node.code || '',
@@ -187,8 +210,8 @@ export function BOQTemplateForm({ template, onClose }: Props) {
       unitTypeId: node.unitTypeId || '',
       unitName: node.unitName || '',
       unitSymbol: node.unitSymbol || '',
-      technicalStageId: node.technicalStageId || '',
-      technicalStageIds: node.technicalStageIds || [], // تم الإضافة هنا
+      technicalStageId: normalizedDefaultStageId,
+      technicalStageIds: normalizedStageIds,
       plannedQuantity: 1,
       executedQuantity: 0,
       estimatedRate: node.estimatedRate || 0,
@@ -291,6 +314,14 @@ export function BOQTemplateForm({ template, onClose }: Props) {
           const itemPrefix = `${prefix}.${iIdx + 1}`; 
           const subtotal = (item.plannedQuantity || 0) * (item.estimatedRate || 0);
 
+          // فلترة المراحل المسموح بها لهذا البند فقط
+          const allowedStagesForItem =
+            (item.technicalStageIds && item.technicalStageIds.length > 0)
+              ? allStages.filter(s => item.technicalStageIds!.includes(s.id!))
+              : (item.technicalStageId
+                  ? allStages.filter(s => s.id === item.technicalStageId)
+                  : []);
+
           return (
             <TableRow key={`${item.boqReferenceNodeId}-${originalIdx}`} className="hover:bg-primary/[0.02] transition-colors border-b-slate-50 group/item">
               <TableCell className="font-mono text-[10px] font-bold text-slate-300 ps-8">{itemPrefix}</TableCell>
@@ -309,7 +340,18 @@ export function BOQTemplateForm({ template, onClose }: Props) {
               <TableCell className="p-1 min-w-[150px]">
                  <Select 
                    value={item.technicalStageId || 'NONE'} 
-                   onValueChange={(v) => updateItem(originalIdx, 'technicalStageId', v === 'NONE' ? '' : v)}
+                   onValueChange={(v) => {
+                     if (v === 'NONE') {
+                       updateItem(originalIdx, 'technicalStageId', '');
+                       return;
+                     }
+
+                     const currentIds = item.technicalStageIds || [];
+                     const nextIds = currentIds.includes(v) ? currentIds : [...currentIds, v];
+
+                     updateItem(originalIdx, 'technicalStageIds', nextIds);
+                     updateItem(originalIdx, 'technicalStageId', v);
+                   }}
                  >
                     <SelectTrigger className="h-8 rounded-lg text-[9px] font-black border-transparent hover:border-primary/30 bg-primary/5 text-primary">
                        <SelectValue placeholder={loadingStages ? "جاري التحميل..." : (isRtl ? "ارتباط فني..." : "Link Stage...")} />
@@ -319,7 +361,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                        {loadingStages ? (
                          <div className="p-2 text-center"><Loader2 className="h-3 w-3 animate-spin mx-auto text-primary" /></div>
                        ) : (
-                         allStages.map(s => (
+                         allowedStagesForItem.map(s => (
                            <SelectItem key={s.id} value={s.id!} className="font-bold text-[10px] py-2">
                               <div className="flex flex-col text-start">
                                  <span className="flex items-center gap-1"><Workflow className="h-2.5 w-2.5 text-primary" /> {s.name}</span>
@@ -441,7 +483,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                  </div>
               </div>
 
-              {/* تحسين قسم الارتباط المباشر لضمان نجاح عملية السحب (Matching Logic) */}
               <div className="space-y-6 pt-6 border-t">
                  <div className="space-y-3 text-start">
                     <Label className="text-[11px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
@@ -484,7 +525,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                     </div>
                  </div>
 
-                 {/* حقول المطابقة المتعددة (للفلترة والعرض الإضافي) */}
                  <div className="space-y-3 text-start pt-4 border-t border-dashed">
                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
                        <LayoutGrid className="h-3 w-3" /> {isRtl ? 'الأنشطة المرتبطة (إضافي)' : 'Also Linked To'}
