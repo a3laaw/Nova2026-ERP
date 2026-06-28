@@ -11,10 +11,10 @@ import {
   ShieldCheck, HardHat, CheckCircle2,
   Lock, Printer, Play, Check,
   FileSpreadsheet, TrendingUp, MessageSquare,
-  ChevronDown
+  ChevronDown, Hammer, Plus, Save
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
-import { doc, collection, query, orderBy } from 'firebase/firestore';
+import { doc, collection, query, orderBy, where } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -22,6 +22,7 @@ import { paths } from '@/firebase/multi-tenant';
 import { Transaction, StageInstance } from '@/types/transaction';
 import { TransactionService } from '@/services/transaction-service';
 import { BOQExecutionService, StageProgressResult } from '@/services/boq-execution-service';
+import { BOQ, BOQItem } from '@/types/documents';
 import { CommentSection } from '@/components/transactions/comment-section';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -30,6 +31,23 @@ import {
   CollapsibleContent, 
   CollapsibleTrigger 
 } from "@/components/ui/collapsible";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function TransactionDetailsPage() {
   const params = useParams();
@@ -43,12 +61,21 @@ export default function TransactionDetailsPage() {
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
+  // --- States ---
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [stageProgressMap, setStageProgressMap] = useState<Record<string, StageProgressResult>>({});
   const [openStages, setOpenStages] = useState<Record<string, boolean>>({});
+  
+  // Progress Recording State
+  const [isRecordOpen, setIsRecordOpen] = useState(false);
+  const [targetStage, setTargetStage] = useState<StageInstance | null>(null);
+  const [selectedItemId, setSelectedItemId] = useState("");
+  const [progressQty, setProgressQty] = useState<number>(0);
+  const [progressNotes, setProgressNotes] = useState("");
 
-  const viewAccess = check('projects', 'view');
+  const editAccess = check('projects', 'edit');
 
+  // --- Data Fetching ---
   const transRef = useMemo(() => 
     companyId && db ? doc(db, paths.transactions(companyId), transactionId) : null, 
   [db, companyId, transactionId]);
@@ -59,12 +86,25 @@ export default function TransactionDetailsPage() {
   [db, companyId, transactionId]);
   const { data: rawStages, loading: stagesLoading } = useCollection<StageInstance>(stagesQuery);
 
+  // جلب المقايسة والبنود للربط الميداني
+  const boqQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', transactionId)) : null, 
+  [db, companyId, transactionId]);
+  const { data: boqs } = useCollection<BOQ>(boqQuery);
+  const activeBoq = boqs?.[0];
+
+  const itemsQuery = useMemo(() => 
+    companyId && db && activeBoq?.id ? query(collection(db, paths.boqItems(companyId, activeBoq.id))) : null, 
+  [db, companyId, activeBoq]);
+  const { data: boqItems } = useCollection<BOQItem>(itemsQuery);
+
   const stages = useMemo(() => {
     return [...rawStages].sort((a, b) => (a.order || 0) - (b.order || 0));
   }, [rawStages]);
 
   const executionService = useMemo(() => db && companyId ? new BOQExecutionService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
+  // تحديث نسب الإنجاز للمراحل
   useEffect(() => {
     if (executionService && stages.length > 0) {
       stages.forEach(async (s) => {
@@ -72,12 +112,13 @@ export default function TransactionDetailsPage() {
         setStageProgressMap(prev => ({ ...prev, [s.technicalStageId]: res }));
       });
     }
-  }, [executionService, stages, transactionId]);
+  }, [executionService, stages, transactionId, boqItems]); // التحديث عند تغير البنود أيضاً
 
   const transactionService = useMemo(() => 
     db && companyId ? new TransactionService(db, companyId, permissions) : null, 
   [db, companyId, permissions]);
 
+  // --- Helpers ---
   const isStageBlocked = (stage: StageInstance) => {
     if (!stages) return false;
     return stages.some(other => 
@@ -100,6 +141,16 @@ export default function TransactionDetailsPage() {
     return Math.round((completed / stages.length) * 100);
   }, [stages]);
 
+  const filteredItemsForStage = useMemo(() => {
+    if (!boqItems || !targetStage) return [];
+    const sId = targetStage.technicalStageId;
+    return boqItems.filter(item => 
+      (item.technicalStageIds && item.technicalStageIds.includes(sId)) || 
+      (item.technicalStageId === sId)
+    );
+  }, [boqItems, targetStage]);
+
+  // --- Handlers ---
   const handleStartStage = async (stageId: string) => {
     if (!transactionService || !user) return;
     setProcessingId(stageId);
@@ -126,16 +177,47 @@ export default function TransactionDetailsPage() {
     }
   };
 
+  const handleRecordProgress = async () => {
+    if (!executionService || !activeBoq || !user || !selectedItemId || progressQty <= 0) {
+      toast({ variant: "destructive", title: isRtl ? "بيانات ناقصة" : "Missing Info", description: isRtl ? "يرجى اختيار البند وإدخال كمية صحيحة." : "Select item and valid quantity." });
+      return;
+    }
+
+    setProcessingId('recording');
+    try {
+      await executionService.recordBOQItemExecution(
+        activeBoq.id,
+        selectedItemId,
+        targetStage!.technicalStageId,
+        progressQty,
+        user.uid,
+        user.displayName || 'User',
+        progressNotes
+      );
+
+      toast({ title: isRtl ? "تم تسجيل الإنجاز" : "Progress Recorded" });
+      setIsRecordOpen(false);
+      setSelectedItemId("");
+      setProgressQty(0);
+      setProgressNotes("");
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('error'), description: e.message });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   const toggleStageCollapse = (id: string) => {
     setOpenStages(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  if (!viewAccess.can) return <div className="h-[60vh] flex flex-col items-center justify-center space-y-4"><Lock className="h-12 w-12 text-rose-500" /><p className="font-black">{isRtl ? 'وصول محجوب' : 'Access Denied'}</p></div>;
+  if (!check('projects', 'view').can) return <div className="h-[60vh] flex flex-col items-center justify-center space-y-4"><Lock className="h-12 w-12 text-rose-500" /><p className="font-black">{isRtl ? 'وصول محجوب' : 'Access Denied'}</p></div>;
   if (transLoading || stagesLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
   if (!transaction) return <div className="p-20 text-center font-black text-slate-400">{isRtl ? 'المعاملة غير موجودة' : 'Transaction not found'}</div>;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-20" dir={dir}>
+      {/* Header Bar */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-6">
         <div className="flex items-center gap-4">
           <div className="text-start">
@@ -172,7 +254,7 @@ export default function TransactionDetailsPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Main Pipeine (Left) */}
+        {/* Main Pipeline (Left) */}
         <div className="lg:col-span-8 space-y-8">
            <div className="space-y-6">
               <div className="flex justify-between items-end px-2">
@@ -237,6 +319,18 @@ export default function TransactionDetailsPage() {
                               </div>
 
                               <div className="flex gap-2 shrink-0">
+                                 {/* زر تسجيل الإنجاز المرحلي - يظهر فقط في حالة in-progress */}
+                                 {stage.status === 'in-progress' && editAccess.can && (
+                                    <Button 
+                                      onClick={() => { setTargetStage(stage); setIsRecordOpen(true); }}
+                                      variant="outline"
+                                      className="h-11 px-4 rounded-xl border-2 border-primary/20 text-primary font-black text-xs gap-2 hover:bg-primary/5"
+                                    >
+                                       <Hammer className="h-4 w-4" />
+                                       {isRtl ? 'تسجيل إنجاز' : 'Log Qty'}
+                                    </Button>
+                                 )}
+
                                  <Button 
                                     variant="ghost" 
                                     size="icon" 
@@ -309,6 +403,88 @@ export default function TransactionDetailsPage() {
            </Card>
         </div>
       </div>
+
+      {/* --- Progress Recording Dialog --- */}
+      <Dialog open={isRecordOpen} onOpenChange={setIsRecordOpen}>
+         <DialogContent className="rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
+            <div className="bg-primary/5 p-8 text-slate-900 text-start border-b">
+               <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3">
+                  <Hammer className="h-7 w-7 text-primary" />
+                  {isRtl ? 'تسجيل إنجاز ميداني' : 'Record Field Execution'}
+               </DialogTitle>
+               <p className="text-xs font-bold text-slate-500 mt-2 uppercase tracking-widest">{targetStage?.name}</p>
+            </div>
+
+            <div className="p-8 space-y-6 text-start">
+               {!activeBoq ? (
+                  <div className="p-10 text-center border-2 border-dashed rounded-3xl bg-slate-50">
+                     <AlertTriangle className="h-10 w-10 mx-auto text-amber-500 mb-4" />
+                     <p className="font-black text-slate-600">{isRtl ? "لا توجد مقايسة مرتبطة بهذه المعاملة" : "No BOQ linked to this transaction"}</p>
+                  </div>
+               ) : (
+                 <>
+                    <div className="space-y-2">
+                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? "بند المقايسة المرتبط" : "BOQ Item"}</Label>
+                       <Select value={selectedItemId} onValueChange={setSelectedItemId}>
+                          <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/30">
+                             <SelectValue placeholder={isRtl ? "اختر البند الميداني..." : "Select item..."} />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-2xl border-2 shadow-2xl">
+                             {filteredItemsForStage.length === 0 ? (
+                               <div className="p-4 text-center text-[10px] font-bold text-slate-400 italic">لا توجد بنود مرتبطة بهذه المرحلة.</div>
+                             ) : (
+                               filteredItemsForStage.map(item => (
+                                 <SelectItem key={item.id} value={item.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
+                                    <div className="flex flex-col text-start">
+                                       <span>{item.referenceTitle}</span>
+                                       <span className="text-[8px] text-slate-400 font-black uppercase">{item.referenceCode} | Qty: {item.plannedQuantity} {item.unitSymbol}</span>
+                                    </div>
+                                 </SelectItem>
+                               ))
+                             )}
+                          </SelectContent>
+                       </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? "الكمية المنفذة" : "Executed Quantity"}</Label>
+                       <div className="relative">
+                          <Input 
+                            type="number" 
+                            value={progressQty} 
+                            onChange={e => setProgressQty(Number(e.target.value))}
+                            className="h-14 rounded-2xl border-2 font-black text-xl text-primary text-center" 
+                          />
+                          <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 uppercase">QTY</div>
+                       </div>
+                    </div>
+
+                    <div className="space-y-2">
+                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? "ملاحظات التنفيذ" : "Field Notes"}</Label>
+                       <Textarea 
+                         value={progressNotes} 
+                         onChange={e => setProgressNotes(e.target.value)}
+                         className="min-h-[80px] rounded-2xl border-2 bg-slate-50/30 p-4 text-xs font-bold"
+                         placeholder="..."
+                       />
+                    </div>
+                 </>
+               )}
+            </div>
+
+            <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-3">
+               <Button variant="outline" onClick={() => setIsRecordOpen(false)} className="flex-1 h-14 rounded-2xl border-2 font-bold bg-white">إلغاء</Button>
+               <Button 
+                 onClick={handleRecordProgress} 
+                 disabled={!activeBoq || !selectedItemId || progressQty <= 0 || processingId === 'recording'}
+                 className="flex-[2] h-14 rounded-2xl bg-primary text-white font-black text-lg shadow-xl shadow-primary/20 gap-2 border-b-4 border-orange-700"
+               >
+                  {processingId === 'recording' ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />}
+                  {isRtl ? "تأكيد التسجيل" : "Confirm Record"}
+               </Button>
+            </DialogFooter>
+         </DialogContent>
+      </Dialog>
     </div>
   );
 }
