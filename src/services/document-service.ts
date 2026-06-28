@@ -149,30 +149,31 @@ export class DocumentService {
         transactionId: payload.transactionId || '',
         projectId: payload.projectId || '',
         
-        // البيانات المرجعية الديناميكية
+        // البيانات المرجعية المستنسخة من القاموس
         boqReferenceNodeId: item.boqReferenceNodeId,
         referenceCode: item.referenceCode,
         referenceTitle: item.referenceTitle,
-        referenceDescription: item.referenceDescription,
+        referenceDescription: item.referenceDescription || '',
         parentId: item.parentId,
         ancestorIds: item.ancestorIds || [],
         ancestorTitles: item.ancestorTitles || [],
         depth: item.depth || 0,
 
         // الخصائص الفنية المنسوخة
-        unitTypeId: item.unitTypeId,
-        unitName: item.unitName,
-        unitSymbol: item.unitSymbol,
-        technicalStageId: item.technicalStageId,
-        billingTriggerGroup: item.billingTriggerGroup,
-        allowedItemCategoryIds: item.allowedItemCategoryIds,
+        unitTypeId: item.unitTypeId || '',
+        unitName: item.unitName || '',
+        unitSymbol: item.unitSymbol || '',
+        technicalStageId: item.technicalStageId || '',
+        technicalStageIds: item.technicalStageIds || [],
+        billingTriggerGroup: item.billingTriggerGroup || '',
+        allowedItemCategoryIds: item.allowedItemCategoryIds || [],
 
         // القيم المخططة والتنفيذية
         plannedQuantity: item.plannedQuantity || 0,
         executedQuantity: 0, // تصفير دائم عند البداية
-        estimatedRate: item.estimatedRate,
-        estimatedCostRate: item.estimatedCostRate,
-        notes: item.notes,
+        estimatedRate: item.estimatedRate || 0,
+        estimatedCostRate: item.estimatedCostRate || 0,
+        notes: item.notes || '',
         order: item.order !== undefined ? item.order : 0,
         
         companyId: this.companyId,

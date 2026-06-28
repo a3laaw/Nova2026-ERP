@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
@@ -13,10 +12,13 @@ import {
   Lock, Printer, Play, Check,
   FileSpreadsheet, TrendingUp, MessageSquare,
   ChevronDown, Hammer, Plus, Save,
-  AlertTriangle
+  AlertTriangle,
+  Layers,
+  Sparkles,
+  Search
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
-import { doc, collection, query, orderBy, where } from 'firebase/firestore';
+import { doc, collection, query, orderBy, where, getDocs, limit } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -24,7 +26,9 @@ import { paths } from '@/firebase/multi-tenant';
 import { Transaction, StageInstance } from '@/types/transaction';
 import { TransactionService } from '@/services/transaction-service';
 import { BOQExecutionService, StageProgressResult } from '@/services/boq-execution-service';
+import { DocumentService } from '@/services/document-service';
 import { BOQ, BOQItem } from '@/types/documents';
+import { BOQTemplate } from '@/types/templates';
 import { CommentSection } from '@/components/transactions/comment-section';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -67,6 +71,7 @@ export default function TransactionDetailsPage() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [stageProgressMap, setStageProgressMap] = useState<Record<string, StageProgressResult>>({});
   const [openStages, setOpenStages] = useState<Record<string, boolean>>({});
+  const [isCreatingBoq, setIsCreatingBoq] = useState(false);
   
   // Progress Recording State
   const [isRecordOpen, setIsRecordOpen] = useState(false);
@@ -88,11 +93,11 @@ export default function TransactionDetailsPage() {
   [db, companyId, transactionId]);
   const { data: rawStages, loading: stagesLoading } = useCollection<StageInstance>(stagesQuery);
 
-  // جلب المقايسة والبنود للربط الميداني
+  // جلب المقايسة المرتبطة بالمعاملة
   const boqQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', transactionId)) : null, 
+    companyId && db ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', transactionId), limit(1)) : null, 
   [db, companyId, transactionId]);
-  const { data: boqs } = useCollection<BOQ>(boqQuery);
+  const { data: boqs, loading: boqCheckLoading } = useCollection<BOQ>(boqQuery);
   const activeBoq = boqs?.[0];
 
   const itemsQuery = useMemo(() => 
@@ -106,7 +111,7 @@ export default function TransactionDetailsPage() {
 
   const executionService = useMemo(() => db && companyId ? new BOQExecutionService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
-  // تحديث نسب الإنجاز للمراحل (تحسين الأداء ومنع الـ Re-render Loop)
+  // تحديث نسب الإنجاز للمراحل
   useEffect(() => {
     let active = true;
     async function fetchAllProgress() {
@@ -133,6 +138,10 @@ export default function TransactionDetailsPage() {
 
   const transactionService = useMemo(() => 
     db && companyId ? new TransactionService(db, companyId, permissions) : null, 
+  [db, companyId, permissions]);
+
+  const documentService = useMemo(() => 
+    db && companyId ? new DocumentService(db, companyId, permissions) : null, 
   [db, companyId, permissions]);
 
   // --- Helpers ---
@@ -194,6 +203,50 @@ export default function TransactionDetailsPage() {
     }
   };
 
+  const handleCreateBOQ = async () => {
+    if (!documentService || !transaction || !user || !companyId) return;
+    setIsCreatingBoq(true);
+    try {
+      // 1. البحث عن القالب الافتراضي للمسار الفني
+      const templatesRef = collection(db, paths.boqTemplates(companyId));
+      const q = query(
+        templatesRef, 
+        where('subServiceId', '==', transaction.subServiceId),
+        where('isDefault', '==', true),
+        limit(1)
+      );
+      const snap = await getDocs(q);
+      
+      if (snap.empty) {
+        throw new Error(isRtl ? 'لا يوجد قالب مقايسة افتراضي لهذا المسار الفني. يرجى مراجعة إعدادات القوالب.' : 'No default BOQ template found for this technical path.');
+      }
+
+      const template = snap.docs[0].data() as BOQTemplate;
+
+      // 2. استنساخ المقايسة والبنود
+      await documentService.instantiateBoqFromTemplate(
+        snap.docs[0].id,
+        {
+          transactionId,
+          clientId: transaction.clientId,
+          clientName: transaction.clientName,
+          activityTypeId: transaction.activityTypeId,
+          serviceId: transaction.serviceId,
+          subServiceId: transaction.subServiceId,
+          name: `${template.name} - ${transaction.transactionNumber}`
+        },
+        user.uid,
+        user.displayName || 'User'
+      );
+
+      toast({ title: isRtl ? "تم إنشاء المقايسة التنفيذية بنجاح" : "Executive BOQ Created Successfully" });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('error'), description: e.message });
+    } finally {
+      setIsCreatingBoq(false);
+    }
+  };
+
   const handleRecordProgress = async () => {
     if (!executionService || !activeBoq || !user || !selectedItemId || progressQty <= 0) {
       toast({ variant: "destructive", title: isRtl ? "بيانات ناقصة" : "Missing Info", description: isRtl ? "يرجى اختيار البند وإدخال كمية صحيحة." : "Select item and valid quantity." });
@@ -229,7 +282,7 @@ export default function TransactionDetailsPage() {
   };
 
   if (!check('projects', 'view').can) return <div className="h-[60vh] flex flex-col items-center justify-center space-y-4"><Lock className="h-12 w-12 text-rose-500" /><p className="font-black">{isRtl ? 'وصول محجوب' : 'Access Denied'}</p></div>;
-  if (transLoading || stagesLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
+  if (transLoading || stagesLoading || boqCheckLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
   if (!transaction) return <div className="p-20 text-center font-black text-slate-400">{isRtl ? 'المعاملة غير موجودة' : 'Transaction not found'}</div>;
 
   return (
@@ -273,6 +326,44 @@ export default function TransactionDetailsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Main Pipeline (Left) */}
         <div className="lg:col-span-8 space-y-8">
+           
+           {/* BOQ Runtime Status Card */}
+           <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
+              <div className="bg-slate-900 p-8 text-white flex flex-col md:flex-row justify-between items-center gap-6">
+                 <div className="flex items-center gap-4 text-start">
+                    <div className="h-14 w-14 rounded-2xl bg-white/10 flex items-center justify-center text-primary shadow-lg border border-white/5">
+                       <FileSpreadsheet className="h-7 w-7" />
+                    </div>
+                    <div>
+                       <h3 className="text-xl font-black font-headline">{isRtl ? 'المقايسة التنفيذية' : 'Executive BOQ'}</h3>
+                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{activeBoq ? activeBoq.boqNumber : (isRtl ? 'لم يتم ربط مقايسة بعد' : 'No BOQ linked')}</p>
+                    </div>
+                 </div>
+
+                 {activeBoq ? (
+                   <div className="flex items-center gap-4">
+                      <div className="text-center md:text-end">
+                         <p className="text-[9px] font-black text-slate-500 uppercase">{isRtl ? 'إجمالي البنود' : 'Items'}</p>
+                         <p className="text-lg font-black text-primary">{boqItems?.length || 0}</p>
+                      </div>
+                      <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="bg-white text-slate-900 font-black h-12 px-6 rounded-xl hover:bg-slate-100 shadow-xl">
+                         {isRtl ? 'فتح المقايسة' : 'Open BOQ'}
+                         <ArrowRight className={cn("h-4 w-4 ms-2", isRtl && "rotate-180")} />
+                      </Button>
+                   </div>
+                 ) : (
+                   <Button 
+                     onClick={handleCreateBOQ} 
+                     disabled={isCreatingBoq}
+                     className="bg-primary text-white font-black h-14 px-8 rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-3 border-b-4 border-orange-700"
+                   >
+                      {isCreatingBoq ? <Loader2 className="animate-spin h-5 w-5" /> : <Sparkles className="h-5 w-5" />}
+                      {isRtl ? 'إنشاء المقايسة من القالب' : 'Create from Template'}
+                   </Button>
+                 )}
+              </div>
+           </Card>
+
            <div className="space-y-6">
               <div className="flex justify-between items-end px-2">
                  <div className="text-start">
