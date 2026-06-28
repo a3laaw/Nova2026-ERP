@@ -5,6 +5,7 @@ import {
   collection, 
   doc, 
   getDocs, 
+  getDoc,
   query, 
   where, 
   serverTimestamp,
@@ -12,7 +13,7 @@ import {
   addDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
-import { BOQItem, BOQ } from '@/types/documents';
+import { BOQItem, BOQ, BOQItemExecutionEntry } from '@/types/documents';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { ensureActionPermission } from '@/lib/permissions';
@@ -45,7 +46,95 @@ export class BOQExecutionService {
   ) {}
 
   /**
-   * تحديث الكمية المنفذة لبند مقايسة فعلي
+   * تسجيل إنجاز مرحلي متخصص (Execution Bucketing)
+   * يقوم بتوزيع الإنجاز على مراحل فنية محددة وإعادة حساب الإجمالي
+   */
+  async recordBOQItemExecution(
+    boqId: string,
+    itemId: string,
+    technicalStageId: string,
+    quantity: number,
+    userId: string,
+    userName: string,
+    notes?: string
+  ) {
+    ensureActionPermission(this.permissions, 'projects:edit');
+
+    if (quantity <= 0) {
+      throw new Error('INVALID_QUANTITY: الكمية يجب أن تكون أكبر من صفر.');
+    }
+
+    const itemRef = doc(this.db, paths.boqItems(this.companyId, boqId), itemId);
+    const itemSnap = await getDoc(itemRef);
+    
+    if (!itemSnap.exists()) throw new Error('ITEM_NOT_FOUND: البند غير موجود.');
+    const itemData = itemSnap.data() as BOQItem;
+
+    // التحقق من صحة المرحلة (دعم متعدد أو مفرد للتوافق)
+    const allowedStages = itemData.technicalStageIds && itemData.technicalStageIds.length > 0 
+      ? itemData.technicalStageIds 
+      : (itemData.technicalStageId ? [itemData.technicalStageId] : []);
+
+    if (!allowedStages.includes(technicalStageId)) {
+      throw new Error('STAGE_NOT_LINKED: هذه المرحلة غير مرتبطة بهذا البند الفني في القاموس المرجعي.');
+    }
+
+    // 1. إضافة سجل التنفيذ التفصيلي
+    const executionsRef = collection(this.db, paths.boqItemExecutions(this.companyId, boqId, itemId));
+    const executionData: BOQItemExecutionEntry = {
+      companyId: this.companyId,
+      boqId,
+      boqItemId: itemId,
+      technicalStageId,
+      quantity,
+      notes: notes || '',
+      recordedBy: userId,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+
+    await addDoc(executionsRef, executionData).catch(err => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: executionsRef.path, operation: 'create', requestResourceData: executionData
+      }));
+      throw err;
+    });
+
+    // 2. إعادة حساب الإجمالي الحقيقي من كافة سجلات التنفيذ (Single Source of Truth)
+    const allExecutionsSnap = await getDocs(executionsRef);
+    const newTotal = allExecutionsSnap.docs.reduce((sum, d) => sum + (d.data().quantity || 0), 0);
+
+    // 3. تحديث البند الرئيسي بالكمية التراكمية الجديدة
+    await updateDoc(itemRef, {
+      executedQuantity: newTotal,
+      updatedAt: serverTimestamp(),
+      updatedBy: userId
+    }).catch(err => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: itemRef.path, operation: 'update'
+        }));
+        throw err;
+    });
+
+    // 4. تسجيل الحدث في سجل المعاملة (Timeline)
+    if (itemData.transactionId) {
+      const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, itemData.transactionId));
+      await addDoc(timelineRef, {
+        transactionId: itemData.transactionId,
+        type: 'numeric_update',
+        content: `تسجيل إنجاز مرحلي: ${itemData.referenceTitle} -> تم إضافة ${quantity} وحدة (${newTotal} إجمالي) في المرحلة الفنية المحددة.`,
+        userId,
+        userName,
+        companyId: this.companyId,
+        createdAt: serverTimestamp()
+      });
+    }
+
+    return { success: true, newTotal };
+  }
+
+  /**
+   * تحديث الكمية المنفذة لبند مقايسة فعلي (Legacy Method - Manual Override)
    */
   async updateBOQItemExecutedQuantity(
     boqId: string, 
@@ -63,9 +152,9 @@ export class BOQExecutionService {
     const itemRef = doc(this.db, paths.boqItems(this.companyId, boqId), itemId);
     
     // جلب البيانات الحالية للتحقق والتسجيل
-    const itemsSnap = await getDocs(query(collection(this.db, paths.boqItems(this.companyId, boqId)), where('id', '==', itemId)));
-    if (itemsSnap.empty) throw new Error('ITEM_NOT_FOUND');
-    const itemData = itemsSnap.docs[0].data() as BOQItem;
+    const itemSnap = await getDoc(itemRef);
+    if (!itemSnap.exists()) throw new Error('ITEM_NOT_FOUND');
+    const itemData = itemSnap.data() as BOQItem;
 
     const isOver = executedQuantity > itemData.plannedQuantity;
     
@@ -88,7 +177,7 @@ export class BOQExecutionService {
       await addDoc(timelineRef, {
         transactionId: itemData.transactionId,
         type: 'numeric_update',
-        content: `تحديث إنجاز البنود: ${itemData.referenceTitle} -> تم تنفيذ ${executedQuantity} ${itemData.unitSymbol || ''} ${isOver ? '(تجاوز للكمية المخططة)' : ''}`,
+        content: `تحديث يدوي للإنجاز: ${itemData.referenceTitle} -> تم ضبط الإجمالي إلى ${executedQuantity} ${itemData.unitSymbol || ''} ${isOver ? '(تجاوز للكمية المخططة)' : ''}`,
         userId,
         userName,
         companyId: this.companyId,

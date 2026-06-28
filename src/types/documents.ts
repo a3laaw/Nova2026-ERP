@@ -66,6 +66,7 @@ export interface BOQItem extends BaseReference {
   unitName?: string;
   unitSymbol?: string;
   technicalStageId?: string;
+  technicalStageIds?: string[];
   billingTriggerGroup?: string;
   allowedItemCategoryIds?: string[];
 
@@ -77,6 +78,19 @@ export interface BOQItem extends BaseReference {
   actualRate?: number;
   notes?: string;
   order: number;
+}
+
+/**
+ * سجل تنفيذ مرحلي لبند BOQ (Execution Entry)
+ */
+export interface BOQItemExecutionEntry extends BaseReference {
+  id?: string;
+  boqId: string;
+  boqItemId: string;
+  technicalStageId: string;
+  quantity: number;
+  notes?: string;
+  recordedBy: string;
 }
 
 /**
