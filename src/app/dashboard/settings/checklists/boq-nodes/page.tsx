@@ -146,6 +146,7 @@ export default function BOQNodesPage() {
     }
   }, [db, companyId, editingNode?.serviceId, effectiveContext?.isInherited]);
 
+  // تثبيت جلب المراحل الفنية بناءً على المسار الموروث أو المختار
   useEffect(() => {
     const subId = effectiveContext?.subServiceId;
     const actId = effectiveContext?.activityTypeId;
@@ -190,6 +191,7 @@ export default function BOQNodesPage() {
         updated = [...current, stageId];
       }
 
+      // تحديد المرحلة الافتراضية: إذا حذفنا الافتراضية، نختار أول واحدة متبقية
       const nextDefault =
         updated.length === 0
           ? ''
@@ -495,7 +497,7 @@ export default function BOQNodesPage() {
                                                 return (
                                                   <div 
                                                     key={stage.id} 
-                                                    onMouseDown={(e) => e.preventDefault()}
+                                                    onPointerDown={(e) => e.stopPropagation()}
                                                     onClick={() => handleToggleStage(stage.id!)}
                                                     className={cn(
                                                       "w-full flex items-center justify-between p-3 rounded-xl transition-all border-2 mb-1 text-start cursor-pointer",
@@ -621,4 +623,3 @@ export default function BOQNodesPage() {
     </div>
   );
 }
-
