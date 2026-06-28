@@ -27,14 +27,18 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (!authLoading && !user) {
-      router.push('/');
+      router.push('/login');
     }
   }, [user, authLoading, router]);
 
+  // واجهة التحميل المركزية (The Spinner in your screenshot)
   if (authLoading || companyLoading) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-[#F8F9FA]">
-        <Loader2 className="h-10 w-10 animate-spin text-[#FFA000]" />
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#F8F9FA] gap-4">
+        <Loader2 className="h-12 w-12 animate-spin text-[#FFA000]" />
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] animate-pulse">
+           Authenticating Sovereign Session...
+        </p>
       </div>
     );
   }
@@ -53,7 +57,6 @@ export default function DashboardLayout({
             
             <div className="flex-1 flex items-center gap-4 overflow-hidden">
               <div className="h-6 w-[1.5px] bg-slate-100 rounded-full mx-2 hidden md:block" />
-              {/* شريط المسار وزر الرجوع العالمي */}
               <BreadcrumbNav />
             </div>
 

@@ -35,21 +35,28 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!db || !globalUser?.companyId) {
       setCompany(null);
+      // إذا لم يكن هناك منشأة مرتبطة، ننهي التحميل فوراً
       setLoading(false);
       return;
     }
 
-    const unsubscribe = onSnapshot(doc(db, 'companies', globalUser.companyId), (doc) => {
-      if (doc.exists()) {
-        setCompany({ id: doc.id, ...doc.data() } as CompanyData);
+    // تعيين حالة التحميل عند بدء جلب بيانات شركة جديدة
+    setLoading(true);
+
+    const unsubscribe = onSnapshot(doc(db, 'companies', globalUser.companyId), (snap) => {
+      if (snap.exists()) {
+        setCompany({ id: snap.id, ...snap.data() } as CompanyData);
       } else {
         setCompany(null);
       }
       setLoading(false);
+    }, (err) => {
+      console.error("Company snapshot error:", err);
+      setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [db, globalUser]);
+  }, [db, globalUser?.companyId]);
 
   return (
     <CompanyContext.Provider value={{ company, loading }}>

@@ -7,7 +7,7 @@ import { useAuth, useFirestore } from '@/firebase';
 import { Role } from '@/types/roles';
 
 interface GlobalUserData {
-  uid: string; // إضافة UID للسجل العالمي لسهولة الوصول
+  uid: string;
   companyId: string;
   role: string;
   roleId?: string;
@@ -50,6 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, [auth]);
 
+  // تأثير 1: جلب بيانات المستخدم العالمي (global_users)
   useEffect(() => {
     if (!db || !user) return;
 
@@ -71,8 +72,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onSnapshot(docRef, (snap) => {
       if (snap.exists()) {
         const data = snap.data() as GlobalUserData;
-        setGlobalUser({ ...data, uid: user.uid }); // دمج الـ UID
-        if (!data.roleId) setLoading(false);
+        setGlobalUser({ ...data, uid: user.uid });
+        // إذا لم يكن هناك دور مركب، ننهي التحميل هنا
+        if (!data.roleId) {
+          setLoading(false);
+        }
       } else {
         setGlobalUser(null);
         setLoading(false);
@@ -85,10 +89,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, [db, user]);
 
+  // تأثير 2: جلب بيانات الصلاحيات (Role Data)
   useEffect(() => {
-    if (!db || !globalUser?.companyId || !globalUser?.roleId) {
+    // إصلاح سيادي: إذا كانت البيانات غير مكتملة، ننهي التحميل فوراً لمنع التعليق
+    if (!db || !globalUser) return;
+
+    if (!globalUser.companyId || !globalUser.roleId) {
       setRoleData(null);
-      if (globalUser && !globalUser.roleId) setLoading(false);
+      setLoading(false);
       return;
     }
 
