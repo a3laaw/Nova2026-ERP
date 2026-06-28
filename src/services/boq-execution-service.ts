@@ -227,7 +227,7 @@ export class BOQExecutionService {
 
   /**
    * جلب تقدم الإنجاز لمرحلة فنية محددة داخل معاملة
-   * تستخدم للتحقق قبل إغلاق المرحلة في TransactionService
+   * تم تحديث المنطق ليدعم الربط المتعدد وسجلات التنفيذ المرحلية
    */
   async getTechnicalStageProgress(transactionId: string, technicalStageId: string): Promise<StageProgressResult> {
     // 1. البحث عن المقايسة المرتبطة بالمعاملة
@@ -236,33 +236,59 @@ export class BOQExecutionService {
     const boqSnap = await getDocs(boqQuery);
     
     if (boqSnap.empty) {
-      // إذا لم توجد مقايسة، نسمح بإكمال المرحلة (سلوك افتراضي مرن)
       return { linkedItemsCount: 0, totalPlanned: 0, totalExecuted: 0, progressPercent: 100, canComplete: true };
     }
 
     const boqId = boqSnap.docs[0].id;
 
-    // 2. جلب البنود المرتبطة بهذه المرحلة
+    // 2. جلب كافة البنود وتحليل الارتباط برمجياً (لضمان دقة الـ Multiple Stages)
     const itemsRef = collection(this.db, paths.boqItems(this.companyId, boqId));
-    const itemsQuery = query(itemsRef, where('technicalStageId', '==', technicalStageId));
-    const itemsSnap = await getDocs(itemsQuery);
+    const itemsSnap = await getDocs(itemsRef);
+    
+    const allItems = itemsSnap.docs.map(d => ({ id: d.id, ...d.data() } as BOQItem));
+    
+    // تصفية البنود المرتبطة بهذه المرحلة (دعم المصفوفة technicalStageIds والحقل المفرد)
+    const linkedItems = allItems.filter(i => 
+      (i.technicalStageIds && i.technicalStageIds.includes(technicalStageId)) || 
+      (i.technicalStageId === technicalStageId)
+    );
 
-    if (itemsSnap.empty) {
-      // لا توجد بنود مرتبطة بهذه المرحلة تحديداً
+    if (linkedItems.length === 0) {
       return { linkedItemsCount: 0, totalPlanned: 0, totalExecuted: 0, progressPercent: 100, canComplete: true };
     }
 
-    const items = itemsSnap.docs.map(d => d.data() as BOQItem);
-    const totalPlanned = items.reduce((sum, i) => sum + (i.plannedQuantity || 0), 0);
-    const totalExecuted = items.reduce((sum, i) => sum + (i.executedQuantity || 0), 0);
-    const progress = totalPlanned > 0 ? (totalExecuted / totalPlanned) * 100 : 0;
+    let totalPlanned = 0;
+    let totalExecuted = 0;
 
-    // قاعدة العمل السيادية: لا يمكن إغلاق المرحلة إذا كانت هناك بنود مرتبطة ولم يتم البدء في تنفيذها (0%)
-    // يمكنك تشديدها لتكون 100% مستقبلاً
+    // 3. حساب الإنجاز التراكمي للمرحلة المختارة فقط عبر كافة البنود المرتبطة
+    const executionPromises = linkedItems.map(async (item) => {
+      totalPlanned += (item.plannedQuantity || 0);
+
+      // جلب سجلات التنفيذ لهذه المرحلة تحديداً تحت هذا البند
+      const executionsRef = collection(this.db, paths.boqItemExecutions(this.companyId, boqId, item.id));
+      const qExec = query(executionsRef, where('technicalStageId', '==', technicalStageId));
+      const execSnap = await getDocs(qExec);
+
+      if (!execSnap.empty) {
+        // نجمع فقط السجلات الخاصة بهذه المرحلة (Execution Bucketing)
+        const stageSum = execSnap.docs.reduce((acc, d) => acc + (d.data().quantity || 0), 0);
+        totalExecuted += stageSum;
+      } else {
+        // نظام التعويض للبنود القديمة (Fallback): إذا لا يوجد مصفوفة مراحل، نعتمد الإجمالي
+        const isOldItem = !item.technicalStageIds || item.technicalStageIds.length === 0;
+        if (isOldItem && item.technicalStageId === technicalStageId) {
+          totalExecuted += (item.executedQuantity || 0);
+        }
+      }
+    });
+
+    await Promise.all(executionPromises);
+
+    const progress = totalPlanned > 0 ? (totalExecuted / totalPlanned) * 100 : 0;
     const canComplete = totalExecuted > 0;
 
     return {
-      linkedItemsCount: items.length,
+      linkedItemsCount: linkedItems.length,
       totalPlanned,
       totalExecuted,
       progressPercent: Math.round(progress * 100) / 100,

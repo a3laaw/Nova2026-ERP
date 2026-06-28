@@ -27,7 +27,7 @@ export interface Transaction extends BaseReference {
 export interface TransactionTimelineEvent extends BaseReference {
   id?: string;
   transactionId: string;
-  type: 'system' | 'stage_start' | 'stage_complete' | 'comment' | 'numeric_update';
+  type: 'system' | 'stage_start' | 'stage_complete' | 'stage_reopen' | 'comment' | 'numeric_update';
   content: string;
   userId: string;
   userName: string;
