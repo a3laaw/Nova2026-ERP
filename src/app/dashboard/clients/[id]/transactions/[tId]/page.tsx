@@ -105,15 +105,27 @@ export default function TransactionDetailsPage() {
 
   const executionService = useMemo(() => db && companyId ? new BOQExecutionService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
-  // تحديث نسب الإنجاز للمراحل
+  // تحديث نسب الإنجاز للمراحل (تحسين الأداء ومنع الـ Re-render Loop)
   useEffect(() => {
-    if (executionService && stages.length > 0) {
-      stages.forEach(async (s) => {
+    let active = true;
+    async function fetchAllProgress() {
+      if (!executionService || stages.length === 0) return;
+      
+      const results: Record<string, StageProgressResult> = {};
+      const promises = stages.map(async (s) => {
         const res = await executionService.getTechnicalStageProgress(transactionId, s.technicalStageId);
-        setStageProgressMap(prev => ({ ...prev, [s.technicalStageId]: res }));
+        results[s.technicalStageId] = res;
       });
+      
+      await Promise.all(promises);
+      if (active) {
+        setStageProgressMap(results);
+      }
     }
-  }, [executionService, stages, transactionId, boqItems]); // التحديث عند تغير البنود أيضاً
+    
+    fetchAllProgress();
+    return () => { active = false; };
+  }, [executionService, stages, transactionId, boqItems]); 
 
   const transactionService = useMemo(() => 
     db && companyId ? new TransactionService(db, companyId, permissions) : null, 
@@ -343,7 +355,7 @@ export default function TransactionDetailsPage() {
 
                                  {stage.status === 'pending' && !blocked && (
                                     <Button 
-                                      onClick={handleStartStage(stage.id!)} 
+                                      onClick={() => handleStartStage(stage.id!)} 
                                       disabled={processingId === stage.id}
                                       className="h-11 px-6 rounded-xl bg-blue-600 text-white font-black text-xs gap-2 shadow-lg shadow-blue-900/10"
                                     >
@@ -450,11 +462,11 @@ export default function TransactionDetailsPage() {
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? "الكمية المنفذة" : "Executed Quantity"}</Label>
                        <div className="relative">
-                          <Input 
+                          <input 
                             type="number" 
                             value={progressQty} 
                             onChange={e => setProgressQty(Number(e.target.value))}
-                            className="h-14 rounded-2xl border-2 font-black text-xl text-primary text-center" 
+                            className="h-14 w-full rounded-2xl border-2 font-black text-xl text-primary text-center outline-none focus:border-primary/50 transition-all" 
                           />
                           <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 uppercase">QTY</div>
                        </div>
