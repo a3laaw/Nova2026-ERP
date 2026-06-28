@@ -72,6 +72,7 @@ export default function BOQNodesPage() {
   const [editingNode, setEditingNode] = useState<Partial<BOQReferenceNode> | null>(null);
   const [expandedNodes, setExpandedNodes] = useState<string[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [stagesPopoverOpen, setStagesPopoverOpen] = useState(false);
   
   const [availableStages, setAvailableStages] = useState<TechnicalStage[]>([]);
   const [loadingStages, setLoadingStages] = useState(false);
@@ -111,7 +112,6 @@ export default function BOQNodesPage() {
 
   const effectiveContext = useMemo(() => {
     if (!editingNode) return null;
-    // إذا كان البند يحمل مساراً بالفعل (معرف صراحة)
     if (editingNode.subServiceId) {
        return {
          activityTypeId: editingNode.activityTypeId,
@@ -123,7 +123,6 @@ export default function BOQNodesPage() {
          isInherited: false
        };
     }
-    // وإلا نبحث عنه في الآباء
     const inherited = resolveInheritedContext(editingNode.parentId || null);
     return { ...inherited, isInherited: !!editingNode.parentId };
   }, [editingNode, rawNodes]);
@@ -131,7 +130,6 @@ export default function BOQNodesPage() {
   const [activeServices, setActiveServices] = useState<any[]>([]);
   const [activeSubs, setActiveSubs] = useState<any[]>([]);
 
-  // جلب الخدمات والمسارات للربط اليدوي (فقط للجذور أو من يريد override)
   useEffect(() => {
     if (db && companyId && editingNode?.activityTypeId && !effectiveContext?.isInherited) {
       getDocs(query(collection(db, paths.services(companyId, editingNode.activityTypeId)), orderBy('order')))
@@ -148,7 +146,6 @@ export default function BOQNodesPage() {
     }
   }, [db, companyId, editingNode?.serviceId, effectiveContext?.isInherited]);
 
-  // جلب المراحل الفنية المتاحة بناءً على المسار الفني الفعال
   useEffect(() => {
     const subId = effectiveContext?.subServiceId;
     const actId = effectiveContext?.activityTypeId;
@@ -179,6 +176,34 @@ export default function BOQNodesPage() {
     };
     return buildTree(null);
   }, [rawNodes]);
+
+  const handleToggleStage = (stageId: string) => {
+    setEditingNode(prev => {
+      if (!prev) return prev;
+
+      const current = prev.technicalStageIds || [];
+      let updated: string[];
+
+      if (current.includes(stageId)) {
+        updated = current.filter(id => id !== stageId);
+      } else {
+        updated = [...current, stageId];
+      }
+
+      const nextDefault =
+        updated.length === 0
+          ? ''
+          : prev.technicalStageId && updated.includes(prev.technicalStageId)
+            ? prev.technicalStageId
+            : updated[0];
+
+      return {
+        ...prev,
+        technicalStageIds: updated,
+        technicalStageId: nextDefault,
+      };
+    });
+  };
 
   const handleSave = async () => {
     if (!referenceService || !user || !editingNode?.title) return;
@@ -224,25 +249,6 @@ export default function BOQNodesPage() {
 
   const toggleNode = (id: string) => {
     setExpandedNodes(prev => prev.includes(id) ? prev.filter(n => n !== id) : [...prev, id]);
-  };
-
-  const handleToggleStage = (stageId: string) => {
-    if (!editingNode) return;
-    
-    const current = [...(editingNode.technicalStageIds || [])];
-    let updated: string[];
-    
-    if (current.includes(stageId)) {
-      updated = current.filter(id => id !== stageId);
-      // تحديث المرحلة الافتراضية إذا تم حذفها
-      const newDefault = editingNode.technicalStageId === stageId ? (updated[0] || '') : editingNode.technicalStageId;
-      setEditingNode({ ...editingNode, technicalStageIds: updated, technicalStageId: newDefault });
-    } else {
-      updated = [...current, stageId];
-      // تعيين كافتراضية إذا كانت الأولى
-      const newDefault = !editingNode.technicalStageId ? stageId : editingNode.technicalStageId;
-      setEditingNode({ ...editingNode, technicalStageIds: updated, technicalStageId: newDefault });
-    }
   };
 
   const renderNode = (node: any, pathPrefix: string) => {
@@ -453,13 +459,17 @@ export default function BOQNodesPage() {
                           
                           {effectiveContext?.subServiceId ? (
                             <div className="space-y-4">
-                               <Popover>
+                               <Popover open={stagesPopoverOpen} onOpenChange={setStagesPopoverOpen}>
                                   <PopoverTrigger asChild>
-                                     <Button variant="outline" className="w-full h-12 rounded-xl justify-between border-2 bg-white font-black text-xs px-4">
+                                     <Button 
+                                       type="button"
+                                       variant="outline" 
+                                       className="w-full h-12 rounded-xl justify-between border-2 bg-white font-black text-xs px-4"
+                                     >
                                         <div className="flex gap-1 overflow-hidden">
                                            {editingNode.technicalStageIds?.length ? (
                                              <Badge className="bg-primary text-white border-0 text-[10px] font-black">{editingNode.technicalStageIds.length} {isRtl ? 'مختار' : 'Selected'}</Badge>
-                                           ) : <span className="text-slate-400">--- اختر مرحلة واحدة أو أكثر ---</span>}
+                                           ) : <span className="text-slate-400">{isRtl ? '--- اختر مرحلة واحدة أو أكثر ---' : '--- Select one or more stages ---'}</span>}
                                         </div>
                                         <ChevronDown className="h-4 w-4 opacity-30" />
                                      </Button>
@@ -467,47 +477,47 @@ export default function BOQNodesPage() {
                                   <PopoverContent 
                                     className="w-[400px] p-2 rounded-2xl border-2 shadow-2xl bg-white" 
                                     align="start"
-                                    onPointerDownOutside={(e) => {
-                                      // منع إغلاق القائمة عند النقر خارجها إذا كان الهدف عنصراً داخلياً
-                                    }}
+                                    sideOffset={8}
+                                    onOpenAutoFocus={(e) => e.preventDefault()}
+                                    onCloseAutoFocus={(e) => e.preventDefault()}
                                   >
                                      <ScrollArea className="h-64">
                                         <div className="space-y-1 p-2">
                                            {loadingStages ? (
                                               <div className="p-10 text-center"><Loader2 className="animate-spin h-6 w-6 mx-auto text-primary/30" /></div>
-                                           ) : availableStages.map(stage => {
-                                              const isChecked = editingNode.technicalStageIds?.includes(stage.id!);
-                                              return (
-                                                <div 
-                                                  key={stage.id} 
-                                                  onPointerDown={(e) => {
-                                                    // أهمية قصوى: منع Radix من إغلاق الـ Popover
-                                                    e.stopPropagation();
-                                                  }}
-                                                  onClick={(e) => {
-                                                    e.preventDefault();
-                                                    e.stopPropagation();
-                                                    handleToggleStage(stage.id!);
-                                                  }}
-                                                  className={cn(
-                                                    "flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all border-2 mb-1",
-                                                    isChecked ? "bg-primary/5 border-primary/20" : "bg-white border-transparent hover:bg-slate-50"
-                                                  )}
-                                                >
-                                                   <div className="flex items-center gap-3">
-                                                      <Checkbox 
-                                                        checked={isChecked} 
-                                                        onCheckedChange={() => handleToggleStage(stage.id!)}
-                                                      />
-                                                      <div className="text-start">
-                                                         <p className="font-black text-xs text-slate-800">{isRtl ? stage.name : stage.nameEn}</p>
-                                                         <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">{stage.code}</span>
-                                                      </div>
-                                                   </div>
-                                                   {editingNode.technicalStageId === stage.id && <Badge className="bg-emerald-500 text-white text-[7px] font-black h-4">DEFAULT</Badge>}
-                                                </div>
-                                              );
-                                           })}
+                                           ) : availableStages.length === 0 ? (
+                                              <div className="p-6 text-center text-xs font-bold text-slate-400">
+                                                {isRtl ? 'لا توجد مراحل متاحة لهذا المسار الفني' : 'No stages available for this technical path'}
+                                              </div>
+                                           ) : (
+                                              availableStages.map(stage => {
+                                                const isChecked = editingNode.technicalStageIds?.includes(stage.id!);
+                                                return (
+                                                  <button 
+                                                    type="button"
+                                                    key={stage.id} 
+                                                    onMouseDown={(e) => e.preventDefault()}
+                                                    onClick={() => handleToggleStage(stage.id!)}
+                                                    className={cn(
+                                                      "w-full flex items-center justify-between p-3 rounded-xl transition-all border-2 mb-1 text-start",
+                                                      isChecked ? "bg-primary/5 border-primary/20" : "bg-white border-transparent hover:bg-slate-50"
+                                                    )}
+                                                  >
+                                                     <div className="flex items-center gap-3">
+                                                        <Checkbox 
+                                                          checked={isChecked} 
+                                                          className="pointer-events-none"
+                                                        />
+                                                        <div className="text-start">
+                                                           <p className="font-black text-xs text-slate-800">{isRtl ? stage.name : (stage.nameEn || stage.name)}</p>
+                                                           <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">{stage.code}</span>
+                                                        </div>
+                                                     </div>
+                                                     {editingNode.technicalStageId === stage.id && <Badge className="bg-emerald-500 text-white text-[7px] font-black h-4">DEFAULT</Badge>}
+                                                  </button>
+                                                );
+                                              })
+                                           )}
                                         </div>
                                      </ScrollArea>
                                   </PopoverContent>
@@ -528,7 +538,7 @@ export default function BOQNodesPage() {
                                                 editingNode.technicalStageId === id ? "bg-white border-primary shadow-sm" : "bg-white/50 border-slate-100 opacity-60"
                                               )}
                                             >
-                                               <span className="text-[10px] font-black text-slate-700 truncate">{isRtl ? stage?.name : stage?.nameEn}</span>
+                                               <span className="text-[10px] font-black text-slate-700 truncate">{isRtl ? stage?.name : (stage?.nameEn || stage?.name)}</span>
                                                {editingNode.technicalStageId === id && <CheckCircle2 className="h-3 w-3 text-primary" />}
                                             </div>
                                           );
