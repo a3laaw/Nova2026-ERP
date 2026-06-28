@@ -99,7 +99,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     return [...(rawAllServices || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
   }, [rawAllServices]);
 
-  // تحديث قائمة المسارات الفرعية عند تغيير الخدمة الأساسية
   useEffect(() => {
     if (db && companyId && formData.activityTypeId && formData.serviceId) {
       getDocs(query(collection(db, paths.subServices(companyId, formData.activityTypeId, formData.serviceId)), orderBy('order')))
@@ -150,6 +149,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
         ...item,
         referenceDescription: item.referenceDescription || "",
         technicalStageId: item.technicalStageId || "",
+        technicalStageIds: item.technicalStageIds || [],
         unitSymbol: item.unitSymbol || ""
       }));
       
@@ -174,6 +174,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
        return parent?.title || '---';
     }) || [];
 
+    // تصحيح: نسخ مصفوفة technicalStageIds بالكامل لضمان عمل الربط الميداني
     const newItem: BOQTemplateItem = {
       boqReferenceNodeId: node.id!,
       referenceCode: node.code || '',
@@ -187,6 +188,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
       unitName: node.unitName || '',
       unitSymbol: node.unitSymbol || '',
       technicalStageId: node.technicalStageId || '',
+      technicalStageIds: node.technicalStageIds || [], // تم الإضافة هنا
       plannedQuantity: 1,
       executedQuantity: 0,
       estimatedRate: node.estimatedRate || 0,
