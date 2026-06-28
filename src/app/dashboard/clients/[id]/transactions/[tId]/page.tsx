@@ -16,7 +16,8 @@ import {
   Layers,
   Sparkles,
   Search,
-  ArrowRight
+  ArrowRight,
+  Info
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where, getDocs, limit } from 'firebase/firestore';
@@ -354,7 +355,7 @@ export default function TransactionDetailsPage() {
                    </div>
                  ) : (
                    <Button 
-                     onClick={handleCreateBOQ} 
+                     onClick={() => handleCreateBOQ()} 
                      disabled={isCreatingBoq}
                      className="bg-primary text-white font-black h-14 px-8 rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-3 border-b-4 border-orange-700"
                    >
@@ -529,6 +530,7 @@ export default function TransactionDetailsPage() {
                   <div className="p-10 text-center border-2 border-dashed rounded-3xl bg-slate-50">
                      <AlertTriangle className="h-10 w-10 mx-auto text-amber-500 mb-4" />
                      <p className="font-black text-slate-600">{isRtl ? "لا توجد مقايسة مرتبطة بهذه المعاملة" : "No BOQ linked to this transaction"}</p>
+                     <p className="text-[10px] text-slate-400 font-bold mt-2 italic">{isRtl ? "يرجى إنشاء المقايسة من القالب في قسم 'المقايسة التنفيذية' أولاً." : "Please create a BOQ from template first."}</p>
                   </div>
                ) : (
                  <>
@@ -540,7 +542,14 @@ export default function TransactionDetailsPage() {
                           </SelectTrigger>
                           <SelectContent className="rounded-2xl border-2 shadow-2xl">
                              {filteredItemsForStage.length === 0 ? (
-                               <div className="p-4 text-center text-[10px] font-bold text-slate-400 italic">لا توجد بنود مرتبطة بهذه المرحلة.</div>
+                               <div className="p-6 text-center space-y-3">
+                                  <Info className="h-6 w-6 mx-auto text-blue-400" />
+                                  <p className="text-[10px] font-bold text-slate-400 italic leading-relaxed">
+                                     {isRtl 
+                                       ? "لا توجد بنود مرتبطة بهذه المرحلة في القاموس المرجعي. يرجى ربط البنود في الإعدادات > شجرة الأعمال." 
+                                       : "No items linked to this stage in registry."}
+                                  </p>
+                               </div>
                              ) : (
                                filteredItemsForStage.map(item => (
                                  <SelectItem key={item.id} value={item.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">

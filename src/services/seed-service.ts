@@ -80,6 +80,7 @@ export class SeedService {
     // 3. الهيكل الفني الرباعي (المسارات)
     const activityRefs: Record<string, string> = {};
     const serviceRefs: Record<string, string> = {};
+    const stageRefs: Record<string, string> = {};
 
     for (const act of SEED_DATA.activityTypes) {
       const actRef = doc(collection(this.db, paths.activityTypes(this.companyId)));
@@ -127,6 +128,7 @@ export class SeedService {
 
           for (const stage of sub.technicalStages) {
             const stageRef = doc(collection(this.db, paths.technicalStages(this.companyId, actRef.id, srvRef.id, subRef.id)));
+            stageRefs[stage.code] = stageRef.id;
             batch.set(stageRef, {
               ...stage,
               activityTypeId: actRef.id,
@@ -144,6 +146,7 @@ export class SeedService {
     }
 
     // 4. ضخ القاموس الهندسي الشجري الموحد (boqReferenceNodes)
+    // مع ربط البند بالمرحلة الفنية لضمان عمل "تسجيل الإنجاز" فوراً
     const rootCivilRef = doc(collection(this.db, paths.boqReferenceNodes(this.companyId)));
     batch.set(rootCivilRef, {
       code: 'CONSTRUCTION_ROOT',
@@ -165,6 +168,8 @@ export class SeedService {
     } as BOQReferenceNode);
 
     const excavationRef = doc(collection(this.db, paths.boqReferenceNodes(this.companyId)));
+    const excavationStageId = stageRefs['FILE-OPEN'] || ''; // ربط تجريبي بمرحلة فتح الملف
+
     batch.set(excavationRef, {
       code: 'EXC_STR_01',
       title: 'حفريات القواعد والأساسات الإنشائية',
@@ -178,6 +183,8 @@ export class SeedService {
       unitName: 'متر مكعب',
       unitSymbol: 'CUM',
       estimatedRate: 2.5,
+      technicalStageId: excavationStageId,
+      technicalStageIds: [excavationStageId],
       allowedItemCategoryIds: ['CIVIL_MAT'],
       order: 1,
       companyId: this.companyId,
