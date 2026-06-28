@@ -91,7 +91,6 @@ export default function BOQNodesPage() {
 
   const referenceService = useMemo(() => db && companyId ? new BOQReferenceService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
-  // دالة حل الوراثة التشغيلية للعرض والربط الفني
   const resolveInheritedContext = (nodeId: string | null): any => {
     if (!nodeId || !rawNodes) return { activityTypeId: '', activityTypeName: '', serviceId: '', serviceName: '', subServiceId: '', subServiceName: '' };
     const node = rawNodes.find(n => n.id === nodeId);
@@ -146,7 +145,6 @@ export default function BOQNodesPage() {
     }
   }, [db, companyId, editingNode?.serviceId, effectiveContext?.isInherited]);
 
-  // تثبيت جلب المراحل الفنية بناءً على المسار الموروث أو المختار
   useEffect(() => {
     const subId = effectiveContext?.subServiceId;
     const actId = effectiveContext?.activityTypeId;
@@ -191,7 +189,6 @@ export default function BOQNodesPage() {
         updated = [...current, stageId];
       }
 
-      // تحديد المرحلة الافتراضية: إذا حذفنا الافتراضية، نختار أول واحدة متبقية
       const nextDefault =
         updated.length === 0
           ? ''
