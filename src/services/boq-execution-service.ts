@@ -50,7 +50,8 @@ export class BOQExecutionService {
     quantity: number,
     userId: string,
     userName: string,
-    notes?: string
+    notes?: string,
+    stageInstanceId?: string // Optional: Stage Instance ID for timeline linking
   ) {
     ensureActionPermission(this.permissions, 'projects:edit');
 
@@ -64,11 +65,8 @@ export class BOQExecutionService {
     if (!itemSnap.exists()) throw new Error('ITEM_NOT_FOUND: البند غير موجود.');
     const itemData = itemSnap.data() as BOQItem;
 
-    // --- التحقق الأمني من ارتباط البند بالمرحلة الفنية ---
+    // Check if the stage is allowed for this item
     const allowedStages = itemData.technicalStageIds || [];
-    
-    // إذا كان هناك مصفوفة مراحل، يجب أن تحتوي المرحلة المرسلة
-    // إذا لم تكن موجودة (بيانات قديمة)، نستخدم الحقل المنفرد كـ fallback
     const isStageAllowed = allowedStages.length > 0 
       ? allowedStages.includes(technicalStageId)
       : itemData.technicalStageId === technicalStageId;
@@ -106,7 +104,8 @@ export class BOQExecutionService {
       const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, itemData.transactionId));
       await addDoc(timelineRef, {
         transactionId: itemData.transactionId,
-        stageId: technicalStageId, // ربط الحدث بالمرحلة للأرشفة لاحقاً
+        stageId: stageInstanceId || '', // ALWAYS use Instance ID for stageId
+        technicalStageId: technicalStageId, // Store Reference ID separately
         type: 'numeric_update',
         content: quantity === 0 
           ? `تأكيد فني: ${itemData.referenceTitle}`
@@ -122,9 +121,6 @@ export class BOQExecutionService {
     return { success: true };
   }
 
-  /**
-   * أرشفة السجلات (تستخدم دائماً عند التراجع لضمان النزاهة)
-   */
   async archiveStageExecutions(transactionId: string, technicalStageId: string, isReset: boolean = false) {
     ensureActionPermission(this.permissions, 'projects:edit');
     
@@ -147,7 +143,7 @@ export class BOQExecutionService {
       if (data.isArchived !== true) {
         batch.update(d.ref, { 
           isArchived: true, 
-          isReset, // علامة توضح أن هذا الأرشيف ناتج عن عملية "تصفير"
+          isReset, 
           archivedAt: serverTimestamp(),
           updatedAt: serverTimestamp() 
         });

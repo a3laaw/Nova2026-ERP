@@ -258,7 +258,8 @@ export default function TransactionDetailsPage() {
         isComplementary ? 0 : progressQty,
         user.uid,
         user.displayName || 'User',
-        progressNotes
+        progressNotes,
+        targetStage.id // Pass the specific instance ID
       );
       toast({ title: isRtl ? "تم تسجيل الإنجاز" : "Progress Recorded" });
       setIsRecordOpen(false);
@@ -273,11 +274,9 @@ export default function TransactionDetailsPage() {
     }
   };
 
-  // وظيفة فتح التعليق المخصصة (Context Focus)
   const handleStageCommentClick = (stage: StageInstance) => {
     setFilterStageId(stage.id!);
     setActiveTabOverride('active');
-    // نستخدم setTimeout لضمان تمرير الـ Reset للـ ActiveTabOverride لاحقاً
     setTimeout(() => setActiveTabOverride(undefined), 100);
   };
 
@@ -288,7 +287,6 @@ export default function TransactionDetailsPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-20" dir={dir}>
-      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-6">
         <div className="flex items-center gap-4 text-start">
            <div className="h-12 px-5 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-black text-lg border-2 border-primary/20 shadow-inner">
@@ -315,7 +313,6 @@ export default function TransactionDetailsPage() {
         </div>
       </div>
 
-      {/* بوابة الربط السيادي (Link Gate) */}
       {!activeBoq && !boqLoading ? (
          <Card className="border-4 border-dashed border-primary/20 rounded-[3rem] bg-white shadow-2xl p-12 text-center animate-in zoom-in-95">
             <div className="max-w-2xl mx-auto space-y-8">
@@ -325,12 +322,9 @@ export default function TransactionDetailsPage() {
                <div className="space-y-2">
                   <h2 className="text-3xl font-black font-headline">{isRtl ? 'ربط المقايسة الفنية' : 'Link Technical BOQ'}</h2>
                   <p className="text-slate-500 font-bold leading-relaxed">
-                     {isRtl 
-                       ? 'يجب اختيار قالب المقايسة المناسب لهذا المسار الفني للبدء في تتبع التكاليف والإنجاز الميداني.' 
-                       : 'Select the appropriate BOQ template for this technical path to start cost and progress tracking.'}
+                     {isRtl ? 'يجب اختيار قالب المقايسة المناسب لهذا المسار الفني للبدء في تتبع التكاليف والإنجاز الميداني.' : 'Select the appropriate BOQ template for this technical path to start cost and progress tracking.'}
                   </p>
                </div>
-
                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {availableTemplates && availableTemplates.length > 0 ? (
                     availableTemplates.map(temp => (
@@ -353,7 +347,6 @@ export default function TransactionDetailsPage() {
                     </div>
                   )}
                </div>
-               
                {processingId === 'linking_boq' && (
                  <div className="flex items-center justify-center gap-3 text-primary font-black animate-pulse">
                     <Loader2 className="h-5 w-5 animate-spin" />
@@ -364,7 +357,6 @@ export default function TransactionDetailsPage() {
          </Card>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Stages View */}
           <div className="lg:col-span-8 space-y-8">
              <div className="space-y-6">
                 <div className="flex justify-between items-end px-2">
@@ -376,7 +368,6 @@ export default function TransactionDetailsPage() {
                    </div>
                    <div className="text-end"><span className="text-4xl font-black font-headline text-primary">{progressPercent}%</span></div>
                 </div>
-                
                 <div className="space-y-4">
                    {stages.map((stage, idx) => {
                       const boqProgress = stageProgressMap[stage.technicalStageId];
@@ -398,7 +389,7 @@ export default function TransactionDetailsPage() {
                           <CardContent className="p-0">
                              <div className="p-6 flex flex-col md:flex-row items-center justify-between gap-6">
                                 <div className="flex items-center gap-6 flex-1 text-start">
-                                   <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-sm border transition-all", stage.status === 'completed' ? "bg-emerald-500 text-white" : !isPreviousCompleted ? "bg-slate-50 text-slate-300" : "bg-white group-hover:bg-primary/5")}>
+                                   <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-sm border transition-all", stage.status === 'completed' ? "bg-emerald-50 text-white" : !isPreviousCompleted ? "bg-slate-50 text-slate-300" : "bg-white group-hover:bg-primary/5")}>
                                       {stage.status === 'completed' ? <CheckCircle2 className="h-6 w-6" /> : (idx + 1)}
                                    </div>
                                    <div className="space-y-1 flex-1">
@@ -407,7 +398,6 @@ export default function TransactionDetailsPage() {
                                          {!isPreviousCompleted && stage.status !== 'completed' && <Lock className="h-3 w-3 text-slate-300" />}
                                          {isSelected && <Target className="h-3.5 w-3.5 text-primary animate-pulse" />}
                                       </div>
-                                      
                                       {(stage.status === 'completed' || stage.status === 'in-progress') && stage.startedAt && (
                                          <div className="flex items-center gap-3 text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
                                             <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" /> Start: {stage.startedAt?.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
@@ -419,7 +409,6 @@ export default function TransactionDetailsPage() {
                                             )}
                                          </div>
                                       )}
-
                                       {boqProgress && boqProgress.linkedItemsCount > 0 && (
                                         <div className="mt-2 space-y-1.5">
                                            <div className="flex justify-between text-[9px] font-black uppercase text-slate-400">
@@ -431,7 +420,6 @@ export default function TransactionDetailsPage() {
                                       )}
                                    </div>
                                 </div>
-
                                 <div className="flex gap-2 shrink-0 z-10" onClick={e => e.stopPropagation()}>
                                    <Button 
                                      onClick={(e) => { e.stopPropagation(); handleStageCommentClick(stage); }}
@@ -441,7 +429,6 @@ export default function TransactionDetailsPage() {
                                       <MessageSquare className="h-3.5 w-3.5" />
                                       {isRtl ? 'تعليق' : 'Comment'}
                                    </Button>
-
                                    {stage.status === 'completed' && editAccess.can && (
                                       <Button 
                                         onClick={() => setUndoStage(stage)} 
@@ -453,13 +440,11 @@ export default function TransactionDetailsPage() {
                                          {isRtl ? 'تراجع' : 'Undo'}
                                       </Button>
                                    )}
-
                                    {stage.status === 'in-progress' && editAccess.can && (
                                       <Button onClick={() => { setTargetStage(stage); setIsRecordOpen(true); }} variant="outline" className="h-11 px-4 rounded-xl border-2 border-primary/20 text-primary font-black text-xs gap-2 hover:bg-primary/5">
                                          <Hammer className="h-4 w-4" /> {isRtl ? 'تسجيل إنجاز' : 'Log Progress'}
                                       </Button>
                                    )}
-                                   
                                    {stage.status === 'pending' && isPreviousCompleted && (
                                       <Button onClick={() => handleStartStage(stage.id!)} disabled={processingId === stage.id} className="h-11 px-6 rounded-xl bg-blue-600 text-white font-black text-xs gap-2">
                                          {processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Play className="h-4 w-4" />} {isRtl ? 'بدء' : 'Start'}
@@ -479,8 +464,6 @@ export default function TransactionDetailsPage() {
                 </div>
              </div>
           </div>
-
-          {/* Unified War Room Sidebar */}
           <div className="lg:col-span-4">
              <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 flex flex-col h-full min-h-[700px]">
                 <CardContent className="p-6 flex-1">
@@ -502,7 +485,6 @@ export default function TransactionDetailsPage() {
         </div>
       )}
 
-      {/* Popups (Dialogs) */}
       <Dialog open={isRecordOpen} onOpenChange={(open) => { if(!open) { setIsRecordOpen(false); setIsComplementary(false); } }}>
          <DialogContent className="rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
             <div className="bg-primary/5 p-8 text-slate-900 text-start border-b flex justify-between items-center">
@@ -545,7 +527,6 @@ export default function TransactionDetailsPage() {
                 </div>
              </div>
           </div>
-
           <div className="p-8 space-y-8 text-start">
              <div className="space-y-4">
                 <div className="p-5 rounded-2xl bg-amber-50 border-2 border-amber-100 flex items-start gap-4">
@@ -553,13 +534,10 @@ export default function TransactionDetailsPage() {
                    <div className="space-y-1">
                       <h5 className="font-black text-xs text-amber-900">{isRtl ? 'تنبيه التسلسل الهندسي' : 'Sequential Warning'}</h5>
                       <p className="text-[10px] text-amber-800 font-bold leading-relaxed">
-                         {isRtl 
-                           ? 'سيتم إعادة قفل المرحلة التالية (إذا بدأت) لضمان سلامة مسار العمل. سيتم نقل تعليقات المرحلة الحالية للأرشيف.' 
-                           : 'Next stage will be locked. Current stage comments will be moved to Archive.'}
+                         {isRtl ? 'سيتم إعادة قفل المرحلة التالية (إذا بدأت) لضمان سلامة مسار العمل. سيتم نقل تعليقات المرحلة الحالية للأرشيف.' : 'Next stage will be locked. Current stage comments will be moved to Archive.'}
                       </p>
                    </div>
                 </div>
-
                 <div className="p-6 rounded-3xl bg-slate-50 border-2 border-white shadow-inner space-y-5">
                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -576,7 +554,6 @@ export default function TransactionDetailsPage() {
                 </div>
              </div>
           </div>
-
           <AlertDialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-3">
              <AlertDialogCancel className="flex-1 h-14 rounded-2xl border-2 font-bold bg-white">{isRtl ? 'إلغاء' : 'Cancel'}</AlertDialogCancel>
              <AlertDialogAction 

@@ -138,7 +138,10 @@ export class TransactionService {
   async startStage(transactionId: string, stageId: string, userId: string, userName: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
     const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
-    
+    const stageSnap = await getDoc(stageRef);
+    if (!stageSnap.exists()) return;
+    const stageData = stageSnap.data() as StageInstance;
+
     await updateDoc(stageRef, {
       status: 'in-progress',
       startedAt: serverTimestamp(),
@@ -149,7 +152,8 @@ export class TransactionService {
     const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
     await addDoc(timelineRef, {
       transactionId,
-      stageId, 
+      stageId: stageId, // Use Instance ID
+      technicalStageId: stageData.technicalStageId, // Use Reference ID
       type: 'stage_start',
       content: `تم بدء العمل في المرحلة الفنية`,
       userId,
@@ -185,7 +189,8 @@ export class TransactionService {
     const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
     await addDoc(timelineRef, {
       transactionId,
-      stageId,
+      stageId: stageId, // Use Instance ID
+      technicalStageId: stageData.technicalStageId, // Use Reference ID
       type: 'stage_complete',
       content: `تم إنجاز المرحلة بنجاح`,
       userId,
@@ -196,9 +201,6 @@ export class TransactionService {
     });
   }
 
-  /**
-   * التراجع عن إكمال المرحلة مع أرشفة شاملة (Sovereign Audit Reopen)
-   */
   async reopenStage(transactionId: string, stageId: string, userId: string, userName: string, clearLogs: boolean = false) {
     ensureActionPermission(this.permissions, 'projects:edit');
     
@@ -213,7 +215,7 @@ export class TransactionService {
 
     const batch = writeBatch(this.db);
 
-    // 1. إعادة المرحلة للحالة الجارية وتصفير توقيت الإكمال
+    // 1. Reset current stage
     batch.update(stageRef, {
       status: 'in-progress',
       completedAt: null,
@@ -222,7 +224,7 @@ export class TransactionService {
       updatedBy: userId
     });
 
-    // 2. القفل التسلسلي للمرحلة التالية
+    // 2. Sequential locking of next stage
     const nextOrder = (stageData.order || 0) + 1;
     const stagesRef = collection(this.db, paths.transactionStages(this.companyId, transactionId));
     const nextQ = query(stagesRef, where('order', '==', nextOrder));
@@ -236,9 +238,9 @@ export class TransactionService {
       });
     }
 
-    // 3. أرشفة سجل الأحداث (Timeline Events) المرتبط بالمرحلة
+    // 3. Archive Timeline Events using actual stageId (Instance ID)
     const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
-    const timelineSnap = await getDocs(query(timelineRef, where('stageId', '==', stageData.technicalStageId)));
+    const timelineSnap = await getDocs(query(timelineRef, where('stageId', '==', stageId)));
     timelineSnap.docs.forEach(d => {
        if (!d.data().isArchived) {
           batch.update(d.ref, { isArchived: true, archivedAt: serverTimestamp() });
@@ -247,10 +249,11 @@ export class TransactionService {
 
     await batch.commit();
 
-    // 4. توثيق حدث التراجع في السجل الزمني
+    // 4. Document reopen in timeline
     await addDoc(timelineRef, {
       transactionId,
-      stageId: stageData.technicalStageId,
+      stageId: stageId, // Instance ID
+      technicalStageId: stageData.technicalStageId, // Reference ID
       type: 'stage_reopen',
       content: `تراجع عن الإكمال: تمت أرشفة محاولة سابقة استغرقت ${durationText}`,
       previousStart: stageData.startedAt || null,
@@ -262,11 +265,11 @@ export class TransactionService {
       createdAt: serverTimestamp()
     });
 
-    // 5. أرشفة التعليقات النصية
+    // 5. Archive stage comments
     const commentService = new CommentService(this.db, this.companyId, this.permissions);
     await commentService.archiveStageComments(transactionId, stageId);
 
-    // 6. أرشفة سجلات الإنجاز (Logs) - تعديل هندسي: نؤرشف دائماً لمنع الحذف
+    // 6. Archive execution logs (using technicalStageId for calculation integrity)
     const boqService = new BOQExecutionService(this.db, this.companyId, this.permissions);
     await boqService.archiveStageExecutions(transactionId, stageData.technicalStageId, clearLogs);
   }

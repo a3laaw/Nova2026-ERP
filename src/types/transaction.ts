@@ -27,12 +27,13 @@ export interface Transaction extends BaseReference {
 export interface TransactionTimelineEvent extends BaseReference {
   id?: string;
   transactionId: string;
-  stageId?: string; // ربط الحدث بمرحلة محددة للأرشفة
+  stageId?: string; // Stage Instance ID (Local to transaction)
+  technicalStageId?: string; // Reference ID (From technical path)
   type: 'system' | 'stage_start' | 'stage_complete' | 'stage_reopen' | 'comment' | 'numeric_update';
   content: string;
   userId: string;
   userName: string;
-  isArchived?: boolean; // نظام الأرشفة للأحداث
+  isArchived?: boolean; 
   archivedAt?: any;
 }
 
@@ -41,7 +42,7 @@ export type CommentType = 'general' | 'note' | 'warning' | 'instruction';
 export interface TransactionComment extends BaseReference {
   id?: string;
   transactionId: string;
-  stageInstanceId?: string | null;
+  stageInstanceId?: string | null; // Stage Instance ID
   stageName?: string; 
   content: string;
   commentType: CommentType;
@@ -57,7 +58,7 @@ export interface TransactionComment extends BaseReference {
 export interface StageInstance extends BaseReference {
   id?: string;
   transactionId: string;
-  technicalStageId: string;
+  technicalStageId: string; // Reference ID
   code: string;
   name: string;
   description?: string;
