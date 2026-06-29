@@ -153,7 +153,6 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
         </div>
 
         <div className="p-10 grid grid-cols-1 lg:grid-cols-4 gap-10 max-h-[65vh] overflow-y-auto scrollbar-hide">
-           {/* Form Meta */}
            <div className="lg:col-span-1 space-y-6 text-start">
               <div className="space-y-2">
                  <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'عنوان التعديل' : 'VO Title'}</Label>
@@ -171,7 +170,6 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
               </div>
            </div>
 
-           {/* Items Builder */}
            <div className="lg:col-span-3 space-y-6">
               <div className="flex justify-between items-center px-2">
                  <h4 className="text-lg font-black flex items-center gap-2">
@@ -195,7 +193,9 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                             <div className="md:col-span-2 space-y-1 text-start">
                                <Label className="text-[9px] font-black text-slate-400 uppercase">Action</Label>
                                <Select value={item.type} onValueChange={(v: VariationType) => updateItem(idx, 'type', v)}>
-                                  <SelectTrigger className="h-10 rounded-xl border-2 font-black text-[10px]"><SelectValue /></SelectValue>
+                                  <SelectTrigger className="h-10 rounded-xl border-2 font-black text-[10px]">
+                                     <SelectValue />
+                                  </SelectTrigger>
                                   <SelectContent className="rounded-xl">
                                      {VARIATION_TYPES.map(t => <SelectItem key={t.value} value={t.value} className={cn("font-bold", t.color)}>{t.label}</SelectItem>)}
                                   </SelectContent>
@@ -208,7 +208,9 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                   <Input value={item.description} onChange={e => updateItem(idx, 'description', e.target.value)} className="h-10 rounded-xl border-2 font-bold" />
                                ) : (
                                   <Select value={item.sourceBoqItemId} onValueChange={v => updateItem(idx, 'sourceBoqItemId', v)}>
-                                     <SelectTrigger className="h-10 rounded-xl border-2 font-black text-[10px] truncate"><SelectValue placeholder="..." /></SelectTrigger>
+                                     <SelectTrigger className="h-10 rounded-xl border-2 font-black text-[10px] truncate">
+                                        <SelectValue placeholder="..." />
+                                     </SelectTrigger>
                                      <SelectContent className="rounded-xl max-w-sm">
                                         {boqItems.map(i => <SelectItem key={i.id} value={i.id!} className="font-bold text-[10px] py-3 border-b">{i.referenceTitle}</SelectItem>)}
                                      </SelectContent>
