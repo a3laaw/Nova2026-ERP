@@ -25,7 +25,8 @@ import {
   ArrowRight,
   Trash2,
   Pencil,
-  Info
+  Info,
+  Calculator
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where, limit } from 'firebase/firestore';
@@ -42,6 +43,7 @@ import { BOQTemplate } from '@/types/templates';
 import { CommentSection } from '@/components/transactions/comment-section';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { VOManagerDialog } from '@/components/transactions/vo-manager-dialog';
 import {
   Dialog,
   DialogContent,
@@ -98,6 +100,9 @@ export default function TransactionDetailsPage() {
 
   const [undoStage, setUndoStage] = useState<StageInstance | null>(null);
   const [clearLogsOnUndo, setClearLogsOnUndo] = useState(false);
+
+  // States for VO
+  const [isVOOpen, setIsVOOpen] = useState(false);
 
   // States for Naming and Linking BOQ
   const [namingTemplate, setNamingTemplate] = useState<BOQTemplate | null>(null);
@@ -339,6 +344,14 @@ export default function TransactionDetailsPage() {
         <div className="flex gap-3">
            {activeBoq && (
              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setIsVOOpen(true)}
+                  className="h-11 px-5 rounded-xl bg-white border-2 font-black text-xs gap-2 text-blue-600 border-blue-100 shadow-sm hover:bg-blue-50"
+                >
+                   <Calculator className="h-4 w-4" /> {isRtl ? 'أمر تغييري' : 'VO'}
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="h-11 px-6 rounded-xl bg-white border-2 font-black text-xs gap-2 text-primary border-primary/20 shadow-sm">
                    <FileSpreadsheet className="h-4 w-4" /> {isRtl ? 'تتبع إنجاز المقايسة' : 'BOQ Progress'}
                 </Button>
@@ -664,6 +677,18 @@ export default function TransactionDetailsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* VO Manager Component */}
+      {activeBoq && (
+        <VOManagerDialog 
+          isOpen={isVOOpen}
+          onClose={() => setIsVOOpen(false)}
+          boqId={activeBoq.id}
+          transactionId={transactionId}
+          boqNumber={activeBoq.boqNumber}
+          boqItems={boqItems || []}
+        />
+      )}
     </div>
   );
 }
