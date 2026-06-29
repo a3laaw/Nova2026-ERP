@@ -13,7 +13,7 @@ import {
   addDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
-import { BOQItem, BOQ, BOQItemExecutionEntry } from '@/types/documents';
+import { BOQItem, BOQItemExecutionEntry } from '@/types/documents';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { ensureActionPermission } from '@/lib/permissions/engine';
@@ -37,7 +37,7 @@ export interface StageProgressResult {
 
 /**
  * خدمة الربط التنفيذي وتتبع الإنجاز للمقايسات (BOQ Progress Tracking Service).
- * تدعم مفهوم "التجميع التراكمي" (Bucket Execution) والاستثناءات الفنية لمنع التكرار.
+ * تم تحويلها لاستخدام الهيكل المسطح لضمان ظهور السجلات في شريط المحادثة الموحد.
  */
 export class BOQExecutionService {
   constructor(
@@ -47,7 +47,7 @@ export class BOQExecutionService {
   ) {}
 
   /**
-   * تسجيل إنجاز مرحلي متخصص (Execution Bucketing)
+   * تسجيل إنجاز مرحلي متخصص في المجموعة المسطحة
    */
   async recordBOQItemExecution(
     boqId: string,
@@ -60,7 +60,6 @@ export class BOQExecutionService {
   ) {
     ensureActionPermission(this.permissions, 'projects:edit');
 
-    // السماح بالكمية صفر فقط في حال كانت ملاحظات التنفيذ موجودة (كإجراء مكمل لمنع التكرار)
     if (quantity < 0) {
       throw new Error('INVALID_QUANTITY: الكمية لا يمكن أن تكون سالبة.');
     }
@@ -71,16 +70,18 @@ export class BOQExecutionService {
     if (!itemSnap.exists()) throw new Error('ITEM_NOT_FOUND: البند غير موجود.');
     const itemData = itemSnap.data() as BOQItem;
 
-    // 1. إضافة سجل التنفيذ التفصيلي للمجموعة الفرعية
-    const executionsRef = collection(this.db, paths.boqItemExecutions(this.companyId, boqId, itemId));
-    const executionData: BOQItemExecutionEntry = {
+    // 1. إضافة سجل التنفيذ في المجموعة المسطحة للشركة (لضمان الظهور في الـ Stream)
+    const executionsRef = collection(this.db, paths.executions(this.companyId));
+    const executionData: any = {
       companyId: this.companyId,
       boqId,
       boqItemId: itemId,
+      transactionId: itemData.transactionId || '',
       technicalStageId,
       quantity,
       notes: notes || '',
       recordedBy: userId,
+      recordedByName: userName,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
@@ -92,8 +93,9 @@ export class BOQExecutionService {
       throw err;
     });
 
-    // 2. تحديث الرصيد التراكمي في البند الرئيسي (The Bucket Update)
-    const allExecutionsSnap = await getDocs(executionsRef);
+    // 2. تحديث الرصيد التراكمي في البند الرئيسي للمقايسة
+    const qCount = query(executionsRef, where('boqItemId', '==', itemId));
+    const allExecutionsSnap = await getDocs(qCount);
     const newTotalExecuted = allExecutionsSnap.docs.reduce((sum, d) => sum + (d.data().quantity || 0), 0);
 
     await updateDoc(itemRef, {
@@ -102,22 +104,15 @@ export class BOQExecutionService {
       updatedBy: userId
     });
 
-    // 3. توثيق الحدث في سجل المعاملة (مع إبراز الملاحظات)
+    // 3. توثيق الحدث في سجل المعاملة العام
     if (itemData.transactionId) {
       const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, itemData.transactionId));
-      
-      let logContent = quantity === 0 
-        ? `تأكيد فني مكمل: ${itemData.referenceTitle}.`
-        : `إنجاز ميداني: ${itemData.referenceTitle} -> تسجيل ${quantity} وحدة.`;
-
-      if (notes) {
-        logContent += ` الملاحظة: "${notes}"`;
-      }
-
       await addDoc(timelineRef, {
         transactionId: itemData.transactionId,
         type: 'numeric_update',
-        content: logContent,
+        content: quantity === 0 
+          ? `تأكيد فني: ${itemData.referenceTitle}`
+          : `تسجيل إنجاز: ${itemData.referenceTitle} (${quantity} وحدة)`,
         userId,
         userName,
         companyId: this.companyId,
@@ -129,7 +124,7 @@ export class BOQExecutionService {
   }
 
   /**
-   * جلب تقرير تقدم المرحلة الفنية
+   * جلب تقرير تقدم المرحلة الفنية من المجموعة المسطحة
    */
   async getTechnicalStageProgress(transactionId: string, technicalStageId: string): Promise<StageProgressResult> {
     const boqsRef = collection(this.db, paths.boqs(this.companyId));
@@ -159,11 +154,16 @@ export class BOQExecutionService {
     let totalExecutedForThisStage = 0;
     let totalLogsCount = 0;
 
+    const executionsRef = collection(this.db, paths.executions(this.companyId));
+
     for (const item of linkedItems) {
       totalPlanned += (item.plannedQuantity || 0);
       
-      const executionsRef = collection(this.db, paths.boqItemExecutions(this.companyId, boqId, item.id!));
-      const qExec = query(executionsRef, where('technicalStageId', '==', technicalStageId));
+      const qExec = query(
+        executionsRef, 
+        where('boqItemId', '==', item.id!),
+        where('technicalStageId', '==', technicalStageId)
+      );
       const execSnap = await getDocs(qExec);
 
       totalLogsCount += execSnap.size;

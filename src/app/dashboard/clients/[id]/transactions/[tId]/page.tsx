@@ -2,24 +2,22 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { 
   Activity, Clock, Loader2, 
-  ShieldCheck, CheckCircle2,
+  CheckCircle2,
   Lock, Printer, Play, Check,
   FileSpreadsheet, TrendingUp, MessageSquare,
   Hammer, Save,
   AlertTriangle,
   Zap,
-  User,
-  History,
   ArrowRight
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
-import { doc, collection, query, orderBy, where, getDocs, limit, collectionGroup } from 'firebase/firestore';
+import { doc, collection, query, orderBy, where, limit } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -65,12 +63,10 @@ export default function TransactionDetailsPage() {
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
-  // --- States ---
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [stageProgressMap, setStageProgressMap] = useState<Record<string, StageProgressResult>>({});
   const [openStages, setOpenStages] = useState<Record<string, boolean>>({});
   
-  // Progress Recording State
   const [isRecordOpen, setIsRecordOpen] = useState(false);
   const [isComplementary, setIsComplementary] = useState(false);
   const [targetStage, setTargetStage] = useState<StageInstance | null>(null);
@@ -80,7 +76,6 @@ export default function TransactionDetailsPage() {
 
   const editAccess = check('projects', 'edit');
 
-  // --- Data Fetching ---
   const transRef = useMemo(() => 
     companyId && db ? doc(db, paths.transactions(companyId), transactionId) : null, 
   [db, companyId, transactionId]);
@@ -94,7 +89,7 @@ export default function TransactionDetailsPage() {
   const boqQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', transactionId), limit(1)) : null, 
   [db, companyId, transactionId]);
-  const { data: boqs, loading: boqCheckLoading } = useCollection<BOQ>(boqQuery);
+  const { data: boqs } = useCollection<BOQ>(boqQuery);
   const activeBoq = boqs?.[0];
 
   const itemsQuery = useMemo(() => 
@@ -102,19 +97,15 @@ export default function TransactionDetailsPage() {
   [db, companyId, activeBoq]);
   const { data: boqItems } = useCollection<BOQItem>(itemsQuery);
 
-  /**
-   * جلب كافة سجلات التنفيذ للمعاملة لتوزيعها على المراحل في التدفق الزمني الموحد.
-   * تم استخدام شرط companyId للامتثال للقواعد الأمنية.
-   */
+  // استعلام السجلات المسطحة لضمان الأداء وظهور التحديثات
   const executionsQuery = useMemo(() => 
-    companyId && db && activeBoq?.id 
+    companyId && db 
       ? query(
-          collectionGroup(db, 'executions'), 
-          where('companyId', '==', companyId), 
-          where('boqId', '==', activeBoq.id)
+          collection(db, paths.executions(companyId)), 
+          where('transactionId', '==', transactionId)
         ) 
       : null, 
-  [db, companyId, activeBoq]);
+  [db, companyId, transactionId]);
   
   const { data: allExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
 
@@ -147,7 +138,7 @@ export default function TransactionDetailsPage() {
     }
     fetchAllProgress();
     return () => { active = false; };
-  }, [executionService, stages, transactionId, boqItems, allExecutions]);
+  }, [executionService, stages, transactionId, allExecutions]);
 
   const transactionService = useMemo(() => 
     db && companyId ? new TransactionService(db, companyId, permissions) : null, 
@@ -163,7 +154,6 @@ export default function TransactionDetailsPage() {
     });
   }, [boqItems, targetStage]);
 
-  // --- Handlers ---
   const handleStartStage = async (stageId: string) => {
     if (!transactionService || !user) return;
     setProcessingId(stageId);
@@ -192,22 +182,16 @@ export default function TransactionDetailsPage() {
 
   const handleRecordProgress = async () => {
     if (!executionService || !activeBoq || !user || !selectedItemId || !targetStage) return;
-
-    const finalQty = isComplementary ? 0 : progressQty;
-    const finalNotes = isComplementary 
-      ? `(تأكيد فني مكمل) ${progressNotes}`.trim()
-      : progressNotes;
-
     setProcessingId('recording');
     try {
       await executionService.recordBOQItemExecution(
         activeBoq.id,
         selectedItemId,
         targetStage.technicalStageId,
-        finalQty,
+        isComplementary ? 0 : progressQty,
         user.uid,
         user.displayName || 'User',
-        finalNotes
+        progressNotes
       );
       toast({ title: isRtl ? "تم تسجيل الإنجاز" : "Progress Recorded" });
       setIsRecordOpen(false);
@@ -222,12 +206,11 @@ export default function TransactionDetailsPage() {
     }
   };
 
-  if (transLoading || stagesLoading || boqCheckLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
+  if (transLoading || stagesLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
   if (!transaction) return <div className="p-20 text-center font-black text-slate-400">{isRtl ? 'المعاملة غير موجودة' : 'Transaction not found'}</div>;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-20" dir={dir}>
-      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-6">
         <div className="flex items-center gap-4 text-start">
            <div className="h-12 px-5 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-black text-lg border-2 border-primary/20 shadow-inner">
@@ -249,9 +232,6 @@ export default function TransactionDetailsPage() {
            <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="h-11 px-6 rounded-xl bg-white border-2 font-black text-xs gap-2 text-primary border-primary/20">
               <FileSpreadsheet className="h-4 w-4" /> {isRtl ? 'تتبع إنجاز المقايسة' : 'BOQ Progress'}
            </Button>
-           <Button variant="outline" size="sm" onClick={() => window.print()} className="h-11 px-6 rounded-xl bg-white border-2 font-black text-xs gap-2">
-              <Printer className="h-4 w-4" /> {isRtl ? 'طباعة' : 'Print'}
-           </Button>
         </div>
       </div>
 
@@ -264,7 +244,6 @@ export default function TransactionDetailsPage() {
                        <TrendingUp className="h-6 w-6 text-primary" />
                        {isRtl ? 'مسار التنفيذ الميداني المعتمد' : 'Execution Pipeline'}
                     </h3>
-                    <p className="text-xs font-bold text-slate-400">{isRtl ? 'متابعة مراحل العمل بالتسلسل الهندسي' : 'Tracking stages'}</p>
                  </div>
                  <div className="text-end"><span className="text-4xl font-black font-headline text-primary">{progressPercent}%</span></div>
               </div>
@@ -274,8 +253,6 @@ export default function TransactionDetailsPage() {
                     const boqProgress = stageProgressMap[stage.technicalStageId];
                     const isOpen = openStages[stage.id!];
                     const isPreviousCompleted = idx === 0 || stages[idx - 1].status === 'completed';
-                    
-                    // فلترة كافة سجلات التنفيذ (Logs) التابعة لهذه المرحلة لدمجها في التدفق
                     const stageLogs = allExecutions?.filter(log => log.technicalStageId === stage.technicalStageId) || [];
 
                     return (
@@ -310,29 +287,22 @@ export default function TransactionDetailsPage() {
 
                               <div className="flex gap-2 shrink-0">
                                  {stage.status === 'in-progress' && editAccess.can && (
-                                    <Button 
-                                      onClick={() => { setTargetStage(stage); setIsRecordOpen(true); }}
-                                      variant="outline"
-                                      className="h-11 px-4 rounded-xl border-2 border-primary/20 text-primary font-black text-xs gap-2 hover:bg-primary/5"
-                                    >
-                                       <Hammer className="h-4 w-4" />
-                                       {isRtl ? 'تسجيل إنجاز' : 'Log Progress'}
+                                    <Button onClick={() => { setTargetStage(stage); setIsRecordOpen(true); }} variant="outline" className="h-11 px-4 rounded-xl border-2 border-primary/20 text-primary font-black text-xs gap-2 hover:bg-primary/5">
+                                       <Hammer className="h-4 w-4" /> {isRtl ? 'تسجيل إنجاز' : 'Log Progress'}
                                     </Button>
                                  )}
                                  <Button variant="ghost" size="icon" onClick={() => setOpenStages(prev => ({...prev, [stage.id!]: !prev[stage.id!]}))} className={cn("h-11 w-11 rounded-xl text-slate-300 hover:text-primary transition-all", isOpen && "bg-primary/5 text-primary shadow-inner")}><MessageSquare className="h-5 w-5" /></Button>
                                  {stage.status === 'pending' && isPreviousCompleted && (
-                                    <Button onClick={() => handleStartStage(stage.id!)} disabled={processingId === stage.id} className="h-11 px-6 rounded-xl bg-blue-600 text-white font-black text-xs gap-2 shadow-lg shadow-blue-900/10">
-                                       {processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Play className="h-4 w-4" />}
-                                       {isRtl ? 'بدء العمل' : 'Start'}
+                                    <Button onClick={() => handleStartStage(stage.id!)} disabled={processingId === stage.id} className="h-11 px-6 rounded-xl bg-blue-600 text-white font-black text-xs gap-2">
+                                       {processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Play className="h-4 w-4" />} {isRtl ? 'بدء العمل' : 'Start'}
                                     </Button>
                                  )}
                                  {stage.status === 'pending' && !isPreviousCompleted && (
-                                    <Badge variant="outline" className="h-11 px-4 rounded-xl border-2 border-slate-100 text-slate-300 font-bold text-[10px] gap-2"><Clock className="h-3 w-3" />{isRtl ? 'بانتظار المرحلة السابقة' : 'Waiting prev.'}</Badge>
+                                    <Badge variant="outline" className="h-11 px-4 rounded-xl border-2 border-slate-100 text-slate-300 font-bold text-[10px] gap-2"><Clock className="h-3 w-3" />{isRtl ? 'بانتظار المرحلة السابقة' : 'Waiting'}</Badge>
                                  )}
                                  {stage.status === 'in-progress' && (
-                                    <Button onClick={() => handleCompleteStage(stage)} disabled={processingId === stage.id} className="h-11 px-6 rounded-xl bg-emerald-600 text-white font-black text-xs gap-2 shadow-lg shadow-emerald-900/10">
-                                       {processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Check className="h-4 w-4" />}
-                                       {isRtl ? 'إكمال المرحلة' : 'Complete'}
+                                    <Button onClick={() => handleCompleteStage(stage)} disabled={processingId === stage.id} className="h-11 px-6 rounded-xl bg-emerald-600 text-white font-black text-xs gap-2">
+                                       {processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Check className="h-4 w-4" />} {isRtl ? 'إكمال المرحلة' : 'Complete'}
                                     </Button>
                                  )}
                               </div>

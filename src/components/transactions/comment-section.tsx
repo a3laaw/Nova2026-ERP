@@ -1,15 +1,13 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   Send, MessageSquare, MoreVertical, 
   Trash2, Loader2, Hammer, User,
-  History, Clock, CheckCircle2, Zap,
-  Info
+  History, Clock, Zap
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -27,6 +25,8 @@ import {
   DropdownMenuItem, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface Props {
   transactionId: string;
@@ -34,8 +34,8 @@ interface Props {
   path: string; 
   title?: string;
   compact?: boolean;
-  externalLogs?: any[]; // سجلات الإنجاز الميداني المراد دمجها
-  boqItems?: any[];     // لترجمة مسميات البنود في السجلات
+  externalLogs?: any[]; 
+  boqItems?: any[];     
 }
 
 export function CommentSection({ transactionId, stageInstanceId, path, title, compact = false, externalLogs = [], boqItems = [] }: Props) {
@@ -58,25 +58,19 @@ export function CommentSection({ transactionId, stageInstanceId, path, title, co
     db && globalUser?.companyId ? new CommentService(db, globalUser.companyId, permissions) : null, 
   [db, globalUser, permissions]);
 
-  /**
-   * محرك الدمج والفرز الزمني السيادي (Sovereign Unified Stream Engine)
-   */
   const unifiedStream = useMemo(() => {
-    // 1. تحضير التعليقات
     const commentItems = (comments || []).map(c => ({ 
       ...c, 
       streamType: 'comment' as const,
-      sortTime: c.createdAt?.toMillis?.() || c.createdAt?.seconds * 1000 || Date.now()
+      sortTime: c.createdAt?.toMillis?.() || (c.createdAt?.seconds ? c.createdAt.seconds * 1000 : Date.now())
     }));
     
-    // 2. تحضير السجلات الميدانية
     const logItems = (externalLogs || []).map(l => ({ 
       ...l, 
       streamType: 'log' as const,
-      sortTime: l.createdAt?.toMillis?.() || l.createdAt?.seconds * 1000 || Date.now()
+      sortTime: l.createdAt?.toMillis?.() || (l.createdAt?.seconds ? l.createdAt.seconds * 1000 : Date.now())
     }));
 
-    // 3. الدمج والفرز النهائي
     return [...commentItems, ...logItems].sort((a, b) => a.sortTime - b.sortTime);
   }, [comments, externalLogs]);
 
@@ -97,7 +91,11 @@ export function CommentSection({ transactionId, stageInstanceId, path, title, co
 
   const handleDelete = async (commentId: string) => {
     if (!commentService) return;
-    await commentService.deleteComment(path, commentId);
+    await handleDeleteAsync(commentId);
+  };
+
+  const handleDeleteAsync = async (commentId: string) => {
+    try { await commentService?.deleteComment(path, commentId); } catch(e) {}
   };
 
   return (
@@ -117,7 +115,7 @@ export function CommentSection({ transactionId, stageInstanceId, path, title, co
             <p className="text-[10px] font-black uppercase tracking-[0.2em]">{isRtl ? 'لا توجد حركات مسجلة' : 'No Activity Yet'}</p>
           </div>
         ) : (
-          unifiedStream.map((item: any, idx: number) => {
+          unifiedStream.map((item: any) => {
             const isLog = item.streamType === 'log';
             
             if (isLog) {
@@ -125,7 +123,7 @@ export function CommentSection({ transactionId, stageInstanceId, path, title, co
               const isComplementary = item.quantity === 0;
 
               return (
-                <div key={`log-${idx}`} className="flex justify-center animate-in fade-in zoom-in-95 duration-500">
+                <div key={`log-${item.id || Math.random()}`} className="flex justify-center animate-in fade-in zoom-in-95 duration-500">
                    <div className={cn(
                      "border-2 shadow-md rounded-[1.5rem] p-5 flex flex-col md:flex-row items-center gap-4 w-full md:w-[95%] relative transition-all hover:shadow-lg",
                      isComplementary ? "bg-blue-50/50 border-blue-100" : "bg-emerald-50/30 border-emerald-100"
@@ -141,7 +139,7 @@ export function CommentSection({ transactionId, stageInstanceId, path, title, co
                             <span className="text-[10px] font-black text-slate-800 uppercase tracking-tighter">
                                {isRtl ? 'إجراء ميداني:' : 'Progress Update:'}
                             </span>
-                            <Badge variant="outline" className="text-[9px] font-black border-slate-200 px-3 h-5 bg-white text-slate-600">
+                            <Badge variant="outline" className="text-[9px] font-black border-slate-200 px-3 h-5 bg-white text-slate-600 max-w-[150px] truncate">
                                {boqItem?.referenceTitle || (isRtl ? 'بند غير محدد' : 'Unknown Item')}
                             </Badge>
                             {!isComplementary && (
@@ -166,14 +164,14 @@ export function CommentSection({ transactionId, stageInstanceId, path, title, co
                             <div className="flex items-center gap-1.5">
                                <User className="h-3 w-3 text-slate-300" />
                                <span className="text-[9px] font-black text-slate-400 uppercase">
-                                  {item.recordedBy === user?.uid ? (isRtl ? 'بواسطتك' : 'By You') : (isRtl ? 'بواسطة المهندس' : `By ${item.recordedBy?.slice(-4)}`)}
+                                  {item.recordedByName || (isRtl ? 'مهندس الموقع' : 'Site Engineer')}
                                </span>
                             </div>
                             <div className="flex items-center gap-1.5">
                                <Clock className="h-3 w-3 text-slate-300" />
                                <span className="text-[9px] text-slate-400 font-bold">
                                   {item.createdAt ? formatDistanceToNow(item.createdAt.toDate(), { addSuffix: true, locale: isRtl ? ar : enUS }) : (isRtl ? 'الآن' : 'just now')}
-                               </span>
+                                </span>
                             </div>
                          </div>
                       </div>
