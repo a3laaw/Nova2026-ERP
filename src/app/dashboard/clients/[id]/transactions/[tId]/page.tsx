@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -18,7 +19,8 @@ import {
   ArrowRight,
   Info,
   RotateCcw,
-  Fingerprint
+  Fingerprint,
+  ListFilter
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where, getDocs, limit } from 'firebase/firestore';
@@ -46,6 +48,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -82,6 +85,10 @@ export default function TransactionDetailsPage() {
   const [progressQty, setProgressQty] = useState<number>(0);
   const [progressNotes, setProgressNotes] = useState("");
 
+  // Template Picker State
+  const [isTemplatePickerOpen, setIsTemplatePickerOpen] = useState(false);
+  const [availableTemplates, setAvailableTemplates] = useState<BOQTemplate[]>([]);
+
   const editAccess = check('projects', 'edit');
 
   // --- Data Fetching Logic ---
@@ -110,14 +117,13 @@ export default function TransactionDetailsPage() {
     return [...(rawStages || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
   }, [rawStages]);
 
-  const executionService = useMemo(() => db && companyId ? new BOQExecutionService(db, companyId, permissions) : null, [db, companyId, permissions]);
-
-  // حساب نسبة الإنجاز الإجمالية للمعاملة
   const progressPercent = useMemo(() => {
     if (!stages || stages.length === 0) return 0;
     const completedCount = stages.filter(s => s.status === 'completed').length;
     return Math.round((completedCount / stages.length) * 100);
   }, [stages]);
+
+  const executionService = useMemo(() => db && companyId ? new BOQExecutionService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
   useEffect(() => {
     let active = true;
@@ -159,7 +165,6 @@ export default function TransactionDetailsPage() {
     db && companyId ? new DocumentService(db, companyId, permissions) : null, 
   [db, companyId, permissions]);
 
-  // الفلترة الذكية للبنود المسموح بها لهذه المرحلة تحديداً
   const filteredItemsForStage = useMemo(() => {
     if (!boqItems || !targetStage) return [];
     const sId = targetStage.technicalStageId;
@@ -210,35 +215,64 @@ export default function TransactionDetailsPage() {
     }
   };
 
-  const handleCreateBOQ = async () => {
+  /**
+   * محرك إنشاء المقايسة الذكي: يبحث عن الخيارات المتاحة ويقرر المسار الأنسب
+   */
+  const handleCreateBOQRequest = async () => {
     if (!documentService || !transaction || !user || !companyId || !db) return;
     setIsCreatingBoq(true);
     try {
+      // جلب كافة القوالب المطابقة للمسار الفني
       const templatesRef = collection(db, paths.boqTemplates(companyId));
       const q = query(
         templatesRef, 
         where('activityTypeId', '==', transaction.activityTypeId || ''),
         where('serviceId', '==', transaction.serviceId || ''),
         where('subServiceId', '==', transaction.subServiceId || ''),
-        where('isDefault', '==', true),
-        where('isActive', '==', true),
-        limit(1)
+        where('isActive', '==', true)
       );
       
       const snap = await getDocs(q);
+      
       if (snap.empty) {
-        console.warn("DEBUG: No default template found with criteria:", {
+        // تشخيص للفشل
+        console.warn("DIAGNOSTIC: No templates found for this path", {
           activityTypeId: transaction.activityTypeId,
           serviceId: transaction.serviceId,
-          subServiceId: transaction.subServiceId,
-          companyId
+          subServiceId: transaction.subServiceId
         });
-        throw new Error(isRtl ? 'لم يتم العثور على BOQ Template افتراضي مطابق لنفس النشاط والخدمة والمسار الفني.' : 'No matching default BOQ template found for this path.');
+        throw new Error(isRtl ? 'لم يتم العثور على أي قوالب مقايسة معرّفة لهذا المسار الفني. يرجى إنشاء قالب أولاً في الإعدادات.' : 'No BOQ templates found for this path.');
       }
 
-      const template = snap.docs[0].data() as BOQTemplate;
+      const allMatches = snap.docs.map(d => ({ id: d.id, ...d.data() } as BOQTemplate));
+      const defaultTemplate = allMatches.find(t => t.isDefault);
+
+      // 1. إذا وجدنا قالباً افتراضياً -> استنساخ فوري
+      if (defaultTemplate) {
+        await executeInstantiate(defaultTemplate.id!, defaultTemplate.name);
+      } 
+      // 2. إذا وجدنا قالباً واحداً فقط (حتى لو لم يكن افتراضياً) -> استنساخ فوري
+      else if (allMatches.length === 1) {
+        await executeInstantiate(allMatches[0].id!, allMatches[0].name);
+      }
+      // 3. إذا وُجد أكثر من قالب -> إظهار منتقي القوالب
+      else {
+        setAvailableTemplates(allMatches);
+        setIsTemplatePickerOpen(true);
+      }
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('error'), description: e.message });
+    } finally {
+      setIsCreatingBoq(false);
+    }
+  };
+
+  const executeInstantiate = async (templateId: string, templateName: string) => {
+    if (!documentService || !transaction || !user) return;
+    setIsCreatingBoq(true);
+    try {
       await documentService.instantiateBoqFromTemplate(
-        snap.docs[0].id,
+        templateId,
         {
           transactionId,
           clientId: transaction.clientId,
@@ -246,13 +280,13 @@ export default function TransactionDetailsPage() {
           activityTypeId: transaction.activityTypeId,
           serviceId: transaction.serviceId,
           subServiceId: transaction.subServiceId,
-          name: `${template.name} - ${transaction.transactionNumber}`
+          name: `${templateName} - ${transaction.transactionNumber}`
         },
         user.uid,
         user.displayName || 'User'
       );
-
-      toast({ title: isRtl ? "تم إنشاء المقايسة التنفيذية بنجاح" : "BOQ Created" });
+      toast({ title: isRtl ? "تم إنشاء المقايسة بنجاح" : "BOQ Created" });
+      setIsTemplatePickerOpen(false);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
@@ -358,7 +392,7 @@ export default function TransactionDetailsPage() {
                    </div>
                  ) : (
                    <Button 
-                     onClick={() => handleCreateBOQ()} 
+                     onClick={handleCreateBOQRequest} 
                      disabled={isCreatingBoq}
                      className="bg-primary text-white font-black h-14 px-8 rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-4 border-orange-700"
                    >
@@ -516,6 +550,39 @@ export default function TransactionDetailsPage() {
         </div>
       </div>
 
+      {/* --- Template Picker Dialog --- */}
+      <Dialog open={isTemplatePickerOpen} onOpenChange={setIsTemplatePickerOpen}>
+         <DialogContent className="rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-xl" dir={dir}>
+            <div className="bg-slate-900 p-8 text-white text-start">
+               <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3">
+                  <ListFilter className="h-7 w-7 text-primary" />
+                  {isRtl ? 'اختيار قالب المقايسة' : 'Select BOQ Template'}
+               </DialogTitle>
+               <p className="text-slate-400 font-bold mt-2">{isRtl ? 'تم العثور على أكثر من قالب لهذا المسار، يرجى اختيار الأنسب.' : 'Multiple templates found, please select one.'}</p>
+            </div>
+
+            <div className="p-8 space-y-3 bg-slate-50/30">
+               {availableTemplates.map(template => (
+                 <div 
+                   key={template.id} 
+                   onClick={() => executeInstantiate(template.id!, template.name)}
+                   className="p-5 rounded-2xl border-2 border-slate-100 bg-white hover:border-primary hover:bg-primary/5 cursor-pointer transition-all flex items-center justify-between group"
+                 >
+                    <div className="text-start">
+                       <h4 className="font-black text-slate-800 group-hover:text-primary transition-colors">{template.name}</h4>
+                       <p className="text-[10px] font-mono text-slate-400 uppercase tracking-widest mt-1">Code: {template.code}</p>
+                    </div>
+                    <ArrowRight className={cn("h-5 w-5 text-slate-200 group-hover:text-primary transition-all", isRtl && "rotate-180")} />
+                 </div>
+               ))}
+            </div>
+
+            <DialogFooter className="p-6 bg-slate-50 border-t">
+               <Button variant="outline" onClick={() => setIsTemplatePickerOpen(false)} className="rounded-xl font-bold h-12 w-full">{isRtl ? 'إلغاء' : 'Cancel'}</Button>
+            </DialogFooter>
+         </DialogContent>
+      </Dialog>
+
       {/* --- Progress Recording Dialog --- */}
       <Dialog open={isRecordOpen} onOpenChange={setIsRecordOpen}>
          <DialogContent className="rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
@@ -556,7 +623,6 @@ export default function TransactionDetailsPage() {
                        </Select>
                     </div>
 
-                    {/* لوحة التشخيص الذكي: تظهر فقط عند عدم وجود بنود مرتبطة */}
                     {filteredItemsForStage.length === 0 && (
                        <div className="p-6 bg-blue-50/50 rounded-2xl border-2 border-blue-100 animate-in zoom-in-95">
                           <div className="flex items-center gap-3 text-blue-600 mb-3">
