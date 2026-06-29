@@ -215,14 +215,10 @@ export default function TransactionDetailsPage() {
     }
   };
 
-  /**
-   * محرك إنشاء المقايسة الذكي: يبحث عن الخيارات المتاحة ويقرر المسار الأنسب
-   */
   const handleCreateBOQRequest = async () => {
     if (!documentService || !transaction || !user || !companyId || !db) return;
     setIsCreatingBoq(true);
     try {
-      // جلب كافة القوالب المطابقة للمسار الفني
       const templatesRef = collection(db, paths.boqTemplates(companyId));
       const q = query(
         templatesRef, 
@@ -235,27 +231,18 @@ export default function TransactionDetailsPage() {
       const snap = await getDocs(q);
       
       if (snap.empty) {
-        // تشخيص للفشل
-        console.warn("DIAGNOSTIC: No templates found for this path", {
-          activityTypeId: transaction.activityTypeId,
-          serviceId: transaction.serviceId,
-          subServiceId: transaction.subServiceId
-        });
         throw new Error(isRtl ? 'لم يتم العثور على أي قوالب مقايسة معرّفة لهذا المسار الفني. يرجى إنشاء قالب أولاً في الإعدادات.' : 'No BOQ templates found for this path.');
       }
 
       const allMatches = snap.docs.map(d => ({ id: d.id, ...d.data() } as BOQTemplate));
       const defaultTemplate = allMatches.find(t => t.isDefault);
 
-      // 1. إذا وجدنا قالباً افتراضياً -> استنساخ فوري
       if (defaultTemplate) {
         await executeInstantiate(defaultTemplate.id!, defaultTemplate.name);
       } 
-      // 2. إذا وجدنا قالباً واحداً فقط (حتى لو لم يكن افتراضياً) -> استنساخ فوري
       else if (allMatches.length === 1) {
         await executeInstantiate(allMatches[0].id!, allMatches[0].name);
       }
-      // 3. إذا وُجد أكثر من قالب -> إظهار منتقي القوالب
       else {
         setAvailableTemplates(allMatches);
         setIsTemplatePickerOpen(true);
@@ -421,25 +408,31 @@ export default function TransactionDetailsPage() {
                  {stages.map((stage, idx) => {
                     const boqProgress = stageProgressMap[stage.technicalStageId];
                     const isOpen = openStages[stage.id!];
+                    
+                    // محرك الإنفاذ التسلسلي: التأكد من اكتمال المرحلة السابقة
+                    const isPreviousCompleted = idx === 0 || stages[idx - 1].status === 'completed';
 
                     return (
                       <Card key={stage.id} className={cn(
                         "border-0 shadow-lg rounded-[2.5rem] bg-white transition-all overflow-hidden border-s-8",
                         stage.status === 'completed' ? 'border-s-emerald-500 opacity-80' : 
-                        stage.status === 'in-progress' ? 'border-s-blue-500 ring-4 ring-blue-500/5' : 'border-s-orange-300'
+                        stage.status === 'in-progress' ? 'border-s-blue-500 ring-4 ring-blue-500/5' : 
+                        isPreviousCompleted ? 'border-s-orange-300' : 'border-s-slate-100 opacity-50'
                       )}>
                         <CardContent className="p-0">
                            <div className="p-6 flex flex-col md:flex-row items-center justify-between gap-6">
                               <div className="flex items-center gap-6 flex-1 text-start">
                                  <div className={cn(
                                     "h-12 w-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-sm border",
-                                    stage.status === 'completed' ? "bg-emerald-500 text-white" : "bg-white"
+                                    stage.status === 'completed' ? "bg-emerald-500 text-white" : 
+                                    !isPreviousCompleted ? "bg-slate-50 text-slate-300" : "bg-white"
                                  )}>
                                     {stage.status === 'completed' ? <CheckCircle2 className="h-6 w-6" /> : (idx + 1)}
                                  </div>
                                  <div className="space-y-1 flex-1">
                                     <div className="flex items-center gap-2">
                                        <h4 className="font-black text-lg text-slate-900 tracking-tight">{stage.name}</h4>
+                                       {!isPreviousCompleted && <Lock className="h-3 w-3 text-slate-300" />}
                                     </div>
                                     
                                     {boqProgress && boqProgress.linkedItemsCount > 0 && (
@@ -475,7 +468,8 @@ export default function TransactionDetailsPage() {
                                     <MessageSquare className="h-5 w-5" />
                                  </Button>
 
-                                 {stage.status === 'pending' && (
+                                 {/* لا يمكن بدء المرحلة إلا إذا كانت السابقة مكتملة */}
+                                 {stage.status === 'pending' && isPreviousCompleted && (
                                     <Button 
                                       onClick={() => handleStartStage(stage.id!)} 
                                       disabled={processingId === stage.id}
@@ -485,6 +479,15 @@ export default function TransactionDetailsPage() {
                                        {isRtl ? 'بدء العمل' : 'Start'}
                                     </Button>
                                  )}
+
+                                 {/* تنبيه حالة الانتظار */}
+                                 {stage.status === 'pending' && !isPreviousCompleted && (
+                                    <Badge variant="outline" className="h-11 px-4 rounded-xl border-2 border-slate-100 text-slate-300 font-bold text-[10px] gap-2">
+                                       <Clock className="h-3 w-3" />
+                                       {isRtl ? 'بانتظار المرحلة السابقة' : 'Waiting prev. stage'}
+                                    </Badge>
+                                 )}
+
                                  {stage.status === 'in-progress' && (
                                     <Button 
                                       onClick={() => handleCompleteStage(stage)} 
@@ -622,24 +625,6 @@ export default function TransactionDetailsPage() {
                           </SelectContent>
                        </Select>
                     </div>
-
-                    {filteredItemsForStage.length === 0 && (
-                       <div className="p-6 bg-blue-50/50 rounded-2xl border-2 border-blue-100 animate-in zoom-in-95">
-                          <div className="flex items-center gap-3 text-blue-600 mb-3">
-                             <Info className="h-5 w-5" />
-                             <h5 className="font-black text-xs uppercase">{isRtl ? 'تشخيص الربط الفني' : 'Technical Link Diagnostic'}</h5>
-                          </div>
-                          <div className="space-y-2 font-mono text-[9px] text-blue-800/80">
-                             <p className="flex justify-between"><span>Target Stage ID:</span> <span className="font-black">{targetStage?.technicalStageId}</span></p>
-                             <p className="flex justify-between"><span>BOQ Items in DB:</span> <span className="font-black">{boqItems?.length || 0}</span></p>
-                          </div>
-                          <p className="mt-4 text-[9px] font-bold text-slate-500 leading-relaxed italic">
-                             {isRtl 
-                               ? 'تنبيه: المهندس لن يرى البند إلا إذا قمت بربطه بهذه المرحلة تحديداً في (الإعدادات > شجرة الأعمال).' 
-                               : 'Engineer won\'t see this item unless explicitly linked to this stage in (Settings > Work Tree).'}
-                          </p>
-                       </div>
-                    )}
 
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? "الكمية المنفذة" : "Executed Quantity"}</Label>
