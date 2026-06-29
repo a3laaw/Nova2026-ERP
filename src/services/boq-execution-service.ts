@@ -93,26 +93,31 @@ export class BOQExecutionService {
     });
 
     // 2. تحديث الرصيد التراكمي في البند الرئيسي (The Bucket Update)
-    // نجلب كافة السجلات لنضمن أن الجمع يتم دائماً من الحقيقة الميدانية
     const allExecutionsSnap = await getDocs(executionsRef);
     const newTotalExecuted = allExecutionsSnap.docs.reduce((sum, d) => sum + (d.data().quantity || 0), 0);
 
-    // تحديث البند الأصلي بالمجموع الجديد
     await updateDoc(itemRef, {
       executedQuantity: newTotalExecuted,
       updatedAt: serverTimestamp(),
       updatedBy: userId
     });
 
-    // 3. توثيق الحدث في سجل المعاملة
+    // 3. توثيق الحدث في سجل المعاملة (مع إبراز الملاحظات)
     if (itemData.transactionId) {
       const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, itemData.transactionId));
+      
+      let logContent = quantity === 0 
+        ? `تأكيد فني مكمل: ${itemData.referenceTitle}.`
+        : `إنجاز ميداني: ${itemData.referenceTitle} -> تسجيل ${quantity} وحدة.`;
+
+      if (notes) {
+        logContent += ` الملاحظة: "${notes}"`;
+      }
+
       await addDoc(timelineRef, {
         transactionId: itemData.transactionId,
         type: 'numeric_update',
-        content: quantity === 0 
-          ? `تأكيد فني مكمل: ${itemData.referenceTitle} (بدون إضافة كمية).`
-          : `إنجاز ميداني: ${itemData.referenceTitle} -> تسجيل ${quantity} وحدة (الإجمالي المنفذ: ${newTotalExecuted}).`,
+        content: logContent,
         userId,
         userName,
         companyId: this.companyId,
@@ -172,7 +177,6 @@ export class BOQExecutionService {
       totalPlanned,
       totalExecuted: totalExecutedForThisStage,
       progressPercent: Math.round(progress * 100) / 100,
-      // القاعدة الذهبية: يسمح بالإغلاق إذا تم تسجيل كمية > 0 أو إذا تم عمل "تأكيد فني" (Log Count > 0)
       canComplete: totalLogsCount > 0,
       reason: totalLogsCount === 0 ? "يجب تسجيل الإنجاز المادي أو التأكيد الفني المكمل أولاً." : undefined
     };
