@@ -399,11 +399,15 @@ export default function TransactionDetailsPage() {
                                          {isSelected && <Target className="h-3.5 w-3.5 text-primary animate-pulse" />}
                                       </div>
                                       
-                                      {stage.status === 'completed' && stage.completedAt && (
+                                      {(stage.status === 'completed' || stage.status === 'in-progress') && stage.startedAt && (
                                          <div className="flex items-center gap-3 text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
                                             <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" /> Start: {stage.startedAt?.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
-                                            <ArrowRight className="h-2 w-2" />
-                                            <span className="flex items-center gap-1"><Check className="h-2.5 w-2.5" /> End: {stage.completedAt?.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                                            {stage.completedAt && (
+                                              <>
+                                                <ArrowRight className="h-2 w-2" />
+                                                <span className="flex items-center gap-1 text-emerald-600"><Check className="h-2.5 w-2.5" /> End: {stage.completedAt?.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                                              </>
+                                            )}
                                          </div>
                                       )}
 
@@ -470,6 +474,7 @@ export default function TransactionDetailsPage() {
                       path={paths.transactionComments(companyId!, transactionId)} 
                       externalLogs={allExecutions || []}
                       boqItems={boqItems || []}
+                      stages={stages || []}
                       filterStageId={filterStageId}
                       technicalStageId={currentFilteredStage?.technicalStageId}
                       selectedStageName={currentFilteredStage?.name}
