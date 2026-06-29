@@ -146,7 +146,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     setLoading(true);
     try {
       const sanitizedItems = items.map(item => {
-        // ضمان أن مصفوفة المراحل غير فارغة إذا كانت هناك مرحلة واحدة مرتبطة
         const normalizedStageIds =
           item.technicalStageIds && item.technicalStageIds.length > 0
             ? item.technicalStageIds
@@ -170,7 +169,8 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
-      setLoading(false);
+      setLoading(true); // لضمان عدم حدوث تكرار أثناء الإغلاق
+      onClose();
     }
   };
 
@@ -185,18 +185,8 @@ export function BOQTemplateForm({ template, onClose }: Props) {
        return parent?.title || '---';
     }) || [];
 
-    // الربط الفني المعقد: دعم المسميات المختلفة لضمان انتقال الروابط من المرجع للقالب
-    const normalizedStageIds =
-      Array.isArray((node as any).technicalStageIds) && (node as any).technicalStageIds.length > 0
-        ? (node as any).technicalStageIds
-        : (((node as any).defaultTechnicalStageId || (node as any).technicalStageId)
-            ? [((node as any).defaultTechnicalStageId || (node as any).technicalStageId)]
-            : []);
-
-    const normalizedDefaultStageId =
-      (node as any).defaultTechnicalStageId ||
-      (node as any).technicalStageId ||
-      (normalizedStageIds.length > 0 ? normalizedStageIds[0] : '');
+    const normalizedStageIds = node.technicalStageIds || (node.technicalStageId ? [node.technicalStageId] : []);
+    const normalizedDefaultStageId = node.technicalStageId || (normalizedStageIds.length > 0 ? normalizedStageIds[0] : '');
 
     const newItem: BOQTemplateItem = {
       boqReferenceNodeId: node.id!,
@@ -314,13 +304,11 @@ export function BOQTemplateForm({ template, onClose }: Props) {
           const itemPrefix = `${prefix}.${iIdx + 1}`; 
           const subtotal = (item.plannedQuantity || 0) * (item.estimatedRate || 0);
 
-          // فلترة المراحل المسموح بها لهذا البند فقط
-          const allowedStagesForItem =
-            (item.technicalStageIds && item.technicalStageIds.length > 0)
+          // الحل الذكي: إذا كان البند يفتقد للروابط الفنية، نعرض له كافة مراحل المسار الفني للقالب ليتمكن من الاختيار
+          const templatePathStages = allStages.filter(s => s.subServiceId === formData.subServiceId);
+          const allowedStagesForItem = (item.technicalStageIds && item.technicalStageIds.length > 0)
               ? allStages.filter(s => item.technicalStageIds!.includes(s.id!))
-              : (item.technicalStageId
-                  ? allStages.filter(s => s.id === item.technicalStageId)
-                  : []);
+              : templatePathStages;
 
           return (
             <TableRow key={`${item.boqReferenceNodeId}-${originalIdx}`} className="hover:bg-primary/[0.02] transition-colors border-b-slate-50 group/item">
@@ -345,10 +333,8 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                        updateItem(originalIdx, 'technicalStageId', '');
                        return;
                      }
-
                      const currentIds = item.technicalStageIds || [];
                      const nextIds = currentIds.includes(v) ? currentIds : [...currentIds, v];
-
                      updateItem(originalIdx, 'technicalStageIds', nextIds);
                      updateItem(originalIdx, 'technicalStageId', v);
                    }}
@@ -518,43 +504,8 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                                 {activeSubs.map(s => <SelectItem key={s.id} value={s.id!} className="font-black text-xs">{isRtl ? s.name : s.nameEn}</SelectItem>)}
                              </SelectContent>
                           </Select>
-                          <p className="text-[8px] font-bold text-slate-400 italic mt-1">
-                             {isRtl ? 'هذا الحقل هو المسؤول عن ظهور القالب داخل معاملات العميل.' : 'This field enables the template to appear in client transactions.'}
-                          </p>
                        </div>
                     </div>
-                 </div>
-
-                 <div className="space-y-3 text-start pt-4 border-t border-dashed">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                       <LayoutGrid className="h-3 w-3" /> {isRtl ? 'الأنشطة المرتبطة (إضافي)' : 'Also Linked To'}
-                    </Label>
-                    <Popover>
-                       <PopoverTrigger asChild>
-                          <Button variant="outline" className="w-full h-12 rounded-xl justify-between border-2 bg-slate-50/50 hover:bg-white transition-all font-bold px-4">
-                             <div className="flex gap-1 overflow-hidden">
-                                {formData.activityTypeIds?.length > 0 ? (
-                                  <Badge className="bg-primary text-white font-black text-[9px]">{formData.activityTypeIds.length} {isRtl ? 'مختار' : 'Selected'}</Badge>
-                                ) : <span className="text-slate-400 text-xs">...</span>}
-                             </div>
-                             <ChevronDown className="h-4 w-4 opacity-30" />
-                          </Button>
-                       </PopoverTrigger>
-                       <PopoverContent className="w-64 p-2 rounded-2xl border-2 shadow-2xl" align="start">
-                          <div className="space-y-1 max-h-[300px] overflow-y-auto p-1">
-                             {activities?.map(act => (
-                               <div 
-                                 key={act.id} 
-                                 onClick={() => toggleMultiSelect('activityTypeIds', act.id!)}
-                                 className="flex items-center gap-3 p-3 rounded-xl hover:bg-primary/5 cursor-pointer transition-colors"
-                               >
-                                  <Checkbox checked={formData.activityTypeIds?.includes(act.id!)} className="h-4 w-4" />
-                                  <span className="text-xs font-bold text-slate-700">{isRtl ? act.name : act.nameEn}</span>
-                               </div>
-                             ))}
-                          </div>
-                       </PopoverContent>
-                    </Popover>
                  </div>
               </div>
            </div>
@@ -572,10 +523,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
 
                  <Dialog open={isPickerOpen} onOpenChange={setIsMasterPickerOpen}>
                     <DialogTrigger asChild>
-                       <button 
-                         type="button" 
-                         className="h-9 px-5 rounded-xl bg-[#1e1b4b] text-white font-black text-[10px] gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all group flex items-center"
-                       >
+                       <button type="button" className="h-9 px-5 rounded-xl bg-[#1e1b4b] text-white font-black text-[10px] gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all group flex items-center">
                           <FolderTree className="h-3.5 w-3.5 text-primary group-hover:rotate-12 transition-transform" />
                           {isRtl ? 'مستكشف القاموس السيادي' : 'Registry Explorer'}
                        </button>
@@ -628,7 +576,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                          <div className="flex flex-col items-center gap-8">
                             <LayoutGrid className="h-24 w-24 text-slate-300" />
                             <p className="text-2xl font-black uppercase tracking-[0.4em] text-slate-400">{isRtl ? 'المقايسة فارغة' : 'Grid is Empty'}</p>
-                            <p className="text-xs font-bold -mt-4">{isRtl ? 'استخدم مستكشف القاموس لإضافة البنود' : 'Use Explorer to add items'}</p>
                          </div>
                       </TableCell>
                     </TableRow>
