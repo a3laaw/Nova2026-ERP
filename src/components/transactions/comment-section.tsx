@@ -8,7 +8,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   Send, MessageSquare, MoreVertical, 
   Trash2, Loader2, Hammer, User,
-  History, Clock, CheckCircle2, Zap
+  History, Clock, CheckCircle2, Zap,
+  Info
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -57,20 +58,26 @@ export function CommentSection({ transactionId, stageInstanceId, path, title, co
     db && globalUser?.companyId ? new CommentService(db, globalUser.companyId, permissions) : null, 
   [db, globalUser, permissions]);
 
-  // --- محرك الدمج والفرز الزمني السيادي ---
+  /**
+   * محرك الدمج والفرز الزمني السيادي (Sovereign Unified Stream Engine)
+   */
   const unifiedStream = useMemo(() => {
-    const stream = [...(comments || [])].map(c => ({ ...c, streamType: 'comment' as const }));
+    // 1. تحضير التعليقات
+    const commentItems = (comments || []).map(c => ({ 
+      ...c, 
+      streamType: 'comment' as const,
+      sortTime: c.createdAt?.toMillis?.() || c.createdAt?.seconds * 1000 || Date.now()
+    }));
     
-    // إضافة السجلات الميدانية للتدفق
-    if (externalLogs && externalLogs.length > 0) {
-      stream.push(...externalLogs.map(l => ({ ...l, streamType: 'log' as const })));
-    }
+    // 2. تحضير السجلات الميدانية
+    const logItems = (externalLogs || []).map(l => ({ 
+      ...l, 
+      streamType: 'log' as const,
+      sortTime: l.createdAt?.toMillis?.() || l.createdAt?.seconds * 1000 || Date.now()
+    }));
 
-    return stream.sort((a, b) => {
-      const timeA = a.createdAt?.toMillis?.() || a.createdAt?.seconds * 1000 || 0;
-      const timeB = b.createdAt?.toMillis?.() || b.createdAt?.seconds * 1000 || 0;
-      return timeA - timeB;
-    });
+    // 3. الدمج والفرز النهائي
+    return [...commentItems, ...logItems].sort((a, b) => a.sortTime - b.sortTime);
   }, [comments, externalLogs]);
 
   const handleSubmit = async () => {
@@ -101,7 +108,7 @@ export function CommentSection({ transactionId, stageInstanceId, path, title, co
         </h3>
       )}
 
-      <div className={cn("flex-1 space-y-4 overflow-y-auto pr-2 scrollbar-hide", compact ? "max-h-[500px]" : "max-h-[600px]")}>
+      <div className={cn("flex-1 space-y-6 overflow-y-auto pr-2 scrollbar-hide", compact ? "max-h-[500px]" : "max-h-[600px]")}>
         {commentsLoading ? (
           <div className="py-10 text-center"><Loader2 className="animate-spin mx-auto text-primary/20" /></div>
         ) : unifiedStream.length === 0 ? (
@@ -118,28 +125,62 @@ export function CommentSection({ transactionId, stageInstanceId, path, title, co
               const isComplementary = item.quantity === 0;
 
               return (
-                <div key={`log-${idx}`} className="flex justify-center my-6 animate-in fade-in zoom-in-95 duration-500">
-                   <div className="bg-white border-2 border-slate-50 shadow-md rounded-2xl p-4 flex flex-col md:flex-row items-center gap-4 max-w-[90%] relative">
+                <div key={`log-${idx}`} className="flex justify-center animate-in fade-in zoom-in-95 duration-500">
+                   <div className={cn(
+                     "border-2 shadow-md rounded-[1.5rem] p-5 flex flex-col md:flex-row items-center gap-4 w-full md:w-[95%] relative transition-all hover:shadow-lg",
+                     isComplementary ? "bg-blue-50/50 border-blue-100" : "bg-emerald-50/30 border-emerald-100"
+                   )}>
                       <div className={cn(
-                        "h-10 w-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm",
-                        isComplementary ? "bg-blue-50 text-blue-500" : "bg-primary/5 text-primary"
+                        "h-12 w-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm border",
+                        isComplementary ? "bg-white text-blue-500 border-blue-100" : "bg-white text-emerald-600 border-emerald-100"
                       )}>
-                        {isComplementary ? <Zap className="h-5 w-5" /> : <Hammer className="h-5 w-5" />}
+                        {isComplementary ? <Zap className="h-6 w-6" /> : <Hammer className="h-6 w-6" />}
                       </div>
-                      <div className="text-start">
-                         <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-[10px] font-black text-slate-800 uppercase">{isRtl ? 'إنجاز ميداني:' : 'Progress Log:'}</span>
-                            <Badge variant="outline" className="text-[8px] font-black border-slate-100 px-2 h-4 bg-slate-50">{boqItem?.referenceTitle || 'B.O.Q Item'}</Badge>
-                            {!isComplementary && <Badge className="bg-emerald-500 text-white border-0 text-[8px] font-black h-4 px-2">{item.quantity} QTY</Badge>}
-                            {isComplementary && <Badge className="bg-blue-600 text-white border-0 text-[8px] font-black h-4 px-2">COMPLEMENTARY</Badge>}
+                      <div className="text-start flex-1">
+                         <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <span className="text-[10px] font-black text-slate-800 uppercase tracking-tighter">
+                               {isRtl ? 'إجراء ميداني:' : 'Progress Update:'}
+                            </span>
+                            <Badge variant="outline" className="text-[9px] font-black border-slate-200 px-3 h-5 bg-white text-slate-600">
+                               {boqItem?.referenceTitle || (isRtl ? 'بند غير محدد' : 'Unknown Item')}
+                            </Badge>
+                            {!isComplementary && (
+                               <Badge className="bg-emerald-600 text-white border-0 text-[10px] font-black h-5 px-3">
+                                  {item.quantity} QTY
+                               </Badge>
+                            )}
+                            {isComplementary && (
+                               <Badge className="bg-blue-600 text-white border-0 text-[10px] font-black h-5 px-3">
+                                  COMPLEMENTARY
+                               </Badge>
+                            )}
                          </div>
-                         <p className="text-[11px] font-bold text-slate-500 mt-1 leading-relaxed italic">
-                            "{item.notes || (isRtl ? 'تأكيد فني بدون ملاحظات' : 'Technical validation')}"
-                         </p>
-                         <div className="flex items-center gap-2 mt-1">
-                            <span className="text-[8px] font-black text-primary uppercase">Eng: {item.recordedBy?.slice(-4)}</span>
-                            <span className="text-[8px] text-slate-300 font-bold">• {item.createdAt ? formatDistanceToNow(item.createdAt.toDate(), { addSuffix: true, locale: isRtl ? ar : enUS }) : '...'}</span>
+                         
+                         {item.notes && (
+                            <p className="text-xs font-bold text-slate-600 bg-white/50 p-2 rounded-lg border border-dashed border-slate-200 mt-2 leading-relaxed">
+                               "{item.notes}"
+                            </p>
+                         )}
+                         
+                         <div className="flex items-center gap-3 mt-2 border-t border-slate-100 pt-2">
+                            <div className="flex items-center gap-1.5">
+                               <User className="h-3 w-3 text-slate-300" />
+                               <span className="text-[9px] font-black text-slate-400 uppercase">
+                                  {item.recordedBy === user?.uid ? (isRtl ? 'بواسطتك' : 'By You') : (isRtl ? 'بواسطة المهندس' : `By ${item.recordedBy?.slice(-4)}`)}
+                               </span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                               <Clock className="h-3 w-3 text-slate-300" />
+                               <span className="text-[9px] text-slate-400 font-bold">
+                                  {item.createdAt ? formatDistanceToNow(item.createdAt.toDate(), { addSuffix: true, locale: isRtl ? ar : enUS }) : (isRtl ? 'الآن' : 'just now')}
+                               </span>
+                            </div>
                          </div>
+                      </div>
+                      <div className="absolute -top-2 -right-2">
+                         <Badge className="bg-white border-2 border-slate-100 text-slate-300 h-6 w-6 p-0 rounded-full flex items-center justify-center font-black text-[10px] shadow-sm">
+                            LOG
+                         </Badge>
                       </div>
                    </div>
                 </div>
@@ -149,7 +190,7 @@ export function CommentSection({ transactionId, stageInstanceId, path, title, co
             const isMine = item.createdBy === user?.uid;
             return (
               <div key={`comm-${item.id}`} className={cn("flex gap-3 text-start animate-in fade-in slide-in-from-bottom-2 duration-300", isMine ? "flex-row-reverse" : "flex-row")}>
-                 <Avatar className="h-8 w-8 rounded-xl shrink-0 border shadow-sm">
+                 <Avatar className="h-9 w-9 rounded-2xl shrink-0 border-2 border-white shadow-sm ring-1 ring-slate-100">
                     <AvatarImage src={`https://picsum.photos/seed/${item.createdBy}/40/40`} />
                     <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-black">{item.createdByName?.charAt(0)}</AvatarFallback>
                  </Avatar>
@@ -157,26 +198,26 @@ export function CommentSection({ transactionId, stageInstanceId, path, title, co
                     <div className="flex items-center gap-2 px-1">
                        <span className="text-[10px] font-black text-slate-700">{item.createdByName}</span>
                        <span className="text-[8px] font-bold text-slate-300">
-                          {item.createdAt ? formatDistanceToNow(item.createdAt.toDate(), { addSuffix: true, locale: isRtl ? ar : enUS }) : '...'}
+                          {item.createdAt ? formatDistanceToNow(item.createdAt.toDate(), { addSuffix: true, locale: isRtl ? ar : enUS }) : (isRtl ? 'الآن' : 'just now')}
                        </span>
                     </div>
                     <div className={cn(
-                      "p-3 rounded-2xl shadow-sm text-xs font-bold leading-relaxed relative group",
-                      isMine ? "bg-[#e87c24] text-white rounded-te-none" : "bg-white border text-slate-700 rounded-ts-none"
+                      "p-4 rounded-[1.5rem] shadow-sm text-sm font-bold leading-relaxed relative group transition-all",
+                      isMine ? "bg-[#e87c24] text-white rounded-te-none" : "bg-white border-2 border-slate-50 text-slate-700 rounded-ts-none"
                     )}>
                        <p className="whitespace-pre-wrap">{item.content}</p>
                        
                        <div className={cn(
-                         "absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity",
-                         isMine ? "right-full mr-1" : "left-full ml-1"
+                         "absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1",
+                         isMine ? "right-full mr-2" : "left-full ml-2"
                        )}>
                           <DropdownMenu>
                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-6 w-6 rounded-lg text-slate-300 hover:text-slate-600"><MoreVertical className="h-3 w-3" /></Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-slate-300 hover:text-slate-600 bg-white shadow-sm border"><MoreVertical className="h-3.5 w-3.5" /></Button>
                              </DropdownMenuTrigger>
                              <DropdownMenuContent align={isMine ? "end" : "start"} className="rounded-xl border-2">
                                 <DropdownMenuItem onClick={() => handleDelete(item.id!)} className="text-rose-600 font-bold gap-2 focus:bg-rose-50 cursor-pointer">
-                                   <Trash2 className="h-3.5 w-3.5" /> {isRtl ? 'حذف' : 'Delete'}
+                                   <Trash2 className="h-4 w-4" /> {isRtl ? 'حذف التعليق' : 'Delete Comment'}
                                 </DropdownMenuItem>
                              </DropdownMenuContent>
                           </DropdownMenu>
@@ -189,21 +230,21 @@ export function CommentSection({ transactionId, stageInstanceId, path, title, co
         )}
       </div>
 
-      <Card className="border-2 border-slate-100 shadow-xl rounded-2xl overflow-hidden bg-white mt-auto">
+      <Card className="border-2 border-slate-100 shadow-2xl rounded-[2rem] overflow-hidden bg-white mt-auto ring-4 ring-black/[0.02]">
         <CardContent className="p-3 flex items-end gap-2">
            <Textarea 
              value={content}
              onChange={e => setContent(e.target.value)}
              placeholder={isRtl ? "اكتب تعليقاً أو استفساراً فنياً..." : "Write a comment or query..."}
-             className="min-h-[44px] max-h-[120px] rounded-xl border-0 focus-visible:ring-0 text-xs font-bold bg-slate-50/50 resize-none p-3"
+             className="min-h-[44px] max-h-[150px] rounded-2xl border-0 focus-visible:ring-0 text-sm font-bold bg-slate-50/50 resize-none p-4"
            />
            <Button 
              onClick={handleSubmit} 
              disabled={loading || !content.trim()}
              size="icon" 
-             className="h-11 w-11 rounded-xl bg-primary text-white shadow-lg shadow-primary/20 shrink-0"
+             className="h-12 w-12 rounded-2xl bg-primary text-white shadow-xl shadow-primary/20 shrink-0 hover:scale-110 transition-transform"
            >
-              {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Send className={cn("h-5 w-5", isRtl && "rotate-180")} />}
+              {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Send className={cn("h-6 w-6", isRtl && "rotate-180")} />}
            </Button>
         </CardContent>
       </Card>

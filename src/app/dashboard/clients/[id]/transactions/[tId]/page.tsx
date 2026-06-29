@@ -102,12 +102,20 @@ export default function TransactionDetailsPage() {
   [db, companyId, activeBoq]);
   const { data: boqItems } = useCollection<BOQItem>(itemsQuery);
 
-  // جلب كافة سجلات التنفيذ للمعاملة لتوزيعها على المراحل في التدفق الزمني
+  /**
+   * جلب كافة سجلات التنفيذ للمعاملة لتوزيعها على المراحل في التدفق الزمني الموحد.
+   * تم استخدام شرط companyId للامتثال للقواعد الأمنية.
+   */
   const executionsQuery = useMemo(() => 
     companyId && db && activeBoq?.id 
-      ? query(collectionGroup(db, 'executions'), where('companyId', '==', companyId), where('boqId', '==', activeBoq.id)) 
+      ? query(
+          collectionGroup(db, 'executions'), 
+          where('companyId', '==', companyId), 
+          where('boqId', '==', activeBoq.id)
+        ) 
       : null, 
   [db, companyId, activeBoq]);
+  
   const { data: allExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
 
   const stages = useMemo(() => {
@@ -267,7 +275,7 @@ export default function TransactionDetailsPage() {
                     const isOpen = openStages[stage.id!];
                     const isPreviousCompleted = idx === 0 || stages[idx - 1].status === 'completed';
                     
-                    // فلترة سجلات التنفيذ لهذه المرحلة تحديداً لتمريرها للـ Unified Comment Section
+                    // فلترة كافة سجلات التنفيذ (Logs) التابعة لهذه المرحلة لدمجها في التدفق
                     const stageLogs = allExecutions?.filter(log => log.technicalStageId === stage.technicalStageId) || [];
 
                     return (
