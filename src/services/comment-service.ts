@@ -45,7 +45,7 @@ export class CommentService {
       content,
       commentType: type,
       createdBy: userId,
-      createdByName: userName,
+      createdByName: userName || 'User', // ضمان وجود اسم دائماً
       companyId: this.companyId,
       isArchived: false,
       createdAt: serverTimestamp(),
@@ -62,28 +62,34 @@ export class CommentService {
 
   /**
    * أرشفة تعليقات مرحلة محددة (تستخدم عند التراجع)
+   * تم تحسينها لتعمل بدون الحاجة لفهارس معقدة عبر الفلترة البرمجية
    */
   async archiveStageComments(transactionId: string, stageInstanceId: string) {
     const path = paths.transactionComments(this.companyId, transactionId);
-    const q = query(
-      collection(this.db, path),
-      where('stageInstanceId', '==', stageInstanceId),
-      where('isArchived', '==', false)
-    );
-
-    const snap = await getDocs(q);
+    
+    // جلب كافة التعليقات لهذا المعاملة (MVP Scale)
+    const snap = await getDocs(collection(this.db, path));
     if (snap.empty) return;
 
     const batch = writeBatch(this.db);
+    let count = 0;
+
     snap.docs.forEach(d => {
-      batch.update(d.ref, { 
-        isArchived: true, 
-        archivedAt: serverTimestamp(),
-        updatedAt: serverTimestamp() 
-      });
+      const data = d.data();
+      // فلترة برمجية لضمان الدقة وتجنب مشاكل الفهارس
+      if (data.stageInstanceId === stageInstanceId && data.isArchived !== true) {
+        batch.update(d.ref, { 
+          isArchived: true, 
+          archivedAt: serverTimestamp(),
+          updatedAt: serverTimestamp() 
+        });
+        count++;
+      }
     });
 
-    return batch.commit();
+    if (count > 0) {
+      return batch.commit();
+    }
   }
 
   async deleteComment(path: string, commentId: string) {
