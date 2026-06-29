@@ -26,7 +26,7 @@ import { cn } from '@/lib/utils';
 
 /**
  * صفحة متابعة إنجاز المقايسة الآلية (Automated BOQ Progress)
- * تقوم بحساب السابق والحالي والإجمالي برمجياً بناءً على حالة المراحل.
+ * تقوم بحساب السابق والحالي والإجمالي برمجياً بناءً على حالة المراحل الميدانية.
  */
 export default function TransactionBOQProgressPage() {
   const params = useParams();
@@ -53,8 +53,7 @@ export default function TransactionBOQProgressPage() {
   const itemsQuery = useMemo(() => companyId && db && activeBoq?.id ? query(collection(db, paths.boqItems(companyId, activeBoq.id))) : null, [db, companyId, activeBoq]);
   const { data: items, loading: itemsLoading } = useCollection<BOQItem>(itemsQuery);
 
-  // 3. جلب كافة سجلات التنفيذ المرتبطة بهذه المقايسة (Collection Group Query)
-  // ملاحظة: هذا الاستعلام يسحب كل الحركات الميدانية المسجلة عبر كافة البنود
+  // 3. جلب كافة سجلات التنفيذ المرتبطة بهذه المقايسة
   const executionsQuery = useMemo(() => 
     companyId && db && activeBoq?.id 
       ? query(collectionGroup(db, 'executions'), where('boqId', '==', activeBoq.id)) 
@@ -75,11 +74,11 @@ export default function TransactionBOQProgressPage() {
       
       if (!metrics[itemId]) metrics[itemId] = { prev: 0, current: 0 };
       
-      // المادة 1: إذا كانت المرحلة مكتملة، تذهب الكمية لـ "السابق"
+      // القاعدة 1: إذا كانت المرحلة مكتملة، تذهب الكمية لـ "السابق"
       if (stage?.status === 'completed') {
         metrics[itemId].prev += (exec.quantity || 0);
       } 
-      // المادة 2: إذا كانت المرحلة قيد التنفيذ، تذهب الكمية لـ "الحالي"
+      // القاعدة 2: إذا كانت المرحلة قيد التنفيذ أو معلقة، تذهب الكمية لـ "الحالي"
       else if (stage?.status === 'in-progress' || stage?.status === 'pending') {
         metrics[itemId].current += (exec.quantity || 0);
       }
@@ -90,15 +89,15 @@ export default function TransactionBOQProgressPage() {
 
   const boqTree = useMemo(() => transformToBOQTree(items || []), [items]);
 
-  // إحصائيات الفوتر
+  // إحصائيات الفوتر الإجمالية
   const overallStats = useMemo(() => {
     if (!items) return { totalPlanned: 0, totalExecuted: 0, progress: 0 };
     const totalP = items.reduce((acc, i) => acc + ((i.plannedQuantity || 0) * (i.estimatedRate || 0)), 0);
-    const metrics = items.map(i => {
+    const metricsValue = items.map(i => {
         const m = executionMetrics[i.id!] || { prev: 0, current: 0 };
         return (m.prev + m.current) * (i.estimatedRate || 0);
     });
-    const totalE = metrics.reduce((acc, val) => acc + val, 0);
+    const totalE = metricsValue.reduce((acc, val) => acc + val, 0);
     return {
       totalPlanned: totalP,
       totalExecuted: totalE,
@@ -106,7 +105,10 @@ export default function TransactionBOQProgressPage() {
     };
   }, [items, executionMetrics]);
 
-  const renderExecutionTreeRows = (node: BOQTreeNode, prefix: string): React.ReactNode => {
+  /**
+   * دالة الرسم الشجري المحدثة (renderBOQTreeRows)
+   */
+  const renderBOQTreeRows = (node: BOQTreeNode, prefix: string): React.ReactNode => {
     return (
       <React.Fragment key={node.id}>
         <TableRow className="bg-slate-50/50 hover:bg-slate-100 border-b-2 border-white">
@@ -148,21 +150,21 @@ export default function TransactionBOQProgressPage() {
                  </span>
               </TableCell>
               
-              {/* السابق - آلي */}
+              {/* السابق - آلي (من المراحل المكتملة) */}
               <TableCell className="text-center">
                  <span className="font-mono font-black text-blue-600 text-xs">
                     {prevVal || '0'}
                  </span>
               </TableCell>
               
-              {/* الحالي - آلي - تصميم كبسولة مميزة */}
+              {/* الحالي - آلي (من المرحلة قيد التنفيذ) */}
               <TableCell className="text-center w-[100px]">
                  <div className="inline-flex items-center justify-center h-8 px-4 rounded-full bg-orange-50 border border-orange-100 text-orange-600 font-black text-xs shadow-sm">
                     {currentVal || '0'}
                  </div>
               </TableCell>
 
-              {/* الإجمالي - آلي */}
+              {/* الإجمالي - تراكمي */}
               <TableCell className="text-center w-[100px]">
                  <Badge variant="outline" className={cn(
                    "font-black text-xs px-4 h-9 rounded-full border-2 shadow-sm",
@@ -194,7 +196,7 @@ export default function TransactionBOQProgressPage() {
 
         {node.children.map((child, cIdx) => {
           const childPrefix = `${prefix.replace('.0', '')}.${node.items.length + cIdx + 1}`;
-          return renderExecutionTreeRows(child, childPrefix);
+          return renderBOQTreeRows(child, childPrefix);
         })}
       </React.Fragment>
     );
@@ -242,23 +244,34 @@ export default function TransactionBOQProgressPage() {
 
       <div className="flex-1 bg-white rounded-3xl shadow-2xl border border-primary/5 overflow-hidden flex flex-col min-h-[600px]">
          <Table>
-           <TableHeader className="bg-slate-50 border-b-2">
-             <TableRow>
-               <TableHead className="ps-6 w-[80px]">S.No</TableHead>
-               <TableHead className="w-[100px]">Code</TableHead>
-               <TableHead>{isRtl ? 'بند العمل / الوصف' : 'Item Description'}</TableHead>
-               <TableHead className="text-center w-[60px]">{isRtl ? 'الوحدة' : 'Unit'}</TableHead>
-               <TableHead className="text-center w-[80px] bg-slate-100/50">{isRtl ? 'المخطط' : 'Plan'}</TableHead>
-               <TableHead className="text-center w-[80px]">{isRtl ? 'السابق' : 'Prev'}</TableHead>
-               <TableHead className="text-center w-[120px]">{isRtl ? 'الحالي' : 'Current'}</TableHead>
-               <TableHead className="text-center w-[100px]">{isRtl ? 'الإجمالي' : 'Total'}</TableHead>
-               <TableHead className="text-center w-[100px]">{isRtl ? 'الفئة' : 'Rate'}</TableHead>
-               <TableHead className="text-end w-[120px]">{isRtl ? 'القيمة' : 'Value'}</TableHead>
-               <TableHead className="pe-6 w-[120px]">{isRtl ? 'الإنجاز' : 'Progress'}</TableHead>
+           <TableHeader className="bg-slate-900 sticky top-0 z-20">
+             <TableRow className="hover:bg-slate-900 border-0">
+               <TableHead className="ps-6 w-[80px] text-white/40 font-mono text-[10px]">S.No</TableHead>
+               <TableHead className="w-[100px] text-white/40 font-mono text-[10px]">Code</TableHead>
+               <TableHead className="text-white font-black text-xs">{isRtl ? 'بند العمل / الوصف' : 'Item Description'}</TableHead>
+               <TableHead className="text-center w-[60px] text-white font-black text-xs">{isRtl ? 'الوحدة' : 'Unit'}</TableHead>
+               <TableHead className="text-center w-[80px] text-white font-black text-xs bg-white/5">{isRtl ? 'المخطط' : 'Plan'}</TableHead>
+               <TableHead className="text-center w-[80px] text-white font-black text-xs">{isRtl ? 'السابق' : 'Prev'}</TableHead>
+               <TableHead className="text-center w-[120px] text-white font-black text-xs">{isRtl ? 'الحالي' : 'Current'}</TableHead>
+               <TableHead className="text-center w-[100px] text-white font-black text-xs">{isRtl ? 'الإجمالي' : 'Total'}</TableHead>
+               <TableHead className="text-center w-[100px] text-white font-black text-xs">{isRtl ? 'الفئة' : 'Rate'}</TableHead>
+               <TableHead className="text-end w-[120px] text-white font-black text-xs">{isRtl ? 'القيمة' : 'Value'}</TableHead>
+               <TableHead className="pe-6 w-[120px] text-white font-black text-xs">{isRtl ? 'الإنجاز' : 'Progress'}</TableHead>
              </TableRow>
            </TableHeader>
            <TableBody>
-              {boqTree.map((node, idx) => renderBOQTreeRows(node, (idx + 1).toString() + ".0"))}
+              {boqTree.length === 0 ? (
+                <TableRow>
+                   <TableCell colSpan={11} className="py-40 text-center opacity-20">
+                      <div className="flex flex-col items-center gap-4">
+                         <FileSpreadsheet className="h-12 w-12" />
+                         <p className="font-black uppercase tracking-widest">{isRtl ? 'جاري جلب البيانات...' : 'Indexing Ledger...'}</p>
+                      </div>
+                   </TableCell>
+                </TableRow>
+              ) : (
+                boqTree.map((node, idx) => renderBOQTreeRows(node, (idx + 1).toString() + ".0"))
+              )}
            </TableBody>
          </Table>
 
