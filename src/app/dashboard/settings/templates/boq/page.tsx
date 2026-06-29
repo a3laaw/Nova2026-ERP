@@ -7,12 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   FileSpreadsheet, Plus, Loader2, Search, ArrowRight, 
-  Trash2, Edit3, ShieldCheck, Layers, Boxes
+  Trash2, Edit3, ShieldCheck, AlertTriangle
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
+import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { BOQTemplate } from '@/types/templates';
 import { cn } from '@/lib/utils';
@@ -20,17 +21,29 @@ import { Input } from '@/components/ui/input';
 import { BOQTemplateForm } from './boq-template-form';
 import { TemplateService } from '@/services/template-service';
 import { toast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function BOQTemplatesPage() {
   const { globalUser } = useAuthContext();
   const { t, lang, dir } = useLanguage();
+  const { isAdmin } = usePermissions();
   const db = useFirestore();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
   const [searchTerm, setSearchTerm] = useState("");
   const [editingTemplate, setEditingTemplate] = useState<BOQTemplate | null | 'new'>(null);
-  const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const templatesQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.boqTemplates(companyId)), orderBy('name')) : null, 
@@ -38,23 +51,24 @@ export default function BOQTemplatesPage() {
 
   const { data: templates, loading } = useCollection<BOQTemplate>(templatesQuery);
 
-  const handleDelete = async (id: string) => {
-    if (!db || !companyId || !confirm(t('confirmDelete'))) return;
-    setLoadingAction(id);
+  const handleDelete = async () => {
+    if (!db || !companyId || !deletingId) return;
+    setIsDeleting(true);
     try {
       const service = new TemplateService(db, companyId);
-      await service.deleteTemplate('boq', id);
+      await service.deleteTemplate('boq', deletingId);
       toast({ title: t('deleted') });
+      setDeletingId(null);
     } catch (e) {
       toast({ variant: "destructive", title: t('error') });
     } finally {
-      setLoadingAction(null);
+      setIsDeleting(false);
     }
   };
 
   const filtered = (templates || []).filter(temp => 
     temp.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    temp.code.toLowerCase().includes(searchTerm.toLowerCase())
+    (temp.code && temp.code.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   if (editingTemplate) {
@@ -72,7 +86,7 @@ export default function BOQTemplatesPage() {
         <div className="text-start">
           <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
             <FileSpreadsheet className="h-10 w-10 text-primary" />
-            {isRtl ? 'قوالب جداول الكميات (BOQ)' : 'BOQ Templates'}
+            {t('boqTemplates')}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
             {isRtl ? 'إدارة بنود الأعمال القياسية والكميات المرجعية للمشاريع.' : 'Manage standard work items and reference quantities for projects.'}
@@ -132,7 +146,7 @@ export default function BOQTemplatesPage() {
                        </div>
                     </TableCell>
                     <TableCell className="text-start">
-                       <div className="flex flex-col">
+                       <div className="flex flex-col gap-1">
                           <span className="text-xs font-bold text-slate-600">{temp.subServiceName || temp.serviceName}</span>
                           <span className="text-[9px] text-slate-400 font-bold uppercase">{temp.activityTypeName}</span>
                        </div>
@@ -157,15 +171,16 @@ export default function BOQTemplatesPage() {
                           <Button variant="outline" size="icon" onClick={() => setEditingTemplate(temp)} className="rounded-xl h-10 w-10 text-primary border-primary/20 hover:bg-primary hover:text-white">
                              <Edit3 className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            disabled={loadingAction === temp.id}
-                            onClick={() => handleDelete(temp.id!)}
-                            className="rounded-xl h-10 w-10 text-rose-500 hover:bg-rose-50"
-                          >
-                             {loadingAction === temp.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
-                          </Button>
+                          {isAdmin && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => setDeletingId(temp.id!)}
+                              className="rounded-xl h-10 w-10 text-rose-500 hover:bg-rose-50"
+                            >
+                               <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                        </div>
                     </TableCell>
                   </TableRow>
@@ -175,6 +190,32 @@ export default function BOQTemplatesPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
+        <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white" dir={dir}>
+          <AlertDialogHeader>
+             <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50">
+                <AlertTriangle className="h-10 w-10" />
+             </div>
+             <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900 leading-tight">{t('confirmDelete')}</AlertDialogTitle>
+             <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">
+                {isRtl 
+                  ? 'هل أنت متأكد؟ سيتم حذف هذا القالب المرجعي نهائياً من مكتبة المقايسات. لن يتأثر المشاريع القائمة بهذا الإجراء، ولكن لن تتمكن من استخدامه مرة أخرى.' 
+                  : 'Are you sure? This BOQ template will be permanently removed from the library. Existing projects won\'t be affected, but this template will no longer be available for use.'}
+             </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-12 gap-4 flex flex-row items-center justify-center">
+            <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete} 
+              disabled={isDeleting}
+              className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200"
+            >
+               {isDeleting ? <Loader2 className="animate-spin h-5 w-5" /> : (isRtl ? 'نعم، احذف القالب' : 'Confirm Delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
