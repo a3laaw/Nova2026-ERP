@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,8 @@ import {
   FileSpreadsheet, ArrowRight, Loader2, 
   TrendingUp, ChevronDown, ChevronRight,
   Printer, Folder, Calculator, ShieldCheck,
-  Zap, History, PlusCircle, AlertCircle
+  Zap, History, PlusCircle, AlertCircle,
+  CheckCircle2, XCircle
 } from "lucide-react";
 import { useFirestore, useCollection, useDoc } from '@/firebase';
 import { collection, query, where, doc, collectionGroup } from 'firebase/firestore';
@@ -24,6 +25,8 @@ import { transformToBOQTree } from '@/lib/boq-tree-utils';
 import { BOQTreeNode } from '@/types/templates';
 import { cn } from '@/lib/utils';
 import { VOManagerDialog } from '@/components/transactions/vo-manager-dialog';
+import { VariationService } from '@/services/variation-service';
+import { toast } from '@/hooks/use-toast';
 
 /**
  * صفحة متابعة إنجاز المقايسة الآلية (Automated BOQ Progress)
@@ -33,14 +36,16 @@ import { VOManagerDialog } from '@/components/transactions/vo-manager-dialog';
 export default function TransactionBOQProgressPage() {
   const params = useParams();
   const transactionId = params.tId as string;
-  const { globalUser } = useAuthContext();
+  const { globalUser, user } = useAuthContext();
   const { t, lang, dir } = useLanguage();
+  const { permissions, isAdmin } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
   const [isVOOpen, setIsVOOpen] = useState(false);
+  const [processingVOId, setProcessingVOId] = useState<string | null>(null);
 
   // 1. جلب البيانات الأساسية
   const transRef = useMemo(() => companyId && db ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
@@ -115,6 +120,21 @@ export default function TransactionBOQProgressPage() {
       progress: financialStats.final > 0 ? Math.round((totalE / financialStats.final) * 100) : 0
     };
   }, [items, executionMetrics, financialStats]);
+
+  const handleApproveVO = async (voId: string) => {
+    if (!db || !companyId || !user || !activeBoq) return;
+    setProcessingVOId(voId);
+    try {
+      const service = new VariationService(db, companyId, permissions);
+      const userName = globalUser?.username || user.displayName || 'Admin';
+      await service.approveVariation(activeBoq.id, voId, transactionId, user.uid, userName);
+      toast({ title: isRtl ? "تمت عملية الاعتماد المالي والميداني" : "VO Approved & Injected" });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('error'), description: e.message });
+    } finally {
+      setProcessingVOId(null);
+    }
+  };
 
   const renderBOQTreeRows = (node: BOQTreeNode, prefix: string): React.ReactNode => {
     return (
@@ -205,12 +225,28 @@ export default function TransactionBOQProgressPage() {
         </div>
         
         <div className="flex items-center gap-3">
+           {/* عرض مسودات الـ VO قيد المراجعة */}
            <div className="flex gap-2">
-              <div className="px-4 py-2 bg-blue-50 rounded-xl border border-blue-100 flex flex-col text-start">
-                 <span className="text-[8px] font-black text-blue-400 uppercase">Variations</span>
-                 <span className="text-xs font-black text-blue-700">{variations?.length || 0} Orders</span>
-              </div>
+              {(variations || []).filter(v => v.status === 'draft').map(vo => (
+                <div key={vo.id} className="p-1 px-3 bg-amber-50 rounded-xl border border-amber-200 flex items-center gap-3 animate-pulse">
+                   <div className="text-start">
+                      <p className="text-[8px] font-black text-amber-600 uppercase">Draft VO</p>
+                      <p className="text-[10px] font-black text-slate-800">{vo.title}</p>
+                   </div>
+                   {isAdmin && (
+                      <Button 
+                        size="sm" 
+                        onClick={() => handleApproveVO(vo.id)}
+                        disabled={processingVOId === vo.id}
+                        className="h-8 rounded-lg bg-amber-600 text-white font-black text-[9px] hover:bg-amber-700"
+                      >
+                         {processingVOId === vo.id ? <Loader2 className="animate-spin h-3 w-3" /> : (isRtl ? 'اعتماد وصرف' : 'Approve')}
+                      </Button>
+                   )}
+                </div>
+              ))}
            </div>
+
            <Button 
              onClick={() => setIsVOOpen(true)}
              className="h-11 px-6 rounded-xl font-black text-xs gap-2 bg-[#1e1b4b] text-white hover:bg-slate-800 shadow-xl"
@@ -282,7 +318,6 @@ export default function TransactionBOQProgressPage() {
          </footer>
       </div>
 
-      {/* VO Manager Component */}
       <VOManagerDialog 
         isOpen={isVOOpen}
         onClose={() => setIsVOOpen(false)}
