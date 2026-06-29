@@ -12,7 +12,8 @@ import {
   query,
   orderBy,
   updateDoc,
-  addDoc
+  addDoc,
+  deleteDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { Transaction, TransactionTimelineEvent, StageInstance } from '@/types/transaction';
@@ -154,6 +155,41 @@ export class TransactionService {
     } catch (err: any) {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: transRef.path, operation: 'write', requestResourceData: transactionData
+      }));
+      throw err;
+    }
+  }
+
+  /**
+   * حذف المعاملة وكافة ملحقاتها (للمدراء فقط)
+   */
+  async deleteTransaction(transactionId: string) {
+    ensureActionPermission(this.permissions, 'projects:delete');
+
+    const batch = writeBatch(this.db);
+    
+    // 1. مسح المعاملة الرئيسية
+    const transRef = doc(this.db, paths.transactions(this.companyId), transactionId);
+    batch.delete(transRef);
+
+    // 2. مسح المراحل التنفيذية
+    const stagesSnap = await getDocs(collection(this.db, paths.transactionStages(this.companyId, transactionId)));
+    stagesSnap.docs.forEach(d => batch.delete(d.ref));
+
+    // 3. مسح السجل الزمني
+    const timelineSnap = await getDocs(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
+    timelineSnap.docs.forEach(d => batch.delete(d.ref));
+
+    // 4. مسح التعليقات
+    const commentsSnap = await getDocs(collection(this.db, paths.transactionComments(this.companyId, transactionId)));
+    commentsSnap.docs.forEach(d => batch.delete(d.ref));
+
+    try {
+      await batch.commit();
+      return true;
+    } catch (err: any) {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: transRef.path, operation: 'delete'
       }));
       throw err;
     }

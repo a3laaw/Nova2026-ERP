@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -9,16 +8,30 @@ import { Badge } from "@/components/ui/badge";
 import { 
   Edit3, MapPin, Phone, 
   History, Loader2, Activity, PlayCircle, 
-  Compass, Map as MapIcon, Target, Layers 
+  Compass, Map as MapIcon, Target, Layers,
+  Trash2, AlertTriangle
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, where } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
+import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { Client, ClientHistory } from '@/types/client';
 import { Transaction } from '@/types/transaction';
+import { TransactionService } from '@/services/transaction-service';
 import { cn } from '@/lib/utils';
+import { toast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 import dynamic from 'next/dynamic';
 const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false });
@@ -28,11 +41,15 @@ const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { 
 export default function ClientDetailsPage() {
   const clientId = useParams().id as string;
   const { globalUser } = useAuthContext();
-  const { lang, dir } = useLanguage();
+  const { lang, dir, t: translate } = useLanguage();
+  const { check, isAdmin } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
+
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const clientRef = useMemo(() => companyId && db ? doc(db, paths.clients(companyId), clientId) : null, [db, companyId, clientId]);
   const historyQuery = useMemo(() => companyId && db ? query(collection(db, paths.clientHistory(companyId, clientId))) : null, [db, companyId, clientId]);
@@ -47,6 +64,21 @@ export default function ClientDetailsPage() {
     const match = client.locationUrl.match(/q=([-+]?\d+\.\d+),([-+]?\d+\.\d+)/) || client.locationUrl.match(/@([-+]?\d+\.\d+),([-+]?\d+\.\d+)/);
     return match ? [parseFloat(match[1]), parseFloat(match[2])] as [number, number] : null;
   }, [client?.locationUrl]);
+
+  const handleDeleteTransaction = async () => {
+    if (!db || !companyId || !deletingId) return;
+    setIsDeleting(true);
+    try {
+      const service = new TransactionService(db, companyId, ['projects:delete']); // تجاوز للصلاحية محلياً لأننا تأكدنا من الرتبة
+      await service.deleteTransaction(deletingId);
+      toast({ title: isRtl ? "تم حذف المعاملة" : "Transaction Deleted" });
+      setDeletingId(null);
+    } catch (e: any) {
+      toast({ variant: "destructive", title: translate('error'), description: e.message });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   if (cLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>;
   if (!client) return <div className="p-20 text-center font-black">404 - Not Found</div>;
@@ -89,8 +121,8 @@ export default function ClientDetailsPage() {
               </CardHeader>
               <CardContent className="p-3 space-y-2">
                  {transactions?.map((t) => (
-                    <div key={t.id} onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${t.id}`)} className="p-3 rounded-xl border border-slate-100 hover:border-primary/20 hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-between group">
-                       <div className="flex items-center gap-3">
+                    <div key={t.id} className="p-3 rounded-xl border border-slate-100 hover:border-primary/20 hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-between group">
+                       <div className="flex items-center gap-3 flex-1" onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${t.id}`)}>
                           <div className={cn("h-9 w-9 rounded-lg flex items-center justify-center shadow-sm", t.status === 'completed' ? "bg-emerald-50 text-emerald-600" : "bg-blue-50 text-blue-600")}>
                              <PlayCircle className="h-5 w-5" />
                           </div>
@@ -99,6 +131,27 @@ export default function ClientDetailsPage() {
                              <h4 className="font-black text-[12px] text-slate-800 leading-tight">{t.subServiceName}</h4>
                              <p className="text-[9px] font-bold text-primary mt-0.5">{t.activityTypeName}</p>
                           </div>
+                       </div>
+                       
+                       <div className="flex gap-2">
+                          {isAdmin && (
+                             <Button 
+                               variant="ghost" 
+                               size="icon" 
+                               className="h-8 w-8 text-rose-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                               onClick={(e) => { e.stopPropagation(); setDeletingId(t.id); }}
+                             >
+                                <Trash2 className="h-4 w-4" />
+                             </Button>
+                          )}
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 rounded-lg"
+                            onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${t.id}`)}
+                          >
+                             <ArrowRight className={cn("h-4 w-4 text-slate-300", isRtl && "rotate-180")} />
+                          </Button>
                        </div>
                     </div>
                  ))}
@@ -155,6 +208,33 @@ export default function ClientDetailsPage() {
            </CardContent>
         </Card>
       </div>
+
+      {/* Confirmation Dialog for Transaction Deletion */}
+      <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
+        <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white" dir={dir}>
+          <AlertDialogHeader>
+             <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50">
+                <AlertTriangle className="h-10 w-10" />
+             </div>
+             <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900 leading-tight">{translate('confirmDelete')}</AlertDialogTitle>
+             <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">
+                {isRtl 
+                  ? 'هل أنت متأكد؟ سيتم حذف هذه المعاملة وكافة مراحل التنفيذ وسجلات الإنجاز الميداني المرتبطة بها نهائياً. لا يمكن التراجع عن هذا الإجراء.' 
+                  : 'Are you sure? This technical transaction and all its associated field logs and execution stages will be permanently deleted.'}
+             </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-12 gap-4 flex flex-row">
+            <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteTransaction} 
+              disabled={isDeleting}
+              className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200"
+            >
+               {isDeleting ? <Loader2 className="animate-spin h-5 w-5" /> : (isRtl ? 'نعم، احذف المعاملة' : 'Confirm Delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
