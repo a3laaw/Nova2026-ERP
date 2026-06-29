@@ -9,16 +9,14 @@ import { Progress } from "@/components/ui/progress";
 import { 
   Activity, Clock, Loader2, 
   CheckCircle2,
-  Lock, Printer, Play, Check,
+  Lock, Play, Check,
   FileSpreadsheet, TrendingUp, MessageSquare,
   Hammer, Save,
   AlertTriangle,
-  Zap,
-  ArrowRight,
   RotateCcw,
   RotateCw,
-  XCircle,
-  DatabaseZap
+  DatabaseZap,
+  Target
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where, limit } from 'firebase/firestore';
@@ -33,10 +31,6 @@ import { BOQ, BOQItem, BOQItemExecutionEntry } from '@/types/documents';
 import { CommentSection } from '@/components/transactions/comment-section';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { 
-  Collapsible, 
-  CollapsibleContent, 
-} from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
@@ -77,9 +71,10 @@ export default function TransactionDetailsPage() {
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
+  // States
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [stageProgressMap, setStageProgressMap] = useState<Record<string, StageProgressResult>>({});
-  const [openStages, setOpenStages] = useState<Record<string, boolean>>({});
+  const [filterStageId, setFilterStageId] = useState<string | null>(null);
   
   const [isRecordOpen, setIsRecordOpen] = useState(false);
   const [isComplementary, setIsComplementary] = useState(false);
@@ -88,12 +83,12 @@ export default function TransactionDetailsPage() {
   const [progressQty, setProgressQty] = useState<number>(0);
   const [progressNotes, setProgressNotes] = useState("");
 
-  // حالات التراجع المطور
   const [undoStage, setUndoStage] = useState<StageInstance | null>(null);
   const [clearLogsOnUndo, setClearLogsOnUndo] = useState(false);
 
   const editAccess = check('projects', 'edit');
 
+  // Data Fetching
   const transRef = useMemo(() => 
     companyId && db ? doc(db, paths.transactions(companyId), transactionId) : null, 
   [db, companyId, transactionId]);
@@ -123,7 +118,6 @@ export default function TransactionDetailsPage() {
         ) 
       : null, 
   [db, companyId, transactionId]);
-  
   const { data: allExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
 
   const stages = useMemo(() => {
@@ -171,6 +165,7 @@ export default function TransactionDetailsPage() {
     });
   }, [boqItems, targetStage]);
 
+  // Actions
   const handleStartStage = async (stageId: string) => {
     if (!transactionService || !user) return;
     setProcessingId(stageId);
@@ -241,8 +236,11 @@ export default function TransactionDetailsPage() {
   if (transLoading || stagesLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
   if (!transaction) return <div className="p-20 text-center font-black text-slate-400">{isRtl ? 'المعاملة غير موجودة' : 'Transaction not found'}</div>;
 
+  const currentFilteredStage = stages.find(s => s.id === filterStageId);
+
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-20" dir={dir}>
+      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-6">
         <div className="flex items-center gap-4 text-start">
            <div className="h-12 px-5 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-black text-lg border-2 border-primary/20 shadow-inner">
@@ -261,13 +259,14 @@ export default function TransactionDetailsPage() {
            </div>
         </div>
         <div className="flex gap-3">
-           <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="h-11 px-6 rounded-xl bg-white border-2 font-black text-xs gap-2 text-primary border-primary/20">
+           <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="h-11 px-6 rounded-xl bg-white border-2 font-black text-xs gap-2 text-primary border-primary/20 shadow-sm">
               <FileSpreadsheet className="h-4 w-4" /> {isRtl ? 'تتبع إنجاز المقايسة' : 'BOQ Progress'}
            </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Stages View */}
         <div className="lg:col-span-8 space-y-8">
            <div className="space-y-6">
               <div className="flex justify-between items-end px-2">
@@ -283,27 +282,32 @@ export default function TransactionDetailsPage() {
               <div className="space-y-4">
                  {stages.map((stage, idx) => {
                     const boqProgress = stageProgressMap[stage.technicalStageId];
-                    const isOpen = openStages[stage.id!];
                     const isPreviousCompleted = idx === 0 || stages[idx - 1].status === 'completed';
-                    const stageLogs = allExecutions?.filter(log => log.technicalStageId === stage.technicalStageId) || [];
+                    const isSelected = filterStageId === stage.id;
 
                     return (
-                      <Card key={stage.id} className={cn(
-                        "border-0 shadow-lg rounded-[2.5rem] bg-white transition-all overflow-hidden border-s-8",
-                        stage.status === 'completed' ? 'border-s-emerald-500 opacity-80' : 
-                        stage.status === 'in-progress' ? 'border-s-blue-500 ring-4 ring-blue-500/5' : 
-                        isPreviousCompleted ? 'border-s-orange-300' : 'border-s-slate-100 opacity-50'
-                      )}>
+                      <Card 
+                        key={stage.id} 
+                        onClick={() => setFilterStageId(isSelected ? null : stage.id!)}
+                        className={cn(
+                          "border-0 shadow-lg rounded-[2.5rem] bg-white transition-all overflow-hidden border-s-8 cursor-pointer relative group",
+                          stage.status === 'completed' ? 'border-s-emerald-500' : 
+                          stage.status === 'in-progress' ? 'border-s-blue-500 ring-4 ring-blue-500/5' : 
+                          isPreviousCompleted ? 'border-s-orange-300' : 'border-s-slate-100 opacity-50',
+                          isSelected && "ring-4 ring-primary shadow-2xl scale-[1.01]"
+                        )}
+                      >
                         <CardContent className="p-0">
                            <div className="p-6 flex flex-col md:flex-row items-center justify-between gap-6">
                               <div className="flex items-center gap-6 flex-1 text-start">
-                                 <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-sm border", stage.status === 'completed' ? "bg-emerald-500 text-white" : !isPreviousCompleted ? "bg-slate-50 text-slate-300" : "bg-white")}>
+                                 <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-sm border transition-all", stage.status === 'completed' ? "bg-emerald-500 text-white" : !isPreviousCompleted ? "bg-slate-50 text-slate-300" : "bg-white group-hover:bg-primary/5")}>
                                     {stage.status === 'completed' ? <CheckCircle2 className="h-6 w-6" /> : (idx + 1)}
                                  </div>
                                  <div className="space-y-1 flex-1">
                                     <div className="flex items-center gap-2">
                                        <h4 className="font-black text-lg text-slate-900 tracking-tight">{stage.name}</h4>
                                        {!isPreviousCompleted && stage.status !== 'completed' && <Lock className="h-3 w-3 text-slate-300" />}
+                                       {isSelected && <Target className="h-3.5 w-3.5 text-primary animate-pulse" />}
                                     </div>
                                     {boqProgress && boqProgress.linkedItemsCount > 0 && (
                                       <div className="mt-2 space-y-1.5">
@@ -317,7 +321,7 @@ export default function TransactionDetailsPage() {
                                  </div>
                               </div>
 
-                              <div className="flex gap-2 shrink-0">
+                              <div className="flex gap-2 shrink-0 z-10" onClick={e => e.stopPropagation()}>
                                  {stage.status === 'completed' && editAccess.can && (
                                     <Button 
                                       onClick={() => setUndoStage(stage)} 
@@ -335,8 +339,6 @@ export default function TransactionDetailsPage() {
                                        <Hammer className="h-4 w-4" /> {isRtl ? 'تسجيل إنجاز' : 'Log Progress'}
                                     </Button>
                                  )}
-
-                                 <Button variant="ghost" size="icon" onClick={() => setOpenStages(prev => ({...prev, [stage.id!]: !prev[stage.id!]}))} className={cn("h-11 w-11 rounded-xl text-slate-300 hover:text-primary transition-all", isOpen && "bg-primary/5 text-primary shadow-inner")}><MessageSquare className="h-5 w-5" /></Button>
                                  
                                  {stage.status === 'pending' && isPreviousCompleted && (
                                     <Button onClick={() => handleStartStage(stage.id!)} disabled={processingId === stage.id} className="h-11 px-6 rounded-xl bg-blue-600 text-white font-black text-xs gap-2">
@@ -353,22 +355,6 @@ export default function TransactionDetailsPage() {
                                  )}
                               </div>
                            </div>
-
-                           <Collapsible open={isOpen}>
-                              <CollapsibleContent className="animate-in slide-in-from-top-2 duration-300">
-                                 <div className="p-8 bg-slate-50/50 border-t border-slate-100">
-                                    <CommentSection 
-                                       transactionId={transactionId} 
-                                       stageInstanceId={stage.id} 
-                                       path={paths.stageComments(companyId!, transactionId, stage.id!)} 
-                                       title={isRtl ? 'غرفة عمليات المرحلة' : 'Stage Activity Stream'} 
-                                       compact 
-                                       externalLogs={stageLogs}
-                                       boqItems={boqItems}
-                                    />
-                                 </div>
-                              </CollapsibleContent>
-                           </Collapsible>
                         </CardContent>
                       </Card>
                     );
@@ -376,9 +362,26 @@ export default function TransactionDetailsPage() {
               </div>
            </div>
         </div>
-        <div className="lg:col-span-4"><Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 flex flex-col h-full min-h-[600px]"><CardHeader className="bg-slate-50/50 border-b p-6"><CardTitle className="text-sm font-black uppercase tracking-widest text-slate-400 flex items-center gap-2"><MessageSquare className="h-4 w-4 text-primary" />{isRtl ? 'غرفة عمليات المعاملة' : 'Transaction War Room'}</CardTitle></CardHeader><CardContent className="p-6 flex-1"><CommentSection transactionId={transactionId} path={paths.transactionComments(companyId!, transactionId)} /></CardContent></Card></div>
+
+        {/* Unified War Room Sidebar */}
+        <div className="lg:col-span-4">
+           <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 flex flex-col h-full min-h-[700px]">
+              <CardContent className="p-6 flex-1">
+                 <CommentSection 
+                    transactionId={transactionId} 
+                    path={paths.transactionComments(companyId!, transactionId)} 
+                    externalLogs={allExecutions || []}
+                    boqItems={boqItems || []}
+                    filterStageId={filterStageId}
+                    selectedStageName={currentFilteredStage?.name}
+                    onClearFilter={() => setFilterStageId(null)}
+                 />
+              </CardContent>
+           </Card>
+        </div>
       </div>
 
+      {/* Popups (Dialogs) */}
       <Dialog open={isRecordOpen} onOpenChange={(open) => { if(!open) { setIsRecordOpen(false); setIsComplementary(false); } }}>
          <DialogContent className="rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
             <div className="bg-primary/5 p-8 text-slate-900 text-start border-b flex justify-between items-center">
@@ -408,7 +411,6 @@ export default function TransactionDetailsPage() {
          </DialogContent>
       </Dialog>
 
-      {/* نافذة التراجع المطور */}
       <AlertDialog open={!!undoStage} onOpenChange={(open) => !open && setUndoStage(null)}>
         <AlertDialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
           <div className="bg-rose-50 p-8 text-rose-900 text-start border-b flex justify-between items-center">
@@ -431,8 +433,8 @@ export default function TransactionDetailsPage() {
                       <h5 className="font-black text-xs text-amber-900">{isRtl ? 'تنبيه التسلسل الهندسي' : 'Sequential Warning'}</h5>
                       <p className="text-[10px] text-amber-800 font-bold leading-relaxed">
                          {isRtl 
-                           ? 'سيتم إعادة قفل المرحلة التالية (إذا بدأت) لضمان سلامة مسار العمل.' 
-                           : 'The next stage in sequence will be automatically locked to maintain project integrity.'}
+                           ? 'سيتم إعادة قفل المرحلة التالية (إذا بدأت) لضمان سلامة مسار العمل. سيتم نقل تعليقات المرحلة الحالية للأرشيف.' 
+                           : 'Next stage will be locked. Current stage comments will be moved to Archive.'}
                       </p>
                    </div>
                 </div>
@@ -452,12 +454,6 @@ export default function TransactionDetailsPage() {
                    </div>
                 </div>
              </div>
-
-             <AlertDialogDescription className="text-xs font-bold text-slate-400 italic">
-                {isRtl 
-                  ? 'بمجرد التأكيد، ستعود المرحلة لحالة "قيد التنفيذ" وستتمكن من تعديل البيانات مجدداً.' 
-                  : 'Once confirmed, this stage will return to "In-Progress" and you can modify data again.'}
-             </AlertDialogDescription>
           </div>
 
           <AlertDialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-3">

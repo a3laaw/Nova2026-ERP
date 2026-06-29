@@ -23,10 +23,8 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { ensureActionPermission } from '@/lib/permissions/engine';
 import { BOQExecutionService } from './boq-execution-service';
+import { CommentService } from './comment-service';
 
-/**
- * خدمة إدارة المعاملات الفنية (Technical Transactions Service).
- */
 export class TransactionService {
   constructor(
     private db: Firestore, 
@@ -34,9 +32,6 @@ export class TransactionService {
     private permissions: string[] = []
   ) {}
 
-  /**
-   * إنشاء معاملة فنية جديدة مع استنساخ مراحل العمل المرجعية وتوثيق البداية.
-   */
   async createTransaction(data: {
     clientId: string;
     clientName: string;
@@ -135,18 +130,6 @@ export class TransactionService {
       batch.set(instanceRef, instanceData);
     });
 
-    const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
-    const logRef = doc(timelineRef);
-    batch.set(logRef, {
-      transactionId,
-      type: 'system',
-      content: `تم افتتاح المسار الفني بنجاح واستنساخ ${sortedStages.length} مراحل تنفيذية.`,
-      userId,
-      userName,
-      companyId: this.companyId,
-      createdAt: serverTimestamp()
-    });
-
     await batch.commit();
     return transactionId;
   }
@@ -163,17 +146,6 @@ export class TransactionService {
       startedAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       updatedBy: userId
-    });
-
-    const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
-    await addDoc(timelineRef, {
-      transactionId,
-      type: 'stage_start',
-      content: `بدء التنفيذ الميداني لمرحلة: ${stageData.name}`,
-      userId,
-      userName,
-      companyId: this.companyId,
-      createdAt: serverTimestamp()
     });
   }
 
@@ -198,22 +170,8 @@ export class TransactionService {
       completedBy: userId,
       updatedAt: serverTimestamp(),
     });
-
-    const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
-    await addDoc(timelineRef, {
-      transactionId,
-      type: 'stage_complete',
-      content: `تم إنجاز مرحلة "${stageData.name}" بالكامل.`,
-      userId,
-      userName,
-      companyId: this.companyId,
-      createdAt: serverTimestamp()
-    });
   }
 
-  /**
-   * التراجع عن إكمال مرحلة مع خيار تصفير السجلات وإغلاق المرحلة التالية
-   */
   async reopenStage(transactionId: string, stageId: string, userId: string, userName: string, clearLogs: boolean = false) {
     ensureActionPermission(this.permissions, 'projects:edit');
     
@@ -224,7 +182,6 @@ export class TransactionService {
 
     const batch = writeBatch(this.db);
 
-    // 1. إعادة المرحلة الحالية إلى "قيد التنفيذ"
     batch.update(stageRef, {
       status: 'in-progress',
       completedAt: null,
@@ -233,7 +190,6 @@ export class TransactionService {
       updatedBy: userId
     });
 
-    // 2. إغلاق المرحلة التالية تلقائياً (إعادتها لـ Pending) لضمان التسلسل
     const nextOrder = (stageData.order || 0) + 1;
     const stagesRef = collection(this.db, paths.transactionStages(this.companyId, transactionId));
     const nextQ = query(stagesRef, where('order', '==', nextOrder));
@@ -250,22 +206,14 @@ export class TransactionService {
 
     await batch.commit();
 
-    // 3. تصفير السجلات إذا طلب المستخدم
+    // أرشفة التعليقات المرتبطة بدلاً من حذفها
+    const commentService = new CommentService(this.db, this.companyId, this.permissions);
+    await commentService.archiveStageComments(transactionId, stageId);
+
     if (clearLogs) {
       const boqService = new BOQExecutionService(this.db, this.companyId, this.permissions);
       await boqService.clearStageExecutions(transactionId, stageData.technicalStageId);
     }
-
-    const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
-    await addDoc(timelineRef, {
-      transactionId,
-      type: 'stage_reopen',
-      content: `تراجع عن إكمال "${stageData.name}". ${clearLogs ? 'تم تصفير سجلات الإنجاز.' : ''} تم قفل المراحل اللاحقة.`,
-      userId,
-      userName,
-      companyId: this.companyId,
-      createdAt: serverTimestamp()
-    });
   }
 
   async deleteTransaction(transactionId: string) {

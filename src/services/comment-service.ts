@@ -7,7 +7,11 @@ import {
   addDoc, 
   updateDoc, 
   deleteDoc, 
-  serverTimestamp 
+  serverTimestamp,
+  getDocs,
+  query,
+  where,
+  writeBatch
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { TransactionComment, CommentType } from '@/types/transaction';
@@ -15,10 +19,6 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { ensureActionPermission } from '@/lib/permissions';
 
-/**
- * خدمة إدارة التعليقات التفاعلية (Comments Service).
- * تدعم التعليقات على مستوى المعاملة وعلى مستوى النسخ التنفيذية للمراحل.
- */
 export class CommentService {
   constructor(
     private db: Firestore, 
@@ -26,14 +26,13 @@ export class CommentService {
     private permissions: string[] = []
   ) {}
 
-  /**
-   * إضافة تعليق عام على المعاملة
-   */
   async addTransactionComment(
     transactionId: string, 
     content: string, 
     userId: string, 
     userName: string,
+    stageInstanceId?: string | null,
+    stageName?: string,
     type: CommentType = 'general'
   ) {
     ensureActionPermission(this.permissions, 'projects:view');
@@ -41,11 +40,14 @@ export class CommentService {
     const path = paths.transactionComments(this.companyId, transactionId);
     const commentData: TransactionComment = {
       transactionId,
+      stageInstanceId: stageInstanceId || null,
+      stageName: stageName || '',
       content,
       commentType: type,
       createdBy: userId,
       createdByName: userName,
       companyId: this.companyId,
+      isArchived: false,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
@@ -59,67 +61,31 @@ export class CommentService {
   }
 
   /**
-   * إضافة تعليق متخصص على مرحلة فنية
+   * أرشفة تعليقات مرحلة محددة (تستخدم عند التراجع)
    */
-  async addStageComment(
-    transactionId: string, 
-    stageInstanceId: string, 
-    content: string, 
-    userId: string, 
-    userName: string,
-    type: CommentType = 'note'
-  ) {
-    ensureActionPermission(this.permissions, 'projects:view');
-    
-    const path = paths.stageComments(this.companyId, transactionId, stageInstanceId);
-    const commentData: TransactionComment = {
-      transactionId,
-      stageInstanceId,
-      content,
-      commentType: type,
-      createdBy: userId,
-      createdByName: userName,
-      companyId: this.companyId,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    };
+  async archiveStageComments(transactionId: string, stageInstanceId: string) {
+    const path = paths.transactionComments(this.companyId, transactionId);
+    const q = query(
+      collection(this.db, path),
+      where('stageInstanceId', '==', stageInstanceId),
+      where('isArchived', '==', false)
+    );
 
-    return addDoc(collection(this.db, path), commentData).catch(err => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path, operation: 'create', requestResourceData: commentData
-      }));
-      throw err;
+    const snap = await getDocs(q);
+    if (snap.empty) return;
+
+    const batch = writeBatch(this.db);
+    snap.docs.forEach(d => {
+      batch.update(d.ref, { 
+        isArchived: true, 
+        archivedAt: serverTimestamp(),
+        updatedAt: serverTimestamp() 
+      });
     });
+
+    return batch.commit();
   }
 
-  /**
-   * تحديث محتوى تعليق (يسمح لصاحب التعليق فقط أو الأدمن)
-   */
-  async updateComment(
-    path: string, 
-    commentId: string, 
-    content: string, 
-    userId: string
-  ) {
-    const commentRef = doc(this.db, path, commentId);
-    const updateData = {
-      content,
-      isEdited: true,
-      updatedAt: serverTimestamp(),
-      updatedBy: userId
-    };
-
-    return updateDoc(commentRef, updateData).catch(err => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: commentRef.path, operation: 'update', requestResourceData: updateData
-      }));
-      throw err;
-    });
-  }
-
-  /**
-   * حذف تعليق
-   */
   async deleteComment(path: string, commentId: string) {
     const commentRef = doc(this.db, path, commentId);
     return deleteDoc(commentRef).catch(err => {

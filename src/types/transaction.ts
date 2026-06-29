@@ -4,7 +4,7 @@ export type TransactionStatus = 'new' | 'in-progress' | 'completed' | 'on-hold' 
 
 export interface Transaction extends BaseReference {
   id: string;
-  transactionNumber: string; // الرقم المتسلسل المهني (مثل C-1001-01)
+  transactionNumber: string; 
   clientId: string;
   clientName: string;
   activityTypeId: string;
@@ -39,12 +39,15 @@ export interface TransactionComment extends BaseReference {
   id?: string;
   transactionId: string;
   stageInstanceId?: string | null;
+  stageName?: string; // لسهولة العرض في التدفق الموحد
   content: string;
   commentType: CommentType;
   createdBy: string;
   createdByName: string;
   isEdited?: boolean;
   isPinned?: boolean;
+  isArchived?: boolean; // نظام الأرشفة الجديد
+  archivedAt?: any;
   parentCommentId?: string | null;
 }
 
