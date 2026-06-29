@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -9,20 +8,15 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { 
   Activity, Clock, Loader2, 
-  ShieldCheck, HardHat, CheckCircle2,
+  ShieldCheck, CheckCircle2,
   Lock, Printer, Play, Check,
   FileSpreadsheet, TrendingUp, MessageSquare,
-  ChevronDown, Hammer, Save,
+  Hammer, Save,
   AlertTriangle,
-  Layers,
-  Sparkles,
-  ArrowRight,
-  Info,
-  RotateCcw,
   Zap,
-  ClipboardList,
   User,
-  History
+  History,
+  ArrowRight
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where, getDocs, limit, collectionGroup } from 'firebase/firestore';
@@ -33,16 +27,13 @@ import { paths } from '@/firebase/multi-tenant';
 import { Transaction, StageInstance } from '@/types/transaction';
 import { TransactionService } from '@/services/transaction-service';
 import { BOQExecutionService, StageProgressResult } from '@/services/boq-execution-service';
-import { DocumentService } from '@/services/document-service';
 import { BOQ, BOQItem, BOQItemExecutionEntry } from '@/types/documents';
-import { BOQTemplate } from '@/types/templates';
 import { CommentSection } from '@/components/transactions/comment-section';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { 
   Collapsible, 
   CollapsibleContent, 
-  CollapsibleTrigger 
 } from "@/components/ui/collapsible";
 import {
   Dialog,
@@ -78,7 +69,6 @@ export default function TransactionDetailsPage() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [stageProgressMap, setStageProgressMap] = useState<Record<string, StageProgressResult>>({});
   const [openStages, setOpenStages] = useState<Record<string, boolean>>({});
-  const [isCreatingBoq, setIsCreatingBoq] = useState(false);
   
   // Progress Recording State
   const [isRecordOpen, setIsRecordOpen] = useState(false);
@@ -112,8 +102,7 @@ export default function TransactionDetailsPage() {
   [db, companyId, activeBoq]);
   const { data: boqItems } = useCollection<BOQItem>(itemsQuery);
 
-  // جلب سجلات التنفيذ لعرض الملاحظات الميدانية (The Field Logs)
-  // FIX: إضافة شرط companyId للاستعلام لتجاوز فحص القواعد الأمنية السيادية
+  // جلب كافة سجلات التنفيذ للمعاملة لتوزيعها على المراحل في التدفق الزمني
   const executionsQuery = useMemo(() => 
     companyId && db && activeBoq?.id 
       ? query(collectionGroup(db, 'executions'), where('companyId', '==', companyId), where('boqId', '==', activeBoq.id)) 
@@ -150,7 +139,7 @@ export default function TransactionDetailsPage() {
     }
     fetchAllProgress();
     return () => { active = false; };
-  }, [executionService, stages, transactionId, boqItems]);
+  }, [executionService, stages, transactionId, boqItems, allExecutions]);
 
   const transactionService = useMemo(() => 
     db && companyId ? new TransactionService(db, companyId, permissions) : null, 
@@ -239,7 +228,7 @@ export default function TransactionDetailsPage() {
            <div>
               <h1 className="text-2xl font-black font-headline text-slate-900 tracking-tight leading-tight">{transaction.subServiceName}</h1>
               <div className="flex items-center gap-3 mt-1">
-                 <Badge className={cn("font-black px-3 py-1 rounded-lg border-0 shadow-sm uppercase text-[9px]", transaction.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-white')}>
+                 <Badge className={cn("font-black px-3 py-1 rounded-lg border-0 shadow-sm uppercase text-[9px]", transaction.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600')}>
                      {transaction.status}
                  </Badge>
                  <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1">
@@ -277,8 +266,8 @@ export default function TransactionDetailsPage() {
                     const boqProgress = stageProgressMap[stage.technicalStageId];
                     const isOpen = openStages[stage.id!];
                     const isPreviousCompleted = idx === 0 || stages[idx - 1].status === 'completed';
-
-                    // فلترة سجلات التنفيذ لهذه المرحلة تحديداً
+                    
+                    // فلترة سجلات التنفيذ لهذه المرحلة تحديداً لتمريرها للـ Unified Comment Section
                     const stageLogs = allExecutions?.filter(log => log.technicalStageId === stage.technicalStageId) || [];
 
                     return (
@@ -343,50 +332,16 @@ export default function TransactionDetailsPage() {
 
                            <Collapsible open={isOpen}>
                               <CollapsibleContent className="animate-in slide-in-from-top-2 duration-300">
-                                 <div className="p-8 bg-slate-50/50 border-t border-slate-100 space-y-8">
-                                    
-                                    {/* سجل الملاحظات الميدانية (Where Notes Appear) */}
-                                    <div className="space-y-4">
-                                       <h5 className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                                          <ClipboardList className="h-3.5 w-3.5 text-primary" />
-                                          {isRtl ? 'سجل الإنجاز الميداني والملاحظات' : 'Field Execution Logs & Notes'}
-                                       </h5>
-                                       
-                                       <div className="grid grid-cols-1 gap-3">
-                                          {stageLogs.length > 0 ? (
-                                             stageLogs.map((log, lIdx) => (
-                                                <div key={lIdx} className="bg-white p-4 rounded-2xl border-2 border-slate-100 shadow-sm flex flex-col md:flex-row justify-between gap-4">
-                                                   <div className="flex items-start gap-3">
-                                                      <div className="h-9 w-9 rounded-xl bg-primary/5 flex items-center justify-center text-primary shrink-0 border border-primary/10">
-                                                         <User className="h-4 w-4" />
-                                                      </div>
-                                                      <div className="text-start space-y-1">
-                                                         <p className="font-black text-xs text-slate-800">{log.notes || (isRtl ? 'تأكيد فني بدون ملاحظات' : 'No notes provided')}</p>
-                                                         <div className="flex items-center gap-2 text-[9px] font-bold text-slate-400">
-                                                            <span className="text-primary">{boqItems?.find(i => i.id === log.boqItemId)?.referenceTitle}</span>
-                                                            <span>•</span>
-                                                            <span className="bg-slate-100 px-1.5 rounded text-slate-600">{log.quantity} Qty</span>
-                                                         </div>
-                                                      </div>
-                                                   </div>
-                                                   <div className="text-end shrink-0">
-                                                      <p className="text-[9px] font-black text-slate-900 uppercase">Engineer ID: {log.recordedBy.slice(-4)}</p>
-                                                      <p className="text-[8px] font-mono text-slate-400 mt-0.5">{log.createdAt?.toDate().toLocaleString()}</p>
-                                                   </div>
-                                                </div>
-                                             ))
-                                          ) : (
-                                             <div className="py-8 text-center border-2 border-dashed rounded-2xl bg-white/50">
-                                                <History className="h-6 w-6 text-slate-200 mx-auto mb-2" />
-                                                <p className="text-[10px] font-bold text-slate-300 italic">{isRtl ? 'لم يتم تسجيل أي ملاحظات ميدانية بعد.' : 'No field notes recorded yet.'}</p>
-                                             </div>
-                                          )}
-                                       </div>
-                                    </div>
-
-                                    <div className="h-[1px] bg-slate-200 w-full" />
-
-                                    <CommentSection transactionId={transactionId} stageInstanceId={stage.id} path={paths.stageComments(companyId!, transactionId, stage.id!)} title={isRtl ? 'نقاشات المرحلة الميدانية' : 'Stage Field Discussion'} compact />
+                                 <div className="p-8 bg-slate-50/50 border-t border-slate-100">
+                                    <CommentSection 
+                                       transactionId={transactionId} 
+                                       stageInstanceId={stage.id} 
+                                       path={paths.stageComments(companyId!, transactionId, stage.id!)} 
+                                       title={isRtl ? 'غرفة عمليات المرحلة' : 'Stage Activity Stream'} 
+                                       compact 
+                                       externalLogs={stageLogs}
+                                       boqItems={boqItems}
+                                    />
                                  </div>
                               </CollapsibleContent>
                            </Collapsible>
