@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -93,7 +94,6 @@ export class BOQExecutionService {
     });
 
     // 2. تحديث الرصيد التراكمي في البند الرئيسي (The Bucket Update)
-    // نقوم بجلب كافة السجلات المسجلة لهذا البند في أي مرحلة لضمان الدقة
     const allExecutionsSnap = await getDocs(executionsRef);
     const newTotalExecuted = allExecutionsSnap.docs.reduce((sum, d) => sum + (d.data().quantity || 0), 0);
 
@@ -123,12 +123,14 @@ export class BOQExecutionService {
 
   /**
    * جلب تقرير تقدم المرحلة الفنية
+   * تم تحسينه للتمييز بين المراحل الكمية (Linked) والمراحل الإجرائية (0 links)
    */
   async getTechnicalStageProgress(transactionId: string, technicalStageId: string): Promise<StageProgressResult> {
     const boqsRef = collection(this.db, paths.boqs(this.companyId));
     const boqQuery = query(boqsRef, where('transactionId', '==', transactionId));
     const boqSnap = await getDocs(boqQuery);
     
+    // إذا لم تكن هناك مقايسة مرتبطة بعد، نعتبر كافة المراحل إجرائية حتى إنشاء المقايسة
     if (boqSnap.empty) {
       return { linkedItemsCount: 0, totalPlanned: 0, totalExecuted: 0, progressPercent: 100, canComplete: true };
     }
@@ -139,14 +141,21 @@ export class BOQExecutionService {
     
     const allItems = itemsSnap.docs.map(d => ({ id: d.id, ...d.data() } as BOQItem));
     
-    // فلترة البنود المرتبطة بهذه المرحلة
+    // البحث عن البنود المرتبطة بهذه المرحلة تحديداً
     const linkedItems = allItems.filter(i => 
       (i.technicalStageIds && i.technicalStageIds.includes(technicalStageId)) || 
       (i.technicalStageId === technicalStageId)
     );
 
+    // المنطق الجديد: إذا لم يكن هناك بنود مرتبطة، فهي مرحلة إجرائية تكتمل بمجرد التأكيد
     if (linkedItems.length === 0) {
-      return { linkedItemsCount: 0, totalPlanned: 0, totalExecuted: 0, progressPercent: 100, canComplete: true };
+      return { 
+        linkedItemsCount: 0, 
+        totalPlanned: 0, 
+        totalExecuted: 0, 
+        progressPercent: 100, 
+        canComplete: true // مسموح بالإغلاق لأنها مجرد خطوة فنية
+      };
     }
 
     let totalPlanned = 0;
@@ -169,7 +178,8 @@ export class BOQExecutionService {
       totalPlanned,
       totalExecuted: totalExecutedForThisStage,
       progressPercent: Math.round(progress * 100) / 100,
-      canComplete: totalExecutedForThisStage > 0 // شرط إغلاق المرحلة: وجود إنجاز مادي
+      // المراحل الكمية تتطلب إنجازاً ملموساً (أكبر من صفر) للسماح بالإغلاق
+      canComplete: totalExecutedForThisStage > 0 
     };
   }
 }

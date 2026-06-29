@@ -20,7 +20,8 @@ import {
   Info,
   RotateCcw,
   Fingerprint,
-  ListFilter
+  ListFilter,
+  ClipboardCheck
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where, getDocs, limit } from 'firebase/firestore';
@@ -411,6 +412,9 @@ export default function TransactionDetailsPage() {
                     
                     // محرك الإنفاذ التسلسلي: التأكد من اكتمال المرحلة السابقة
                     const isPreviousCompleted = idx === 0 || stages[idx - 1].status === 'completed';
+                    
+                    // تحديد ما إذا كانت المرحلة إجرائية (بدون كميات مقايسة)
+                    const isProcedural = boqProgress && boqProgress.linkedItemsCount === 0;
 
                     return (
                       <Card key={stage.id} className={cn(
@@ -433,29 +437,39 @@ export default function TransactionDetailsPage() {
                                     <div className="flex items-center gap-2">
                                        <h4 className="font-black text-lg text-slate-900 tracking-tight">{stage.name}</h4>
                                        {!isPreviousCompleted && <Lock className="h-3 w-3 text-slate-300" />}
+                                       {isProcedural && (
+                                         <Badge variant="outline" className="bg-slate-50 text-slate-400 border-0 text-[8px] font-black h-4 uppercase">Technical Step</Badge>
+                                       )}
                                     </div>
                                     
-                                    {boqProgress && boqProgress.linkedItemsCount > 0 && (
+                                    {!isProcedural && boqProgress && boqProgress.linkedItemsCount > 0 && (
                                       <div className="mt-2 space-y-1.5">
                                          <div className="flex justify-between text-[9px] font-black uppercase text-slate-400">
-                                            <span className="flex items-center gap-1"><TrendingUp className="h-2.5 w-2.5" /> {isRtl ? 'إنجاز البنود المرتبطة' : 'Linked BOQ Items'}</span>
+                                            <span className="flex items-center gap-1"><TrendingUp className="h-2.5 w-2.5" /> {isRtl ? 'إنجاز البنود المخططة' : 'Linked BOQ Items'}</span>
                                             <span>{boqProgress.progressPercent}%</span>
                                          </div>
                                          <Progress value={boqProgress.progressPercent} className="h-1.5" />
                                       </div>
                                     )}
+
+                                    {isProcedural && stage.status === 'in-progress' && (
+                                      <p className="text-[10px] text-blue-600 font-bold italic flex items-center gap-1 mt-1">
+                                         <Info className="h-3 w-3" /> {isRtl ? 'مرحلة إجرائية: لا تتطلب تسجيل كميات مادية.' : 'Procedural step: no physical quantities required.'}
+                                      </p>
+                                    )}
                                  </div>
                               </div>
 
                               <div className="flex gap-2 shrink-0">
-                                 {stage.status === 'in-progress' && editAccess.can && (
+                                 {/* زر تسجيل الإنجاز يظهر فقط إذا كانت المرحلة بها بنود مقايسة */}
+                                 {stage.status === 'in-progress' && editAccess.can && !isProcedural && (
                                     <Button 
                                       onClick={() => { setTargetStage(stage); setIsRecordOpen(true); }}
                                       variant="outline"
                                       className="h-11 px-4 rounded-xl border-2 border-primary/20 text-primary font-black text-xs gap-2 hover:bg-primary/5"
                                     >
                                        <Hammer className="h-4 w-4" />
-                                       {isRtl ? 'تسجيل إنجاز' : 'Log Qty'}
+                                       {isRtl ? 'تسجيل كمية' : 'Log Qty'}
                                     </Button>
                                  )}
 
