@@ -75,7 +75,7 @@ export class BOQExecutionService {
     if (!itemSnap.exists()) throw new Error('ITEM_NOT_FOUND: البند غير موجود.');
     const itemData = itemSnap.data() as BOQItem;
 
-    // Check if the stage is allowed for this item using the new helper
+    // Check if the stage is allowed for this item
     const allowedStages = this.getAllowedTechnicalStageIds(itemData);
     const isStageAllowed = allowedStages.includes(technicalStageId);
 
@@ -112,12 +112,15 @@ export class BOQExecutionService {
       const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, itemData.transactionId));
       await addDoc(timelineRef, {
         transactionId: itemData.transactionId,
-        stageId: stageInstanceId || '', // ALWAYS use Instance ID for stageId
-        technicalStageId: technicalStageId, // Store Reference ID separately
+        stageId: stageInstanceId || '', 
+        technicalStageId: technicalStageId,
         type: 'numeric_update',
         content: quantity === 0 
           ? `تأكيد فني: ${itemData.referenceTitle}`
           : `تسجيل إنجاز: ${itemData.referenceTitle} (${quantity} وحدة)`,
+        notes: notes || '', // دمج ملاحظات المستخدم في التايم لاين
+        quantity,
+        boqItemId: itemId,
         userId,
         userName,
         isArchived: false,
@@ -200,8 +203,6 @@ export class BOQExecutionService {
     const itemsSnap = await getDocs(itemsRef);
     
     const allItems = itemsSnap.docs.map(d => ({ id: d.id, ...d.data() } as BOQItem));
-    
-    // Linked items search using helper logic (support for singular and plural)
     const linkedItems = allItems.filter(i => this.getAllowedTechnicalStageIds(i).includes(technicalStageId));
 
     if (linkedItems.length === 0) {
@@ -233,12 +234,10 @@ export class BOQExecutionService {
          }
       });
 
-      // BACKWARD COMPATIBILITY FALLBACK:
-      // If no logs found, and item has legacy executedQuantity, and it's a legacy item (no array), use it.
       if (itemExecSumFromLogs === 0 && (!item.technicalStageIds || item.technicalStageIds.length === 0)) {
          if ((item.executedQuantity || 0) > 0) {
            itemExecSumFromLogs = item.executedQuantity || 0;
-           totalActiveLogsCount++; // Treat as active progress to allow completion
+           totalActiveLogsCount++;
          }
       }
 

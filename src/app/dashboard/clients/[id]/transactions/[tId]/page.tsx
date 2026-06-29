@@ -112,6 +112,11 @@ export default function TransactionDetailsPage() {
 
   const editAccess = check('projects', 'edit');
 
+  // تعزيز منطق الاسم لضمان ظهور الاسم الفعلي للمستخدم
+  const currentUserName = useMemo(() => {
+    return globalUser?.username || user?.displayName || user?.email?.split('@')[0] || 'Admin';
+  }, [globalUser, user]);
+
   // Data Fetching
   const transRef = useMemo(() => 
     companyId && db ? doc(db, paths.transactions(companyId), transactionId) : null, 
@@ -217,7 +222,7 @@ export default function TransactionDetailsPage() {
           serviceId: transaction.serviceId,
           subServiceId: transaction.subServiceId,
           name: customBOQName || namingTemplate.name
-      }, user.uid, user.displayName || 'User');
+      }, user.uid, currentUserName);
       
       toast({ title: isRtl ? "تم ربط المقايسة بنجاح" : "BOQ Linked Successfully" });
       setNamingTemplate(null);
@@ -233,7 +238,7 @@ export default function TransactionDetailsPage() {
     setIsDeletingBOQ(true);
     try {
       const docService = new DocumentService(db, companyId, permissions);
-      await docService.deleteBOQ(activeBoq.id, transactionId, user.uid, user.displayName || 'User');
+      await docService.deleteBOQ(activeBoq.id, transactionId, user.uid, currentUserName);
       toast({ title: isRtl ? "تم حذف المقايسة المربوطة" : "BOQ Deleted" });
       setShowDeleteConfirm(false);
     } catch (e: any) {
@@ -247,7 +252,7 @@ export default function TransactionDetailsPage() {
     if (!transactionService || !user) return;
     setProcessingId(stageId);
     try {
-      await transactionService.startStage(transactionId, stageId, user.uid, user.displayName || 'User');
+      await transactionService.startStage(transactionId, stageId, user.uid, currentUserName);
       toast({ title: isRtl ? "تم بدء العمل" : "Stage Started" });
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
@@ -260,7 +265,7 @@ export default function TransactionDetailsPage() {
     if (!transactionService || !user || !stage.id) return;
     setProcessingId(stage.id);
     try {
-      await transactionService.completeStage(transactionId, stage.id, user.uid, user.displayName || 'User');
+      await transactionService.completeStage(transactionId, stage.id, user.uid, currentUserName);
       toast({ title: isRtl ? "تم إنجاز المرحلة بنجاح" : "Stage Completed" });
     } catch (e: any) {
       toast({ variant: "destructive", title: isRtl ? "تعذر إغلاق المرحلة" : "Cannot Close Stage", description: e.message });
@@ -273,7 +278,7 @@ export default function TransactionDetailsPage() {
     if (!transactionService || !user || !undoStage?.id) return;
     setProcessingId(undoStage.id);
     try {
-      await transactionService.reopenStage(transactionId, undoStage.id, user.uid, user.displayName || 'User', clearLogsOnUndo);
+      await transactionService.reopenStage(transactionId, undoStage.id, user.uid, currentUserName, clearLogsOnUndo);
       toast({ title: isRtl ? "تم التراجع وإغلاق المسار اللاحق" : "Undo Success & Future stages locked" });
       setUndoStage(null);
       setClearLogsOnUndo(false);
@@ -294,7 +299,7 @@ export default function TransactionDetailsPage() {
         targetStage.technicalStageId,
         isComplementary ? 0 : progressQty,
         user.uid,
-        user.displayName || 'User',
+        currentUserName,
         progressNotes,
         targetStage.id 
       );
@@ -324,7 +329,7 @@ export default function TransactionDetailsPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-20" dir={dir}>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div className="flex items-center gap-4 text-start">
            <div className="h-12 px-5 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-black text-lg border-2 border-primary/20 shadow-inner">
               {transaction.transactionNumber}

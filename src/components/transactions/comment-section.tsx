@@ -91,7 +91,7 @@ export function CommentSection({
     db && globalUser?.companyId ? new CommentService(db, globalUser.companyId, permissions) : null, 
   [db, globalUser, permissions]);
 
-  // المجرى النشط (تجاهل كافة المؤرشفات)
+  // المجرى الموحد (نعتمد على التايم لاين لتجنب تكرار سجلات التنفيذ)
   const activeStream = useMemo(() => {
     const filteredComments = (comments || [])
       .filter(c => !c.isArchived && (!filterStageId || c.stageInstanceId === filterStageId))
@@ -101,45 +101,36 @@ export function CommentSection({
         sortTime: c.createdAt?.toMillis?.() || Date.now()
       }));
     
-    const filteredLogs = (externalLogs || [])
-      .filter(l => !l.isArchived && (!technicalStageId || l.technicalStageId === technicalStageId))
-      .map(l => ({ 
-        ...l, 
-        streamType: 'log' as const,
-        sortTime: l.createdAt?.toMillis?.() || Date.now()
-      }));
+    // الملاحظة: نلغي استخدام externalLogs هنا لمنع التكرار كما طلب العميل
+    // ونعتمد على سجلات التايم لاين المدمجة
 
     const filteredTimeline = (timelineEvents || [])
-      .filter(e => !e.isArchived && e.type === 'numeric_update' && (!technicalStageId || e.stageId === technicalStageId))
+      .filter(e => !e.isArchived && (e.type === 'numeric_update' || e.type === 'stage_start' || e.type === 'stage_complete') && (!technicalStageId || e.technicalStageId === technicalStageId || e.stageId === filterStageId))
       .map(e => ({
         ...e,
         streamType: 'timeline_log' as const,
         sortTime: e.createdAt?.toMillis?.() || Date.now()
       }));
 
-    return [...filteredComments, ...filteredLogs, ...filteredTimeline].sort((a, b) => a.sortTime - b.sortTime);
-  }, [comments, externalLogs, timelineEvents, filterStageId, technicalStageId]);
+    return [...filteredComments, ...filteredTimeline].sort((a, b) => a.sortTime - b.sortTime);
+  }, [comments, timelineEvents, filterStageId, technicalStageId]);
 
-  // أرشيف الدردشة الشامل (تعليقات + ملاحظات إنجاز + أحداث نظام مؤرشفة)
+  // أرشيف الدردشة الشامل
   const archivedChat = useMemo(() => {
     const archivedComments = (comments || [])
       .filter(c => !!c.isArchived && (!filterStageId || c.stageInstanceId === filterStageId))
       .map(c => ({ ...c, streamType: 'comment' as const }));
 
-    const archivedLogs = (externalLogs || [])
-      .filter(l => !!l.isArchived && (!technicalStageId || l.technicalStageId === technicalStageId))
-      .map(l => ({ ...l, streamType: 'log' as const }));
-
     const archivedTimelineLogs = (timelineEvents || [])
-      .filter(e => !!e.isArchived && e.type === 'numeric_update' && (!technicalStageId || e.stageId === technicalStageId))
+      .filter(e => !!e.isArchived && e.type === 'numeric_update' && (!technicalStageId || e.technicalStageId === technicalStageId || e.stageId === filterStageId))
       .map(e => ({ ...e, streamType: 'timeline_log' as const }));
 
-    return [...archivedComments, ...archivedLogs, ...archivedTimelineLogs].sort((a, b) => (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0));
-  }, [comments, externalLogs, timelineEvents, filterStageId, technicalStageId]);
+    return [...archivedComments, ...archivedTimelineLogs].sort((a, b) => (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0));
+  }, [comments, timelineEvents, filterStageId, technicalStageId]);
 
   const archivedTime = useMemo(() => {
-    return (timelineEvents || []).filter(e => e.type === 'stage_reopen' && (!technicalStageId || e.stageId === technicalStageId));
-  }, [timelineEvents, technicalStageId]);
+    return (timelineEvents || []).filter(e => e.type === 'stage_reopen' && (!technicalStageId || e.technicalStageId === technicalStageId || e.stageId === filterStageId));
+  }, [timelineEvents, technicalStageId, filterStageId]);
 
   const handleSubmit = async () => {
     if (!commentService || !user || !content.trim()) return;
@@ -149,7 +140,7 @@ export function CommentSection({
         transactionId, 
         content, 
         user.uid, 
-        user.displayName || user.email || 'User',
+        globalUser?.username || user.displayName || user.email || 'User',
         filterStageId,
         selectedStageName
       );
@@ -314,7 +305,7 @@ export function CommentSection({
 
 function StreamItem({ item, isRtl, user, boqItems }: any) {
    const isLog = item.streamType === 'log' || item.streamType === 'timeline_log';
-   const displayName = item.createdByName || item.recordedByName || item.userName || (isRtl ? 'مستخدم' : 'User');
+   const displayName = item.userName || item.createdByName || item.recordedByName || (isRtl ? 'مستخدم' : 'User');
 
    if (isLog) {
       const boqItem = boqItems?.find((i: any) => i.id === item.boqItemId);
@@ -336,12 +327,21 @@ function StreamItem({ item, isRtl, user, boqItems }: any) {
                  <div className="text-start flex-1">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
                        <Badge variant="outline" className="text-[8px] font-black border-slate-200 bg-white text-slate-600 px-2 truncate max-w-[140px]">
-                          {boqItem?.referenceTitle || item.content?.split(': ')[1] || (isRtl ? 'تحديث إنجاز' : 'Progress Update')}
+                          {boqItem?.referenceTitle || (isRtl ? 'تحديث إنجاز' : 'Progress Update')}
                        </Badge>
                        {item.quantity > 0 && <Badge className="bg-emerald-600 text-white border-0 text-[8px] h-4 px-2">{item.quantity} QTY</Badge>}
                        {item.isArchived && <Badge className="bg-slate-900 text-white border-0 text-[8px] h-4 px-2">ARCHIVED</Badge>}
                     </div>
-                    {(item.notes || item.content) && <p className="text-[10px] font-bold text-slate-600 italic leading-snug">"{item.notes || item.content}"</p>}
+                    
+                    <div className="space-y-1 mt-1">
+                        <p className="text-[10px] font-black text-slate-800 leading-tight">{item.content}</p>
+                        {item.notes && (
+                            <p className="text-[10px] font-bold text-slate-500 italic border-s-2 border-primary/20 ps-2 py-0.5">
+                                "{item.notes}"
+                            </p>
+                        )}
+                    </div>
+
                     <div className="flex items-center gap-3 mt-3 pt-2 border-t border-black/[0.03] text-[7px] font-black text-slate-400 uppercase">
                        <span className="flex items-center gap-1"><User className="h-2 w-2" /> {displayName}</span>
                        <span className="flex items-center gap-1"><Clock className="h-2 w-2" /> {item.createdAt ? formatDistanceToNow(item.createdAt.toDate(), { addSuffix: true, locale: isRtl ? ar : enUS }) : '...'}</span>
