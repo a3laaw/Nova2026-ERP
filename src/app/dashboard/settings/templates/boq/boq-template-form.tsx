@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -19,7 +20,8 @@ import {
   Folder,
   Workflow,
   Target,
-  RefreshCcw
+  RefreshCcw,
+  Info
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
@@ -160,7 +162,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
        return parent?.title || '---';
     }) || [];
 
-    // --- FIX: Force sync Stage IDs from Node data ---
+    // جلب الروابط الفنية من الشجرة لضمان انتقالها للقالب
     const normalizedStageIds = node.technicalStageIds || (node.technicalStageId ? [node.technicalStageId] : []);
     const normalizedDefaultStageId = node.technicalStageId || (normalizedStageIds.length > 0 ? normalizedStageIds[0] : '');
 
@@ -187,7 +189,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     };
 
     setItems([...items, newItem]);
-    toast({ title: isRtl ? "تمت إضافة البند بالروابط" : "Item added with links" });
+    toast({ title: isRtl ? "تمت إضافة البند بنجاح" : "Item added successfully" });
   };
 
   const removeItem = (idx: number) => {
@@ -235,7 +237,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                 <div className="flex items-center gap-2">
                    <span className="text-[10px] font-mono font-black text-slate-400">#{node.code}</span>
                    <span className="text-xs font-bold text-slate-800">{node.title}</span>
-                   {node.technicalStageId && <Badge className="bg-primary/10 text-primary border-0 text-[7px] font-black h-4">LINKED</Badge>}
+                   {node.technicalStageIds?.length > 0 && <Badge className="bg-primary/10 text-primary border-0 text-[7px] font-black h-4">LINKED ({node.technicalStageIds.length})</Badge>}
                 </div>
              </div>
           </div>
@@ -276,12 +278,14 @@ export function BOQTemplateForm({ template, onClose }: Props) {
           const itemPrefix = `${prefix}.${iIdx + 1}`; 
           const subtotal = (item.plannedQuantity || 0) * (item.estimatedRate || 0);
 
-          // --- FIX: Dynamic Stage Resolution ---
-          // جلب كافة المراحل من المسار الحالي للقالب للسماح بالاختيار في حال عدم التزامن
-          const allSelectableStages = pathStages;
+          // تحديد القائمة المتاحة: إذا كان البند يملك روابط في الشجرة، نستخدمها. وإلا نستخدم كل مراحل المسار.
+          const isMultiLinked = item.technicalStageIds && item.technicalStageIds.length > 0;
+          const selectableStages = isMultiLinked 
+            ? pathStages.filter(s => item.technicalStageIds?.includes(s.id!))
+            : pathStages;
           
           return (
-            <TableRow key={`${item.boqReferenceNodeId}-${originalIdx}`} className="hover:bg-primary/[0.02] transition-colors border-b-slate-50 group/item">
+            <TableRow key={`${item.boqReferenceNodeId}-${originalIdx}`} className="hover:bg-primary/[0.02] transition-colors border-b-slate-100 group/item">
               <TableCell className="font-mono text-[10px] font-bold text-slate-300 ps-8">{itemPrefix}</TableCell>
               <TableCell className="font-mono text-[10px] font-black text-primary/60">{item.referenceCode}</TableCell>
               <TableCell className="text-xs font-bold text-slate-700" style={{ paddingInlineStart: `${(node.depth + 1) * 20 + 16}px` }}>
@@ -295,42 +299,37 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                   placeholder={isRtl ? "المواصفة..." : "Spec..."}
                 />
               </TableCell>
-              <TableCell className="p-1 min-w-[150px]">
-                 <Select 
-                   value={item.technicalStageId || 'NONE'} 
-                   onValueChange={(v) => {
-                     const finalVal = v === 'NONE' ? '' : v;
-                     updateItem(originalIdx, 'technicalStageId', finalVal);
-                     
-                     // تحديث مصفوفة الروابط لضمان التوافق
-                     const currentIds = item.technicalStageIds || [];
-                     if (finalVal && !currentIds.includes(finalVal)) {
-                        updateItem(originalIdx, 'technicalStageIds', [...currentIds, finalVal]);
-                     }
-                   }}
-                 >
-                    <SelectTrigger className={cn(
-                      "h-8 rounded-lg text-[9px] font-black border-transparent hover:border-primary/30 transition-all",
-                      item.technicalStageId ? "bg-primary/5 text-primary" : "bg-slate-50 text-slate-400"
-                    )}>
-                       <SelectValue placeholder={loadingStages ? "جاري التحميل..." : (isRtl ? "بدون ارتباط" : "No Link")} />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl border-2 shadow-2xl">
-                       <SelectItem value="NONE" className="font-bold text-[10px]">{isRtl ? 'بدون ارتباط فني' : 'No Link'}</SelectItem>
-                       {loadingStages ? (
-                         <div className="p-4 text-center"><Loader2 className="h-4 w-4 animate-spin mx-auto text-primary" /></div>
-                       ) : (
-                         allSelectableStages.map(s => (
-                           <SelectItem key={s.id} value={s.id!} className="font-bold text-[10px] py-2 border-b last:border-0 border-slate-50">
-                              <div className="flex flex-col text-start">
-                                 <span className="flex items-center gap-1"><Workflow className="h-2.5 w-2.5 text-primary" /> {s.name}</span>
-                                 <span className="text-[7px] text-slate-400 uppercase tracking-tighter">Current Path Stage</span>
-                              </div>
-                           </SelectItem>
-                         ))
-                       )}
-                    </SelectContent>
-                 </Select>
+              <TableCell className="p-1 min-w-[180px]">
+                 <div className="space-y-1">
+                    <Select 
+                      value={item.technicalStageId || 'NONE'} 
+                      onValueChange={(v) => {
+                        const finalVal = v === 'NONE' ? '' : v;
+                        updateItem(originalIdx, 'technicalStageId', finalVal);
+                      }}
+                    >
+                        <SelectTrigger className={cn(
+                          "h-8 rounded-lg text-[9px] font-black border-transparent hover:border-primary/30 transition-all",
+                          item.technicalStageId ? "bg-primary/5 text-primary" : "bg-slate-50 text-slate-400"
+                        )}>
+                          <SelectValue placeholder={loadingStages ? "..." : (isRtl ? "اختيار المرحلة المالية" : "Primary Link")} />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-2 shadow-2xl">
+                          <SelectItem value="NONE" className="font-bold text-[10px]">{isRtl ? 'بدون تعيين مالي' : 'Unassigned'}</SelectItem>
+                          {selectableStages.map(s => (
+                            <SelectItem key={s.id} value={s.id!} className="font-bold text-[10px] py-2 border-b last:border-0 border-slate-50">
+                                <span className="flex items-center gap-1"><Workflow className="h-2.5 w-2.5 text-primary" /> {s.name}</span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                    </Select>
+                    {isMultiLinked && (
+                      <div className="flex items-center gap-1 px-1">
+                         <Info className="h-2.5 w-2.5 text-blue-400" />
+                         <span className="text-[7px] font-black text-blue-500 uppercase">Available in {item.technicalStageIds?.length} stages</span>
+                      </div>
+                    )}
+                 </div>
               </TableCell>
               <TableCell className="text-center font-black text-[10px] text-slate-400 uppercase">{item.unitSymbol || item.unitName || '-'}</TableCell>
               <TableCell className="p-1 w-[80px]">
@@ -542,7 +541,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                         variant="ghost" 
                         size="sm" 
                         onClick={() => {
-                          // محاكاة إعادة مزامنة بسيطة
                           toast({ title: isRtl ? "جاري تحديث الروابط..." : "Syncing links...", icon: <RefreshCcw className="h-4 w-4 animate-spin" /> });
                           setTimeout(() => toast({ title: isRtl ? "تمت المزامنة" : "Sync complete" }), 800);
                         }}
@@ -562,7 +560,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                     <TableHead className="w-[100px] text-white/40 font-mono text-[10px]">Code</TableHead>
                     <TableHead className="text-white font-black text-xs">{isRtl ? 'وصف بند العمل' : 'Work Item Description'}</TableHead>
                     <TableHead className="text-white font-black text-xs">{isRtl ? 'المواصفة الفنية' : 'Technical Specification'}</TableHead>
-                    <TableHead className="text-white font-black text-xs">{isRtl ? 'الارتباط الفني' : 'Technical Link'}</TableHead>
+                    <TableHead className="text-white font-black text-xs">{isRtl ? 'الارتباط المالي' : 'Budget Link'}</TableHead>
                     <TableHead className="text-center w-[60px] text-white font-black text-xs">{isRtl ? 'الوحدة' : 'Unit'}</TableHead>
                     <TableHead className="text-center w-[80px] text-white font-black text-xs">{isRtl ? 'الكمية' : 'Qty'}</TableHead>
                     <TableHead className="text-center w-[100px] text-white font-black text-xs">{isRtl ? 'الفئة (د.ك)' : 'Rate (KWD)'}</TableHead>
