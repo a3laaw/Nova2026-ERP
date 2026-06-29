@@ -4,55 +4,48 @@ import React, { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
-  FileSpreadsheet, ArrowRight, Loader2, Save, 
-  CheckCircle2, AlertTriangle, LayoutGrid, Boxes, 
-  Hammer, Calculator, TrendingUp, ChevronDown, ChevronRight,
-  Printer, MoreVertical, Search, Filter, Folder,
-  Target, Activity, History
+  FileSpreadsheet, ArrowRight, Loader2, 
+  TrendingUp, ChevronDown, ChevronRight,
+  Printer, Folder, Calculator, ShieldCheck,
+  Zap, History
 } from "lucide-react";
 import { useFirestore, useCollection, useDoc } from '@/firebase';
-import { collection, query, where, doc, getDocs } from 'firebase/firestore';
+import { collection, query, where, doc, collectionGroup } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
-import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
-import { BOQ, BOQItem } from '@/types/documents';
+import { BOQ, BOQItem, BOQItemExecutionEntry } from '@/types/documents';
 import { Transaction, StageInstance } from '@/types/transaction';
-import { BOQExecutionService } from '@/services/boq-execution-service';
 import { transformToBOQTree } from '@/lib/boq-tree-utils';
 import { BOQTreeNode } from '@/types/templates';
-import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
+/**
+ * صفحة متابعة إنجاز المقايسة الآلية (Automated BOQ Progress)
+ * تقوم بحساب السابق والحالي والإجمالي برمجياً بناءً على حالة المراحل.
+ */
 export default function TransactionBOQProgressPage() {
   const params = useParams();
   const transactionId = params.tId as string;
-  const clientId = params.id as string;
-  const { globalUser, user } = useAuthContext();
+  const { globalUser } = useAuthContext();
   const { t, lang, dir } = useLanguage();
-  const { permissions } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
-  // حالات الإدخال والتحميل
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [currentInputs, setCurrentInputs] = useState<Record<string, number>>({});
-
-  // 1. جلب البيانات الأساسية
+  // 1. جلب البيانات الأساسية (المعاملة والمراحل)
   const transRef = useMemo(() => companyId && db ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
   const { data: transaction } = useDoc<Transaction>(transRef);
 
-  // جلب مراحل المعاملة للاستدلال التلقائي في حال فقدان الارتباط
   const stagesQuery = useMemo(() => companyId && db ? query(collection(db, paths.transactionStages(companyId, transactionId))) : null, [db, companyId, transactionId]);
   const { data: stages } = useCollection<StageInstance>(stagesQuery);
 
+  // 2. جلب المقايسة وبنودها
   const boqQuery = useMemo(() => companyId && db ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
   const { data: boqs, loading: boqLoading } = useCollection<BOQ>(boqQuery);
   const activeBoq = boqs?.[0];
@@ -60,69 +53,58 @@ export default function TransactionBOQProgressPage() {
   const itemsQuery = useMemo(() => companyId && db && activeBoq?.id ? query(collection(db, paths.boqItems(companyId, activeBoq.id))) : null, [db, companyId, activeBoq]);
   const { data: items, loading: itemsLoading } = useCollection<BOQItem>(itemsQuery);
 
-  const boqTree = useMemo(() => transformToBOQTree(items || []), [items]);
-  const executionService = useMemo(() => db && companyId ? new BOQExecutionService(db, companyId, permissions) : null, [db, companyId, permissions]);
+  // 3. جلب كافة سجلات التنفيذ المرتبطة بهذه المقايسة (Collection Group Query)
+  // ملاحظة: هذا الاستعلام يسحب كل الحركات الميدانية المسجلة عبر كافة البنود
+  const executionsQuery = useMemo(() => 
+    companyId && db && activeBoq?.id 
+      ? query(collectionGroup(db, 'executions'), where('boqId', '==', activeBoq.id)) 
+      : null, 
+  [db, companyId, activeBoq]);
+  const { data: allExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
 
-  // دالة الحفظ الميداني المحدثة بمحرك الاستدلال التلقائي
-  const handleUpdateQuantity = async (item: BOQItem) => {
-    const newVal = currentInputs[item.id!];
-    if (!newVal || newVal <= 0 || !executionService || !activeBoq || !user) return;
-
-    setUpdatingId(item.id!);
-    try {
-      // محاولة الحصول على المرحلة: 1. من البند نفسه 2. من أول مصفوفة 3. المرحلة النشطة حالياً
-      let targetStageId = item.technicalStageId || (item.technicalStageIds?.[0]);
+  // 4. محرك الحساب الآلي (Automated Calculation Engine)
+  // يقوم بتوزيع الكميات بناءً على حالة المرحلة المسجل عليها الإنجاز
+  const executionMetrics = useMemo(() => {
+    if (!allExecutions || !stages) return {};
+    
+    const metrics: Record<string, { prev: number, current: number }> = {};
+    
+    allExecutions.forEach(exec => {
+      const stage = stages.find(s => s.technicalStageId === exec.technicalStageId);
+      const itemId = exec.boqItemId;
       
-      if (!targetStageId && stages) {
-         // استدلال تلقائي: ابحث عن المرحلة التي يعمل فيها المهندس حالياً (in-progress)
-         const activeStage = stages.find(s => s.status === 'in-progress');
-         if (activeStage) {
-            targetStageId = activeStage.technicalStageId;
-         }
+      if (!metrics[itemId]) metrics[itemId] = { prev: 0, current: 0 };
+      
+      // المادة 1: إذا كانت المرحلة مكتملة، تذهب الكمية لـ "السابق"
+      if (stage?.status === 'completed') {
+        metrics[itemId].prev += (exec.quantity || 0);
+      } 
+      // المادة 2: إذا كانت المرحلة قيد التنفيذ، تذهب الكمية لـ "الحالي"
+      else if (stage?.status === 'in-progress' || stage?.status === 'pending') {
+        metrics[itemId].current += (exec.quantity || 0);
       }
+    });
+    
+    return metrics;
+  }, [allExecutions, stages]);
 
-      if (!targetStageId) {
-        throw new Error(isRtl ? "البند غير مرتبط بمرحلة فنية، يرجى تفعيل إحدى مراحل المعاملة أولاً." : "Item not linked to a stage, please activate a transaction stage first.");
-      }
+  const boqTree = useMemo(() => transformToBOQTree(items || []), [items]);
 
-      await executionService.recordBOQItemExecution(
-        activeBoq.id, 
-        item.id!, 
-        targetStageId,
-        newVal, 
-        user.uid, 
-        user.displayName || 'Engineer'
-      );
-
-      // تصفير الإدخال الحالي بعد النجاح
-      setCurrentInputs(prev => ({ ...prev, [item.id!]: 0 }));
-      toast({ 
-        title: isRtl ? "تم تسجيل الإنجاز" : "Progress Recorded",
-        description: isRtl ? `تمت إضافة ${newVal} وحدة للبند.` : `Added ${newVal} units.`
-      });
-    } catch (e: any) {
-      toast({ variant: "destructive", title: t('error'), description: e.message });
-    } finally {
-      setUpdatingId(null);
-    }
-  };
-
-  const handleInputChange = (itemId: string, val: string) => {
-    const num = parseFloat(val);
-    setCurrentInputs(prev => ({ ...prev, [itemId]: isNaN(num) ? 0 : num }));
-  };
-
-  // إحصائيات فوتر الصفحة
+  // إحصائيات الفوتر
   const overallStats = useMemo(() => {
     if (!items) return { totalPlanned: 0, totalExecuted: 0, progress: 0 };
     const totalP = items.reduce((acc, i) => acc + ((i.plannedQuantity || 0) * (i.estimatedRate || 0)), 0);
-    const totalE = items.reduce((acc, i) => acc + ((i.executedQuantity || 0) * (i.estimatedRate || 0)), 0);
+    const metrics = items.map(i => {
+        const m = executionMetrics[i.id!] || { prev: 0, current: 0 };
+        return (m.prev + m.current) * (i.estimatedRate || 0);
+    });
+    const totalE = metrics.reduce((acc, val) => acc + val, 0);
     return {
       totalPlanned: totalP,
       totalExecuted: totalE,
       progress: totalP > 0 ? Math.round((totalE / totalP) * 100) : 0
     };
-  }, [items]);
+  }, [items, executionMetrics]);
 
   const renderExecutionTreeRows = (node: BOQTreeNode, prefix: string): React.ReactNode => {
     return (
@@ -141,8 +123,10 @@ export default function TransactionBOQProgressPage() {
 
         {node.items.map((item, iIdx) => {
           const itemPrefix = `${prefix.replace('.0', '')}.${iIdx + 1}`;
-          const currentVal = currentInputs[item.id!] || 0;
-          const prevVal = item.executedQuantity || 0;
+          const metrics = executionMetrics[item.id!] || { prev: 0, current: 0 };
+          
+          const prevVal = metrics.prev;
+          const currentVal = metrics.current;
           const totalCumulative = prevVal + currentVal;
           
           const progress = (totalCumulative / (item.plannedQuantity || 1)) * 100;
@@ -157,41 +141,32 @@ export default function TransactionBOQProgressPage() {
               </TableCell>
               <TableCell className="text-center font-black text-[10px] text-slate-400 uppercase">{item.unitSymbol || '-'}</TableCell>
               
-              {/* المخطط - تمت إعادته بناءً على الطلب */}
+              {/* المخطط */}
               <TableCell className="text-center w-[80px]">
                  <span className="font-mono font-black text-slate-400 text-xs bg-slate-100/50 px-3 py-1 rounded-lg">
                     {item.plannedQuantity}
                  </span>
               </TableCell>
               
-              {/* السابق */}
-              <TableCell className="text-center font-mono font-black text-slate-600 text-xs">
-                 {prevVal}
+              {/* السابق - آلي */}
+              <TableCell className="text-center">
+                 <span className="font-mono font-black text-blue-600 text-xs">
+                    {prevVal || '0'}
+                 </span>
               </TableCell>
               
-              {/* الحالي (الإدخال) - تصميم كبسولة */}
-              <TableCell className="p-1 w-[120px]">
-                <div className="relative">
-                  <Input 
-                    type="number" 
-                    value={currentVal || ''}
-                    onChange={(e) => handleInputChange(item.id!, e.target.value)}
-                    onBlur={() => currentVal > 0 && handleUpdateQuantity(item)}
-                    placeholder="0"
-                    className={cn(
-                      "h-9 rounded-full border-2 font-black text-center text-xs transition-all",
-                      currentVal > 0 ? "border-primary bg-primary/5 text-primary shadow-lg" : "bg-white border-slate-100"
-                    )} 
-                  />
-                  {updatingId === item.id && <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 animate-spin text-primary" />}
-                </div>
+              {/* الحالي - آلي - تصميم كبسولة مميزة */}
+              <TableCell className="text-center w-[100px]">
+                 <div className="inline-flex items-center justify-center h-8 px-4 rounded-full bg-orange-50 border border-orange-100 text-orange-600 font-black text-xs shadow-sm">
+                    {currentVal || '0'}
+                 </div>
               </TableCell>
 
-              {/* الإجمالي - تصميم كبسولة Badge */}
+              {/* الإجمالي - آلي */}
               <TableCell className="text-center w-[100px]">
                  <Badge variant="outline" className={cn(
                    "font-black text-xs px-4 h-9 rounded-full border-2 shadow-sm",
-                   isOver ? "bg-rose-50 text-rose-600 border-rose-200" : "bg-slate-50 text-slate-900 border-slate-100"
+                   isOver ? "bg-rose-50 text-rose-600 border-rose-200" : "bg-slate-900 text-white border-slate-900"
                  )}>
                     {totalCumulative}
                  </Badge>
@@ -246,7 +221,7 @@ export default function TransactionBOQProgressPage() {
            <div className="text-start">
               <div className="flex items-center gap-3">
                  <h1 className="text-xl font-black text-slate-900 leading-none">{activeBoq.boqNumber}</h1>
-                 <Badge className="bg-primary/10 text-primary border-0 font-black text-[9px] uppercase h-5 px-3">Live Execution</Badge>
+                 <Badge className="bg-emerald-500 text-white border-0 font-black text-[9px] uppercase h-5 px-3">Automated Ledger</Badge>
               </div>
               <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">
                  {transaction?.clientName} | {transaction?.subServiceName}
@@ -255,6 +230,10 @@ export default function TransactionBOQProgressPage() {
         </div>
         
         <div className="flex items-center gap-3">
+           <div className="hidden md:flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
+              <History className="h-3.5 w-3.5 text-blue-500" />
+              <span className="text-[9px] font-black text-slate-500 uppercase">{isRtl ? 'تحديث تلقائي من الميدان' : 'Live Field Sync Active'}</span>
+           </div>
            <Button variant="outline" size="sm" className="h-11 px-6 rounded-xl font-black text-xs gap-2 border-2 bg-white hover:bg-slate-50">
               <Printer className="h-4 w-4" /> {isRtl ? 'طباعة تقرير الإنجاز' : 'Print Certificate'}
            </Button>
@@ -279,7 +258,7 @@ export default function TransactionBOQProgressPage() {
              </TableRow>
            </TableHeader>
            <TableBody>
-              {boqTree.map((node, idx) => renderExecutionTreeRows(node, (idx + 1).toString() + ".0"))}
+              {boqTree.map((node, idx) => renderBOQTreeRows(node, (idx + 1).toString() + ".0"))}
            </TableBody>
          </Table>
 
