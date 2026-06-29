@@ -12,7 +12,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Checkbox } from "@/checkbox";
 import { 
   Save, Plus, Trash2, Loader2, ArrowRight,
   Calculator, AlertTriangle, 
@@ -31,7 +31,7 @@ import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, collectionGroup, where, getDocs, doc } from 'firebase/firestore';
+import { collection, query, orderBy, where, getDocs, doc } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { BOQTemplate, BOQTemplateItem, BOQTreeNode } from '@/types/templates';
 import { ActivityType, Service, SubService, BOQReferenceNode, TechnicalStage } from '@/types/reference';
@@ -82,23 +82,21 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     }
   );
 
+  // جلب الأنشطة الرئيسية
   const actQuery = useMemo(() => companyId && db ? query(collection(db, paths.activityTypes(companyId)), orderBy('order')) : null, [db, companyId]);
-  
+  const { data: activities } = useCollection<ActivityType>(actQuery);
+
+  // إصلاح سيادي: جلب الخدمات المرتبطة بالنشاط المختار حصراً لتجنب أخطاء الفهارس
   const srvQuery = useMemo(() => {
-    if (!companyId || !db) return null;
-    return query(collectionGroup(db, 'services'), where('companyId', '==', companyId));
-  }, [db, companyId]);
+    if (!companyId || !db || !formData.activityTypeId) return null;
+    return query(collection(db, paths.services(companyId, formData.activityTypeId)), orderBy('order'));
+  }, [db, companyId, formData.activityTypeId]);
+  const { data: services, loading: servicesLoading } = useCollection<Service>(srvQuery);
 
   const masterNodesQuery = useMemo(() => companyId && db ? query(collection(db, paths.boqReferenceNodes(companyId)), orderBy('depth')) : null, [db, companyId]);
-
-  const { data: activities } = useCollection<ActivityType>(actQuery);
-  const { data: rawAllServices } = useCollection<Service>(srvQuery);
   const { data: rawMasterNodes, loading: masterLoading } = useCollection<BOQReferenceNode>(masterNodesQuery);
 
-  const allServices = useMemo(() => {
-    return [...(rawAllServices || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
-  }, [rawAllServices]);
-
+  // جلب المسارات الفنية عند اختيار الخدمة
   useEffect(() => {
     if (db && companyId && formData.activityTypeId && formData.serviceId) {
       getDocs(query(collection(db, paths.subServices(companyId, formData.activityTypeId, formData.serviceId)), orderBy('order')))
@@ -169,8 +167,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
-      setLoading(true); // لضمان عدم حدوث تكرار أثناء الإغلاق
-      onClose();
+      setLoading(false);
     }
   };
 
@@ -221,12 +218,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     const newItems = [...items];
     (newItems[idx] as any)[field] = val;
     setItems(newItems);
-  };
-
-  const toggleMultiSelect = (field: string, id: string) => {
-    const current = formData[field] || [];
-    const updated = current.includes(id) ? current.filter((x: string) => x !== id) : [...current, id];
-    setFormData({ ...formData, [field]: updated });
   };
 
   const toggleNode = (id: string) => {
@@ -304,7 +295,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
           const itemPrefix = `${prefix}.${iIdx + 1}`; 
           const subtotal = (item.plannedQuantity || 0) * (item.estimatedRate || 0);
 
-          // الحل الذكي: إذا كان البند يفتقد للروابط الفنية، نعرض له كافة مراحل المسار الفني للقالب ليتمكن من الاختيار
           const templatePathStages = allStages.filter(s => s.subServiceId === formData.subServiceId);
           const allowedStagesForItem = (item.technicalStageIds && item.technicalStageIds.length > 0)
               ? allStages.filter(s => item.technicalStageIds!.includes(s.id!))
@@ -487,9 +477,11 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                        <div className="space-y-2">
                           <Label className="text-[9px] font-black text-slate-500 uppercase">{isRtl ? 'الخدمة الأساسية' : 'Main Service'}</Label>
                           <Select disabled={!formData.activityTypeId} value={formData.serviceId} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: ''})}>
-                             <SelectTrigger className="h-10 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
+                             <SelectTrigger className="h-10 rounded-xl border-2 font-bold bg-white">
+                                {servicesLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <SelectValue placeholder="..." />}
+                             </SelectTrigger>
                              <SelectContent className="rounded-xl">
-                                {allServices.filter(s => s.activityTypeId === formData.activityTypeId).map(s => <SelectItem key={s.id} value={s.id!} className="font-bold">{isRtl ? s.name : s.nameEn}</SelectItem>)}
+                                {services?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold">{isRtl ? s.name : s.nameEn}</SelectItem>)}
                              </SelectContent>
                           </Select>
                        </div>
