@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { 
   Plus, Trash2, Loader2, Save, X, 
   PlusCircle, AlertTriangle, Calculator,
@@ -194,7 +195,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                             <div className="md:col-span-2 space-y-1 text-start">
                                <Label className="text-[9px] font-black text-slate-400 uppercase">Action</Label>
                                <Select value={item.type} onValueChange={(v: VariationType) => updateItem(idx, 'type', v)}>
-                                  <SelectTrigger className="h-10 rounded-xl border-2 font-black text-[10px]"><SelectValue /></SelectTrigger>
+                                  <SelectTrigger className="h-10 rounded-xl border-2 font-black text-[10px]"><SelectValue /></SelectValue>
                                   <SelectContent className="rounded-xl">
                                      {VARIATION_TYPES.map(t => <SelectItem key={t.value} value={t.value} className={cn("font-bold", t.color)}>{t.label}</SelectItem>)}
                                   </SelectContent>
