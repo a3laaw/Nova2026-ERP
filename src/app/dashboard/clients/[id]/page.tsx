@@ -34,9 +34,16 @@ import {
 } from "@/components/ui/alert-dialog";
 
 import dynamic from 'next/dynamic';
-const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false });
-const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false });
-const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false });
+
+// تحميل الخريطة بشكل ديناميكي مع تعطيل SSR لمنع أخطاء الـ Chunks
+const StaticMapView = dynamic(() => import('@/components/clients/static-map-view'), { 
+  ssr: false,
+  loading: () => (
+    <div className="h-full w-full flex items-center justify-center bg-slate-50">
+      <Loader2 className="h-5 w-5 animate-spin text-primary/30" />
+    </div>
+  )
+});
 
 export default function ClientDetailsPage() {
   const clientId = useParams().id as string;
@@ -169,13 +176,7 @@ export default function ClientDetailsPage() {
                  <div className="p-5 bg-slate-50/50 flex items-center justify-center">
                     <div onClick={() => client.locationUrl && window.open(client.locationUrl, '_blank')} className={cn("relative h-32 w-full rounded-[2.5rem] overflow-hidden shadow-lg border-2 z-0", coordinates ? "bg-white border-blue-500/10 cursor-pointer hover:ring-4 hover:ring-blue-500/5 transition-all" : "bg-white/50 border-dashed border-slate-200")}>
                        {coordinates ? (
-                          <>
-                             <MapContainer center={coordinates} zoom={15} style={{height:'100%',width:'100%', zIndex: 0}} zoomControl={false} dragging={false} scrollWheelZoom={false}>
-                                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                                <Marker position={coordinates} />
-                             </MapContainer>
-                             <div className="absolute bottom-2 left-0 right-0 px-2 z-10"><Badge className="w-full bg-blue-600 text-white font-black text-[7px] h-4 border-0 justify-center">GPS LOCKED</Badge></div>
-                          </>
+                          <StaticMapView position={coordinates} />
                        ) : <div className="h-full flex items-center justify-center text-slate-200"><MapIcon className="h-8 w-8" /></div>}
                     </div>
                  </div>
