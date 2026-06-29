@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -26,8 +27,7 @@ import { cn } from '@/lib/utils';
 
 /**
  * صفحة متابعة إنجاز المقايسة الآلية (Automated BOQ Progress)
- * تقوم بحساب السابق والحالي والإجمالي برمجياً بناءً على حالة المراحل الميدانية.
- * يدعم سيناريو: بند واحد في المقايسة يتم تغذيته من عدة مراحل تنفيذية (مثل طبقات الدفان).
+ * تدعم محرك الحساب المئوي اللحظي للسابق والحالي والإجمالي.
  */
 export default function TransactionBOQProgressPage() {
   const params = useParams();
@@ -39,14 +39,13 @@ export default function TransactionBOQProgressPage() {
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
-  // 1. جلب البيانات الأساسية (المعاملة والمراحل)
+  // 1. جلب البيانات الأساسية
   const transRef = useMemo(() => companyId && db ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
   const { data: transaction } = useDoc<Transaction>(transRef);
 
   const stagesQuery = useMemo(() => companyId && db ? query(collection(db, paths.transactionStages(companyId, transactionId))) : null, [db, companyId, transactionId]);
   const { data: stages } = useCollection<StageInstance>(stagesQuery);
 
-  // 2. جلب المقايسة وبنودها
   const boqQuery = useMemo(() => companyId && db ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
   const { data: boqs, loading: boqLoading } = useCollection<BOQ>(boqQuery);
   const activeBoq = boqs?.[0];
@@ -54,7 +53,7 @@ export default function TransactionBOQProgressPage() {
   const itemsQuery = useMemo(() => companyId && db && activeBoq?.id ? query(collection(db, paths.boqItems(companyId, activeBoq.id))) : null, [db, companyId, activeBoq]);
   const { data: items, loading: itemsLoading } = useCollection<BOQItem>(itemsQuery);
 
-  // 3. جلب كافة سجلات التنفيذ المرتبطة بهذه المقايسة
+  // 2. جلب سجلات التنفيذ عبر مجموعة الـ Executions الموحدة
   const executionsQuery = useMemo(() => 
     companyId && db && activeBoq?.id 
       ? query(collectionGroup(db, 'executions'), where('boqId', '==', activeBoq.id)) 
@@ -62,7 +61,7 @@ export default function TransactionBOQProgressPage() {
   [db, companyId, activeBoq]);
   const { data: allExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
 
-  // 4. محرك الحساب الآلي التراكمي (Automated Cumulative Calculation Engine)
+  // 3. محرك الحساب الآلي المئوي
   const executionMetrics = useMemo(() => {
     if (!allExecutions || !stages) return {};
     
@@ -74,8 +73,6 @@ export default function TransactionBOQProgressPage() {
       
       if (!metrics[itemId]) metrics[itemId] = { prev: 0, current: 0 };
       
-      // القاعدة: إذا كانت المرحلة مكتملة، تذهب الكمية لـ "السابق"
-      // إذا كانت قيد التنفيذ، تذهب لـ "الحالي"
       if (stage?.status === 'completed') {
         metrics[itemId].prev += (exec.quantity || 0);
       } 
@@ -104,9 +101,6 @@ export default function TransactionBOQProgressPage() {
     };
   }, [items, executionMetrics]);
 
-  /**
-   * دالة الرسم الشجري المحدثة (renderBOQTreeRows)
-   */
   const renderBOQTreeRows = (node: BOQTreeNode, prefix: string): React.ReactNode => {
     return (
       <React.Fragment key={node.id}>
@@ -129,9 +123,13 @@ export default function TransactionBOQProgressPage() {
           const prevVal = metrics.prev;
           const currentVal = metrics.current;
           const totalCumulative = prevVal + currentVal;
+          const planned = item.plannedQuantity || 1;
+
+          // حساب النسب المئوية لكل عمود
+          const prevPct = Math.round((prevVal / planned) * 100);
+          const currentPct = Math.round((currentVal / planned) * 100);
+          const totalPct = Math.round((totalCumulative / planned) * 100);
           
-          // حساب النسبة المئوية الميدانية بناءً على المخطط
-          const progress = (totalCumulative / (item.plannedQuantity || 1)) * 100;
           const isOver = totalCumulative > (item.plannedQuantity || 0);
 
           return (
@@ -150,24 +148,31 @@ export default function TransactionBOQProgressPage() {
               </TableCell>
               
               <TableCell className="text-center">
-                 <span className="font-mono font-black text-blue-600 text-xs">
-                    {prevVal || '0'}
-                 </span>
+                 <div className="flex flex-col items-center">
+                    <span className="font-mono font-black text-blue-600 text-xs">{prevVal || '0'}</span>
+                    <span className="text-[8px] font-bold text-slate-400">({prevPct}%)</span>
+                 </div>
               </TableCell>
               
-              <TableCell className="text-center w-[100px]">
-                 <div className="inline-flex items-center justify-center h-8 px-4 rounded-full bg-orange-50 border border-orange-100 text-orange-600 font-black text-xs shadow-sm">
-                    {currentVal || '0'}
+              <TableCell className="text-center">
+                 <div className="flex flex-col items-center">
+                    <div className="inline-flex items-center justify-center h-7 px-3 rounded-full bg-orange-50 border border-orange-100 text-orange-600 font-black text-xs shadow-sm">
+                       {currentVal || '0'}
+                    </div>
+                    <span className="text-[8px] font-bold text-orange-400 mt-0.5">({currentPct}%)</span>
                  </div>
               </TableCell>
 
-              <TableCell className="text-center w-[100px]">
-                 <Badge variant="outline" className={cn(
-                   "font-black text-xs px-4 h-9 rounded-full border-2 shadow-sm",
-                   isOver ? "bg-rose-50 text-rose-600 border-rose-200" : "bg-slate-900 text-white border-slate-900"
-                 )}>
-                    {totalCumulative}
-                 </Badge>
+              <TableCell className="text-center">
+                 <div className="flex flex-col items-center">
+                    <Badge variant="outline" className={cn(
+                      "font-black text-xs px-4 h-8 rounded-full border-2 shadow-sm",
+                      isOver ? "bg-rose-50 text-rose-600 border-rose-200" : "bg-slate-900 text-white border-slate-900"
+                    )}>
+                       {totalCumulative}
+                    </Badge>
+                    <span className="text-[9px] font-black text-slate-500 mt-0.5">{totalPct}%</span>
+                 </div>
               </TableCell>
 
               <TableCell className="text-center font-mono font-bold text-slate-400 text-xs">
@@ -181,9 +186,9 @@ export default function TransactionBOQProgressPage() {
               <TableCell className="pe-6 w-[120px]">
                 <div className="space-y-1">
                   <div className="flex justify-between text-[8px] font-black uppercase text-slate-400">
-                    <span>{progress.toFixed(1)}%</span>
+                    <span className={cn(totalPct > 100 && "text-rose-500")}>{totalPct.toFixed(1)}%</span>
                   </div>
-                  <Progress value={progress} className="h-1 bg-slate-100 [&>div]:bg-primary" />
+                  <Progress value={totalPct} className="h-1 bg-slate-100 [&>div]:bg-primary" />
                 </div>
               </TableCell>
             </TableRow>
@@ -219,7 +224,7 @@ export default function TransactionBOQProgressPage() {
            <div className="text-start">
               <div className="flex items-center gap-3">
                  <h1 className="text-xl font-black text-slate-900 leading-none">{activeBoq.boqNumber}</h1>
-                 <Badge className="bg-emerald-500 text-white border-0 font-black text-[9px] uppercase h-5 px-3">Automated Ledger</Badge>
+                 <Badge className="bg-emerald-500 text-white border-0 font-black text-[9px] uppercase h-5 px-3">Automated Analytics</Badge>
               </div>
               <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">
                  {transaction?.clientName} | {transaction?.subServiceName}
@@ -230,7 +235,7 @@ export default function TransactionBOQProgressPage() {
         <div className="flex items-center gap-3">
            <div className="hidden md:flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
               <History className="h-3.5 w-3.5 text-blue-500" />
-              <span className="text-[9px] font-black text-slate-500 uppercase">{isRtl ? 'تحديث تلقائي من الميدان' : 'Live Field Sync Active'}</span>
+              <span className="text-[9px] font-black text-slate-500 uppercase">{isRtl ? 'تحليل مئوي لحظي' : 'Live Variance Tracking'}</span>
            </div>
            <Button variant="outline" size="sm" className="h-11 px-6 rounded-xl font-black text-xs gap-2 border-2 bg-white hover:bg-slate-50">
               <Printer className="h-4 w-4" /> {isRtl ? 'طباعة تقرير الإنجاز' : 'Print Certificate'}
@@ -247,9 +252,9 @@ export default function TransactionBOQProgressPage() {
                <TableHead className="text-white font-black text-xs">{isRtl ? 'بند العمل / الوصف' : 'Item Description'}</TableHead>
                <TableHead className="text-center w-[60px] text-white font-black text-xs">{isRtl ? 'الوحدة' : 'Unit'}</TableHead>
                <TableHead className="text-center w-[80px] text-white font-black text-xs bg-white/5">{isRtl ? 'المخطط' : 'Plan'}</TableHead>
-               <TableHead className="text-center w-[80px] text-white font-black text-xs">{isRtl ? 'السابق' : 'Prev'}</TableHead>
-               <TableHead className="text-center w-[120px] text-white font-black text-xs">{isRtl ? 'الحالي' : 'Current'}</TableHead>
-               <TableHead className="text-center w-[100px] text-white font-black text-xs">{isRtl ? 'الإجمالي' : 'Total'}</TableHead>
+               <TableHead className="text-center w-[100px] text-white font-black text-xs">{isRtl ? 'السابق' : 'Prev (%)'}</TableHead>
+               <TableHead className="text-center w-[120px] text-white font-black text-xs">{isRtl ? 'الحالي' : 'Current (%)'}</TableHead>
+               <TableHead className="text-center w-[120px] text-white font-black text-xs">{isRtl ? 'الإجمالي' : 'Total (%)'}</TableHead>
                <TableHead className="text-center w-[100px] text-white font-black text-xs">{isRtl ? 'الفئة' : 'Rate'}</TableHead>
                <TableHead className="text-end w-[120px] text-white font-black text-xs">{isRtl ? 'القيمة' : 'Value'}</TableHead>
                <TableHead className="pe-6 w-[120px] text-white font-black text-xs">{isRtl ? 'الإنجاز' : 'Progress'}</TableHead>
