@@ -16,7 +16,8 @@ import {
   RotateCcw,
   RotateCw,
   DatabaseZap,
-  Target
+  Target,
+  Zap
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where, limit } from 'firebase/firestore';
