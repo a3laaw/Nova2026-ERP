@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -14,7 +15,8 @@ import {
   Hammer, Save,
   AlertTriangle,
   Zap,
-  ArrowRight
+  ArrowRight,
+  RotateCcw
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where, limit } from 'firebase/firestore';
@@ -97,7 +99,7 @@ export default function TransactionDetailsPage() {
   [db, companyId, activeBoq]);
   const { data: boqItems } = useCollection<BOQItem>(itemsQuery);
 
-  // استعلام السجلات المسطحة لضمان الأداء وظهور التحديثات
+  // استعلام السجلات المسطحة لضمان الأداء وظهور التحديثات في الكومنتات
   const executionsQuery = useMemo(() => 
     companyId && db 
       ? query(
@@ -175,6 +177,19 @@ export default function TransactionDetailsPage() {
       toast({ title: isRtl ? "تم إنجاز المرحلة بنجاح" : "Stage Completed" });
     } catch (e: any) {
       toast({ variant: "destructive", title: isRtl ? "تعذر إغلاق المرحلة" : "Cannot Close Stage", description: e.message });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleReopenStage = async (stageId: string) => {
+    if (!transactionService || !user) return;
+    setProcessingId(stageId);
+    try {
+      await transactionService.reopenStage(transactionId, stageId, user.uid, user.displayName || 'User');
+      toast({ title: isRtl ? "تم إعادة فتح المرحلة" : "Stage Reopened" });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
       setProcessingId(null);
     }
@@ -271,7 +286,7 @@ export default function TransactionDetailsPage() {
                                  <div className="space-y-1 flex-1">
                                     <div className="flex items-center gap-2">
                                        <h4 className="font-black text-lg text-slate-900 tracking-tight">{stage.name}</h4>
-                                       {!isPreviousCompleted && <Lock className="h-3 w-3 text-slate-300" />}
+                                       {!isPreviousCompleted && stage.status !== 'completed' && <Lock className="h-3 w-3 text-slate-300" />}
                                     </div>
                                     {boqProgress && boqProgress.linkedItemsCount > 0 && (
                                       <div className="mt-2 space-y-1.5">
@@ -286,12 +301,26 @@ export default function TransactionDetailsPage() {
                               </div>
 
                               <div className="flex gap-2 shrink-0">
+                                 {stage.status === 'completed' && editAccess.can && (
+                                    <Button 
+                                      onClick={() => handleReopenStage(stage.id!)} 
+                                      disabled={processingId === stage.id}
+                                      variant="ghost" 
+                                      className="h-11 px-4 rounded-xl text-slate-400 hover:text-rose-600 font-black text-[10px] gap-2"
+                                    >
+                                       {processingId === stage.id ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                                       {isRtl ? 'تراجع عن الإكمال' : 'Undo'}
+                                    </Button>
+                                 )}
+
                                  {stage.status === 'in-progress' && editAccess.can && (
                                     <Button onClick={() => { setTargetStage(stage); setIsRecordOpen(true); }} variant="outline" className="h-11 px-4 rounded-xl border-2 border-primary/20 text-primary font-black text-xs gap-2 hover:bg-primary/5">
                                        <Hammer className="h-4 w-4" /> {isRtl ? 'تسجيل إنجاز' : 'Log Progress'}
                                     </Button>
                                  )}
+
                                  <Button variant="ghost" size="icon" onClick={() => setOpenStages(prev => ({...prev, [stage.id!]: !prev[stage.id!]}))} className={cn("h-11 w-11 rounded-xl text-slate-300 hover:text-primary transition-all", isOpen && "bg-primary/5 text-primary shadow-inner")}><MessageSquare className="h-5 w-5" /></Button>
+                                 
                                  {stage.status === 'pending' && isPreviousCompleted && (
                                     <Button onClick={() => handleStartStage(stage.id!)} disabled={processingId === stage.id} className="h-11 px-6 rounded-xl bg-blue-600 text-white font-black text-xs gap-2">
                                        {processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Play className="h-4 w-4" />} {isRtl ? 'بدء العمل' : 'Start'}
