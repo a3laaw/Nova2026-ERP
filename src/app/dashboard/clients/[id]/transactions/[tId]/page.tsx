@@ -18,7 +18,8 @@ import {
   Search,
   ArrowRight,
   Info,
-  RotateCcw
+  RotateCcw,
+  Fingerprint
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where, getDocs, limit } from 'firebase/firestore';
@@ -86,26 +87,22 @@ export default function TransactionDetailsPage() {
   const editAccess = check('projects', 'edit');
 
   // --- Data Fetching Logic ---
-  // 1. جلب بيانات المعاملة الرئيسية
   const transRef = useMemo(() => 
     companyId && db ? doc(db, paths.transactions(companyId), transactionId) : null, 
   [db, companyId, transactionId]);
   const { data: transaction, loading: transLoading } = useDoc<Transaction>(transRef);
 
-  // 2. جلب مراحل العمل الميدانية
   const stagesQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.transactionStages(companyId, transactionId)), orderBy('order')) : null, 
   [db, companyId, transactionId]);
   const { data: rawStages, loading: stagesLoading } = useCollection<StageInstance>(stagesQuery);
 
-  // 3. جلب المقايسة الحية المرتبطة (The BOQ Header)
   const boqQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', transactionId), limit(1)) : null, 
   [db, companyId, transactionId]);
   const { data: boqs, loading: boqCheckLoading } = useCollection<BOQ>(boqQuery);
   const activeBoq = boqs?.[0];
 
-  // 4. سحب البيانات من "جدول البنود الميدانية" (The Source Table: boqItems)
   const itemsQuery = useMemo(() => 
     companyId && db && activeBoq?.id ? query(collection(db, paths.boqItems(companyId, activeBoq.id))) : null, 
   [db, companyId, activeBoq]);
@@ -117,14 +114,12 @@ export default function TransactionDetailsPage() {
 
   const executionService = useMemo(() => db && companyId ? new BOQExecutionService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
-  // Overall progress percentage based on completed stages
   const progressPercent = useMemo(() => {
     if (!stages || stages.length === 0) return 0;
     const completed = stages.filter(s => s.status === 'completed').length;
     return Math.round((completed / stages.length) * 100);
   }, [stages]);
 
-  // تحديث نسب الإنجاز بناءً على حركة البنود
   useEffect(() => {
     let active = true;
     async function fetchAllProgress() {
@@ -165,7 +160,7 @@ export default function TransactionDetailsPage() {
     db && companyId ? new DocumentService(db, companyId, permissions) : null, 
   [db, companyId, permissions]);
 
-  // --- Filtering Logic (الربط الفني) ---
+  // --- Filtering Logic (الربط الفني السيادي) ---
   const filteredItemsForStage = useMemo(() => {
     if (!boqItems || !targetStage) return [];
     const sId = targetStage.technicalStageId;
@@ -232,11 +227,11 @@ export default function TransactionDetailsPage() {
       
       const snap = await getDocs(q);
       if (snap.empty) {
-        console.warn("No default template found for search:", {
-          companyId,
+        console.warn("DEBUG: No default template found with criteria:", {
           activityTypeId: transaction.activityTypeId,
           serviceId: transaction.serviceId,
-          subServiceId: transaction.subServiceId
+          subServiceId: transaction.subServiceId,
+          companyId
         });
         throw new Error(isRtl ? 'لم يتم العثور على BOQ Template افتراضي مطابق لنفس النشاط والخدمة والمسار الفني.' : 'No matching default BOQ template found for this path.');
       }
@@ -557,12 +552,19 @@ export default function TransactionDetailsPage() {
                              {filteredItemsForStage.length === 0 ? (
                                <div className="p-6 text-center space-y-3">
                                   <Info className="h-6 w-6 mx-auto text-blue-400" />
-                                  <p className="text-[10px] font-bold text-slate-400 italic leading-relaxed">
-                                     {isRtl ? "لا توجد بنود مرتبطة بهذه المرحلة في القاموس المرجعي." : "No items linked to this stage in registry."}
-                                  </p>
-                                  <p className="text-[9px] text-slate-300 font-bold leading-relaxed px-4">
-                                     {isRtl ? "تنبيه: المهندس في الموقع لن يرى هذا البند إلا إذا قمت بربطه بالمراحل (الإعدادات > شجرة الأعمال)." : "Engineer in field won't see this item unless linked to stages in settings."}
-                                  </p>
+                                  <div className="space-y-1">
+                                    <p className="text-[10px] font-bold text-slate-400 italic leading-relaxed">
+                                      {isRtl ? "لا توجد بنود مرتبطة بهذه المرحلة في القاموس المرجعي." : "No items linked to this stage in registry."}
+                                    </p>
+                                    <div className="mt-4 p-4 bg-slate-50 rounded-2xl border text-[9px] text-start font-mono space-y-1 ring-1 ring-black/[0.02]">
+                                      <p className="text-primary font-black uppercase flex items-center gap-1.5"><Fingerprint className="h-3 w-3" /> Diagnostic Info:</p>
+                                      <p className="text-slate-600">Target Stage ID: <span className="font-black text-slate-900">{targetStage?.technicalStageId}</span></p>
+                                      <p className="text-slate-600">BOQ Items in DB: <span className="font-black text-slate-900">{boqItems?.length || 0}</span></p>
+                                      <div className="pt-2 border-t mt-2">
+                                        <p className="text-[8px] text-slate-400 font-bold">{isRtl ? "تنبيه: المهندس لن يرى البند إلا إذا قمت بربطه بالمراحل (الإعدادات > شجرة الأعمال)." : "Engineer won't see this item unless linked in Settings > Work Tree."}</p>
+                                      </div>
+                                    </div>
+                                  </div>
                                </div>
                              ) : (
                                filteredItemsForStage.map(item => (
