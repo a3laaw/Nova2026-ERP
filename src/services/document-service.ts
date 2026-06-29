@@ -12,7 +12,8 @@ import {
   where,
   orderBy,
   limit,
-  writeBatch
+  writeBatch,
+  deleteDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { BOQTemplate, BOQTemplateItem, QuotationTemplate, ContractTemplate } from '@/types/templates';
@@ -143,7 +144,6 @@ export class DocumentService {
       const item = itemDoc.data() as BOQTemplateItem;
       const itemRef = doc(collection(this.db, paths.boqItems(this.companyId, boqId)));
       
-      // BACKWARD COMPATIBILITY: Auto-populate technicalStageIds array if missing
       const technicalStageIds = item.technicalStageIds && item.technicalStageIds.length > 0
         ? item.technicalStageIds
         : (item.technicalStageId ? [item.technicalStageId] : []);
@@ -154,7 +154,6 @@ export class DocumentService {
         transactionId: payload.transactionId || '',
         projectId: payload.projectId || '',
         
-        // البيانات المرجعية المستنسخة من القاموس
         boqReferenceNodeId: item.boqReferenceNodeId,
         referenceCode: item.referenceCode,
         referenceTitle: item.referenceTitle,
@@ -164,7 +163,6 @@ export class DocumentService {
         ancestorTitles: item.ancestorTitles || [],
         depth: item.depth || 0,
 
-        // الخصائص الفنية المنسوخة
         unitTypeId: item.unitTypeId || '',
         unitName: item.unitName || '',
         unitSymbol: item.unitSymbol || '',
@@ -173,9 +171,8 @@ export class DocumentService {
         billingTriggerGroup: item.billingTriggerGroup || '',
         allowedItemCategoryIds: item.allowedItemCategoryIds || [],
 
-        // القيم المخططة والتنفيذية
         plannedQuantity: item.plannedQuantity || 0,
-        executedQuantity: 0, // تصفير دائم عند البداية
+        executedQuantity: 0,
         estimatedRate: item.estimatedRate || 0,
         estimatedCostRate: item.estimatedCostRate || 0,
         notes: item.notes || '',
@@ -189,13 +186,13 @@ export class DocumentService {
       batch.set(itemRef, runtimeItem);
     });
 
-    // 7. توثيق الحدث في المعاملة (إذا تم الربط)
+    // 7. توثيق الحدث في المعاملة
     if (payload.transactionId) {
       const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, payload.transactionId)));
       batch.set(timelineRef, {
         transactionId: payload.transactionId,
         type: 'system',
-        content: `تم إنشاء جدول كميات فعلي برقم ${boqNumber} من القالب: ${template.name}`,
+        content: `تم إنشاء جدول كميات فعلي باسم "${boqData.name}" برقم ${boqNumber}`,
         userId,
         userName,
         companyId: this.companyId,
@@ -215,8 +212,47 @@ export class DocumentService {
   }
 
   /**
-   * استنساخ عرض سعر من قالب
+   * حذف المقايسة وكافة بنودها لبدء العمل "على نظافة"
    */
+  async deleteBOQ(boqId: string, transactionId?: string, userId?: string, userName?: string) {
+    ensureActionPermission(this.permissions, 'projects:delete');
+
+    const boqRef = doc(this.db, paths.boqs(this.companyId), boqId);
+    const itemsRef = collection(this.db, paths.boqItems(this.companyId, boqId));
+    
+    // 1. جلب كافة البنود لحذفها
+    const itemsSnap = await getDocs(itemsRef);
+    
+    const batch = writeBatch(this.db);
+    
+    // 2. حذف البنود
+    itemsSnap.docs.forEach(d => batch.delete(d.ref));
+    
+    // 3. حذف الرأس
+    batch.delete(boqRef);
+
+    // 4. توثيق الحذف في السجل الزمني
+    if (transactionId && userId) {
+       const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
+       batch.set(timelineRef, {
+         transactionId,
+         type: 'system',
+         content: `تم حذف المقايسة المربوطة لتصفير العمل والبدء من جديد.`,
+         userId,
+         userName,
+         companyId: this.companyId,
+         createdAt: serverTimestamp()
+       });
+    }
+
+    await batch.commit().catch(err => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: boqRef.path, operation: 'delete'
+      }));
+      throw err;
+    });
+  }
+
   async instantiateQuotationFromTemplate(templateId: string, transactionId: string, userId: string): Promise<string> {
     const templateRef = doc(this.db, paths.quotationTemplates(this.companyId), templateId);
     const transRef = doc(this.db, paths.transactions(this.companyId), transactionId);

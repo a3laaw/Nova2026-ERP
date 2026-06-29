@@ -22,7 +22,9 @@ import {
   FileText,
   Workflow,
   PlusCircle,
-  ArrowRight
+  ArrowRight,
+  Trash2,
+  Pencil
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where, limit } from 'firebase/firestore';
@@ -47,6 +49,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -73,7 +76,7 @@ export default function TransactionDetailsPage() {
   const transactionId = params.tId as string;
   const { globalUser, user } = useAuthContext();
   const { t, lang, dir } = useLanguage();
-  const { check, permissions } = usePermissions();
+  const { check, permissions, isAdmin } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
@@ -94,6 +97,12 @@ export default function TransactionDetailsPage() {
 
   const [undoStage, setUndoStage] = useState<StageInstance | null>(null);
   const [clearLogsOnUndo, setClearLogsOnUndo] = useState(false);
+
+  // States for Naming and Linking BOQ
+  const [namingTemplate, setNamingTemplate] = useState<BOQTemplate | null>(null);
+  const [customBOQName, setCustomBOQName] = useState("");
+  const [isDeletingBOQ, setIsDeletingBOQ] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const editAccess = check('projects', 'edit');
 
@@ -184,25 +193,47 @@ export default function TransactionDetailsPage() {
   }, [boqItems, targetStage]);
 
   // Actions
-  const handleLinkBOQ = async (templateId: string) => {
-    if (!db || !companyId || !user || !transaction) return;
+  const handleInitiateLink = (template: BOQTemplate) => {
+    setNamingTemplate(template);
+    setCustomBOQName(`${template.name} - ${transaction?.transactionNumber || ''}`);
+  };
+
+  const handleConfirmLinkBOQ = async () => {
+    if (!db || !companyId || !user || !transaction || !namingTemplate) return;
     setProcessingId('linking_boq');
     try {
       const docService = new DocumentService(db, companyId, permissions);
-      await docService.instantiateBoqFromTemplate(templateId, {
+      await docService.instantiateBoqFromTemplate(namingTemplate.id!, {
           transactionId,
           clientId: transaction.clientId,
           clientName: transaction.clientName,
           activityTypeId: transaction.activityTypeId,
           serviceId: transaction.serviceId,
           subServiceId: transaction.subServiceId,
+          name: customBOQName || namingTemplate.name
       }, user.uid, user.displayName || 'User');
       
       toast({ title: isRtl ? "تم ربط المقايسة بنجاح" : "BOQ Linked Successfully" });
+      setNamingTemplate(null);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
       setProcessingId(null);
+    }
+  };
+
+  const handleDeleteBOQ = async () => {
+    if (!activeBoq || !db || !companyId || !user) return;
+    setIsDeletingBOQ(true);
+    try {
+      const docService = new DocumentService(db, companyId, permissions);
+      await docService.deleteBOQ(activeBoq.id, transactionId, user.uid, user.displayName || 'User');
+      toast({ title: isRtl ? "تم حذف المقايسة المربوطة" : "BOQ Deleted" });
+      setShowDeleteConfirm(false);
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('error'), description: e.message });
+    } finally {
+      setIsDeletingBOQ(false);
     }
   };
 
@@ -259,7 +290,7 @@ export default function TransactionDetailsPage() {
         user.uid,
         user.displayName || 'User',
         progressNotes,
-        targetStage.id // Pass the specific instance ID
+        targetStage.id 
       );
       toast({ title: isRtl ? "تم تسجيل الإنجاز" : "Progress Recorded" });
       setIsRecordOpen(false);
@@ -306,9 +337,16 @@ export default function TransactionDetailsPage() {
         </div>
         <div className="flex gap-3">
            {activeBoq && (
-             <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="h-11 px-6 rounded-xl bg-white border-2 font-black text-xs gap-2 text-primary border-primary/20 shadow-sm">
-                <FileSpreadsheet className="h-4 w-4" /> {isRtl ? 'تتبع إنجاز المقايسة' : 'BOQ Progress'}
-             </Button>
+             <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="h-11 px-6 rounded-xl bg-white border-2 font-black text-xs gap-2 text-primary border-primary/20 shadow-sm">
+                   <FileSpreadsheet className="h-4 w-4" /> {isRtl ? 'تتبع إنجاز المقايسة' : 'BOQ Progress'}
+                </Button>
+                {isAdmin && (
+                   <Button variant="ghost" size="icon" onClick={() => setShowDeleteConfirm(true)} className="h-11 w-11 rounded-xl text-rose-300 hover:text-rose-600 hover:bg-rose-50 border-2 border-transparent hover:border-rose-100">
+                      <Trash2 className="h-5 w-5" />
+                   </Button>
+                )}
+             </div>
            )}
         </div>
       </div>
@@ -328,7 +366,7 @@ export default function TransactionDetailsPage() {
                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {availableTemplates && availableTemplates.length > 0 ? (
                     availableTemplates.map(temp => (
-                      <Card key={temp.id} className="border-2 hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer rounded-3xl p-6 text-start group" onClick={() => handleLinkBOQ(temp.id!)}>
+                      <Card key={temp.id} className="border-2 hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer rounded-3xl p-6 text-start group" onClick={() => handleInitiateLink(temp)}>
                          <div className="flex items-center justify-between mb-4">
                             <Badge variant="outline" className="font-black text-[9px] px-3">{temp.code}</Badge>
                             <div className="h-8 w-8 rounded-lg bg-white border flex items-center justify-center text-primary shadow-sm group-hover:scale-110 transition-transform">
@@ -347,12 +385,6 @@ export default function TransactionDetailsPage() {
                     </div>
                   )}
                </div>
-               {processingId === 'linking_boq' && (
-                 <div className="flex items-center justify-center gap-3 text-primary font-black animate-pulse">
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    <span>{isRtl ? 'جاري استنساخ بنود المقايسة...' : 'Instantiating BOQ Items...'}</span>
-                 </div>
-               )}
             </div>
          </Card>
       ) : (
@@ -485,6 +517,71 @@ export default function TransactionDetailsPage() {
         </div>
       )}
 
+      {/* Naming Dialog for linking BOQ */}
+      <Dialog open={!!namingTemplate} onOpenChange={(open) => !open && setNamingTemplate(null)}>
+         <DialogContent className="rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
+            <div className="bg-primary/5 p-8 text-slate-900 text-start border-b">
+               <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3">
+                  <Pencil className="h-7 w-7 text-primary" />
+                  {isRtl ? 'تأكيد مسمى المقايسة' : 'Confirm BOQ Name'}
+               </DialogTitle>
+               <p className="text-xs font-bold text-slate-500 mt-2 uppercase tracking-widest">{isRtl ? 'اقتراح مسمى جديد لتمييز هذا المستند' : 'Suggest a unique name for this record'}</p>
+            </div>
+            <div className="p-8 space-y-6 text-start">
+               <div className="space-y-3">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'مسمى المقايسة الجاري إنشاؤها' : 'Target BOQ Name'}</Label>
+                  <Input 
+                    value={customBOQName} 
+                    onChange={e => setCustomBOQName(e.target.value)} 
+                    className="h-14 rounded-2xl border-2 font-black text-lg focus:border-primary/50 transition-all shadow-inner"
+                    placeholder={isRtl ? "مثلاً: مقايسة البناء - فيلا جابر" : "e.g. Construction BOQ - Villa Jabir"}
+                  />
+               </div>
+               <div className="p-4 rounded-2xl bg-amber-50 border-2 border-amber-100 flex items-start gap-4">
+                  <Info className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                  <p className="text-[10px] text-amber-800 font-bold leading-relaxed">
+                     {isRtl ? 'سيتم استخدام هذا المسمى في كافة التقارير والمراجعات الميدانية لاحقاً.' : 'This name will be used across all reports and field audits.'}
+                  </p>
+               </div>
+            </div>
+            <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-3">
+               <Button variant="outline" onClick={() => setNamingTemplate(null)} className="flex-1 h-14 rounded-2xl border-2 font-bold bg-white">إلغاء</Button>
+               <Button onClick={handleConfirmLinkBOQ} disabled={processingId === 'linking_boq' || !customBOQName.trim()} className="flex-[2] h-14 rounded-2xl bg-primary text-white font-black text-lg shadow-xl shadow-primary/20 gap-2 border-b-8 border-orange-700">
+                  {processingId === 'linking_boq' ? <Loader2 className="animate-spin h-5 w-5" /> : <CheckCircle2 className="h-5 w-5" />}
+                  {isRtl ? 'اعتماد وإنشاء' : 'Confirm & Create'}
+               </Button>
+            </DialogFooter>
+         </DialogContent>
+      </Dialog>
+
+      {/* Delete BOQ Confirmation */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white" dir={dir}>
+          <AlertDialogHeader>
+             <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50">
+                <AlertTriangle className="h-10 w-10" />
+             </div>
+             <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900">{isRtl ? 'حذف المقايسة تماماً؟' : 'Permanent BOQ Delete?'}</AlertDialogTitle>
+             <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">
+                {isRtl 
+                  ? 'سيتم حذف كافة بنود المقايسة وسجلات الإنجاز الميداني المرتبطة بها نهائياً لتتمكن من الربط مجدداً "على نظافة". لا يمكن التراجع عن هذا الإجراء.' 
+                  : 'All BOQ items and field execution logs will be permanently removed so you can start fresh. This cannot be undone.'}
+             </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-12 gap-4 flex flex-row">
+            <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteBOQ} 
+              disabled={isDeletingBOQ}
+              className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200"
+            >
+               {isDeletingBOQ ? <Loader2 className="animate-spin h-5 w-5" /> : (isRtl ? 'نعم، احذف المقايسة' : 'Confirm Delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Record Progress Dialog */}
       <Dialog open={isRecordOpen} onOpenChange={(open) => { if(!open) { setIsRecordOpen(false); setIsComplementary(false); } }}>
          <DialogContent className="rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
             <div className="bg-primary/5 p-8 text-slate-900 text-start border-b flex justify-between items-center">
@@ -514,6 +611,7 @@ export default function TransactionDetailsPage() {
          </DialogContent>
       </Dialog>
 
+      {/* Undo Stage Alert */}
       <AlertDialog open={!!undoStage} onOpenChange={(open) => !open && setUndoStage(null)}>
         <AlertDialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-lg" dir={dir}>
           <div className="bg-rose-50 p-8 text-rose-900 text-start border-b flex justify-between items-center">
