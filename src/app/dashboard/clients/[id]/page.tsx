@@ -9,7 +9,7 @@ import {
   Edit3, MapPin, Phone, 
   History, Loader2, Activity, PlayCircle, 
   Compass, Map as MapIcon, Target, Layers,
-  Trash2, AlertTriangle
+  Trash2, AlertTriangle, ArrowRight
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, where } from 'firebase/firestore';
@@ -69,7 +69,7 @@ export default function ClientDetailsPage() {
     if (!db || !companyId || !deletingId) return;
     setIsDeleting(true);
     try {
-      const service = new TransactionService(db, companyId, ['projects:delete']); // تجاوز للصلاحية محلياً لأننا تأكدنا من الرتبة
+      const service = new TransactionService(db, companyId, ['projects:delete']); 
       await service.deleteTransaction(deletingId);
       toast({ title: isRtl ? "تم حذف المعاملة" : "Transaction Deleted" });
       setDeletingId(null);
@@ -209,7 +209,6 @@ export default function ClientDetailsPage() {
         </Card>
       </div>
 
-      {/* Confirmation Dialog for Transaction Deletion */}
       <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
         <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white" dir={dir}>
           <AlertDialogHeader>
