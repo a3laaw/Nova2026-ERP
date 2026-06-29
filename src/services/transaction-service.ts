@@ -152,10 +152,10 @@ export class TransactionService {
     const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
     await addDoc(timelineRef, {
       transactionId,
-      stageId: stageId, // Use Instance ID
-      technicalStageId: stageData.technicalStageId, // Use Reference ID
+      stageId: stageId,
+      technicalStageId: stageData.technicalStageId,
       type: 'stage_start',
-      content: `تم بدء العمل في المرحلة الفنية`,
+      content: `تم بدء العمل في المرحلة الفنية: ${stageData.name}`,
       userId,
       userName,
       isArchived: false,
@@ -189,10 +189,10 @@ export class TransactionService {
     const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
     await addDoc(timelineRef, {
       transactionId,
-      stageId: stageId, // Use Instance ID
-      technicalStageId: stageData.technicalStageId, // Use Reference ID
+      stageId: stageId,
+      technicalStageId: stageData.technicalStageId,
       type: 'stage_complete',
-      content: `تم إنجاز المرحلة بنجاح`,
+      content: `تم إنجاز المرحلة بنجاح: ${stageData.name}`,
       userId,
       userName,
       isArchived: false,
@@ -215,7 +215,6 @@ export class TransactionService {
 
     const batch = writeBatch(this.db);
 
-    // 1. Reset current stage
     batch.update(stageRef, {
       status: 'in-progress',
       completedAt: null,
@@ -224,7 +223,6 @@ export class TransactionService {
       updatedBy: userId
     });
 
-    // 2. Sequential locking of next stage
     const nextOrder = (stageData.order || 0) + 1;
     const stagesRef = collection(this.db, paths.transactionStages(this.companyId, transactionId));
     const nextQ = query(stagesRef, where('order', '==', nextOrder));
@@ -238,7 +236,6 @@ export class TransactionService {
       });
     }
 
-    // 3. Archive Timeline Events using actual stageId (Instance ID)
     const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
     const timelineSnap = await getDocs(query(timelineRef, where('stageId', '==', stageId)));
     timelineSnap.docs.forEach(d => {
@@ -249,13 +246,12 @@ export class TransactionService {
 
     await batch.commit();
 
-    // 4. Document reopen in timeline
     await addDoc(timelineRef, {
       transactionId,
-      stageId: stageId, // Instance ID
-      technicalStageId: stageData.technicalStageId, // Reference ID
+      stageId: stageId,
+      technicalStageId: stageData.technicalStageId,
       type: 'stage_reopen',
-      content: `تراجع عن الإكمال: تمت أرشفة محاولة سابقة استغرقت ${durationText}`,
+      content: `تراجع عن الإكمال: تمت أرشفة محاولة سابقة في مرحلة ${stageData.name}`,
       previousStart: stageData.startedAt || null,
       previousEnd: stageData.completedAt || null,
       durationText,
@@ -265,11 +261,9 @@ export class TransactionService {
       createdAt: serverTimestamp()
     });
 
-    // 5. Archive stage comments
     const commentService = new CommentService(this.db, this.companyId, this.permissions);
     await commentService.archiveStageComments(transactionId, stageId);
 
-    // 6. Archive execution logs (using technicalStageId for calculation integrity)
     const boqService = new BOQExecutionService(this.db, this.companyId, this.permissions);
     await boqService.archiveStageExecutions(transactionId, stageData.technicalStageId, clearLogs);
   }

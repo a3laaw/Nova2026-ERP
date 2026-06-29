@@ -6,7 +6,6 @@ import {
   doc, 
   getDocs, 
   getDoc,
-  setDoc,
   serverTimestamp, 
   query,
   orderBy,
@@ -22,7 +21,7 @@ import { ensureActionPermission } from '@/lib/permissions';
 
 /**
  * خدمة الأوامر التغييرية (Variation Order Service).
- * مسؤولة عن إدارة تعديلات النطاق المالي والكمي للمقايسات الحية.
+ * مسؤولة عن إدارة التعديلات في الحالات الأربع: زيادة، نقص، بند جديد، حذف بند.
  */
 export class VariationService {
   constructor(
@@ -31,9 +30,6 @@ export class VariationService {
     private permissions: string[] = []
   ) {}
 
-  /**
-   * إنشاء أمر تغييري جديد (VO) مع بنوده
-   */
   async createVariation(
     boqId: string, 
     transactionId: string,
@@ -80,18 +76,6 @@ export class VariationService {
       });
     });
 
-    // توثيق في السجل الزمني للمعاملة
-    const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
-    batch.set(timelineRef, {
-      transactionId,
-      type: 'system',
-      content: `تم إنشاء مسودة أمر تغييري جديد: ${data.title} بقيمة ${totalAmount.toLocaleString()} KWD`,
-      userId,
-      userName: 'Manager', 
-      companyId: this.companyId,
-      createdAt: serverTimestamp()
-    });
-
     try {
       await batch.commit();
       return voId;
@@ -104,52 +88,58 @@ export class VariationService {
   }
 
   /**
-   * اعتماد الأمر التغييري وتحديث المقايسة الحية (The Engine)
+   * اعتماد الأمر التغييري وتعديل الواقع الميداني (The Sovereign Engine)
+   * يعالج الحالات الأربع ويقوم بإعادة فتح المراحل إذا لزم الأمر.
    */
   async approveVariation(boqId: string, voId: string, transactionId: string, userId: string, userName: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
     
     const voRef = doc(this.db, paths.boqVariations(this.companyId, boqId), voId);
-    const itemsRef = collection(this.db, paths.boqVariationItems(this.companyId, boqId, voId));
-    
-    const [voSnap, voItemsSnap] = await Promise.all([
-      getDoc(voRef),
-      getDocs(itemsRef)
-    ]);
+    const voItemsSnap = await getDocs(collection(this.db, paths.boqVariationItems(this.companyId, boqId, voId)));
+    const voSnap = await getDoc(voRef);
 
-    if (!voSnap.exists()) throw new Error('VO_NOT_FOUND');
+    if (!voSnap.exists() || voSnap.data().status !== 'draft') throw new Error('VO_NOT_READY');
     const voData = voSnap.data() as BOQVariation;
-    if (voData.status !== 'draft') throw new Error('ALREADY_PROCESSED');
 
     const batch = writeBatch(this.db);
     const boqRef = doc(this.db, paths.boqs(this.companyId), boqId);
+    
+    // تتبع المراحل الفنية التي قد تحتاج لإعادة فتح (Re-opening)
+    const stagesToReopen = new Set<string>();
 
-    // 1. معالجة البنود وتحديث المقايسة الحية
     for (const itemDoc of voItemsSnap.docs) {
       const vItem = itemDoc.data() as BOQVariationItem;
       
-      if (vItem.type === 'increase_quantity' || vItem.type === 'decrease_quantity' || vItem.type === 'omit_item') {
-        if (!vItem.sourceBoqItemId) continue;
+      // الحالة 1 و 2 و 4: تعديل بند موجود
+      if (vItem.type !== 'new_item' && vItem.sourceBoqItemId) {
         const boqItemRef = doc(this.db, paths.boqItems(this.companyId, boqId), vItem.sourceBoqItemId);
-        const boqItemSnap = await getDoc(boqItemRef);
+        const itemSnap = await getDoc(boqItemRef);
         
-        if (boqItemSnap.exists()) {
-          const currentPlanned = boqItemSnap.data().plannedQuantity || 0;
-          const newPlanned = currentPlanned + (vItem.quantityDelta || 0);
+        if (itemSnap.exists()) {
+          const currentItem = itemSnap.data() as BOQItem;
+          const newPlanned = Math.max(0, (currentItem.plannedQuantity || 0) + (vItem.quantityDelta || 0));
+          
           batch.update(boqItemRef, { 
             plannedQuantity: newPlanned,
+            estimatedRate: vItem.rate || currentItem.estimatedRate,
             updatedAt: serverTimestamp() 
           });
+
+          // إذا كانت الكمية زادت، يجب فحص المرحلة لإعادة فتحها
+          if (newPlanned > (currentItem.executedQuantity || 0)) {
+            if (currentItem.technicalStageId) stagesToReopen.add(currentItem.technicalStageId);
+          }
         }
       } 
+      // الحالة 3: بند جديد تماماً
       else if (vItem.type === 'new_item') {
-        const newBoqItemRef = doc(collection(this.db, paths.boqItems(this.companyId, boqId)));
-        const newBoqItem: Partial<BOQItem> = {
-          id: newBoqItemRef.id,
+        const newRef = doc(collection(this.db, paths.boqItems(this.companyId, boqId)));
+        const newItem: BOQItem = {
+          id: newRef.id,
           boqId,
           transactionId,
-          boqReferenceNodeId: vItem.boqReferenceNodeId,
-          referenceCode: 'VO-' + (vItem.id?.slice(0,4) || 'NEW'),
+          boqReferenceNodeId: vItem.boqReferenceNodeId || '',
+          referenceCode: 'VO-' + voId.slice(-4),
           referenceTitle: vItem.description,
           plannedQuantity: vItem.quantityDelta,
           executedQuantity: 0,
@@ -159,33 +149,44 @@ export class VariationService {
           technicalStageId: vItem.technicalStageId || '',
           technicalStageIds: vItem.technicalStageId ? [vItem.technicalStageId] : [],
           companyId: this.companyId,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
+          order: 999, // دائماً في النهاية كأعمال إضافية
+          ancestorIds: [],
+          depth: 0,
+          createdAt: serverTimestamp()
         };
-        batch.set(newBoqItemRef, newBoqItem);
+        batch.set(newRef, newItem);
+        if (newItem.technicalStageId) stagesToReopen.add(newItem.technicalStageId);
       }
     }
 
-    // 2. تحديث رأس المقايسة (الميزانية الإجمالية)
-    batch.update(boqRef, {
-      totalAmount: (voData.totalAmount || 0) + (voData.totalAmount || 0), // حاصل الجمع سيتم تحديثه برمجياً بشكل أدق في الواجهة
-      updatedAt: serverTimestamp()
-    });
+    // إدارة حالات مراحل العمل (الميدان)
+    if (stagesToReopen.size > 0) {
+      const stagesColl = collection(this.db, paths.transactionStages(this.companyId, transactionId));
+      const stagesSnap = await getDocs(stagesColl);
+      
+      stagesSnap.docs.forEach(sDoc => {
+        const sData = sDoc.data();
+        if (stagesToReopen.has(sData.technicalStageId) && sData.status === 'completed') {
+          batch.update(sDoc.ref, { 
+            status: 'in-progress', 
+            completedAt: null, 
+            completedBy: null,
+            updatedAt: serverTimestamp() 
+          });
+        }
+      });
+    }
 
-    // 3. تحديث حالة الأمر التغييري
-    batch.update(voRef, {
-      status: 'approved',
-      approvedBy: userId,
-      approvedAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
+    // تحديث حالة الأمر التغييري والميزانية
+    batch.update(voRef, { status: 'approved', approvedBy: userId, approvedAt: serverTimestamp() });
+    batch.update(boqRef, { updatedAt: serverTimestamp() });
 
-    // 4. توثيق في التايم لاين
+    // توثيق الحدث السيادي في التايم لاين
     const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
     batch.add(doc(timelineRef), {
       transactionId,
       type: 'system',
-      content: `تم اعتماد الأمر التغييري "${voData.title}" بنجاح. تم تحديث كميات المقايسة الحية.`,
+      content: `اعتماد الأمر التغييري: ${voData.title}. تم تعديل النطاق الميداني وإعادة فتح المراحل المتأثرة.`,
       userId,
       userName,
       companyId: this.companyId,
@@ -193,12 +194,6 @@ export class VariationService {
     });
 
     await batch.commit();
-  }
-
-  async updateVariationStatus(boqId: string, voId: string, transactionId: string, status: BOQVariationStatus, userId: string) {
-    ensureActionPermission(this.permissions, 'projects:edit');
-    const voRef = doc(this.db, paths.boqVariations(this.companyId, boqId), voId);
-    await updateDoc(voRef, { status, updatedBy: userId, updatedAt: serverTimestamp() });
   }
 
   async getVariations(boqId: string): Promise<BOQVariation[]> {
