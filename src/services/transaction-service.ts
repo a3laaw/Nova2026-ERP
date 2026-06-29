@@ -13,7 +13,8 @@ import {
   orderBy,
   updateDoc,
   addDoc,
-  deleteDoc
+  deleteDoc,
+  where
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { Transaction, TransactionTimelineEvent, StageInstance } from '@/types/transaction';
@@ -25,7 +26,6 @@ import { BOQExecutionService } from './boq-execution-service';
 
 /**
  * خدمة إدارة المعاملات الفنية (Technical Transactions Service).
- * مسؤولة عن الدورة المستندية لفتح المسارات الفنية والترقيم المهني واستنساخ مراحل العمل والتحديث الميداني.
  */
 export class TransactionService {
   constructor(
@@ -60,12 +60,11 @@ export class TransactionService {
       throw new Error('CLIENT_NOT_FOUND: العميل غير موجود في النظام.');
     }
 
-    // جلب القوالب المرجعية للمراحل
     const stagesPath = paths.technicalStages(this.companyId, data.activityTypeId, data.serviceId, data.subServiceId);
     const stagesSnap = await getDocs(collection(this.db, stagesPath));
 
     if (stagesSnap.empty) {
-      throw new Error('لا يمكن فتح المعاملة لعدم وجود مراحل عمل معرّفة لهذا المسار في مركز المراجع. يرجى إضافة مراحل للخدمة الفرعية أولاً.');
+      throw new Error('لا يمكن فتح المعاملة لعدم وجود مراحل عمل معرّفة لهذا المسار.');
     }
 
     const sortedStages = stagesSnap.docs
@@ -73,9 +72,7 @@ export class TransactionService {
       .sort((a, b) => (a.order || 0) - (b.order || 0));
 
     const clientData = clientSnap.data();
-    const currentCounter = clientData.transactionCounter || 0;
-    const nextCounter = currentCounter + 1;
-
+    const nextCounter = (clientData.transactionCounter || 0) + 1;
     const transactionNumber = `${clientData.fileNumber}-${nextCounter.toString().padStart(2, '0')}`;
 
     const batch = writeBatch(this.db);
@@ -115,7 +112,7 @@ export class TransactionService {
       const instanceData: StageInstance = {
         transactionId,
         technicalStageId: stage.id!,
-        code: stage.code || (stage.nameEn || stage.name || 'STAGE').toUpperCase().replace(/\s+/g, '_'),
+        code: stage.code || 'STAGE',
         name: stage.name || '',
         description: stage.description || '',
         order: stage.order !== undefined ? stage.order : idx,
@@ -138,61 +135,20 @@ export class TransactionService {
       batch.set(instanceRef, instanceData);
     });
 
-    const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
-    batch.set(timelineRef, {
+    const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
+    const logRef = doc(timelineRef);
+    batch.set(logRef, {
       transactionId,
       type: 'system',
-      content: `تم افتتاح المسار الفني بنجاح واستنساخ ${sortedStages.length} مراحل تنفيذية مرتبة.`,
+      content: `تم افتتاح المسار الفني بنجاح واستنساخ ${sortedStages.length} مراحل تنفيذية.`,
       userId,
       userName,
       companyId: this.companyId,
       createdAt: serverTimestamp()
     });
 
-    try {
-      await batch.commit();
-      return transactionId;
-    } catch (err: any) {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: transRef.path, operation: 'write', requestResourceData: transactionData
-      }));
-      throw err;
-    }
-  }
-
-  /**
-   * حذف المعاملة وكافة ملحقاتها (للمدراء فقط)
-   */
-  async deleteTransaction(transactionId: string) {
-    ensureActionPermission(this.permissions, 'projects:delete');
-
-    const batch = writeBatch(this.db);
-    
-    // 1. مسح المعاملة الرئيسية
-    const transRef = doc(this.db, paths.transactions(this.companyId), transactionId);
-    batch.delete(transRef);
-
-    // 2. مسح المراحل التنفيذية
-    const stagesSnap = await getDocs(collection(this.db, paths.transactionStages(this.companyId, transactionId)));
-    stagesSnap.docs.forEach(d => batch.delete(d.ref));
-
-    // 3. مسح السجل الزمني
-    const timelineSnap = await getDocs(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
-    timelineSnap.docs.forEach(d => batch.delete(d.ref));
-
-    // 4. مسح التعليقات
-    const commentsSnap = await getDocs(collection(this.db, paths.transactionComments(this.companyId, transactionId)));
-    commentsSnap.docs.forEach(d => batch.delete(d.ref));
-
-    try {
-      await batch.commit();
-      return true;
-    } catch (err: any) {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: transRef.path, operation: 'delete'
-      }));
-      throw err;
-    }
+    await batch.commit();
+    return transactionId;
   }
 
   async startStage(transactionId: string, stageId: string, userId: string, userName: string) {
@@ -221,9 +177,6 @@ export class TransactionService {
     });
   }
 
-  /**
-   * إكمال مرحلة (مشروط بإنجاز بنود المقايسة)
-   */
   async completeStage(transactionId: string, stageId: string, userId: string, userName: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
     
@@ -232,7 +185,6 @@ export class TransactionService {
     if (!stageSnap.exists()) return;
     const stageData = stageSnap.data() as StageInstance;
 
-    // 1. التحقق السيادي من إنجاز بنود المقايسة المرتبطة بهذه المرحلة
     const boqService = new BOQExecutionService(this.db, this.companyId, this.permissions);
     const progress = await boqService.getTechnicalStageProgress(transactionId, stageData.technicalStageId);
     
@@ -251,7 +203,7 @@ export class TransactionService {
     await addDoc(timelineRef, {
       transactionId,
       type: 'stage_complete',
-      content: `تم إنجاز مرحلة "${stageData.name}" بالكامل بعد التحقق من المقايسة.`,
+      content: `تم إنجاز مرحلة "${stageData.name}" بالكامل.`,
       userId,
       userName,
       companyId: this.companyId,
@@ -260,9 +212,9 @@ export class TransactionService {
   }
 
   /**
-   * إعادة فتح مرحلة مكتملة (Undo/Rollback)
+   * التراجع عن إكمال مرحلة مع خيار تصفير السجلات وإغلاق المرحلة التالية
    */
-  async reopenStage(transactionId: string, stageId: string, userId: string, userName: string) {
+  async reopenStage(transactionId: string, stageId: string, userId: string, userName: string, clearLogs: boolean = false) {
     ensureActionPermission(this.permissions, 'projects:edit');
     
     const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
@@ -270,7 +222,10 @@ export class TransactionService {
     if (!stageSnap.exists()) return;
     const stageData = stageSnap.data() as StageInstance;
 
-    await updateDoc(stageRef, {
+    const batch = writeBatch(this.db);
+
+    // 1. إعادة المرحلة الحالية إلى "قيد التنفيذ"
+    batch.update(stageRef, {
       status: 'in-progress',
       completedAt: null,
       completedBy: null,
@@ -278,15 +233,52 @@ export class TransactionService {
       updatedBy: userId
     });
 
+    // 2. إغلاق المرحلة التالية تلقائياً (إعادتها لـ Pending) لضمان التسلسل
+    const nextOrder = (stageData.order || 0) + 1;
+    const stagesRef = collection(this.db, paths.transactionStages(this.companyId, transactionId));
+    const nextQ = query(stagesRef, where('order', '==', nextOrder));
+    const nextSnap = await getDocs(nextQ);
+    
+    if (!nextSnap.empty) {
+      batch.update(nextSnap.docs[0].ref, {
+        status: 'pending',
+        startedAt: null,
+        completedAt: null,
+        updatedAt: serverTimestamp()
+      });
+    }
+
+    await batch.commit();
+
+    // 3. تصفير السجلات إذا طلب المستخدم
+    if (clearLogs) {
+      const boqService = new BOQExecutionService(this.db, this.companyId, this.permissions);
+      await boqService.clearStageExecutions(transactionId, stageData.technicalStageId);
+    }
+
     const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
     await addDoc(timelineRef, {
       transactionId,
       type: 'stage_reopen',
-      content: `تراجع عن إكمال المرحلة: تم إعادة فتح مرحلة "${stageData.name}" للتعديل.`,
+      content: `تراجع عن إكمال "${stageData.name}". ${clearLogs ? 'تم تصفير سجلات الإنجاز.' : ''} تم قفل المراحل اللاحقة.`,
       userId,
       userName,
       companyId: this.companyId,
       createdAt: serverTimestamp()
     });
+  }
+
+  async deleteTransaction(transactionId: string) {
+    ensureActionPermission(this.permissions, 'projects:delete');
+    const batch = writeBatch(this.db);
+    batch.delete(doc(this.db, paths.transactions(this.companyId), transactionId));
+    
+    const subCollections = ['stageInstances', 'timeline', 'comments'];
+    for (const sub of subCollections) {
+       const snap = await getDocs(collection(this.db, `companies/${this.companyId}/transactions/${transactionId}/${sub}`));
+       snap.forEach(d => batch.delete(d.ref));
+    }
+    
+    await batch.commit();
   }
 }

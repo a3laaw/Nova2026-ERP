@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -16,7 +15,10 @@ import {
   AlertTriangle,
   Zap,
   ArrowRight,
-  RotateCcw
+  RotateCcw,
+  RotateCw,
+  XCircle,
+  DatabaseZap
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where, limit } from 'firebase/firestore';
@@ -52,6 +54,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from '@/components/ui/switch';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function TransactionDetailsPage() {
   const params = useParams();
@@ -76,6 +88,10 @@ export default function TransactionDetailsPage() {
   const [progressQty, setProgressQty] = useState<number>(0);
   const [progressNotes, setProgressNotes] = useState("");
 
+  // حالات التراجع المطور
+  const [undoStage, setUndoStage] = useState<StageInstance | null>(null);
+  const [clearLogsOnUndo, setClearLogsOnUndo] = useState(false);
+
   const editAccess = check('projects', 'edit');
 
   const transRef = useMemo(() => 
@@ -99,7 +115,6 @@ export default function TransactionDetailsPage() {
   [db, companyId, activeBoq]);
   const { data: boqItems } = useCollection<BOQItem>(itemsQuery);
 
-  // استعلام السجلات المسطحة لضمان الأداء وظهور التحديثات في الكومنتات
   const executionsQuery = useMemo(() => 
     companyId && db 
       ? query(
@@ -182,12 +197,14 @@ export default function TransactionDetailsPage() {
     }
   };
 
-  const handleReopenStage = async (stageId: string) => {
-    if (!transactionService || !user) return;
-    setProcessingId(stageId);
+  const handleConfirmedUndo = async () => {
+    if (!transactionService || !user || !undoStage?.id) return;
+    setProcessingId(undoStage.id);
     try {
-      await transactionService.reopenStage(transactionId, stageId, user.uid, user.displayName || 'User');
-      toast({ title: isRtl ? "تم إعادة فتح المرحلة" : "Stage Reopened" });
+      await transactionService.reopenStage(transactionId, undoStage.id, user.uid, user.displayName || 'User', clearLogsOnUndo);
+      toast({ title: isRtl ? "تم التراجع وإغلاق المسار اللاحق" : "Undo Success & Future stages locked" });
+      setUndoStage(null);
+      setClearLogsOnUndo(false);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
@@ -303,7 +320,7 @@ export default function TransactionDetailsPage() {
                               <div className="flex gap-2 shrink-0">
                                  {stage.status === 'completed' && editAccess.can && (
                                     <Button 
-                                      onClick={() => handleReopenStage(stage.id!)} 
+                                      onClick={() => setUndoStage(stage)} 
                                       disabled={processingId === stage.id}
                                       variant="ghost" 
                                       className="h-11 px-4 rounded-xl text-slate-400 hover:text-rose-600 font-black text-[10px] gap-2"
@@ -390,6 +407,72 @@ export default function TransactionDetailsPage() {
             </DialogFooter>
          </DialogContent>
       </Dialog>
+
+      {/* نافذة التراجع المطور */}
+      <AlertDialog open={!!undoStage} onOpenChange={(open) => !open && setUndoStage(null)}>
+        <AlertDialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
+          <div className="bg-rose-50 p-8 text-rose-900 text-start border-b flex justify-between items-center">
+             <div className="flex items-center gap-4">
+                <div className="h-12 w-12 bg-rose-100 rounded-2xl flex items-center justify-center text-rose-600 shadow-inner">
+                   <RotateCcw className="h-6 w-6" />
+                </div>
+                <div>
+                   <AlertDialogTitle className="text-xl font-black font-headline">{isRtl ? 'التراجع عن إكمال المرحلة' : 'Undo Stage Completion'}</AlertDialogTitle>
+                   <p className="text-[10px] font-bold text-rose-600/70 uppercase tracking-widest">{undoStage?.name}</p>
+                </div>
+             </div>
+          </div>
+
+          <div className="p-8 space-y-8 text-start">
+             <div className="space-y-4">
+                <div className="p-5 rounded-2xl bg-amber-50 border-2 border-amber-100 flex items-start gap-4">
+                   <AlertTriangle className="h-6 w-6 text-amber-600 shrink-0 mt-1" />
+                   <div className="space-y-1">
+                      <h5 className="font-black text-xs text-amber-900">{isRtl ? 'تنبيه التسلسل الهندسي' : 'Sequential Warning'}</h5>
+                      <p className="text-[10px] text-amber-800 font-bold leading-relaxed">
+                         {isRtl 
+                           ? 'سيتم إعادة قفل المرحلة التالية (إذا بدأت) لضمان سلامة مسار العمل.' 
+                           : 'The next stage in sequence will be automatically locked to maintain project integrity.'}
+                      </p>
+                   </div>
+                </div>
+
+                <div className="p-6 rounded-3xl bg-slate-50 border-2 border-white shadow-inner space-y-5">
+                   <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                         <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center transition-all", clearLogsOnUndo ? "bg-rose-600 text-white shadow-lg" : "bg-white text-slate-300 border")}>
+                            <DatabaseZap className="h-5 w-5" />
+                         </div>
+                         <div className="text-start">
+                            <Label className="font-black text-xs text-slate-900">{isRtl ? 'تصفير سجلات الإنجاز' : 'Reset Execution Logs'}</Label>
+                            <p className="text-[8px] font-bold text-slate-400 uppercase">{isRtl ? 'حذف كافة الكميات المسجلة في هذه المرحلة' : 'Delete all quantities recorded in this stage'}</p>
+                         </div>
+                      </div>
+                      <Switch checked={clearLogsOnUndo} onCheckedChange={setClearLogsOnUndo} />
+                   </div>
+                </div>
+             </div>
+
+             <AlertDialogDescription className="text-xs font-bold text-slate-400 italic">
+                {isRtl 
+                  ? 'بمجرد التأكيد، ستعود المرحلة لحالة "قيد التنفيذ" وستتمكن من تعديل البيانات مجدداً.' 
+                  : 'Once confirmed, this stage will return to "In-Progress" and you can modify data again.'}
+             </AlertDialogDescription>
+          </div>
+
+          <AlertDialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-3">
+             <AlertDialogCancel className="flex-1 h-14 rounded-2xl border-2 font-bold bg-white">{isRtl ? 'إلغاء' : 'Cancel'}</AlertDialogCancel>
+             <AlertDialogAction 
+               onClick={handleConfirmedUndo}
+               disabled={processingId === undoStage?.id}
+               className="flex-[2] h-14 rounded-2xl bg-rose-600 text-white font-black text-lg shadow-xl shadow-rose-200 border-b-8 border-rose-800 hover:bg-rose-700"
+             >
+                {processingId === undoStage?.id ? <Loader2 className="animate-spin h-5 w-5" /> : <RotateCw className="h-5 w-5 gap-2" />}
+                {isRtl ? 'تأكيد التراجع' : 'Confirm Undo'}
+             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

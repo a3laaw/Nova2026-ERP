@@ -10,7 +10,8 @@ import {
   where, 
   serverTimestamp,
   updateDoc,
-  addDoc
+  addDoc,
+  writeBatch
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { BOQItem, BOQItemExecutionEntry } from '@/types/documents';
@@ -37,7 +38,6 @@ export interface StageProgressResult {
 
 /**
  * خدمة الربط التنفيذي وتتبع الإنجاز للمقايسات (BOQ Progress Tracking Service).
- * تم تحويلها لاستخدام الهيكل المسطح لضمان ظهور السجلات في شريط المحادثة الموحد.
  */
 export class BOQExecutionService {
   constructor(
@@ -70,7 +70,7 @@ export class BOQExecutionService {
     if (!itemSnap.exists()) throw new Error('ITEM_NOT_FOUND: البند غير موجود.');
     const itemData = itemSnap.data() as BOQItem;
 
-    // 1. إضافة سجل التنفيذ في المجموعة المسطحة للشركة (لضمان الظهور في الـ Stream)
+    // 1. إضافة سجل التنفيذ في المجموعة المسطحة للشركة
     const executionsRef = collection(this.db, paths.executions(this.companyId));
     const executionData: any = {
       companyId: this.companyId,
@@ -94,15 +94,7 @@ export class BOQExecutionService {
     });
 
     // 2. تحديث الرصيد التراكمي في البند الرئيسي للمقايسة
-    const qCount = query(executionsRef, where('boqItemId', '==', itemId));
-    const allExecutionsSnap = await getDocs(qCount);
-    const newTotalExecuted = allExecutionsSnap.docs.reduce((sum, d) => sum + (d.data().quantity || 0), 0);
-
-    await updateDoc(itemRef, {
-      executedQuantity: newTotalExecuted,
-      updatedAt: serverTimestamp(),
-      updatedBy: userId
-    });
+    await this.recalculateItemQuantity(boqId, itemId);
 
     // 3. توثيق الحدث في سجل المعاملة العام
     if (itemData.transactionId) {
@@ -120,7 +112,61 @@ export class BOQExecutionService {
       });
     }
 
-    return { success: true, newTotalExecuted };
+    return { success: true };
+  }
+
+  /**
+   * تصفير سجلات الإنجاز لمرحلة معينة (يستخدم عند التراجع)
+   */
+  async clearStageExecutions(transactionId: string, technicalStageId: string) {
+    ensureActionPermission(this.permissions, 'projects:edit');
+    
+    const executionsRef = collection(this.db, paths.executions(this.companyId));
+    const q = query(
+      executionsRef, 
+      where('transactionId', '==', transactionId),
+      where('technicalStageId', '==', technicalStageId)
+    );
+
+    const snap = await getDocs(q);
+    if (snap.empty) return;
+
+    const batch = writeBatch(this.db);
+    const affectedItemIds = new Set<string>();
+    const boqIds = new Set<string>();
+
+    snap.docs.forEach(d => {
+      const data = d.data();
+      batch.delete(d.ref);
+      affectedItemIds.add(data.boqItemId);
+      boqIds.add(data.boqId);
+    });
+
+    await batch.commit();
+
+    // إعادة حساب الكميات لكافة البنود المتأثرة
+    for (const boqId of Array.from(boqIds)) {
+      for (const itemId of Array.from(affectedItemIds)) {
+        await this.recalculateItemQuantity(boqId, itemId);
+      }
+    }
+  }
+
+  /**
+   * إعادة حساب الكمية المنفذة الإجمالية لبند واحد بناءً على السجلات المسطحة
+   */
+  private async recalculateItemQuantity(boqId: string, itemId: string) {
+    const executionsRef = collection(this.db, paths.executions(this.companyId));
+    const q = query(executionsRef, where('boqItemId', '==', itemId));
+    const snap = await getDocs(q);
+    
+    const newTotal = snap.docs.reduce((sum, d) => sum + (d.data().quantity || 0), 0);
+    const itemRef = doc(this.db, paths.boqItems(this.companyId, boqId), itemId);
+    
+    await updateDoc(itemRef, {
+      executedQuantity: newTotal,
+      updatedAt: serverTimestamp()
+    });
   }
 
   /**
