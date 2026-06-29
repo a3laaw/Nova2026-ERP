@@ -10,27 +10,43 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { 
   FileSpreadsheet, Search, Loader2, ArrowRight, 
   Filter, TrendingUp, DollarSign, Calculator,
-  LayoutGrid, UserCircle, Activity
+  LayoutGrid, UserCircle, Activity, Trash2, AlertTriangle
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
+import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { BOQ } from '@/types/documents';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Progress } from "@/components/ui/progress";
+import { DocumentService } from '@/services/document-service';
+import { toast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function BOQExplorerPage() {
-  const { globalUser } = useAuthContext();
+  const { globalUser, user } = useAuthContext();
   const { t, lang, dir } = useLanguage();
+  const { isAdmin, permissions } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const boqsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.boqs(companyId)), orderBy('createdAt', 'desc')) : null, 
@@ -53,6 +69,22 @@ export default function BOQExplorerPage() {
       active: filtered.filter(b => b.status === 'active' || b.status === 'draft').length
     };
   }, [filtered]);
+
+  const handleDelete = async () => {
+    if (!db || !companyId || !deletingId) return;
+    setIsDeleting(true);
+    try {
+      const boq = boqs?.find(b => b.id === deletingId);
+      const service = new DocumentService(db, companyId, permissions);
+      await service.deleteBOQ(deletingId, boq?.transactionId, user?.uid, user?.displayName || 'User');
+      toast({ title: isRtl ? "تم حذف المقايسة بنجاح" : "BOQ Deleted Successfully" });
+      setDeletingId(null);
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('error'), description: e.message });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500" dir={dir}>
@@ -132,7 +164,7 @@ export default function BOQExplorerPage() {
                 <TableHead className="text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'المسار الفني' : 'Technical Path'}</TableHead>
                 <TableHead className="text-end text-xs font-black uppercase tracking-widest">{isRtl ? 'القيمة الإجمالية' : 'Planned Value'}</TableHead>
                 <TableHead className="text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'الحالة' : 'Status'}</TableHead>
-                <TableHead className="pe-10 text-end text-xs font-black uppercase tracking-widest">{isRtl ? 'عرض الإنجاز' : 'Progress'}</TableHead>
+                <TableHead className="pe-10 text-end text-xs font-black uppercase tracking-widest">{isRtl ? 'إجراءات' : 'Actions'}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -145,9 +177,8 @@ export default function BOQExplorerPage() {
                   <TableRow 
                     key={boq.id} 
                     className="hover:bg-slate-50/50 transition-colors group border-b-slate-50 cursor-pointer" 
-                    onClick={() => router.push(`/dashboard/clients/${boq.clientId}/transactions/${boq.transactionId}/boq`)}
                   >
-                    <TableCell className="py-8 ps-10 text-start">
+                    <TableCell className="py-8 ps-10 text-start" onClick={() => router.push(`/dashboard/clients/${boq.clientId}/transactions/${boq.transactionId}/boq`)}>
                        <div className="flex items-center gap-5">
                           <div className="h-14 w-14 rounded-2xl bg-white shadow-lg flex items-center justify-center text-primary font-black text-xl border-2 border-orange-50 group-hover:scale-110 transition-transform">
                              <FileSpreadsheet className="h-7 w-7" />
@@ -160,18 +191,18 @@ export default function BOQExplorerPage() {
                           </div>
                        </div>
                     </TableCell>
-                    <TableCell className="text-start">
+                    <TableCell className="text-start" onClick={() => router.push(`/dashboard/clients/${boq.clientId}/transactions/${boq.transactionId}/boq`)}>
                        <div className="flex flex-col gap-1">
                           <Badge variant="secondary" className="bg-primary/5 text-primary border-0 font-black text-[9px] uppercase px-3 w-fit">{boq.subServiceName || 'GENERAL'}</Badge>
                           <span className="text-[10px] font-bold text-slate-400">{boq.templateName || 'Custom Draft'}</span>
                        </div>
                     </TableCell>
-                    <TableCell className="text-end">
+                    <TableCell className="text-end" onClick={() => router.push(`/dashboard/clients/${boq.clientId}/transactions/${boq.transactionId}/boq`)}>
                        <span className="font-mono font-black text-xl text-slate-900 pe-4">
                           {boq.totalAmount?.toLocaleString() || '0'}
                        </span>
                     </TableCell>
-                    <TableCell className="text-start">
+                    <TableCell className="text-start" onClick={() => router.push(`/dashboard/clients/${boq.clientId}/transactions/${boq.transactionId}/boq`)}>
                        <Badge className={cn(
                          "font-black px-4 py-1.5 rounded-lg border-0 shadow-sm uppercase text-[9px]",
                          boq.status === 'approved' ? 'bg-emerald-50 text-emerald-600' :
@@ -182,9 +213,26 @@ export default function BOQExplorerPage() {
                        </Badge>
                     </TableCell>
                     <TableCell className="pe-10 text-end">
-                       <Button variant="ghost" size="icon" className="rounded-xl h-12 w-12 group-hover:bg-primary group-hover:text-white shadow-sm transition-all">
-                          <ArrowRight className={cn("h-6 w-6", isRtl && "rotate-180")} />
-                       </Button>
+                       <div className="flex justify-end gap-2">
+                          {isAdmin && (
+                             <Button 
+                               variant="ghost" 
+                               size="icon" 
+                               onClick={(e) => { e.stopPropagation(); setDeletingId(boq.id!); }}
+                               className="h-12 w-12 rounded-xl text-rose-300 hover:text-rose-600 hover:bg-rose-50 border-2 border-transparent hover:border-rose-100 transition-all"
+                             >
+                                <Trash2 className="h-6 w-6" />
+                             </Button>
+                          )}
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => router.push(`/dashboard/clients/${boq.clientId}/transactions/${boq.transactionId}/boq`)}
+                            className="rounded-xl h-12 w-12 group-hover:bg-primary group-hover:text-white shadow-sm transition-all"
+                          >
+                             <ArrowRight className={cn("h-6 w-6", isRtl && "rotate-180")} />
+                          </Button>
+                       </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -193,6 +241,33 @@ export default function BOQExplorerPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
+        <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white" dir={dir}>
+          <AlertDialogHeader>
+             <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50">
+                <AlertTriangle className="h-10 w-10" />
+             </div>
+             <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900">{isRtl ? 'حذف المقايسة نهائياً؟' : 'Permanent BOQ Delete?'}</AlertDialogTitle>
+             <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">
+                {isRtl 
+                  ? 'هل أنت متأكد؟ سيتم حذف هذه المقايسة وكافة بنود الأعمال وسجلات التنفيذ الميداني المعتمدة عليها نهائياً من قاعدة البيانات. لا يمكن التراجع عن هذا الإجراء.' 
+                  : 'Are you sure? This BOQ, all its work items, and associated field execution logs will be permanently removed from the database. This action cannot be undone.'}
+             </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-12 gap-4 flex flex-row">
+            <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete} 
+              disabled={isDeleting}
+              className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200"
+            >
+               {isDeleting ? <Loader2 className="animate-spin h-5 w-5" /> : (isRtl ? 'نعم، احذف المقايسة' : 'Confirm Delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
+
