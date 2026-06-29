@@ -31,5 +31,9 @@ export interface POItem extends BaseReference {
   unitPrice: number;
   unit: string;
   totalPrice: number;
-  boqReferenceNodeId?: string; // Optional link to reference tree
+  
+  // الربط السيادي بالمقايسة والميدان (The Real Link)
+  boqId?: string;
+  boqItemId?: string;      // ربط التكلفة ببند مقايسة محدد للمقارنة
+  technicalStageId?: string; // ربط التكلفة بمرحلة تنفيذية محددة
 }

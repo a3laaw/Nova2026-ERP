@@ -12,117 +12,56 @@ import { BOQItem } from '@/types/documents';
 
 export interface BOQItemMaterialVariance {
   boqItemId: string;
-  expectedQuantity: number;
-  actualIssuedQuantity: number;
-  remainingQuantity: number;
-  variance: number;
+  expectedQuantity: number;      // الكمية المخططة في المقايسة
+  actualIssuedQuantity: number;  // الكمية المصروفة من المخزن أو المشتراة
+  executedQuantity: number;      // الكمية المنفذة فعلياً في الميدان
+  variance: number;              // الانحراف
   varianceStatus: 'normal' | 'excess' | 'shortage';
 }
 
-export interface BOQInventorySummary {
-  totalLinkedItems: number;
-  totalIssuedLines: number;
-  itemsWithExcess: number;
-  itemsWithShortage: number;
-  itemsBalanced: number;
-}
-
 /**
- * خدمة الربط التحليلي بين المقايسة وحركات المخزون (BOQ-Inventory Analytics Service).
+ * خدمة الربط التحليلي بين المقايسة وحركات المشتريات/المخزون (BOQ-Procurement Analytics).
+ * تقوم هذه الخدمة بالمقارنة التي طلبتها بين "المالي/المصروف" و "الميداني/المنفذ".
  */
 export class BOQInventoryLinkService {
   constructor(private db: Firestore, private companyId: string) {}
 
   /**
-   * جلب حركات الصرف المرتبطة ببند مقايسة محدد
+   * تحليل الانحراف لبند محدد (المنفذ ميدانياً vs المصروف مخزنياً)
    */
-  async getInventoryUsageByBOQItem(boqId: string, boqItemId: string) {
-    const q = query(
-      collection(this.db, paths.inventoryTransactions(this.companyId)),
-      where('boqId', '==', boqId),
-      where('boqItemId', '==', boqItemId),
-      where('type', '==', 'issue') // حركات الصرف فقط
+  async analyzeItemVariance(boqId: string, boqItemId: string): Promise<BOQItemMaterialVariance> {
+    // 1. جلب بيانات البند من المقايسة (لمعرفة المخطط والمنفذ)
+    const itemSnap = await getDocs(query(collection(this.db, paths.boqItems(this.companyId, boqId)), where('id', '==', boqItemId)));
+    const itemData = itemSnap.docs[0]?.data() as BOQItem;
+
+    if (!itemData) throw new Error('ITEM_NOT_FOUND');
+
+    // 2. جلب كافة المشتريات/المصروفات المرتبطة بهذا البند
+    // نبحث في بنود أوامر الشراء التي تشير لهذا الـ boqItemId
+    const poItemsQuery = query(
+      collection(this.db, 'purchase_orders_items'), // افتراض وجود مجموعة مسطحة أو استعلام collectionGroup
+      where('companyId', '==', this.companyId),
+      where('boqItemId', '==', boqItemId)
     );
-
-    const snap = await getDocs(q);
-    const transactions = snap.docs.map(d => d.data());
     
-    const totalIssuedQuantity = transactions.reduce((sum, t) => sum + (t.quantity || 0), 0);
+    const poSnap = await getDocs(poItemsQuery);
+    const totalPurchased = poSnap.docs.reduce((sum, d) => sum + (d.data().quantity || 0), 0);
 
-    return {
-      totalIssuedQuantity,
-      movementCount: transactions.length,
-      transactions
-    };
-  }
-
-  /**
-   * حساب الانحراف المخزني لبند مقايسة (Expected vs Actual)
-   */
-  async getBOQItemMaterialVariance(item: BOQItem): Promise<BOQItemMaterialVariance> {
-    const usage = await this.getInventoryUsageByBOQItem(item.boqId, item.id);
-    
-    const expected = item.plannedQuantity || 0;
-    const actual = usage.totalIssuedQuantity;
-    const variance = actual - expected;
-    const remaining = Math.max(0, expected - actual);
+    const executed = itemData.executedQuantity || 0;
+    const planned = itemData.plannedQuantity || 0;
+    const variance = totalPurchased - executed;
 
     let varianceStatus: 'normal' | 'excess' | 'shortage' = 'normal';
-    if (variance > 0) varianceStatus = 'excess'; // صرف زائد (هدر)
-    else if (actual < expected && actual > 0) varianceStatus = 'shortage'; // نقص في التوريد
+    if (variance > 0) varianceStatus = 'excess'; // صرف مالي أكثر من الإنجاز الميداني (هدر محتمل)
+    else if (variance < 0) varianceStatus = 'shortage'; // إنجاز ميداني لم يقابله شراء كافٍ (تحت المراجعة)
 
     return {
-      boqItemId: item.id,
-      expectedQuantity: expected,
-      actualIssuedQuantity: actual,
-      remainingQuantity: remaining,
+      boqItemId,
+      expectedQuantity: planned,
+      actualIssuedQuantity: totalPurchased,
+      executedQuantity: executed,
       variance,
       varianceStatus
-    };
-  }
-
-  /**
-   * ملخص لوجستي كامل للمقايسة
-   */
-  async getBOQInventorySummary(boqId: string): Promise<BOQInventorySummary> {
-    const q = query(
-      collection(this.db, paths.inventoryTransactions(this.companyId)),
-      where('boqId', '==', boqId),
-      where('type', '==', 'issue')
-    );
-    const snap = await getDocs(q);
-    const transactions = snap.docs.map(d => d.data());
-
-    // ملاحظة: التحليل الدقيق يتطلب مطابقة كل بند، سنقوم هنا بعملية تجميع سريعة
-    const usageMap: Record<string, number> = {};
-    transactions.forEach(t => {
-      if (t.boqItemId) {
-        usageMap[t.boqItemId] = (usageMap[t.boqItemId] || 0) + (t.quantity || 0);
-      }
-    });
-
-    const itemsSnap = await getDocs(collection(this.db, paths.boqItems(this.companyId, boqId)));
-    const boqItems = itemsSnap.docs.map(d => d.data() as BOQItem);
-
-    let itemsWithExcess = 0;
-    let itemsWithShortage = 0;
-    let itemsBalanced = 0;
-
-    boqItems.forEach(item => {
-      const actual = usageMap[item.id] || 0;
-      const expected = item.plannedQuantity || 0;
-      
-      if (actual > expected) itemsWithExcess++;
-      else if (actual < expected && actual > 0) itemsWithShortage++;
-      else if (actual === expected && actual > 0) itemsBalanced++;
-    });
-
-    return {
-      totalLinkedItems: boqItems.length,
-      totalIssuedLines: transactions.length,
-      itemsWithExcess,
-      itemsWithShortage,
-      itemsBalanced
     };
   }
 }
