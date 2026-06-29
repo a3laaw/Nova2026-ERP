@@ -36,9 +36,10 @@ interface Props {
   compact?: boolean;
   externalLogs?: any[]; 
   boqItems?: any[];     
-  filterStageId?: string | null;
+  filterStageId?: string | null; // This is the StageInstance.id
   onClearFilter?: () => void;
   selectedStageName?: string;
+  technicalStageId?: string | null; // Needed to filter execution logs accurately
 }
 
 export function CommentSection({ 
@@ -50,7 +51,8 @@ export function CommentSection({
   boqItems = [],
   filterStageId = null,
   onClearFilter,
-  selectedStageName
+  selectedStageName,
+  technicalStageId
 }: Props) {
   const { user, globalUser } = useAuthContext();
   const { lang, dir } = useLanguage();
@@ -73,7 +75,7 @@ export function CommentSection({
   [db, globalUser, permissions]);
 
   const unifiedStream = useMemo(() => {
-    // 1. معالجة التعليقات حسب التبويب المختار
+    // 1. معالجة التعليقات حسب التبويب المختار وفلتر المرحلة
     const filteredComments = (comments || []).filter(c => {
       const matchArchive = activeTab === 'archived' ? c.isArchived === true : !c.isArchived;
       const matchStage = !filterStageId || c.stageInstanceId === filterStageId;
@@ -84,11 +86,11 @@ export function CommentSection({
       sortTime: c.createdAt?.toMillis?.() || (c.createdAt?.seconds ? c.createdAt.seconds * 1000 : Date.now())
     }));
     
-    // 2. معالجة سجلات التنفيذ (لا يتم أرشفتها في المحادثة لضمان بقائها كدليل فني)
+    // 2. معالجة سجلات التنفيذ
     const filteredLogs = (externalLogs || []).filter(l => {
-      // السجلات تظهر دائماً في التبويب النشط فقط أو إذا كنا نفلتر بمرحلة محددة
       if (activeTab === 'archived') return false; 
-      return !filterStageId || l.technicalStageId === filterStageId;
+      // الفلترة تتم بمقارنة المعرف المرجعي للمرحلة (technicalStageId)
+      return !technicalStageId || l.technicalStageId === technicalStageId;
     }).map(l => ({ 
       ...l, 
       streamType: 'log' as const,
@@ -96,7 +98,7 @@ export function CommentSection({
     }));
 
     return [...filteredComments, ...filteredLogs].sort((a, b) => a.sortTime - b.sortTime);
-  }, [comments, externalLogs, activeTab, filterStageId]);
+  }, [comments, externalLogs, activeTab, filterStageId, technicalStageId]);
 
   const handleSubmit = async () => {
     if (!commentService || !user || !content.trim()) return;

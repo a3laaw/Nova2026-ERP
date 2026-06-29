@@ -4,7 +4,7 @@ import {
   Firestore, 
   doc, 
   getDoc, 
-  getDocs,
+  getDocs, 
   writeBatch, 
   serverTimestamp, 
   increment, 
@@ -137,15 +137,29 @@ export class TransactionService {
   async startStage(transactionId: string, stageId: string, userId: string, userName: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
     const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
-    const stageSnap = await getDoc(stageRef);
-    if (!stageSnap.exists()) return;
-    const stageData = stageSnap.data() as StageInstance;
-
+    
     await updateDoc(stageRef, {
       status: 'in-progress',
       startedAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       updatedBy: userId
+    }).catch(err => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: stageRef.path, operation: 'update'
+      }));
+      throw err;
+    });
+
+    // توثيق البداية
+    const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
+    await addDoc(timelineRef, {
+      transactionId,
+      type: 'stage_start',
+      content: `تم بدء العمل في المرحلة الفنية`,
+      userId,
+      userName,
+      companyId: this.companyId,
+      createdAt: serverTimestamp()
     });
   }
 
@@ -169,6 +183,18 @@ export class TransactionService {
       completedAt: serverTimestamp(),
       completedBy: userId,
       updatedAt: serverTimestamp(),
+    });
+
+    // توثيق الإغلاق
+    const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
+    await addDoc(timelineRef, {
+      transactionId,
+      type: 'stage_complete',
+      content: `تم إنجاز المرحلة بنجاح`,
+      userId,
+      userName,
+      companyId: this.companyId,
+      createdAt: serverTimestamp()
     });
   }
 

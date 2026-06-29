@@ -113,7 +113,6 @@ export default function TransactionDetailsPage() {
   const { data: boqs, loading: boqLoading } = useCollection<BOQ>(boqQuery);
   const activeBoq = boqs && boqs.length > 0 ? boqs[0] : null;
 
-  // جلب القوالب المتاحة للربط إذا لم تكن المقايسة موجودة
   const templatesQuery = useMemo(() => 
     companyId && db && transaction ? query(
         collection(db, paths.boqTemplates(companyId)), 
@@ -399,6 +398,15 @@ export default function TransactionDetailsPage() {
                                          {!isPreviousCompleted && stage.status !== 'completed' && <Lock className="h-3 w-3 text-slate-300" />}
                                          {isSelected && <Target className="h-3.5 w-3.5 text-primary animate-pulse" />}
                                       </div>
+                                      
+                                      {stage.status === 'completed' && stage.completedAt && (
+                                         <div className="flex items-center gap-3 text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
+                                            <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" /> Start: {stage.startedAt?.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                                            <ArrowRight className="h-2 w-2" />
+                                            <span className="flex items-center gap-1"><Check className="h-2.5 w-2.5" /> End: {stage.completedAt?.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                                         </div>
+                                      )}
+
                                       {boqProgress && boqProgress.linkedItemsCount > 0 && (
                                         <div className="mt-2 space-y-1.5">
                                            <div className="flex justify-between text-[9px] font-black uppercase text-slate-400">
@@ -463,6 +471,7 @@ export default function TransactionDetailsPage() {
                       externalLogs={allExecutions || []}
                       boqItems={boqItems || []}
                       filterStageId={filterStageId}
+                      technicalStageId={currentFilteredStage?.technicalStageId}
                       selectedStageName={currentFilteredStage?.name}
                       onClearFilter={() => setFilterStageId(null)}
                    />
@@ -503,7 +512,7 @@ export default function TransactionDetailsPage() {
       </Dialog>
 
       <AlertDialog open={!!undoStage} onOpenChange={(open) => !open && setUndoStage(null)}>
-        <AlertDialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
+        <AlertDialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-lg" dir={dir}>
           <div className="bg-rose-50 p-8 text-rose-900 text-start border-b flex justify-between items-center">
              <div className="flex items-center gap-4">
                 <div className="h-12 w-12 bg-rose-100 rounded-2xl flex items-center justify-center text-rose-600 shadow-inner">
