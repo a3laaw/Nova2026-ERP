@@ -85,23 +85,28 @@ export default function TransactionDetailsPage() {
 
   const editAccess = check('projects', 'edit');
 
-  // --- Data Fetching ---
+  // --- Data Fetching Logic ---
+  // 1. جلب بيانات المعاملة الرئيسية
   const transRef = useMemo(() => 
     companyId && db ? doc(db, paths.transactions(companyId), transactionId) : null, 
   [db, companyId, transactionId]);
   const { data: transaction, loading: transLoading } = useDoc<Transaction>(transRef);
 
+  // 2. جلب مراحل العمل الميدانية
   const stagesQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.transactionStages(companyId, transactionId)), orderBy('order')) : null, 
   [db, companyId, transactionId]);
   const { data: rawStages, loading: stagesLoading } = useCollection<StageInstance>(stagesQuery);
 
+  // 3. جلب المقايسة الحية المرتبطة (The BOQ Header)
   const boqQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', transactionId), limit(1)) : null, 
   [db, companyId, transactionId]);
   const { data: boqs, loading: boqCheckLoading } = useCollection<BOQ>(boqQuery);
   const activeBoq = boqs?.[0];
 
+  // 4. سحب البيانات من "جدول البنود الميدانية" (The Source Table: boqItems)
+  // المسار: companies/{companyId}/boqs/{boqId}/items
   const itemsQuery = useMemo(() => 
     companyId && db && activeBoq?.id ? query(collection(db, paths.boqItems(companyId, activeBoq.id))) : null, 
   [db, companyId, activeBoq]);
@@ -113,7 +118,7 @@ export default function TransactionDetailsPage() {
 
   const executionService = useMemo(() => db && companyId ? new BOQExecutionService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
-  // Batch progress fetching
+  // تحديث نسب الإنجاز بناءً على حركة البنود
   useEffect(() => {
     let active = true;
     async function fetchAllProgress() {
@@ -154,29 +159,8 @@ export default function TransactionDetailsPage() {
     db && companyId ? new DocumentService(db, companyId, permissions) : null, 
   [db, companyId, permissions]);
 
-  // --- Helpers ---
-  const isStageBlocked = useCallback((stage: StageInstance) => {
-    if (!stages) return false;
-    return stages.some(other => 
-      other.nextStageIds?.includes(stage.technicalStageId) && 
-      other.status !== 'completed'
-    );
-  }, [stages]);
-
-  const getRequiredPredecessors = useCallback((stage: StageInstance) => {
-    if (!stages) return [];
-    return stages.filter(other => 
-      other.nextStageIds?.includes(stage.technicalStageId) && 
-      other.status !== 'completed'
-    );
-  }, [stages]);
-
-  const progressPercent = useMemo(() => {
-    if (!stages?.length) return 0;
-    const completed = stages.filter(s => s.status === 'completed').length;
-    return Math.round((completed / stages.length) * 100);
-  }, [stages]);
-
+  // --- Filtering Logic (الربط الفني) ---
+  // يتم سحب البنود من "جدول البنود" وفلترتها بناءً على معرف المرحلة
   const filteredItemsForStage = useMemo(() => {
     if (!boqItems || !targetStage) return [];
     const sId = targetStage.technicalStageId;
@@ -243,13 +227,7 @@ export default function TransactionDetailsPage() {
       
       const snap = await getDocs(q);
       if (snap.empty) {
-        console.warn("Matching template search criteria:", {
-          companyId,
-          activityTypeId: transaction.activityTypeId,
-          serviceId: transaction.serviceId,
-          subServiceId: transaction.subServiceId
-        });
-        throw new Error(isRtl ? 'لم يتم العثور على قالب BOQ افتراضي مطابق لنفس النشاط والخدمة والمسار الفني.' : 'No matching default BOQ template found.');
+        throw new Error(isRtl ? 'لم يتم العثور على قالب BOQ افتراضي مطابق لهذا المسار.' : 'No matching default BOQ template found.');
       }
 
       const template = snap.docs[0].data() as BOQTemplate;
@@ -315,6 +293,7 @@ export default function TransactionDetailsPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-20" dir={dir}>
+      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-6">
         <div className="flex items-center gap-4 text-start">
            <div className="h-12 px-5 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-black text-lg border-2 border-primary/20 shadow-inner">
@@ -400,8 +379,6 @@ export default function TransactionDetailsPage() {
               
               <div className="space-y-4">
                  {stages.map((stage, idx) => {
-                    const blocked = isStageBlocked(stage);
-                    const predecessors = getRequiredPredecessors(stage);
                     const boqProgress = stageProgressMap[stage.technicalStageId];
                     const isOpen = openStages[stage.id!];
 
@@ -409,8 +386,7 @@ export default function TransactionDetailsPage() {
                       <Card key={stage.id} className={cn(
                         "border-0 shadow-lg rounded-[2.5rem] bg-white transition-all overflow-hidden border-s-8",
                         stage.status === 'completed' ? 'border-s-emerald-500 opacity-80' : 
-                        stage.status === 'in-progress' ? 'border-s-blue-500 ring-4 ring-blue-500/5' : 
-                        blocked ? 'border-s-slate-100 opacity-60 bg-slate-50/50' : 'border-s-orange-300'
+                        stage.status === 'in-progress' ? 'border-s-blue-500 ring-4 ring-blue-500/5' : 'border-s-orange-300'
                       )}>
                         <CardContent className="p-0">
                            <div className="p-6 flex flex-col md:flex-row items-center justify-between gap-6">
@@ -424,7 +400,6 @@ export default function TransactionDetailsPage() {
                                  <div className="space-y-1 flex-1">
                                     <div className="flex items-center gap-2">
                                        <h4 className="font-black text-lg text-slate-900 tracking-tight">{stage.name}</h4>
-                                       {blocked && <Badge variant="outline" className="text-[7px] font-black bg-slate-100 text-slate-400 border-0 uppercase">Locked</Badge>}
                                     </div>
                                     
                                     {boqProgress && boqProgress.linkedItemsCount > 0 && (
@@ -434,13 +409,6 @@ export default function TransactionDetailsPage() {
                                             <span>{boqProgress.progressPercent}%</span>
                                          </div>
                                          <Progress value={boqProgress.progressPercent} className="h-1.5" />
-                                      </div>
-                                    )}
-
-                                    {blocked && predecessors.length > 0 && (
-                                      <div className="flex items-center gap-1.5 text-[9px] font-bold text-rose-400 bg-rose-50 px-2 py-0.5 rounded-lg w-fit mt-2">
-                                         <Lock className="h-2 w-2" />
-                                         {isRtl ? 'بانتظار:' : 'Requires:'} {predecessors.map(p => p.name).join(', ')}
                                       </div>
                                     )}
                                  </div>
@@ -467,7 +435,7 @@ export default function TransactionDetailsPage() {
                                     <MessageSquare className="h-5 w-5" />
                                  </Button>
 
-                                 {stage.status === 'pending' && !blocked && (
+                                 {stage.status === 'pending' && (
                                     <Button 
                                       onClick={() => handleStartStage(stage.id!)} 
                                       disabled={processingId === stage.id}
@@ -562,7 +530,14 @@ export default function TransactionDetailsPage() {
                ) : (
                  <>
                     <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? "بند المقايسة المرتبط" : "BOQ Item"}</Label>
+                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                          {isRtl ? "بند المقايسة المتاح لهذه المرحلة" : "Available BOQ Item"}
+                       </Label>
+                       <p className="text-[8px] text-slate-400 font-bold mb-2">
+                          {isRtl 
+                            ? 'يسحب البيانات من: companies/{companyId}/boqs/{boqId}/items' 
+                            : 'Data source: companies/{companyId}/boqs/{boqId}/items'}
+                       </p>
                        <Select value={selectedItemId} onValueChange={setSelectedItemId}>
                           <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/30">
                              <SelectValue placeholder={isRtl ? "اختر البند الميداني..." : "Select item..."} />
@@ -575,7 +550,7 @@ export default function TransactionDetailsPage() {
                                      {isRtl ? "لا توجد بنود مرتبطة بهذه المرحلة في القاموس المرجعي." : "No items linked to this stage in registry."}
                                   </p>
                                   <p className="text-[9px] text-slate-300 font-bold leading-relaxed px-4">
-                                     {isRtl ? "تنبيه: المهندس في الموقع لن يرى هذا البند إلا إذا قمت بربطه بالمراحل التي يُسمح فيها بتنفيذه (الإعدادات > شجرة الأعمال)." : "Engineer in field won't see this item unless linked to allowed stages in settings."}
+                                     {isRtl ? "تنبيه: المهندس في الموقع لن يرى هذا البند إلا إذا قمت بربطه بالمراحل (الإعدادات > شجرة الأعمال)." : "Engineer in field won't see this item unless linked to stages in settings."}
                                   </p>
                                </div>
                              ) : (
