@@ -167,14 +167,14 @@ export default function ClientDetailsPage() {
                     <div className="grid grid-cols-3 gap-2">{[{l:'B', v:client.block},{l:'S',v:client.street},{l:'P',v:client.houseNumber}].map((x,i)=>(<div key={i} className="p-2 rounded-lg bg-white border border-slate-100 text-center"><span className="text-[8px] text-slate-400 block font-bold">{x.l}</span><span className="text-[11px] font-black text-slate-800">{x.v||'-'}</span></div>))}</div>
                  </div>
                  <div className="p-5 bg-slate-50/50 flex items-center justify-center">
-                    <div onClick={() => client.locationUrl && window.open(client.locationUrl, '_blank')} className={cn("relative h-32 w-full rounded-[2.5rem] overflow-hidden shadow-lg border-2", coordinates ? "bg-white border-blue-500/10 cursor-pointer hover:ring-4 hover:ring-blue-500/5 transition-all" : "bg-white/50 border-dashed border-slate-200")}>
+                    <div onClick={() => client.locationUrl && window.open(client.locationUrl, '_blank')} className={cn("relative h-32 w-full rounded-[2.5rem] overflow-hidden shadow-lg border-2 z-0", coordinates ? "bg-white border-blue-500/10 cursor-pointer hover:ring-4 hover:ring-blue-500/5 transition-all" : "bg-white/50 border-dashed border-slate-200")}>
                        {coordinates ? (
                           <>
-                             <MapContainer center={coordinates} zoom={15} style={{height:'100%',width:'100%'}} zoomControl={false} dragging={false} scrollWheelZoom={false}>
+                             <MapContainer center={coordinates} zoom={15} style={{height:'100%',width:'100%', zIndex: 0}} zoomControl={false} dragging={false} scrollWheelZoom={false}>
                                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                                 <Marker position={coordinates} />
                              </MapContainer>
-                             <div className="absolute bottom-2 left-0 right-0 px-2"><Badge className="w-full bg-blue-600 text-white font-black text-[7px] h-4 border-0 justify-center">GPS LOCKED</Badge></div>
+                             <div className="absolute bottom-2 left-0 right-0 px-2 z-10"><Badge className="w-full bg-blue-600 text-white font-black text-[7px] h-4 border-0 justify-center">GPS LOCKED</Badge></div>
                           </>
                        ) : <div className="h-full flex items-center justify-center text-slate-200"><MapIcon className="h-8 w-8" /></div>}
                     </div>
@@ -210,7 +210,7 @@ export default function ClientDetailsPage() {
       </div>
 
       <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
-        <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white" dir={dir}>
+        <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white z-[100]" dir={dir}>
           <AlertDialogHeader>
              <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50">
                 <AlertTriangle className="h-10 w-10" />
@@ -222,7 +222,7 @@ export default function ClientDetailsPage() {
                   : 'Are you sure? This technical transaction and all its associated field logs and execution stages will be permanently deleted.'}
              </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="mt-12 gap-4 flex flex-row">
+          <AlertDialogFooter className="mt-12 gap-4 flex flex-row items-center justify-center">
             <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleDeleteTransaction} 
