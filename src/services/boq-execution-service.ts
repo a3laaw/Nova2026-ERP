@@ -64,6 +64,19 @@ export class BOQExecutionService {
     if (!itemSnap.exists()) throw new Error('ITEM_NOT_FOUND: البند غير موجود.');
     const itemData = itemSnap.data() as BOQItem;
 
+    // --- التحقق الأمني من ارتباط البند بالمرحلة الفنية ---
+    const allowedStages = itemData.technicalStageIds || [];
+    
+    // إذا كان هناك مصفوفة مراحل، يجب أن تحتوي المرحلة المرسلة
+    // إذا لم تكن موجودة (بيانات قديمة)، نستخدم الحقل المنفرد كـ fallback
+    const isStageAllowed = allowedStages.length > 0 
+      ? allowedStages.includes(technicalStageId)
+      : itemData.technicalStageId === technicalStageId;
+
+    if (!isStageAllowed) {
+      throw new Error('هذه المرحلة غير مرتبطة بهذا البند');
+    }
+
     const executionsRef = collection(this.db, paths.executions(this.companyId));
     const executionData: any = {
       companyId: this.companyId,
