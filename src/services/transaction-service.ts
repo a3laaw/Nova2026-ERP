@@ -24,7 +24,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { ensureActionPermission } from '@/lib/permissions/engine';
 import { BOQExecutionService } from './boq-execution-service';
 import { CommentService } from './comment-service';
-import { differenceInHours, differenceInDays } from 'date-fns';
+import { differenceInHours, differenceInDays, format } from 'date-fns';
 
 export class TransactionService {
   constructor(
@@ -207,15 +207,18 @@ export class TransactionService {
     if (!stageSnap.exists()) return;
     const stageData = stageSnap.data() as StageInstance;
 
+    // 1. حساب وتحضير بيانات الأرشفة للمحاولة التي تم التراجع عنها
     const start = stageData.startedAt?.toDate();
     const end = stageData.completedAt?.toDate() || new Date();
     
     const durationDays = start ? differenceInDays(end, start) : 0;
-    const durationHours = start ? differenceInHours(end, start) % 24 : 0;
+    const durationHours = start ? (differenceInHours(end, start) % 24) : 0;
+    const durationText = `${durationDays}d ${durationHours}h`;
 
     const batch = writeBatch(this.db);
 
-    // 1. إعادة تعيين المرحلة الحالية
+    // 2. تصفير السجل الزمني النشط وإعادة المرحلة للعمل
+    // نقوم بتصفير التواريخ النشطة لتبدأ محاولة جديدة نظيفة
     batch.update(stageRef, {
       status: 'in-progress',
       completedAt: null,
@@ -224,7 +227,7 @@ export class TransactionService {
       updatedBy: userId
     });
 
-    // 2. قفل المرحلة التالية (القفل التسلسلي)
+    // 3. القفل التسلسلي: إغلاق المرحلة التالية فوراً
     const nextOrder = (stageData.order || 0) + 1;
     const stagesRef = collection(this.db, paths.transactionStages(this.companyId, transactionId));
     const nextQ = query(stagesRef, where('order', '==', nextOrder));
@@ -241,26 +244,27 @@ export class TransactionService {
 
     await batch.commit();
 
-    // 3. توثيق الأرشفة الزمنية (ارشيف زمني في حالة التراجع)
+    // 4. توثيق الأرشفة الزمنية (الترحيل لسجل المحاولات المؤرشفة)
     const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
     await addDoc(timelineRef, {
       transactionId,
       stageId,
       type: 'stage_reopen',
-      content: `تراجع عن الإكمال: استغرقت المحاولة السابقة ${durationDays} يوم و ${durationHours} ساعة.`,
+      content: `تراجع عن الإكمال: تم أرشفة محاولة عمل استغرقت ${durationText}`,
       previousStart: stageData.startedAt || null,
       previousEnd: stageData.completedAt || null,
-      durationText: `${durationDays}d ${durationHours}h`,
+      durationText: durationText,
       userId,
       userName,
       companyId: this.companyId,
       createdAt: serverTimestamp()
     });
 
-    // 4. أرشفة التعليقات المرتبطة
+    // 5. أرشفة التعليقات المرتبطة بهذه المرحلة (تنظيف النشط)
     const commentService = new CommentService(this.db, this.companyId, this.permissions);
     await commentService.archiveStageComments(transactionId, stageId);
 
+    // 6. تطهير سجلات الإنجاز الميداني (اختياري حسب قرار المدير)
     if (clearLogs) {
       const boqService = new BOQExecutionService(this.db, this.companyId, this.permissions);
       await boqService.clearStageExecutions(transactionId, stageData.technicalStageId);

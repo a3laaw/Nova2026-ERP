@@ -203,8 +203,8 @@ export function CommentSection({
                    const start = stage.startedAt?.toDate();
                    const end = stage.completedAt?.toDate();
                    
-                   // البحث عن المحاولات المؤرشفة (ارشيف زمني في حالة التراجع)
-                   const undoneAttempts = (timelineEvents || []).filter(e => e.type === 'stage_reopen' && e.stageId === stage.id);
+                   // رصد كافة المحاولات المؤرشفة لهذه المرحلة تحديداً
+                   const archivedAttempts = (timelineEvents || []).filter(e => e.type === 'stage_reopen' && e.stageId === stage.id);
                    
                    let durationText = isRtl ? 'لم تبدأ' : 'Not Started';
                    let durationValue = "";
@@ -212,7 +212,7 @@ export function CommentSection({
                    if (start && end) {
                       const days = differenceInDays(end, start);
                       const hours = differenceInHours(end, start) % 24;
-                      durationText = isRtl ? 'المدة الإجمالية' : 'Total Duration';
+                      durationText = isRtl ? 'مدة المحاولة الحالية' : 'Current Attempt';
                       durationValue = days > 0 ? `${days}d ${hours}h` : `${hours}h`;
                    } else if (start && !end) {
                       const hoursNow = differenceInHours(new Date(), start);
@@ -231,16 +231,23 @@ export function CommentSection({
                          </div>
                          
                          <div className="space-y-2 text-start">
-                            <h4 className="font-black text-xs text-slate-900">{stage.name}</h4>
+                            <div className="flex items-center justify-between">
+                               <h4 className="font-black text-xs text-slate-900">{stage.name}</h4>
+                               {archivedAttempts.length > 0 && (
+                                 <Badge variant="outline" className="bg-rose-50 text-rose-600 border-rose-100 text-[7px] font-black uppercase px-2 h-4">
+                                   {archivedAttempts.length} Re-Work
+                                 </Badge>
+                               )}
+                            </div>
                             
-                            {/* المحاولة الحالية */}
-                            <div className="grid grid-cols-2 gap-4 bg-white p-3 rounded-xl border border-slate-100">
+                            {/* المحاولة الحالية (أو النشطة) */}
+                            <div className="grid grid-cols-2 gap-4 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
                                <div className="space-y-1">
-                                  <p className="text-[8px] font-black text-slate-400 uppercase">{isRtl ? 'البداية' : 'Started'}</p>
+                                  <p className="text-[8px] font-black text-slate-400 uppercase">{isRtl ? 'بدء المحاولة' : 'Attempt Start'}</p>
                                   <p className="text-[9px] font-bold text-slate-600">{start ? start.toLocaleString(isRtl ? 'ar-KW' : 'en-US') : '---'}</p>
                                </div>
                                <div className="space-y-1">
-                                  <p className="text-[8px] font-black text-slate-400 uppercase">{isRtl ? 'النهاية' : 'Finished'}</p>
+                                  <p className="text-[8px] font-black text-slate-400 uppercase">{isRtl ? 'إغلاق المحاولة' : 'Attempt Finish'}</p>
                                   <p className="text-[9px] font-bold text-slate-600">{end ? end.toLocaleString(isRtl ? 'ar-KW' : 'en-US') : '---'}</p>
                                </div>
                             </div>
@@ -252,21 +259,23 @@ export function CommentSection({
                               </div>
                             )}
 
-                            {/* سجل المحاولات الملغاة (الأرشيف الزمني) */}
-                            {undoneAttempts.length > 0 && (
+                            {/* سجل الأرشيف الزمني (المحاولات السابقة) */}
+                            {archivedAttempts.length > 0 && (
                                <div className="mt-4 space-y-2 animate-in slide-in-from-top-2">
-                                  <p className="text-[8px] font-black text-rose-400 uppercase flex items-center gap-1">
-                                     <RotateCcw className="h-2.5 w-2.5" /> {isRtl ? 'محاولات سابقة تم التراجع عنها' : 'Archived Attempts (Undone)'}
+                                  <p className="text-[8px] font-black text-rose-400 uppercase flex items-center gap-1 border-b border-rose-100 pb-1">
+                                     <RotateCcw className="h-2.5 w-2.5" /> {isRtl ? 'تاريخ التراجع (محاولات مؤرشفة)' : 'Archived History (Undone)'}
                                   </p>
-                                  {undoneAttempts.map((attempt: any, aIdx: number) => (
-                                     <div key={aIdx} className="p-2 rounded-lg bg-rose-50/50 border border-rose-100 flex justify-between items-center">
-                                        <div className="text-[9px] font-bold text-rose-700">
-                                           {attempt.durationText || '---'}
+                                  {archivedAttempts.map((attempt: any, aIdx: number) => (
+                                     <div key={aIdx} className="p-2.5 rounded-lg bg-rose-50/30 border border-rose-100/50 flex justify-between items-center group/attempt hover:bg-rose-50 transition-all">
+                                        <div className="text-start">
+                                           <p className="text-[9px] font-black text-rose-700">{isRtl ? 'المدة الضائعة:' : 'Duration:'} {attempt.durationText || '---'}</p>
+                                           <div className="flex gap-2 mt-0.5 text-[7px] font-bold text-slate-400 uppercase">
+                                              <span>Start: {attempt.previousStart ? attempt.previousStart.toDate().toLocaleDateString() : '---'}</span>
+                                              <span>End: {attempt.previousEnd ? attempt.previousEnd.toDate().toLocaleDateString() : '---'}</span>
+                                           </div>
                                         </div>
-                                        <div className="text-end">
-                                           <p className="text-[7px] text-rose-400 font-mono">
-                                              {attempt.previousEnd ? attempt.previousEnd.toDate().toLocaleDateString() : '---'}
-                                           </p>
+                                        <div className="text-end shrink-0">
+                                           <Badge variant="ghost" className="text-[7px] font-mono text-rose-300">#{archivedAttempts.length - aIdx}</Badge>
                                         </div>
                                      </div>
                                   ))}
