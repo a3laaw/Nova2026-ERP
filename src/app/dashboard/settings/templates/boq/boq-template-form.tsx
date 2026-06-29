@@ -162,7 +162,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
        return parent?.title || '---';
     }) || [];
 
-    // جلب الروابط الفنية من الشجرة لضمان انتقالها للقالب
     const normalizedStageIds = node.technicalStageIds || (node.technicalStageId ? [node.technicalStageId] : []);
     const normalizedDefaultStageId = node.technicalStageId || (normalizedStageIds.length > 0 ? normalizedStageIds[0] : '');
 
@@ -237,7 +236,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                 <div className="flex items-center gap-2">
                    <span className="text-[10px] font-mono font-black text-slate-400">#{node.code}</span>
                    <span className="text-xs font-bold text-slate-800">{node.title}</span>
-                   {node.technicalStageIds?.length > 0 && <Badge className="bg-primary/10 text-primary border-0 text-[7px] font-black h-4">LINKED ({node.technicalStageIds.length})</Badge>}
+                   {node.technicalStageIds?.length > 0 && <Badge className="bg-primary/10 text-primary border-0 text-[7px] font-black h-4">LINKS: {node.technicalStageIds.length}</Badge>}
                 </div>
              </div>
           </div>
@@ -278,7 +277,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
           const itemPrefix = `${prefix}.${iIdx + 1}`; 
           const subtotal = (item.plannedQuantity || 0) * (item.estimatedRate || 0);
 
-          // تحديد القائمة المتاحة: إذا كان البند يملك روابط في الشجرة، نستخدمها. وإلا نستخدم كل مراحل المسار.
           const isMultiLinked = item.technicalStageIds && item.technicalStageIds.length > 0;
           const selectableStages = isMultiLinked 
             ? pathStages.filter(s => item.technicalStageIds?.includes(s.id!))
@@ -312,10 +310,12 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                           "h-8 rounded-lg text-[9px] font-black border-transparent hover:border-primary/30 transition-all",
                           item.technicalStageId ? "bg-primary/5 text-primary" : "bg-slate-50 text-slate-400"
                         )}>
-                          <SelectValue placeholder={loadingStages ? "..." : (isRtl ? "اختيار المرحلة المالية" : "Primary Link")} />
+                          <SelectValue placeholder={loadingStages ? "..." : (isRtl ? "اختيار المرحلة المالية" : "Financial Link")} />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl border-2 shadow-2xl">
-                          <SelectItem value="NONE" className="font-bold text-[10px]">{isRtl ? 'بدون تعيين مالي' : 'Unassigned'}</SelectItem>
+                          <SelectItem value="NONE" className="font-bold text-[10px] text-slate-400 italic">
+                             {isRtl ? '--- بدون تعيين مالي ---' : '--- Unassigned (Technical Only) ---'}
+                          </SelectItem>
                           {selectableStages.map(s => (
                             <SelectItem key={s.id} value={s.id!} className="font-bold text-[10px] py-2 border-b last:border-0 border-slate-50">
                                 <span className="flex items-center gap-1"><Workflow className="h-2.5 w-2.5 text-primary" /> {s.name}</span>
@@ -323,12 +323,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                           ))}
                         </SelectContent>
                     </Select>
-                    {isMultiLinked && (
-                      <div className="flex items-center gap-1 px-1">
-                         <Info className="h-2.5 w-2.5 text-blue-400" />
-                         <span className="text-[7px] font-black text-blue-500 uppercase">Available in {item.technicalStageIds?.length} stages</span>
-                      </div>
-                    )}
                  </div>
               </TableCell>
               <TableCell className="text-center font-black text-[10px] text-slate-400 uppercase">{item.unitSymbol || item.unitName || '-'}</TableCell>
@@ -560,7 +554,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                     <TableHead className="w-[100px] text-white/40 font-mono text-[10px]">Code</TableHead>
                     <TableHead className="text-white font-black text-xs">{isRtl ? 'وصف بند العمل' : 'Work Item Description'}</TableHead>
                     <TableHead className="text-white font-black text-xs">{isRtl ? 'المواصفة الفنية' : 'Technical Specification'}</TableHead>
-                    <TableHead className="text-white font-black text-xs">{isRtl ? 'الارتباط المالي' : 'Budget Link'}</TableHead>
+                    <TableHead className="text-white font-black text-xs">{isRtl ? 'الارتباط المالي' : 'Financial Trigger'}</TableHead>
                     <TableHead className="text-center w-[60px] text-white font-black text-xs">{isRtl ? 'الوحدة' : 'Unit'}</TableHead>
                     <TableHead className="text-center w-[80px] text-white font-black text-xs">{isRtl ? 'الكمية' : 'Qty'}</TableHead>
                     <TableHead className="text-center w-[100px] text-white font-black text-xs">{isRtl ? 'الفئة (د.ك)' : 'Rate (KWD)'}</TableHead>
