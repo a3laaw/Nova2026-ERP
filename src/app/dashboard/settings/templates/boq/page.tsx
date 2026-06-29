@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -35,7 +36,7 @@ import {
 export default function BOQTemplatesPage() {
   const { globalUser } = useAuthContext();
   const { t, lang, dir } = useLanguage();
-  const { isAdmin } = usePermissions();
+  const { isAdmin, permissions } = usePermissions();
   const db = useFirestore();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
@@ -55,7 +56,8 @@ export default function BOQTemplatesPage() {
     if (!db || !companyId || !deletingId) return;
     setIsDeleting(true);
     try {
-      const service = new TemplateService(db, companyId);
+      // تمرير الصلاحيات للخدمة لضمان نجاح التحقق الأمني
+      const service = new TemplateService(db, companyId, permissions);
       await service.deleteTemplate('boq', deletingId);
       toast({ title: t('deleted') });
       setDeletingId(null);

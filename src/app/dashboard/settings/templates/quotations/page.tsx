@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -13,6 +14,7 @@ import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
+import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { QuotationTemplate } from '@/types/templates';
 import { cn } from '@/lib/utils';
@@ -24,6 +26,7 @@ import { toast } from '@/hooks/use-toast';
 export default function QuotationTemplatesPage() {
   const { globalUser, user } = useAuthContext();
   const { t, lang, dir } = useLanguage();
+  const { permissions } = usePermissions();
   const db = useFirestore();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
@@ -42,9 +45,11 @@ export default function QuotationTemplatesPage() {
     if (!db || !companyId || !confirm(t('confirmDelete'))) return;
     setLoadingAction(id);
     try {
-      const service = new TemplateService(db, companyId);
+      const service = new TemplateService(db, companyId, permissions);
       await service.deleteTemplate('quotation', id);
       toast({ title: t('deleted') });
+    } catch (e) {
+      toast({ variant: "destructive", title: t('error') });
     } finally {
       setLoadingAction(null);
     }

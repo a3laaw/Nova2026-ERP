@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -13,6 +14,7 @@ import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
+import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { ContractTemplate } from '@/types/templates';
 import { cn } from '@/lib/utils';
@@ -21,13 +23,10 @@ import { ContractTemplateForm } from './contract-template-form';
 import { TemplateService } from '@/services/template-service';
 import { toast } from '@/hooks/use-toast';
 
-/**
- * صفحة إدارة قوالب العقود (Contracts Library)
- * تم فصلها بالكامل لضمان التخصص التشغيلي.
- */
 export default function ContractTemplatesPage() {
   const { globalUser } = useAuthContext();
   const { t, lang, dir } = useLanguage();
+  const { permissions } = usePermissions();
   const db = useFirestore();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
@@ -46,7 +45,7 @@ export default function ContractTemplatesPage() {
     if (!db || !companyId || !confirm(t('confirmDelete'))) return;
     setLoadingAction(id);
     try {
-      const service = new TemplateService(db, companyId);
+      const service = new TemplateService(db, companyId, permissions);
       await service.deleteTemplate('contract', id);
       toast({ title: t('deleted') });
     } catch (e) {
