@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { 
   HardHat, Plus, Search, Loader2, ArrowRight,
   Filter, LayoutGrid, UserCircle, DollarSign,
-  Workflow, Building2, Activity, PlayCircle
+  Workflow, Building2, Activity, PlayCircle, CheckCircle2
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where } from 'firebase/firestore';
@@ -205,7 +205,7 @@ export default function ProjectsPage() {
                     <TableCell className="text-start">
                        <Badge className={cn(
                          "font-black px-4 py-1 rounded-xl border-0 shadow-sm uppercase text-[9px]",
-                         proj.status === 'completed' ? 'bg-emerald-500 text-white' : 'bg-blue-500 text-white'
+                         proj.status === 'completed' ? 'bg-emerald-50 text-white' : 'bg-blue-50 text-white'
                        )}>
                           {proj.status}
                        </Badge>
