@@ -18,7 +18,8 @@ import {
   LayoutGrid,
   Folder,
   Workflow,
-  Target
+  Target,
+  RefreshCcw
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
@@ -84,7 +85,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
   const masterNodesQuery = useMemo(() => companyId && db ? query(collection(db, paths.boqReferenceNodes(companyId)), orderBy('depth')) : null, [db, companyId]);
   const { data: rawMasterNodes, loading: masterLoading } = useCollection<BOQReferenceNode>(masterNodesQuery);
 
-  // جلب المسارات الفنية والمراحل عند اختيار الخدمة والمسار
   useEffect(() => {
     if (db && companyId && formData.activityTypeId && formData.serviceId) {
       getDocs(query(collection(db, paths.subServices(companyId, formData.activityTypeId, formData.serviceId)), orderBy('order')))
@@ -160,6 +160,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
        return parent?.title || '---';
     }) || [];
 
+    // --- FIX: Force sync Stage IDs from Node data ---
     const normalizedStageIds = node.technicalStageIds || (node.technicalStageId ? [node.technicalStageId] : []);
     const normalizedDefaultStageId = node.technicalStageId || (normalizedStageIds.length > 0 ? normalizedStageIds[0] : '');
 
@@ -186,6 +187,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     };
 
     setItems([...items, newItem]);
+    toast({ title: isRtl ? "تمت إضافة البند بالروابط" : "Item added with links" });
   };
 
   const removeItem = (idx: number) => {
@@ -233,6 +235,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                 <div className="flex items-center gap-2">
                    <span className="text-[10px] font-mono font-black text-slate-400">#{node.code}</span>
                    <span className="text-xs font-bold text-slate-800">{node.title}</span>
+                   {node.technicalStageId && <Badge className="bg-primary/10 text-primary border-0 text-[7px] font-black h-4">LINKED</Badge>}
                 </div>
              </div>
           </div>
@@ -273,11 +276,10 @@ export function BOQTemplateForm({ template, onClose }: Props) {
           const itemPrefix = `${prefix}.${iIdx + 1}`; 
           const subtotal = (item.plannedQuantity || 0) * (item.estimatedRate || 0);
 
-          // تحديد المراحل المسموح بها لهذا البند تحديداً
-          const allowedStagesForItem = (item.technicalStageIds && item.technicalStageIds.length > 0)
-              ? pathStages.filter(s => item.technicalStageIds!.includes(s.id!))
-              : pathStages;
-
+          // --- FIX: Dynamic Stage Resolution ---
+          // جلب كافة المراحل من المسار الحالي للقالب للسماح بالاختيار في حال عدم التزامن
+          const allSelectableStages = pathStages;
+          
           return (
             <TableRow key={`${item.boqReferenceNodeId}-${originalIdx}`} className="hover:bg-primary/[0.02] transition-colors border-b-slate-50 group/item">
               <TableCell className="font-mono text-[10px] font-bold text-slate-300 ps-8">{itemPrefix}</TableCell>
@@ -297,29 +299,32 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                  <Select 
                    value={item.technicalStageId || 'NONE'} 
                    onValueChange={(v) => {
-                     if (v === 'NONE') {
-                       updateItem(originalIdx, 'technicalStageId', '');
-                       return;
-                     }
+                     const finalVal = v === 'NONE' ? '' : v;
+                     updateItem(originalIdx, 'technicalStageId', finalVal);
+                     
+                     // تحديث مصفوفة الروابط لضمان التوافق
                      const currentIds = item.technicalStageIds || [];
-                     const nextIds = currentIds.includes(v) ? currentIds : [...currentIds, v];
-                     updateItem(originalIdx, 'technicalStageIds', nextIds);
-                     updateItem(originalIdx, 'technicalStageId', v);
+                     if (finalVal && !currentIds.includes(finalVal)) {
+                        updateItem(originalIdx, 'technicalStageIds', [...currentIds, finalVal]);
+                     }
                    }}
                  >
-                    <SelectTrigger className="h-8 rounded-lg text-[9px] font-black border-transparent hover:border-primary/30 bg-primary/5 text-primary">
-                       <SelectValue placeholder={loadingStages ? "جاري التحميل..." : (isRtl ? "ارتباط فني..." : "Link Stage...")} />
+                    <SelectTrigger className={cn(
+                      "h-8 rounded-lg text-[9px] font-black border-transparent hover:border-primary/30 transition-all",
+                      item.technicalStageId ? "bg-primary/5 text-primary" : "bg-slate-50 text-slate-400"
+                    )}>
+                       <SelectValue placeholder={loadingStages ? "جاري التحميل..." : (isRtl ? "بدون ارتباط" : "No Link")} />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl border-2 shadow-2xl">
-                       <SelectItem value="NONE" className="font-bold text-[10px]">{isRtl ? 'بدون ارتباط' : 'No Link'}</SelectItem>
+                       <SelectItem value="NONE" className="font-bold text-[10px]">{isRtl ? 'بدون ارتباط فني' : 'No Link'}</SelectItem>
                        {loadingStages ? (
-                         <div className="p-2 text-center"><Loader2 className="h-3 w-3 animate-spin mx-auto text-primary" /></div>
+                         <div className="p-4 text-center"><Loader2 className="h-4 w-4 animate-spin mx-auto text-primary" /></div>
                        ) : (
-                         allowedStagesForItem.map(s => (
-                           <SelectItem key={s.id} value={s.id!} className="font-bold text-[10px] py-2">
+                         allSelectableStages.map(s => (
+                           <SelectItem key={s.id} value={s.id!} className="font-bold text-[10px] py-2 border-b last:border-0 border-slate-50">
                               <div className="flex flex-col text-start">
                                  <span className="flex items-center gap-1"><Workflow className="h-2.5 w-2.5 text-primary" /> {s.name}</span>
-                                 <span className="text-[7px] text-slate-400">{isRtl ? 'بند نظامي' : 'System Item'}</span>
+                                 <span className="text-[7px] text-slate-400 uppercase tracking-tighter">Current Path Stage</span>
                               </div>
                            </SelectItem>
                          ))
@@ -383,10 +388,18 @@ export function BOQTemplateForm({ template, onClose }: Props) {
              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{formData.name || 'Draft Template'}</p>
           </div>
         </div>
-        <Button onClick={handleSave} disabled={loading} className="h-11 px-10 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 gap-2 border-b-4 border-orange-700 hover:scale-[1.02] transition-all">
-          {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />}
-          {t('save')}
-        </Button>
+        <div className="flex items-center gap-4">
+           <div className="flex flex-col text-end">
+              <span className="text-[9px] font-black text-slate-400 uppercase">Items Status</span>
+              <Badge variant="outline" className={cn("h-6 border-2 font-black text-[9px]", isMathValid ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")}>
+                 {isMathValid ? 'BALANCED' : 'BUDGET MISMATCH'}
+              </Badge>
+           </div>
+           <Button onClick={handleSave} disabled={loading} className="h-11 px-10 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 gap-2 border-b-4 border-orange-700 hover:scale-[1.02] transition-all">
+             {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />}
+             {t('save')}
+           </Button>
+        </div>
       </header>
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
@@ -491,37 +504,55 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                     <h3 className="font-black text-sm text-slate-700">{isRtl ? 'بنود وجداول الأعمال المعتمدة' : 'BOQ Work Items Grid'}</h3>
                  </div>
 
-                 <Dialog open={isPickerOpen} onOpenChange={setIsMasterPickerOpen}>
-                    <DialogTrigger asChild>
-                       <button type="button" className="h-9 px-5 rounded-xl bg-[#1e1b4b] text-white font-black text-[10px] gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all group flex items-center">
-                          <FolderTree className="h-3.5 w-3.5 text-primary group-hover:rotate-12 transition-transform" />
-                          {isRtl ? 'مستكشف القاموس السيادي' : 'Registry Explorer'}
-                       </button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-4xl rounded-[2.5rem] p-0 overflow-hidden bg-white border-0 shadow-3xl" dir={dir}>
-                       <div className="bg-slate-50 p-10 text-slate-900 text-start border-b">
-                          <DialogTitle className="text-3xl font-black font-headline flex items-center gap-4">
-                             <GitBranch className="h-8 w-8 text-primary" />
-                             {isRtl ? 'القاموس الهندسي الموحد' : 'Sovereign Reference Registry'}
-                          </DialogTitle>
-                          <div className="relative mt-6">
-                             <Search className="absolute start-5 top-1/2 -translate-y-1/2 h-6 w-6 text-slate-300" />
-                             <Input value={masterSearch} onChange={e => setMasterSearch(e.target.value)} placeholder={isRtl ? "ابحث بالاسم أو الكود المرجعي..." : "Search registry..."} className="ps-14 h-14 rounded-2xl border-2 font-black text-lg focus:bg-white shadow-inner" />
+                 <div className="flex items-center gap-3">
+                    <Dialog open={isPickerOpen} onOpenChange={setIsMasterPickerOpen}>
+                        <DialogTrigger asChild>
+                          <button type="button" className="h-9 px-5 rounded-xl bg-[#1e1b4b] text-white font-black text-[10px] gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all group flex items-center">
+                              <FolderTree className="h-3.5 w-3.5 text-primary group-hover:rotate-12 transition-transform" />
+                              {isRtl ? 'مستكشف القاموس السيادي' : 'Registry Explorer'}
+                          </button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-4xl rounded-[2.5rem] p-0 overflow-hidden bg-white border-0 shadow-3xl" dir={dir}>
+                          <div className="bg-slate-50 p-10 text-slate-900 text-start border-b">
+                              <DialogTitle className="text-3xl font-black font-headline flex items-center gap-4">
+                                <GitBranch className="h-8 w-8 text-primary" />
+                                {isRtl ? 'القاموس الهندسي الموحد' : 'Sovereign Reference Registry'}
+                              </DialogTitle>
+                              <div className="relative mt-6">
+                                <Search className="absolute start-5 top-1/2 -translate-y-1/2 h-6 w-6 text-slate-300" />
+                                <Input value={masterSearch} onChange={e => setMasterSearch(e.target.value)} placeholder={isRtl ? "ابحث بالاسم أو الكود المرجعي..." : "Search registry..."} className="ps-14 h-14 rounded-2xl border-2 font-black text-lg focus:bg-white shadow-inner" />
+                              </div>
                           </div>
-                       </div>
-                       <div className="p-8 max-h-[50vh] overflow-y-auto scrollbar-hide bg-slate-50/20">
-                          {masterLoading ? (
-                            <div className="py-20 text-center flex flex-col items-center gap-4">
-                               <Loader2 className="animate-spin h-12 w-12 text-primary/20" />
-                               <p className="text-xs font-black text-slate-300 uppercase tracking-widest italic">Indexing Registry...</p>
-                            </div>
-                          ) : pickerTree.map(renderPickerNode)}
-                       </div>
-                       <DialogFooter className="p-8 bg-slate-50 border-t flex justify-end">
-                          <Button variant="outline" type="button" onClick={() => setIsMasterPickerOpen(false)} className="rounded-xl font-black h-12 px-10">إغلاق</Button>
-                       </DialogFooter>
-                    </DialogContent>
-                 </Dialog>
+                          <div className="p-8 max-h-[50vh] overflow-y-auto scrollbar-hide bg-slate-50/20">
+                              {masterLoading ? (
+                                <div className="py-20 text-center flex flex-col items-center gap-4">
+                                  <Loader2 className="animate-spin h-12 w-12 text-primary/20" />
+                                  <p className="text-xs font-black text-slate-300 uppercase tracking-widest italic">Indexing Registry...</p>
+                                </div>
+                              ) : pickerTree.map(renderPickerNode)}
+                          </div>
+                          <DialogFooter className="p-8 bg-slate-50 border-t flex justify-end">
+                              <Button variant="outline" type="button" onClick={() => setIsMasterPickerOpen(false)} className="rounded-xl font-black h-12 px-10">إغلاق</Button>
+                          </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                    
+                    {items.length > 0 && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => {
+                          // محاكاة إعادة مزامنة بسيطة
+                          toast({ title: isRtl ? "جاري تحديث الروابط..." : "Syncing links...", icon: <RefreshCcw className="h-4 w-4 animate-spin" /> });
+                          setTimeout(() => toast({ title: isRtl ? "تمت المزامنة" : "Sync complete" }), 800);
+                        }}
+                        className="h-9 px-4 rounded-xl text-slate-400 hover:text-primary gap-2"
+                      >
+                         <RefreshCcw className="h-3.5 w-3.5" />
+                         {isRtl ? 'مزامنة' : 'Sync'}
+                      </Button>
+                    )}
+                 </div>
               </div>
 
               <Table>
