@@ -17,7 +17,7 @@ import {
   Plus, Trash2, Loader2, Save, X, 
   PlusCircle, AlertTriangle, Calculator,
   LayoutGrid, Hammer, ArrowRight, CheckCircle2,
-  GitBranch, Search
+  GitBranch, Search, Zap
 } from "lucide-react";
 import { 
   Select, 
@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
+import { usePermissions } from '@/hooks/use-permissions';
 import { useFirestore } from '@/firebase';
 import { BOQItem, VariationType, BOQVariationItem, BOQReferenceNode } from '@/types/documents';
 import { VariationService } from '@/services/variation-service';
@@ -47,6 +48,7 @@ interface Props {
 export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumber, boqItems }: Props) {
   const { lang, dir, t } = useLanguage();
   const { user, globalUser } = useAuthContext();
+  const { permissions } = usePermissions();
   const db = useFirestore();
   const isRtl = lang === 'ar';
 
@@ -81,6 +83,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
         item.unitName = source.unitName;
         item.unitSymbol = source.unitSymbol;
         item.rate = source.estimatedRate || 0;
+        item.sourcePlannedQuantity = source.plannedQuantity || 0;
       }
     }
 
@@ -92,6 +95,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
        item.unitName = node.unitName;
        item.unitSymbol = node.unitSymbol;
        item.rate = node.estimatedRate || 0;
+       item.sourcePlannedQuantity = 0;
     }
 
     // Math Engine with Sign Correction
@@ -118,7 +122,8 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
 
     setLoading(true);
     try {
-      const service = new VariationService(db, globalUser.companyId);
+      // تمرير مصفوفة الصلاحيات (Permissions) للخدمة لتجاوز خطأ UNAUTHORIZED_ACTION
+      const service = new VariationService(db, globalUser.companyId, permissions);
       await service.createVariation(
         boqId, 
         transactionId, 
