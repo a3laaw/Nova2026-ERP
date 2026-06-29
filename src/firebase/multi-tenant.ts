@@ -61,9 +61,9 @@ export const paths = {
   technicalStages: (companyId: string, actId: string, srvId: string, subId: string) => `${getTenantPath(companyId, 'activityTypes')}/${actId}/services/${srvId}/subServices/${subId}/stages`,
 
   // المشاريع (Operations & Projects)
-  projects: (companyId: string) => getTenantPath(companyId, 'projects'),
-  stageInstances: (companyId: string, projectId: string) => `${getTenantPath(companyId, 'projects')}/${projectId}/stageInstances`,
-  projectContracts: (companyId: string, projectId: string) => `${getTenantPath(companyId, 'projects')}/${projectId}/contracts`,
+  projects: (companyId: string) => getTenantPath(companyId, 'transactions'), // نستخدم المعاملات كمشاريع
+  stageInstances: (companyId: string, projectId: string) => `${getTenantPath(companyId, 'transactions')}/${projectId}/stageInstances`,
+  projectContracts: (companyId: string, projectId: string) => `${getTenantPath(companyId, 'transactions')}/${projectId}/contracts`,
 
   // المعاملات الفنية (Technical Transactions)
   transactions: (companyId: string) => getTenantPath(companyId, 'transactions'),
@@ -88,8 +88,8 @@ export const paths = {
   boqItems: (companyId: string, boqId: string) => `${getTenantPath(companyId, 'boqs')}/${boqId}/items`,
   
   // الأوامر التغييرية (Variation Orders)
-  variations: (companyId: string, boqId: string) => `${getTenantPath(companyId, 'boqs')}/${boqId}/variations`,
-  variationItems: (companyId: string, boqId: string, voId: string) => `${getTenantPath(companyId, 'boqs')}/${boqId}/variations/${voId}/items`,
+  boqVariations: (companyId: string, boqId: string) => `${getTenantPath(companyId, 'boqs')}/${boqId}/variations`,
+  boqVariationItems: (companyId: string, boqId: string, voId: string) => `${getTenantPath(companyId, 'boqs')}/${boqId}/variations/${voId}/items`,
 
   // سجلات التنفيذ الميدانية (Flat Structure for Performance)
   executions: (companyId: string) => getTenantPath(companyId, 'executions'),

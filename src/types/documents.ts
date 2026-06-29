@@ -110,3 +110,38 @@ export interface BOQ extends BaseDocument {
   subServiceId?: string;
   measurementMode: MeasurementMode;
 }
+
+/**
+ * --- الأوامر التغييرية (Variation Orders - VO Lite) ---
+ */
+export type BOQVariationStatus = 'draft' | 'approved' | 'cancelled';
+export type VariationType = 'increase_quantity' | 'decrease_quantity' | 'new_item' | 'omit_item';
+
+export interface BOQVariation extends BaseReference {
+  id: string;
+  boqId: string;
+  transactionId: string;
+  boqNumber: string;
+  title: string;
+  reason: string;
+  status: BOQVariationStatus;
+  totalAmount: number; // صافي التغيير المالي
+  createdBy: string;
+  updatedBy?: string;
+  approvedBy?: string;
+  approvedAt?: any;
+}
+
+export interface BOQVariationItem extends BaseReference {
+  id: string;
+  variationId: string;
+  sourceBoqItemId?: string; // إذا كان تعديلاً على بند موجود
+  type: VariationType;
+  description: string;
+  unitName?: string;
+  unitSymbol?: string;
+  quantityDelta: number; // مقدار التغير (موجب أو سالب)
+  rate: number;
+  total: number; // (quantityDelta * rate)
+  reason?: string;
+}

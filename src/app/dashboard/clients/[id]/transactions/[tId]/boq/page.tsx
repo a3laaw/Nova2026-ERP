@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -12,22 +11,24 @@ import {
   FileSpreadsheet, ArrowRight, Loader2, 
   TrendingUp, ChevronDown, ChevronRight,
   Printer, Folder, Calculator, ShieldCheck,
-  Zap, History
+  Zap, History, PlusCircle, AlertCircle
 } from "lucide-react";
 import { useFirestore, useCollection, useDoc } from '@/firebase';
 import { collection, query, where, doc, collectionGroup } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
-import { BOQ, BOQItem, BOQItemExecutionEntry } from '@/types/documents';
+import { BOQ, BOQItem, BOQItemExecutionEntry, BOQVariation } from '@/types/documents';
 import { Transaction, StageInstance } from '@/types/transaction';
 import { transformToBOQTree } from '@/lib/boq-tree-utils';
 import { BOQTreeNode } from '@/types/templates';
 import { cn } from '@/lib/utils';
+import { VOManagerDialog } from '@/components/transactions/vo-manager-dialog';
 
 /**
  * صفحة متابعة إنجاز المقايسة الآلية (Automated BOQ Progress)
  * تدعم محرك الحساب المئوي اللحظي للسابق والحالي والإجمالي.
+ * تم دمج موديول "الأوامر التغييرية" (VO Lite) للمقارنة المالية.
  */
 export default function TransactionBOQProgressPage() {
   const params = useParams();
@@ -38,6 +39,8 @@ export default function TransactionBOQProgressPage() {
   const router = useRouter();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
+
+  const [isVOOpen, setIsVOOpen] = useState(false);
 
   // 1. جلب البيانات الأساسية
   const transRef = useMemo(() => companyId && db ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
@@ -53,8 +56,15 @@ export default function TransactionBOQProgressPage() {
   const itemsQuery = useMemo(() => companyId && db && activeBoq?.id ? query(collection(db, paths.boqItems(companyId, activeBoq.id))) : null, [db, companyId, activeBoq]);
   const { data: items, loading: itemsLoading } = useCollection<BOQItem>(itemsQuery);
 
-  // 2. جلب سجلات التنفيذ عبر مجموعة الـ Executions الموحدة
-  // FIX: إضافة شرط companyId للاستعلام لتجاوز فحص القواعد الأمنية السيادية
+  // 2. جلب الأوامر التغييرية (Variations)
+  const variationsQuery = useMemo(() => 
+    companyId && db && activeBoq?.id 
+      ? query(collection(db, paths.boqVariations(companyId, activeBoq.id))) 
+      : null, 
+  [db, companyId, activeBoq]);
+  const { data: variations } = useCollection<BOQVariation>(variationsQuery);
+
+  // 3. جلب سجلات التنفيذ
   const executionsQuery = useMemo(() => 
     companyId && db && activeBoq?.id 
       ? query(collectionGroup(db, 'executions'), where('companyId', '==', companyId), where('boqId', '==', activeBoq.id)) 
@@ -62,45 +72,49 @@ export default function TransactionBOQProgressPage() {
   [db, companyId, activeBoq]);
   const { data: allExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
 
-  // 3. محرك الحساب الآلي المئوي
+  // محرك الحسابات المالية (Triple Totals)
+  const financialStats = useMemo(() => {
+    const original = activeBoq?.totalAmount || 0;
+    const voTotal = (variations || [])
+      .filter(v => v.status === 'approved')
+      .reduce((sum, v) => sum + (v.totalAmount || 0), 0);
+    
+    return {
+      original,
+      voTotal,
+      final: original + voTotal
+    };
+  }, [activeBoq, variations]);
+
+  // محرك الحساب الآلي المئوي للإنجاز الميداني
   const executionMetrics = useMemo(() => {
     if (!allExecutions || !stages) return {};
-    
     const metrics: Record<string, { prev: number, current: number }> = {};
-    
     allExecutions.forEach(exec => {
       const stage = stages.find(s => s.technicalStageId === exec.technicalStageId);
       const itemId = exec.boqItemId;
-      
       if (!metrics[itemId]) metrics[itemId] = { prev: 0, current: 0 };
-      
-      if (stage?.status === 'completed') {
-        metrics[itemId].prev += (exec.quantity || 0);
-      } 
-      else if (stage?.status === 'in-progress' || stage?.status === 'pending') {
-        metrics[itemId].current += (exec.quantity || 0);
-      }
+      if (stage?.status === 'completed') metrics[itemId].prev += (exec.quantity || 0);
+      else if (stage?.status === 'in-progress' || stage?.status === 'pending') metrics[itemId].current += (exec.quantity || 0);
     });
-    
     return metrics;
   }, [allExecutions, stages]);
 
   const boqTree = useMemo(() => transformToBOQTree(items || []), [items]);
 
   const overallStats = useMemo(() => {
-    if (!items) return { totalPlanned: 0, totalExecuted: 0, progress: 0 };
-    const totalP = items.reduce((acc, i) => acc + ((i.plannedQuantity || 0) * (i.estimatedRate || 0)), 0);
+    if (!items) return { totalPlanned: financialStats.final, totalExecuted: 0, progress: 0 };
     const metricsValue = items.map(i => {
         const m = executionMetrics[i.id!] || { prev: 0, current: 0 };
         return (m.prev + m.current) * (i.estimatedRate || 0);
     });
     const totalE = metricsValue.reduce((acc, val) => acc + val, 0);
     return {
-      totalPlanned: totalP,
+      totalPlanned: financialStats.final,
       totalExecuted: totalE,
-      progress: totalP > 0 ? Math.round((totalE / totalP) * 100) : 0
+      progress: financialStats.final > 0 ? Math.round((totalE / financialStats.final) * 100) : 0
     };
-  }, [items, executionMetrics]);
+  }, [items, executionMetrics, financialStats]);
 
   const renderBOQTreeRows = (node: BOQTreeNode, prefix: string): React.ReactNode => {
     return (
@@ -120,19 +134,10 @@ export default function TransactionBOQProgressPage() {
         {node.items.map((item, iIdx) => {
           const itemPrefix = `${prefix.replace('.0', '')}.${iIdx + 1}`;
           const metrics = executionMetrics[item.id!] || { prev: 0, current: 0 };
-          
-          const prevVal = metrics.prev;
-          const currentVal = metrics.current;
-          const totalCumulative = prevVal + currentVal;
+          const totalCumulative = metrics.prev + metrics.current;
           const planned = item.plannedQuantity || 1;
-
-          // حساب النسب المئوية لكل عمود
-          const prevPct = Math.round((prevVal / planned) * 100);
-          const currentPct = Math.round((currentVal / planned) * 100);
           const totalPct = Math.round((totalCumulative / planned) * 100);
           
-          const isOver = totalCumulative > (item.plannedQuantity || 0);
-
           return (
             <TableRow key={item.id} className="hover:bg-primary/[0.02] transition-colors border-b-slate-100 group/item">
               <TableCell className="font-mono text-[10px] font-bold text-slate-300 ps-8">{itemPrefix}</TableCell>
@@ -141,55 +146,26 @@ export default function TransactionBOQProgressPage() {
                 {item.referenceTitle}
               </TableCell>
               <TableCell className="text-center font-black text-[10px] text-slate-400 uppercase">{item.unitSymbol || '-'}</TableCell>
-              
-              <TableCell className="text-center w-[80px]">
-                 <span className="font-mono font-black text-slate-400 text-xs bg-slate-100/50 px-3 py-1 rounded-lg">
-                    {item.plannedQuantity}
-                 </span>
-              </TableCell>
-              
+              <TableCell className="text-center w-[80px] font-mono font-black text-slate-400">{item.plannedQuantity}</TableCell>
+              <TableCell className="text-center font-mono font-black text-blue-600 text-xs">{metrics.prev}</TableCell>
               <TableCell className="text-center">
-                 <div className="flex flex-col items-center">
-                    <span className="font-mono font-black text-blue-600 text-xs">{prevVal || '0'}</span>
-                    <span className="text-[8px] font-bold text-slate-400">({prevPct}%)</span>
+                 <div className="inline-flex items-center justify-center h-7 px-3 rounded-full bg-orange-50 border border-orange-100 text-orange-600 font-black text-xs">
+                    {metrics.current}
                  </div>
               </TableCell>
-              
               <TableCell className="text-center">
-                 <div className="flex flex-col items-center">
-                    <div className="inline-flex items-center justify-center h-7 px-3 rounded-full bg-orange-50 border border-orange-100 text-orange-600 font-black text-xs shadow-sm">
-                       {currentVal || '0'}
-                    </div>
-                    <span className="text-[8px] font-bold text-orange-400 mt-0.5">({currentPct}%)</span>
-                 </div>
+                 <Badge variant="outline" className="font-black text-xs px-4 h-8 rounded-full bg-slate-900 text-white border-slate-900">
+                    {totalCumulative}
+                 </Badge>
               </TableCell>
-
-              <TableCell className="text-center">
-                 <div className="flex flex-col items-center">
-                    <Badge variant="outline" className={cn(
-                      "font-black text-xs px-4 h-8 rounded-full border-2 shadow-sm",
-                      isOver ? "bg-rose-50 text-rose-600 border-rose-200" : "bg-slate-900 text-white border-slate-900"
-                    )}>
-                       {totalCumulative}
-                    </Badge>
-                    <span className="text-[9px] font-black text-slate-500 mt-0.5">{totalPct}%</span>
-                 </div>
-              </TableCell>
-
-              <TableCell className="text-center font-mono font-bold text-slate-400 text-xs">
-                {item.estimatedRate?.toLocaleString()}
-              </TableCell>
-              
+              <TableCell className="text-center font-mono font-bold text-slate-400 text-xs">{item.estimatedRate?.toLocaleString()}</TableCell>
               <TableCell className="text-end font-mono font-black text-emerald-600 text-xs">
                 {(totalCumulative * (item.estimatedRate || 0)).toLocaleString()}
               </TableCell>
-
               <TableCell className="pe-6 w-[120px]">
                 <div className="space-y-1">
-                  <div className="flex justify-between text-[8px] font-black uppercase text-slate-400">
-                    <span className={cn(totalPct > 100 && "text-rose-500")}>{totalPct.toFixed(1)}%</span>
-                  </div>
-                  <Progress value={totalPct} className="h-1 bg-slate-100 [&>div]:bg-primary" />
+                  <div className="flex justify-between text-[8px] font-black uppercase text-slate-400"><span>{totalPct}%</span></div>
+                  <Progress value={totalPct} className="h-1" />
                 </div>
               </TableCell>
             </TableRow>
@@ -217,32 +193,48 @@ export default function TransactionBOQProgressPage() {
   return (
     <div className="flex flex-col h-full space-y-4 animate-in fade-in duration-500" dir={dir}>
       
-      <header className="flex flex-row items-center justify-between gap-4 bg-white p-5 rounded-2xl shadow-sm border border-primary/10">
+      <header className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white p-5 rounded-2xl shadow-sm border border-primary/10">
         <div className="flex items-center gap-4">
            <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-10 w-10 rounded-xl border-2">
               <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
            </Button>
            <div className="text-start">
-              <div className="flex items-center gap-3">
-                 <h1 className="text-xl font-black text-slate-900 leading-none">{activeBoq.boqNumber}</h1>
-                 <Badge className="bg-emerald-50 text-white border-0 font-black text-[9px] uppercase h-5 px-3">Automated Analytics</Badge>
-              </div>
-              <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">
-                 {transaction?.clientName} | {transaction?.subServiceName}
-              </p>
+              <h1 className="text-xl font-black text-slate-900 leading-none">{activeBoq.boqNumber}</h1>
+              <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">{transaction?.clientName}</p>
            </div>
         </div>
         
         <div className="flex items-center gap-3">
-           <div className="hidden md:flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
-              <History className="h-3.5 w-3.5 text-blue-500" />
-              <span className="text-[9px] font-black text-slate-500 uppercase">{isRtl ? 'تحليل مئوي لحظي' : 'Live Variance Tracking'}</span>
+           <div className="flex gap-2">
+              <div className="px-4 py-2 bg-blue-50 rounded-xl border border-blue-100 flex flex-col text-start">
+                 <span className="text-[8px] font-black text-blue-400 uppercase">Variations</span>
+                 <span className="text-xs font-black text-blue-700">{variations?.length || 0} Orders</span>
+              </div>
            </div>
-           <Button variant="outline" size="sm" className="h-11 px-6 rounded-xl font-black text-xs gap-2 border-2 bg-white hover:bg-slate-50">
-              <Printer className="h-4 w-4" /> {isRtl ? 'طباعة تقرير الإنجاز' : 'Print Certificate'}
+           <Button 
+             onClick={() => setIsVOOpen(true)}
+             className="h-11 px-6 rounded-xl font-black text-xs gap-2 bg-[#1e1b4b] text-white hover:bg-slate-800 shadow-xl"
+           >
+              <PlusCircle className="h-4 w-4 text-primary" /> {isRtl ? 'إنشاء أمر تغييري' : 'New Variation'}
            </Button>
+           <Button variant="outline" className="h-11 px-6 rounded-xl font-black text-xs gap-2 border-2"><Printer className="h-4 w-4" /> {isRtl ? 'طباعة تقرير الإنجاز' : 'Print Certificate'}</Button>
         </div>
       </header>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+         <Card className="border-0 shadow-lg rounded-2xl p-5 text-start bg-white">
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'الميزانية الأصلية' : 'Original Budget'}</p>
+            <h3 className="text-xl font-black text-slate-900">{financialStats.original.toLocaleString()} KWD</h3>
+         </Card>
+         <Card className="border-0 shadow-lg rounded-2xl p-5 text-start bg-white border-s-4 border-s-blue-500">
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'الأوامر التغييرية المعتمدة' : 'Approved Variations'}</p>
+            <h3 className="text-xl font-black text-blue-600">{financialStats.voTotal > 0 ? '+' : ''}{financialStats.voTotal.toLocaleString()} KWD</h3>
+         </Card>
+         <Card className="border-0 shadow-lg rounded-2xl p-5 text-start bg-slate-900 text-white border-s-4 border-s-emerald-500">
+            <p className="text-[9px] font-black text-primary uppercase tracking-widest mb-1">{isRtl ? 'الميزانية المعدلة النهائية' : 'Revised Final Total'}</p>
+            <h3 className="text-xl font-black text-emerald-400">{financialStats.final.toLocaleString()} KWD</h3>
+         </Card>
+      </div>
 
       <div className="flex-1 bg-white rounded-3xl shadow-2xl border border-primary/5 overflow-hidden flex flex-col min-h-[600px]">
          <Table>
@@ -253,58 +245,52 @@ export default function TransactionBOQProgressPage() {
                <TableHead className="text-white font-black text-xs">{isRtl ? 'بند العمل / الوصف' : 'Item Description'}</TableHead>
                <TableHead className="text-center w-[60px] text-white font-black text-xs">{isRtl ? 'الوحدة' : 'Unit'}</TableHead>
                <TableHead className="text-center w-[80px] text-white font-black text-xs bg-white/5">{isRtl ? 'المخطط' : 'Plan'}</TableHead>
-               <TableHead className="text-center w-[100px] text-white font-black text-xs">{isRtl ? 'السابق' : 'Prev (%)'}</TableHead>
-               <TableHead className="text-center w-[120px] text-white font-black text-xs">{isRtl ? 'الحالي' : 'Current (%)'}</TableHead>
-               <TableHead className="text-center w-[120px] text-white font-black text-xs">{isRtl ? 'الإجمالي' : 'Total (%)'}</TableHead>
+               <TableHead className="text-center w-[100px] text-white font-black text-xs">{isRtl ? 'السابق' : 'Prev'}</TableHead>
+               <TableHead className="text-center w-[120px] text-white font-black text-xs">{isRtl ? 'الحالي' : 'Current'}</TableHead>
+               <TableHead className="text-center w-[120px] text-white font-black text-xs">{isRtl ? 'الإجمالي' : 'Total'}</TableHead>
                <TableHead className="text-center w-[100px] text-white font-black text-xs">{isRtl ? 'الفئة' : 'Rate'}</TableHead>
                <TableHead className="text-end w-[120px] text-white font-black text-xs">{isRtl ? 'القيمة' : 'Value'}</TableHead>
                <TableHead className="pe-6 w-[120px] text-white font-black text-xs">{isRtl ? 'الإنجاز' : 'Progress'}</TableHead>
              </TableRow>
            </TableHeader>
            <TableBody>
-              {boqTree.length === 0 ? (
-                <TableRow>
-                   <TableCell colSpan={11} className="py-40 text-center opacity-20">
-                      <div className="flex flex-col items-center gap-4">
-                         <FileSpreadsheet className="h-12 w-12" />
-                         <p className="font-black uppercase tracking-widest">{isRtl ? 'جاري جلب البيانات...' : 'Indexing Ledger...'}</p>
-                      </div>
-                   </TableCell>
-                </TableRow>
-              ) : (
-                boqTree.map((node, idx) => renderBOQTreeRows(node, (idx + 1).toString() + ".0"))
-              )}
+              {boqTree.map((node, idx) => renderBOQTreeRows(node, (idx + 1).toString() + ".0"))}
            </TableBody>
          </Table>
 
-         <footer className="bg-[#1e1b4b] text-white p-8 px-12 flex flex-col md:flex-row justify-between items-center gap-10 mt-auto shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-12 opacity-5"><TrendingUp className="h-40 w-40" /></div>
-            
-            <div className="flex items-center gap-16 relative z-10">
+         <footer className="bg-[#1e1b4b] text-white p-8 px-12 flex flex-col md:flex-row justify-between items-center gap-10 mt-auto shadow-2xl">
+            <div className="flex items-center gap-16">
                <div className="text-start">
                   <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-2">{isRtl ? 'إجمالي الميزانية المخططة' : 'Total Budget'}</p>
-                  <h3 className="text-3xl font-black font-headline">{overallStats.totalPlanned.toLocaleString()} <span className="text-sm text-white/30">KWD</span></h3>
+                  <h3 className="text-3xl font-black font-headline">{financialStats.final.toLocaleString()} <span className="text-sm text-white/30">KWD</span></h3>
                </div>
                <div className="text-start border-s-2 border-white/10 ps-16">
                   <p className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] mb-2">{isRtl ? 'القيمة المنفذة حالياً' : 'Total Executed'}</p>
                   <h3 className="text-3xl font-black font-headline text-emerald-400">{overallStats.totalExecuted.toLocaleString()} <span className="text-sm">KWD</span></h3>
                </div>
             </div>
-
-            <div className="flex items-center gap-10 w-full md:w-auto bg-white/5 p-6 rounded-[2.5rem] border border-white/10 shadow-inner">
+            <div className="flex items-center gap-10 bg-white/5 p-6 rounded-[2.5rem] border border-white/10">
                <div className="flex-1 md:w-64 space-y-3">
                   <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
                      <span className="text-slate-400">{isRtl ? 'إنجاز المشروع كلياً' : 'Completion'}</span>
                      <span className="text-primary">{overallStats.progress}%</span>
                   </div>
-                  <Progress value={overallStats.progress} className="h-2 bg-white/10 [&>div]:bg-primary shadow-2xl" />
+                  <Progress value={overallStats.progress} className="h-2 bg-white/10" />
                </div>
-               <div className="h-14 w-14 rounded-2xl bg-primary text-white flex items-center justify-center shadow-2xl ring-4 ring-primary/10">
-                  <Calculator className="h-7 w-7" />
-               </div>
+               <div className="h-14 w-14 rounded-2xl bg-primary text-white flex items-center justify-center shadow-2xl"><Calculator className="h-7 w-7" /></div>
             </div>
          </footer>
       </div>
+
+      {/* VO Manager Component */}
+      <VOManagerDialog 
+        isOpen={isVOOpen}
+        onClose={() => setIsVOOpen(false)}
+        boqId={activeBoq.id}
+        transactionId={transactionId}
+        boqNumber={activeBoq.boqNumber}
+        boqItems={items || []}
+      />
     </div>
   );
 }
