@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -16,7 +15,7 @@ import { Project, StageInstance } from '@/types/project';
 import { TechnicalStage } from '@/types/reference';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { ensureActionPermission } from '@/lib/permissions';
+import { ensureActionPermission } from '@/lib/permissions/engine';
 
 export class ProjectService {
   constructor(
@@ -38,16 +37,17 @@ export class ProjectService {
       updatedAt: serverTimestamp(),
     };
 
-    // كتابة غير محظورة
-    setDoc(projectRef, fullProjectData).catch((err) => {
+    // كتابة رأس المشروع
+    await setDoc(projectRef, fullProjectData).catch((err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({ 
         path: projectRef.path, 
         operation: 'create',
         requestResourceData: fullProjectData
       }));
+      throw err;
     });
 
-    // استنساخ المراحل (قراءة)
+    // استنساخ مراحل المسار الفني إلى المشروع الجديد
     const stagesPath = paths.technicalStages(
       this.companyId, 
       projectData.activityTypeId, 
@@ -55,34 +55,33 @@ export class ProjectService {
       projectData.subServiceId
     );
     
-    getDocs(collection(this.db, stagesPath)).then(stagesSnap => {
-      if (!stagesSnap.empty) {
-        const batch = writeBatch(this.db);
-        const instancesRef = collection(this.db, paths.stageInstances(this.companyId, projectId));
+    const stagesSnap = await getDocs(collection(this.db, stagesPath));
+    if (!stagesSnap.empty) {
+      const batch = writeBatch(this.db);
+      const instancesRef = collection(this.db, paths.stageInstances(this.companyId, projectId));
 
-        stagesSnap.docs.forEach(stageDoc => {
-          const stage = stageDoc.data() as TechnicalStage;
-          const instanceRef = doc(instancesRef);
-          batch.set(instanceRef, {
-            projectId,
-            templateStageId: stageDoc.id,
-            name: stage.name,
-            nameEn: stage.nameEn,
-            status: 'pending',
-            isNumeric: stage.isNumeric,
-            numericTarget: stage.numericTarget,
-            numericValue: 0,
-            isTimed: stage.isTimed,
-            timeTargetDays: stage.timeTargetDays,
-            nextStageIds: stage.nextStageIds || [],
-            companyId: this.companyId,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp()
-          });
+      stagesSnap.docs.forEach(stageDoc => {
+        const stage = stageDoc.data() as TechnicalStage;
+        const instanceRef = doc(instancesRef);
+        batch.set(instanceRef, {
+          projectId,
+          templateStageId: stageDoc.id,
+          name: stage.name,
+          nameEn: stage.nameEn,
+          status: 'pending',
+          isNumeric: !!stage.isNumeric,
+          numericTarget: stage.numericTarget || 0,
+          numericValue: 0,
+          isTimed: !!stage.isTimed,
+          timeTargetDays: stage.timeTargetDays || 0,
+          nextStageIds: stage.nextStageIds || [],
+          companyId: this.companyId,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
         });
-        batch.commit();
-      }
-    });
+      });
+      await batch.commit();
+    }
 
     return projectId;
   }

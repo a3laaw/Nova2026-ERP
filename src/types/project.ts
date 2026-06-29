@@ -5,6 +5,8 @@ import { BaseReference } from './reference';
 export interface Project extends BaseReference {
   name: string;
   description?: string;
+  clientId: string;           // الرابط السيادي بالعميل
+  clientName: string;         // تخزين الاسم لسرعة العرض
   activityTypeId: string;
   serviceId: string;
   subServiceId: string;
@@ -12,7 +14,6 @@ export interface Project extends BaseReference {
   status: 'active' | 'completed' | 'suspended' | 'on-hold';
   startDate?: string;
   endDate?: string;
-  clientName?: string;
   location?: {
     governorateId: string;
     areaId: string;
@@ -34,5 +35,5 @@ export interface StageInstance extends BaseReference {
   startedAt?: any;
   completedAt?: any;
   completedBy?: string;
-  nextStageIds: string[]; // الروابط التنفيذية المستنسخة من القالب
+  nextStageIds: string[]; 
 }
