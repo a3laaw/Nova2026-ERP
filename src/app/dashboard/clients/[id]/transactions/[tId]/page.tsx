@@ -24,7 +24,8 @@ import {
   PlusCircle,
   ArrowRight,
   Trash2,
-  Pencil
+  Pencil,
+  Info
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where, limit } from 'firebase/firestore';
@@ -453,24 +454,22 @@ export default function TransactionDetailsPage() {
                                    </div>
                                 </div>
                                 <div className="flex gap-2 shrink-0 z-10" onClick={e => e.stopPropagation()}>
-                                   <Button 
+                                   <button 
                                      onClick={(e) => { e.stopPropagation(); handleStageCommentClick(stage); }}
-                                     variant="ghost" 
-                                     className="h-11 px-4 rounded-xl text-slate-400 hover:text-primary font-black text-[10px] gap-2 hover:bg-primary/5"
+                                     className="h-11 px-4 rounded-xl text-slate-400 hover:text-primary font-black text-[10px] gap-2 hover:bg-primary/5 flex items-center"
                                    >
                                       <MessageSquare className="h-3.5 w-3.5" />
                                       {isRtl ? 'تعليق' : 'Comment'}
-                                   </Button>
+                                   </button>
                                    {stage.status === 'completed' && editAccess.can && (
-                                      <Button 
+                                      <button 
                                         onClick={() => setUndoStage(stage)} 
                                         disabled={processingId === stage.id}
-                                        variant="ghost" 
-                                        className="h-11 px-4 rounded-xl text-slate-400 hover:text-rose-600 font-black text-[10px] gap-2"
+                                        className="h-11 px-4 rounded-xl text-slate-400 hover:text-rose-600 font-black text-[10px] gap-2 flex items-center"
                                       >
                                          {processingId === stage.id ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <RotateCcw className="h-3.5 w-3.5" />}
                                          {isRtl ? 'تراجع' : 'Undo'}
-                                      </Button>
+                                      </button>
                                    )}
                                    {stage.status === 'in-progress' && editAccess.can && (
                                       <Button onClick={() => { setTargetStage(stage); setIsRecordOpen(true); }} variant="outline" className="h-11 px-4 rounded-xl border-2 border-primary/20 text-primary font-black text-xs gap-2 hover:bg-primary/5">
