@@ -106,7 +106,6 @@ export default function TransactionDetailsPage() {
   const activeBoq = boqs?.[0];
 
   // 4. سحب البيانات من "جدول البنود الميدانية" (The Source Table: boqItems)
-  // المسار: companies/{companyId}/boqs/{boqId}/items
   const itemsQuery = useMemo(() => 
     companyId && db && activeBoq?.id ? query(collection(db, paths.boqItems(companyId, activeBoq.id))) : null, 
   [db, companyId, activeBoq]);
@@ -117,6 +116,13 @@ export default function TransactionDetailsPage() {
   }, [rawStages]);
 
   const executionService = useMemo(() => db && companyId ? new BOQExecutionService(db, companyId, permissions) : null, [db, companyId, permissions]);
+
+  // Overall progress percentage based on completed stages
+  const progressPercent = useMemo(() => {
+    if (!stages || stages.length === 0) return 0;
+    const completed = stages.filter(s => s.status === 'completed').length;
+    return Math.round((completed / stages.length) * 100);
+  }, [stages]);
 
   // تحديث نسب الإنجاز بناءً على حركة البنود
   useEffect(() => {
@@ -160,7 +166,6 @@ export default function TransactionDetailsPage() {
   [db, companyId, permissions]);
 
   // --- Filtering Logic (الربط الفني) ---
-  // يتم سحب البنود من "جدول البنود" وفلترتها بناءً على معرف المرحلة
   const filteredItemsForStage = useMemo(() => {
     if (!boqItems || !targetStage) return [];
     const sId = targetStage.technicalStageId;
@@ -227,7 +232,13 @@ export default function TransactionDetailsPage() {
       
       const snap = await getDocs(q);
       if (snap.empty) {
-        throw new Error(isRtl ? 'لم يتم العثور على قالب BOQ افتراضي مطابق لهذا المسار.' : 'No matching default BOQ template found.');
+        console.warn("No default template found for search:", {
+          companyId,
+          activityTypeId: transaction.activityTypeId,
+          serviceId: transaction.serviceId,
+          subServiceId: transaction.subServiceId
+        });
+        throw new Error(isRtl ? 'لم يتم العثور على BOQ Template افتراضي مطابق لنفس النشاط والخدمة والمسار الفني.' : 'No matching default BOQ template found for this path.');
       }
 
       const template = snap.docs[0].data() as BOQTemplate;
@@ -354,7 +365,7 @@ export default function TransactionDetailsPage() {
                    <Button 
                      onClick={() => handleCreateBOQ()} 
                      disabled={isCreatingBoq}
-                     className="bg-primary text-white font-black h-14 px-8 rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-3 border-b-4 border-orange-700"
+                     className="bg-primary text-white font-black h-14 px-8 rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-4 border-orange-700"
                    >
                       {isCreatingBoq ? <Loader2 className="animate-spin h-5 w-5" /> : <Sparkles className="h-5 w-5" />}
                       {isRtl ? 'إنشاء المقايسة من القالب' : 'Create from Template'}
