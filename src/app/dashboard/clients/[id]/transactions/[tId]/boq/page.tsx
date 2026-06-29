@@ -16,13 +16,13 @@ import {
   Target, Activity, History
 } from "lucide-react";
 import { useFirestore, useCollection, useDoc } from '@/firebase';
-import { collection, query, where, doc } from 'firebase/firestore';
+import { collection, query, where, doc, getDocs } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { BOQ, BOQItem } from '@/types/documents';
-import { Transaction } from '@/types/transaction';
+import { Transaction, StageInstance } from '@/types/transaction';
 import { BOQExecutionService } from '@/services/boq-execution-service';
 import { transformToBOQTree } from '@/lib/boq-tree-utils';
 import { BOQTreeNode } from '@/types/templates';
@@ -49,6 +49,10 @@ export default function TransactionBOQProgressPage() {
   const transRef = useMemo(() => companyId && db ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
   const { data: transaction } = useDoc<Transaction>(transRef);
 
+  // جلب مراحل المعاملة للاستدلال التلقائي في حال فقدان الارتباط
+  const stagesQuery = useMemo(() => companyId && db ? query(collection(db, paths.transactionStages(companyId, transactionId))) : null, [db, companyId, transactionId]);
+  const { data: stages } = useCollection<StageInstance>(stagesQuery);
+
   const boqQuery = useMemo(() => companyId && db ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
   const { data: boqs, loading: boqLoading } = useCollection<BOQ>(boqQuery);
   const activeBoq = boqs?.[0];
@@ -59,18 +63,26 @@ export default function TransactionBOQProgressPage() {
   const boqTree = useMemo(() => transformToBOQTree(items || []), [items]);
   const executionService = useMemo(() => db && companyId ? new BOQExecutionService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
-  // دالة الحفظ الميداني
+  // دالة الحفظ الميداني المحدثة بمحرك الاستدلال التلقائي
   const handleUpdateQuantity = async (item: BOQItem) => {
     const newVal = currentInputs[item.id!];
     if (!newVal || newVal <= 0 || !executionService || !activeBoq || !user) return;
 
     setUpdatingId(item.id!);
     try {
-      // استخدام المرحلة الافتراضية للبند أو أول مرحلة مرتبطة به
-      const targetStageId = item.technicalStageId || (item.technicalStageIds?.[0]) || '';
+      // محاولة الحصول على المرحلة: 1. من البند نفسه 2. من أول مصفوفة 3. المرحلة النشطة حالياً
+      let targetStageId = item.technicalStageId || (item.technicalStageIds?.[0]);
       
+      if (!targetStageId && stages) {
+         // استدلال تلقائي: ابحث عن المرحلة التي يعمل فيها المهندس حالياً (in-progress)
+         const activeStage = stages.find(s => s.status === 'in-progress');
+         if (activeStage) {
+            targetStageId = activeStage.technicalStageId;
+         }
+      }
+
       if (!targetStageId) {
-        throw new Error(isRtl ? "البند غير مرتبط بمرحلة فنية" : "Item not linked to a stage");
+        throw new Error(isRtl ? "البند غير مرتبط بمرحلة فنية، يرجى تفعيل إحدى مراحل المعاملة أولاً." : "Item not linked to a stage, please activate a transaction stage first.");
       }
 
       await executionService.recordBOQItemExecution(
@@ -112,14 +124,9 @@ export default function TransactionBOQProgressPage() {
     };
   }, [items]);
 
-  /**
-   * دالة العرض الجدولي الشجري المنظم (Tree Grid)
-   * تدعم عرض (السابق، الحالي، الإجمالي)
-   */
   const renderExecutionTreeRows = (node: BOQTreeNode, prefix: string): React.ReactNode => {
     return (
       <React.Fragment key={node.id}>
-        {/* صف القسم (Group Header) */}
         <TableRow className="bg-slate-50/50 hover:bg-slate-100 border-b-2 border-white">
           <TableCell className="font-mono text-[11px] font-black text-slate-400 ps-6 w-[80px]">{prefix}</TableCell>
           <TableCell className="w-[100px] font-mono text-[10px] font-bold text-slate-400">---</TableCell>
@@ -132,13 +139,11 @@ export default function TransactionBOQProgressPage() {
           <TableCell colSpan={8}></TableCell>
         </TableRow>
 
-        {/* صفوف البنود التنفيذية */}
         {node.items.map((item, iIdx) => {
           const itemPrefix = `${prefix.replace('.0', '')}.${iIdx + 1}`;
           const currentVal = currentInputs[item.id!] || 0;
           const prevVal = item.executedQuantity || 0;
           const totalCumulative = prevVal + currentVal;
-          const totalPlannedValue = (item.plannedQuantity || 0) * (item.estimatedRate || 0);
           
           const progress = (totalCumulative / (item.plannedQuantity || 1)) * 100;
           const isOver = totalCumulative > (item.plannedQuantity || 0);
@@ -152,20 +157,26 @@ export default function TransactionBOQProgressPage() {
               </TableCell>
               <TableCell className="text-center font-black text-[10px] text-slate-400 uppercase">{item.unitSymbol || '-'}</TableCell>
               
-              {/* المخطط */}
-              <TableCell className="text-center font-mono font-black text-slate-400 text-xs bg-slate-50/30">{item.plannedQuantity}</TableCell>
+              {/* المخطط - تمت إعادته بناءً على الطلب */}
+              <TableCell className="text-center w-[80px]">
+                 <span className="font-mono font-black text-slate-400 text-xs bg-slate-100/50 px-3 py-1 rounded-lg">
+                    {item.plannedQuantity}
+                 </span>
+              </TableCell>
               
               {/* السابق */}
-              <TableCell className="text-center font-mono font-black text-slate-600 text-xs">{prevVal}</TableCell>
+              <TableCell className="text-center font-mono font-black text-slate-600 text-xs">
+                 {prevVal}
+              </TableCell>
               
-              {/* الحالي (الإدخال) */}
-              <TableCell className="p-1 w-[130px]">
-                <div className="relative group/input">
+              {/* الحالي (الإدخال) - تصميم كبسولة */}
+              <TableCell className="p-1 w-[120px]">
+                <div className="relative">
                   <Input 
                     type="number" 
                     value={currentVal || ''}
                     onChange={(e) => handleInputChange(item.id!, e.target.value)}
-                    onBlur={() => handleUpdateQuantity(item)}
+                    onBlur={() => currentVal > 0 && handleUpdateQuantity(item)}
                     placeholder="0"
                     className={cn(
                       "h-9 rounded-full border-2 font-black text-center text-xs transition-all",
@@ -173,44 +184,39 @@ export default function TransactionBOQProgressPage() {
                     )} 
                   />
                   {updatingId === item.id && <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 animate-spin text-primary" />}
-                  {currentVal > 0 && updatingId !== item.id && <button onClick={() => handleUpdateQuantity(item)} className="absolute left-2 top-1/2 -translate-y-1/2 text-emerald-500 hover:scale-110 transition-transform"><CheckCircle2 className="h-4 w-4" /></button>}
                 </div>
               </TableCell>
 
-              {/* الإجمالي */}
-              <TableCell className="text-center">
+              {/* الإجمالي - تصميم كبسولة Badge */}
+              <TableCell className="text-center w-[100px]">
                  <Badge variant="outline" className={cn(
-                   "font-black text-xs px-3 h-8 rounded-xl border-2",
+                   "font-black text-xs px-4 h-9 rounded-full border-2 shadow-sm",
                    isOver ? "bg-rose-50 text-rose-600 border-rose-200" : "bg-slate-50 text-slate-900 border-slate-100"
                  )}>
                     {totalCumulative}
                  </Badge>
               </TableCell>
 
-              {/* الفئة */}
               <TableCell className="text-center font-mono font-bold text-slate-400 text-xs">
                 {item.estimatedRate?.toLocaleString()}
               </TableCell>
               
-              {/* القيمة الإجمالية المنفذة */}
               <TableCell className="text-end font-mono font-black text-emerald-600 text-xs">
                 {(totalCumulative * (item.estimatedRate || 0)).toLocaleString()}
               </TableCell>
 
-              {/* الإنجاز */}
               <TableCell className="pe-6 w-[120px]">
                 <div className="space-y-1">
                   <div className="flex justify-between text-[8px] font-black uppercase text-slate-400">
                     <span>{progress.toFixed(1)}%</span>
                   </div>
-                  <Progress value={progress} className="h-1 bg-slate-100 [&>div]:bg-primary shadow-sm" />
+                  <Progress value={progress} className="h-1 bg-slate-100 [&>div]:bg-primary" />
                 </div>
               </TableCell>
             </TableRow>
           );
         })}
 
-        {/* العودية للأقسام الفرعية */}
         {node.children.map((child, cIdx) => {
           const childPrefix = `${prefix.replace('.0', '')}.${node.items.length + cIdx + 1}`;
           return renderExecutionTreeRows(child, childPrefix);
@@ -265,7 +271,7 @@ export default function TransactionBOQProgressPage() {
                <TableHead className="text-center w-[60px]">{isRtl ? 'الوحدة' : 'Unit'}</TableHead>
                <TableHead className="text-center w-[80px] bg-slate-100/50">{isRtl ? 'المخطط' : 'Plan'}</TableHead>
                <TableHead className="text-center w-[80px]">{isRtl ? 'السابق' : 'Prev'}</TableHead>
-               <TableHead className="text-center w-[130px]">{isRtl ? 'الحالي' : 'Current'}</TableHead>
+               <TableHead className="text-center w-[120px]">{isRtl ? 'الحالي' : 'Current'}</TableHead>
                <TableHead className="text-center w-[100px]">{isRtl ? 'الإجمالي' : 'Total'}</TableHead>
                <TableHead className="text-center w-[100px]">{isRtl ? 'الفئة' : 'Rate'}</TableHead>
                <TableHead className="text-end w-[120px]">{isRtl ? 'القيمة' : 'Value'}</TableHead>
