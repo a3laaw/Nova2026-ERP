@@ -610,7 +610,7 @@ export default function TransactionDetailsPage() {
                        <Textarea 
                          value={progressNotes} 
                          onChange={e => setProgressNotes(e.target.value)}
-                         className="min-h-[80px] rounded-2xl border-2 bg-slate-50/30 p-4 text-xs font-bold"
+                         className="min-h-[100px] rounded-2xl border-2 bg-slate-50/30 p-4 text-xs font-bold"
                          placeholder="..."
                        />
                     </div>
@@ -634,4 +634,3 @@ export default function TransactionDetailsPage() {
     </div>
   );
 }
-
