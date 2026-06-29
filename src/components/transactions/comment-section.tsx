@@ -9,7 +9,7 @@ import {
   Trash2, Loader2, Hammer, User,
   History, Clock, Zap, Archive, FilterX,
   Calendar, Printer, CheckCircle2, Timer,
-  RotateCcw, FileText, LayoutGrid
+  RotateCcw, FileText, LayoutGrid, X
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -43,6 +43,7 @@ interface Props {
   onClearFilter?: () => void;
   selectedStageName?: string;
   technicalStageId?: string | null;
+  activeTabOverride?: 'active' | 'timeline' | 'chat_archive' | 'time_archive';
 }
 
 export function CommentSection({ 
@@ -55,7 +56,8 @@ export function CommentSection({
   filterStageId = null,
   onClearFilter,
   selectedStageName,
-  technicalStageId
+  technicalStageId,
+  activeTabOverride
 }: Props) {
   const { user, globalUser } = useAuthContext();
   const { lang, dir } = useLanguage();
@@ -67,12 +69,12 @@ export function CommentSection({
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'active' | 'timeline' | 'chat_archive' | 'time_archive'>('active');
 
-  // ذكاء التوجيه: عند اختيار مرحلة من الخارج، ننتقل تلقائياً لتبويب النشاط
+  // استجابة تفاعلية لطلب الفتح من الخارج (زر التعليق)
   useEffect(() => {
-    if (filterStageId) {
-      setActiveTab('active');
+    if (activeTabOverride) {
+      setActiveTab(activeTabOverride);
     }
-  }, [filterStageId]);
+  }, [activeTabOverride]);
 
   const commentsQuery = useMemo(() => 
     db ? query(collection(db, path), orderBy('createdAt', 'asc')) : null, 
@@ -89,26 +91,33 @@ export function CommentSection({
     db && globalUser?.companyId ? new CommentService(db, globalUser.companyId, permissions) : null, 
   [db, globalUser, permissions]);
 
+  // تصفية النشاط الجاري
   const activeStream = useMemo(() => {
-    const filteredComments = (comments || []).filter(c => !c.isArchived && (!filterStageId || c.stageInstanceId === filterStageId)).map(c => ({ 
-      ...c, 
-      streamType: 'comment' as const,
-      sortTime: c.createdAt?.toMillis?.() || Date.now()
-    }));
+    const filteredComments = (comments || [])
+      .filter(c => !c.isArchived && (!filterStageId || c.stageInstanceId === filterStageId))
+      .map(c => ({ 
+        ...c, 
+        streamType: 'comment' as const,
+        sortTime: c.createdAt?.toMillis?.() || Date.now()
+      }));
     
-    const filteredLogs = (externalLogs || []).filter(l => !technicalStageId || l.technicalStageId === technicalStageId).map(l => ({ 
-      ...l, 
-      streamType: 'log' as const,
-      sortTime: l.createdAt?.toMillis?.() || Date.now()
-    }));
+    const filteredLogs = (externalLogs || [])
+      .filter(l => !technicalStageId || l.technicalStageId === technicalStageId)
+      .map(l => ({ 
+        ...l, 
+        streamType: 'log' as const,
+        sortTime: l.createdAt?.toMillis?.() || Date.now()
+      }));
 
     return [...filteredComments, ...filteredLogs].sort((a, b) => a.sortTime - b.sortTime);
   }, [comments, externalLogs, filterStageId, technicalStageId]);
 
+  // أرشيف الدردشة للمديرين
   const archivedChat = useMemo(() => {
     return (comments || []).filter(c => c.isArchived === true && (!filterStageId || c.stageInstanceId === filterStageId));
   }, [comments, filterStageId]);
 
+  // أرشيف السجلات الزمنية للمديرين
   const archivedTime = useMemo(() => {
     return (timelineEvents || []).filter(e => e.type === 'stage_reopen' && (!filterStageId || e.stageId === filterStageId));
   }, [timelineEvents, filterStageId]);
@@ -136,7 +145,7 @@ export function CommentSection({
   };
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full bg-white text-start">
       <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="flex flex-col h-full">
         <div className="flex flex-col gap-4 print:hidden shrink-0 px-1">
           <div className="flex items-center justify-between">
@@ -144,8 +153,8 @@ export function CommentSection({
               <MessageSquare className="h-4 w-4 text-primary" /> {title || (isRtl ? 'غرفة العمليات' : 'War Room')}
             </h3>
             {filterStageId && (
-                <button onClick={onClearFilter} className="h-7 rounded-lg text-[9px] font-black gap-2 bg-primary/10 text-primary px-3 flex items-center shadow-sm">
-                  <FilterX className="h-3 w-3" /> {isRtl ? 'عرض الكل' : 'Clear Filter'}
+                <button onClick={onClearFilter} className="h-7 rounded-lg text-[9px] font-black gap-2 bg-slate-900 text-white px-3 flex items-center shadow-lg">
+                  <X className="h-3 w-3" /> {isRtl ? 'عرض الكل' : 'View All'}
                 </button>
             )}
           </div>
@@ -159,15 +168,23 @@ export function CommentSection({
               </TabsTrigger>
               {isAdmin && (
                 <>
-                  <TabsTrigger value="chat_archive" className="rounded-lg text-[9px] font-black data-[state=active]:bg-slate-900 data-[state=active]:text-white gap-1.5">
-                    <Archive className="h-2.5 w-2.5" /> {isRtl ? 'الدردشة' : 'Chat Arc'}
+                  <TabsTrigger value="chat_archive" className="rounded-lg text-[9px] font-black data-[state=active]:bg-[#1e1b4b] data-[state=active]:text-white gap-1.5">
+                    <Archive className="h-2.5 w-2.5" /> {isRtl ? 'المحادثة' : 'Chat Arc'}
                   </TabsTrigger>
-                  <TabsTrigger value="time_archive" className="rounded-lg text-[9px] font-black data-[state=active]:bg-slate-900 data-[state=active]:text-white gap-1.5">
+                  <TabsTrigger value="time_archive" className="rounded-lg text-[9px] font-black data-[state=active]:bg-[#1e1b4b] data-[state=active]:text-white gap-1.5">
                     <Clock className="h-2.5 w-2.5" /> {isRtl ? 'الوقت' : 'Time Arc'}
                   </TabsTrigger>
                 </>
               )}
           </TabsList>
+
+          {filterStageId && (
+            <div className="px-3 py-2 rounded-xl bg-primary/5 border border-primary/10 animate-in slide-in-from-top-2">
+              <p className="text-[9px] font-black text-primary uppercase tracking-tighter flex items-center gap-2">
+                 <LayoutGrid className="h-3 w-3" /> {isRtl ? `عرض أحداث: ${selectedStageName}` : `Focus: ${selectedStageName}`}
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto mt-4 px-1 scrollbar-hide">
@@ -179,24 +196,18 @@ export function CommentSection({
                   <StreamItem key={item.id || item.sortTime} item={item} isRtl={isRtl} user={user} boqItems={boqItems} onDelete={handleDelete} />
               ))
             )}
-            {!activeStream.length && !commentsLoading && (
-              <div className="py-20 text-center flex flex-col items-center gap-3 opacity-20">
-                  <MessageSquare className="h-10 w-10" />
-                  <p className="text-[10px] font-black uppercase tracking-widest">{isRtl ? 'لا يوجد نشاط مسجل' : 'No Activity'}</p>
-              </div>
-            )}
           </TabsContent>
 
-          <TabsContent value="chat_archive" className="m-0 space-y-6 text-start">
+          <TabsContent value="chat_archive" className="m-0 space-y-6">
             <div className="space-y-6 pb-20">
                 {archivedChat.map((item) => (
                   <StreamItem key={item.id} item={{...item, streamType: 'comment'}} isRtl={isRtl} user={user} boqItems={boqItems} />
                 ))}
-                {!archivedChat.length && <p className="text-[10px] text-slate-300 font-bold italic py-20 text-center">لا توجد نقاشات مؤرشفة.</p>}
+                {!archivedChat.length && <p className="text-[10px] text-slate-300 font-bold italic py-20 text-center">لا توجد نقاشات مؤرشفة لهذه المرحلة.</p>}
             </div>
           </TabsContent>
 
-          <TabsContent value="time_archive" className="m-0 space-y-4 text-start">
+          <TabsContent value="time_archive" className="m-0 space-y-4">
             <div className="space-y-4 pb-20">
               {archivedTime.map((event, idx) => (
                   <div key={idx} className="p-5 rounded-[1.5rem] bg-rose-50/20 border-2 border-dashed border-rose-100 animate-in slide-in-from-top-2">
@@ -221,17 +232,11 @@ export function CommentSection({
             </div>
           </TabsContent>
 
-          <TabsContent value="timeline" className="m-0 space-y-6 text-start">
-            <div className="space-y-4 pb-20 print:space-y-8">
+          <TabsContent value="timeline" className="m-0 space-y-6">
+            <div className="space-y-4 pb-20">
                 {stages.sort((a,b)=> (a.order||0) - (b.order||0)).map((stage, idx) => {
                   const start = stage.startedAt?.toDate();
                   const end = stage.completedAt?.toDate();
-                  let durationValue = "";
-                  if (start && end) {
-                      const days = differenceInDays(end, start);
-                      const hours = differenceInHours(end, start) % 24;
-                      durationValue = days > 0 ? `${days}d ${hours}h` : `${hours}h`;
-                  }
                   return (
                       <div key={stage.id} className="relative ps-8 pb-8 last:pb-0 group/timeline">
                         <div className="absolute left-[11px] top-4 bottom-0 w-0.5 bg-slate-100 group-last/timeline:hidden" />
@@ -247,7 +252,6 @@ export function CommentSection({
                               <div className="space-y-0.5"><p className="text-[7px] font-black text-slate-400 uppercase">Start</p><p className="text-[8px] font-bold text-slate-600 truncate">{start ? start.toLocaleDateString() : '---'}</p></div>
                               <div className="space-y-0.5"><p className="text-[7px] font-black text-slate-400 uppercase">End</p><p className="text-[8px] font-bold text-slate-600 truncate">{end ? end.toLocaleDateString() : '---'}</p></div>
                             </div>
-                            {durationValue && <Badge variant="secondary" className="bg-emerald-50 text-emerald-600 border-0 text-[8px] font-black">Time: {durationValue}</Badge>}
                         </div>
                       </div>
                   );

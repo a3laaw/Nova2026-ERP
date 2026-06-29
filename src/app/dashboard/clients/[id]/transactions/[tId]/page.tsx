@@ -83,6 +83,7 @@ export default function TransactionDetailsPage() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [stageProgressMap, setStageProgressMap] = useState<Record<string, StageProgressResult>>({});
   const [filterStageId, setFilterStageId] = useState<string | null>(null);
+  const [activeTabOverride, setActiveTabOverride] = useState<'active' | 'timeline' | 'chat_archive' | 'time_archive' | undefined>(undefined);
   
   const [isRecordOpen, setIsRecordOpen] = useState(false);
   const [isComplementary, setIsComplementary] = useState(false);
@@ -272,6 +273,14 @@ export default function TransactionDetailsPage() {
     }
   };
 
+  // وظيفة فتح التعليق المخصصة (Context Focus)
+  const handleStageCommentClick = (stage: StageInstance) => {
+    setFilterStageId(stage.id!);
+    setActiveTabOverride('active');
+    // نستخدم setTimeout لضمان تمرير الـ Reset للـ ActiveTabOverride لاحقاً
+    setTimeout(() => setActiveTabOverride(undefined), 100);
+  };
+
   if (transLoading || stagesLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
   if (!transaction) return <div className="p-20 text-center font-black text-slate-400">{isRtl ? 'المعاملة غير موجودة' : 'Transaction not found'}</div>;
 
@@ -425,9 +434,9 @@ export default function TransactionDetailsPage() {
 
                                 <div className="flex gap-2 shrink-0 z-10" onClick={e => e.stopPropagation()}>
                                    <Button 
-                                     onClick={(e) => { e.stopPropagation(); setFilterStageId(stage.id!); }}
+                                     onClick={(e) => { e.stopPropagation(); handleStageCommentClick(stage); }}
                                      variant="ghost" 
-                                     className="h-11 px-4 rounded-xl text-slate-400 hover:text-primary font-black text-[10px] gap-2"
+                                     className="h-11 px-4 rounded-xl text-slate-400 hover:text-primary font-black text-[10px] gap-2 hover:bg-primary/5"
                                    >
                                       <MessageSquare className="h-3.5 w-3.5" />
                                       {isRtl ? 'تعليق' : 'Comment'}
@@ -485,6 +494,7 @@ export default function TransactionDetailsPage() {
                       technicalStageId={currentFilteredStage?.technicalStageId}
                       selectedStageName={currentFilteredStage?.name}
                       onClearFilter={() => setFilterStageId(null)}
+                      activeTabOverride={activeTabOverride}
                    />
                 </CardContent>
              </Card>

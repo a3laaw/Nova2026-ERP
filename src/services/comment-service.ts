@@ -7,10 +7,8 @@ import {
   addDoc, 
   updateDoc, 
   deleteDoc, 
-  serverTimestamp,
+  serverTimestamp, 
   getDocs,
-  query,
-  where,
   writeBatch
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
@@ -38,16 +36,16 @@ export class CommentService {
     ensureActionPermission(this.permissions, 'projects:view');
     
     const path = paths.transactionComments(this.companyId, transactionId);
-    const commentData: TransactionComment = {
+    const commentData: any = {
       transactionId,
       stageInstanceId: stageInstanceId || null,
       stageName: stageName || '',
       content,
       commentType: type,
       createdBy: userId,
-      createdByName: userName || 'User', // ضمان وجود اسم دائماً
+      createdByName: userName || 'User',
       companyId: this.companyId,
-      isArchived: false,
+      isArchived: false, // تعيين صريح كقيمة منطقية
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
@@ -61,13 +59,12 @@ export class CommentService {
   }
 
   /**
-   * أرشفة تعليقات مرحلة محددة (تستخدم عند التراجع)
-   * تم تحسينها لتعمل بدون الحاجة لفهارس معقدة عبر الفلترة البرمجية
+   * أرشفة تعليقات مرحلة محددة عند التراجع
    */
   async archiveStageComments(transactionId: string, stageInstanceId: string) {
     const path = paths.transactionComments(this.companyId, transactionId);
     
-    // جلب كافة التعليقات لهذا المعاملة (MVP Scale)
+    // جلب كافة التعليقات لهذا المعاملة
     const snap = await getDocs(collection(this.db, path));
     if (snap.empty) return;
 
