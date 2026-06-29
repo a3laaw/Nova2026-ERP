@@ -136,6 +136,7 @@ export interface BOQVariationItem extends BaseReference {
   id: string;
   variationId: string;
   sourceBoqItemId?: string; // إذا كان تعديلاً على بند موجود
+  boqReferenceNodeId?: string; // إذا كان بنداً مستجداً من الشجرة
   type: VariationType;
   description: string;
   unitName?: string;
