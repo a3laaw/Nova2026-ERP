@@ -24,6 +24,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { ensureActionPermission } from '@/lib/permissions/engine';
 import { BOQExecutionService } from './boq-execution-service';
 import { CommentService } from './comment-service';
+import { differenceInHours, differenceInDays } from 'date-fns';
 
 export class TransactionService {
   constructor(
@@ -150,10 +151,10 @@ export class TransactionService {
       throw err;
     });
 
-    // توثيق البداية
     const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
     await addDoc(timelineRef, {
       transactionId,
+      stageId,
       type: 'stage_start',
       content: `تم بدء العمل في المرحلة الفنية`,
       userId,
@@ -185,10 +186,10 @@ export class TransactionService {
       updatedAt: serverTimestamp(),
     });
 
-    // توثيق الإغلاق
     const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
     await addDoc(timelineRef, {
       transactionId,
+      stageId,
       type: 'stage_complete',
       content: `تم إنجاز المرحلة بنجاح`,
       userId,
@@ -206,8 +207,15 @@ export class TransactionService {
     if (!stageSnap.exists()) return;
     const stageData = stageSnap.data() as StageInstance;
 
+    const start = stageData.startedAt?.toDate();
+    const end = stageData.completedAt?.toDate() || new Date();
+    
+    const durationDays = start ? differenceInDays(end, start) : 0;
+    const durationHours = start ? differenceInHours(end, start) % 24 : 0;
+
     const batch = writeBatch(this.db);
 
+    // 1. إعادة تعيين المرحلة الحالية
     batch.update(stageRef, {
       status: 'in-progress',
       completedAt: null,
@@ -216,6 +224,7 @@ export class TransactionService {
       updatedBy: userId
     });
 
+    // 2. قفل المرحلة التالية (القفل التسلسلي)
     const nextOrder = (stageData.order || 0) + 1;
     const stagesRef = collection(this.db, paths.transactionStages(this.companyId, transactionId));
     const nextQ = query(stagesRef, where('order', '==', nextOrder));
@@ -232,7 +241,23 @@ export class TransactionService {
 
     await batch.commit();
 
-    // أرشفة التعليقات المرتبطة بدلاً من حذفها
+    // 3. توثيق الأرشفة الزمنية (ارشيف زمني في حالة التراجع)
+    const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
+    await addDoc(timelineRef, {
+      transactionId,
+      stageId,
+      type: 'stage_reopen',
+      content: `تراجع عن الإكمال: استغرقت المحاولة السابقة ${durationDays} يوم و ${durationHours} ساعة.`,
+      previousStart: stageData.startedAt || null,
+      previousEnd: stageData.completedAt || null,
+      durationText: `${durationDays}d ${durationHours}h`,
+      userId,
+      userName,
+      companyId: this.companyId,
+      createdAt: serverTimestamp()
+    });
+
+    // 4. أرشفة التعليقات المرتبطة
     const commentService = new CommentService(this.db, this.companyId, this.permissions);
     await commentService.archiveStageComments(transactionId, stageId);
 

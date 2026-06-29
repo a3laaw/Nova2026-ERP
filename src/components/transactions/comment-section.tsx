@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -9,7 +8,8 @@ import {
   Send, MessageSquare, MoreVertical, 
   Trash2, Loader2, Hammer, User,
   History, Clock, Zap, Archive, FilterX,
-  Calendar, Printer, CheckCircle2, Timer
+  Calendar, Printer, CheckCircle2, Timer,
+  RotateCcw
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -17,7 +17,7 @@ import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { CommentService } from '@/services/comment-service';
-import { TransactionComment, CommentType, StageInstance } from '@/types/transaction';
+import { TransactionComment, CommentType, StageInstance, TransactionTimelineEvent } from '@/types/transaction';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow, differenceInHours, differenceInDays } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
@@ -30,12 +30,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { paths } from '@/firebase/multi-tenant';
 
 interface Props {
   transactionId: string;
   path: string; 
   title?: string;
-  compact?: boolean;
   externalLogs?: any[]; 
   boqItems?: any[];     
   stages?: StageInstance[];
@@ -71,7 +71,12 @@ export function CommentSection({
     db ? query(collection(db, path), orderBy('createdAt', 'asc')) : null, 
   [db, path]);
 
+  const timelineQuery = useMemo(() => 
+    db && globalUser?.companyId ? query(collection(db, paths.transactionTimeline(globalUser.companyId, transactionId)), orderBy('createdAt', 'asc')) : null, 
+  [db, globalUser, transactionId]);
+
   const { data: comments, loading: commentsLoading } = useCollection<TransactionComment>(commentsQuery);
+  const { data: timelineEvents } = useCollection<any>(timelineQuery);
 
   const commentService = useMemo(() => 
     db && globalUser?.companyId ? new CommentService(db, globalUser.companyId, permissions) : null, 
@@ -122,14 +127,9 @@ export function CommentSection({
     try { await commentService?.deleteComment(path, commentId); } catch(e) {}
   };
 
-  const handlePrintTimeline = () => {
-    window.print();
-  };
-
   return (
     <div className="flex flex-col h-full gap-4">
       <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="flex flex-col h-full gap-4">
-        {/* Header & Tabs */}
         <div className="flex flex-col gap-4 print:hidden shrink-0">
           <div className="flex items-center justify-between px-1">
              <h3 className="text-sm font-black flex items-center gap-2 text-slate-500 uppercase tracking-widest">
@@ -173,7 +173,6 @@ export function CommentSection({
           </div>
         )}
 
-        {/* Content Area */}
         <div className="flex-1 overflow-y-auto pr-2 scrollbar-hide">
           <TabsContent value="active" className="mt-0 space-y-6">
              {commentsLoading ? (
@@ -194,7 +193,7 @@ export function CommentSection({
           <TabsContent value="timeline" className="mt-0 space-y-6 text-start">
              <div className="flex justify-between items-center mb-6 print:hidden">
                 <p className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'تحليل مسار الإنجاز الزمني' : 'Operational Time Analysis'}</p>
-                <Button size="sm" onClick={handlePrintTimeline} variant="outline" className="h-8 rounded-lg text-[10px] font-black gap-2">
+                <Button size="sm" onClick={() => window.print()} variant="outline" className="h-8 rounded-lg text-[10px] font-black gap-2">
                    <Printer className="h-3 w-3" /> {isRtl ? 'طباعة السجل' : 'Print'}
                 </Button>
              </div>
@@ -203,6 +202,9 @@ export function CommentSection({
                 {stages.sort((a,b)=> (a.order||0) - (b.order||0)).map((stage, idx) => {
                    const start = stage.startedAt?.toDate();
                    const end = stage.completedAt?.toDate();
+                   
+                   // البحث عن المحاولات المؤرشفة (ارشيف زمني في حالة التراجع)
+                   const undoneAttempts = (timelineEvents || []).filter(e => e.type === 'stage_reopen' && e.stageId === stage.id);
                    
                    let durationText = isRtl ? 'لم تبدأ' : 'Not Started';
                    let durationValue = "";
@@ -228,23 +230,47 @@ export function CommentSection({
                             {stage.status === 'completed' ? <CheckCircle2 className="h-3 w-3 text-white" /> : <span className="text-[8px] font-black text-white">{idx+1}</span>}
                          </div>
                          
-                         <div className="space-y-2">
+                         <div className="space-y-2 text-start">
                             <h4 className="font-black text-xs text-slate-900">{stage.name}</h4>
-                            <div className="grid grid-cols-2 gap-4">
+                            
+                            {/* المحاولة الحالية */}
+                            <div className="grid grid-cols-2 gap-4 bg-white p-3 rounded-xl border border-slate-100">
                                <div className="space-y-1">
                                   <p className="text-[8px] font-black text-slate-400 uppercase">{isRtl ? 'البداية' : 'Started'}</p>
-                                  <p className="text-[10px] font-bold text-slate-600">{start ? start.toLocaleString(isRtl ? 'ar-KW' : 'en-US') : '---'}</p>
+                                  <p className="text-[9px] font-bold text-slate-600">{start ? start.toLocaleString(isRtl ? 'ar-KW' : 'en-US') : '---'}</p>
                                </div>
                                <div className="space-y-1">
                                   <p className="text-[8px] font-black text-slate-400 uppercase">{isRtl ? 'النهاية' : 'Finished'}</p>
-                                  <p className="text-[10px] font-bold text-slate-600">{end ? end.toLocaleString(isRtl ? 'ar-KW' : 'en-US') : '---'}</p>
+                                  <p className="text-[9px] font-bold text-slate-600">{end ? end.toLocaleString(isRtl ? 'ar-KW' : 'en-US') : '---'}</p>
                                </div>
                             </div>
+
                             {start && (
                               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-50 border text-primary">
                                  <Timer className="h-3 w-3" />
                                  <span className="text-[9px] font-black uppercase">{durationText}: {durationValue}</span>
                               </div>
+                            )}
+
+                            {/* سجل المحاولات الملغاة (الأرشيف الزمني) */}
+                            {undoneAttempts.length > 0 && (
+                               <div className="mt-4 space-y-2 animate-in slide-in-from-top-2">
+                                  <p className="text-[8px] font-black text-rose-400 uppercase flex items-center gap-1">
+                                     <RotateCcw className="h-2.5 w-2.5" /> {isRtl ? 'محاولات سابقة تم التراجع عنها' : 'Archived Attempts (Undone)'}
+                                  </p>
+                                  {undoneAttempts.map((attempt: any, aIdx: number) => (
+                                     <div key={aIdx} className="p-2 rounded-lg bg-rose-50/50 border border-rose-100 flex justify-between items-center">
+                                        <div className="text-[9px] font-bold text-rose-700">
+                                           {attempt.durationText || '---'}
+                                        </div>
+                                        <div className="text-end">
+                                           <p className="text-[7px] text-rose-400 font-mono">
+                                              {attempt.previousEnd ? attempt.previousEnd.toDate().toLocaleDateString() : '---'}
+                                           </p>
+                                        </div>
+                                     </div>
+                                  ))}
+                               </div>
                             )}
                          </div>
                       </div>
@@ -253,29 +279,28 @@ export function CommentSection({
              </div>
           </TabsContent>
         </div>
-      </Tabs>
 
-      {/* Input Area */}
-      {activeTab !== 'timeline' && (
-        <Card className="border-2 border-slate-100 shadow-2xl rounded-[2rem] overflow-hidden bg-white mt-auto ring-4 ring-black/[0.02] print:hidden">
-          <CardContent className="p-3 flex items-end gap-2">
-             <Textarea 
-               value={content}
-               onChange={e => setContent(e.target.value)}
-               placeholder={isRtl ? (filterStageId ? `اكتب ملاحظة في مرحلة ${selectedStageName}...` : "اكتب تعليقاً عاماً...") : "Write a comment..."}
-               className="min-h-[44px] max-h-[150px] rounded-2xl border-0 focus-visible:ring-0 text-sm font-bold bg-slate-50/50 resize-none p-4"
-             />
-             <Button 
-               onClick={handleSubmit} 
-               disabled={loading || !content.trim()}
-               size="icon" 
-               className="h-12 w-12 rounded-2xl bg-primary text-white shadow-xl shadow-primary/20 shrink-0 hover:scale-110 transition-transform"
-             >
-                {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Send className={cn("h-6 w-6", isRtl && "rotate-180")} />}
-             </Button>
-          </CardContent>
-        </Card>
-      )}
+        {activeTab !== 'timeline' && (
+          <Card className="border-2 border-slate-100 shadow-2xl rounded-[2rem] overflow-hidden bg-white mt-auto ring-4 ring-black/[0.02] print:hidden shrink-0">
+            <CardContent className="p-3 flex items-end gap-2">
+               <Textarea 
+                 value={content}
+                 onChange={e => setContent(e.target.value)}
+                 placeholder={isRtl ? (filterStageId ? `اكتب ملاحظة في مرحلة ${selectedStageName}...` : "اكتب تعليقاً عاماً...") : "Write a comment..."}
+                 className="min-h-[44px] max-h-[150px] rounded-2xl border-0 focus-visible:ring-0 text-sm font-bold bg-slate-50/50 resize-none p-4"
+               />
+               <Button 
+                 onClick={handleSubmit} 
+                 disabled={loading || !content.trim()}
+                 size="icon" 
+                 className="h-12 w-12 rounded-2xl bg-primary text-white shadow-xl shadow-primary/20 shrink-0 hover:scale-110 transition-transform"
+               >
+                  {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Send className={cn("h-6 w-6", isRtl && "rotate-180")} />}
+               </Button>
+            </CardContent>
+          </Card>
+        )}
+      </Tabs>
     </div>
   );
 }
