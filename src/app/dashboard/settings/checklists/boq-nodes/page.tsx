@@ -12,7 +12,8 @@ import {
   Save, Settings2, Workflow,
   RotateCcw, MapPin, AlertTriangle,
   CheckCircle2, X, Info,
-  ExternalLink
+  ExternalLink,
+  ShieldAlert
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, getDocs, doc } from 'firebase/firestore';
@@ -228,21 +229,9 @@ export default function BOQNodesPage() {
         return;
       }
       if (!editingNode.technicalStageIds || editingNode.technicalStageIds.length === 0) {
-        toast({ variant: "destructive", title: isRtl ? "تنبيه" : "Alert", description: isRtl ? "يجب اختيار مرحلة فنية واحدة على الأقل" : "At least one technical stage must be selected" });
+        toast({ variant: "destructive", title: isRtl ? "تنبيه" : "Alert", description: isRtl ? "يجب اختيار مرحلة فنية واحدة على الأقل لتمكين المهندس من تسجيل الإنجاز" : "At least one technical stage is required for field logs" });
         return;
       }
-    }
-
-    // --- Default Stage Sanitization ---
-    let finalDefaultStageId = editingNode.technicalStageId || '';
-    const selectedStages = editingNode.technicalStageIds || [];
-
-    if (selectedStages.length > 0) {
-      if (!finalDefaultStageId || !selectedStages.includes(finalDefaultStageId)) {
-        finalDefaultStageId = selectedStages[0];
-      }
-    } else {
-      finalDefaultStageId = '';
     }
 
     setLoadingAction('save');
@@ -255,8 +244,8 @@ export default function BOQNodesPage() {
         serviceName: effectiveContext?.serviceName || editingNode.serviceName || '',
         subServiceId: subId || '',
         subServiceName: effectiveContext?.subServiceName || editingNode.subServiceName || '',
-        technicalStageId: finalDefaultStageId,
-        technicalStageIds: selectedStages
+        technicalStageId: editingNode.technicalStageId || (editingNode.technicalStageIds?.[0] || ''),
+        technicalStageIds: editingNode.technicalStageIds || []
       };
 
       if (editingNode.id) {
@@ -504,13 +493,16 @@ export default function BOQNodesPage() {
                              <MapPin className="h-3.5 w-3.5" /> ربط مراحل التنفيذ الميداني (متعدد)
                           </Label>
 
-                          <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-start gap-3 mb-2">
-                             <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
-                             <p className="text-[10px] text-blue-700 font-bold leading-relaxed">
-                                {isRtl 
-                                  ? 'هام: اختر المراحل الفنية التي يُسمح للمهندس بتسجيل إنجاز هذا البند فيها داخل الموقع.' 
-                                  : 'Select which technical stages allow engineers to record execution for this item in the field.'}
-                             </p>
+                          <div className="bg-blue-50 p-5 rounded-2xl border-2 border-blue-100 flex items-start gap-4 mb-4">
+                             <ShieldAlert className="h-6 w-6 text-blue-600 shrink-0 mt-1" />
+                             <div className="text-start space-y-1">
+                                <h5 className="font-black text-xs text-blue-900 uppercase">قاعدة الظهور الميداني</h5>
+                                <p className="text-[10px] text-blue-700/80 font-bold leading-relaxed">
+                                   {isRtl 
+                                     ? 'هام: المهندس في الموقع لن يرى هذا البند إلا إذا قمت بربطه بالمراحل التي يُسمح فيها بتنفيذه. الربط يضمن دقة التتبع ومنع تسجيل كميات في مراحل خاطئة.' 
+                                     : 'Engineer in the field won\'t see this item unless linked to allowed execution stages. This ensures tracking accuracy and prevents misplaced logs.'}
+                                </p>
+                             </div>
                           </div>
                           
                           {effectiveContext?.subServiceId ? (
@@ -520,25 +512,25 @@ export default function BOQNodesPage() {
                                   type="button"
                                   variant="outline"
                                   onClick={() => setShowStagePicker(v => !v)}
-                                  className="flex-1 h-12 rounded-xl justify-between border-2 bg-white font-black text-xs px-4"
+                                  className="flex-1 h-14 rounded-xl justify-between border-2 bg-white font-black text-xs px-6 shadow-sm"
                                 >
-                                  <div className="flex gap-2 overflow-hidden items-center">
+                                  <div className="flex gap-3 overflow-hidden items-center">
                                     {editingNode?.technicalStageIds?.length ? (
                                       <>
-                                        <Badge className="bg-primary text-white border-0 text-[10px] font-black">
-                                          {editingNode.technicalStageIds.length} {isRtl ? 'مختار' : 'Selected'}
+                                        <Badge className="bg-primary text-white border-0 text-[10px] font-black h-6 px-3">
+                                          {editingNode.technicalStageIds.length} {isRtl ? 'مرحلة مرتبطة' : 'Stages Linked'}
                                         </Badge>
-                                        <span className="text-slate-500 truncate">
+                                        <span className="text-slate-500 truncate italic">
                                           {isRtl ? 'اضغط لعرض/تعديل المراحل' : 'Click to review/edit stages'}
                                         </span>
                                       </>
                                     ) : (
-                                      <span className="text-slate-400">
-                                        {isRtl ? '--- اختر مرحلة واحدة أو أكثر ---' : '--- Select one or more stages ---'}
+                                      <span className="text-slate-400 font-bold">
+                                        {isRtl ? '--- اختر مراحل التنفيذ لهذا البند ---' : '--- Select execution stages ---'}
                                       </span>
                                     )}
                                   </div>
-                                  <ChevronDown className={cn("h-4 w-4 opacity-40 transition-transform", showStagePicker && "rotate-180")} />
+                                  <ChevronDown className={cn("h-5 w-5 opacity-40 transition-transform", showStagePicker && "rotate-180")} />
                                 </Button>
 
                                 {!!editingNode?.technicalStageIds?.length && (
@@ -552,31 +544,35 @@ export default function BOQNodesPage() {
                                           : prev
                                       )
                                     }
-                                    className="h-12 rounded-xl px-4 text-rose-600 hover:bg-rose-50"
+                                    className="h-14 rounded-xl px-4 text-rose-600 hover:bg-rose-50 border-2 border-transparent"
                                   >
-                                    <X className="h-4 w-4" />
+                                    <X className="h-5 w-5" />
                                   </Button>
                                 )}
                               </div>
 
                               {showStagePicker && (
-                                <div className="rounded-2xl border-2 bg-white p-3 shadow-sm space-y-3 animate-in fade-in-0 zoom-in-95">
-                                  <Input
-                                    value={stageSearch}
-                                    onChange={(e) => setStageSearch(e.target.value)}
-                                    placeholder={isRtl ? 'ابحث باسم المرحلة أو الكود...' : 'Search by stage name or code...'}
-                                    className="h-10 rounded-xl border-2 font-bold"
-                                  />
+                                <div className="rounded-[2rem] border-2 border-primary/20 bg-white p-4 shadow-2xl space-y-4 animate-in fade-in-0 zoom-in-95 duration-200">
+                                  <div className="relative">
+                                    <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+                                    <Input
+                                      value={stageSearch}
+                                      onChange={(e) => setStageSearch(e.target.value)}
+                                      placeholder={isRtl ? 'ابحث باسم المرحلة (مثلاً: حفر، قواعد)...' : 'Search stage...'}
+                                      className="h-11 rounded-xl border-2 font-bold ps-10"
+                                    />
+                                  </div>
 
-                                  <ScrollArea className="h-64 rounded-xl border bg-slate-50/40">
-                                    <div className="p-2 space-y-1">
+                                  <ScrollArea className="h-64 rounded-[1.5rem] border bg-slate-50/50">
+                                    <div className="p-3 space-y-1.5">
                                       {loadingStages ? (
-                                        <div className="p-10 text-center">
-                                          <Loader2 className="animate-spin h-6 w-6 mx-auto text-primary/30" />
+                                        <div className="py-20 text-center flex flex-col items-center gap-3">
+                                          <Loader2 className="animate-spin h-8 w-8 text-primary/30" />
+                                          <p className="text-[10px] font-black text-slate-400 uppercase">Fetching Sub-Service Stages...</p>
                                         </div>
                                       ) : filteredStages.length === 0 ? (
-                                        <div className="p-6 text-center text-xs font-bold text-slate-400">
-                                          {isRtl ? 'لا توجد مراحل مطابقة في هذا المسار' : 'No matching stages in this path'}
+                                        <div className="py-16 text-center text-xs font-bold text-slate-400 italic">
+                                          {isRtl ? 'لم يتم العثور على مراحل في هذا المسار الفني' : 'No stages found in this technical path'}
                                         </div>
                                       ) : (
                                         filteredStages.map(stage => {
@@ -595,35 +591,33 @@ export default function BOQNodesPage() {
                                                 }
                                               }}
                                               className={cn(
-                                                "w-full flex items-center justify-between p-3 rounded-xl transition-all border-2 cursor-pointer text-start",
+                                                "w-full flex items-center justify-between p-4 rounded-xl transition-all border-2 cursor-pointer text-start",
                                                 isChecked
-                                                  ? "bg-primary/5 border-primary/20"
-                                                  : "bg-white border-transparent hover:bg-slate-50"
+                                                  ? "bg-white border-primary shadow-sm ring-1 ring-primary/5"
+                                                  : "bg-white/50 border-transparent hover:border-slate-200"
                                               )}
                                             >
-                                              <div className="flex items-center gap-3 min-w-0">
+                                              <div className="flex items-center gap-4 min-w-0">
                                                 <Checkbox
                                                   checked={isChecked}
-                                                  className="pointer-events-none"
+                                                  className="h-5 w-5 pointer-events-none"
                                                 />
 
                                                 <div className="text-start min-w-0">
-                                                  <p className="font-black text-xs text-slate-800 truncate">
+                                                  <p className={cn("font-black text-xs truncate", isChecked ? "text-slate-900" : "text-slate-500")}>
                                                     {isRtl ? stage.name : (stage.nameEn || stage.name)}
                                                   </p>
-                                                  <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">
+                                                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
                                                     {stage.code}
                                                   </span>
                                                 </div>
                                               </div>
 
-                                              <div className="flex items-center gap-2 shrink-0">
-                                                {editingNode?.technicalStageId === stage.id && (
-                                                  <Badge className="bg-emerald-500 text-white text-[7px] font-black h-4">
-                                                    PRIMARY
-                                                  </Badge>
-                                                )}
-                                              </div>
+                                              {isChecked && editingNode?.technicalStageId === stage.id && (
+                                                <Badge className="bg-emerald-500 text-white text-[7px] font-black h-4 px-2 border-0">
+                                                  PRIMARY
+                                                </Badge>
+                                              )}
                                             </div>
                                           );
                                         })
@@ -631,7 +625,7 @@ export default function BOQNodesPage() {
                                     </div>
                                   </ScrollArea>
 
-                                  <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center justify-between gap-3 pt-2">
                                     <Button
                                       type="button"
                                       variant="ghost"
@@ -642,43 +636,47 @@ export default function BOQNodesPage() {
                                             : prev
                                         )
                                       }
-                                      className="text-rose-600 hover:bg-rose-50 text-xs font-black"
+                                      className="text-rose-600 hover:bg-rose-50 text-[10px] font-black h-9 px-4"
                                     >
-                                      {isRtl ? 'مسح الكل' : 'Clear All'}
+                                      {isRtl ? 'إلغاء كافة الروابط' : 'Clear All Links'}
                                     </Button>
 
                                     <Button
                                       type="button"
-                                      variant="outline"
+                                      variant="default"
                                       onClick={() => setShowStagePicker(false)}
-                                      className="rounded-xl h-9 text-xs font-black"
+                                      className="rounded-xl h-10 px-8 text-xs font-black shadow-lg"
                                     >
-                                      {isRtl ? 'تم' : 'Done'}
+                                      {isRtl ? 'تم الحفظ' : 'Confirm'}
                                     </Button>
                                   </div>
                                 </div>
                               )}
 
                               {editingNode?.technicalStageIds && editingNode.technicalStageIds.length > 1 && (
-                                 <div className="p-5 bg-primary/5 rounded-2xl border border-primary/10 animate-in zoom-in-95">
-                                    <div className="flex items-center justify-between mb-3">
-                                       <Label className="text-[9px] font-black uppercase text-primary tracking-widest">{isRtl ? 'المرحلة الفنية الافتراضية' : 'Primary Default Stage'}</Label>
-                                       <Badge variant="outline" className="text-[7px] font-black border-primary/20 bg-white">AUTO-ASSIGN KEY</Badge>
+                                 <div className="p-6 bg-slate-50 rounded-[2rem] border-2 border-white shadow-inner animate-in zoom-in-95">
+                                    <div className="flex items-center justify-between mb-4">
+                                       <div className="space-y-1">
+                                          <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'مرحلة الربط الافتراضية' : 'Default Target Stage'}</Label>
+                                          <p className="text-[8px] text-slate-400 font-bold">{isRtl ? 'سيتم استخدامها كخيار أول في سجلات المهندس' : 'Used as primary choice in field logs'}</p>
+                                       </div>
+                                       <Badge variant="outline" className="text-[8px] font-black border-primary/20 bg-white px-3 py-1">AUTO-ASSIGN PRIORITY</Badge>
                                     </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                        {editingNode.technicalStageIds.map(id => {
                                           const stage = availableStages.find(s => s.id === id);
+                                          const isSelected = editingNode.technicalStageId === id;
                                           return (
                                             <div 
                                               key={id}
                                               onClick={() => setEditingNode({...editingNode!, technicalStageId: id})}
                                               className={cn(
-                                                "p-3 rounded-xl cursor-pointer transition-all flex items-center justify-between border-2",
-                                                editingNode.technicalStageId === id ? "bg-white border-primary shadow-sm" : "bg-white/50 border-slate-100 opacity-60"
+                                                "p-4 rounded-xl cursor-pointer transition-all flex items-center justify-between border-2",
+                                                isSelected ? "bg-white border-primary shadow-md" : "bg-white/40 border-slate-100 opacity-60 hover:opacity-100"
                                               )}
                                             >
-                                               <span className="text-[10px] font-black text-slate-700 truncate">{isRtl ? stage?.name : (stage?.nameEn || stage?.name)}</span>
-                                               {editingNode.technicalStageId === id && <CheckCircle2 className="h-3 w-3 text-primary" />}
+                                               <span className="text-[11px] font-black text-slate-700 truncate">{isRtl ? stage?.name : (stage?.nameEn || stage?.name)}</span>
+                                               {isSelected && <CheckCircle2 className="h-4 w-4 text-primary" />}
                                             </div>
                                           );
                                        })}
@@ -687,12 +685,12 @@ export default function BOQNodesPage() {
                               )}
                             </div>
                           ) : (
-                            <div className="flex items-center gap-3 text-rose-500 p-5 bg-rose-50 rounded-2xl border border-rose-100 ring-4 ring-rose-50/50">
-                               <AlertTriangle className="h-5 w-5 shrink-0" />
-                               <div className="text-start">
-                                  <p className="text-[10px] font-black uppercase">عزل تشغيلي مفقود</p>
+                            <div className="flex items-center gap-4 text-rose-500 p-6 bg-rose-50/50 rounded-[2rem] border-2 border-rose-100 ring-4 ring-rose-50/20">
+                               <AlertTriangle className="h-7 w-7 shrink-0" />
+                               <div className="text-start space-y-1">
+                                  <p className="text-[11px] font-black uppercase tracking-widest">تنبيه: مسار مجهول</p>
                                   <p className="text-[10px] font-bold text-rose-600/80 leading-relaxed">
-                                     {isRtl ? 'يجب تحديد المسار الفني (SubService) للأب أولاً لتتمكن من ربط البند بمراحل التنفيذ.' : 'Inherited Technical Path missing. Link parent to a workflow first.'}
+                                     {isRtl ? 'هذا البند غير تابع لمسار فني (SubService). يرجى ربط العقدة الأب بمسار محدد أولاً لتتمكن من تعيين مراحل التنفيذ.' : 'This node has no linked Technical Path. Link parent to a sub-service to assign execution stages.'}
                                   </p>
                                </div>
                             </div>
@@ -703,48 +701,56 @@ export default function BOQNodesPage() {
                </div>
 
                {editingNode?.isExecutable && (
-                 <div className="grid grid-cols-2 gap-4 animate-in fade-in">
+                 <div className="grid grid-cols-2 gap-6 animate-in fade-in">
                     <div className="space-y-1.5">
                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">وحدة القياس الموحدة</Label>
                        <Select value={editingNode.unitTypeId} onValueChange={v => {
                             const u = unitTypes?.find(x => x.id === v);
                             setEditingNode({...editingNode!, unitTypeId: v, unitName: u?.name, unitSymbol: u?.symbol});
                        }}>
-                          <SelectTrigger className="h-11 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                          <SelectContent className="rounded-xl">{unitTypes?.map(ut => <SelectItem key={ut.id} value={ut.id!} className="font-bold text-xs">{ut.name} ({ut.symbol})</SelectItem>)}</SelectContent>
+                          <SelectTrigger className="h-12 rounded-xl border-2 font-black text-base"><SelectValue placeholder="..." /></SelectTrigger>
+                          <SelectContent className="rounded-xl border-2 shadow-2xl">
+                             {unitTypes?.map(ut => <SelectItem key={ut.id} value={ut.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">{ut.name} ({ut.symbol})</SelectItem>)}
+                          </SelectContent>
                        </Select>
                     </div>
                     <div className="space-y-1.5">
                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">الفئة المرجعية (KWD)</Label>
-                       <Input type="number" step="0.001" value={editingNode.estimatedRate || 0} onChange={e => setEditingNode({...editingNode!, estimatedRate: Number(e.target.value)})} className="h-11 rounded-xl border-2 font-black text-emerald-600 text-lg" />
+                       <div className="relative">
+                          <Input type="number" step="0.001" value={editingNode.estimatedRate || 0} onChange={e => setEditingNode({...editingNode!, estimatedRate: Number(e.target.value)})} className="h-12 rounded-xl border-2 font-black text-emerald-600 text-xl text-center" />
+                          <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-300">KWD</div>
+                       </div>
                     </div>
                  </div>
                )}
 
-               <div className="space-y-1.5">
+               <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'المواصفة الفنية القياسية' : 'Standard Technical Specification'}</Label>
-                  <Textarea value={editingNode?.description || ''} onChange={e => setEditingNode({...editingNode!, description: e.target.value})} className="min-h-[100px] rounded-xl border-2 p-4 text-xs font-bold leading-relaxed resize-none bg-slate-50/50" />
+                  <Textarea value={editingNode?.description || ''} onChange={e => setEditingNode({...editingNode!, description: e.target.value})} className="min-h-[120px] rounded-2xl border-2 p-5 text-xs font-bold leading-relaxed resize-none bg-slate-50/50 focus:bg-white transition-all shadow-inner" placeholder="..." />
                </div>
 
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-5 bg-slate-900 text-white rounded-2xl shadow-xl">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-slate-900 text-white rounded-[2rem] shadow-2xl ring-4 ring-slate-100">
                   <div className="flex items-center justify-between">
-                     <div className="space-y-0.5">
-                        <Label className="font-black text-xs uppercase tracking-tighter">{isRtl ? 'بند تنفيذي (Item)' : 'Executable Item'}</Label>
+                     <div className="space-y-0.5 text-start">
+                        <Label className="font-black text-xs uppercase tracking-tighter text-primary">{isRtl ? 'بند تنفيذي (Item)' : 'Executable Item'}</Label>
                         <p className="text-[8px] text-slate-400 font-bold">يسمح بتسجيل الإنجاز والميزانية</p>
                      </div>
                      <Switch checked={editingNode?.isExecutable || false} onCheckedChange={v => setEditingNode({...editingNode!, isExecutable: v, nodeRole: v ? 'work_item' : 'group'})} />
                   </div>
-                  <div className="flex items-center justify-between border-s border-white/10 md:ps-6">
-                     <Label className="font-black text-xs uppercase tracking-tighter">{t('isActive')}</Label>
+                  <div className="flex items-center justify-between border-s border-white/10 md:ps-8">
+                     <div className="space-y-0.5 text-start">
+                        <Label className="font-black text-xs uppercase tracking-tighter">{t('isActive')}</Label>
+                        <p className="text-[8px] text-slate-400 font-bold">إتاحة البند للاستخدام الميداني</p>
+                     </div>
                      <Switch checked={editingNode?.isActive !== false} onCheckedChange={v => setEditingNode({...editingNode!, isActive: v})} />
                   </div>
                </div>
             </div>
 
-            <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-3">
-               <Button variant="outline" onClick={() => setEditingNode(null)} className="flex-1 h-12 rounded-xl border-2 font-bold bg-white">إلغاء</Button>
-               <Button onClick={handleSave} disabled={loadingAction === 'save'} className="flex-[2] h-12 rounded-xl bg-primary text-white font-black text-sm shadow-xl border-b-4 border-orange-700">
-                  {loadingAction === 'save' ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
+            <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4">
+               <Button variant="outline" onClick={() => setEditingNode(null)} className="flex-1 h-14 rounded-2xl border-2 font-bold bg-white">إلغاء</Button>
+               <Button onClick={handleSave} disabled={loadingAction === 'save'} className="flex-[2] h-14 rounded-2xl bg-primary text-white font-black text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-2 border-b-8 border-orange-700">
+                  {loadingAction === 'save' ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
                   {t('save')}
                </Button>
             </DialogFooter>
@@ -752,19 +758,26 @@ export default function BOQNodesPage() {
       </Dialog>
 
       <AlertDialog open={!!deletingId} onOpenChange={open => !open && setDeletingId(null)}>
-        <AlertDialogContent className="rounded-xl p-8 border-0 shadow-3xl bg-white" dir={dir}>
+        <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white" dir={dir}>
           <AlertDialogHeader>
-             <div className="mx-auto w-16 h-16 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mb-4"><Trash2 className="h-8 w-8" /></div>
-             <AlertDialogTitle className="text-start font-black text-2xl text-slate-900">{t('confirmDelete')}</AlertDialogTitle>
-             <AlertDialogDescription className="text-start font-bold text-slate-400 mt-1">{isRtl ? 'سيتم إزالة البند المرجعي وكافة ارتباطاته التشغيلية نهائياً.' : 'This will permanently remove the record and its technical links.'}</AlertDialogDescription>
+             <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50">
+                <Trash2 className="h-10 w-10" />
+             </div>
+             <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900 leading-tight">{t('confirmDelete')}</AlertDialogTitle>
+             <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">
+                {isRtl 
+                  ? 'هل أنت متأكد؟ سيتم إزالة البند المرجعي وكافة ارتباطاته الميدانية بالدراسات والقوالب نهائياً. لا يمكن التراجع عن هذا الإجراء.' 
+                  : 'Are you sure? This will permanently remove the record and all its field links in templates and studies. This cannot be undone.'}
+             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="mt-8 gap-3 flex flex-row">
-            <AlertDialogCancel className="flex-1 h-11 rounded-xl font-bold border-2 bg-white">إلغاء</AlertDialogCancel>
-            <AlertDialogAction onClick={handleFinalDelete} className="flex-[2] h-11 rounded-xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200">{isRtl ? 'نعم، احذف' : 'Confirm Delete'}</AlertDialogAction>
+          <AlertDialogFooter className="mt-12 gap-4 flex flex-row">
+            <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel>
+            <AlertDialogAction onClick={handleFinalDelete} className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200">
+               {isRtl ? 'نعم، احذف السجل' : 'Confirm Delete'}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
   );
 }
-
