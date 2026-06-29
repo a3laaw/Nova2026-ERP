@@ -82,6 +82,7 @@ export class BOQExecutionService {
       notes: notes || '',
       recordedBy: userId,
       recordedByName: userName,
+      isArchived: false,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
@@ -116,7 +117,50 @@ export class BOQExecutionService {
   }
 
   /**
-   * تصفير سجلات الإنجاز لمرحلة معينة (يستخدم عند التراجع)
+   * أرشفة سجلات الإنجاز لمرحلة معينة عند التراجع (بدلاً من الحذف)
+   */
+  async archiveStageExecutions(transactionId: string, technicalStageId: string) {
+    ensureActionPermission(this.permissions, 'projects:edit');
+    
+    const executionsRef = collection(this.db, paths.executions(this.companyId));
+    const q = query(
+      executionsRef, 
+      where('transactionId', '==', transactionId),
+      where('technicalStageId', '==', technicalStageId)
+    );
+
+    const snap = await getDocs(q);
+    if (snap.empty) return;
+
+    const batch = writeBatch(this.db);
+    const affectedItemIds = new Set<string>();
+    const boqIds = new Set<string>();
+
+    snap.docs.forEach(d => {
+      const data = d.data();
+      if (data.isArchived !== true) {
+        batch.update(d.ref, { 
+          isArchived: true, 
+          archivedAt: serverTimestamp(),
+          updatedAt: serverTimestamp() 
+        });
+        affectedItemIds.add(data.boqItemId);
+        boqIds.add(data.boqId);
+      }
+    });
+
+    await batch.commit();
+
+    // إعادة حساب الكميات (استبعاد المؤرشف)
+    for (const boqId of Array.from(boqIds)) {
+      for (const itemId of Array.from(affectedItemIds)) {
+        await this.recalculateItemQuantity(boqId, itemId);
+      }
+    }
+  }
+
+  /**
+   * تصفير سجلات الإنجاز نهائياً (عند طلب المستخدم)
    */
   async clearStageExecutions(transactionId: string, technicalStageId: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
@@ -144,7 +188,6 @@ export class BOQExecutionService {
 
     await batch.commit();
 
-    // إعادة حساب الكميات لكافة البنود المتأثرة
     for (const boqId of Array.from(boqIds)) {
       for (const itemId of Array.from(affectedItemIds)) {
         await this.recalculateItemQuantity(boqId, itemId);
@@ -153,16 +196,20 @@ export class BOQExecutionService {
   }
 
   /**
-   * إعادة حساب الكمية المنفذة الإجمالية لبند واحد بناءً على السجلات المسطحة
+   * إعادة حساب الكمية المنفذة الإجمالية لبند واحد بناءً على السجلات المسطحة (تجاهل المؤرشف)
    */
   private async recalculateItemQuantity(boqId: string, itemId: string) {
     const executionsRef = collection(this.db, paths.executions(this.companyId));
     const q = query(executionsRef, where('boqItemId', '==', itemId));
     const snap = await getDocs(q);
     
-    const newTotal = snap.docs.reduce((sum, d) => sum + (d.data().quantity || 0), 0);
+    // تصفية السجلات المؤرشفة برمجياً لضمان الدقة
+    const newTotal = snap.docs.reduce((sum, d) => {
+       const data = d.data();
+       return data.isArchived === true ? sum : sum + (data.quantity || 0);
+    }, 0);
+
     const itemRef = doc(this.db, paths.boqItems(this.companyId, boqId), itemId);
-    
     await updateDoc(itemRef, {
       executedQuantity: newTotal,
       updatedAt: serverTimestamp()
@@ -170,7 +217,7 @@ export class BOQExecutionService {
   }
 
   /**
-   * جلب تقرير تقدم المرحلة الفنية من المجموعة المسطحة
+   * جلب تقرير تقدم المرحلة الفنية من المجموعة المسطحة (تجاهل المؤرشف)
    */
   async getTechnicalStageProgress(transactionId: string, technicalStageId: string): Promise<StageProgressResult> {
     const boqsRef = collection(this.db, paths.boqs(this.companyId));
@@ -198,7 +245,7 @@ export class BOQExecutionService {
 
     let totalPlanned = 0;
     let totalExecutedForThisStage = 0;
-    let totalLogsCount = 0;
+    let totalActiveLogsCount = 0;
 
     const executionsRef = collection(this.db, paths.executions(this.companyId));
 
@@ -212,8 +259,13 @@ export class BOQExecutionService {
       );
       const execSnap = await getDocs(qExec);
 
-      totalLogsCount += execSnap.size;
-      totalExecutedForThisStage += execSnap.docs.reduce((acc, d) => acc + (d.data().quantity || 0), 0);
+      execSnap.docs.forEach(d => {
+         const data = d.data();
+         if (data.isArchived !== true) {
+            totalActiveLogsCount++;
+            totalExecutedForThisStage += (data.quantity || 0);
+         }
+      });
     }
 
     const progress = totalPlanned > 0 ? (totalExecutedForThisStage / totalPlanned) * 100 : 0;
@@ -223,8 +275,8 @@ export class BOQExecutionService {
       totalPlanned,
       totalExecuted: totalExecutedForThisStage,
       progressPercent: Math.round(progress * 100) / 100,
-      canComplete: totalLogsCount > 0,
-      reason: totalLogsCount === 0 ? "يجب تسجيل الإنجاز المادي أو التأكيد الفني المكمل أولاً." : undefined
+      canComplete: totalActiveLogsCount > 0,
+      reason: totalActiveLogsCount === 0 ? "يجب تسجيل الإنجاز المادي أو التأكيد الفني المكمل أولاً." : undefined
     };
   }
 }

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -71,7 +70,6 @@ export function CommentSection({
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'active' | 'timeline' | 'chat_archive' | 'time_archive'>('active');
 
-  // استجابة تفاعلية لطلب الفتح من الخارج (زر التعليق)
   useEffect(() => {
     if (activeTabOverride) {
       setActiveTab(activeTabOverride);
@@ -93,7 +91,7 @@ export function CommentSection({
     db && globalUser?.companyId ? new CommentService(db, globalUser.companyId, permissions) : null, 
   [db, globalUser, permissions]);
 
-  // تصفية النشاط الجاري
+  // تصفية النشاط الجاري (فقط غير المؤرشف)
   const activeStream = useMemo(() => {
     const filteredComments = (comments || [])
       .filter(c => !c.isArchived && (!filterStageId || c.stageInstanceId === filterStageId))
@@ -104,7 +102,7 @@ export function CommentSection({
       }));
     
     const filteredLogs = (externalLogs || [])
-      .filter(l => !technicalStageId || l.technicalStageId === technicalStageId)
+      .filter(l => !l.isArchived && (!technicalStageId || l.technicalStageId === technicalStageId))
       .map(l => ({ 
         ...l, 
         streamType: 'log' as const,
@@ -114,10 +112,18 @@ export function CommentSection({
     return [...filteredComments, ...filteredLogs].sort((a, b) => a.sortTime - b.sortTime);
   }, [comments, externalLogs, filterStageId, technicalStageId]);
 
-  // أرشيف الدردشة للمديرين
-  const archivedChat = useMemo(() => {
-    return (comments || []).filter(c => !!c.isArchived && (!filterStageId || c.stageInstanceId === filterStageId));
-  }, [comments, filterStageId]);
+  // أرشيف الأنشطة (الدردشة + سجلات الإنجاز المؤرشفة)
+  const archivedActivity = useMemo(() => {
+    const archivedComments = (comments || [])
+      .filter(c => !!c.isArchived && (!filterStageId || c.stageInstanceId === filterStageId))
+      .map(c => ({ ...c, streamType: 'comment' as const, sortTime: c.createdAt?.toMillis?.() || 0 }));
+
+    const archivedLogs = (externalLogs || [])
+      .filter(l => !!l.isArchived && (!technicalStageId || l.technicalStageId === technicalStageId))
+      .map(l => ({ ...l, streamType: 'log' as const, sortTime: l.createdAt?.toMillis?.() || 0 }));
+
+    return [...archivedComments, ...archivedLogs].sort((a, b) => a.sortTime - b.sortTime);
+  }, [comments, externalLogs, filterStageId, technicalStageId]);
 
   // أرشيف السجلات الزمنية للمديرين
   const archivedTime = useMemo(() => {
@@ -149,7 +155,7 @@ export function CommentSection({
   return (
     <div className="flex flex-col h-full bg-white text-start">
       <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="flex flex-col h-full">
-        {/* Header - Professional Unified Style */}
+        {/* Header */}
         <div className="flex flex-col gap-4 print:hidden shrink-0">
           <div className="flex items-center justify-between px-1">
              <div className="flex items-center gap-3">
@@ -169,7 +175,6 @@ export function CommentSection({
              )}
           </div>
 
-          {/* Focused Stage Indicator - Sovereign ERP Style */}
           {filterStageId && (
             <div className="px-4 py-3 rounded-2xl bg-slate-900 text-white mx-1 flex items-center justify-between animate-in slide-in-from-top-2 shadow-2xl relative overflow-hidden group">
                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:rotate-12 transition-transform"><LayoutGrid className="h-10 w-10" /></div>
@@ -195,7 +200,7 @@ export function CommentSection({
               {isAdmin && (
                 <>
                   <TabsTrigger value="chat_archive" className="rounded-lg text-[10px] font-black data-[state=active]:bg-[#1e1b4b] data-[state=active]:text-white gap-1.5 transition-all">
-                    <Archive className="h-3 w-3" /> {isRtl ? 'الدردشة' : 'Chat Arc'}
+                    <Archive className="h-3 w-3" /> {isRtl ? 'الأرشيف' : 'Archive'}
                   </TabsTrigger>
                   <TabsTrigger value="time_archive" className="rounded-lg text-[10px] font-black data-[state=active]:bg-[#1e1b4b] data-[state=active]:text-white gap-1.5 transition-all">
                     <Clock className="h-3 w-3" /> {isRtl ? 'الوقت' : 'Time Arc'}
@@ -222,10 +227,10 @@ export function CommentSection({
           </TabsContent>
 
           <TabsContent value="chat_archive" className="m-0 space-y-6 pb-24">
-              {archivedChat.map((item) => (
-                <StreamItem key={item.id} item={{...item, streamType: 'comment'}} isRtl={isRtl} user={user} boqItems={boqItems} />
+              {archivedActivity.map((item: any) => (
+                <StreamItem key={item.id} item={item} isRtl={isRtl} user={user} boqItems={boqItems} />
               ))}
-              {!archivedChat.length && <div className="py-32 text-center text-slate-300 flex flex-col items-center gap-4"><Archive className="h-10 w-10 opacity-20" /><p className="text-[10px] font-black italic">خزنة الأرشيف خالية.</p></div>}
+              {!archivedActivity.length && <div className="py-32 text-center text-slate-300 flex flex-col items-center gap-4"><Archive className="h-10 w-10 opacity-20" /><p className="text-[10px] font-black italic">خزنة الأرشيف خالية.</p></div>}
           </TabsContent>
 
           <TabsContent value="time_archive" className="m-0 space-y-4 pb-24">
@@ -315,7 +320,8 @@ function StreamItem({ item, isRtl, user, boqItems, onDelete }: any) {
          <div className="flex justify-center animate-in fade-in duration-500">
             <div className={cn(
               "border-2 shadow-md rounded-[1.25rem] p-4 w-full md:w-[95%] relative transition-all",
-              isComplementary ? "bg-blue-50/50 border-blue-100" : "bg-emerald-50/30 border-emerald-100"
+              isComplementary ? "bg-blue-50/50 border-blue-100" : "bg-emerald-50/30 border-emerald-100",
+              item.isArchived && "opacity-60 grayscale border-dashed"
             )}>
                <div className="flex items-start gap-4">
                  <div className={cn(
@@ -330,6 +336,7 @@ function StreamItem({ item, isRtl, user, boqItems, onDelete }: any) {
                           {boqItem?.referenceTitle || (isRtl ? 'بند مجهول' : 'Unknown Item')}
                        </Badge>
                        {!isComplementary && <Badge className="bg-emerald-600 text-white border-0 text-[8px] h-4 px-2">{item.quantity} QTY</Badge>}
+                       {item.isArchived && <Badge className="bg-slate-900 text-white border-0 text-[8px] h-4 px-2">ARCHIVED</Badge>}
                     </div>
                     {item.notes && <p className="text-[10px] font-bold text-slate-600 italic leading-snug">"{item.notes}"</p>}
                     <div className="flex items-center gap-3 mt-3 pt-2 border-t border-black/[0.03] text-[7px] font-black text-slate-400 uppercase">

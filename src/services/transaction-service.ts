@@ -259,14 +259,17 @@ export class TransactionService {
       createdAt: serverTimestamp()
     });
 
-    // 5. أرشفة التعليقات المرتبطة بهذه المرحلة (نظام الأرشفة النصية)
+    // 5. أرشفة التعليقات المرتبطة بهذه المرحلة
     const commentService = new CommentService(this.db, this.companyId, this.permissions);
     await commentService.archiveStageComments(transactionId, stageId);
 
-    // 6. تطهير سجلات الإنجاز الميداني (اختياري)
+    // 6. التعامل مع سجلات الإنجاز الميداني (ترحيل للأرشيف أو حذف)
+    const boqService = new BOQExecutionService(this.db, this.companyId, this.permissions);
     if (clearLogs) {
-      const boqService = new BOQExecutionService(this.db, this.companyId, this.permissions);
       await boqService.clearStageExecutions(transactionId, stageData.technicalStageId);
+    } else {
+      // الابتكار الجديد: أرشفة سجلات الإنجاز بدلاً من حذفها
+      await boqService.archiveStageExecutions(transactionId, stageData.technicalStageId);
     }
   }
 

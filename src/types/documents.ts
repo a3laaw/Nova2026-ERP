@@ -87,10 +87,14 @@ export interface BOQItemExecutionEntry extends BaseReference {
   id?: string;
   boqId: string;
   boqItemId: string;
+  transactionId?: string;
   technicalStageId: string;
   quantity: number;
   notes?: string;
   recordedBy: string;
+  recordedByName?: string;
+  isArchived?: boolean;
+  archivedAt?: any;
 }
 
 /**
