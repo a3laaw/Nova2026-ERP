@@ -26,7 +26,7 @@ import {
   DropdownMenuContent, 
   DropdownMenuItem, 
   DropdownMenuTrigger 
-} from "@/components/ui/dropdown-menu";
+} from "@/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -112,9 +112,9 @@ export function CommentSection({
     return [...filteredComments, ...filteredLogs].sort((a, b) => a.sortTime - b.sortTime);
   }, [comments, externalLogs, filterStageId, technicalStageId]);
 
-  // أرشيف الدردشة للمديرين
+  // أرشيف الدردشة للمديرين - استخدام الفلترة الذكية للـ boolean
   const archivedChat = useMemo(() => {
-    return (comments || []).filter(c => c.isArchived === true && (!filterStageId || c.stageInstanceId === filterStageId));
+    return (comments || []).filter(c => !!c.isArchived && (!filterStageId || c.stageInstanceId === filterStageId));
   }, [comments, filterStageId]);
 
   // أرشيف السجلات الزمنية للمديرين
@@ -147,50 +147,66 @@ export function CommentSection({
   return (
     <div className="flex flex-col h-full bg-white text-start">
       <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="flex flex-col h-full">
-        <div className="flex flex-col gap-4 print:hidden shrink-0 px-1">
-          <div className="flex items-center justify-between">
-            <h3 className="text-[10px] font-black flex items-center gap-2 text-slate-500 uppercase tracking-widest">
-              <MessageSquare className="h-4 w-4 text-primary" /> {title || (isRtl ? 'غرفة العمليات' : 'War Room')}
-            </h3>
-            {filterStageId && (
-                <button onClick={onClearFilter} className="h-7 rounded-lg text-[9px] font-black gap-2 bg-slate-900 text-white px-3 flex items-center shadow-lg">
+        {/* Header - Professional Unified Style */}
+        <div className="flex flex-col gap-4 print:hidden shrink-0">
+          <div className="flex items-center justify-between px-1">
+             <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
+                   <MessageSquare className="h-5 w-5" />
+                </div>
+                <div>
+                   <h3 className="text-sm font-black text-slate-800 leading-none">{title || (isRtl ? 'غرفة العمليات' : 'War Room')}</h3>
+                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Sovereign Control Center</p>
+                </div>
+             </div>
+             
+             {filterStageId && (
+                <Button onClick={onClearFilter} variant="ghost" size="sm" className="h-8 rounded-lg text-[9px] font-black gap-2 bg-slate-900 text-white hover:bg-slate-800 px-3 shadow-lg">
                   <X className="h-3 w-3" /> {isRtl ? 'عرض الكل' : 'View All'}
-                </button>
-            )}
+                </Button>
+             )}
           </div>
 
-          <TabsList className={cn("grid w-full h-10 bg-slate-100/50 rounded-xl p-1", isAdmin ? "grid-cols-4" : "grid-cols-2")}>
-              <TabsTrigger value="active" className="rounded-lg text-[9px] font-black data-[state=active]:bg-white data-[state=active]:shadow-sm">
+          {/* Focused Stage Indicator */}
+          {filterStageId && (
+            <div className="px-4 py-2.5 rounded-xl bg-primary/5 border border-primary/10 mx-1 flex items-center justify-between animate-in slide-in-from-top-2">
+               <div className="flex items-center gap-2">
+                  <LayoutGrid className="h-3.5 w-3.5 text-primary" />
+                  <span className="text-[10px] font-black text-slate-700 uppercase">{isRtl ? `التركيز: ${selectedStageName}` : `Focus: ${selectedStageName}`}</span>
+               </div>
+               <Badge className="bg-primary text-white border-0 text-[8px] h-4 font-black">LOCKED</Badge>
+            </div>
+          )}
+
+          <TabsList className={cn("grid w-full h-11 bg-slate-100/50 rounded-xl p-1 gap-1 mx-1", isAdmin ? "grid-cols-4" : "grid-cols-2")}>
+              <TabsTrigger value="active" className="rounded-lg text-[10px] font-black data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-primary transition-all">
                 {isRtl ? 'النشاط' : 'Active'}
               </TabsTrigger>
-              <TabsTrigger value="timeline" className="rounded-lg text-[9px] font-black data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              <TabsTrigger value="timeline" className="rounded-lg text-[10px] font-black data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-primary transition-all">
                 {isRtl ? 'الزمني' : 'Timeline'}
               </TabsTrigger>
               {isAdmin && (
                 <>
-                  <TabsTrigger value="chat_archive" className="rounded-lg text-[9px] font-black data-[state=active]:bg-[#1e1b4b] data-[state=active]:text-white gap-1.5">
-                    <Archive className="h-2.5 w-2.5" /> {isRtl ? 'المحادثة' : 'Chat Arc'}
+                  <TabsTrigger value="chat_archive" className="rounded-lg text-[10px] font-black data-[state=active]:bg-[#1e1b4b] data-[state=active]:text-white gap-1.5 transition-all">
+                    <Archive className="h-3 w-3" /> {isRtl ? 'الدردشة' : 'Archive'}
                   </TabsTrigger>
-                  <TabsTrigger value="time_archive" className="rounded-lg text-[9px] font-black data-[state=active]:bg-[#1e1b4b] data-[state=active]:text-white gap-1.5">
-                    <Clock className="h-2.5 w-2.5" /> {isRtl ? 'الوقت' : 'Time Arc'}
+                  <TabsTrigger value="time_archive" className="rounded-lg text-[10px] font-black data-[state=active]:bg-[#1e1b4b] data-[state=active]:text-white gap-1.5 transition-all">
+                    <Clock className="h-3 w-3" /> {isRtl ? 'الوقت' : 'History'}
                   </TabsTrigger>
                 </>
               )}
           </TabsList>
-
-          {filterStageId && (
-            <div className="px-3 py-2 rounded-xl bg-primary/5 border border-primary/10 animate-in slide-in-from-top-2">
-              <p className="text-[9px] font-black text-primary uppercase tracking-tighter flex items-center gap-2">
-                 <LayoutGrid className="h-3 w-3" /> {isRtl ? `عرض أحداث: ${selectedStageName}` : `Focus: ${selectedStageName}`}
-              </p>
-            </div>
-          )}
         </div>
 
-        <div className="flex-1 overflow-y-auto mt-4 px-1 scrollbar-hide">
-          <TabsContent value="active" className="m-0 space-y-6 pb-20">
+        <div className="flex-1 overflow-y-auto mt-6 px-1 scrollbar-hide">
+          <TabsContent value="active" className="m-0 space-y-6 pb-24">
             {commentsLoading ? (
-              <div className="py-10 text-center"><Loader2 className="animate-spin mx-auto text-primary/20" /></div>
+              <div className="py-20 text-center"><Loader2 className="animate-spin mx-auto text-primary/20" /></div>
+            ) : activeStream.length === 0 ? (
+               <div className="py-20 text-center flex flex-col items-center gap-4 opacity-30">
+                  <Zap className="h-12 w-12 text-slate-200" />
+                  <p className="text-xs font-black text-slate-400">{isRtl ? 'بانتظار التقارير الميدانية' : 'Awaiting site reports...'}</p>
+               </div>
             ) : (
               activeStream.map((item: any) => (
                   <StreamItem key={item.id || item.sortTime} item={item} isRtl={isRtl} user={user} boqItems={boqItems} onDelete={handleDelete} />
@@ -199,16 +215,16 @@ export function CommentSection({
           </TabsContent>
 
           <TabsContent value="chat_archive" className="m-0 space-y-6">
-            <div className="space-y-6 pb-20">
+            <div className="space-y-6 pb-24">
                 {archivedChat.map((item) => (
                   <StreamItem key={item.id} item={{...item, streamType: 'comment'}} isRtl={isRtl} user={user} boqItems={boqItems} />
                 ))}
-                {!archivedChat.length && <p className="text-[10px] text-slate-300 font-bold italic py-20 text-center">لا توجد نقاشات مؤرشفة لهذه المرحلة.</p>}
+                {!archivedChat.length && <div className="py-32 text-center text-slate-300 flex flex-col items-center gap-4"><Archive className="h-10 w-10 opacity-20" /><p className="text-[10px] font-black italic">خزنة الأرشيف خالية.</p></div>}
             </div>
           </TabsContent>
 
           <TabsContent value="time_archive" className="m-0 space-y-4">
-            <div className="space-y-4 pb-20">
+            <div className="space-y-4 pb-24">
               {archivedTime.map((event, idx) => (
                   <div key={idx} className="p-5 rounded-[1.5rem] bg-rose-50/20 border-2 border-dashed border-rose-100 animate-in slide-in-from-top-2">
                     <div className="flex justify-between items-start mb-3">
@@ -217,23 +233,23 @@ export function CommentSection({
                     </div>
                     <p className="text-xs font-black text-slate-800 leading-tight">{event.content}</p>
                     <div className="grid grid-cols-1 gap-2 mt-4 text-[7px] font-black text-slate-400 uppercase tracking-widest">
-                        <div className="bg-white/50 p-2 rounded-lg border border-rose-50 flex justify-between items-center">
+                        <div className="bg-white/50 p-2 rounded-lg border border-rose-50 flex justify-between items-center px-3">
                            <span>START:</span>
-                           <span>{event.previousStart?.toDate().toLocaleString()}</span>
+                           <span className="font-mono">{event.previousStart?.toDate().toLocaleString()}</span>
                         </div>
-                        <div className="bg-white/50 p-2 rounded-lg border border-rose-50 flex justify-between items-center">
+                        <div className="bg-white/50 p-2 rounded-lg border border-rose-50 flex justify-between items-center px-3">
                            <span>END:</span>
-                           <span>{event.previousEnd?.toDate().toLocaleString()}</span>
+                           <span className="font-mono">{event.previousEnd?.toDate().toLocaleString()}</span>
                         </div>
                     </div>
                   </div>
               ))}
-              {!archivedTime.length && <p className="text-[10px] text-slate-300 font-bold italic py-20 text-center">لا توجد سجلات زمنية مؤرشفة.</p>}
+              {!archivedTime.length && <div className="py-32 text-center text-slate-300 flex flex-col items-center gap-4"><Clock className="h-10 w-10 opacity-20" /><p className="text-[10px] font-black italic">لا توجد سجلات تراجع زمنية.</p></div>}
             </div>
           </TabsContent>
 
           <TabsContent value="timeline" className="m-0 space-y-6">
-            <div className="space-y-4 pb-20">
+            <div className="space-y-4 pb-24">
                 {stages.sort((a,b)=> (a.order||0) - (b.order||0)).map((stage, idx) => {
                   const start = stage.startedAt?.toDate();
                   const end = stage.completedAt?.toDate();
@@ -314,8 +330,8 @@ function StreamItem({ item, isRtl, user, boqItems, onDelete }: any) {
                        </Badge>
                        {!isComplementary && <Badge className="bg-emerald-600 text-white border-0 text-[8px] h-4 px-2">{item.quantity} QTY</Badge>}
                     </div>
-                    {item.notes && <p className="text-[10px] font-bold text-slate-600 italic">"{item.notes}"</p>}
-                    <div className="flex items-center gap-3 mt-2 text-[7px] font-black text-slate-400 uppercase">
+                    {item.notes && <p className="text-[10px] font-bold text-slate-600 italic leading-snug">"{item.notes}"</p>}
+                    <div className="flex items-center gap-3 mt-3 pt-2 border-t border-black/[0.03] text-[7px] font-black text-slate-400 uppercase">
                        <span className="flex items-center gap-1"><User className="h-2 w-2" /> {displayName}</span>
                        <span className="flex items-center gap-1"><Clock className="h-2 w-2" /> {item.createdAt ? formatDistanceToNow(item.createdAt.toDate(), { addSuffix: true, locale: isRtl ? ar : enUS }) : '...'}</span>
                     </div>

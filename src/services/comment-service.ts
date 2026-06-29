@@ -45,7 +45,7 @@ export class CommentService {
       createdBy: userId,
       createdByName: userName || 'User',
       companyId: this.companyId,
-      isArchived: false, // تعيين صريح كقيمة منطقية
+      isArchived: false, 
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
