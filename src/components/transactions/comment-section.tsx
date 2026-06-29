@@ -26,7 +26,7 @@ import {
   DropdownMenuContent, 
   DropdownMenuItem, 
   DropdownMenuTrigger 
-} from "@/dropdown-menu";
+} from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -112,7 +112,7 @@ export function CommentSection({
     return [...filteredComments, ...filteredLogs].sort((a, b) => a.sortTime - b.sortTime);
   }, [comments, externalLogs, filterStageId, technicalStageId]);
 
-  // أرشيف الدردشة للمديرين - استخدام الفلترة الذكية للـ boolean
+  // أرشيف الدردشة للمديرين
   const archivedChat = useMemo(() => {
     return (comments || []).filter(c => !!c.isArchived && (!filterStageId || c.stageInstanceId === filterStageId));
   }, [comments, filterStageId]);
@@ -167,14 +167,19 @@ export function CommentSection({
              )}
           </div>
 
-          {/* Focused Stage Indicator */}
+          {/* Focused Stage Indicator - Professional ERP Style */}
           {filterStageId && (
-            <div className="px-4 py-2.5 rounded-xl bg-primary/5 border border-primary/10 mx-1 flex items-center justify-between animate-in slide-in-from-top-2">
-               <div className="flex items-center gap-2">
-                  <LayoutGrid className="h-3.5 w-3.5 text-primary" />
-                  <span className="text-[10px] font-black text-slate-700 uppercase">{isRtl ? `التركيز: ${selectedStageName}` : `Focus: ${selectedStageName}`}</span>
+            <div className="px-4 py-3 rounded-2xl bg-slate-900 text-white mx-1 flex items-center justify-between animate-in slide-in-from-top-2 shadow-2xl relative overflow-hidden group">
+               <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:rotate-12 transition-transform"><LayoutGrid className="h-10 w-10" /></div>
+               <div className="flex items-center gap-3 relative z-10">
+                  <div className="h-6 w-6 rounded-lg bg-primary/20 flex items-center justify-center border border-primary/20">
+                     <Target className="h-3 w-3 text-primary animate-pulse" />
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-widest truncate max-w-[150px]">
+                    {selectedStageName}
+                  </span>
                </div>
-               <Badge className="bg-primary text-white border-0 text-[8px] h-4 font-black">LOCKED</Badge>
+               <Badge className="bg-primary text-white border-0 text-[8px] h-5 font-black px-3 rounded-lg shadow-lg">FOCUS MODE</Badge>
             </div>
           )}
 
@@ -188,10 +193,10 @@ export function CommentSection({
               {isAdmin && (
                 <>
                   <TabsTrigger value="chat_archive" className="rounded-lg text-[10px] font-black data-[state=active]:bg-[#1e1b4b] data-[state=active]:text-white gap-1.5 transition-all">
-                    <Archive className="h-3 w-3" /> {isRtl ? 'الدردشة' : 'Archive'}
+                    <Archive className="h-3 w-3" /> {isRtl ? 'الدردشة' : 'Chat Arc'}
                   </TabsTrigger>
                   <TabsTrigger value="time_archive" className="rounded-lg text-[10px] font-black data-[state=active]:bg-[#1e1b4b] data-[state=active]:text-white gap-1.5 transition-all">
-                    <Clock className="h-3 w-3" /> {isRtl ? 'الوقت' : 'History'}
+                    <Clock className="h-3 w-3" /> {isRtl ? 'الوقت' : 'Time Arc'}
                   </TabsTrigger>
                 </>
               )}
@@ -214,17 +219,14 @@ export function CommentSection({
             )}
           </TabsContent>
 
-          <TabsContent value="chat_archive" className="m-0 space-y-6">
-            <div className="space-y-6 pb-24">
-                {archivedChat.map((item) => (
-                  <StreamItem key={item.id} item={{...item, streamType: 'comment'}} isRtl={isRtl} user={user} boqItems={boqItems} />
-                ))}
-                {!archivedChat.length && <div className="py-32 text-center text-slate-300 flex flex-col items-center gap-4"><Archive className="h-10 w-10 opacity-20" /><p className="text-[10px] font-black italic">خزنة الأرشيف خالية.</p></div>}
-            </div>
+          <TabsContent value="chat_archive" className="m-0 space-y-6 pb-24">
+              {archivedChat.map((item) => (
+                <StreamItem key={item.id} item={{...item, streamType: 'comment'}} isRtl={isRtl} user={user} boqItems={boqItems} />
+              ))}
+              {!archivedChat.length && <div className="py-32 text-center text-slate-300 flex flex-col items-center gap-4"><Archive className="h-10 w-10 opacity-20" /><p className="text-[10px] font-black italic">خزنة الأرشيف خالية.</p></div>}
           </TabsContent>
 
-          <TabsContent value="time_archive" className="m-0 space-y-4">
-            <div className="space-y-4 pb-24">
+          <TabsContent value="time_archive" className="m-0 space-y-4 pb-24">
               {archivedTime.map((event, idx) => (
                   <div key={idx} className="p-5 rounded-[1.5rem] bg-rose-50/20 border-2 border-dashed border-rose-100 animate-in slide-in-from-top-2">
                     <div className="flex justify-between items-start mb-3">
@@ -245,11 +247,9 @@ export function CommentSection({
                   </div>
               ))}
               {!archivedTime.length && <div className="py-32 text-center text-slate-300 flex flex-col items-center gap-4"><Clock className="h-10 w-10 opacity-20" /><p className="text-[10px] font-black italic">لا توجد سجلات تراجع زمنية.</p></div>}
-            </div>
           </TabsContent>
 
-          <TabsContent value="timeline" className="m-0 space-y-6">
-            <div className="space-y-4 pb-24">
+          <TabsContent value="timeline" className="m-0 space-y-6 pb-24">
                 {stages.sort((a,b)=> (a.order||0) - (b.order||0)).map((stage, idx) => {
                   const start = stage.startedAt?.toDate();
                   const end = stage.completedAt?.toDate();
@@ -272,7 +272,6 @@ export function CommentSection({
                       </div>
                   );
                 })}
-            </div>
           </TabsContent>
         </div>
 
