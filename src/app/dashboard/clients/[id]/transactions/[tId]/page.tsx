@@ -21,7 +21,8 @@ import {
   Plus,
   FileText,
   Workflow,
-  PlusCircle
+  PlusCircle,
+  ArrowRight
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where, limit } from 'firebase/firestore';
@@ -110,7 +111,7 @@ export default function TransactionDetailsPage() {
     companyId && db ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', transactionId), limit(1)) : null, 
   [db, companyId, transactionId]);
   const { data: boqs, loading: boqLoading } = useCollection<BOQ>(boqQuery);
-  const activeBoq = boqs?.[0];
+  const activeBoq = boqs && boqs.length > 0 ? boqs[0] : null;
 
   // جلب القوالب المتاحة للربط إذا لم تكن المقايسة موجودة
   const templatesQuery = useMemo(() => 
@@ -306,6 +307,7 @@ export default function TransactionDetailsPage() {
         </div>
       </div>
 
+      {/* بوابة الربط السيادي (Link Gate) */}
       {!activeBoq && !boqLoading ? (
          <Card className="border-4 border-dashed border-primary/20 rounded-[3rem] bg-white shadow-2xl p-12 text-center animate-in zoom-in-95">
             <div className="max-w-2xl mx-auto space-y-8">
