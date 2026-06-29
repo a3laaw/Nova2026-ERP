@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -9,7 +10,8 @@ import {
   Trash2, Loader2, Hammer, User,
   History, Clock, Zap, Archive, FilterX,
   Calendar, Printer, CheckCircle2, Timer,
-  RotateCcw, FileText, LayoutGrid, X
+  RotateCcw, FileText, LayoutGrid, X,
+  Target
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -167,7 +169,7 @@ export function CommentSection({
              )}
           </div>
 
-          {/* Focused Stage Indicator - Professional ERP Style */}
+          {/* Focused Stage Indicator - Sovereign ERP Style */}
           {filterStageId && (
             <div className="px-4 py-3 rounded-2xl bg-slate-900 text-white mx-1 flex items-center justify-between animate-in slide-in-from-top-2 shadow-2xl relative overflow-hidden group">
                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:rotate-12 transition-transform"><LayoutGrid className="h-10 w-10" /></div>
