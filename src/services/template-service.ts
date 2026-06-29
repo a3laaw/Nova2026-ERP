@@ -99,9 +99,16 @@ export class TemplateService {
     // إضافة البنود الجديدة مع كامل مسارها المرجعي
     items.forEach((item, idx) => {
       const itemRef = doc(itemsCollection);
+
+      // BACKWARD COMPATIBILITY: Ensure technicalStageIds is populated from technicalStageId if missing
+      const technicalStageIds = item.technicalStageIds && item.technicalStageIds.length > 0
+        ? item.technicalStageIds
+        : (item.technicalStageId ? [item.technicalStageId] : []);
+
       const itemToSave = {
         ...item,
         id: itemRef.id,
+        technicalStageIds, // Always save the array
         order: idx,
         companyId: this.companyId,
         createdAt: item.createdAt || serverTimestamp(),

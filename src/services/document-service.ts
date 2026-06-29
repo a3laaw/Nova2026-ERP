@@ -5,7 +5,7 @@ import {
   collection, 
   doc, 
   getDoc, 
-  getDocs,
+  getDocs, 
   setDoc,
   serverTimestamp, 
   query,
@@ -143,6 +143,11 @@ export class DocumentService {
       const item = itemDoc.data() as BOQTemplateItem;
       const itemRef = doc(collection(this.db, paths.boqItems(this.companyId, boqId)));
       
+      // BACKWARD COMPATIBILITY: Auto-populate technicalStageIds array if missing
+      const technicalStageIds = item.technicalStageIds && item.technicalStageIds.length > 0
+        ? item.technicalStageIds
+        : (item.technicalStageId ? [item.technicalStageId] : []);
+
       const runtimeItem: BOQItem = {
         id: itemRef.id,
         boqId,
@@ -164,7 +169,7 @@ export class DocumentService {
         unitName: item.unitName || '',
         unitSymbol: item.unitSymbol || '',
         technicalStageId: item.technicalStageId || '',
-        technicalStageIds: item.technicalStageIds || [],
+        technicalStageIds,
         billingTriggerGroup: item.billingTriggerGroup || '',
         allowedItemCategoryIds: item.allowedItemCategoryIds || [],
 

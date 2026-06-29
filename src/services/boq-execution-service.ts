@@ -43,6 +43,16 @@ export class BOQExecutionService {
     private permissions: string[] = []
   ) {}
 
+  /**
+   * Helper to get normalized technical stage IDs for a BOQ item (singular vs plural support)
+   */
+  private getAllowedTechnicalStageIds(item: BOQItem): string[] {
+    if (item.technicalStageIds && item.technicalStageIds.length > 0) {
+      return item.technicalStageIds;
+    }
+    return item.technicalStageId ? [item.technicalStageId] : [];
+  }
+
   async recordBOQItemExecution(
     boqId: string,
     itemId: string,
@@ -65,11 +75,9 @@ export class BOQExecutionService {
     if (!itemSnap.exists()) throw new Error('ITEM_NOT_FOUND: البند غير موجود.');
     const itemData = itemSnap.data() as BOQItem;
 
-    // Check if the stage is allowed for this item
-    const allowedStages = itemData.technicalStageIds || [];
-    const isStageAllowed = allowedStages.length > 0 
-      ? allowedStages.includes(technicalStageId)
-      : itemData.technicalStageId === technicalStageId;
+    // Check if the stage is allowed for this item using the new helper
+    const allowedStages = this.getAllowedTechnicalStageIds(itemData);
+    const isStageAllowed = allowedStages.includes(technicalStageId);
 
     if (!isStageAllowed) {
       throw new Error('هذه المرحلة غير مرتبطة بهذا البند');
@@ -193,10 +201,8 @@ export class BOQExecutionService {
     
     const allItems = itemsSnap.docs.map(d => ({ id: d.id, ...d.data() } as BOQItem));
     
-    const linkedItems = allItems.filter(i => 
-      (i.technicalStageIds && i.technicalStageIds.includes(technicalStageId)) || 
-      (i.technicalStageId === technicalStageId)
-    );
+    // Linked items search using helper logic (support for singular and plural)
+    const linkedItems = allItems.filter(i => this.getAllowedTechnicalStageIds(i).includes(technicalStageId));
 
     if (linkedItems.length === 0) {
       return { linkedItemsCount: 0, totalPlanned: 0, totalExecuted: 0, progressPercent: 100, canComplete: true };
@@ -218,13 +224,25 @@ export class BOQExecutionService {
       );
       const execSnap = await getDocs(qExec);
 
+      let itemExecSumFromLogs = 0;
       execSnap.docs.forEach(d => {
          const data = d.data();
          if (data.isArchived !== true) {
             totalActiveLogsCount++;
-            totalExecutedForThisStage += (data.quantity || 0);
+            itemExecSumFromLogs += (data.quantity || 0);
          }
       });
+
+      // BACKWARD COMPATIBILITY FALLBACK:
+      // If no logs found, and item has legacy executedQuantity, and it's a legacy item (no array), use it.
+      if (itemExecSumFromLogs === 0 && (!item.technicalStageIds || item.technicalStageIds.length === 0)) {
+         if ((item.executedQuantity || 0) > 0) {
+           itemExecSumFromLogs = item.executedQuantity || 0;
+           totalActiveLogsCount++; // Treat as active progress to allow completion
+         }
+      }
+
+      totalExecutedForThisStage += itemExecSumFromLogs;
     }
 
     const progress = totalPlanned > 0 ? (totalExecutedForThisStage / totalPlanned) * 100 : 0;
