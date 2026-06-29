@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -38,6 +37,7 @@ export interface StageProgressResult {
 
 /**
  * خدمة الربط التنفيذي وتتبع الإنجاز للمقايسات (BOQ Progress Tracking Service).
+ * تدعم مفهوم "التجميع التراكمي" (Bucket Execution).
  */
 export class BOQExecutionService {
   constructor(
@@ -48,6 +48,7 @@ export class BOQExecutionService {
 
   /**
    * تسجيل إنجاز مرحلي متخصص (Execution Bucketing)
+   * هذا التحديث يضمن تحديث إجمالي البند في المقايسة فوراً بعد تسجيل أي كمية في أي مرحلة.
    */
   async recordBOQItemExecution(
     boqId: string,
@@ -70,19 +71,7 @@ export class BOQExecutionService {
     if (!itemSnap.exists()) throw new Error('ITEM_NOT_FOUND: البند غير موجود.');
     const itemData = itemSnap.data() as BOQItem;
 
-    // التحقق من صحة المرحلة: هل مسموح للبند الظهور في هذه المرحلة؟
-    const allowedStages = itemData.technicalStageIds && itemData.technicalStageIds.length > 0 
-      ? itemData.technicalStageIds 
-      : (itemData.technicalStageId ? [itemData.technicalStageId] : []);
-
-    // إذا لم يكن البند مربوطاً بأي مرحلة (بدون تعيين مالي)، نسمح بتسجيله في أي مرحلة نشطة
-    const isFreeFloating = allowedStages.length === 0;
-
-    if (!isFreeFloating && !allowedStages.includes(technicalStageId)) {
-      throw new Error('STAGE_NOT_LINKED: هذه المرحلة غير مسموح فيها بتسجيل إنجاز لهذا البند الفني.');
-    }
-
-    // 1. إضافة سجل التنفيذ التفصيلي (للتاريخ والتدقيق)
+    // 1. إضافة سجل التنفيذ التفصيلي للمجموعة الفرعية
     const executionsRef = collection(this.db, paths.boqItemExecutions(this.companyId, boqId, itemId));
     const executionData: BOQItemExecutionEntry = {
       companyId: this.companyId,
@@ -103,24 +92,25 @@ export class BOQExecutionService {
       throw err;
     });
 
-    // 2. إعادة حساب الإجمالي التراكمي للبند من كافة سجلات التنفيذ
+    // 2. تحديث الرصيد التراكمي في البند الرئيسي (The Bucket Update)
+    // نقوم بجلب كافة السجلات المسجلة لهذا البند في أي مرحلة لضمان الدقة
     const allExecutionsSnap = await getDocs(executionsRef);
     const newTotalExecuted = allExecutionsSnap.docs.reduce((sum, d) => sum + (d.data().quantity || 0), 0);
 
-    // 3. تحديث البند الرئيسي في المقايسة بالرصيد التراكمي الجديد
+    // تحديث البند الأصلي بالمجموع الجديد
     await updateDoc(itemRef, {
       executedQuantity: newTotalExecuted,
       updatedAt: serverTimestamp(),
       updatedBy: userId
     });
 
-    // 4. تسجيل الحدث في سجل المعاملة
+    // 3. توثيق الحدث في سجل المعاملة
     if (itemData.transactionId) {
       const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, itemData.transactionId));
       await addDoc(timelineRef, {
         transactionId: itemData.transactionId,
         type: 'numeric_update',
-        content: `تسجيل إنجاز ميداني: ${itemData.referenceTitle} -> إضافة ${quantity} وحدة (الإجمالي المنفذ الآن: ${newTotalExecuted}).`,
+        content: `إنجاز ميداني: ${itemData.referenceTitle} -> تسجيل ${quantity} وحدة (الإجمالي المنفذ: ${newTotalExecuted}).`,
         userId,
         userName,
         companyId: this.companyId,
@@ -133,7 +123,6 @@ export class BOQExecutionService {
 
   /**
    * جلب تقرير تقدم المرحلة الفنية
-   * يقوم بفحص كافة بنود المقايسة التي تملك "صلاحية ظهور" في هذه المرحلة
    */
   async getTechnicalStageProgress(transactionId: string, technicalStageId: string): Promise<StageProgressResult> {
     const boqsRef = collection(this.db, paths.boqs(this.companyId));
@@ -150,7 +139,7 @@ export class BOQExecutionService {
     
     const allItems = itemsSnap.docs.map(d => ({ id: d.id, ...d.data() } as BOQItem));
     
-    // فلترة البنود التي تملك هذه المرحلة في روابطها
+    // فلترة البنود المرتبطة بهذه المرحلة
     const linkedItems = allItems.filter(i => 
       (i.technicalStageIds && i.technicalStageIds.includes(technicalStageId)) || 
       (i.technicalStageId === technicalStageId)
@@ -166,8 +155,7 @@ export class BOQExecutionService {
     for (const item of linkedItems) {
       totalPlanned += (item.plannedQuantity || 0);
       
-      // جلب سجلات التنفيذ المخصصة لهذه المرحلة تحديداً لهذا البند
-      const executionsRef = collection(this.db, paths.boqItemExecutions(this.companyId, boqId, item.id));
+      const executionsRef = collection(this.db, paths.boqItemExecutions(this.companyId, boqId, item.id!));
       const qExec = query(executionsRef, where('technicalStageId', '==', technicalStageId));
       const execSnap = await getDocs(qExec);
 
@@ -175,15 +163,13 @@ export class BOQExecutionService {
     }
 
     const progress = totalPlanned > 0 ? (totalExecutedForThisStage / totalPlanned) * 100 : 0;
-    const canComplete = totalExecutedForThisStage > 0;
-
+    
     return {
       linkedItemsCount: linkedItems.length,
       totalPlanned,
       totalExecuted: totalExecutedForThisStage,
       progressPercent: Math.round(progress * 100) / 100,
-      canComplete,
-      reason: canComplete ? undefined : "يجب تسجيل إنجاز مادي واحد على الأقل مرتبط بهذه المرحلة قبل إغلاقها."
+      canComplete: totalExecutedForThisStage > 0 // شرط إغلاق المرحلة: وجود إنجاز مادي
     };
   }
 }

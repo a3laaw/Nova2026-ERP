@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils';
 /**
  * صفحة متابعة إنجاز المقايسة الآلية (Automated BOQ Progress)
  * تقوم بحساب السابق والحالي والإجمالي برمجياً بناءً على حالة المراحل الميدانية.
+ * يدعم سيناريو: بند واحد في المقايسة يتم تغذيته من عدة مراحل تنفيذية (مثل طبقات الدفان).
  */
 export default function TransactionBOQProgressPage() {
   const params = useParams();
@@ -61,8 +62,7 @@ export default function TransactionBOQProgressPage() {
   [db, companyId, activeBoq]);
   const { data: allExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
 
-  // 4. محرك الحساب الآلي (Automated Calculation Engine)
-  // يقوم بتوزيع الكميات بناءً على حالة المرحلة المسجل عليها الإنجاز
+  // 4. محرك الحساب الآلي التراكمي (Automated Cumulative Calculation Engine)
   const executionMetrics = useMemo(() => {
     if (!allExecutions || !stages) return {};
     
@@ -74,11 +74,11 @@ export default function TransactionBOQProgressPage() {
       
       if (!metrics[itemId]) metrics[itemId] = { prev: 0, current: 0 };
       
-      // القاعدة 1: إذا كانت المرحلة مكتملة، تذهب الكمية لـ "السابق"
+      // القاعدة: إذا كانت المرحلة مكتملة، تذهب الكمية لـ "السابق"
+      // إذا كانت قيد التنفيذ، تذهب لـ "الحالي"
       if (stage?.status === 'completed') {
         metrics[itemId].prev += (exec.quantity || 0);
       } 
-      // القاعدة 2: إذا كانت المرحلة قيد التنفيذ أو معلقة، تذهب الكمية لـ "الحالي"
       else if (stage?.status === 'in-progress' || stage?.status === 'pending') {
         metrics[itemId].current += (exec.quantity || 0);
       }
@@ -89,7 +89,6 @@ export default function TransactionBOQProgressPage() {
 
   const boqTree = useMemo(() => transformToBOQTree(items || []), [items]);
 
-  // إحصائيات الفوتر الإجمالية
   const overallStats = useMemo(() => {
     if (!items) return { totalPlanned: 0, totalExecuted: 0, progress: 0 };
     const totalP = items.reduce((acc, i) => acc + ((i.plannedQuantity || 0) * (i.estimatedRate || 0)), 0);
@@ -131,6 +130,7 @@ export default function TransactionBOQProgressPage() {
           const currentVal = metrics.current;
           const totalCumulative = prevVal + currentVal;
           
+          // حساب النسبة المئوية الميدانية بناءً على المخطط
           const progress = (totalCumulative / (item.plannedQuantity || 1)) * 100;
           const isOver = totalCumulative > (item.plannedQuantity || 0);
 
@@ -143,28 +143,24 @@ export default function TransactionBOQProgressPage() {
               </TableCell>
               <TableCell className="text-center font-black text-[10px] text-slate-400 uppercase">{item.unitSymbol || '-'}</TableCell>
               
-              {/* المخطط */}
               <TableCell className="text-center w-[80px]">
                  <span className="font-mono font-black text-slate-400 text-xs bg-slate-100/50 px-3 py-1 rounded-lg">
                     {item.plannedQuantity}
                  </span>
               </TableCell>
               
-              {/* السابق - آلي (من المراحل المكتملة) */}
               <TableCell className="text-center">
                  <span className="font-mono font-black text-blue-600 text-xs">
                     {prevVal || '0'}
                  </span>
               </TableCell>
               
-              {/* الحالي - آلي (من المرحلة قيد التنفيذ) */}
               <TableCell className="text-center w-[100px]">
                  <div className="inline-flex items-center justify-center h-8 px-4 rounded-full bg-orange-50 border border-orange-100 text-orange-600 font-black text-xs shadow-sm">
                     {currentVal || '0'}
                  </div>
               </TableCell>
 
-              {/* الإجمالي - تراكمي */}
               <TableCell className="text-center w-[100px]">
                  <Badge variant="outline" className={cn(
                    "font-black text-xs px-4 h-9 rounded-full border-2 shadow-sm",
