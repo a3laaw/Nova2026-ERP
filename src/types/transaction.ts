@@ -27,10 +27,13 @@ export interface Transaction extends BaseReference {
 export interface TransactionTimelineEvent extends BaseReference {
   id?: string;
   transactionId: string;
+  stageId?: string; // ربط الحدث بمرحلة محددة للأرشفة
   type: 'system' | 'stage_start' | 'stage_complete' | 'stage_reopen' | 'comment' | 'numeric_update';
   content: string;
   userId: string;
   userName: string;
+  isArchived?: boolean; // نظام الأرشفة للأحداث
+  archivedAt?: any;
 }
 
 export type CommentType = 'general' | 'note' | 'warning' | 'instruction';
@@ -39,14 +42,14 @@ export interface TransactionComment extends BaseReference {
   id?: string;
   transactionId: string;
   stageInstanceId?: string | null;
-  stageName?: string; // لسهولة العرض في التدفق الموحد
+  stageName?: string; 
   content: string;
   commentType: CommentType;
   createdBy: string;
   createdByName: string;
   isEdited?: boolean;
   isPinned?: boolean;
-  isArchived?: boolean; // نظام الأرشفة الجديد
+  isArchived?: boolean; 
   archivedAt?: any;
   parentCommentId?: string | null;
 }

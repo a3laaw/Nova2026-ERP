@@ -13,7 +13,7 @@ import {
   Target
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, where } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -91,7 +91,7 @@ export function CommentSection({
     db && globalUser?.companyId ? new CommentService(db, globalUser.companyId, permissions) : null, 
   [db, globalUser, permissions]);
 
-  // تصفية النشاط الجاري (فقط غير المؤرشف)
+  // المجرى النشط (تجاهل كافة المؤرشفات)
   const activeStream = useMemo(() => {
     const filteredComments = (comments || [])
       .filter(c => !c.isArchived && (!filterStageId || c.stageInstanceId === filterStageId))
@@ -109,26 +109,37 @@ export function CommentSection({
         sortTime: l.createdAt?.toMillis?.() || Date.now()
       }));
 
-    return [...filteredComments, ...filteredLogs].sort((a, b) => a.sortTime - b.sortTime);
-  }, [comments, externalLogs, filterStageId, technicalStageId]);
+    const filteredTimeline = (timelineEvents || [])
+      .filter(e => !e.isArchived && e.type === 'numeric_update' && (!technicalStageId || e.stageId === technicalStageId))
+      .map(e => ({
+        ...e,
+        streamType: 'timeline_log' as const,
+        sortTime: e.createdAt?.toMillis?.() || Date.now()
+      }));
 
-  // أرشيف الأنشطة (الدردشة + سجلات الإنجاز المؤرشفة)
-  const archivedActivity = useMemo(() => {
+    return [...filteredComments, ...filteredLogs, ...filteredTimeline].sort((a, b) => a.sortTime - b.sortTime);
+  }, [comments, externalLogs, timelineEvents, filterStageId, technicalStageId]);
+
+  // أرشيف الدردشة الشامل (تعليقات + ملاحظات إنجاز + أحداث نظام مؤرشفة)
+  const archivedChat = useMemo(() => {
     const archivedComments = (comments || [])
       .filter(c => !!c.isArchived && (!filterStageId || c.stageInstanceId === filterStageId))
-      .map(c => ({ ...c, streamType: 'comment' as const, sortTime: c.createdAt?.toMillis?.() || 0 }));
+      .map(c => ({ ...c, streamType: 'comment' as const }));
 
     const archivedLogs = (externalLogs || [])
       .filter(l => !!l.isArchived && (!technicalStageId || l.technicalStageId === technicalStageId))
-      .map(l => ({ ...l, streamType: 'log' as const, sortTime: l.createdAt?.toMillis?.() || 0 }));
+      .map(l => ({ ...l, streamType: 'log' as const }));
 
-    return [...archivedComments, ...archivedLogs].sort((a, b) => a.sortTime - b.sortTime);
-  }, [comments, externalLogs, filterStageId, technicalStageId]);
+    const archivedTimelineLogs = (timelineEvents || [])
+      .filter(e => !!e.isArchived && e.type === 'numeric_update' && (!technicalStageId || e.stageId === technicalStageId))
+      .map(e => ({ ...e, streamType: 'timeline_log' as const }));
 
-  // أرشيف السجلات الزمنية للمديرين
+    return [...archivedComments, ...archivedLogs, ...archivedTimelineLogs].sort((a, b) => (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0));
+  }, [comments, externalLogs, timelineEvents, filterStageId, technicalStageId]);
+
   const archivedTime = useMemo(() => {
-    return (timelineEvents || []).filter(e => e.type === 'stage_reopen' && (!filterStageId || e.stageId === filterStageId));
-  }, [timelineEvents, filterStageId]);
+    return (timelineEvents || []).filter(e => e.type === 'stage_reopen' && (!technicalStageId || e.stageId === technicalStageId));
+  }, [timelineEvents, technicalStageId]);
 
   const handleSubmit = async () => {
     if (!commentService || !user || !content.trim()) return;
@@ -148,14 +159,9 @@ export function CommentSection({
     }
   };
 
-  const handleDelete = async (commentId: string) => {
-    try { await commentService?.deleteComment(path, commentId); } catch(e) {}
-  };
-
   return (
     <div className="flex flex-col h-full bg-white text-start">
       <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="flex flex-col h-full">
-        {/* Header */}
         <div className="flex flex-col gap-4 print:hidden shrink-0">
           <div className="flex items-center justify-between px-1">
              <div className="flex items-center gap-3">
@@ -167,7 +173,6 @@ export function CommentSection({
                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Sovereign Control Center</p>
                 </div>
              </div>
-             
              {filterStageId && (
                 <Button onClick={onClearFilter} variant="ghost" size="sm" className="h-8 rounded-lg text-[9px] font-black gap-2 bg-slate-900 text-white hover:bg-slate-800 px-3 shadow-lg">
                   <X className="h-3 w-3" /> {isRtl ? 'عرض الكل' : 'View All'}
@@ -176,8 +181,7 @@ export function CommentSection({
           </div>
 
           {filterStageId && (
-            <div className="px-4 py-3 rounded-2xl bg-slate-900 text-white mx-1 flex items-center justify-between animate-in slide-in-from-top-2 shadow-2xl relative overflow-hidden group">
-               <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:rotate-12 transition-transform"><LayoutGrid className="h-10 w-10" /></div>
+            <div className="px-4 py-3 rounded-2xl bg-slate-900 text-white mx-1 flex items-center justify-between animate-in slide-in-from-top-2 shadow-2xl relative overflow-hidden">
                <div className="flex items-center gap-3 relative z-10">
                   <div className="h-6 w-6 rounded-lg bg-primary/20 flex items-center justify-center border border-primary/20">
                      <Target className="h-3 w-3 text-primary animate-pulse" />
@@ -186,23 +190,23 @@ export function CommentSection({
                     {selectedStageName}
                   </span>
                </div>
-               <Badge className="bg-primary text-white border-0 text-[8px] h-5 font-black px-3 rounded-lg shadow-lg">FOCUS MODE</Badge>
+               <Badge className="bg-primary text-white border-0 text-[8px] h-5 font-black px-3 rounded-lg">FOCUS MODE</Badge>
             </div>
           )}
 
           <TabsList className={cn("grid w-full h-11 bg-slate-100/50 rounded-xl p-1 gap-1 mx-1", isAdmin ? "grid-cols-4" : "grid-cols-2")}>
-              <TabsTrigger value="active" className="rounded-lg text-[10px] font-black data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-primary transition-all">
+              <TabsTrigger value="active" className="rounded-lg text-[10px] font-black transition-all">
                 {isRtl ? 'النشاط' : 'Active'}
               </TabsTrigger>
-              <TabsTrigger value="timeline" className="rounded-lg text-[10px] font-black data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-primary transition-all">
+              <TabsTrigger value="timeline" className="rounded-lg text-[10px] font-black transition-all">
                 {isRtl ? 'الزمني' : 'Timeline'}
               </TabsTrigger>
               {isAdmin && (
                 <>
-                  <TabsTrigger value="chat_archive" className="rounded-lg text-[10px] font-black data-[state=active]:bg-[#1e1b4b] data-[state=active]:text-white gap-1.5 transition-all">
+                  <TabsTrigger value="chat_archive" className="rounded-lg text-[10px] font-black gap-1.5 transition-all">
                     <Archive className="h-3 w-3" /> {isRtl ? 'الأرشيف' : 'Archive'}
                   </TabsTrigger>
-                  <TabsTrigger value="time_archive" className="rounded-lg text-[10px] font-black data-[state=active]:bg-[#1e1b4b] data-[state=active]:text-white gap-1.5 transition-all">
+                  <TabsTrigger value="time_archive" className="rounded-lg text-[10px] font-black gap-1.5 transition-all">
                     <Clock className="h-3 w-3" /> {isRtl ? 'الوقت' : 'Time Arc'}
                   </TabsTrigger>
                 </>
@@ -221,16 +225,16 @@ export function CommentSection({
                </div>
             ) : (
               activeStream.map((item: any) => (
-                  <StreamItem key={item.id || item.sortTime} item={item} isRtl={isRtl} user={user} boqItems={boqItems} onDelete={handleDelete} />
+                  <StreamItem key={item.id || item.sortTime} item={item} isRtl={isRtl} user={user} boqItems={boqItems} />
               ))
             )}
           </TabsContent>
 
           <TabsContent value="chat_archive" className="m-0 space-y-6 pb-24">
-              {archivedActivity.map((item: any) => (
+              {archivedChat.map((item: any) => (
                 <StreamItem key={item.id} item={item} isRtl={isRtl} user={user} boqItems={boqItems} />
               ))}
-              {!archivedActivity.length && <div className="py-32 text-center text-slate-300 flex flex-col items-center gap-4"><Archive className="h-10 w-10 opacity-20" /><p className="text-[10px] font-black italic">خزنة الأرشيف خالية.</p></div>}
+              {!archivedChat.length && <div className="py-32 text-center text-slate-300 flex flex-col items-center gap-4"><Archive className="h-10 w-10 opacity-20" /><p className="text-[10px] font-black italic">خزنة الأرشيف خالية.</p></div>}
           </TabsContent>
 
           <TabsContent value="time_archive" className="m-0 space-y-4 pb-24">
@@ -253,7 +257,6 @@ export function CommentSection({
                     </div>
                   </div>
               ))}
-              {!archivedTime.length && <div className="py-32 text-center text-slate-300 flex flex-col items-center gap-4"><Clock className="h-10 w-10 opacity-20" /><p className="text-[10px] font-black italic">لا توجد سجلات تراجع زمنية.</p></div>}
           </TabsContent>
 
           <TabsContent value="timeline" className="m-0 space-y-6 pb-24">
@@ -309,19 +312,19 @@ export function CommentSection({
   );
 }
 
-function StreamItem({ item, isRtl, user, boqItems, onDelete }: any) {
-   const isLog = item.streamType === 'log';
-   const displayName = item.createdByName || item.recordedByName || (isRtl ? 'مستخدم' : 'User');
+function StreamItem({ item, isRtl, user, boqItems }: any) {
+   const isLog = item.streamType === 'log' || item.streamType === 'timeline_log';
+   const displayName = item.createdByName || item.recordedByName || item.userName || (isRtl ? 'مستخدم' : 'User');
 
    if (isLog) {
       const boqItem = boqItems?.find((i: any) => i.id === item.boqItemId);
       const isComplementary = item.quantity === 0;
       return (
-         <div className="flex justify-center animate-in fade-in duration-500">
+         <div className="flex justify-center animate-in fade-in duration-500 px-1">
             <div className={cn(
-              "border-2 shadow-md rounded-[1.25rem] p-4 w-full md:w-[95%] relative transition-all",
+              "border-2 shadow-md rounded-[1.25rem] p-4 w-full relative transition-all",
               isComplementary ? "bg-blue-50/50 border-blue-100" : "bg-emerald-50/30 border-emerald-100",
-              item.isArchived && "opacity-60 grayscale border-dashed"
+              item.isArchived && "opacity-60 grayscale border-dashed border-slate-300"
             )}>
                <div className="flex items-start gap-4">
                  <div className={cn(
@@ -332,13 +335,13 @@ function StreamItem({ item, isRtl, user, boqItems, onDelete }: any) {
                  </div>
                  <div className="text-start flex-1">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
-                       <Badge variant="outline" className="text-[8px] font-black border-slate-200 bg-white text-slate-600 px-2 truncate">
-                          {boqItem?.referenceTitle || (isRtl ? 'بند مجهول' : 'Unknown Item')}
+                       <Badge variant="outline" className="text-[8px] font-black border-slate-200 bg-white text-slate-600 px-2 truncate max-w-[140px]">
+                          {boqItem?.referenceTitle || item.content?.split(': ')[1] || (isRtl ? 'تحديث إنجاز' : 'Progress Update')}
                        </Badge>
-                       {!isComplementary && <Badge className="bg-emerald-600 text-white border-0 text-[8px] h-4 px-2">{item.quantity} QTY</Badge>}
+                       {item.quantity > 0 && <Badge className="bg-emerald-600 text-white border-0 text-[8px] h-4 px-2">{item.quantity} QTY</Badge>}
                        {item.isArchived && <Badge className="bg-slate-900 text-white border-0 text-[8px] h-4 px-2">ARCHIVED</Badge>}
                     </div>
-                    {item.notes && <p className="text-[10px] font-bold text-slate-600 italic leading-snug">"{item.notes}"</p>}
+                    {(item.notes || item.content) && <p className="text-[10px] font-bold text-slate-600 italic leading-snug">"{item.notes || item.content}"</p>}
                     <div className="flex items-center gap-3 mt-3 pt-2 border-t border-black/[0.03] text-[7px] font-black text-slate-400 uppercase">
                        <span className="flex items-center gap-1"><User className="h-2 w-2" /> {displayName}</span>
                        <span className="flex items-center gap-1"><Clock className="h-2 w-2" /> {item.createdAt ? formatDistanceToNow(item.createdAt.toDate(), { addSuffix: true, locale: isRtl ? ar : enUS }) : '...'}</span>
@@ -355,7 +358,7 @@ function StreamItem({ item, isRtl, user, boqItems, onDelete }: any) {
      <div className={cn("flex gap-3 text-start animate-in fade-in slide-in-from-bottom-2 duration-300", isMine ? "flex-row-reverse" : "flex-row")}>
         <Avatar className="h-8 w-8 rounded-xl shrink-0 border-2 border-white shadow-sm ring-1 ring-slate-100">
            <AvatarImage src={`https://picsum.photos/seed/${item.createdBy}/40/40`} />
-           <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-black">{displayName.charAt(0)}</AvatarFallback>
+           <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-black">{displayName?.charAt(0)}</AvatarFallback>
         </Avatar>
         <div className={cn("flex flex-col space-y-1 max-w-[85%]", isMine ? "items-end" : "items-start")}>
            <div className="flex items-center gap-2 px-1">
@@ -377,21 +380,6 @@ function StreamItem({ item, isRtl, user, boqItems, onDelete }: any) {
                  </div>
               )}
               <p className="whitespace-pre-wrap">{item.content}</p>
-              
-              {!item.isArchived && onDelete && (
-                 <div className={cn("absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1", isMine ? "right-full mr-1.5" : "left-full ml-1.5")}>
-                    <DropdownMenu>
-                       <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full text-slate-300 hover:text-slate-600 bg-white shadow-sm border"><MoreVertical className="h-3 w-3" /></Button>
-                       </DropdownMenuTrigger>
-                       <DropdownMenuContent align={isMine ? "end" : "start"} className="rounded-xl border-2">
-                          <DropdownMenuItem onClick={() => onDelete(item.id!)} className="text-rose-600 font-bold gap-2 focus:bg-rose-50 cursor-pointer text-xs">
-                             <Trash2 className="h-4 w-4" /> {isRtl ? 'حذف التعليق' : 'Delete'}
-                          </DropdownMenuItem>
-                       </DropdownMenuContent>
-                    </DropdownMenu>
-                 </div>
-              )}
            </div>
         </div>
      </div>

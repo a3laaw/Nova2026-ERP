@@ -144,21 +144,17 @@ export class TransactionService {
       startedAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       updatedBy: userId
-    }).catch(err => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: stageRef.path, operation: 'update'
-      }));
-      throw err;
     });
 
     const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
     await addDoc(timelineRef, {
       transactionId,
-      stageId,
+      stageId, 
       type: 'stage_start',
       content: `تم بدء العمل في المرحلة الفنية`,
       userId,
       userName,
+      isArchived: false,
       companyId: this.companyId,
       createdAt: serverTimestamp()
     });
@@ -194,11 +190,15 @@ export class TransactionService {
       content: `تم إنجاز المرحلة بنجاح`,
       userId,
       userName,
+      isArchived: false,
       companyId: this.companyId,
       createdAt: serverTimestamp()
     });
   }
 
+  /**
+   * التراجع عن إكمال المرحلة مع أرشفة شاملة (Sovereign Audit Reopen)
+   */
   async reopenStage(transactionId: string, stageId: string, userId: string, userName: string, clearLogs: boolean = false) {
     ensureActionPermission(this.permissions, 'projects:edit');
     
@@ -207,17 +207,13 @@ export class TransactionService {
     if (!stageSnap.exists()) return;
     const stageData = stageSnap.data() as StageInstance;
 
-    // 1. حساب وتحضير بيانات الأرشفة للمحاولة التي تم التراجع عنها
     const start = stageData.startedAt?.toDate();
     const end = stageData.completedAt?.toDate() || new Date();
-    
-    const durationDays = start ? differenceInDays(end, start) : 0;
-    const durationHours = start ? (differenceInHours(end, start) % 24) : 0;
-    const durationText = `${durationDays}d ${durationHours}h`;
+    const durationText = start ? `${differenceInDays(end, start)}d ${differenceInHours(end, start) % 24}h` : '0d 0h';
 
     const batch = writeBatch(this.db);
 
-    // 2. تصفير السجل الزمني النشط وإعادة المرحلة للعمل
+    // 1. إعادة المرحلة للحالة الجارية وتصفير توقيت الإكمال
     batch.update(stageRef, {
       status: 'in-progress',
       completedAt: null,
@@ -226,12 +222,11 @@ export class TransactionService {
       updatedBy: userId
     });
 
-    // 3. القفل التسلسلي: إغلاق المرحلة التالية فوراً
+    // 2. القفل التسلسلي للمرحلة التالية
     const nextOrder = (stageData.order || 0) + 1;
     const stagesRef = collection(this.db, paths.transactionStages(this.companyId, transactionId));
     const nextQ = query(stagesRef, where('order', '==', nextOrder));
     const nextSnap = await getDocs(nextQ);
-    
     if (!nextSnap.empty) {
       batch.update(nextSnap.docs[0].ref, {
         status: 'pending',
@@ -241,36 +236,39 @@ export class TransactionService {
       });
     }
 
+    // 3. أرشفة سجل الأحداث (Timeline Events) المرتبط بالمرحلة
+    const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
+    const timelineSnap = await getDocs(query(timelineRef, where('stageId', '==', stageData.technicalStageId)));
+    timelineSnap.docs.forEach(d => {
+       if (!d.data().isArchived) {
+          batch.update(d.ref, { isArchived: true, archivedAt: serverTimestamp() });
+       }
+    });
+
     await batch.commit();
 
-    // 4. توثيق الأرشفة الزمنية (ترحيل للسجل التاريخي)
-    const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
+    // 4. توثيق حدث التراجع في السجل الزمني
     await addDoc(timelineRef, {
       transactionId,
-      stageId,
+      stageId: stageData.technicalStageId,
       type: 'stage_reopen',
-      content: `تراجع عن الإكمال: تم أرشفة محاولة عمل استغرقت ${durationText}`,
+      content: `تراجع عن الإكمال: تمت أرشفة محاولة سابقة استغرقت ${durationText}`,
       previousStart: stageData.startedAt || null,
       previousEnd: stageData.completedAt || null,
-      durationText: durationText,
+      durationText,
       userId,
       userName,
       companyId: this.companyId,
       createdAt: serverTimestamp()
     });
 
-    // 5. أرشفة التعليقات المرتبطة بهذه المرحلة
+    // 5. أرشفة التعليقات النصية
     const commentService = new CommentService(this.db, this.companyId, this.permissions);
     await commentService.archiveStageComments(transactionId, stageId);
 
-    // 6. التعامل مع سجلات الإنجاز الميداني (ترحيل للأرشيف أو حذف)
+    // 6. أرشفة سجلات الإنجاز (Logs) - تعديل هندسي: نؤرشف دائماً لمنع الحذف
     const boqService = new BOQExecutionService(this.db, this.companyId, this.permissions);
-    if (clearLogs) {
-      await boqService.clearStageExecutions(transactionId, stageData.technicalStageId);
-    } else {
-      // الابتكار الجديد: أرشفة سجلات الإنجاز بدلاً من حذفها
-      await boqService.archiveStageExecutions(transactionId, stageData.technicalStageId);
-    }
+    await boqService.archiveStageExecutions(transactionId, stageData.technicalStageId, clearLogs);
   }
 
   async deleteTransaction(transactionId: string) {

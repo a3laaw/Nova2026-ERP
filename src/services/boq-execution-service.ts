@@ -36,9 +36,6 @@ export interface StageProgressResult {
   reason?: string;
 }
 
-/**
- * خدمة الربط التنفيذي وتتبع الإنجاز للمقايسات (BOQ Progress Tracking Service).
- */
 export class BOQExecutionService {
   constructor(
     private db: Firestore, 
@@ -46,9 +43,6 @@ export class BOQExecutionService {
     private permissions: string[] = []
   ) {}
 
-  /**
-   * تسجيل إنجاز مرحلي متخصص في المجموعة المسطحة
-   */
   async recordBOQItemExecution(
     boqId: string,
     itemId: string,
@@ -70,7 +64,6 @@ export class BOQExecutionService {
     if (!itemSnap.exists()) throw new Error('ITEM_NOT_FOUND: البند غير موجود.');
     const itemData = itemSnap.data() as BOQItem;
 
-    // 1. إضافة سجل التنفيذ في المجموعة المسطحة للشركة
     const executionsRef = collection(this.db, paths.executions(this.companyId));
     const executionData: any = {
       companyId: this.companyId,
@@ -94,20 +87,20 @@ export class BOQExecutionService {
       throw err;
     });
 
-    // 2. تحديث الرصيد التراكمي في البند الرئيسي للمقايسة
     await this.recalculateItemQuantity(boqId, itemId);
 
-    // 3. توثيق الحدث في سجل المعاملة العام
     if (itemData.transactionId) {
       const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, itemData.transactionId));
       await addDoc(timelineRef, {
         transactionId: itemData.transactionId,
+        stageId: technicalStageId, // ربط الحدث بالمرحلة للأرشفة لاحقاً
         type: 'numeric_update',
         content: quantity === 0 
           ? `تأكيد فني: ${itemData.referenceTitle}`
           : `تسجيل إنجاز: ${itemData.referenceTitle} (${quantity} وحدة)`,
         userId,
         userName,
+        isArchived: false,
         companyId: this.companyId,
         createdAt: serverTimestamp()
       });
@@ -117,9 +110,9 @@ export class BOQExecutionService {
   }
 
   /**
-   * أرشفة سجلات الإنجاز لمرحلة معينة عند التراجع (بدلاً من الحذف)
+   * أرشفة السجلات (تستخدم دائماً عند التراجع لضمان النزاهة)
    */
-  async archiveStageExecutions(transactionId: string, technicalStageId: string) {
+  async archiveStageExecutions(transactionId: string, technicalStageId: string, isReset: boolean = false) {
     ensureActionPermission(this.permissions, 'projects:edit');
     
     const executionsRef = collection(this.db, paths.executions(this.companyId));
@@ -141,6 +134,7 @@ export class BOQExecutionService {
       if (data.isArchived !== true) {
         batch.update(d.ref, { 
           isArchived: true, 
+          isReset, // علامة توضح أن هذا الأرشيف ناتج عن عملية "تصفير"
           archivedAt: serverTimestamp(),
           updatedAt: serverTimestamp() 
         });
@@ -151,7 +145,6 @@ export class BOQExecutionService {
 
     await batch.commit();
 
-    // إعادة حساب الكميات (استبعاد المؤرشف)
     for (const boqId of Array.from(boqIds)) {
       for (const itemId of Array.from(affectedItemIds)) {
         await this.recalculateItemQuantity(boqId, itemId);
@@ -159,51 +152,11 @@ export class BOQExecutionService {
     }
   }
 
-  /**
-   * تصفير سجلات الإنجاز نهائياً (عند طلب المستخدم)
-   */
-  async clearStageExecutions(transactionId: string, technicalStageId: string) {
-    ensureActionPermission(this.permissions, 'projects:edit');
-    
-    const executionsRef = collection(this.db, paths.executions(this.companyId));
-    const q = query(
-      executionsRef, 
-      where('transactionId', '==', transactionId),
-      where('technicalStageId', '==', technicalStageId)
-    );
-
-    const snap = await getDocs(q);
-    if (snap.empty) return;
-
-    const batch = writeBatch(this.db);
-    const affectedItemIds = new Set<string>();
-    const boqIds = new Set<string>();
-
-    snap.docs.forEach(d => {
-      const data = d.data();
-      batch.delete(d.ref);
-      affectedItemIds.add(data.boqItemId);
-      boqIds.add(data.boqId);
-    });
-
-    await batch.commit();
-
-    for (const boqId of Array.from(boqIds)) {
-      for (const itemId of Array.from(affectedItemIds)) {
-        await this.recalculateItemQuantity(boqId, itemId);
-      }
-    }
-  }
-
-  /**
-   * إعادة حساب الكمية المنفذة الإجمالية لبند واحد بناءً على السجلات المسطحة (تجاهل المؤرشف)
-   */
   private async recalculateItemQuantity(boqId: string, itemId: string) {
     const executionsRef = collection(this.db, paths.executions(this.companyId));
     const q = query(executionsRef, where('boqItemId', '==', itemId));
     const snap = await getDocs(q);
     
-    // تصفية السجلات المؤرشفة برمجياً لضمان الدقة
     const newTotal = snap.docs.reduce((sum, d) => {
        const data = d.data();
        return data.isArchived === true ? sum : sum + (data.quantity || 0);
@@ -216,9 +169,6 @@ export class BOQExecutionService {
     });
   }
 
-  /**
-   * جلب تقرير تقدم المرحلة الفنية من المجموعة المسطحة (تجاهل المؤرشف)
-   */
   async getTechnicalStageProgress(transactionId: string, technicalStageId: string): Promise<StageProgressResult> {
     const boqsRef = collection(this.db, paths.boqs(this.companyId));
     const boqQuery = query(boqsRef, where('transactionId', '==', transactionId));
