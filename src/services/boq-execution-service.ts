@@ -37,7 +37,7 @@ export interface StageProgressResult {
 
 /**
  * خدمة الربط التنفيذي وتتبع الإنجاز للمقايسات (BOQ Progress Tracking Service).
- * تدعم مفهوم "التجميع التراكمي" (Bucket Execution) والاستثناءات الفنية.
+ * تدعم مفهوم "التجميع التراكمي" (Bucket Execution) والاستثناءات الفنية لمنع التكرار.
  */
 export class BOQExecutionService {
   constructor(
@@ -60,7 +60,7 @@ export class BOQExecutionService {
   ) {
     ensureActionPermission(this.permissions, 'projects:edit');
 
-    // السماح بالكمية صفر فقط في حال كانت ملاحظات التنفيذ موجودة (كإجراء مكمل)
+    // السماح بالكمية صفر فقط في حال كانت ملاحظات التنفيذ موجودة (كإجراء مكمل لمنع التكرار)
     if (quantity < 0) {
       throw new Error('INVALID_QUANTITY: الكمية لا يمكن أن تكون سالبة.');
     }
