@@ -5,6 +5,7 @@ import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -13,7 +14,7 @@ import {
   Workflow, Building2, Activity, PlayCircle, CheckCircle2
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, where } from 'firebase/firestore';
+import { collection, query, orderBy } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
