@@ -17,7 +17,8 @@ import {
   Sparkles,
   Search,
   ArrowRight,
-  Info
+  Info,
+  RotateCcw
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where, getDocs, limit } from 'firebase/firestore';
@@ -112,7 +113,7 @@ export default function TransactionDetailsPage() {
 
   const executionService = useMemo(() => db && companyId ? new BOQExecutionService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
-  // Batch progress fetching to avoid re-render loops
+  // Batch progress fetching
   useEffect(() => {
     let active = true;
     async function fetchAllProgress() {
@@ -212,6 +213,19 @@ export default function TransactionDetailsPage() {
     }
   };
 
+  const handleReopenStage = async (stageId: string) => {
+    if (!transactionService || !user) return;
+    setProcessingId(stageId);
+    try {
+      await transactionService.reopenStage(transactionId, stageId, user.uid, user.displayName || 'User');
+      toast({ title: isRtl ? "تمت إعادة فتح المرحلة للتعديل" : "Stage Reopened" });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('error'), description: e.message });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   const handleCreateBOQ = async () => {
     if (!documentService || !transaction || !user || !companyId || !db) return;
     setIsCreatingBoq(true);
@@ -229,12 +243,13 @@ export default function TransactionDetailsPage() {
       
       const snap = await getDocs(q);
       if (snap.empty) {
-        console.warn("Matching template not found for:", {
-          act: transaction.activityTypeId,
-          srv: transaction.serviceId,
-          sub: transaction.subServiceId
+        console.warn("Matching template search criteria:", {
+          companyId,
+          activityTypeId: transaction.activityTypeId,
+          serviceId: transaction.serviceId,
+          subServiceId: transaction.subServiceId
         });
-        throw new Error(isRtl ? 'لم يتم العثور على قالب BOQ افتراضي مطابق.' : 'No matching default BOQ template found.');
+        throw new Error(isRtl ? 'لم يتم العثور على قالب BOQ افتراضي مطابق لنفس النشاط والخدمة والمسار الفني.' : 'No matching default BOQ template found.');
       }
 
       const template = snap.docs[0].data() as BOQTemplate;
@@ -472,6 +487,18 @@ export default function TransactionDetailsPage() {
                                        {isRtl ? 'إكمال المرحلة' : 'Complete'}
                                     </Button>
                                  )}
+
+                                 {stage.status === 'completed' && editAccess.can && (
+                                    <Button 
+                                      onClick={() => handleReopenStage(stage.id!)} 
+                                      disabled={processingId === stage.id}
+                                      variant="ghost"
+                                      className="h-11 px-4 rounded-xl text-amber-600 font-black text-xs gap-2 hover:bg-amber-50"
+                                    >
+                                       {processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
+                                       {isRtl ? 'تراجع' : 'Undo'}
+                                    </Button>
+                                 )}
                               </div>
                            </div>
 
@@ -547,6 +574,9 @@ export default function TransactionDetailsPage() {
                                   <p className="text-[10px] font-bold text-slate-400 italic leading-relaxed">
                                      {isRtl ? "لا توجد بنود مرتبطة بهذه المرحلة في القاموس المرجعي." : "No items linked to this stage in registry."}
                                   </p>
+                                  <p className="text-[9px] text-slate-300 font-bold leading-relaxed px-4">
+                                     {isRtl ? "تنبيه: المهندس في الموقع لن يرى هذا البند إلا إذا قمت بربطه بالمراحل التي يُسمح فيها بتنفيذه (الإعدادات > شجرة الأعمال)." : "Engineer in field won't see this item unless linked to allowed stages in settings."}
+                                  </p>
                                </div>
                              ) : (
                                filteredItemsForStage.map(item => (
@@ -604,3 +634,4 @@ export default function TransactionDetailsPage() {
     </div>
   );
 }
+

@@ -222,4 +222,35 @@ export class TransactionService {
       createdAt: serverTimestamp()
     });
   }
+
+  /**
+   * إعادة فتح مرحلة مكتملة (Undo/Rollback)
+   */
+  async reopenStage(transactionId: string, stageId: string, userId: string, userName: string) {
+    ensureActionPermission(this.permissions, 'projects:edit');
+    
+    const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
+    const stageSnap = await getDoc(stageRef);
+    if (!stageSnap.exists()) return;
+    const stageData = stageSnap.data() as StageInstance;
+
+    await updateDoc(stageRef, {
+      status: 'in-progress',
+      completedAt: null,
+      completedBy: null,
+      updatedAt: serverTimestamp(),
+      updatedBy: userId
+    });
+
+    const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
+    await addDoc(timelineRef, {
+      transactionId,
+      type: 'stage_reopen',
+      content: `تراجع عن إكمال المرحلة: تم إعادة فتح مرحلة "${stageData.name}" للتعديل.`,
+      userId,
+      userName,
+      companyId: this.companyId,
+      createdAt: serverTimestamp()
+    });
+  }
 }
