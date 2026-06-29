@@ -424,6 +424,15 @@ export default function TransactionDetailsPage() {
                                 </div>
 
                                 <div className="flex gap-2 shrink-0 z-10" onClick={e => e.stopPropagation()}>
+                                   <Button 
+                                     onClick={(e) => { e.stopPropagation(); setFilterStageId(stage.id!); }}
+                                     variant="ghost" 
+                                     className="h-11 px-4 rounded-xl text-slate-400 hover:text-primary font-black text-[10px] gap-2"
+                                   >
+                                      <MessageSquare className="h-3.5 w-3.5" />
+                                      {isRtl ? 'تعليق' : 'Comment'}
+                                   </Button>
+
                                    {stage.status === 'completed' && editAccess.can && (
                                       <Button 
                                         onClick={() => setUndoStage(stage)} 
@@ -432,7 +441,7 @@ export default function TransactionDetailsPage() {
                                         className="h-11 px-4 rounded-xl text-slate-400 hover:text-rose-600 font-black text-[10px] gap-2"
                                       >
                                          {processingId === stage.id ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <RotateCcw className="h-3.5 w-3.5" />}
-                                         {isRtl ? 'تراجع عن الإكمال' : 'Undo'}
+                                         {isRtl ? 'تراجع' : 'Undo'}
                                       </Button>
                                    )}
 
@@ -444,15 +453,12 @@ export default function TransactionDetailsPage() {
                                    
                                    {stage.status === 'pending' && isPreviousCompleted && (
                                       <Button onClick={() => handleStartStage(stage.id!)} disabled={processingId === stage.id} className="h-11 px-6 rounded-xl bg-blue-600 text-white font-black text-xs gap-2">
-                                         {processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Play className="h-4 w-4" />} {isRtl ? 'بدء العمل' : 'Start'}
+                                         {processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Play className="h-4 w-4" />} {isRtl ? 'بدء' : 'Start'}
                                       </Button>
-                                   )}
-                                   {stage.status === 'pending' && !isPreviousCompleted && (
-                                      <Badge variant="outline" className="h-11 px-4 rounded-xl border-2 border-slate-100 text-slate-300 font-bold text-[10px] gap-2"><Clock className="h-3 w-3" />{isRtl ? 'بانتظار المرحلة السابقة' : 'Waiting'}</Badge>
                                    )}
                                    {stage.status === 'in-progress' && (
                                       <Button onClick={() => handleCompleteStage(stage)} disabled={processingId === stage.id} className="h-11 px-6 rounded-xl bg-emerald-600 text-white font-black text-xs gap-2">
-                                         {processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Check className="h-4 w-4" />} {isRtl ? 'إكمال المرحلة' : 'Complete'}
+                                         {processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Check className="h-4 w-4" />} {isRtl ? 'إكمال' : 'Complete'}
                                       </Button>
                                    )}
                                 </div>

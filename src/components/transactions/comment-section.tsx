@@ -9,7 +9,7 @@ import {
   Trash2, Loader2, Hammer, User,
   History, Clock, Zap, Archive, FilterX,
   Calendar, Printer, CheckCircle2, Timer,
-  RotateCcw, FileText
+  RotateCcw, FileText, LayoutGrid
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -65,7 +65,7 @@ export function CommentSection({
 
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'active' | 'archived' | 'timeline'>('active');
+  const [activeTab, setActiveTab] = useState<'active' | 'timeline' | 'chat_archive' | 'time_archive'>('active');
 
   const commentsQuery = useMemo(() => 
     db ? query(collection(db, path), orderBy('createdAt', 'asc')) : null, 
@@ -82,7 +82,6 @@ export function CommentSection({
     db && globalUser?.companyId ? new CommentService(db, globalUser.companyId, permissions) : null, 
   [db, globalUser, permissions]);
 
-  // التدفق النشط (التعليقات غير المؤرشفة + سجلات الإنجاز الميداني)
   const activeStream = useMemo(() => {
     const filteredComments = (comments || []).filter(c => !c.isArchived && (!filterStageId || c.stageInstanceId === filterStageId)).map(c => ({ 
       ...c, 
@@ -99,13 +98,11 @@ export function CommentSection({
     return [...filteredComments, ...filteredLogs].sort((a, b) => a.sortTime - b.sortTime);
   }, [comments, externalLogs, filterStageId, technicalStageId]);
 
-  // الأرشيف النصي (التعليقات المؤرشفة فقط)
-  const archivedComments = useMemo(() => {
+  const archivedChat = useMemo(() => {
     return (comments || []).filter(c => c.isArchived === true && (!filterStageId || c.stageInstanceId === filterStageId));
   }, [comments, filterStageId]);
 
-  // الأرشيف الزمني (سجلات التراجع والمدد الضائعة)
-  const archivedTimeEvents = useMemo(() => {
+  const archivedTime = useMemo(() => {
     return (timelineEvents || []).filter(e => e.type === 'stage_reopen' && (!filterStageId || e.stageId === filterStageId));
   }, [timelineEvents, filterStageId]);
 
@@ -135,27 +132,30 @@ export function CommentSection({
     <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="flex flex-col h-full gap-4">
       <div className="flex flex-col gap-4 print:hidden shrink-0">
         <div className="flex items-center justify-between px-1">
-           <h3 className="text-sm font-black flex items-center gap-2 text-slate-500 uppercase tracking-widest">
-             <MessageSquare className="h-4 w-4 text-primary" /> {title || (isRtl ? 'غرفة عمليات المعاملة' : 'War Room')}
+           <h3 className="text-[10px] font-black flex items-center gap-2 text-slate-500 uppercase tracking-widest">
+             <MessageSquare className="h-4 w-4 text-primary" /> {title || (isRtl ? 'غرفة العمليات' : 'War Room')}
            </h3>
            {filterStageId && (
-              <button onClick={onClearFilter} className="h-8 rounded-lg text-[10px] font-black gap-2 bg-primary/5 text-primary px-3 flex items-center">
-                 <FilterX className="h-3 w-3" /> {isRtl ? 'عرض الكل' : 'View All'}
+              <button onClick={onClearFilter} className="h-8 rounded-lg text-[9px] font-black gap-2 bg-primary/10 text-primary px-3 flex items-center shadow-sm">
+                 <FilterX className="h-3 w-3" /> {isRtl ? 'عرض الكل' : 'Clear Filter'}
               </button>
            )}
         </div>
 
-        <TabsList className={cn("grid w-full h-11 bg-slate-100/50 rounded-xl p-1", isAdmin ? "grid-cols-3" : "grid-cols-1")}>
-            <TabsTrigger value="active" className="rounded-lg text-[10px] font-black data-[state=active]:bg-white">
-               {isRtl ? 'النشاط' : 'Activity'}
+        <TabsList className={cn("grid w-full h-10 bg-slate-100/50 rounded-xl p-1", isAdmin ? "grid-cols-4" : "grid-cols-2")}>
+            <TabsTrigger value="active" className="rounded-lg text-[9px] font-black data-[state=active]:bg-white data-[state=active]:shadow-sm">
+               {isRtl ? 'النشاط' : 'Active'}
+            </TabsTrigger>
+            <TabsTrigger value="timeline" className="rounded-lg text-[9px] font-black data-[state=active]:bg-white data-[state=active]:shadow-sm">
+               {isRtl ? 'الزمني' : 'Timeline'}
             </TabsTrigger>
             {isAdmin && (
               <>
-                <TabsTrigger value="timeline" className="rounded-lg text-[10px] font-black data-[state=active]:bg-slate-900 data-[state=active]:text-white gap-2">
-                   <Clock className="h-3 w-3" /> {isRtl ? 'الزمني' : 'Timeline'}
+                <TabsTrigger value="chat_archive" className="rounded-lg text-[9px] font-black data-[state=active]:bg-slate-900 data-[state=active]:text-white gap-1.5">
+                   <MessageSquare className="h-2.5 w-2.5" /> {isRtl ? 'النقاش' : 'Chat Arc'}
                 </TabsTrigger>
-                <TabsTrigger value="archived" className="rounded-lg text-[10px] font-black data-[state=active]:bg-slate-900 data-[state=active]:text-white gap-2">
-                   <Archive className="h-3 w-3" /> {isRtl ? 'الأرشيف' : 'Archive'}
+                <TabsTrigger value="time_archive" className="rounded-lg text-[9px] font-black data-[state=active]:bg-slate-900 data-[state=active]:text-white gap-1.5">
+                   <Clock className="h-2.5 w-2.5" /> {isRtl ? 'الوقت' : 'Time Arc'}
                 </TabsTrigger>
               </>
             )}
@@ -171,41 +171,38 @@ export function CommentSection({
                 <StreamItem key={item.id || item.sortTime} item={item} isRtl={isRtl} user={user} boqItems={boqItems} onDelete={handleDelete} />
              ))
            )}
+           {!activeStream.length && !commentsLoading && (
+             <div className="py-20 text-center flex flex-col items-center gap-3 opacity-20">
+                <MessageSquare className="h-10 w-10" />
+                <p className="text-[10px] font-black uppercase tracking-widest">{isRtl ? 'لا يوجد نشاط مسجل' : 'No Activity'}</p>
+             </div>
+           )}
         </TabsContent>
 
-        <TabsContent value="archived" className="mt-0 space-y-10 text-start">
+        <TabsContent value="chat_archive" className="mt-0 space-y-6 text-start">
            <div className="space-y-6">
-              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b pb-2 flex items-center gap-2">
-                 <MessageSquare className="h-3 w-3" /> {isRtl ? 'النقاشات الميدانية المؤرشفة' : 'Archived Discussions'}
-              </h4>
-              <div className="space-y-6">
-                 {archivedComments.map((item) => (
-                    <StreamItem key={item.id} item={{...item, streamType: 'comment'}} isRtl={isRtl} user={user} boqItems={boqItems} />
-                 ))}
-                 {!archivedComments.length && <p className="text-[10px] text-slate-300 font-bold italic py-10 text-center">لا توجد تعليقات مؤرشفة.</p>}
-              </div>
+              {archivedChat.map((item) => (
+                <StreamItem key={item.id} item={{...item, streamType: 'comment'}} isRtl={isRtl} user={user} boqItems={boqItems} />
+              ))}
+              {!archivedChat.length && <p className="text-[10px] text-slate-300 font-bold italic py-20 text-center">لا توجد نقاشات مؤرشفة.</p>}
            </div>
+        </TabsContent>
 
-           <div className="space-y-6">
-              <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-widest border-b border-rose-100 pb-2 flex items-center gap-2">
-                 <RotateCcw className="h-3 w-3" /> {isRtl ? 'أرشيف المحاولات الزمنية' : 'Archived Time Attempts'}
-              </h4>
-              <div className="space-y-3">
-                 {archivedTimeEvents.map((event, idx) => (
-                    <div key={idx} className="p-4 rounded-2xl bg-rose-50/30 border border-rose-100 flex justify-between items-center group">
-                       <div className="text-start">
-                          <p className="text-[9px] font-black text-rose-700">{event.content}</p>
-                          <div className="flex gap-4 mt-1 text-[7px] font-bold text-slate-400 uppercase">
-                             <span>Start: {event.previousStart?.toDate().toLocaleDateString()}</span>
-                             <span>End: {event.previousEnd?.toDate().toLocaleDateString()}</span>
-                          </div>
-                       </div>
-                       <Badge variant="ghost" className="text-[8px] font-mono text-rose-300">Attempt Archive</Badge>
-                    </div>
-                 ))}
-                 {!archivedTimeEvents.length && <p className="text-[10px] text-slate-300 font-bold italic py-10 text-center">لا توجد سجلات زمنية مؤرشفة.</p>}
+        <TabsContent value="time_archive" className="mt-0 space-y-4 text-start">
+           {archivedTime.map((event, idx) => (
+              <div key={idx} className="p-5 rounded-[2rem] bg-rose-50/20 border-2 border-dashed border-rose-100 animate-in slide-in-from-top-2">
+                 <div className="flex justify-between items-start mb-3">
+                    <div className="h-8 w-8 rounded-xl bg-rose-100 flex items-center justify-center text-rose-600 shadow-sm"><RotateCcw className="h-4 w-4" /></div>
+                    <Badge className="bg-rose-600 text-white border-0 text-[8px] font-black uppercase">{event.durationText || 'Canceled'}</Badge>
+                 </div>
+                 <p className="text-xs font-black text-slate-800 leading-tight">{event.content}</p>
+                 <div className="grid grid-cols-2 gap-4 mt-4 text-[7px] font-black text-slate-400 uppercase tracking-widest">
+                    <div className="bg-white/50 p-2 rounded-lg border border-rose-50">S: {event.previousStart?.toDate().toLocaleString()}</div>
+                    <div className="bg-white/50 p-2 rounded-lg border border-rose-50">E: {event.previousEnd?.toDate().toLocaleString()}</div>
+                 </div>
               </div>
-           </div>
+           ))}
+           {!archivedTime.length && <p className="text-[10px] text-slate-300 font-bold italic py-20 text-center">لا توجد سجلات زمنية مؤرشفة.</p>}
         </TabsContent>
 
         <TabsContent value="timeline" className="mt-0 space-y-6 text-start">
@@ -213,17 +210,12 @@ export function CommentSection({
               {stages.sort((a,b)=> (a.order||0) - (b.order||0)).map((stage, idx) => {
                  const start = stage.startedAt?.toDate();
                  const end = stage.completedAt?.toDate();
-                 
-                 let durationText = isRtl ? 'لم تبدأ' : 'Not Started';
                  let durationValue = "";
-                 
                  if (start && end) {
                     const days = differenceInDays(end, start);
                     const hours = differenceInHours(end, start) % 24;
-                    durationText = isRtl ? 'مدة التنفيذ' : 'Execution Time';
                     durationValue = days > 0 ? `${days}d ${hours}h` : `${hours}h`;
                  }
-
                  return (
                     <div key={stage.id} className="relative ps-8 pb-8 last:pb-0 group/timeline">
                        <div className="absolute left-[11px] top-4 bottom-0 w-0.5 bg-slate-100 group-last/timeline:hidden" />
@@ -233,22 +225,13 @@ export function CommentSection({
                        )}>
                           {stage.status === 'completed' ? <CheckCircle2 className="h-3 w-3 text-white" /> : <span className="text-[8px] font-black text-white">{idx+1}</span>}
                        </div>
-                       
                        <div className="space-y-2 text-start">
-                          <h4 className="font-black text-xs text-slate-900">{stage.name}</h4>
-                          <div className="grid grid-cols-2 gap-4 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
-                             <div className="space-y-1">
-                                <p className="text-[8px] font-black text-slate-400 uppercase">Start</p>
-                                <p className="text-[9px] font-bold text-slate-600">{start ? start.toLocaleString() : '---'}</p>
-                             </div>
-                             <div className="space-y-1">
-                                <p className="text-[8px] font-black text-slate-400 uppercase">End</p>
-                                <p className="text-[9px] font-bold text-slate-600">{end ? end.toLocaleString() : '---'}</p>
-                             </div>
+                          <h4 className="font-black text-[11px] text-slate-900">{stage.name}</h4>
+                          <div className="grid grid-cols-2 gap-3 bg-white p-2.5 rounded-xl border border-slate-100 shadow-sm">
+                             <div className="space-y-0.5"><p className="text-[7px] font-black text-slate-400 uppercase">Start</p><p className="text-[8px] font-bold text-slate-600 truncate">{start ? start.toLocaleDateString() : '---'}</p></div>
+                             <div className="space-y-0.5"><p className="text-[7px] font-black text-slate-400 uppercase">End</p><p className="text-[8px] font-bold text-slate-600 truncate">{end ? end.toLocaleDateString() : '---'}</p></div>
                           </div>
-                          {durationValue && (
-                             <Badge variant="secondary" className="bg-emerald-50 text-emerald-600 border-0 text-[8px] font-black">{durationText}: {durationValue}</Badge>
-                          )}
+                          {durationValue && <Badge variant="secondary" className="bg-emerald-50 text-emerald-600 border-0 text-[8px] font-black">Time: {durationValue}</Badge>}
                        </div>
                     </div>
                  );
@@ -264,15 +247,15 @@ export function CommentSection({
                value={content}
                onChange={e => setContent(e.target.value)}
                placeholder={isRtl ? (filterStageId ? `اكتب ملاحظة في مرحلة ${selectedStageName}...` : "اكتب تعليقاً عاماً...") : "Write a comment..."}
-               className="min-h-[44px] max-h-[150px] rounded-2xl border-0 focus-visible:ring-0 text-sm font-bold bg-slate-50/50 resize-none p-4"
+               className="min-h-[44px] max-h-[150px] rounded-2xl border-0 focus-visible:ring-0 text-xs font-bold bg-slate-50/50 resize-none p-4"
              />
              <Button 
                onClick={handleSubmit} 
                disabled={loading || !content.trim()}
                size="icon" 
-               className="h-12 w-12 rounded-2xl bg-primary text-white shadow-xl shadow-primary/20 shrink-0 hover:scale-110 transition-transform"
+               className="h-11 w-11 rounded-2xl bg-primary text-white shadow-xl shadow-primary/20 shrink-0 hover:scale-110 transition-transform"
              >
-                {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Send className={cn("h-6 w-6", isRtl && "rotate-180")} />}
+                {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Send className={cn("h-5 w-5", isRtl && "rotate-180")} />}
              </Button>
           </CardContent>
         </Card>
@@ -294,10 +277,10 @@ function StreamItem({ item, isRtl, user, boqItems, onDelete }: any) {
             )}>
                <div className="flex items-start gap-4">
                  <div className={cn(
-                   "h-10 w-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm border",
+                   "h-9 w-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm border",
                    isComplementary ? "bg-white text-blue-500" : "bg-white text-emerald-600"
                  )}>
-                   {isComplementary ? <Zap className="h-5 w-5" /> : <Hammer className="h-5 w-5" />}
+                   {isComplementary ? <Zap className="h-4 w-4" /> : <Hammer className="h-4 w-4" />}
                  </div>
                  <div className="text-start flex-1">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -306,10 +289,10 @@ function StreamItem({ item, isRtl, user, boqItems, onDelete }: any) {
                        </Badge>
                        {!isComplementary && <Badge className="bg-emerald-600 text-white border-0 text-[8px] h-4 px-2">{item.quantity} QTY</Badge>}
                     </div>
-                    {item.notes && <p className="text-xs font-bold text-slate-600 italic">"{item.notes}"</p>}
-                    <div className="flex items-center gap-3 mt-2 text-[8px] font-black text-slate-400 uppercase">
-                       <span className="flex items-center gap-1"><User className="h-2.5 w-2.5" /> {item.recordedByName}</span>
-                       <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" /> {item.createdAt ? formatDistanceToNow(item.createdAt.toDate(), { addSuffix: true, locale: isRtl ? ar : enUS }) : '...'}</span>
+                    {item.notes && <p className="text-[10px] font-bold text-slate-600 italic">"{item.notes}"</p>}
+                    <div className="flex items-center gap-3 mt-2 text-[7px] font-black text-slate-400 uppercase">
+                       <span className="flex items-center gap-1"><User className="h-2 w-2" /> {item.recordedByName}</span>
+                       <span className="flex items-center gap-1"><Clock className="h-2 w-2" /> {item.createdAt ? formatDistanceToNow(item.createdAt.toDate(), { addSuffix: true, locale: isRtl ? ar : enUS }) : '...'}</span>
                     </div>
                  </div>
                </div>
@@ -321,36 +304,36 @@ function StreamItem({ item, isRtl, user, boqItems, onDelete }: any) {
    const isMine = item.createdBy === user?.uid;
    return (
      <div className={cn("flex gap-3 text-start animate-in fade-in slide-in-from-bottom-2 duration-300", isMine ? "flex-row-reverse" : "flex-row")}>
-        <Avatar className="h-9 w-9 rounded-2xl shrink-0 border-2 border-white shadow-sm ring-1 ring-slate-100">
+        <Avatar className="h-8 w-8 rounded-xl shrink-0 border-2 border-white shadow-sm ring-1 ring-slate-100">
            <AvatarImage src={`https://picsum.photos/seed/${item.createdBy}/40/40`} />
            <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-black">{item.createdByName?.charAt(0)}</AvatarFallback>
         </Avatar>
         <div className={cn("flex flex-col space-y-1 max-w-[85%]", isMine ? "items-end" : "items-start")}>
            <div className="flex items-center gap-2 px-1">
-              <span className="text-[10px] font-black text-slate-700">{item.createdByName}</span>
-              <span className="text-[8px] font-bold text-slate-300">
+              <span className="text-[9px] font-black text-slate-700">{item.createdByName}</span>
+              <span className="text-[7px] font-bold text-slate-300">
                  {item.createdAt ? formatDistanceToNow(item.createdAt.toDate(), { addSuffix: true, locale: isRtl ? ar : enUS }) : '...'}
               </span>
            </div>
            <div className={cn(
-             "p-4 rounded-[1.5rem] shadow-sm text-sm font-bold leading-relaxed relative group transition-all",
+             "p-3 rounded-[1.25rem] shadow-sm text-xs font-bold leading-relaxed relative group transition-all",
              isMine ? "bg-[#e87c24] text-white rounded-te-none" : "bg-white border-2 border-slate-50 text-slate-700 rounded-ts-none",
              item.isArchived && "opacity-60 grayscale border-dashed border-slate-300"
            )}>
               {item.stageName && (
-                 <div className="mb-2">
-                    <Badge variant="secondary" className="bg-white/10 text-[7px] font-black uppercase text-inherit border-white/20">
-                       PHASE: {item.stageName}
+                 <div className="mb-1.5">
+                    <Badge variant="secondary" className="bg-white/10 text-[7px] font-black uppercase text-inherit border-white/10">
+                       {item.stageName}
                     </Badge>
                  </div>
               )}
               <p className="whitespace-pre-wrap">{item.content}</p>
               
               {!item.isArchived && onDelete && (
-                 <div className={cn("absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1", isMine ? "right-full mr-2" : "left-full ml-2")}>
+                 <div className={cn("absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1", isMine ? "right-full mr-1.5" : "left-full ml-1.5")}>
                     <DropdownMenu>
                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-slate-300 hover:text-slate-600 bg-white shadow-sm border"><MoreVertical className="h-3.5 w-3.5" /></Button>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full text-slate-300 hover:text-slate-600 bg-white shadow-sm border"><MoreVertical className="h-3 w-3" /></Button>
                        </DropdownMenuTrigger>
                        <DropdownMenuContent align={isMine ? "end" : "start"} className="rounded-xl border-2">
                           <DropdownMenuItem onClick={() => onDelete(item.id!)} className="text-rose-600 font-bold gap-2 focus:bg-rose-50 cursor-pointer text-xs">
