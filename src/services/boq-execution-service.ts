@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -38,7 +37,7 @@ export interface StageProgressResult {
 
 /**
  * خدمة الربط التنفيذي وتتبع الإنجاز للمقايسات (BOQ Progress Tracking Service).
- * تدعم مفهوم "التجميع التراكمي" (Bucket Execution).
+ * تدعم مفهوم "التجميع التراكمي" (Bucket Execution) والاستثناءات الفنية.
  */
 export class BOQExecutionService {
   constructor(
@@ -49,7 +48,6 @@ export class BOQExecutionService {
 
   /**
    * تسجيل إنجاز مرحلي متخصص (Execution Bucketing)
-   * هذا التحديث يضمن تحديث إجمالي البند في المقايسة فوراً بعد تسجيل أي كمية في أي مرحلة.
    */
   async recordBOQItemExecution(
     boqId: string,
@@ -62,8 +60,9 @@ export class BOQExecutionService {
   ) {
     ensureActionPermission(this.permissions, 'projects:edit');
 
-    if (quantity <= 0) {
-      throw new Error('INVALID_QUANTITY: الكمية يجب أن تكون أكبر من صفر.');
+    // السماح بالكمية صفر فقط في حال كانت ملاحظات التنفيذ موجودة (كإجراء مكمل)
+    if (quantity < 0) {
+      throw new Error('INVALID_QUANTITY: الكمية لا يمكن أن تكون سالبة.');
     }
 
     const itemRef = doc(this.db, paths.boqItems(this.companyId, boqId), itemId);
@@ -94,6 +93,7 @@ export class BOQExecutionService {
     });
 
     // 2. تحديث الرصيد التراكمي في البند الرئيسي (The Bucket Update)
+    // نجلب كافة السجلات لنضمن أن الجمع يتم دائماً من الحقيقة الميدانية
     const allExecutionsSnap = await getDocs(executionsRef);
     const newTotalExecuted = allExecutionsSnap.docs.reduce((sum, d) => sum + (d.data().quantity || 0), 0);
 
@@ -110,7 +110,9 @@ export class BOQExecutionService {
       await addDoc(timelineRef, {
         transactionId: itemData.transactionId,
         type: 'numeric_update',
-        content: `إنجاز ميداني: ${itemData.referenceTitle} -> تسجيل ${quantity} وحدة (الإجمالي المنفذ: ${newTotalExecuted}).`,
+        content: quantity === 0 
+          ? `تأكيد فني مكمل: ${itemData.referenceTitle} (بدون إضافة كمية).`
+          : `إنجاز ميداني: ${itemData.referenceTitle} -> تسجيل ${quantity} وحدة (الإجمالي المنفذ: ${newTotalExecuted}).`,
         userId,
         userName,
         companyId: this.companyId,
@@ -123,14 +125,12 @@ export class BOQExecutionService {
 
   /**
    * جلب تقرير تقدم المرحلة الفنية
-   * تم تحسينه للتمييز بين المراحل الكمية (Linked) والمراحل الإجرائية (0 links)
    */
   async getTechnicalStageProgress(transactionId: string, technicalStageId: string): Promise<StageProgressResult> {
     const boqsRef = collection(this.db, paths.boqs(this.companyId));
     const boqQuery = query(boqsRef, where('transactionId', '==', transactionId));
     const boqSnap = await getDocs(boqQuery);
     
-    // إذا لم تكن هناك مقايسة مرتبطة بعد، نعتبر كافة المراحل إجرائية حتى إنشاء المقايسة
     if (boqSnap.empty) {
       return { linkedItemsCount: 0, totalPlanned: 0, totalExecuted: 0, progressPercent: 100, canComplete: true };
     }
@@ -141,25 +141,18 @@ export class BOQExecutionService {
     
     const allItems = itemsSnap.docs.map(d => ({ id: d.id, ...d.data() } as BOQItem));
     
-    // البحث عن البنود المرتبطة بهذه المرحلة تحديداً
     const linkedItems = allItems.filter(i => 
       (i.technicalStageIds && i.technicalStageIds.includes(technicalStageId)) || 
       (i.technicalStageId === technicalStageId)
     );
 
-    // المنطق الجديد: إذا لم يكن هناك بنود مرتبطة، فهي مرحلة إجرائية تكتمل بمجرد التأكيد
     if (linkedItems.length === 0) {
-      return { 
-        linkedItemsCount: 0, 
-        totalPlanned: 0, 
-        totalExecuted: 0, 
-        progressPercent: 100, 
-        canComplete: true // مسموح بالإغلاق لأنها مجرد خطوة فنية
-      };
+      return { linkedItemsCount: 0, totalPlanned: 0, totalExecuted: 0, progressPercent: 100, canComplete: true };
     }
 
     let totalPlanned = 0;
     let totalExecutedForThisStage = 0;
+    let totalLogsCount = 0;
 
     for (const item of linkedItems) {
       totalPlanned += (item.plannedQuantity || 0);
@@ -168,6 +161,7 @@ export class BOQExecutionService {
       const qExec = query(executionsRef, where('technicalStageId', '==', technicalStageId));
       const execSnap = await getDocs(qExec);
 
+      totalLogsCount += execSnap.size;
       totalExecutedForThisStage += execSnap.docs.reduce((acc, d) => acc + (d.data().quantity || 0), 0);
     }
 
@@ -178,8 +172,9 @@ export class BOQExecutionService {
       totalPlanned,
       totalExecuted: totalExecutedForThisStage,
       progressPercent: Math.round(progress * 100) / 100,
-      // المراحل الكمية تتطلب إنجازاً ملموساً (أكبر من صفر) للسماح بالإغلاق
-      canComplete: totalExecutedForThisStage > 0 
+      // القاعدة الذهبية: يسمح بالإغلاق إذا تم تسجيل كمية > 0 أو إذا تم عمل "تأكيد فني" (Log Count > 0)
+      canComplete: totalLogsCount > 0,
+      reason: totalLogsCount === 0 ? "يجب تسجيل الإنجاز المادي أو التأكيد الفني المكمل أولاً." : undefined
     };
   }
 }

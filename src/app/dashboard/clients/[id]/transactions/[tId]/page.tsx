@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -21,7 +20,8 @@ import {
   RotateCcw,
   Fingerprint,
   ListFilter,
-  ClipboardCheck
+  ClipboardCheck,
+  Zap
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where, getDocs, limit } from 'firebase/firestore';
@@ -60,6 +60,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from '@/components/ui/switch';
 
 export default function TransactionDetailsPage() {
   const params = useParams();
@@ -81,6 +82,7 @@ export default function TransactionDetailsPage() {
   
   // Progress Recording State
   const [isRecordOpen, setIsRecordOpen] = useState(false);
+  const [isComplementary, setIsComplementary] = useState(false);
   const [targetStage, setTargetStage] = useState<StageInstance | null>(null);
   const [selectedItemId, setSelectedItemId] = useState("");
   const [progressQty, setProgressQty] = useState<number>(0);
@@ -283,7 +285,17 @@ export default function TransactionDetailsPage() {
   };
 
   const handleRecordProgress = async () => {
-    if (!executionService || !activeBoq || !user || !selectedItemId || !targetStage || progressQty <= 0) {
+    if (!executionService || !activeBoq || !user || !selectedItemId || !targetStage) {
+      return;
+    }
+
+    const finalQty = isComplementary ? 0 : progressQty;
+    const finalNotes = isComplementary 
+      ? `(إجراء مكمل) ${progressNotes}`.trim()
+      : progressNotes;
+
+    if (!isComplementary && finalQty <= 0) {
+      toast({ variant: "destructive", title: isRtl ? "الكمية مطلوبة" : "Quantity Required" });
       return;
     }
 
@@ -293,14 +305,15 @@ export default function TransactionDetailsPage() {
         activeBoq.id,
         selectedItemId,
         targetStage.technicalStageId,
-        progressQty,
+        finalQty,
         user.uid,
         user.displayName || 'User',
-        progressNotes
+        finalNotes
       );
 
       toast({ title: isRtl ? "تم تسجيل الإنجاز" : "Progress Recorded" });
       setIsRecordOpen(false);
+      setIsComplementary(false);
       setSelectedItemId("");
       setProgressQty(0);
       setProgressNotes("");
@@ -409,11 +422,7 @@ export default function TransactionDetailsPage() {
                  {stages.map((stage, idx) => {
                     const boqProgress = stageProgressMap[stage.technicalStageId];
                     const isOpen = openStages[stage.id!];
-                    
-                    // محرك الإنفاذ التسلسلي: التأكد من اكتمال المرحلة السابقة
                     const isPreviousCompleted = idx === 0 || stages[idx - 1].status === 'completed';
-                    
-                    // تحديد ما إذا كانت المرحلة إجرائية (بدون كميات مقايسة)
                     const isProcedural = boqProgress && boqProgress.linkedItemsCount === 0;
 
                     return (
@@ -461,15 +470,18 @@ export default function TransactionDetailsPage() {
                               </div>
 
                               <div className="flex gap-2 shrink-0">
-                                 {/* زر تسجيل الإنجاز يظهر فقط إذا كانت المرحلة بها بنود مقايسة */}
-                                 {stage.status === 'in-progress' && editAccess.can && !isProcedural && (
+                                 {stage.status === 'in-progress' && editAccess.can && (
                                     <Button 
-                                      onClick={() => { setTargetStage(stage); setIsRecordOpen(true); }}
+                                      onClick={() => { 
+                                        setTargetStage(stage); 
+                                        setIsRecordOpen(true); 
+                                        setIsComplementary(isProcedural); // تفعيل التجاوز تلقائياً لو كانت المرحلة إجرائية
+                                      }}
                                       variant="outline"
                                       className="h-11 px-4 rounded-xl border-2 border-primary/20 text-primary font-black text-xs gap-2 hover:bg-primary/5"
                                     >
                                        <Hammer className="h-4 w-4" />
-                                       {isRtl ? 'تسجيل كمية' : 'Log Qty'}
+                                       {isRtl ? 'تسجيل إنجاز' : 'Log Task'}
                                     </Button>
                                  )}
 
@@ -482,7 +494,6 @@ export default function TransactionDetailsPage() {
                                     <MessageSquare className="h-5 w-5" />
                                  </Button>
 
-                                 {/* لا يمكن بدء المرحلة إلا إذا كانت السابقة مكتملة */}
                                  {stage.status === 'pending' && isPreviousCompleted && (
                                     <Button 
                                       onClick={() => handleStartStage(stage.id!)} 
@@ -494,7 +505,6 @@ export default function TransactionDetailsPage() {
                                     </Button>
                                  )}
 
-                                 {/* تنبيه حالة الانتظار */}
                                  {stage.status === 'pending' && !isPreviousCompleted && (
                                     <Badge variant="outline" className="h-11 px-4 rounded-xl border-2 border-slate-100 text-slate-300 font-bold text-[10px] gap-2">
                                        <Clock className="h-3 w-3" />
@@ -577,7 +587,6 @@ export default function TransactionDetailsPage() {
                </DialogTitle>
                <p className="text-slate-400 font-bold mt-2">{isRtl ? 'تم العثور على أكثر من قالب لهذا المسار، يرجى اختيار الأنسب.' : 'Multiple templates found, please select one.'}</p>
             </div>
-
             <div className="p-8 space-y-3 bg-slate-50/30">
                {availableTemplates.map(template => (
                  <div 
@@ -593,7 +602,6 @@ export default function TransactionDetailsPage() {
                  </div>
                ))}
             </div>
-
             <DialogFooter className="p-6 bg-slate-50 border-t">
                <Button variant="outline" onClick={() => setIsTemplatePickerOpen(false)} className="rounded-xl font-bold h-12 w-full">{isRtl ? 'إلغاء' : 'Cancel'}</Button>
             </DialogFooter>
@@ -601,14 +609,16 @@ export default function TransactionDetailsPage() {
       </Dialog>
 
       {/* --- Progress Recording Dialog --- */}
-      <Dialog open={isRecordOpen} onOpenChange={setIsRecordOpen}>
+      <Dialog open={isRecordOpen} onOpenChange={(open) => { if(!open) { setIsRecordOpen(false); setIsComplementary(false); } }}>
          <DialogContent className="rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
-            <div className="bg-primary/5 p-8 text-slate-900 text-start border-b">
-               <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3">
-                  <Hammer className="h-7 w-7 text-primary" />
-                  {isRtl ? 'تسجيل إنجاز ميداني' : 'Record Field Execution'}
-               </DialogTitle>
-               <p className="text-xs font-bold text-slate-500 mt-2 uppercase tracking-widest">{targetStage?.name}</p>
+            <div className="bg-primary/5 p-8 text-slate-900 text-start border-b flex justify-between items-center">
+               <div>
+                  <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3">
+                     <Hammer className="h-7 w-7 text-primary" />
+                     {isRtl ? 'تسجيل إنجاز ميداني' : 'Record Field Execution'}
+                  </DialogTitle>
+                  <p className="text-xs font-bold text-slate-500 mt-2 uppercase tracking-widest">{targetStage?.name}</p>
+               </div>
             </div>
 
             <div className="p-8 space-y-6 text-start">
@@ -619,6 +629,20 @@ export default function TransactionDetailsPage() {
                   </div>
                ) : (
                  <>
+                    {/* زر الاستثناء: بند مكمل */}
+                    <div className="p-4 rounded-2xl bg-blue-50/50 border-2 border-blue-100 flex items-center justify-between group transition-all">
+                       <div className="flex items-center gap-3">
+                          <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center transition-all", isComplementary ? "bg-blue-600 text-white shadow-lg" : "bg-white text-blue-400 border border-blue-100")}>
+                             <Zap className="h-5 w-5" />
+                          </div>
+                          <div className="text-start">
+                             <Label className="font-black text-xs text-blue-900">{isRtl ? "اعتباره إجراءً مكملاً" : "Mark as Complementary"}</Label>
+                             <p className="text-[9px] font-bold text-blue-600/70 uppercase">{isRtl ? "استثناء (بدون كمية مادية)" : "Bypass Quantity Requirement"}</p>
+                          </div>
+                       </div>
+                       <Switch checked={isComplementary} onCheckedChange={(v) => { setIsComplementary(v); if(v) setProgressQty(0); }} />
+                    </div>
+
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
                           {isRtl ? "بند المقايسة المتاح لهذه المرحلة" : "Available BOQ Item"}
@@ -640,19 +664,21 @@ export default function TransactionDetailsPage() {
                        </Select>
                     </div>
 
-                    <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? "الكمية المنفذة" : "Executed Quantity"}</Label>
-                       <div className="relative">
-                          <input 
-                            type="number" 
-                            value={progressQty || ''} 
-                            onChange={e => setProgressQty(Number(e.target.value))}
-                            className="h-14 w-full rounded-2xl border-2 font-black text-xl text-primary text-center outline-none focus:border-primary/50 transition-all" 
-                            placeholder="0"
-                          />
-                          <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 uppercase">QTY</div>
-                       </div>
-                    </div>
+                    {!isComplementary && (
+                      <div className="space-y-2 animate-in slide-in-from-top-2">
+                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? "الكمية المنفذة" : "Executed Quantity"}</Label>
+                        <div className="relative">
+                            <input 
+                              type="number" 
+                              value={progressQty || ''} 
+                              onChange={e => setProgressQty(Number(e.target.value))}
+                              className="h-14 w-full rounded-2xl border-2 font-black text-xl text-primary text-center outline-none focus:border-primary/50 transition-all" 
+                              placeholder="0"
+                            />
+                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 uppercase">QTY</div>
+                        </div>
+                      </div>
+                    )}
 
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? "ملاحظات التنفيذ" : "Field Notes"}</Label>
@@ -660,7 +686,7 @@ export default function TransactionDetailsPage() {
                          value={progressNotes} 
                          onChange={e => setProgressNotes(e.target.value)}
                          className="min-h-[100px] rounded-2xl border-2 bg-slate-50/30 p-4 text-xs font-bold"
-                         placeholder="..."
+                         placeholder={isComplementary ? (isRtl ? "اكتب سبب الاستثناء الفني هنا..." : "Reason for complementary check...") : "..."}
                        />
                     </div>
                  </>
@@ -671,11 +697,14 @@ export default function TransactionDetailsPage() {
                <Button variant="outline" onClick={() => setIsRecordOpen(false)} className="flex-1 h-14 rounded-2xl border-2 font-bold bg-white">إلغاء</Button>
                <Button 
                  onClick={handleRecordProgress} 
-                 disabled={!activeBoq || !selectedItemId || progressQty <= 0 || processingId === 'recording'}
-                 className="flex-[2] h-14 rounded-2xl bg-primary text-white font-black text-lg shadow-xl shadow-primary/20 gap-2 border-b-4 border-orange-700"
+                 disabled={!activeBoq || !selectedItemId || (progressQty <= 0 && !isComplementary) || processingId === 'recording'}
+                 className={cn(
+                   "flex-[2] h-14 rounded-2xl font-black text-lg shadow-xl shadow-primary/20 gap-2 border-b-4 transition-all",
+                   isComplementary ? "bg-blue-600 text-white border-blue-800" : "bg-primary text-white border-orange-700"
+                 )}
                >
                   {processingId === 'recording' ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />}
-                  {isRtl ? "تأكيد التسجيل" : "Confirm Record"}
+                  {isComplementary ? (isRtl ? "تأكيد فني" : "Confirm Check") : (isRtl ? "تأكيد التسجيل" : "Confirm Record")}
                </Button>
             </DialogFooter>
          </DialogContent>
