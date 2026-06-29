@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -112,9 +113,10 @@ export default function TransactionDetailsPage() {
   const { data: boqItems } = useCollection<BOQItem>(itemsQuery);
 
   // جلب سجلات التنفيذ لعرض الملاحظات الميدانية (The Field Logs)
+  // FIX: إضافة شرط companyId للاستعلام لتجاوز فحص القواعد الأمنية السيادية
   const executionsQuery = useMemo(() => 
     companyId && db && activeBoq?.id 
-      ? query(collectionGroup(db, 'executions'), where('boqId', '==', activeBoq.id)) 
+      ? query(collectionGroup(db, 'executions'), where('companyId', '==', companyId), where('boqId', '==', activeBoq.id)) 
       : null, 
   [db, companyId, activeBoq]);
   const { data: allExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
@@ -237,7 +239,7 @@ export default function TransactionDetailsPage() {
            <div>
               <h1 className="text-2xl font-black font-headline text-slate-900 tracking-tight leading-tight">{transaction.subServiceName}</h1>
               <div className="flex items-center gap-3 mt-1">
-                 <Badge className={cn("font-black px-3 py-0.5 rounded-lg border-0 shadow-sm uppercase text-[9px]", transaction.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-white')}>
+                 <Badge className={cn("font-black px-3 py-1 rounded-lg border-0 shadow-sm uppercase text-[9px]", transaction.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-white')}>
                      {transaction.status}
                  </Badge>
                  <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1">

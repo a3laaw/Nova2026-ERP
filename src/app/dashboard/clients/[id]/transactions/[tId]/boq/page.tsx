@@ -54,9 +54,10 @@ export default function TransactionBOQProgressPage() {
   const { data: items, loading: itemsLoading } = useCollection<BOQItem>(itemsQuery);
 
   // 2. جلب سجلات التنفيذ عبر مجموعة الـ Executions الموحدة
+  // FIX: إضافة شرط companyId للاستعلام لتجاوز فحص القواعد الأمنية السيادية
   const executionsQuery = useMemo(() => 
     companyId && db && activeBoq?.id 
-      ? query(collectionGroup(db, 'executions'), where('boqId', '==', activeBoq.id)) 
+      ? query(collectionGroup(db, 'executions'), where('companyId', '==', companyId), where('boqId', '==', activeBoq.id)) 
       : null, 
   [db, companyId, activeBoq]);
   const { data: allExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
@@ -224,7 +225,7 @@ export default function TransactionBOQProgressPage() {
            <div className="text-start">
               <div className="flex items-center gap-3">
                  <h1 className="text-xl font-black text-slate-900 leading-none">{activeBoq.boqNumber}</h1>
-                 <Badge className="bg-emerald-500 text-white border-0 font-black text-[9px] uppercase h-5 px-3">Automated Analytics</Badge>
+                 <Badge className="bg-emerald-50 text-white border-0 font-black text-[9px] uppercase h-5 px-3">Automated Analytics</Badge>
               </div>
               <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">
                  {transaction?.clientName} | {transaction?.subServiceName}
