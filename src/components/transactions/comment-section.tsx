@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -29,7 +30,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PrintWrapper } from '@/components/layout/print-wrapper';
 
 interface Props {
   transactionId: string;
@@ -128,33 +128,33 @@ export function CommentSection({
 
   return (
     <div className="flex flex-col h-full gap-4">
-      {/* Header & Tabs */}
-      <div className="flex flex-col gap-4 print:hidden">
-        <div className="flex items-center justify-between px-1">
-           <h3 className="text-sm font-black flex items-center gap-2 text-slate-500 uppercase tracking-widest">
-             <MessageSquare className="h-4 w-4 text-primary" /> {title || (isRtl ? 'غرفة عمليات المعاملة' : 'War Room')}
-           </h3>
-           {filterStageId && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={onClearFilter}
-                className="h-8 rounded-lg text-[10px] font-black gap-2 bg-primary/5 text-primary"
-              >
-                 <FilterX className="h-3 w-3" /> {isRtl ? 'عرض الكل' : 'View All'}
-              </Button>
-           )}
-        </div>
+      <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="flex flex-col h-full gap-4">
+        {/* Header & Tabs */}
+        <div className="flex flex-col gap-4 print:hidden shrink-0">
+          <div className="flex items-center justify-between px-1">
+             <h3 className="text-sm font-black flex items-center gap-2 text-slate-500 uppercase tracking-widest">
+               <MessageSquare className="h-4 w-4 text-primary" /> {title || (isRtl ? 'غرفة عمليات المعاملة' : 'War Room')}
+             </h3>
+             {filterStageId && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={onClearFilter}
+                  className="h-8 rounded-lg text-[10px] font-black gap-2 bg-primary/5 text-primary"
+                >
+                   <FilterX className="h-3 w-3" /> {isRtl ? 'عرض الكل' : 'View All'}
+                </Button>
+             )}
+          </div>
 
-        <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="w-full">
-           <TabsList className={cn("grid w-full h-11 bg-slate-100/50 rounded-xl p-1", isAdmin ? "grid-cols-3" : "grid-cols-1")}>
+          <TabsList className={cn("grid w-full h-11 bg-slate-100/50 rounded-xl p-1", isAdmin ? "grid-cols-3" : "grid-cols-1")}>
               <TabsTrigger value="active" className="rounded-lg text-[10px] font-black data-[state=active]:bg-white">
-                 {isRtl ? 'الحالي' : 'Active'}
+                 {isRtl ? 'النشاط' : 'Activity'}
               </TabsTrigger>
               {isAdmin && (
                 <>
                   <TabsTrigger value="timeline" className="rounded-lg text-[10px] font-black data-[state=active]:bg-slate-900 data-[state=active]:text-white gap-2">
-                     <Clock className="h-3 w-3" /> {isRtl ? 'السجل الزمني' : 'Timeline'}
+                     <Clock className="h-3 w-3" /> {isRtl ? 'الزمني' : 'Timeline'}
                   </TabsTrigger>
                   <TabsTrigger value="archived" className="rounded-lg text-[10px] font-black data-[state=active]:bg-slate-900 data-[state=active]:text-white gap-2">
                      <Archive className="h-3 w-3" /> {isRtl ? 'الأرشيف' : 'Archive'}
@@ -162,98 +162,98 @@ export function CommentSection({
                 </>
               )}
            </TabsList>
-        </Tabs>
-      </div>
-
-      {filterStageId && activeTab !== 'timeline' && (
-        <div className="bg-primary/5 p-3 rounded-xl border border-primary/10 flex items-center gap-2 animate-in zoom-in-95 print:hidden">
-           <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-           <span className="text-[10px] font-black text-primary uppercase">
-              {isRtl ? 'تركيز على:' : 'Filtered to:'} {selectedStageName}
-           </span>
         </div>
-      )}
 
-      {/* Content Area */}
-      <div className="flex-1 overflow-y-auto pr-2 scrollbar-hide">
-        <TabsContent value="active" className="mt-0 space-y-6">
-           {commentsLoading ? (
-             <div className="py-10 text-center"><Loader2 className="animate-spin mx-auto text-primary/20" /></div>
-           ) : (
-             unifiedStream.map((item: any) => (
-                <StreamItem key={item.id || item.sortTime} item={item} isRtl={isRtl} user={user} boqItems={boqItems} onDelete={handleDelete} />
-             ))
-           )}
-        </TabsContent>
+        {filterStageId && activeTab !== 'timeline' && (
+          <div className="bg-primary/5 p-3 rounded-xl border border-primary/10 flex items-center gap-2 animate-in zoom-in-95 print:hidden shrink-0">
+             <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+             <span className="text-[10px] font-black text-primary uppercase">
+                {isRtl ? 'تركيز على:' : 'Filtered to:'} {selectedStageName}
+             </span>
+          </div>
+        )}
 
-        <TabsContent value="archived" className="mt-0 space-y-6">
-           {unifiedStream.map((item: any) => (
-              <StreamItem key={item.id} item={item} isRtl={isRtl} user={user} boqItems={boqItems} />
-           ))}
-        </TabsContent>
+        {/* Content Area */}
+        <div className="flex-1 overflow-y-auto pr-2 scrollbar-hide">
+          <TabsContent value="active" className="mt-0 space-y-6">
+             {commentsLoading ? (
+               <div className="py-10 text-center"><Loader2 className="animate-spin mx-auto text-primary/20" /></div>
+             ) : (
+               unifiedStream.map((item: any) => (
+                  <StreamItem key={item.id || item.sortTime} item={item} isRtl={isRtl} user={user} boqItems={boqItems} onDelete={handleDelete} />
+               ))
+             )}
+          </TabsContent>
 
-        <TabsContent value="timeline" className="mt-0 space-y-6 text-start">
-           <div className="flex justify-between items-center mb-6 print:hidden">
-              <p className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'تحليل مسار الإنجاز الزمني' : 'Operational Time Analysis'}</p>
-              <Button size="sm" onClick={handlePrintTimeline} variant="outline" className="h-8 rounded-lg text-[10px] font-black gap-2">
-                 <Printer className="h-3 w-3" /> {isRtl ? 'طباعة السجل' : 'Print'}
-              </Button>
-           </div>
+          <TabsContent value="archived" className="mt-0 space-y-6">
+             {unifiedStream.map((item: any) => (
+                <StreamItem key={item.id} item={item} isRtl={isRtl} user={user} boqItems={boqItems} />
+             ))}
+          </TabsContent>
 
-           <div className="space-y-4 print:space-y-8">
-              {stages.sort((a,b)=> (a.order||0) - (b.order||0)).map((stage, idx) => {
-                 const start = stage.startedAt?.toDate();
-                 const end = stage.completedAt?.toDate();
-                 
-                 let durationText = isRtl ? 'لم تبدأ' : 'Not Started';
-                 let durationValue = "";
-                 
-                 if (start && end) {
-                    const days = differenceInDays(end, start);
-                    const hours = differenceInHours(end, start) % 24;
-                    durationText = isRtl ? 'المدة الإجمالية' : 'Total Duration';
-                    durationValue = days > 0 ? `${days}d ${hours}h` : `${hours}h`;
-                 } else if (start && !end) {
-                    const hoursNow = differenceInHours(new Date(), start);
-                    durationText = isRtl ? 'قيد التنفيذ منذ' : 'Running for';
-                    durationValue = `${hoursNow}h`;
-                 }
+          <TabsContent value="timeline" className="mt-0 space-y-6 text-start">
+             <div className="flex justify-between items-center mb-6 print:hidden">
+                <p className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'تحليل مسار الإنجاز الزمني' : 'Operational Time Analysis'}</p>
+                <Button size="sm" onClick={handlePrintTimeline} variant="outline" className="h-8 rounded-lg text-[10px] font-black gap-2">
+                   <Printer className="h-3 w-3" /> {isRtl ? 'طباعة السجل' : 'Print'}
+                </Button>
+             </div>
 
-                 return (
-                    <div key={stage.id} className="relative ps-8 pb-8 last:pb-0 group/timeline">
-                       <div className="absolute left-[11px] top-4 bottom-0 w-0.5 bg-slate-100 group-last/timeline:hidden" />
-                       <div className={cn(
-                         "absolute left-0 top-0 h-6 w-6 rounded-full border-4 border-white shadow-md flex items-center justify-center z-10",
-                         stage.status === 'completed' ? "bg-emerald-500" : stage.status === 'in-progress' ? "bg-blue-500" : "bg-slate-200"
-                       )}>
-                          {stage.status === 'completed' ? <CheckCircle2 className="h-3 w-3 text-white" /> : <span className="text-[8px] font-black text-white">{idx+1}</span>}
-                       </div>
-                       
-                       <div className="space-y-2">
-                          <h4 className="font-black text-xs text-slate-900">{stage.name}</h4>
-                          <div className="grid grid-cols-2 gap-4">
-                             <div className="space-y-1">
-                                <p className="text-[8px] font-black text-slate-400 uppercase">{isRtl ? 'البداية' : 'Started'}</p>
-                                <p className="text-[10px] font-bold text-slate-600">{start ? start.toLocaleString(isRtl ? 'ar-KW' : 'en-US') : '---'}</p>
-                             </div>
-                             <div className="space-y-1">
-                                <p className="text-[8px] font-black text-slate-400 uppercase">{isRtl ? 'النهاية' : 'Finished'}</p>
-                                <p className="text-[10px] font-bold text-slate-600">{end ? end.toLocaleString(isRtl ? 'ar-KW' : 'en-US') : '---'}</p>
-                             </div>
-                          </div>
-                          {start && (
-                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-50 border text-primary">
-                               <Timer className="h-3 w-3" />
-                               <span className="text-[9px] font-black uppercase">{durationText}: {durationValue}</span>
+             <div className="space-y-4 print:space-y-8">
+                {stages.sort((a,b)=> (a.order||0) - (b.order||0)).map((stage, idx) => {
+                   const start = stage.startedAt?.toDate();
+                   const end = stage.completedAt?.toDate();
+                   
+                   let durationText = isRtl ? 'لم تبدأ' : 'Not Started';
+                   let durationValue = "";
+                   
+                   if (start && end) {
+                      const days = differenceInDays(end, start);
+                      const hours = differenceInHours(end, start) % 24;
+                      durationText = isRtl ? 'المدة الإجمالية' : 'Total Duration';
+                      durationValue = days > 0 ? `${days}d ${hours}h` : `${hours}h`;
+                   } else if (start && !end) {
+                      const hoursNow = differenceInHours(new Date(), start);
+                      durationText = isRtl ? 'قيد التنفيذ منذ' : 'Running for';
+                      durationValue = `${hoursNow}h`;
+                   }
+
+                   return (
+                      <div key={stage.id} className="relative ps-8 pb-8 last:pb-0 group/timeline">
+                         <div className="absolute left-[11px] top-4 bottom-0 w-0.5 bg-slate-100 group-last/timeline:hidden" />
+                         <div className={cn(
+                           "absolute left-0 top-0 h-6 w-6 rounded-full border-4 border-white shadow-md flex items-center justify-center z-10",
+                           stage.status === 'completed' ? "bg-emerald-500" : stage.status === 'in-progress' ? "bg-blue-500" : "bg-slate-200"
+                         )}>
+                            {stage.status === 'completed' ? <CheckCircle2 className="h-3 w-3 text-white" /> : <span className="text-[8px] font-black text-white">{idx+1}</span>}
+                         </div>
+                         
+                         <div className="space-y-2">
+                            <h4 className="font-black text-xs text-slate-900">{stage.name}</h4>
+                            <div className="grid grid-cols-2 gap-4">
+                               <div className="space-y-1">
+                                  <p className="text-[8px] font-black text-slate-400 uppercase">{isRtl ? 'البداية' : 'Started'}</p>
+                                  <p className="text-[10px] font-bold text-slate-600">{start ? start.toLocaleString(isRtl ? 'ar-KW' : 'en-US') : '---'}</p>
+                               </div>
+                               <div className="space-y-1">
+                                  <p className="text-[8px] font-black text-slate-400 uppercase">{isRtl ? 'النهاية' : 'Finished'}</p>
+                                  <p className="text-[10px] font-bold text-slate-600">{end ? end.toLocaleString(isRtl ? 'ar-KW' : 'en-US') : '---'}</p>
+                               </div>
                             </div>
-                          )}
-                       </div>
-                    </div>
-                 );
-              })}
-           </div>
-        </TabsContent>
-      </div>
+                            {start && (
+                              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-50 border text-primary">
+                                 <Timer className="h-3 w-3" />
+                                 <span className="text-[9px] font-black uppercase">{durationText}: {durationValue}</span>
+                              </div>
+                            )}
+                         </div>
+                      </div>
+                   );
+                })}
+             </div>
+          </TabsContent>
+        </div>
+      </Tabs>
 
       {/* Input Area */}
       {activeTab !== 'timeline' && (
