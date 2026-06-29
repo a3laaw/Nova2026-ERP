@@ -218,7 +218,6 @@ export class TransactionService {
     const batch = writeBatch(this.db);
 
     // 2. تصفير السجل الزمني النشط وإعادة المرحلة للعمل
-    // نقوم بتصفير التواريخ النشطة لتبدأ محاولة جديدة نظيفة
     batch.update(stageRef, {
       status: 'in-progress',
       completedAt: null,
@@ -244,7 +243,7 @@ export class TransactionService {
 
     await batch.commit();
 
-    // 4. توثيق الأرشفة الزمنية (الترحيل لسجل المحاولات المؤرشفة)
+    // 4. توثيق الأرشفة الزمنية (ترحيل للسجل التاريخي)
     const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
     await addDoc(timelineRef, {
       transactionId,
@@ -260,11 +259,11 @@ export class TransactionService {
       createdAt: serverTimestamp()
     });
 
-    // 5. أرشفة التعليقات المرتبطة بهذه المرحلة (تنظيف النشط)
+    // 5. أرشفة التعليقات المرتبطة بهذه المرحلة (نظام الأرشفة النصية)
     const commentService = new CommentService(this.db, this.companyId, this.permissions);
     await commentService.archiveStageComments(transactionId, stageId);
 
-    // 6. تطهير سجلات الإنجاز الميداني (اختياري حسب قرار المدير)
+    // 6. تطهير سجلات الإنجاز الميداني (اختياري)
     if (clearLogs) {
       const boqService = new BOQExecutionService(this.db, this.companyId, this.permissions);
       await boqService.clearStageExecutions(transactionId, stageData.technicalStageId);
