@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,11 +11,10 @@ import {
   ShieldCheck, HardHat, CheckCircle2,
   Lock, Printer, Play, Check,
   FileSpreadsheet, TrendingUp, MessageSquare,
-  ChevronDown, Hammer, Plus, Save,
+  ChevronDown, Hammer, Save,
   AlertTriangle,
   Layers,
   Sparkles,
-  Search,
   ArrowRight,
   Info,
   RotateCcw,
@@ -49,7 +48,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -114,10 +112,11 @@ export default function TransactionDetailsPage() {
 
   const executionService = useMemo(() => db && companyId ? new BOQExecutionService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
+  // حساب نسبة الإنجاز الإجمالية للمعاملة
   const progressPercent = useMemo(() => {
     if (!stages || stages.length === 0) return 0;
-    const completed = stages.filter(s => s.status === 'completed').length;
-    return Math.round((completed / stages.length) * 100);
+    const completedCount = stages.filter(s => s.status === 'completed').length;
+    return Math.round((completedCount / stages.length) * 100);
   }, [stages]);
 
   useEffect(() => {
@@ -160,14 +159,15 @@ export default function TransactionDetailsPage() {
     db && companyId ? new DocumentService(db, companyId, permissions) : null, 
   [db, companyId, permissions]);
 
-  // --- Filtering Logic (الربط الفني السيادي) ---
+  // الفلترة الذكية للبنود المسموح بها لهذه المرحلة تحديداً
   const filteredItemsForStage = useMemo(() => {
     if (!boqItems || !targetStage) return [];
     const sId = targetStage.technicalStageId;
-    return boqItems.filter(item => 
-      (item.technicalStageIds && item.technicalStageIds.includes(sId)) || 
-      (item.technicalStageId === sId)
-    );
+    return boqItems.filter(item => {
+      const allowedIds = item.technicalStageIds || [];
+      const primaryId = item.technicalStageId;
+      return allowedIds.includes(sId) || primaryId === sId;
+    });
   }, [boqItems, targetStage]);
 
   // --- Handlers ---
@@ -539,55 +539,51 @@ export default function TransactionDetailsPage() {
                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
                           {isRtl ? "بند المقايسة المتاح لهذه المرحلة" : "Available BOQ Item"}
                        </Label>
-                       <p className="text-[8px] text-slate-400 font-bold mb-2">
-                          {isRtl 
-                            ? 'يسحب البيانات من: companies/{companyId}/boqs/{boqId}/items' 
-                            : 'Data source: companies/{companyId}/boqs/{boqId}/items'}
-                       </p>
                        <Select value={selectedItemId} onValueChange={setSelectedItemId}>
                           <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/30">
                              <SelectValue placeholder={isRtl ? "اختر البند الميداني..." : "Select item..."} />
                           </SelectTrigger>
                           <SelectContent className="rounded-2xl border-2 shadow-2xl">
-                             {filteredItemsForStage.length === 0 ? (
-                               <div className="p-6 text-center space-y-3">
-                                  <Info className="h-6 w-6 mx-auto text-blue-400" />
-                                  <div className="space-y-1">
-                                    <p className="text-[10px] font-bold text-slate-400 italic leading-relaxed">
-                                      {isRtl ? "لا توجد بنود مرتبطة بهذه المرحلة في القاموس المرجعي." : "No items linked to this stage in registry."}
-                                    </p>
-                                    <div className="mt-4 p-4 bg-slate-50 rounded-2xl border text-[9px] text-start font-mono space-y-1 ring-1 ring-black/[0.02]">
-                                      <p className="text-primary font-black uppercase flex items-center gap-1.5"><Fingerprint className="h-3 w-3" /> Diagnostic Info:</p>
-                                      <p className="text-slate-600">Target Stage ID: <span className="font-black text-slate-900">{targetStage?.technicalStageId}</span></p>
-                                      <p className="text-slate-600">BOQ Items in DB: <span className="font-black text-slate-900">{boqItems?.length || 0}</span></p>
-                                      <div className="pt-2 border-t mt-2">
-                                        <p className="text-[8px] text-slate-400 font-bold">{isRtl ? "تنبيه: المهندس لن يرى البند إلا إذا قمت بربطه بالمراحل (الإعدادات > شجرة الأعمال)." : "Engineer won't see this item unless linked in Settings > Work Tree."}</p>
-                                      </div>
-                                    </div>
+                             {filteredItemsForStage.map(item => (
+                               <SelectItem key={item.id} value={item.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
+                                  <div className="flex flex-col text-start">
+                                     <span>{item.referenceTitle}</span>
+                                     <span className="text-[8px] text-slate-400 font-black uppercase">{item.referenceCode} | Qty: {item.plannedQuantity} {item.unitSymbol}</span>
                                   </div>
-                               </div>
-                             ) : (
-                               filteredItemsForStage.map(item => (
-                                 <SelectItem key={item.id} value={item.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
-                                    <div className="flex flex-col text-start">
-                                       <span>{item.referenceTitle}</span>
-                                       <span className="text-[8px] text-slate-400 font-black uppercase">{item.referenceCode} | Qty: {item.plannedQuantity} {item.unitSymbol}</span>
-                                    </div>
-                                 </SelectItem>
-                               ))
-                             )}
+                               </SelectItem>
+                             ))}
                           </SelectContent>
                        </Select>
                     </div>
+
+                    {/* لوحة التشخيص الذكي: تظهر فقط عند عدم وجود بنود مرتبطة */}
+                    {filteredItemsForStage.length === 0 && (
+                       <div className="p-6 bg-blue-50/50 rounded-2xl border-2 border-blue-100 animate-in zoom-in-95">
+                          <div className="flex items-center gap-3 text-blue-600 mb-3">
+                             <Info className="h-5 w-5" />
+                             <h5 className="font-black text-xs uppercase">{isRtl ? 'تشخيص الربط الفني' : 'Technical Link Diagnostic'}</h5>
+                          </div>
+                          <div className="space-y-2 font-mono text-[9px] text-blue-800/80">
+                             <p className="flex justify-between"><span>Target Stage ID:</span> <span className="font-black">{targetStage?.technicalStageId}</span></p>
+                             <p className="flex justify-between"><span>BOQ Items in DB:</span> <span className="font-black">{boqItems?.length || 0}</span></p>
+                          </div>
+                          <p className="mt-4 text-[9px] font-bold text-slate-500 leading-relaxed italic">
+                             {isRtl 
+                               ? 'تنبيه: المهندس لن يرى البند إلا إذا قمت بربطه بهذه المرحلة تحديداً في (الإعدادات > شجرة الأعمال).' 
+                               : 'Engineer won\'t see this item unless explicitly linked to this stage in (Settings > Work Tree).'}
+                          </p>
+                       </div>
+                    )}
 
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? "الكمية المنفذة" : "Executed Quantity"}</Label>
                        <div className="relative">
                           <input 
                             type="number" 
-                            value={progressQty} 
+                            value={progressQty || ''} 
                             onChange={e => setProgressQty(Number(e.target.value))}
                             className="h-14 w-full rounded-2xl border-2 font-black text-xl text-primary text-center outline-none focus:border-primary/50 transition-all" 
+                            placeholder="0"
                           />
                           <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 uppercase">QTY</div>
                        </div>
