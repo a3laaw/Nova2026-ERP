@@ -8,12 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Checkbox } from "@/checkbox";
-import { 
   Save, Plus, Trash2, Loader2, ArrowRight,
   Calculator, AlertTriangle, 
   CheckCircle2,
@@ -22,7 +16,6 @@ import {
   FolderTree,
   ChevronDown, ChevronRight,
   LayoutGrid,
-  Layers,
   Folder,
   Workflow,
   Target
@@ -36,7 +29,6 @@ import { paths } from '@/firebase/multi-tenant';
 import { BOQTemplate, BOQTemplateItem, BOQTreeNode } from '@/types/templates';
 import { ActivityType, Service, SubService, BOQReferenceNode, TechnicalStage } from '@/types/reference';
 import { TemplateService } from '@/services/template-service';
-import { TechnicalPathService } from '@/services/technical-path-service';
 import { transformToBOQTree } from '@/lib/boq-tree-utils';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -63,7 +55,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
   const [isPickerOpen, setIsMasterPickerOpen] = useState(false);
   const [masterSearch, setMasterSearch] = useState("");
   const [expandedNodes, setExpandedNodes] = useState<string[]>([]);
-  const [allStages, setAllStages] = useState<TechnicalStage[]>([]);
+  const [pathStages, setPathStages] = useState<TechnicalStage[]>([]);
   const [loadingStages, setLoadingStages] = useState(false);
   const [activeSubs, setActiveSubs] = useState<SubService[]>([]);
   
@@ -75,18 +67,14 @@ export function BOQTemplateForm({ template, onClose }: Props) {
       activityTypeId: '',
       serviceId: '',
       subServiceId: '',
-      activityTypeIds: [], 
-      serviceIds: [],      
       isDefault: false,
       isActive: true
     }
   );
 
-  // جلب الأنشطة الرئيسية
   const actQuery = useMemo(() => companyId && db ? query(collection(db, paths.activityTypes(companyId)), orderBy('order')) : null, [db, companyId]);
   const { data: activities } = useCollection<ActivityType>(actQuery);
 
-  // إصلاح سيادي: جلب الخدمات المرتبطة بالنشاط المختار حصراً لتجنب أخطاء الفهارس
   const srvQuery = useMemo(() => {
     if (!companyId || !db || !formData.activityTypeId) return null;
     return query(collection(db, paths.services(companyId, formData.activityTypeId)), orderBy('order'));
@@ -96,16 +84,27 @@ export function BOQTemplateForm({ template, onClose }: Props) {
   const masterNodesQuery = useMemo(() => companyId && db ? query(collection(db, paths.boqReferenceNodes(companyId)), orderBy('depth')) : null, [db, companyId]);
   const { data: rawMasterNodes, loading: masterLoading } = useCollection<BOQReferenceNode>(masterNodesQuery);
 
-  // جلب المسارات الفنية عند اختيار الخدمة
+  // جلب المسارات الفنية والمراحل عند اختيار الخدمة والمسار
   useEffect(() => {
     if (db && companyId && formData.activityTypeId && formData.serviceId) {
       getDocs(query(collection(db, paths.subServices(companyId, formData.activityTypeId, formData.serviceId)), orderBy('order')))
         .then(snap => setActiveSubs(snap.docs.map(d => ({ id: d.id, ...d.data() } as SubService))))
         .catch(() => setActiveSubs([]));
-    } else {
-      setActiveSubs([]);
     }
   }, [db, companyId, formData.activityTypeId, formData.serviceId]);
+
+  useEffect(() => {
+    if (db && companyId && formData.activityTypeId && formData.serviceId && formData.subServiceId) {
+      setLoadingStages(true);
+      const stagesPath = paths.technicalStages(companyId, formData.activityTypeId, formData.serviceId, formData.subServiceId);
+      getDocs(query(collection(db, stagesPath), orderBy('order')))
+        .then(snap => setPathStages(snap.docs.map(d => ({ id: d.id, ...d.data() } as TechnicalStage))))
+        .catch(() => setPathStages([]))
+        .finally(() => setLoadingStages(false));
+    } else {
+      setPathStages([]);
+    }
+  }, [db, companyId, formData.subServiceId, formData.activityTypeId, formData.serviceId]);
 
   const service = useMemo(() => db && companyId ? new TemplateService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
@@ -118,16 +117,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     }
   }, [template?.id, service]);
 
-  useEffect(() => {
-    if (db && companyId) {
-      setLoadingStages(true);
-      const tpService = new TechnicalPathService(db, companyId);
-      tpService.getAllCompanyStages()
-        .then(setAllStages)
-        .finally(() => setLoadingStages(false));
-    }
-  }, [db, companyId]);
-
   const boqTree = useMemo(() => transformToBOQTree(items), [items]);
 
   const totalItemsValue = useMemo(() => {
@@ -139,27 +128,16 @@ export function BOQTemplateForm({ template, onClose }: Props) {
   const handleSave = async () => {
     if (!db || !companyId || !user || !service) return;
     if (!formData.name) return toast({ variant: "destructive", title: isRtl ? "الاسم مطلوب" : "Name required" });
-    if (!formData.subServiceId) return toast({ variant: "destructive", title: isRtl ? "يجب اختيار المسار الفني المباشر للربط" : "Direct Technical Path is required" });
+    if (!formData.subServiceId) return toast({ variant: "destructive", title: isRtl ? "يجب اختيار المسار الفني المباشر للربط" : "Technical Path required" });
     
     setLoading(true);
     try {
-      const sanitizedItems = items.map(item => {
-        const normalizedStageIds =
-          item.technicalStageIds && item.technicalStageIds.length > 0
-            ? item.technicalStageIds
-            : (item.technicalStageId ? [item.technicalStageId] : []);
-
-        const normalizedDefaultStageId =
-          item.technicalStageId || (normalizedStageIds.length > 0 ? normalizedStageIds[0] : '');
-
-        return {
-          ...item,
-          referenceDescription: item.referenceDescription || "",
-          technicalStageId: normalizedDefaultStageId,
-          technicalStageIds: normalizedStageIds,
-          unitSymbol: item.unitSymbol || ""
-        };
-      });
+      const sanitizedItems = items.map(item => ({
+        ...item,
+        technicalStageId: item.technicalStageId || '',
+        technicalStageIds: item.technicalStageIds || [],
+        unitSymbol: item.unitSymbol || ""
+      }));
       
       await service.saveBOQTemplateWithItems(template?.id || null, formData as any, sanitizedItems as any, user.uid);
       toast({ title: t('saved') });
@@ -295,10 +273,10 @@ export function BOQTemplateForm({ template, onClose }: Props) {
           const itemPrefix = `${prefix}.${iIdx + 1}`; 
           const subtotal = (item.plannedQuantity || 0) * (item.estimatedRate || 0);
 
-          const templatePathStages = allStages.filter(s => s.subServiceId === formData.subServiceId);
+          // تحديد المراحل المسموح بها لهذا البند تحديداً
           const allowedStagesForItem = (item.technicalStageIds && item.technicalStageIds.length > 0)
-              ? allStages.filter(s => item.technicalStageIds!.includes(s.id!))
-              : templatePathStages;
+              ? pathStages.filter(s => item.technicalStageIds!.includes(s.id!))
+              : pathStages;
 
           return (
             <TableRow key={`${item.boqReferenceNodeId}-${originalIdx}`} className="hover:bg-primary/[0.02] transition-colors border-b-slate-50 group/item">
@@ -341,7 +319,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                            <SelectItem key={s.id} value={s.id!} className="font-bold text-[10px] py-2">
                               <div className="flex flex-col text-start">
                                  <span className="flex items-center gap-1"><Workflow className="h-2.5 w-2.5 text-primary" /> {s.name}</span>
-                                 <span className="text-[7px] text-slate-400">{s.fullPathName}</span>
+                                 <span className="text-[7px] text-slate-400">{isRtl ? 'بند نظامي' : 'System Item'}</span>
                               </div>
                            </SelectItem>
                          ))
@@ -486,7 +464,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                           </Select>
                        </div>
                        <div className="space-y-2">
-                          <Label className="text-[9px] font-black text-slate-500 uppercase">{isRtl ? 'المسار الفني الدقيق (حلقة الوصل)' : 'Specific Technical Path'}</Label>
+                          <Label className="text-[9px] font-black text-slate-500 uppercase">{isRtl ? 'المسار الفني الدقيق' : 'Specific Technical Path'}</Label>
                           <Select disabled={!formData.serviceId} value={formData.subServiceId} onValueChange={v => {
                              const sub = activeSubs.find(s => s.id === v);
                              setFormData({...formData, subServiceId: v, subServiceName: sub?.name || ''});
