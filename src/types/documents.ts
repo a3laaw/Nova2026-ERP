@@ -135,14 +135,16 @@ export interface BOQVariation extends BaseReference {
 export interface BOQVariationItem extends BaseReference {
   id: string;
   variationId: string;
-  sourceBoqItemId?: string; // إذا كان تعديلاً على بند موجود
-  boqReferenceNodeId?: string; // إذا كان بنداً مستجداً من الشجرة
+  sourceBoqItemId?: string;     // إذا كان تعديلاً على بند موجود
+  boqReferenceNodeId?: string;  // إذا كان بنداً مستجداً من الشجرة
+  technicalStageId?: string;    // المرحلة الفنية المرتبطة بهذا التغيير (ضرورية للحقن الميداني)
   type: VariationType;
   description: string;
   unitName?: string;
   unitSymbol?: string;
-  quantityDelta: number; // مقدار التغير (موجب أو سالب)
+  sourcePlannedQuantity?: number; // الكمية الأصلية قبل التعديل
+  quantityDelta: number;         // مقدار التغير (موجب أو سالب)
   rate: number;
-  total: number; // (quantityDelta * rate)
+  total: number;                 // (quantityDelta * rate)
   reason?: string;
 }

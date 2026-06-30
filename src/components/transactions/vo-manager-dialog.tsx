@@ -16,7 +16,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { 
   Calculator, Trash2, Loader2, Save, X, 
   PlusCircle, AlertTriangle, LayoutGrid,
-  Hammer, Zap, Workflow, TrendingUp, TrendingDown
+  Hammer, Zap, Workflow, TrendingUp, TrendingDown,
+  CheckCircle2
 } from "lucide-react";
 import { 
   Select, 
@@ -125,9 +126,49 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
 
   const netTotal = useMemo(() => items.reduce((acc, i) => acc + (i.total || 0), 0), [items]);
 
+  const validateForm = (): boolean => {
+    if (!title.trim()) {
+      toast({ variant: "destructive", title: isRtl ? "بيانات ناقصة" : "Missing Info", description: isRtl ? "يرجى إدخال عنوان للأمر التغييري" : "Please enter VO title" });
+      return false;
+    }
+
+    if (items.length === 0) {
+      toast({ variant: "destructive", title: isRtl ? "تنبيه" : "Alert", description: isRtl ? "يجب إضافة بند واحد على الأقل" : "Please add at least one item" });
+      return false;
+    }
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const sNo = i + 1;
+
+      if (item.type === 'new_item') {
+        if (!item.boqReferenceNodeId) {
+          toast({ variant: "destructive", title: isRtl ? "بند غير مكتمل" : "Incomplete Item", description: isRtl ? `يرجى اختيار البند المستجد من الشجرة في السطر ${sNo}` : `Select registry node for line ${sNo}` });
+          return false;
+        }
+        if (!item.technicalStageId) {
+          toast({ variant: "destructive", title: isRtl ? "مرحلة مفقودة" : "Missing Stage", description: isRtl ? `يرجى اختيار مرحلة فنية للبند الجديد في السطر ${sNo}` : `Select stage for new item at line ${sNo}` });
+          return false;
+        }
+      } else {
+        if (!item.sourceBoqItemId) {
+          toast({ variant: "destructive", title: isRtl ? "بند غير محدد" : "Unselected Item", description: isRtl ? `يرجى اختيار البند المراد تعديله في السطر ${sNo}` : `Select target item for line ${sNo}` });
+          return false;
+        }
+      }
+
+      if (!item.quantityDelta || Math.abs(item.quantityDelta) <= 0) {
+        toast({ variant: "destructive", title: isRtl ? "كمية غير صالحة" : "Invalid Quantity", description: isRtl ? `يرجى إدخال كمية التغيير في السطر ${sNo}` : `Enter delta quantity for line ${sNo}` });
+        return false;
+      }
+    }
+
+    return true;
+  };
+
   const handleSave = async () => {
     if (!db || !globalUser?.companyId || !user) return;
-    if (!title) return toast({ variant: "destructive", title: isRtl ? "العنوان مطلوب" : "Title required" });
+    if (!validateForm()) return;
 
     setLoading(true);
     try {
@@ -224,7 +265,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                    </div>
 
                                    <div className="md:col-span-4 space-y-2 text-start">
-                                      <Label className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'البند المستهدف' : 'Target Item'}</Label>
+                                      <Label className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'البند المستهدف' : 'Target Item'}</Label>
                                       {item.type === 'new_item' ? (
                                          <div className="p-1 rounded-xl border-2 bg-slate-50">
                                             <BOQReferenceSelector onSelect={(node) => updateItem(idx, 'boqReferenceNodeId', node)} className="grid-cols-1 md:grid-cols-1 gap-2" />
@@ -281,28 +322,27 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                 {/* الحسبة التفصيلية الميدانية في أسفل السطر */}
                                 <div className="pt-4 border-t border-dashed flex flex-col md:flex-row items-center justify-between gap-4">
                                    <div className="flex items-center gap-3">
-                                      <div className={cn("h-7 px-3 rounded-lg flex items-center gap-2 text-[9px] font-black uppercase", item.total && item.total >= 0 ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600")}>
-                                         {item.total && item.total >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                                         {item.description || '...'} | {item.unitSymbol}
+                                      <div className={cn("h-7 px-3 rounded-lg flex items-center gap-2 text-[9px] font-black uppercase", (item.total || 0) >= 0 ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600")}>
+                                         {(item.total || 0) >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                                         {item.description || '...'} | {item.unitSymbol || '-'}
                                       </div>
                                       <Badge variant="outline" className="h-7 border-2 border-primary/20 bg-white font-black text-[9px] px-3">
                                          {item.type !== 'new_item' ? `${item.sourcePlannedQuantity} + (${item.quantityDelta}) = ${finalQty}` : `NEW: ${item.quantityDelta}`}
                                       </Badge>
                                    </div>
 
-                                   {item.type === 'new_item' && (
-                                      <div className="flex items-center gap-2 animate-in slide-in-from-top-2">
-                                         <div className="flex items-center gap-2 text-primary font-black text-[9px] uppercase">
-                                            <Workflow className="h-3.5 w-3.5" /> {isRtl ? 'ربط البند بمرحلة:' : 'Link to Stage:'}
-                                         </div>
-                                         <Select value={item.technicalStageId} onValueChange={v => updateItem(idx, 'technicalStageId', v)}>
-                                            <SelectTrigger className="h-8 rounded-lg border-2 font-bold bg-white text-[10px] min-w-[150px]"><SelectValue placeholder="..." /></SelectTrigger>
-                                            <SelectContent className="rounded-xl border-0 shadow-2xl">
-                                               {availableStages.map(s => <SelectItem key={s.id} value={s.technicalStageId || s.id} className="font-bold text-[10px]">{s.name}</SelectItem>)}
-                                            </SelectContent>
-                                         </Select>
+                                   {/* ربط البند بمرحلة فنية - إلزامي للبند المستجد أو لتغيير الوجهة الفنية */}
+                                   <div className="flex items-center gap-2 animate-in slide-in-from-top-2">
+                                      <div className="flex items-center gap-2 text-primary font-black text-[9px] uppercase">
+                                         <Workflow className="h-3.5 w-3.5" /> {isRtl ? 'ربط البند بمرحلة:' : 'Link to Stage:'}
                                       </div>
-                                   )}
+                                      <Select value={item.technicalStageId || ''} onValueChange={v => updateItem(idx, 'technicalStageId', v)}>
+                                         <SelectTrigger className="h-8 rounded-lg border-2 font-bold bg-white text-[10px] min-w-[150px]"><SelectValue placeholder="..." /></SelectTrigger>
+                                         <SelectContent className="rounded-xl border-0 shadow-2xl">
+                                            {availableStages.map(s => <SelectItem key={s.id} value={s.technicalStageId || s.id} className="font-bold text-[10px]">{s.name}</SelectItem>)}
+                                         </SelectContent>
+                                      </Select>
+                                   </div>
                                 </div>
                              </CardContent>
                           </Card>
@@ -317,7 +357,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
            <Button variant="outline" onClick={onClose} className="flex-1 h-16 rounded-2xl border-2 font-black text-lg bg-white">Cancel</Button>
            <Button 
              onClick={handleSave} 
-             disabled={loading || items.length === 0} 
+             disabled={loading} 
              className="flex-[2] h-16 rounded-2xl bg-primary text-white font-black text-2xl shadow-xl shadow-primary/20 border-b-8 border-orange-700 hover:scale-[1.02] active:scale-[0.98] transition-all gap-4"
            >
               {loading ? <Loader2 className="animate-spin h-7 w-7" /> : <Save className="h-7 w-7" />}
