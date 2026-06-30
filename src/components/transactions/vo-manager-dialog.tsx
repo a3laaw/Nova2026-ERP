@@ -73,7 +73,12 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
   };
 
   useEffect(() => {
-    if (isOpen) fetchStages();
+    if (isOpen) {
+       fetchStages();
+       setItems([]);
+       setTitle("");
+       setReason("");
+    }
   }, [isOpen, db, globalUser, transactionId]);
 
   const addItem = () => {
@@ -95,7 +100,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
     const newItems = [...items];
     const item = { ...newItems[idx], [field]: val };
     
-    // عند اختيار بند موجود
+    // عند اختيار بند موجود من المقايسة (سواء كان أصلياً أو مستجداً من VO سابقة)
     if (field === 'sourceBoqItemId' && val) {
       const source = boqItems.find(i => i.id === val);
       if (source) {
@@ -106,20 +111,18 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
         item.sourcePlannedQuantity = source.plannedQuantity || 0;
         item.technicalStageId = source.technicalStageId;
         
-        // إذا كان النوع "حذف بند"، نقوم بتصفير الكمية آلياً
+        // التحديث السيادي: إذا كان النوع "حذف بند"، نقوم بتصفير الكمية فور اختيار البند
         if (item.type === 'omit_item') {
            item.quantityDelta = -source.plannedQuantity;
-           item.total = item.quantityDelta * (item.rate || 0);
         }
       }
     }
 
-    // عند تغيير النوع إلى حذف بند
+    // عند تغيير نوع الحركة (مثلاً من زيادة إلى حذف بند)
     if (field === 'type' && val === 'omit_item' && item.sourceBoqItemId) {
        const source = boqItems.find(i => i.id === item.sourceBoqItemId);
        if (source) {
           item.quantityDelta = -source.plannedQuantity;
-          item.total = item.quantityDelta * (item.rate || 0);
        }
     }
 
@@ -136,14 +139,15 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
        item.technicalStageId = matchingStage ? node.technicalStageId : '';
     }
 
-    if (field === 'quantityDelta' || field === 'rate' || field === 'type') {
-      const type = field === 'type' ? val : (item.type || 'increase_quantity');
+    // محرك الحسابات المالية اللحظي
+    if (field === 'quantityDelta' || field === 'rate' || field === 'type' || field === 'sourceBoqItemId') {
+      const type = (field === 'type' ? val : item.type) || 'increase_quantity';
       let q = field === 'quantityDelta' ? Math.abs(val) : Math.abs(item.quantityDelta || 0);
       const r = field === 'rate' ? val : (item.rate || 0);
       
       const multiplier = (type === 'decrease_quantity' || type === 'omit_item') ? -1 : 1;
       
-      // في حالة حذف البند، لا نسمح بتجاوز الكمية الأصلية بالسالب
+      // في حالة حذف البند، نجبر الكمية على أن تكون مساوية للأصل بالسالب
       if (type === 'omit_item' && item.sourcePlannedQuantity) {
          q = item.sourcePlannedQuantity;
       }
@@ -160,11 +164,22 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
 
   const handleSave = async () => {
     if (!db || !globalUser?.companyId || !user) return;
+    
+    // التحقق من اكتمال البيانات
+    if (!title.trim()) {
+      toast({ variant: "destructive", title: isRtl ? "عنوان الطلب مطلوب" : "Title required" });
+      return;
+    }
+    if (items.length === 0) {
+      toast({ variant: "destructive", title: isRtl ? "يجب إضافة بند واحد على الأقل" : "Add at least one item" });
+      return;
+    }
+
     setLoading(true);
     try {
       const service = new VariationService(db, globalUser.companyId, permissions);
       await service.createVariation(boqId, transactionId, boqNumber, { title, reason }, items, user.uid);
-      toast({ title: isRtl ? "تم حفظ مسودة الأمر" : "Draft Saved" });
+      toast({ title: isRtl ? "تم حفظ مسودة الأمر بنجاح" : "Draft Saved Successfully" });
       onClose();
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
@@ -204,19 +219,22 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
            <div className="lg:col-span-3 space-y-6 text-start">
               <div className="space-y-2">
                  <Label className="text-[10px] font-black uppercase text-slate-400">VO Title</Label>
-                 <Input value={title} onChange={e => setTitle(e.target.value)} className="h-12 rounded-xl border-2 font-bold focus:border-primary/50 shadow-inner" placeholder="e.g. Scope Adjustment - 2026" />
+                 <Input value={title} onChange={e => setTitle(e.target.value)} className="h-12 rounded-xl border-2 font-bold focus:border-primary/50 shadow-inner" placeholder={isRtl ? "عنوان الأمر التغييري..." : "e.g. Scope Adjustment"} />
               </div>
               <div className="space-y-2">
                  <Label className="text-[10px] font-black uppercase text-slate-400">Justification</Label>
-                 <textarea value={reason} onChange={e => setReason(e.target.value)} className="w-full min-h-[150px] rounded-xl border-2 bg-slate-50 p-4 text-xs font-bold focus:bg-white transition-all resize-none shadow-inner" placeholder="Why is this change required?..." />
+                 <textarea value={reason} onChange={e => setReason(e.target.value)} className="w-full min-h-[150px] rounded-xl border-2 bg-slate-50 p-4 text-xs font-bold focus:bg-white transition-all resize-none shadow-inner" placeholder={isRtl ? "ما هو مبرر هذا التغيير؟" : "Why is this change required?..."} />
               </div>
 
-              <div className="p-5 rounded-2xl bg-blue-50 border border-blue-100 flex items-start gap-3">
-                 <Info className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
+              <div className="p-6 rounded-[2.5rem] bg-blue-50 border-2 border-blue-100 space-y-3 animate-pulse shadow-sm">
+                 <div className="flex items-center gap-2 text-blue-600">
+                    <Info className="h-4 w-4" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">{isRtl ? 'دليل الحذف' : 'Deletion Guide'}</span>
+                 </div>
                  <p className="text-[10px] text-blue-800 font-bold leading-relaxed">
                    {isRtl 
-                     ? 'البنود المستجدة التي تم اعتمادها لا يمكن حذفها "صمتاً" من التاريخ. لإلغائها، يجب إنشاء أمر تغييري عكسي (حذف بند) لتصفير الكمية ماليًا وميدانيًا.' 
-                     : 'Approved new items cannot be deleted silently. To cancel them, create a reverse Variation Order (Omit Item) to zero out quantities.'}
+                     ? 'لإلغاء بند (أصلي أو مستجد) تم اعتماده مسبقاً، اختر "حذف بند" ثم حدده من قائمة المقايسة. سيقوم النظام بتصفيره محاسبياً وميدانياً.' 
+                     : 'To cancel an approved item (Original or New), select "Omit Item" then pick it from the list. The system will zero it out financially and in the field.'}
                  </p>
               </div>
            </div>
@@ -227,7 +245,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                  <Button onClick={addItem} variant="outline" className="rounded-xl font-black h-11 border-2 gap-2 shadow-sm hover:bg-slate-50"><PlusCircle className="h-4 w-4" /> {isRtl ? 'إضافة تعديل' : 'Add Adjustment'}</Button>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-4 pb-10">
                  {items.map((item, idx) => {
                     const isNewItem = item.type === 'new_item';
                     const isOmit = item.type === 'omit_item';
@@ -372,7 +390,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                <div className="flex justify-end gap-3 items-center animate-in fade-in">
                                   <Label className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'اختر المرحلة الفنية:' : 'Select Target Stage:'}</Label>
                                   <Select value={item.technicalStageId || ''} onValueChange={v => updateItem(idx, 'technicalStageId', v)}>
-                                     <SelectTrigger className="h-9 rounded-lg border-2 font-bold bg-white text-[10px] min-w-[180px] shadow-sm"><SelectValue placeholder="..." /></SelectTrigger>
+                                     <SelectTrigger className="h-9 rounded-lg border-2 font-black bg-white text-[10px] min-w-[180px] shadow-sm"><SelectValue placeholder="..." /></SelectTrigger>
                                      <SelectContent className="rounded-xl border-0 shadow-2xl">{availableStages.map(s => <SelectItem key={s.id} value={s.technicalStageId} className="font-bold text-[10px]">{s.name}</SelectItem>)}</SelectContent>
                                   </Select>
                                </div>
