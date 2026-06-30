@@ -20,7 +20,9 @@ import {
   CheckCircle2, Plus, ShieldAlert,
   ArrowRight,
   Settings2,
-  Clock
+  Clock,
+  Info,
+  Sparkles
 } from "lucide-react";
 import { 
   Select, 
@@ -93,6 +95,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
     const newItems = [...items];
     const item = { ...newItems[idx], [field]: val };
     
+    // عند اختيار بند موجود
     if (field === 'sourceBoqItemId' && val) {
       const source = boqItems.find(i => i.id === val);
       if (source) {
@@ -102,7 +105,22 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
         item.rate = source.estimatedRate || 0;
         item.sourcePlannedQuantity = source.plannedQuantity || 0;
         item.technicalStageId = source.technicalStageId;
+        
+        // إذا كان النوع "حذف بند"، نقوم بتصفير الكمية آلياً
+        if (item.type === 'omit_item') {
+           item.quantityDelta = -source.plannedQuantity;
+           item.total = item.quantityDelta * (item.rate || 0);
+        }
       }
+    }
+
+    // عند تغيير النوع إلى حذف بند
+    if (field === 'type' && val === 'omit_item' && item.sourceBoqItemId) {
+       const source = boqItems.find(i => i.id === item.sourceBoqItemId);
+       if (source) {
+          item.quantityDelta = -source.plannedQuantity;
+          item.total = item.quantityDelta * (item.rate || 0);
+       }
     }
 
     if (field === 'boqReferenceNodeId' && val) {
@@ -114,17 +132,22 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
        item.rate = node.estimatedRate || 0;
        item.sourcePlannedQuantity = 0;
        
-       // Priority link to matching stage if exists
        const matchingStage = availableStages.find(s => s.technicalStageId === node.technicalStageId);
        item.technicalStageId = matchingStage ? node.technicalStageId : '';
     }
 
     if (field === 'quantityDelta' || field === 'rate' || field === 'type') {
       const type = field === 'type' ? val : (item.type || 'increase_quantity');
-      const q = field === 'quantityDelta' ? Math.abs(val) : Math.abs(item.quantityDelta || 0);
+      let q = field === 'quantityDelta' ? Math.abs(val) : Math.abs(item.quantityDelta || 0);
       const r = field === 'rate' ? val : (item.rate || 0);
       
       const multiplier = (type === 'decrease_quantity' || type === 'omit_item') ? -1 : 1;
+      
+      // في حالة حذف البند، لا نسمح بتجاوز الكمية الأصلية بالسالب
+      if (type === 'omit_item' && item.sourcePlannedQuantity) {
+         q = item.sourcePlannedQuantity;
+      }
+
       item.total = q * r * multiplier;
       item.quantityDelta = q * multiplier;
     }
@@ -135,37 +158,8 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
 
   const netTotal = useMemo(() => items.reduce((acc, i) => acc + (i.total || 0), 0), [items]);
 
-  const validateForm = (): boolean => {
-    if (!title.trim()) {
-      toast({ variant: "destructive", title: isRtl ? "بيانات ناقصة" : "Missing Info", description: isRtl ? "يرجى إدخل عنوان للأمر التغييري" : "Please enter VO title" });
-      return false;
-    }
-    if (items.length === 0) {
-      toast({ variant: "destructive", title: isRtl ? "تنبيه" : "Alert", description: isRtl ? "يجب إضافة تعديل واحد على الأقل" : "Please add at least one adjustment" });
-      return false;
-    }
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      if (item.type === 'new_item') {
-        if (!item.boqReferenceNodeId) { toast({ variant: "destructive", title: isRtl ? "بند غير مكتمل" : "Incomplete Item", description: isRtl ? `يرجى اختيار البند المستجد في السطر ${i+1}` : `Select node for line ${i+1}` }); return false; }
-        if (!item.unitSymbol) { toast({ variant: "destructive", title: isRtl ? "وحدة قياس مفقودة" : "Missing Unit", description: isRtl ? `يرجى تحديد وحدة قياس للبند في السطر ${i+1}` : `Select unit for line ${i+1}` }); return false; }
-        
-        if (item.stageMode === 'new_local_stage') {
-           if (!item.localStageName?.trim()) { toast({ variant: "destructive", title: isRtl ? "اسم المرحلة مطلوب" : "Stage name required", description: isRtl ? `أدخل اسم المرحلة المحلية في السطر ${i+1}` : `Enter stage name for line ${i+1}` }); return false; }
-           if (!item.insertAfterStageId) { toast({ variant: "destructive", title: isRtl ? "موضع المرحلة مطلوب" : "Placement required", description: isRtl ? `حدد بعد أي مرحلة يتم إدراج المرحلة الجديدة في السطر ${i+1}` : `Select placement for line ${i+1}` }); return false; }
-        } else {
-           if (!item.technicalStageId) { toast({ variant: "destructive", title: isRtl ? "مرحلة مفقودة" : "Missing Stage", description: isRtl ? `يرجى اختيار مرحلة فنية للبند في السطر ${i+1}` : `Select stage for line ${i+1}` }); return false; }
-        }
-      } else {
-        if (!item.sourceBoqItemId) { toast({ variant: "destructive", title: isRtl ? "بند غير محدد" : "Unselected Item", description: isRtl ? `يرجى اختيار بند للمقارنة في السطر ${i+1}` : `Select item for line ${i+1}` }); return false; }
-      }
-      if (!item.quantityDelta || Math.abs(item.quantityDelta) === 0) { toast({ variant: "destructive", title: isRtl ? "كمية غير صالحة" : "Invalid Quantity", description: isRtl ? `يرجى إدخال كمية التغيير في السطر ${i+1}` : `Enter delta quantity for line ${i+1}` }); return false; }
-    }
-    return true;
-  };
-
   const handleSave = async () => {
-    if (!db || !globalUser?.companyId || !user || !validateForm()) return;
+    if (!db || !globalUser?.companyId || !user) return;
     setLoading(true);
     try {
       const service = new VariationService(db, globalUser.companyId, permissions);
@@ -216,6 +210,15 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                  <Label className="text-[10px] font-black uppercase text-slate-400">Justification</Label>
                  <textarea value={reason} onChange={e => setReason(e.target.value)} className="w-full min-h-[150px] rounded-xl border-2 bg-slate-50 p-4 text-xs font-bold focus:bg-white transition-all resize-none shadow-inner" placeholder="Why is this change required?..." />
               </div>
+
+              <div className="p-5 rounded-2xl bg-blue-50 border border-blue-100 flex items-start gap-3">
+                 <Info className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
+                 <p className="text-[10px] text-blue-800 font-bold leading-relaxed">
+                   {isRtl 
+                     ? 'البنود المستجدة التي تم اعتمادها لا يمكن حذفها "صمتاً" من التاريخ. لإلغائها، يجب إنشاء أمر تغييري عكسي (حذف بند) لتصفير الكمية ماليًا وميدانيًا.' 
+                     : 'Approved new items cannot be deleted silently. To cancel them, create a reverse Variation Order (Omit Item) to zero out quantities.'}
+                 </p>
+              </div>
            </div>
 
            <div className="lg:col-span-9 space-y-6">
@@ -225,74 +228,94 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
               </div>
 
               <div className="space-y-4">
-                 {items.map((item, idx) => (
-                   <Card key={idx} className="border-0 shadow-lg rounded-[2rem] bg-white ring-1 ring-black/5 group hover:ring-2 hover:ring-primary/10 transition-all overflow-hidden animate-in slide-in-from-right-4 duration-300">
-                      <CardContent className="p-8 space-y-6">
-                         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
-                            <div className="md:col-span-2 space-y-2 text-start">
-                               <Label className="text-[9px] font-black text-slate-400 uppercase">Action</Label>
-                               <Select value={item.type} onValueChange={(v: VariationType) => updateItem(idx, 'type', v)}>
-                                  <SelectTrigger className="h-11 rounded-xl border-2 font-black text-[11px] bg-slate-50/30"><SelectValue /></SelectTrigger>
-                                  <SelectContent className="rounded-xl border-0 shadow-2xl">
-                                     {VARIATION_TYPES.map(t => (
-                                        <SelectItem key={t.value} value={t.value} className={cn("font-bold py-3", t.color)}><div className="flex items-center gap-2"><t.icon className="h-3.5 w-3.5" /><span>{t.label}</span></div></SelectItem>
-                                     ))}
-                                  </SelectContent>
-                               </Select>
-                            </div>
+                 {items.map((item, idx) => {
+                    const isNewItem = item.type === 'new_item';
+                    const isOmit = item.type === 'omit_item';
+                    const isApprovedNewItemInList = !isNewItem && item.sourceBoqItemId && boqItems.find(i => i.id === item.sourceBoqItemId)?.referenceCode?.startsWith('VO-');
 
-                            <div className="md:col-span-4 space-y-2 text-start">
-                               <Label className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'البند المستهدف' : 'Target Item'}</Label>
-                               {item.type === 'new_item' ? (
-                                  <div className="p-1 rounded-xl border-2 bg-slate-50"><BOQReferenceSelector onSelect={(node) => updateItem(idx, 'boqReferenceNodeId', node)} className="grid-cols-1 md:grid-cols-1 gap-2" /></div>
-                               ) : (
-                                  <Select value={item.sourceBoqItemId} onValueChange={v => updateItem(idx, 'sourceBoqItemId', v)}>
-                                     <SelectTrigger className="h-11 rounded-xl border-2 font-black text-[11px] bg-white"><SelectValue placeholder={isRtl ? "اختر من المقايسة..." : "Select from BOQ..."} /></SelectTrigger>
-                                     <SelectContent className="rounded-xl max-w-sm border-0 shadow-2xl">{boqItems.map(i => (<SelectItem key={i.id} value={i.id!} className="font-bold text-[10px] py-4 border-b last:border-0 border-slate-50"><div className="flex flex-col text-start"><span>{i.referenceTitle}</span><span className="text-[7px] text-slate-400 uppercase tracking-widest mt-1">QTY: {i.plannedQuantity} {i.unitSymbol}</span></div></SelectItem>))}</SelectContent>
+                    return (
+                      <Card key={idx} className={cn(
+                        "border-0 shadow-lg rounded-[2rem] bg-white ring-1 ring-black/5 group hover:ring-2 hover:ring-primary/10 transition-all overflow-hidden animate-in slide-in-from-right-4 duration-300",
+                        isNewItem && "border-s-8 border-s-blue-500",
+                        isOmit && "border-s-8 border-s-rose-500"
+                      )}>
+                         <CardContent className="p-8 space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
+                               <div className="md:col-span-2 space-y-2 text-start">
+                                  <Label className="text-[9px] font-black text-slate-400 uppercase">Action</Label>
+                                  <Select value={item.type} onValueChange={(v: VariationType) => updateItem(idx, 'type', v)}>
+                                     <SelectTrigger className="h-11 rounded-xl border-2 font-black text-[11px] bg-slate-50/30"><SelectValue /></SelectTrigger>
+                                     <SelectContent className="rounded-xl border-0 shadow-2xl">
+                                        {VARIATION_TYPES.map(t => (
+                                           <SelectItem key={t.value} value={t.value} className={cn("font-bold py-3", t.color)}><div className="flex items-center gap-2"><t.icon className="h-3.5 w-3.5" /><span>{t.label}</span></div></SelectItem>
+                                        ))}
+                                     </SelectContent>
                                   </Select>
-                               )}
-                            </div>
-
-                            <div className="md:col-span-1 space-y-2 text-start">
-                               <Label className="text-[9px] font-black text-slate-400 uppercase">Original</Label>
-                               <div className="h-11 flex items-center justify-center bg-slate-100 rounded-xl font-black text-slate-500 text-xs shadow-inner">{item.type !== 'new_item' ? (item.sourcePlannedQuantity || 0) : '-'}</div>
-                            </div>
-
-                            <div className="md:col-span-1 space-y-2 text-start">
-                               <Label className="text-[9px] font-black uppercase text-primary">Delta</Label>
-                               <div className="relative">
-                                  <Input type="number" value={Math.abs(item.quantityDelta || 0)} onChange={e => updateItem(idx, 'quantityDelta', Number(e.target.value))} className="h-11 rounded-xl border-2 border-primary/20 font-black text-center text-xs focus:border-primary" />
-                                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-300 uppercase">{item.unitSymbol}</span>
                                </div>
-                            </div>
 
-                            <div className="md:col-span-3 space-y-2 text-start">
-                               <Label className="text-[9px] font-black uppercase text-slate-400">Price & Total</Label>
-                               <div className="flex items-center gap-3">
-                                  <Input type="number" step="0.001" value={item.rate} onChange={e => updateItem(idx, 'rate', Number(e.target.value))} className="h-11 rounded-xl border-2 font-black text-emerald-600 text-xs" />
-                                  <div className="text-end min-w-[70px]"><p className={cn("text-xs font-black", (item.total || 0) >= 0 ? "text-emerald-500" : "text-rose-500")}>{(item.total || 0).toLocaleString()}</p><p className="text-[8px] font-black text-slate-300 uppercase">KWD</p></div>
+                               <div className="md:col-span-4 space-y-2 text-start">
+                                  <Label className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'البند المستهدف' : 'Target Item'}</Label>
+                                  {isNewItem ? (
+                                     <div className="p-1 rounded-xl border-2 bg-slate-50"><BOQReferenceSelector onSelect={(node) => updateItem(idx, 'boqReferenceNodeId', node)} className="grid-cols-1 md:grid-cols-1 gap-2" /></div>
+                                  ) : (
+                                     <Select value={item.sourceBoqItemId} onValueChange={v => updateItem(idx, 'sourceBoqItemId', v)}>
+                                        <SelectTrigger className="h-11 rounded-xl border-2 font-black text-[11px] bg-white"><SelectValue placeholder={isRtl ? "اختر من المقايسة..." : "Select from BOQ..."} /></SelectTrigger>
+                                        <SelectContent className="rounded-xl max-w-sm border-0 shadow-2xl">{boqItems.map(i => (<SelectItem key={i.id} value={i.id!} className="font-bold text-[10px] py-4 border-b last:border-0 border-slate-50"><div className="flex flex-col text-start"><span>{i.referenceTitle}</span><span className="text-[7px] text-slate-400 uppercase tracking-widest mt-1">QTY: {i.plannedQuantity} {i.unitSymbol}</span></div></SelectItem>))}</SelectContent>
+                                     </Select>
+                                  )}
                                </div>
+
+                               <div className="md:col-span-1 space-y-2 text-start">
+                                  <Label className="text-[9px] font-black text-slate-400 uppercase">Original</Label>
+                                  <div className="h-11 flex items-center justify-center bg-slate-100 rounded-xl font-black text-slate-500 text-xs shadow-inner">
+                                     {isNewItem ? '0' : (item.sourcePlannedQuantity || 0)}
+                                  </div>
+                               </div>
+
+                               <div className="md:col-span-1 space-y-2 text-start">
+                                  <Label className="text-[9px] font-black uppercase text-primary">Delta</Label>
+                                  <div className="relative">
+                                     <Input 
+                                       type="number" 
+                                       readOnly={isOmit}
+                                       value={Math.abs(item.quantityDelta || 0)} 
+                                       onChange={e => updateItem(idx, 'quantityDelta', Number(e.target.value))} 
+                                       className={cn("h-11 rounded-xl border-2 font-black text-center text-xs focus:border-primary", isOmit && "bg-slate-50 opacity-50")} 
+                                     />
+                                     <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-300 uppercase">{item.unitSymbol}</span>
+                                  </div>
+                               </div>
+
+                               <div className="md:col-span-3 space-y-2 text-start">
+                                  <Label className="text-[9px] font-black uppercase text-slate-400">Price & Total</Label>
+                                  <div className="flex items-center gap-3">
+                                     <Input type="number" step="0.001" value={item.rate} onChange={e => updateItem(idx, 'rate', Number(e.target.value))} className="h-11 rounded-xl border-2 font-black text-emerald-600 text-xs" />
+                                     <div className="text-end min-w-[70px]"><p className={cn("text-xs font-black", (item.total || 0) >= 0 ? "text-emerald-500" : "text-rose-500")}>{(item.total || 0).toLocaleString()}</p><p className="text-[8px] font-black text-slate-300 uppercase">KWD</p></div>
+                                  </div>
+                               </div>
+
+                               <div className="md:col-span-1 flex justify-end"><Button variant="ghost" size="icon" onClick={() => removeItem(idx)} className="h-11 w-11 rounded-xl text-rose-300 hover:text-rose-600"><Trash2 className="h-5 w-5" /></Button></div>
                             </div>
 
-                            <div className="md:col-span-1 flex justify-end"><Button variant="ghost" size="icon" onClick={() => removeItem(idx)} className="h-11 w-11 rounded-xl text-rose-300 hover:text-rose-600"><Trash2 className="h-5 w-5" /></Button></div>
-                         </div>
-
-                         {/* تفاصيل الربط الفني والوحدات */}
-                         <div className="pt-4 border-t border-dashed space-y-4">
-                            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                            <div className="pt-4 border-t border-dashed flex flex-col md:flex-row items-center justify-between gap-4">
                                <div className="flex items-center gap-3">
+                                  {isNewItem && (
+                                     <Badge className="bg-blue-600 text-white border-0 text-[8px] font-black h-5 px-3 uppercase gap-1">
+                                        <PlusCircle className="h-2 w-2" /> {isRtl ? 'بند مستجد' : 'NEW ITEM'}
+                                     </Badge>
+                                  )}
+                                  {isApprovedNewItemInList && (
+                                     <Badge className="bg-amber-100 text-amber-700 border-0 text-[8px] font-black h-5 px-3 uppercase">
+                                        {isRtl ? 'تعديل مستجد معتمد' : 'REVISING NEW ITEM'}
+                                     </Badge>
+                                  )}
                                   <div className={cn("h-7 px-3 rounded-lg flex items-center gap-2 text-[9px] font-black uppercase", (item.total || 0) >= 0 ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600")}>
                                      {(item.total || 0) >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                                      {item.description || '...'}
                                   </div>
-                                  <Badge variant="outline" className="h-7 border-2 border-primary/20 bg-white font-black text-[9px] px-3">
+                                  <Badge variant="outline" className="h-7 border-2 border-primary/20 bg-white font-black text-[9px] px-3 uppercase">
                                      {item.unitName} ({item.unitSymbol || '-'})
                                   </Badge>
-                                  {item.type !== 'new_item' && (
-                                     <Badge variant="secondary" className="h-7 font-black text-[9px] px-3 bg-slate-100">
-                                        {item.sourcePlannedQuantity} → {(item.sourcePlannedQuantity || 0) + (item.quantityDelta || 0)}
-                                     </Badge>
-                                  )}
                                </div>
 
                                <div className="flex items-center gap-3">
@@ -307,7 +330,6 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                </div>
                             </div>
 
-                            {/* الحقول الإضافية للمرحلة المحلية الجديدة */}
                             {item.stageMode === 'new_local_stage' && (
                                <div className="p-6 bg-blue-50/50 rounded-[2rem] border-2 border-blue-100 animate-in slide-in-from-top-2 space-y-4">
                                   <div className="flex items-center gap-3 text-blue-600 mb-2">
@@ -346,7 +368,6 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                </div>
                             )}
 
-                            {/* اختيار مرحلة موجودة */}
                             {item.stageMode !== 'new_local_stage' && (
                                <div className="flex justify-end gap-3 items-center animate-in fade-in">
                                   <Label className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'اختر المرحلة الفنية:' : 'Select Target Stage:'}</Label>
@@ -356,10 +377,10 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                   </Select>
                                </div>
                             )}
-                         </div>
-                      </CardContent>
-                   </Card>
-                 ))}
+                         </CardContent>
+                      </Card>
+                    );
+                 })}
               </div>
            </div>
         </div>

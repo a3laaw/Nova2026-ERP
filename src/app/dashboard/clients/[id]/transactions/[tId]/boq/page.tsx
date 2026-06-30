@@ -12,7 +12,8 @@ import {
   TrendingUp, ChevronDown, ChevronRight,
   Printer, Folder, Calculator, ShieldCheck,
   Zap, History, PlusCircle, AlertCircle,
-  CheckCircle2, XCircle, Ban, TrendingDown
+  CheckCircle2, XCircle, Ban, TrendingDown,
+  Info
 } from "lucide-react";
 import { useFirestore, useCollection, useDoc } from '@/firebase';
 import { collection, query, where, doc, collectionGroup } from 'firebase/firestore';
@@ -189,7 +190,7 @@ export default function TransactionBOQProgressPage() {
           const metrics = executionMetrics[item.id!] || { prev: 0, current: 0 };
           const totalCumulative = metrics.prev + metrics.current;
           
-          // حساب الفروقات المعتمدة للبند
+          // محرك الرؤية الشفافة للبند المستجد (New Item)
           const isVOInjected = item.referenceCode?.startsWith('VO-');
           const delta = isVOInjected ? item.plannedQuantity : (voDeltaMap[item.id!] || 0);
           const originalQty = isVOInjected ? 0 : (item.plannedQuantity - delta);
@@ -203,7 +204,11 @@ export default function TransactionBOQProgressPage() {
               <TableCell className="font-mono text-[10px] font-black text-primary/60">
                  <div className="flex flex-col gap-1">
                     <span>{item.referenceCode}</span>
-                    {isVOInjected && <Badge className="bg-amber-100 text-amber-700 border-0 text-[7px] font-black px-1 h-3.5 uppercase w-fit">VO New</Badge>}
+                    {isVOInjected && (
+                      <Badge className="bg-blue-600 text-white border-0 text-[7px] font-black px-1.5 h-4 uppercase w-fit gap-1 shadow-sm">
+                        <Sparkles className="h-2 w-2" /> {isRtl ? 'بند مستجد' : 'VO NEW'}
+                      </Badge>
+                    )}
                  </div>
               </TableCell>
               <TableCell className="text-xs font-bold text-slate-700" style={{ paddingInlineStart: `${(node.depth + 1) * 20 + 16}px` }}>
@@ -211,8 +216,10 @@ export default function TransactionBOQProgressPage() {
               </TableCell>
               <TableCell className="text-center font-black text-[10px] text-slate-400 uppercase">{item.unitSymbol || '-'}</TableCell>
               
-              {/* قسم المخطط المعدل (Original, VO Delta, Revised) */}
-              <TableCell className="text-center w-[70px] font-mono font-bold text-slate-400 text-[10px] bg-slate-50/30">{originalQty}</TableCell>
+              {/* القسم المحدث: عرض تحليل الكميات (أصل، تعديل، نهائي) */}
+              <TableCell className="text-center w-[70px] font-mono font-bold text-slate-400 text-[10px] bg-slate-50/30">
+                 {originalQty}
+              </TableCell>
               <TableCell className="text-center w-[70px] font-mono font-black text-[10px] bg-slate-50/30">
                  {delta !== 0 ? (
                    <span className={cn(delta > 0 ? "text-emerald-600" : "text-rose-600")}>
@@ -220,7 +227,9 @@ export default function TransactionBOQProgressPage() {
                    </span>
                  ) : <span className="text-slate-200">0</span>}
               </TableCell>
-              <TableCell className="text-center w-[80px] font-mono font-black text-slate-900 text-xs border-x border-slate-100">{finalPlan}</TableCell>
+              <TableCell className="text-center w-[80px] font-mono font-black text-slate-900 text-xs border-x border-slate-100">
+                 {finalPlan}
+              </TableCell>
               
               <TableCell className="text-center font-mono font-black text-blue-600 text-xs">{metrics.prev}</TableCell>
               <TableCell className="text-center">
@@ -346,7 +355,7 @@ export default function TransactionBOQProgressPage() {
                <TableHead className="text-white font-black text-xs">{isRtl ? 'بند العمل / الوصف' : 'Item Description'}</TableHead>
                <TableHead className="text-center w-[60px] text-white font-black text-xs">{isRtl ? 'الوحدة' : 'Unit'}</TableHead>
                
-               {/* تجميع المخطط في 3 أعمدة تحليلية */}
+               {/* تجميع المخطط في 3 أعمدة تحليلية لتوضيح أثر التغيير */}
                <TableHead className="text-center w-[70px] text-white/60 font-black text-[9px] bg-white/5">{isRtl ? 'الأصل' : 'Orig'}</TableHead>
                <TableHead className="text-center w-[70px] text-white/60 font-black text-[9px] bg-white/5">{isRtl ? 'تغيير VO' : 'VO Δ'}</TableHead>
                <TableHead className="text-center w-[80px] text-white font-black text-xs bg-white/10">{isRtl ? 'النهائي' : 'Revised'}</TableHead>
