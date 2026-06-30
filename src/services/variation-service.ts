@@ -130,8 +130,6 @@ export class VariationService {
 
           // منطق إعادة فتح المرحلة الذكي
           // الأولوية 1: المرحلة المحددة في سطر التغيير
-          // الأولوية 2: كافة المراحل المسموح بها للبند
-          // الأولوية 3: المرحلة الافتراضية للبند
           if (newPlanned > (currentItem.executedQuantity || 0)) {
             if (vItem.technicalStageId) {
               stagesToReopen.add(vItem.technicalStageId);
@@ -200,7 +198,8 @@ export class VariationService {
 
     // توثيق الحدث السيادي في التايم لاين
     const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
-    batch.add(doc(timelineRef), {
+    const timelineDoc = doc(timelineRef);
+    batch.set(timelineDoc, {
       transactionId,
       type: 'system',
       content: `اعتماد الأمر التغييري: ${voData.title}. تم تعديل النطاق الميداني وإعادة فتح المراحل المتأثرة لتمكين تسجيل الزيادة.`,

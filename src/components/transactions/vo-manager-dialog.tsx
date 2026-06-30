@@ -63,7 +63,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
   useEffect(() => {
     async function fetchStages() {
       if (!db || !globalUser?.companyId || !isOpen) return;
-      const stagesSnap = await getDocs(query(collection(db, 'companies', globalUser.companyId, 'transactions', transactionId, 'stageInstances'), orderBy('order')));
+      const stagesSnap = await getDocs(query(collection(db, paths.transactionStages(globalUser.companyId, transactionId)), orderBy('order')));
       setAvailableStages(stagesSnap.docs.map(d => ({ id: d.id, ...d.data() })));
     }
     fetchStages();
