@@ -158,14 +158,18 @@ export class TransactionService {
     const newInstanceRef = doc(stagesRef);
     // استخدام معرف المستند كمعرف فني محلي لضمان الربط الميداني والمالي
     const technicalStageId = `manual_${newInstanceRef.id}`;
+    
+    // توليد كود أوضح للمرحلة الطارئة
+    const nextOrder = lastOrder + 1;
+    const manualCode = `MANUAL_${(nextOrder + 1).toString().padStart(2, '0')}`;
 
     const stageData: StageInstance = {
       transactionId,
       technicalStageId, 
-      code: 'MANUAL',
+      code: manualCode,
       name,
       description: isFromVO ? 'مرحلة طارئة تم حقنها من واجهة الأوامر التغييرية' : 'مرحلة طارئة مضافة يدوياً لاستيعاب أعمال مستجدة',
-      order: lastOrder + 1,
+      order: nextOrder,
       isNumeric: false,
       numericTarget: 0,
       currentCount: 0,
@@ -193,7 +197,7 @@ export class TransactionService {
       transactionId,
       type: 'system',
       content: isFromVO 
-        ? `حقن مسار فني: تمت إضافة مرحلة "${name}" من داخل الأمر التغييري لربط البنود المستجدة.` 
+        ? `تم حقن مرحلة محلية طارئة من أمر تغييري باسم: "${name}"` 
         : `إجراء طارئ: تمت إضافة مرحلة فنية جديدة للمسار باسم "${name}"`,
       userId,
       userName,
@@ -220,7 +224,7 @@ export class TransactionService {
 
     const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
     await addDoc(timelineRef, {
-      transactionId,
+      transactionId: transactionId,
       stageId: stageId,
       technicalStageId: stageData.technicalStageId,
       type: 'stage_start',
@@ -257,7 +261,7 @@ export class TransactionService {
 
     const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
     await addDoc(timelineRef, {
-      transactionId,
+      transactionId: transactionId,
       stageId: stageId,
       technicalStageId: stageData.technicalStageId,
       type: 'stage_complete',

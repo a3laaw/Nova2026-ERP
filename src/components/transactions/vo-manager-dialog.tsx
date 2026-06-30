@@ -162,7 +162,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
 
   const validateForm = (): boolean => {
     if (!title.trim()) {
-      toast({ variant: "destructive", title: isRtl ? "بيانات ناقصة" : "Missing Info", description: isRtl ? "يرجى إدخال عنوان للأمر التغييري" : "Please enter VO title" });
+      toast({ variant: "destructive", title: isRtl ? "بيانات ناقصة" : "Missing Info", description: isRtl ? "يرجى إدخل عنوان للأمر التغييري" : "Please enter VO title" });
       return false;
     }
     if (items.length === 0) {
