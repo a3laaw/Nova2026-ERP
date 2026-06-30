@@ -12,7 +12,7 @@ import {
   TrendingUp, ChevronDown, ChevronRight,
   Printer, Folder, Calculator, ShieldCheck,
   Zap, History, PlusCircle, AlertCircle,
-  CheckCircle2, XCircle
+  CheckCircle2, XCircle, Ban
 } from "lucide-react";
 import { useFirestore, useCollection, useDoc } from '@/firebase';
 import { collection, query, where, doc, collectionGroup } from 'firebase/firestore';
@@ -29,11 +29,6 @@ import { VOManagerDialog } from '@/components/transactions/vo-manager-dialog';
 import { VariationService } from '@/services/variation-service';
 import { toast } from '@/hooks/use-toast';
 
-/**
- * صفحة متابعة إنجاز المقايسة الآلية (Automated BOQ Progress)
- * تدعم محرك الحساب المئوي اللحظي للسابق والحالي والإجمالي.
- * تم دمج موديول "الأوامر التغييرية" (VO Lite) للمقارنة المالية.
- */
 export default function TransactionBOQProgressPage() {
   const params = useParams();
   const transactionId = params.tId as string;
@@ -137,6 +132,21 @@ export default function TransactionBOQProgressPage() {
     }
   };
 
+  const handleRejectVO = async (voId: string) => {
+    if (!db || !companyId || !user || !activeBoq) return;
+    setProcessingVOId(voId);
+    try {
+      const service = new VariationService(db, companyId, permissions);
+      const userName = globalUser?.username || user.displayName || 'Admin';
+      await service.rejectVariation(activeBoq.id, voId, transactionId, user.uid, userName);
+      toast({ title: isRtl ? "تم رفض وإلغاء التغيير" : "Variation Rejected" });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('error'), description: e.message });
+    } finally {
+      setProcessingVOId(null);
+    }
+  };
+
   const renderBOQTreeRows = (node: BOQTreeNode, prefix: string): React.ReactNode => {
     return (
       <React.Fragment key={node.id}>
@@ -226,23 +236,34 @@ export default function TransactionBOQProgressPage() {
         </div>
         
         <div className="flex items-center gap-3">
-           {/* عرض مسودات الـ VO قيد المراجعة */}
+           {/* عرض مسودات الـ VO قيد المراجعة مع خياري الاعتماد والرفض */}
            <div className="flex gap-2">
               {(variations || []).filter(v => v.status === 'draft').map(vo => (
-                <div key={vo.id} className="p-1 px-3 bg-amber-50 rounded-xl border border-amber-200 flex items-center gap-3 animate-pulse">
+                <div key={vo.id} className="p-1 px-3 bg-amber-50 rounded-xl border border-amber-200 flex items-center gap-3 shadow-sm">
                    <div className="text-start">
-                      <p className="text-[8px] font-black text-amber-600 uppercase">Draft VO</p>
+                      <p className="text-[8px] font-black text-amber-600 uppercase">DRAFT VO</p>
                       <p className="text-[10px] font-black text-slate-800">{vo.title}</p>
                    </div>
                    {isAdmin && (
-                      <Button 
-                        size="sm" 
-                        onClick={() => handleApproveVO(vo.id)}
-                        disabled={processingVOId === vo.id}
-                        className="h-8 rounded-lg bg-amber-600 text-white font-black text-[9px] hover:bg-amber-700"
-                      >
-                         {processingVOId === vo.id ? <Loader2 className="animate-spin h-3 w-3" /> : (isRtl ? 'اعتماد وصرف' : 'Approve')}
-                      </Button>
+                      <div className="flex gap-1">
+                         <Button 
+                           size="sm" 
+                           onClick={() => handleApproveVO(vo.id)}
+                           disabled={processingVOId === vo.id}
+                           className="h-8 rounded-lg bg-emerald-600 text-white font-black text-[9px] hover:bg-emerald-700 px-3"
+                         >
+                            {processingVOId === vo.id ? <Loader2 className="animate-spin h-3 w-3" /> : (isRtl ? 'اعتماد وصرف' : 'Approve')}
+                         </Button>
+                         <Button 
+                           size="sm" 
+                           variant="ghost"
+                           onClick={() => handleRejectVO(vo.id)}
+                           disabled={processingVOId === vo.id}
+                           className="h-8 rounded-lg text-rose-600 font-black text-[9px] hover:bg-rose-50 px-3"
+                         >
+                            {isRtl ? 'رفض' : 'Reject'}
+                         </Button>
+                      </div>
                    )}
                 </div>
               ))}

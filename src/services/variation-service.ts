@@ -98,7 +98,6 @@ export class VariationService {
 
   /**
    * اعتماد الأمر التغييري وتعديل الواقع الميداني (The Sovereign Engine)
-   * يعالج الحالات الأربع ويقوم بإعادة فتح المراحل أو حقن مراحل محلية جديدة.
    */
   async approveVariation(boqId: string, voId: string, transactionId: string, userId: string, userName: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
@@ -128,7 +127,7 @@ export class VariationService {
 
       let targetTechnicalStageId = vItem.technicalStageId || '';
 
-      // الحالة: حقن مرحلة محلية جديدة (Deferred Injection)
+      // الحالة: حقن مرحلة محلية جديدة
       if (vItem.type === 'new_item' && vItem.stageMode === 'new_local_stage' && vItem.localStageName) {
         const afterStage = currentStages.find(s => s.id === vItem.insertAfterStageId);
         const insertAtOrder = (afterStage?.order !== undefined) ? afterStage.order + 1 : currentStages.length;
@@ -174,12 +173,11 @@ export class VariationService {
           }
         });
 
-        // تحديث القائمة المحلية للدورة القادمة إذا لزم الأمر
         currentStages.push(newStageData);
         currentStages.sort((a, b) => a.order - b.order);
       }
 
-      // الحالة 1 و 2 و 4: تعديل بند موجود
+      // تعديل بند موجود
       if (vItem.type !== 'new_item' && vItem.sourceBoqItemId) {
         const boqItemRef = doc(this.db, paths.boqItems(this.companyId, boqId), vItem.sourceBoqItemId);
         const itemSnap = await getDoc(boqItemRef);
@@ -194,14 +192,13 @@ export class VariationService {
             updatedAt: serverTimestamp() 
           });
 
-          // منطق إعادة فتح المرحلة الذكي
           if (newPlanned > (currentItem.executedQuantity || 0)) {
             const stageToOpen = vItem.technicalStageId || currentItem.technicalStageId;
             if (stageToOpen) stagesToReopen.add(stageToOpen);
           }
         }
       } 
-      // الحالة 3: بند جديد تماماً
+      // بند جديد تماماً
       else if (vItem.type === 'new_item') {
         if (!targetTechnicalStageId) {
           throw new Error(`MISSING_STAGE: البند المستجد "${vItem.description}" لا يحتوي على مرحلة فنية مرتبطة.`);
@@ -234,7 +231,6 @@ export class VariationService {
       }
     }
 
-    // إدارة حالات مراحل العمل (الميدان)
     if (stagesToReopen.size > 0) {
       currentStages.forEach(s => {
         if (stagesToReopen.has(s.technicalStageId) && s.status === 'completed') {
@@ -248,11 +244,9 @@ export class VariationService {
       });
     }
 
-    // تحديث حالة الأمر التغييري والميزانية
     batch.update(voRef, { status: 'approved', approvedBy: userId, approvedAt: serverTimestamp() });
     batch.update(boqRef, { updatedAt: serverTimestamp() });
 
-    // توثيق الحدث السيادي في التايم لاين
     const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
     const timelineDoc = doc(timelineRef);
     batch.set(timelineDoc, {
@@ -270,6 +264,33 @@ export class VariationService {
             path: voRef.path, operation: 'update'
         }));
         throw err;
+    });
+  }
+
+  /**
+   * رفض وإلغاء أمر تغييري
+   */
+  async rejectVariation(boqId: string, voId: string, transactionId: string, userId: string, userName: string) {
+    ensureActionPermission(this.permissions, 'projects:edit');
+    const voRef = doc(this.db, paths.boqVariations(this.companyId, boqId), voId);
+    
+    await updateDoc(voRef, {
+      status: 'cancelled',
+      rejectedBy: userId,
+      rejectedAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+
+    const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
+    const timelineDoc = doc(timelineRef);
+    await setDoc(timelineDoc, {
+      transactionId,
+      type: 'system',
+      content: `إجراء إداري: تم رفض وإلغاء الأمر التغييري رقم ${voId.slice(-4)} من قبل الإدارة.`,
+      userId,
+      userName,
+      companyId: this.companyId,
+      createdAt: serverTimestamp()
     });
   }
 

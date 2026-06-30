@@ -131,6 +131,8 @@ export interface BOQVariation extends BaseReference {
   updatedBy?: string;
   approvedBy?: string;
   approvedAt?: any;
+  rejectedBy?: string;
+  rejectedAt?: any;
   // حقول السياق لتسهيل الحقن
   activityTypeId?: string;
   serviceId?: string;
