@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -69,6 +70,7 @@ export class DocumentService {
   /**
    * استنساخ جدول كميات (BOQ) فعلي من قالب وربطه بالمعاملة أو المشروع.
    * يقوم بنسخ كافة البنود وتصفير الإنجاز الفعلي.
+   * التحديث السيادي: تم تغيير الحالة الافتراضية إلى 'approved' لأنها تصدر عن معاملة رسمية.
    */
   async instantiateBoqFromTemplate(
     templateId: string, 
@@ -124,7 +126,7 @@ export class DocumentService {
       serviceId: payload.serviceId || template.serviceId,
       subServiceId: payload.subServiceId || template.subServiceId,
       measurementMode: template.measurementMode || 'quantity',
-      status: 'draft',
+      status: 'approved', // التعديل: تصبح معتمدة فورياً عند الربط بمعاملة رسمية
       totalAmount: template.baseAmount || 0,
       version: 1,
       companyId: this.companyId,
@@ -192,7 +194,7 @@ export class DocumentService {
       batch.set(timelineRef, {
         transactionId: payload.transactionId,
         type: 'system',
-        content: `تم إنشاء جدول كميات فعلي باسم "${boqData.name}" برقم ${boqNumber}`,
+        content: `تم إنشاء جدول كميات فعلي معتمد باسم "${boqData.name}" برقم ${boqNumber}`,
         userId,
         userName,
         companyId: this.companyId,
