@@ -129,7 +129,6 @@ export class VariationService {
           });
 
           // منطق إعادة فتح المرحلة الذكي
-          // الأولوية 1: المرحلة المحددة في سطر التغيير
           if (newPlanned > (currentItem.executedQuantity || 0)) {
             if (vItem.technicalStageId) {
               stagesToReopen.add(vItem.technicalStageId);
@@ -163,7 +162,7 @@ export class VariationService {
           technicalStageId: vItem.technicalStageId,
           technicalStageIds: [vItem.technicalStageId],
           companyId: this.companyId,
-          order: 999, // دائماً في النهاية كأعمال إضافية
+          order: 999,
           ancestorIds: [],
           depth: 0,
           createdAt: serverTimestamp(),
