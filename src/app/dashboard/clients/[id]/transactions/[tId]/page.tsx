@@ -163,9 +163,26 @@ export default function TransactionDetailsPage() {
   [db, companyId, transactionId]);
   const { data: allExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
 
+  // التعديل السيادي: فلترة المسار الفني لإخفاء المراحل الطارئة الفارغة
   const stages = useMemo(() => {
-    return [...(rawStages || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
-  }, [rawStages]);
+    if (!rawStages) return [];
+    return [...rawStages]
+      .filter(s => {
+        // 1. دائماً نعرض المراحل الهندسية الأصلية أو المراحل التي تم البدء فيها/إنجازها
+        if (!s.isTemporary && s.originType !== 'temporary_vo') return true;
+        if (s.status !== 'pending') return true;
+
+        // 2. بالنسبة للمراحل الطارئة المنتظرة: نخفيها إذا لم يعد يوجد أي بند نشط مرتبط بها
+        // بند نشط يعني plannedQuantity > 0
+        const hasActiveWork = boqItems?.some(item => 
+          (item.technicalStageId === s.technicalStageId || item.technicalStageIds?.includes(s.technicalStageId)) 
+          && (item.plannedQuantity || 0) > 0
+        );
+
+        return !!hasActiveWork;
+      })
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
+  }, [rawStages, boqItems]);
 
   const progressPercent = useMemo(() => {
     if (!stages || stages.length === 0) return 0;
@@ -204,7 +221,8 @@ export default function TransactionDetailsPage() {
     return boqItems.filter(item => {
       const allowedIds = item.technicalStageIds || [];
       const primaryId = item.technicalStageId;
-      return allowedIds.includes(sId) || primaryId === sId;
+      // تجاهل البنود الملغاة في نافذة تسجيل الإنجاز
+      return (allowedIds.includes(sId) || primaryId === sId) && (item.plannedQuantity || 0) > 0;
     });
   }, [boqItems, targetStage]);
 

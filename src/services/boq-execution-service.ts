@@ -205,7 +205,11 @@ export class BOQExecutionService {
     const allItems = itemsSnap.docs.map(d => ({ id: d.id, ...d.data() } as BOQItem));
     
     // تصفية البنود المرتبطة بالمرحلة المطلوبة (دعم الارتباط المتعدد)
-    const linkedItems = allItems.filter(i => this.getAllowedTechnicalStageIds(i).includes(technicalStageId));
+    // التعديل السيادي: تجاهل البنود التي تم حذفها (plannedQuantity === 0)
+    const linkedItems = allItems.filter(i => 
+      this.getAllowedTechnicalStageIds(i).includes(technicalStageId) && 
+      (i.plannedQuantity || 0) > 0
+    );
 
     if (linkedItems.length === 0) {
       return { linkedItemsCount: 0, totalPlanned: 0, totalExecuted: 0, progressPercent: 100, canComplete: true };
@@ -217,11 +221,9 @@ export class BOQExecutionService {
     const executionsRef = collection(this.db, paths.executions(this.companyId));
 
     for (const item of linkedItems) {
-      // 1. الكمية المخططة النهائية للبند (تشمل أصل المقايسة + تعديلات VO المعتمدة)
       const itemPlanned = item.plannedQuantity || 0;
       totalPlanned += itemPlanned;
       
-      // 2. جلب سجلات التنفيذ الخاصة بهذا البند داخل هذه المرحلة حصراً
       const qExec = query(
         executionsRef, 
         where('boqItemId', '==', item.id!),
@@ -237,7 +239,6 @@ export class BOQExecutionService {
          }
       });
 
-      // 3. دعم البنود القديمة (Fallback): إذا لم توجد سجلات وكانت مرتبطة بمرحلة واحدة فقط تاريخياً
       if (itemExecSumFromLogs === 0 && (!item.technicalStageIds || item.technicalStageIds.length === 0)) {
          if ((item.executedQuantity || 0) > 0) {
            itemExecSumFromLogs = item.executedQuantity || 0;
@@ -248,8 +249,6 @@ export class BOQExecutionService {
     }
 
     const progress = totalPlanned > 0 ? (totalExecutedForThisStage / totalPlanned) * 100 : 0;
-    
-    // القاعدة السيادية الجديدة: يجب أن يكون الإنجاز الفعلي >= المخطط بنسبة 100% للسماح بالإغلاق
     const isFullyCompleted = totalPlanned > 0 ? (totalExecutedForThisStage >= totalPlanned) : true;
     
     return {
