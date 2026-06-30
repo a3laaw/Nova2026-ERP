@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -111,7 +112,7 @@ export default function DeveloperDashboard() {
   return (
     <div className="space-y-8" dir={isRtl ? "rtl" : "ltr"}>
       <div className="flex flex-col md:flex-row justify-between items-end gap-4">
-        <div className={isRtl ? "text-right" : "text-left"}>
+        <div className="text-start">
           <h2 className="text-3xl font-black font-headline text-slate-900">{t('devConsole')}</h2>
           <p className="text-slate-500">إدارة دورة حياة المنشآت والاشتراكات السحابية.</p>
         </div>
@@ -126,43 +127,51 @@ export default function DeveloperDashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="bg-slate-900 text-white border-0 rounded-3xl p-6 shadow-xl">
-          <h4 className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2">إجمالي المنشآت</h4>
-          <p className="text-4xl font-black font-headline">{companies?.length || 0}</p>
-          <div className={cn("mt-4 flex items-center gap-1 text-emerald-400 text-xs font-bold", isRtl ? "flex-row-reverse" : "flex-row")}>
-            <CheckCircle className="h-3 w-3" /> {companies?.filter(c => c.status === 'active').length} نشطة
+          <div className="text-start">
+            <h4 className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2">إجمالي المنشآت</h4>
+            <p className="text-4xl font-black font-headline">{companies?.length || 0}</p>
+            <div className="mt-4 flex items-center gap-1 text-emerald-400 text-xs font-bold">
+              <CheckCircle className="h-3 w-3" /> {companies?.filter(c => c.status === 'active').length} نشطة
+            </div>
           </div>
         </Card>
         
         <Card className="bg-white border-0 shadow-lg rounded-3xl p-6">
-          <h4 className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2">موقوفة حالياً</h4>
-          <p className="text-4xl font-black font-headline text-destructive">
-            {companies?.filter(c => c.status === 'suspended').length || 0}
-          </p>
-          <div className={cn("mt-4 flex items-center gap-1 text-rose-500 text-xs font-bold", isRtl ? "flex-row-reverse" : "flex-row")}>
-            <ShieldAlert className="h-3 w-3" /> سياسة الحذف (3 أشهر)
+          <div className="text-start">
+            <h4 className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2">موقوفة حالياً</h4>
+            <p className="text-4xl font-black font-headline text-destructive">
+              {companies?.filter(c => c.status === 'suspended').length || 0}
+            </p>
+            <div className="mt-4 flex items-center gap-1 text-rose-500 text-xs font-bold">
+              <ShieldAlert className="h-3 w-3" /> سياسة الحذف (3 أشهر)
+            </div>
           </div>
         </Card>
 
         <Card className="bg-white border-0 shadow-lg rounded-3xl p-6">
-          <h4 className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2">حدود الاشتراك</h4>
-          <p className="text-4xl font-black font-headline text-blue-600">5</p>
-          <div className={cn("mt-4 flex items-center gap-1 text-blue-500 text-xs font-bold", isRtl ? "flex-row-reverse" : "flex-row")}>
-            <Users className="h-3 w-3" /> مستخدمين كحد افتراضي
+          <div className="text-start">
+            <h4 className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2">حدود الاشتراك</h4>
+            <p className="text-4xl font-black font-headline text-blue-600">5</p>
+            <div className="mt-4 flex items-center gap-1 text-blue-500 text-xs font-bold">
+              <Users className="h-3 w-3" /> مستخدمين كحد افتراضي
+            </div>
           </div>
         </Card>
 
         <Card className="bg-primary text-white border-0 shadow-xl rounded-3xl p-6">
-          <h4 className="text-primary-foreground/70 text-xs font-bold uppercase tracking-widest mb-2">حالة النظام</h4>
-          <div className="flex items-center gap-2 mt-2">
-            <span className="h-3 w-3 rounded-full bg-emerald-400 animate-pulse" />
-            <p className="text-xs font-bold">جميع الخدمات مستقرة</p>
+          <div className="text-start">
+            <h4 className="text-primary-foreground/70 text-xs font-bold uppercase tracking-widest mb-2">حالة النظام</h4>
+            <div className="flex items-center gap-2 mt-2">
+              <span className="h-3 w-3 rounded-full bg-emerald-400 animate-pulse" />
+              <p className="text-xs font-bold">جميع الخدمات مستقرة</p>
+            </div>
+            <p className="text-[10px] mt-2 opacity-80">Google Cloud Platform Status: OK</p>
           </div>
-          <p className="text-[10px] mt-2 opacity-80">Google Cloud Platform Status: OK</p>
         </Card>
       </div>
 
       <Card className="border-0 shadow-2xl rounded-3xl overflow-hidden bg-white">
-        <CardHeader className="bg-slate-50 border-b">
+        <CardHeader className="bg-slate-50 border-b p-6 text-start">
           <CardTitle className="text-lg font-bold">إدارة المنشآت (Tenants Management)</CardTitle>
           <CardDescription>عرض وتعديل والتحكم في وصول الشركات للنظام.</CardDescription>
         </CardHeader>
@@ -170,12 +179,12 @@ export default function DeveloperDashboard() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className={isRtl ? "text-right" : "text-left"}>المنشأة</TableHead>
-                <TableHead className={isRtl ? "text-right" : "text-left"}>النشاط</TableHead>
-                <TableHead className={isRtl ? "text-right" : "text-left"}>نهاية التجربة</TableHead>
-                <TableHead className={isRtl ? "text-right" : "text-left"}>المستخدمين</TableHead>
-                <TableHead className={isRtl ? "text-right" : "text-left"}>الحالة</TableHead>
-                <TableHead className={isRtl ? "text-left" : "text-right"}>الإجراءات</TableHead>
+                <TableHead className="text-start">المنشأة</TableHead>
+                <TableHead className="text-start">النشاط</TableHead>
+                <TableHead className="text-start">نهاية التجربة</TableHead>
+                <TableHead className="text-start">المستخدمين</TableHead>
+                <TableHead className="text-start">الحالة</TableHead>
+                <TableHead className="text-end pe-6">الإجراءات</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -184,25 +193,25 @@ export default function DeveloperDashboard() {
               ) : (
                 companies?.map((comp: any) => (
                   <TableRow key={comp.id} className="hover:bg-slate-50 transition-colors">
-                    <TableCell className="font-bold">
+                    <TableCell className="font-bold text-start">
                       <div className="flex flex-col">
                         <span>{comp.name}</span>
                         <span className="text-[10px] text-muted-foreground font-mono">{comp.id}</span>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-start">
                       <Badge variant="outline" className="text-[10px]">{comp.activity}</Badge>
                     </TableCell>
-                    <TableCell className="font-mono text-xs">
+                    <TableCell className="font-mono text-xs text-start">
                       {comp.trialEndsAt?.split('T')[0]}
                     </TableCell>
-                    <TableCell className="font-bold text-xs">{comp.maxUsers || 5}</TableCell>
-                    <TableCell>
+                    <TableCell className="font-bold text-xs text-start">{comp.maxUsers || 5}</TableCell>
+                    <TableCell className="text-start">
                       <Badge className={comp.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}>
                         {comp.status === 'active' ? 'نشط' : 'موقوف'}
                       </Badge>
                     </TableCell>
-                    <TableCell className={isRtl ? "text-left" : "text-right"}>
+                    <TableCell className="text-end pe-6">
                       <div className="flex justify-end gap-2">
                         <Dialog open={editingCompany?.id === comp.id} onOpenChange={(open) => !open && setEditingCompany(null)}>
                           <DialogTrigger asChild>
@@ -211,13 +220,13 @@ export default function DeveloperDashboard() {
                             </Button>
                           </DialogTrigger>
                           <DialogContent className="sm:max-w-[425px]" dir={isRtl ? "rtl" : "ltr"}>
-                            <DialogHeader>
-                              <DialogTitle className={isRtl ? "text-right" : "text-left"}>تعديل بيانات المنشأة</DialogTitle>
-                              <DialogDescription className={isRtl ? "text-right" : "text-left"}>
+                            <DialogHeader className="text-start">
+                              <DialogTitle>تعديل بيانات المنشأة</DialogTitle>
+                              <DialogDescription>
                                 قم بتغيير إعدادات الشركة وقيود الاشتراك.
                               </DialogDescription>
                             </DialogHeader>
-                            <div className="grid gap-4 py-4">
+                            <div className="grid gap-4 py-4 text-start">
                               <div className="space-y-2">
                                 <Label>اسم الشركة</Label>
                                 <Input 

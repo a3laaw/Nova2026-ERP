@@ -45,21 +45,21 @@ export default function AIPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="border-2 border-primary/10 hover:border-primary/30 transition-all shadow-md bg-white rounded-3xl cursor-pointer group">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 text-start">
             <Calculator className="h-8 w-8 text-primary mb-2 group-hover:scale-110 transition-transform" />
             <CardTitle className="text-lg font-bold font-headline">Accounting Assistant</CardTitle>
             <CardDescription>Draft journal entries or get expert accounting advice based on descriptions.</CardDescription>
           </CardHeader>
         </Card>
         <Card className="border-2 border-primary/10 hover:border-primary/30 transition-all shadow-md bg-white rounded-3xl cursor-pointer group opacity-60">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 text-start">
             <FileSearch className="h-8 w-8 text-blue-500 mb-2 group-hover:scale-110 transition-transform" />
             <CardTitle className="text-lg font-bold font-headline">Quote Analyzer</CardTitle>
             <CardDescription>Upload supplier PDF quotes to automatically generate comparison summaries.</CardDescription>
           </CardHeader>
         </Card>
         <Card className="border-2 border-primary/10 hover:border-primary/30 transition-all shadow-md bg-white rounded-3xl cursor-pointer group opacity-60">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 text-start">
             <TrendingUp className="h-8 w-8 text-green-500 mb-2 group-hover:scale-110 transition-transform" />
             <CardTitle className="text-lg font-bold font-headline">Cash Flow Forecast</CardTitle>
             <CardDescription>Project liquidity based on BOQ milestones and historical payment trends.</CardDescription>
@@ -68,7 +68,7 @@ export default function AIPage() {
       </div>
 
       <Card className="border-0 shadow-2xl rounded-3xl bg-white overflow-hidden">
-        <CardHeader className="bg-muted/30 p-8">
+        <CardHeader className="bg-muted/30 p-8 text-start">
           <CardTitle className="font-headline font-bold text-2xl flex items-center gap-2">
             <Wand2 className="h-6 w-6 text-primary" />
             Accounting Intelligence Terminal
@@ -100,7 +100,7 @@ export default function AIPage() {
           </div>
 
           {result && (
-            <div className="animate-in slide-in-from-bottom-4 duration-500">
+            <div className="animate-in slide-in-from-bottom-4 duration-500 text-start">
               <div className="bg-primary/5 rounded-3xl p-8 border border-primary/20 space-y-6">
                 <div className="flex items-center justify-between border-b border-primary/10 pb-4">
                   <h3 className="font-headline font-bold text-xl">Proposed Journal Entry</h3>
@@ -124,27 +124,27 @@ export default function AIPage() {
                       <table className="w-full text-sm">
                         <thead className="bg-muted/50 border-b">
                           <tr>
-                            <th className="px-6 py-4 text-left font-bold font-headline">Account Name</th>
-                            <th className="px-6 py-4 text-right font-bold font-headline">Debit ($)</th>
-                            <th className="px-6 py-4 text-right font-bold font-headline">Credit ($)</th>
+                            <th className="px-6 py-4 text-start font-bold font-headline">Account Name</th>
+                            <th className="px-6 py-4 text-end font-bold font-headline">Debit ($)</th>
+                            <th className="px-6 py-4 text-end font-bold font-headline">Credit ($)</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y">
                           {result.journalEntry.lines.map((line: any, idx: number) => (
                             <tr key={idx}>
-                              <td className="px-6 py-4 font-medium">{line.accountName}</td>
-                              <td className="px-6 py-4 text-right font-mono">{line.debit > 0 ? line.debit.toLocaleString() : "-"}</td>
-                              <td className="px-6 py-4 text-right font-mono">{line.credit > 0 ? line.credit.toLocaleString() : "-"}</td>
+                              <td className="px-6 py-4 font-medium text-start">{line.accountName}</td>
+                              <td className="px-6 py-4 text-end font-mono">{line.debit > 0 ? line.debit.toLocaleString() : "-"}</td>
+                              <td className="px-6 py-4 text-end font-mono">{line.credit > 0 ? line.credit.toLocaleString() : "-"}</td>
                             </tr>
                           ))}
                         </tbody>
                         <tfoot className="bg-primary text-white font-bold">
                           <tr>
-                            <td className="px-6 py-4">Total Balance</td>
-                            <td className="px-6 py-4 text-right font-mono">
+                            <td className="px-6 py-4 text-start">Total Balance</td>
+                            <td className="px-6 py-4 text-end font-mono">
                               {result.journalEntry.lines.reduce((acc: number, cur: any) => acc + (cur.debit || 0), 0).toLocaleString()}
                             </td>
-                            <td className="px-6 py-4 text-right font-mono">
+                            <td className="px-6 py-4 text-end font-mono">
                               {result.journalEntry.lines.reduce((acc: number, cur: any) => acc + (cur.credit || 0), 0).toLocaleString()}
                             </td>
                           </tr>
@@ -152,12 +152,10 @@ export default function AIPage() {
                       </table>
                     </div>
                     <div className="flex gap-4">
-                      {/* اختفاء زر الترحيل بناءً على صلاحية الترحيل المحددة في المحاسبة */}
                       {check('accounting', 'post').can && (
                         <Button className="flex-1 bg-primary text-white py-6 rounded-2xl font-bold">Post to Ledger</Button>
                       )}
                       
-                      {/* اختفاء زر المسودة بناءً على صلاحية الإضافة */}
                       {check('accounting', 'create').can && (
                         <Button variant="outline" className="flex-1 py-6 rounded-2xl font-bold bg-white">Save as Draft</Button>
                       )}

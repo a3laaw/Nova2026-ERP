@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -174,9 +175,9 @@ export default function TransactionBOQProgressPage() {
     return (
       <React.Fragment key={node.id}>
         <TableRow className="bg-slate-50/50 hover:bg-slate-100 border-b-2 border-white">
-          <TableCell className="font-mono text-[11px] font-black text-slate-400 ps-6 w-[80px]">{prefix}</TableCell>
-          <TableCell className="w-[100px] font-mono text-[10px] font-bold text-slate-400">---</TableCell>
-          <TableCell className="font-black text-slate-800 text-sm py-4" style={{ paddingInlineStart: `${node.depth * 20 + 16}px` }}>
+          <TableCell className="font-mono text-[11px] font-black text-slate-400 ps-6 w-[80px] text-start">{prefix}</TableCell>
+          <TableCell className="w-[100px] font-mono text-[10px] font-bold text-slate-400 text-start">---</TableCell>
+          <TableCell className="font-black text-slate-800 text-sm py-4 text-start" style={{ paddingInlineStart: `${node.depth * 20 + 16}px` }}>
             <div className="flex items-center gap-2">
               <Folder className="h-4 w-4 text-orange-400" />
               {node.title}
@@ -190,7 +191,6 @@ export default function TransactionBOQProgressPage() {
           const metrics = executionMetrics[item.id!] || { prev: 0, current: 0 };
           const totalCumulative = metrics.prev + metrics.current;
           
-          // محرك الرؤية الشفافة للبند المستجد (New Item)
           const isVOInjected = item.referenceCode?.startsWith('VO-');
           const delta = isVOInjected ? item.plannedQuantity : (voDeltaMap[item.id!] || 0);
           const originalQty = isVOInjected ? 0 : (item.plannedQuantity - delta);
@@ -200,8 +200,8 @@ export default function TransactionBOQProgressPage() {
           
           return (
             <TableRow key={item.id} className="hover:bg-primary/[0.02] transition-colors border-b-slate-100 group/item">
-              <TableCell className="font-mono text-[10px] font-bold text-slate-300 ps-8">{itemPrefix}</TableCell>
-              <TableCell className="font-mono text-[10px] font-black text-primary/60">
+              <TableCell className="font-mono text-[10px] font-bold text-slate-300 ps-8 text-start">{itemPrefix}</TableCell>
+              <TableCell className="font-mono text-[10px] font-black text-primary/60 text-start">
                  <div className="flex flex-col gap-1">
                     <span>{item.referenceCode}</span>
                     {isVOInjected && (
@@ -211,12 +211,11 @@ export default function TransactionBOQProgressPage() {
                     )}
                  </div>
               </TableCell>
-              <TableCell className="text-xs font-bold text-slate-700" style={{ paddingInlineStart: `${(node.depth + 1) * 20 + 16}px` }}>
+              <TableCell className="text-xs font-bold text-slate-700 text-start" style={{ paddingInlineStart: `${(node.depth + 1) * 20 + 16}px` }}>
                 {item.referenceTitle}
               </TableCell>
               <TableCell className="text-center font-black text-[10px] text-slate-400 uppercase">{item.unitSymbol || '-'}</TableCell>
               
-              {/* القسم المحدث: عرض تحليل الكميات (أصل، تعديل، نهائي) */}
               <TableCell className="text-center w-[70px] font-mono font-bold text-slate-400 text-[10px] bg-slate-50/30">
                  {originalQty}
               </TableCell>
@@ -246,7 +245,7 @@ export default function TransactionBOQProgressPage() {
               <TableCell className="text-end font-mono font-black text-emerald-600 text-xs">
                 {(totalCumulative * (item.estimatedRate || 0)).toLocaleString()}
               </TableCell>
-              <TableCell className="pe-6 w-[120px]">
+              <TableCell className="pe-6 w-[120px] text-end">
                 <div className="space-y-1">
                   <div className="flex justify-between text-[8px] font-black uppercase text-slate-400"><span>{totalPct}%</span></div>
                   <Progress value={totalPct} className="h-1" />
@@ -350,12 +349,11 @@ export default function TransactionBOQProgressPage() {
          <Table>
            <TableHeader className="bg-slate-900 sticky top-0 z-20">
              <TableRow className="hover:bg-slate-900 border-0">
-               <TableHead className="ps-6 w-[80px] text-white/40 font-mono text-[10px]">S.No</TableHead>
-               <TableHead className="w-[100px] text-white/40 font-mono text-[10px]">Code</TableHead>
-               <TableHead className="text-white font-black text-xs">{isRtl ? 'بند العمل / الوصف' : 'Item Description'}</TableHead>
+               <TableHead className="ps-6 w-[80px] text-white/40 font-mono text-[10px] text-start">S.No</TableHead>
+               <TableHead className="w-[100px] text-white/40 font-mono text-[10px] text-start">Code</TableHead>
+               <TableHead className="text-white font-black text-xs text-start">{isRtl ? 'بند العمل / الوصف' : 'Item Description'}</TableHead>
                <TableHead className="text-center w-[60px] text-white font-black text-xs">{isRtl ? 'الوحدة' : 'Unit'}</TableHead>
                
-               {/* تجميع المخطط في 3 أعمدة تحليلية لتوضيح أثر التغيير */}
                <TableHead className="text-center w-[70px] text-white/60 font-black text-[9px] bg-white/5">{isRtl ? 'الأصل' : 'Orig'}</TableHead>
                <TableHead className="text-center w-[70px] text-white/60 font-black text-[9px] bg-white/5">{isRtl ? 'تغيير VO' : 'VO Δ'}</TableHead>
                <TableHead className="text-center w-[80px] text-white font-black text-xs bg-white/10">{isRtl ? 'النهائي' : 'Revised'}</TableHead>
@@ -365,7 +363,7 @@ export default function TransactionBOQProgressPage() {
                <TableHead className="text-center w-[120px] text-white font-black text-xs">{isRtl ? 'الإجمالي' : 'Total'}</TableHead>
                <TableHead className="text-center w-[100px] text-white font-black text-xs">{isRtl ? 'الفئة' : 'Rate'}</TableHead>
                <TableHead className="text-end w-[120px] text-white font-black text-xs">{isRtl ? 'القيمة' : 'Value'}</TableHead>
-               <TableHead className="pe-6 w-[120px] text-white font-black text-xs">{isRtl ? 'الإنجاز' : 'Progress'}</TableHead>
+               <TableHead className="pe-6 w-[120px] text-end text-white font-black text-xs">{isRtl ? 'الإنجاز' : 'Progress'}</TableHead>
              </TableRow>
            </TableHeader>
            <TableBody>

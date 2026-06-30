@@ -89,7 +89,7 @@ export default function QuotationViewPage() {
             {quote.introText && (
               <div className="text-start animate-in fade-in slide-in-from-top-2">
                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                    <FileText className="h-3 w-3 text-primary" /> {isRtl ? 'تحية طيبة وبعد،،' : 'Introduction'}
+                    <FileText className="h-3 w-3 text-primary" /> {isRtl ? 'تحلية طيبة وبعد،،' : 'Introduction'}
                  </h4>
                  <div className="p-8 bg-slate-50/50 rounded-[2rem] border-2 border-slate-50 leading-relaxed text-slate-700 font-bold whitespace-pre-wrap">
                     {quote.introText}
@@ -120,14 +120,14 @@ export default function QuotationViewPage() {
                            
                            return (
                              <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                                <td className="p-6 font-black text-slate-300">{idx + 1}</td>
-                                <td className="p-6">
+                                <td className="p-6 font-black text-slate-300 text-start">{idx + 1}</td>
+                                <td className="p-6 text-start">
                                    <p className="font-black text-slate-800 text-base">{item.label}</p>
                                    <Badge variant="secondary" className="bg-primary/5 text-primary border-0 text-[8px] uppercase font-black px-2 mt-1">
                                       {item.timing} {item.contractualEvent || 'STAGE'}
                                    </Badge>
                                 </td>
-                                <td className="p-6 text-xs font-bold text-slate-500 leading-relaxed max-w-xs">
+                                <td className="p-6 text-start text-xs font-bold text-slate-500 leading-relaxed max-w-xs">
                                    {item.description}
                                 </td>
                                 <td className="p-6 text-center font-black text-slate-900 bg-slate-50/30">
@@ -158,7 +158,7 @@ export default function QuotationViewPage() {
                     <Gavel className="h-3 w-3 text-primary" /> {isRtl ? 'الشروط والأحكام والالتزامات' : 'Terms, Conditions & Clauses'}
                  </h4>
                  <div className="p-10 bg-slate-50 rounded-[3rem] border-2 border-white shadow-inner">
-                    <div className="text-xs font-bold text-slate-600 leading-loose whitespace-pre-wrap columns-1 md:columns-2 gap-12">
+                    <div className="text-xs font-bold text-slate-600 leading-loose whitespace-pre-wrap columns-1 md:columns-2 gap-12 text-start">
                        {quote.defaultTerms}
                     </div>
                  </div>

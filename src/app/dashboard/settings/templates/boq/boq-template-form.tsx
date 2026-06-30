@@ -225,7 +225,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     return (
       <div key={node.id} className="space-y-1">
         <div className={cn(
-          "flex items-center justify-between p-3 rounded-xl border transition-all",
+          "flex items-center justify-between p-3 rounded-xl border transition-all text-start",
           node.isExecutable ? "bg-emerald-50/50 border-emerald-100" : "bg-white border-slate-100"
         )} style={{ marginInlineStart: `${node.depth * 20}px` }}>
           <div className="flex items-center gap-3">
@@ -261,9 +261,9 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     return (
       <React.Fragment key={node.id}>
         <TableRow className="bg-slate-50/80 hover:bg-slate-100 border-b-2 border-white group/row">
-          <TableCell className="font-mono text-[11px] font-black text-slate-400 ps-6 w-[80px]">{prefix}</TableCell>
-          <TableCell className="w-[100px] font-mono text-[10px] font-bold text-slate-400">---</TableCell>
-          <TableCell className="font-black text-slate-900 text-sm py-4" style={{ paddingInlineStart: `${node.depth * 20 + 16}px` }}>
+          <TableCell className="font-mono text-[11px] font-black text-slate-400 ps-6 w-[80px] text-start">{prefix}</TableCell>
+          <TableCell className="w-[100px] font-mono text-[10px] font-bold text-slate-400 text-start">---</TableCell>
+          <TableCell className="font-black text-slate-900 text-sm py-4 text-start" style={{ paddingInlineStart: `${node.depth * 20 + 16}px` }}>
             <div className="flex items-center gap-2">
               <Folder className="h-3.5 w-3.5 text-orange-400" />
               {node.title}
@@ -284,20 +284,20 @@ export function BOQTemplateForm({ template, onClose }: Props) {
           
           return (
             <TableRow key={`${item.boqReferenceNodeId}-${originalIdx}`} className="hover:bg-primary/[0.02] transition-colors border-b-slate-100 group/item">
-              <TableCell className="font-mono text-[10px] font-bold text-slate-300 ps-8">{itemPrefix}</TableCell>
-              <TableCell className="font-mono text-[10px] font-black text-primary/60">{item.referenceCode}</TableCell>
-              <TableCell className="text-xs font-bold text-slate-700" style={{ paddingInlineStart: `${(node.depth + 1) * 20 + 16}px` }}>
+              <TableCell className="font-mono text-[10px] font-bold text-slate-300 ps-8 text-start">{itemPrefix}</TableCell>
+              <TableCell className="font-mono text-[10px] font-black text-primary/60 text-start">{item.referenceCode}</TableCell>
+              <TableCell className="text-xs font-bold text-slate-700 text-start" style={{ paddingInlineStart: `${(node.depth + 1) * 20 + 16}px` }}>
                 {item.referenceTitle}
               </TableCell>
-              <TableCell className="p-1 min-w-[150px]">
+              <TableCell className="p-1 min-w-[150px] text-start">
                 <Input 
                   value={item.referenceDescription || ''} 
                   onChange={e => updateItem(originalIdx, 'referenceDescription', e.target.value)}
-                  className="h-8 rounded-lg text-[10px] border-transparent hover:border-slate-200 bg-transparent focus:bg-white"
+                  className="h-8 rounded-lg text-[10px] border-transparent hover:border-slate-200 bg-transparent focus:bg-white text-start"
                   placeholder={isRtl ? "المواصفة..." : "Spec..."}
                 />
               </TableCell>
-              <TableCell className="p-1 min-w-[180px]">
+              <TableCell className="p-1 min-w-[180px] text-start">
                  <div className="space-y-1">
                     <Select 
                       value={item.technicalStageId || 'NONE'} 
@@ -307,7 +307,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                       }}
                     >
                         <SelectTrigger className={cn(
-                          "h-8 rounded-lg text-[9px] font-black border-transparent hover:border-primary/30 transition-all",
+                          "h-8 rounded-lg text-[9px] font-black border-transparent hover:border-primary/30 transition-all text-start",
                           item.technicalStageId ? "bg-primary/5 text-primary" : "bg-slate-50 text-slate-400"
                         )}>
                           <SelectValue placeholder={loadingStages ? "..." : (isRtl ? "اختيار المرحلة المالية" : "Financial Link")} />
@@ -436,7 +436,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                     </div>
                     <div className={cn(
                       "h-10 w-10 rounded-2xl flex items-center justify-center shadow-lg transition-transform",
-                      isMathValid ? "bg-white text-emerald-600 rotate-12" : "bg-orange-500 text-white animate-pulse"
+                      isMathValid ? "bg-white text-emerald-600 rotate-12" : "bg-orange-50 text-white animate-pulse"
                     )}>
                        {isMathValid ? <CheckCircle2 className="h-6 w-6" /> : <AlertTriangle className="h-6 w-6" />}
                     </div>
@@ -452,7 +452,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                        <div className="space-y-2">
                           <Label className="text-[9px] font-black text-slate-500 uppercase">{isRtl ? 'النشاط الرئيسي' : 'Activity Type'}</Label>
                           <Select value={formData.activityTypeId} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: ''})}>
-                             <SelectTrigger className="h-10 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
+                             <SelectTrigger className="h-10 rounded-xl border-2 font-bold bg-white text-start"><SelectValue placeholder="..." /></SelectTrigger>
                              <SelectContent className="rounded-xl">
                                 {activities?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{isRtl ? a.name : a.nameEn}</SelectItem>)}
                              </SelectContent>
@@ -461,7 +461,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                        <div className="space-y-2">
                           <Label className="text-[9px] font-black text-slate-500 uppercase">{isRtl ? 'الخدمة الأساسية' : 'Main Service'}</Label>
                           <Select disabled={!formData.activityTypeId} value={formData.serviceId} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: ''})}>
-                             <SelectTrigger className="h-10 rounded-xl border-2 font-bold bg-white">
+                             <SelectTrigger className="h-10 rounded-xl border-2 font-bold bg-white text-start">
                                 {servicesLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <SelectValue placeholder="..." />}
                              </SelectTrigger>
                              <SelectContent className="rounded-xl">
@@ -475,7 +475,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                              const sub = activeSubs.find(s => s.id === v);
                              setFormData({...formData, subServiceId: v, subServiceName: sub?.name || ''});
                           }}>
-                             <SelectTrigger className="h-10 rounded-xl border-2 font-black bg-white"><SelectValue placeholder="..." /></SelectTrigger>
+                             <SelectTrigger className="h-10 rounded-xl border-2 font-black bg-white text-start"><SelectValue placeholder="..." /></SelectTrigger>
                              <SelectContent className="rounded-xl">
                                 {activeSubs.map(s => <SelectItem key={s.id} value={s.id!} className="font-black text-xs">{isRtl ? s.name : s.nameEn}</SelectItem>)}
                              </SelectContent>
@@ -550,11 +550,11 @@ export function BOQTemplateForm({ template, onClose }: Props) {
               <Table>
                 <TableHeader className="bg-slate-900 sticky top-0 z-20">
                   <TableRow className="hover:bg-slate-900 border-0">
-                    <TableHead className="ps-6 w-[80px] text-white/40 font-mono text-[10px]">S.No</TableHead>
-                    <TableHead className="w-[100px] text-white/40 font-mono text-[10px]">Code</TableHead>
-                    <TableHead className="text-white font-black text-xs">{isRtl ? 'وصف بند العمل' : 'Work Item Description'}</TableHead>
-                    <TableHead className="text-white font-black text-xs">{isRtl ? 'المواصفة الفنية' : 'Technical Specification'}</TableHead>
-                    <TableHead className="text-white font-black text-xs">{isRtl ? 'الارتباط المالي' : 'Financial Trigger'}</TableHead>
+                    <TableHead className="ps-6 w-[80px] text-white/40 font-mono text-[10px] text-start">S.No</TableHead>
+                    <TableHead className="w-[100px] text-white/40 font-mono text-[10px] text-start">Code</TableHead>
+                    <TableHead className="text-white font-black text-xs text-start">{isRtl ? 'وصف بند العمل' : 'Work Item Description'}</TableHead>
+                    <TableHead className="text-white font-black text-xs text-start">{isRtl ? 'المواصفة الفنية' : 'Technical Specification'}</TableHead>
+                    <TableHead className="text-white font-black text-xs text-start">{isRtl ? 'الارتباط المالي' : 'Financial Trigger'}</TableHead>
                     <TableHead className="text-center w-[60px] text-white font-black text-xs">{isRtl ? 'الوحدة' : 'Unit'}</TableHead>
                     <TableHead className="text-center w-[80px] text-white font-black text-xs">{isRtl ? 'الكمية' : 'Qty'}</TableHead>
                     <TableHead className="text-center w-[100px] text-white font-black text-xs">{isRtl ? 'الفئة (د.ك)' : 'Rate (KWD)'}</TableHead>
