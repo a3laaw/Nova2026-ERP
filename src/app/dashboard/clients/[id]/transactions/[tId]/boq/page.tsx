@@ -12,7 +12,7 @@ import {
   TrendingUp, ChevronDown, ChevronRight,
   Printer, Folder, Calculator, ShieldCheck,
   Zap, History, PlusCircle, AlertCircle,
-  CheckCircle2, XCircle, Ban
+  CheckCircle2, XCircle, Ban, TrendingDown
 } from "lucide-react";
 import { useFirestore, useCollection, useDoc } from '@/firebase';
 import { collection, query, where, doc, collectionGroup } from 'firebase/firestore';
@@ -57,13 +57,35 @@ export default function TransactionBOQProgressPage() {
   const itemsQuery = useMemo(() => companyId && db && activeBoq?.id ? query(collection(db, paths.boqItems(companyId, activeBoq.id))) : null, [db, companyId, activeBoq]);
   const { data: items, loading: itemsLoading } = useCollection<BOQItem>(itemsQuery);
 
-  // 2. جلب الأوامر التغييرية (Variations)
+  // 2. جلب الأوامر التغييرية وبنودها التفصيلية للتحليل
   const variationsQuery = useMemo(() => 
     companyId && db && activeBoq?.id 
       ? query(collection(db, paths.boqVariations(companyId, activeBoq.id))) 
       : null, 
   [db, companyId, activeBoq]);
   const { data: variations } = useCollection<BOQVariation>(variationsQuery);
+
+  const voItemsQuery = useMemo(() => 
+    companyId && db && activeBoq?.id 
+      ? query(collectionGroup(db, 'items'), where('companyId', '==', companyId), where('boqId', '==', activeBoq.id))
+      : null, 
+  [db, companyId, activeBoq]);
+  const { data: allItemsFromGroup } = useCollection<any>(voItemsQuery);
+
+  // محرك تحليل التغيير لكل بند (Approved Delta Mapping)
+  const voDeltaMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    const approvedVoIds = new Set((variations || []).filter(v => v.status === 'approved').map(v => v.id));
+
+    (allItemsFromGroup || []).forEach(vItem => {
+      if (vItem.variationId && approvedVoIds.has(vItem.variationId)) {
+        if (vItem.sourceBoqItemId) {
+          map[vItem.sourceBoqItemId] = (map[vItem.sourceBoqItemId] || 0) + (vItem.quantityDelta || 0);
+        }
+      }
+    });
+    return map;
+  }, [allItemsFromGroup, variations]);
 
   // 3. جلب سجلات التنفيذ
   const executionsQuery = useMemo(() => 
@@ -73,7 +95,7 @@ export default function TransactionBOQProgressPage() {
   [db, companyId, activeBoq]);
   const { data: allExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
 
-  // محرك الحسابات المالية (Triple Totals)
+  // محرك الحسابات المالية العامة (Triple Totals)
   const financialStats = useMemo(() => {
     const original = activeBoq?.totalAmount || 0;
     const voTotal = (variations || [])
@@ -159,25 +181,47 @@ export default function TransactionBOQProgressPage() {
               {node.title}
             </div>
           </TableCell>
-          <TableCell colSpan={8}></TableCell>
+          <TableCell colSpan={10}></TableCell>
         </TableRow>
 
         {node.items.map((item, iIdx) => {
           const itemPrefix = `${prefix.replace('.0', '')}.${iIdx + 1}`;
           const metrics = executionMetrics[item.id!] || { prev: 0, current: 0 };
           const totalCumulative = metrics.prev + metrics.current;
-          const planned = item.plannedQuantity || 1;
-          const totalPct = Math.round((totalCumulative / planned) * 100);
+          
+          // حساب الفروقات المعتمدة للبند
+          const isVOInjected = item.referenceCode?.startsWith('VO-');
+          const delta = isVOInjected ? item.plannedQuantity : (voDeltaMap[item.id!] || 0);
+          const originalQty = isVOInjected ? 0 : (item.plannedQuantity - delta);
+          const finalPlan = item.plannedQuantity;
+          
+          const totalPct = Math.round((totalCumulative / (finalPlan || 1)) * 100);
           
           return (
             <TableRow key={item.id} className="hover:bg-primary/[0.02] transition-colors border-b-slate-100 group/item">
               <TableCell className="font-mono text-[10px] font-bold text-slate-300 ps-8">{itemPrefix}</TableCell>
-              <TableCell className="font-mono text-[10px] font-black text-primary/60">{item.referenceCode}</TableCell>
+              <TableCell className="font-mono text-[10px] font-black text-primary/60">
+                 <div className="flex flex-col gap-1">
+                    <span>{item.referenceCode}</span>
+                    {isVOInjected && <Badge className="bg-amber-100 text-amber-700 border-0 text-[7px] font-black px-1 h-3.5 uppercase w-fit">VO New</Badge>}
+                 </div>
+              </TableCell>
               <TableCell className="text-xs font-bold text-slate-700" style={{ paddingInlineStart: `${(node.depth + 1) * 20 + 16}px` }}>
                 {item.referenceTitle}
               </TableCell>
               <TableCell className="text-center font-black text-[10px] text-slate-400 uppercase">{item.unitSymbol || '-'}</TableCell>
-              <TableCell className="text-center w-[80px] font-mono font-black text-slate-400">{item.plannedQuantity}</TableCell>
+              
+              {/* قسم المخطط المعدل (Original, VO Delta, Revised) */}
+              <TableCell className="text-center w-[70px] font-mono font-bold text-slate-400 text-[10px] bg-slate-50/30">{originalQty}</TableCell>
+              <TableCell className="text-center w-[70px] font-mono font-black text-[10px] bg-slate-50/30">
+                 {delta !== 0 ? (
+                   <span className={cn(delta > 0 ? "text-emerald-600" : "text-rose-600")}>
+                      {delta > 0 ? `+${delta}` : delta}
+                   </span>
+                 ) : <span className="text-slate-200">0</span>}
+              </TableCell>
+              <TableCell className="text-center w-[80px] font-mono font-black text-slate-900 text-xs border-x border-slate-100">{finalPlan}</TableCell>
+              
               <TableCell className="text-center font-mono font-black text-blue-600 text-xs">{metrics.prev}</TableCell>
               <TableCell className="text-center">
                  <div className="inline-flex items-center justify-center h-7 px-3 rounded-full bg-orange-50 border border-orange-100 text-orange-600 font-black text-xs">
@@ -236,7 +280,6 @@ export default function TransactionBOQProgressPage() {
         </div>
         
         <div className="flex items-center gap-3">
-           {/* عرض مسودات الـ VO قيد المراجعة مع خياري الاعتماد والرفض */}
            <div className="flex gap-2">
               {(variations || []).filter(v => v.status === 'draft').map(vo => (
                 <div key={vo.id} className="p-1 px-3 bg-amber-50 rounded-xl border border-amber-200 flex items-center gap-3 shadow-sm">
@@ -302,7 +345,12 @@ export default function TransactionBOQProgressPage() {
                <TableHead className="w-[100px] text-white/40 font-mono text-[10px]">Code</TableHead>
                <TableHead className="text-white font-black text-xs">{isRtl ? 'بند العمل / الوصف' : 'Item Description'}</TableHead>
                <TableHead className="text-center w-[60px] text-white font-black text-xs">{isRtl ? 'الوحدة' : 'Unit'}</TableHead>
-               <TableHead className="text-center w-[80px] text-white font-black text-xs bg-white/5">{isRtl ? 'المخطط' : 'Plan'}</TableHead>
+               
+               {/* تجميع المخطط في 3 أعمدة تحليلية */}
+               <TableHead className="text-center w-[70px] text-white/60 font-black text-[9px] bg-white/5">{isRtl ? 'الأصل' : 'Orig'}</TableHead>
+               <TableHead className="text-center w-[70px] text-white/60 font-black text-[9px] bg-white/5">{isRtl ? 'تغيير VO' : 'VO Δ'}</TableHead>
+               <TableHead className="text-center w-[80px] text-white font-black text-xs bg-white/10">{isRtl ? 'النهائي' : 'Revised'}</TableHead>
+               
                <TableHead className="text-center w-[100px] text-white font-black text-xs">{isRtl ? 'السابق' : 'Prev'}</TableHead>
                <TableHead className="text-center w-[120px] text-white font-black text-xs">{isRtl ? 'الحالي' : 'Current'}</TableHead>
                <TableHead className="text-center w-[120px] text-white font-black text-xs">{isRtl ? 'الإجمالي' : 'Total'}</TableHead>
