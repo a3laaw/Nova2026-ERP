@@ -7,14 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   FileSpreadsheet, Search, Loader2, ArrowRight, 
   Filter, TrendingUp, DollarSign, Calculator,
   LayoutGrid, UserCircle, Activity, Trash2, AlertTriangle,
-  History, Settings2
+  History, Settings2, FileText, Sparkles, Clock
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, where } from 'firebase/firestore';
+import { collection, query, orderBy, where, collectionGroup } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -94,16 +95,23 @@ export default function BOQExplorerPage() {
   const companyId = globalUser?.companyId;
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState("boqs");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // 1. استعلام المقايسات
   const boqsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.boqs(companyId)), orderBy('createdAt', 'desc')) : null, 
   [db, companyId]);
+  const { data: boqs, loading: boqLoading } = useCollection<BOQ>(boqsQuery);
 
-  const { data: boqs, loading } = useCollection<BOQ>(boqsQuery);
+  // 2. استعلام كافة الأوامر التغييرية (Collection Group)
+  const allVOsQuery = useMemo(() => 
+    companyId && db ? query(collectionGroup(db, 'variations'), where('companyId', '==', companyId), orderBy('createdAt', 'desc')) : null, 
+  [db, companyId]);
+  const { data: allVOs, loading: voLoading } = useCollection<BOQVariation>(allVOsQuery);
 
-  const filtered = useMemo(() => {
+  const filteredBoqs = useMemo(() => {
     return (boqs || []).filter(boq => 
       (boq.boqNumber || "").toLowerCase().includes(searchTerm.toLowerCase()) || 
       (boq.clientName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -111,13 +119,21 @@ export default function BOQExplorerPage() {
     );
   }, [boqs, searchTerm]);
 
-  const totals = useMemo(() => {
+  const filteredVOs = useMemo(() => {
+    return (allVOs || []).filter(vo => 
+      (vo.title || "").toLowerCase().includes(searchTerm.toLowerCase()) || 
+      (vo.boqNumber || "").toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [allVOs, searchTerm]);
+
+  const stats = useMemo(() => {
     return {
-      planned: filtered.reduce((acc, b) => acc + (b.totalAmount || 0), 0),
-      count: filtered.length,
-      active: filtered.filter(b => b.status === 'active' || b.status === 'draft').length
+      totalPlanned: (boqs || []).reduce((acc, b) => acc + (b.totalAmount || 0), 0),
+      totalVO: (allVOs || []).filter(v => v.status === 'approved').reduce((acc, v) => acc + (v.totalAmount || 0), 0),
+      boqCount: boqs?.length || 0,
+      voCount: allVOs?.length || 0
     };
-  }, [filtered]);
+  }, [boqs, allVOs]);
 
   const handleDelete = async () => {
     if (!db || !companyId || !deletingId) return;
@@ -149,151 +165,231 @@ export default function BOQExplorerPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-         <Card className="border-0 shadow-xl rounded-[2rem] p-8 text-start bg-white group hover:scale-[1.02] transition-all relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-6 opacity-5"><DollarSign className="h-24 w-24" /></div>
-            <div className="p-3 rounded-2xl bg-emerald-50 text-emerald-600 w-fit mb-4">
-               <TrendingUp className="h-6 w-6" />
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+         <Card className="border-0 shadow-lg rounded-2xl p-6 text-start bg-white group hover:scale-[1.02] transition-all relative overflow-hidden">
+            <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600 w-fit mb-3">
+               <TrendingUp className="h-5 w-5" />
             </div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إجمالي الميزانيات المخططة' : 'Total Planned Budget'}</p>
-            <h3 className="text-3xl font-black font-headline text-[#1e1b4b]">
-              {totals.planned.toLocaleString()} <span className="text-xs text-slate-400 font-bold">KWD</span>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'الميزانية المخططة' : 'Planned Budget'}</p>
+            <h3 className="text-2xl font-black text-[#1e1b4b]">
+              {stats.totalPlanned.toLocaleString()} <span className="text-[10px] text-slate-400 font-bold">KWD</span>
             </h3>
          </Card>
          
-         <Card className="border-0 shadow-xl rounded-[2rem] p-8 text-start bg-white group hover:scale-[1.02] transition-all relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-6 opacity-5"><FileSpreadsheet className="h-24 w-24" /></div>
-            <div className="p-3 rounded-2xl bg-blue-50 text-blue-600 w-fit mb-4">
-               <Calculator className="h-6 w-6" />
+         <Card className="border-0 shadow-lg rounded-2xl p-6 text-start bg-white group hover:scale-[1.02] transition-all relative overflow-hidden border-s-4 border-s-orange-400">
+            <div className="p-2 rounded-lg bg-orange-50 text-orange-600 w-fit mb-3">
+               <Sparkles className="h-5 w-5" />
             </div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'عدد المقايسات النشطة' : 'Active BOQs'}</p>
-            <h3 className="text-3xl font-black font-headline text-[#1e1b4b]">{totals.active}</h3>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إجمالي التغيير المعتمد' : 'Total Approved VO'}</p>
+            <h3 className="text-2xl font-black text-orange-600">
+              {stats.totalVO >= 0 ? '+' : ''}{stats.totalVO.toLocaleString()} <span className="text-[10px] text-slate-400 font-bold">KWD</span>
+            </h3>
          </Card>
 
-         <Card className="border-0 shadow-xl rounded-[2.5rem] bg-gradient-to-br from-[#1e1b4b] to-[#312e81] text-white p-8 group hover:shadow-2xl transition-all">
-            <div className="flex items-center gap-4 mb-6">
-               <div className="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center text-primary shadow-lg">
-                  <Activity className="h-6 w-6" />
-               </div>
-               <div className="text-start">
-                  <h4 className="text-sm font-black">{isRtl ? 'تحليل الإنجاز' : 'Execution Health'}</h4>
-                  <p className="text-[9px] font-bold text-white/40 uppercase">Cross-Project Status</p>
-               </div>
+         <Card className="border-0 shadow-lg rounded-2xl p-6 text-start bg-white group hover:scale-[1.02] transition-all">
+            <div className="p-2 rounded-lg bg-blue-50 text-blue-600 w-fit mb-3">
+               <FileSpreadsheet className="h-5 w-5" />
             </div>
-            <div className="space-y-2">
-               <div className="flex justify-between text-[10px] font-black uppercase">
-                  <span>{isRtl ? 'معدل التغطية' : 'Coverage'}</span>
-                  <span>78%</span>
-               </div>
-               <Progress value={78} className="h-1.5 bg-white/10" />
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'عدد المقايسات' : 'BOQ Count'}</p>
+            <h3 className="text-2xl font-black text-slate-900">{stats.boqCount}</h3>
+         </Card>
+
+         <Card className="border-0 shadow-lg rounded-2xl p-6 text-start bg-slate-900 text-white group hover:scale-[1.02] transition-all">
+            <div className="p-2 rounded-lg bg-white/10 text-primary w-fit mb-3">
+               <Activity className="h-5 w-5" />
             </div>
+            <p className="text-[9px] font-black text-primary uppercase tracking-widest mb-1">{isRtl ? 'إجمالي طلبات التغيير' : 'Total VOs'}</p>
+            <h3 className="text-2xl font-black">{stats.voCount}</h3>
          </Card>
       </div>
 
-      <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
-        <CardHeader className="bg-slate-50/50 border-b p-8 flex flex-col md:flex-row items-center justify-between gap-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+           <TabsList className="bg-white border-2 border-slate-100 p-1 rounded-xl h-12 gap-1 shadow-sm shrink-0">
+             <TabsTrigger value="boqs" className="rounded-lg font-black text-xs px-8 data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2">
+                <FileSpreadsheet className="h-4 w-4" /> {isRtl ? 'المقايسات' : 'BOQs'}
+             </TabsTrigger>
+             <TabsTrigger value="variations" className="rounded-lg font-black text-xs px-8 data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2">
+                <Sparkles className="h-4 w-4" /> {isRtl ? 'الأوامر التغييرية' : 'Variation Orders'}
+             </TabsTrigger>
+           </TabsList>
+
            <div className="relative w-full max-w-md">
               <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
               <Input 
-                placeholder={isRtl ? 'بحث برقم المقايسة، اسم العميل، أو المشروع...' : 'Search by number, client, or project...'} 
-                className="ps-12 rounded-2xl h-14 bg-white border-2 border-slate-100 font-bold text-lg" 
+                placeholder={activeTab === 'boqs' ? (isRtl ? 'بحث في المقايسات...' : 'Search BOQs...') : (isRtl ? 'بحث في الأوامر التغييرية...' : 'Search Variations...')} 
+                className="ps-12 rounded-2xl h-12 bg-white border-2 border-slate-100 font-bold" 
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
               />
            </div>
-           <Button variant="outline" className="h-14 px-8 rounded-2xl font-black border-2 gap-2 bg-white hover:bg-slate-50">
-              <Filter className="h-5 w-5 text-primary" /> {isRtl ? 'فلترة متقدمة' : 'Advanced Filters'}
-           </Button>
-        </CardHeader>
-        <CardContent className="p-0 overflow-x-auto">
-          <Table>
-            <TableHeader className="bg-muted/30">
-              <TableRow>
-                <TableHead className="py-8 ps-10 text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'المقايسة / العميل' : 'BOQ / Client'}</TableHead>
-                <TableHead className="text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'أوامر التغيير (VO)' : 'Variation Orders'}</TableHead>
-                <TableHead className="text-end text-xs font-black uppercase tracking-widest">{isRtl ? 'القيمة الإجمالية' : 'Planned Value'}</TableHead>
-                <TableHead className="text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'الحالة' : 'Status'}</TableHead>
-                <TableHead className="pe-10 text-end text-xs font-black uppercase tracking-widest">{isRtl ? 'إجراءات' : 'Actions'}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-32"><Loader2 className="animate-spin h-12 w-12 mx-auto text-primary/20" /></TableCell></TableRow>
-              ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-32 text-slate-400 font-bold italic">{isRtl ? 'لا توجد مقايسات مسجلة.' : 'No BOQs found.'}</TableCell></TableRow>
-              ) : (
-                filtered.map((boq) => (
-                  <TableRow 
-                    key={boq.id} 
-                    className="hover:bg-slate-50/50 transition-colors group border-b-slate-50 cursor-pointer" 
-                  >
-                    <TableCell className="py-8 ps-10 text-start" onClick={() => router.push(`/dashboard/clients/${boq.clientId}/transactions/${boq.transactionId}/boq`)}>
-                       <div className="flex items-center gap-5">
-                          <div className="h-14 w-14 rounded-2xl bg-white shadow-lg flex items-center justify-center text-primary font-black text-xl border-2 border-orange-50 group-hover:scale-110 transition-transform">
-                             <FileSpreadsheet className="h-7 w-7" />
-                          </div>
-                          <div className="text-start">
-                             <p className="font-black text-xl text-slate-800">{boq.boqNumber}</p>
-                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 flex items-center gap-1">
-                                <UserCircle className="h-3 w-3" /> {boq.clientName}
-                             </p>
-                          </div>
-                       </div>
-                    </TableCell>
-                    <TableCell className="text-start" onClick={() => router.push(`/dashboard/clients/${boq.clientId}/transactions/${boq.transactionId}/boq`)}>
-                       <div className="space-y-2">
-                          <BOQVariationStats boqId={boq.id!} companyId={companyId!} />
-                          <div className="flex flex-col gap-1">
-                             <Badge variant="secondary" className="bg-primary/5 text-primary border-0 font-black text-[9px] uppercase px-3 w-fit">{boq.subServiceName || 'GENERAL'}</Badge>
-                          </div>
-                       </div>
-                    </TableCell>
-                    <TableCell className="text-end" onClick={() => router.push(`/dashboard/clients/${boq.clientId}/transactions/${boq.transactionId}/boq`)}>
-                       <span className="font-mono font-black text-xl text-slate-900 pe-4">
-                          {boq.totalAmount?.toLocaleString() || '0'}
-                       </span>
-                    </TableCell>
-                    <TableCell className="text-start" onClick={() => router.push(`/dashboard/clients/${boq.clientId}/transactions/${boq.transactionId}/boq`)}>
-                       <Badge className={cn(
-                         "font-black px-4 py-1.5 rounded-lg border-0 shadow-sm uppercase text-[9px]",
-                         boq.status === 'approved' ? 'bg-emerald-50 text-emerald-600' :
-                         boq.status === 'draft' ? 'bg-blue-50 text-blue-600' :
-                         'bg-amber-50 text-amber-600'
-                       )}>
-                          {boq.status}
-                       </Badge>
-                    </TableCell>
-                    <TableCell className="pe-10 text-end">
-                       <div className="flex justify-end gap-2">
-                          {isAdmin && (
-                             <Button 
-                               variant="ghost" 
-                               size="icon" 
-                               onClick={(e) => { e.stopPropagation(); setDeletingId(boq.id!); }}
-                               className="h-12 w-12 rounded-xl text-rose-300 hover:text-rose-600 hover:bg-rose-50 border-2 border-transparent hover:border-rose-100 transition-all"
-                             >
-                                <Trash2 className="h-6 w-6" />
-                             </Button>
-                          )}
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => router.push(`/dashboard/clients/${boq.clientId}/transactions/${boq.transactionId}/boq`)}
-                            className="rounded-xl h-12 px-5 font-black text-[10px] gap-2 hover:bg-primary hover:text-white transition-all shadow-sm"
-                          >
-                             <Settings2 className="h-4 w-4" />
-                             {isRtl ? 'إدارة VO & المقايسة' : 'Manage VO'}
-                             <ArrowRight className={cn("h-4 w-4 ms-2", isRtl && "rotate-180")} />
-                          </Button>
-                       </div>
-                    </TableCell>
+        </div>
+
+        <TabsContent value="boqs" className="animate-in fade-in slide-in-from-bottom-2">
+          <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
+            <CardContent className="p-0 overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-muted/30">
+                  <TableRow>
+                    <TableHead className="py-8 ps-10 text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'المقايسة / العميل' : 'BOQ / Client'}</TableHead>
+                    <TableHead className="text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'حالة الـ VO' : 'VO Summary'}</TableHead>
+                    <TableHead className="text-end text-xs font-black uppercase tracking-widest">{isRtl ? 'الميزانية الأصلية' : 'Orig. Budget'}</TableHead>
+                    <TableHead className="text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'الحالة' : 'Status'}</TableHead>
+                    <TableHead className="pe-10 text-end text-xs font-black uppercase tracking-widest">{isRtl ? 'إجراءات' : 'Actions'}</TableHead>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {boqLoading ? (
+                    <TableRow><TableCell colSpan={5} className="text-center py-32"><Loader2 className="animate-spin h-12 w-12 mx-auto text-primary/20" /></TableCell></TableRow>
+                  ) : filteredBoqs.length === 0 ? (
+                    <TableRow><TableCell colSpan={5} className="text-center py-32 text-slate-400 font-bold italic">{isRtl ? 'لا يوجد مقايسات مسجلة.' : 'No BOQs found.'}</TableCell></TableRow>
+                  ) : (
+                    filteredBoqs.map((boq) => (
+                      <TableRow key={boq.id} className="hover:bg-slate-50/50 transition-colors group border-b-slate-50 cursor-pointer">
+                        <TableCell className="py-8 ps-10 text-start" onClick={() => router.push(`/dashboard/clients/${boq.clientId}/transactions/${boq.transactionId}/boq`)}>
+                           <div className="flex items-center gap-5">
+                              <div className="h-14 w-14 rounded-2xl bg-white shadow-lg flex items-center justify-center text-primary font-black text-xl border-2 border-orange-50 group-hover:scale-110 transition-transform">
+                                 <FileSpreadsheet className="h-7 w-7" />
+                              </div>
+                              <div className="text-start">
+                                 <p className="font-black text-xl text-slate-800">{boq.boqNumber}</p>
+                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 flex items-center gap-1">
+                                    <UserCircle className="h-3 w-3" /> {boq.clientName}
+                                 </p>
+                              </div>
+                           </div>
+                        </TableCell>
+                        <TableCell className="text-start" onClick={() => router.push(`/dashboard/clients/${boq.clientId}/transactions/${boq.transactionId}/boq`)}>
+                           <BOQVariationStats boqId={boq.id!} companyId={companyId!} />
+                        </TableCell>
+                        <TableCell className="text-end" onClick={() => router.push(`/dashboard/clients/${boq.clientId}/transactions/${boq.transactionId}/boq`)}>
+                           <span className="font-mono font-black text-xl text-slate-900 pe-4">
+                              {boq.totalAmount?.toLocaleString() || '0'}
+                           </span>
+                        </TableCell>
+                        <TableCell className="text-start" onClick={() => router.push(`/dashboard/clients/${boq.clientId}/transactions/${boq.transactionId}/boq`)}>
+                           <Badge className={cn(
+                             "font-black px-4 py-1.5 rounded-lg border-0 shadow-sm uppercase text-[9px]",
+                             boq.status === 'approved' ? 'bg-emerald-50 text-emerald-600' :
+                             boq.status === 'draft' ? 'bg-blue-50 text-blue-600' :
+                             'bg-amber-50 text-amber-600'
+                           )}>
+                              {boq.status}
+                           </Badge>
+                        </TableCell>
+                        <TableCell className="pe-10 text-end">
+                           <div className="flex justify-end gap-2">
+                              {isAdmin && (
+                                 <Button 
+                                   variant="ghost" 
+                                   size="icon" 
+                                   onClick={(e) => { e.stopPropagation(); setDeletingId(boq.id!); }}
+                                   className="h-12 w-12 rounded-xl text-rose-300 hover:text-rose-600 hover:bg-rose-50"
+                                 >
+                                    <Trash2 className="h-6 w-6" />
+                                 </Button>
+                              )}
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => router.push(`/dashboard/clients/${boq.clientId}/transactions/${boq.transactionId}/boq`)}
+                                className="rounded-xl h-12 px-5 font-black text-[10px] gap-2 hover:bg-primary hover:text-white"
+                              >
+                                 <Settings2 className="h-4 w-4" />
+                                 {isRtl ? 'إدارة VO & المقايسة' : 'Manage VO'}
+                                 <ArrowRight className={cn("h-4 w-4 ms-2", isRtl && "rotate-180")} />
+                              </Button>
+                           </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="variations" className="animate-in fade-in slide-in-from-bottom-2">
+          <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
+            <CardContent className="p-0 overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-muted/30">
+                  <TableRow>
+                    <TableHead className="py-8 ps-10 text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'الأمر التغييري / العنوان' : 'Variation Order / Title'}</TableHead>
+                    <TableHead className="text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'المقايسة المرتبطة' : 'Related BOQ'}</TableHead>
+                    <TableHead className="text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'التاريخ' : 'Created Date'}</TableHead>
+                    <TableHead className="text-end text-xs font-black uppercase tracking-widest">{isRtl ? 'قيمة التغيير (صافي)' : 'Net Amount'}</TableHead>
+                    <TableHead className="text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'الحالة' : 'Status'}</TableHead>
+                    <TableHead className="pe-10 text-end"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {voLoading ? (
+                    <TableRow><TableCell colSpan={6} className="text-center py-32"><Loader2 className="animate-spin h-12 w-12 mx-auto text-primary/20" /></TableCell></TableRow>
+                  ) : filteredVOs.length === 0 ? (
+                    <TableRow><TableCell colSpan={6} className="text-center py-32 text-slate-400 font-bold italic">{isRtl ? 'لا يوجد أوامر تغيير حالياً.' : 'No variation orders found.'}</TableCell></TableRow>
+                  ) : (
+                    filteredVOs.map((vo) => (
+                      <TableRow key={vo.id} className="hover:bg-slate-50/50 transition-colors group border-b-slate-50 cursor-pointer" onClick={() => router.push(`/dashboard/clients/${vo.clientId || 'unknown'}/transactions/${vo.transactionId}/boq`)}>
+                        <TableCell className="py-8 ps-10 text-start">
+                           <div className="flex items-center gap-5">
+                              <div className={cn(
+                                "h-14 w-14 rounded-2xl shadow-lg flex items-center justify-center font-black text-xl border-2 transition-transform group-hover:scale-110",
+                                vo.status === 'approved' ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-blue-50 text-blue-600 border-blue-100"
+                              )}>
+                                 <Sparkles className="h-7 w-7" />
+                              </div>
+                              <div className="text-start">
+                                 <p className="font-black text-xl text-slate-800">{vo.title}</p>
+                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Ref ID: {vo.id!.slice(-6).toUpperCase()}</p>
+                              </div>
+                           </div>
+                        </TableCell>
+                        <TableCell className="text-start">
+                           <div className="flex flex-col">
+                              <span className="font-black text-sm text-slate-700">{vo.boqNumber}</span>
+                              <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1"><UserCircle className="h-3 w-3" /> {vo.clientName || '---'}</span>
+                           </div>
+                        </TableCell>
+                        <TableCell className="text-start">
+                           <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
+                              <Clock className="h-3.5 w-3.5" />
+                              {vo.createdAt?.toDate().toLocaleDateString() || '---'}
+                           </div>
+                        </TableCell>
+                        <TableCell className="text-end">
+                           <span className={cn(
+                             "font-mono font-black text-xl pe-4",
+                             vo.totalAmount >= 0 ? "text-emerald-600" : "text-rose-600"
+                           )}>
+                              {vo.totalAmount >= 0 ? '+' : ''}{vo.totalAmount?.toLocaleString() || '0'}
+                           </span>
+                        </TableCell>
+                        <TableCell className="text-start">
+                           <Badge className={cn(
+                             "font-black px-4 py-1.5 rounded-lg border-0 shadow-sm uppercase text-[9px]",
+                             vo.status === 'approved' ? 'bg-emerald-500 text-white' :
+                             vo.status === 'cancelled' ? 'bg-rose-500 text-white' :
+                             'bg-blue-50 text-blue-600'
+                           )}>
+                              {vo.status}
+                           </Badge>
+                        </TableCell>
+                        <TableCell className="pe-10 text-end">
+                           <Button variant="ghost" size="icon" className="rounded-xl group-hover:bg-primary group-hover:text-white transition-all h-12 w-12">
+                              <ArrowRight className={cn("h-6 w-6", !isRtl && "rotate-0", isRtl && "rotate-180")} />
+                           </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
         <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white" dir={dir}>
