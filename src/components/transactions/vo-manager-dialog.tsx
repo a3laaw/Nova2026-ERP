@@ -260,7 +260,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                          <CardContent className="p-8 space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
                                <div className="md:col-span-2 space-y-2 text-start">
-                                  <Label className="text-[9px] font-black text-slate-400 uppercase">Action</Label>
+                                  <Label className="text-[9px] font-black text-slate-400">Action</Label>
                                   <Select value={item.type} onValueChange={(v: VariationType) => updateItem(idx, 'type', v)}>
                                      <SelectTrigger className="h-11 rounded-xl border-2 font-black text-[11px] bg-slate-50/30"><SelectValue /></SelectTrigger>
                                      <SelectContent className="rounded-xl border-0 shadow-2xl">
@@ -283,15 +283,41 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                         <SelectContent className="rounded-xl max-w-sm border-0 shadow-2xl">
                                           {boqItems.map(i => {
                                             const isVOItem = i.referenceCode?.startsWith('VO-');
+                                            const stage = availableStages.find(s => s.technicalStageId === i.technicalStageId);
+                                            
                                             return (
                                               <SelectItem key={i.id} value={i.id!} className="font-bold text-[10px] py-4 border-b last:border-0 border-slate-50">
-                                                <div className="flex flex-col text-start">
-                                                   <div className="flex items-center gap-2">
-                                                      <span className="font-mono text-primary/60 text-[8px] bg-slate-50 px-1 rounded">#{i.referenceCode}</span>
-                                                      <span className={cn(isVOItem && "text-blue-600")}>{i.referenceTitle}</span>
-                                                      {isVOItem && <Badge className="bg-blue-50 text-blue-600 border-blue-100 text-[6px] h-3 px-1 font-black">VO</Badge>}
+                                                <div className="flex flex-col text-start gap-1.5">
+                                                   <div className="flex items-center justify-between">
+                                                      <div className="flex items-center gap-2">
+                                                         <span className="text-base font-black text-slate-800">{i.referenceTitle}</span>
+                                                         {isVOItem && <Badge className="bg-blue-600 text-white border-0 text-[7px] font-black h-4 px-2 uppercase shadow-sm">VO ITEM</Badge>}
+                                                      </div>
+                                                      <span className="font-mono text-primary/40 text-[9px] font-black">#{i.referenceCode}</span>
                                                    </div>
-                                                   <span className="text-[7px] text-slate-400 uppercase tracking-widest mt-1">QTY: {i.plannedQuantity} {i.unitSymbol}</span>
+                                                   
+                                                   <div className="flex items-center gap-4 bg-slate-50/50 p-2 rounded-lg border border-slate-100">
+                                                      <div className="flex flex-col">
+                                                         <span className="text-[7px] font-black text-slate-400 uppercase">Quantity</span>
+                                                         <span className="text-[10px] font-black text-slate-700">{i.plannedQuantity} {i.unitSymbol}</span>
+                                                      </div>
+                                                      <div className="w-[1px] h-4 bg-slate-200" />
+                                                      <div className="flex flex-col">
+                                                         <span className="text-[7px] font-black text-slate-400 uppercase">Target Stage</span>
+                                                         <span className="text-[10px] font-black text-orange-600 flex items-center gap-1">
+                                                            <Workflow className="h-2.5 w-2.5" /> {stage?.name || '---'}
+                                                         </span>
+                                                      </div>
+                                                      {i.createdAt && (
+                                                        <>
+                                                         <div className="w-[1px] h-4 bg-slate-200" />
+                                                         <div className="flex flex-col">
+                                                            <span className="text-[7px] font-black text-slate-400 uppercase">Added On</span>
+                                                            <span className="text-[10px] font-black text-slate-500 font-mono">{i.createdAt.toDate().toLocaleDateString()}</span>
+                                                         </div>
+                                                        </>
+                                                      )}
+                                                   </div>
                                                 </div>
                                               </SelectItem>
                                             );
