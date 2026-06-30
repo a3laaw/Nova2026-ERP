@@ -77,4 +77,8 @@ export interface StageInstance extends BaseReference {
   subServiceId: string;
   startedAt?: any;
   completedAt?: any;
+  // Metadata for local/temporary stages
+  isTemporary?: boolean;
+  createdFromVO?: boolean;
+  originType?: 'temporary_vo' | 'manual_injection';
 }

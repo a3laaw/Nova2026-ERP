@@ -19,14 +19,14 @@ import {
   setDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
-import { Transaction, TransactionTimelineEvent, StageInstance } from '@/types/transaction';
+import { Transaction, StageInstance } from '@/types/transaction';
 import { TechnicalStage } from '@/types/reference';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { ensureActionPermission } from '@/lib/permissions/engine';
 import { BOQExecutionService } from './boq-execution-service';
 import { CommentService } from './comment-service';
-import { differenceInHours, differenceInDays, format } from 'date-fns';
+import { differenceInHours, differenceInDays } from 'date-fns';
 
 export class TransactionService {
   constructor(
@@ -138,9 +138,10 @@ export class TransactionService {
   }
 
   /**
-   * إضافة مرحلة طارئة يدوياً للمعاملة (Emergency Stage Injection)
+   * إضافة مرحلة طارئة يدوياً للمشاريع أو من خلال نافذة الـ VO.
+   * يتم تخزينها فقط في مصفوفة النسخ (transactionStages) دون المساس بالقاموس العام.
    */
-  async addManualStage(transactionId: string, name: string, userId: string, userName: string) {
+  async addManualStage(transactionId: string, name: string, userId: string, userName: string, isFromVO: boolean = false) {
     ensureActionPermission(this.permissions, 'projects:edit');
     
     const transRef = doc(this.db, paths.transactions(this.companyId), transactionId);
@@ -155,12 +156,15 @@ export class TransactionService {
     const lastOrder = snap.empty ? -1 : (snap.docs[0].data().order || 0);
 
     const newInstanceRef = doc(stagesRef);
+    // استخدام معرف المستند كمعرف فني محلي لضمان الربط الميداني والمالي
+    const technicalStageId = `manual_${newInstanceRef.id}`;
+
     const stageData: StageInstance = {
       transactionId,
-      technicalStageId: 'manual_' + newInstanceRef.id, // معرف فريد للمراحل اليدوية
+      technicalStageId, 
       code: 'MANUAL',
       name,
-      description: 'مرحلة طارئة مضافة يدوياً لاستيعاب أعمال مستجدة',
+      description: isFromVO ? 'مرحلة طارئة تم حقنها من واجهة الأوامر التغييرية' : 'مرحلة طارئة مضافة يدوياً لاستيعاب أعمال مستجدة',
       order: lastOrder + 1,
       isNumeric: false,
       numericTarget: 0,
@@ -174,6 +178,9 @@ export class TransactionService {
       activityTypeId: transData.activityTypeId,
       serviceId: transData.serviceId,
       subServiceId: transData.subServiceId,
+      isTemporary: true,
+      createdFromVO: isFromVO,
+      originType: isFromVO ? 'temporary_vo' : 'manual_injection',
       companyId: this.companyId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
@@ -181,19 +188,20 @@ export class TransactionService {
 
     await setDoc(newInstanceRef, stageData);
 
-    // توثيق الحدث في السجل الزمني
     const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
     await addDoc(timelineRef, {
       transactionId,
       type: 'system',
-      content: `إجراء طارئ: تمت إضافة مرحلة فنية جديدة للمسار باسم "${name}"`,
+      content: isFromVO 
+        ? `حقن مسار فني: تمت إضافة مرحلة "${name}" من داخل الأمر التغييري لربط البنود المستجدة.` 
+        : `إجراء طارئ: تمت إضافة مرحلة فنية جديدة للمسار باسم "${name}"`,
       userId,
       userName,
       companyId: this.companyId,
       createdAt: serverTimestamp()
     });
 
-    return newInstanceRef.id;
+    return { id: newInstanceRef.id, technicalStageId };
   }
 
   async startStage(transactionId: string, stageId: string, userId: string, userName: string) {
