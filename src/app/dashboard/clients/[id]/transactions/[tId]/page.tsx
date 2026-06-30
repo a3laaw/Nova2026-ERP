@@ -27,7 +27,8 @@ import {
   Pencil,
   Info,
   Calculator,
-  ShieldAlert
+  ShieldAlert,
+  Sparkles
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where, limit } from 'firebase/firestore';
@@ -425,6 +426,7 @@ export default function TransactionDetailsPage() {
                       const boqProgress = stageProgressMap[stage.technicalStageId];
                       const isPreviousCompleted = idx === 0 || stages[idx - 1].status === 'completed';
                       const isSelected = filterStageId === stage.id;
+                      const isTemporary = stage.isTemporary || stage.originType === 'temporary_vo';
 
                       return (
                         <Card 
@@ -435,24 +437,43 @@ export default function TransactionDetailsPage() {
                             stage.status === 'completed' ? 'border-s-emerald-500' : 
                             stage.status === 'in-progress' ? 'border-s-blue-500 ring-4 ring-blue-500/5' : 
                             isPreviousCompleted ? 'border-s-orange-300' : 'border-s-slate-100 opacity-50',
-                            isSelected && "ring-4 ring-primary shadow-2xl scale-[1.01]"
+                            isSelected && "ring-4 ring-primary shadow-2xl scale-[1.01]",
+                            isTemporary && "ring-1 ring-blue-200"
                           )}
                         >
                           <CardContent className="p-0">
                              <div className="p-6 flex flex-col md:flex-row items-center justify-between gap-6">
                                 <div className="flex items-center gap-6 flex-1 text-start">
-                                   <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-sm border transition-all", stage.status === 'completed' ? "bg-emerald-50 text-white" : !isPreviousCompleted ? "bg-slate-50 text-slate-300" : "bg-white group-hover:bg-primary/5")}>
-                                      {stage.status === 'completed' ? <CheckCircle2 className="h-6 w-6" /> : (idx + 1)}
+                                   <div className={cn(
+                                     "h-12 w-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-sm border transition-all", 
+                                     stage.status === 'completed' ? "bg-emerald-50 text-white" : 
+                                     isTemporary ? "bg-blue-50 text-blue-600 border-blue-100" :
+                                     !isPreviousCompleted ? "bg-slate-50 text-slate-300" : 
+                                     "bg-white group-hover:bg-primary/5"
+                                   )}>
+                                      {stage.status === 'completed' ? <CheckCircle2 className="h-6 w-6" /> : 
+                                       isTemporary ? <Zap className="h-6 w-6" /> : (idx + 1)}
                                    </div>
                                    <div className="space-y-1 flex-1">
-                                      <div className="flex items-center gap-2">
+                                      <div className="flex items-center gap-2 flex-wrap">
                                          <h4 className="font-black text-lg text-slate-900 tracking-tight">{stage.name}</h4>
                                          {!isPreviousCompleted && stage.status !== 'completed' && <Lock className="h-3 w-3 text-slate-300" />}
                                          {isSelected && <Target className="h-3.5 w-3.5 text-primary animate-pulse" />}
-                                         {stage.isTemporary && <Badge className="bg-blue-50 text-blue-600 border-0 text-[7px] font-black h-4 px-1.5 uppercase">Manual</Badge>}
+                                         {isTemporary && (
+                                           <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-100 text-[8px] font-black h-5 px-2 uppercase flex items-center gap-1 shadow-sm">
+                                             <Sparkles className="h-2.5 w-2.5" /> {isRtl ? 'مرحلة طارئة' : 'Local Stage'}
+                                           </Badge>
+                                         )}
                                       </div>
+                                      
+                                      {stage.createdFromVO && (
+                                         <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-1.5">
+                                            <Calculator className="h-2.5 w-2.5" /> {isRtl ? 'أضيفت من أمر تغييري' : 'Injected from VO'}
+                                         </p>
+                                      )}
+
                                       {(stage.status === 'completed' || stage.status === 'in-progress') && stage.startedAt && (
-                                         <div className="flex items-center gap-3 text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
+                                         <div className="flex items-center gap-3 text-[9px] font-bold text-slate-400 uppercase tracking-tighter mt-1">
                                             <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" /> Start: {stage.startedAt?.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
                                             {stage.completedAt && (
                                               <>
