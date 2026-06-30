@@ -137,7 +137,7 @@ export class TransactionService {
     return transactionId;
   }
 
-  async addManualStage(transactionId: string, name: string, userId: string, userName: string, isFromVO: boolean = false) {
+  async addManualStage(transactionId: string, name: string, userId: string, userName: string, isFromVO: boolean = false, insertAfterOrder?: number) {
     ensureActionPermission(this.permissions, 'projects:edit');
     
     const transRef = doc(this.db, paths.transactions(this.companyId), transactionId);
@@ -146,14 +146,19 @@ export class TransactionService {
     const transData = transSnap.data();
 
     const stagesRef = collection(this.db, paths.transactionStages(this.companyId, transactionId));
-    const q = query(stagesRef, orderBy('order', 'desc'), limit(1));
-    const snap = await getDocs(q);
-    const lastOrder = snap.empty ? -1 : (snap.docs[0].data().order || 0);
+    
+    // إذا لم يحدد موضع الإدراج، نضعها في النهاية
+    let nextOrder = 0;
+    if (insertAfterOrder !== undefined) {
+      nextOrder = insertAfterOrder + 1;
+    } else {
+      const q = query(stagesRef, orderBy('order', 'desc'), limit(1));
+      const snap = await getDocs(q);
+      nextOrder = snap.empty ? 0 : (snap.docs[0].data().order || 0) + 1;
+    }
 
     const newInstanceRef = doc(stagesRef);
     const technicalStageId = `manual_${newInstanceRef.id}`;
-    
-    const nextOrder = lastOrder + 1;
     const manualCode = `MANUAL_${(nextOrder + 1).toString().padStart(2, '0')}`;
 
     const stageData: StageInstance = {
@@ -199,6 +204,46 @@ export class TransactionService {
     });
 
     return { id: newInstanceRef.id, technicalStageId };
+  }
+
+  /**
+   * استثناء إداري لتفعيل مرحلة طارئة مع بقاء المرحلة الحالية نشطة
+   */
+  async activateManualStageOverride(transactionId: string, stageId: string, userId: string, userName: string) {
+    // التحقق من صلاحية الأدمن حصراً
+    if (!this.permissions.includes('*')) {
+       throw new Error("UNAUTHORIZED_OVERRIDE: الصلاحيات الإدارية المطلوبة غير متوفرة.");
+    }
+
+    const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
+    const stageSnap = await getDoc(stageRef);
+    if (!stageSnap.exists()) return;
+    const stageData = stageSnap.data() as StageInstance;
+
+    if (!stageData.isTemporary) {
+      throw new Error("هذا الاستثناء يطبق فقط على المراحل المحلية الطارئة.");
+    }
+
+    await updateDoc(stageRef, {
+      status: 'in-progress',
+      isManuallyActivated: true,
+      startedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      updatedBy: userId
+    });
+
+    const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
+    await addDoc(timelineRef, {
+      transactionId: transactionId,
+      stageId: stageId,
+      technicalStageId: stageData.technicalStageId,
+      type: 'admin_override',
+      content: `استثناء إداري: تم تفعيل المرحلة الطارئة "${stageData.name}" مع بقاء المسار الميداني الجاري نشطاً.`,
+      userId,
+      userName,
+      companyId: this.companyId,
+      createdAt: serverTimestamp()
+    });
   }
 
   async startStage(transactionId: string, stageId: string, userId: string, userName: string) {

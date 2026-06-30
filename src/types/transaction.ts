@@ -29,7 +29,7 @@ export interface TransactionTimelineEvent extends BaseReference {
   transactionId: string;
   stageId?: string; // Stage Instance ID (Local to transaction)
   technicalStageId?: string; // Reference ID (From technical path)
-  type: 'system' | 'stage_start' | 'stage_complete' | 'stage_reopen' | 'comment' | 'numeric_update';
+  type: 'system' | 'stage_start' | 'stage_complete' | 'stage_reopen' | 'comment' | 'numeric_update' | 'admin_override';
   content: string;
   userId: string;
   userName: string;
@@ -77,8 +77,11 @@ export interface StageInstance extends BaseReference {
   subServiceId: string;
   startedAt?: any;
   completedAt?: any;
+  completedBy?: string;
+  updatedBy?: string;
   // Metadata for local/temporary stages
   isTemporary?: boolean;
   createdFromVO?: boolean;
   originType?: 'temporary_vo' | 'manual_injection';
+  isManuallyActivated?: boolean; // الاستثناء الإداري
 }

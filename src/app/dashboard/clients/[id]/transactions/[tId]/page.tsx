@@ -266,6 +266,19 @@ export default function TransactionDetailsPage() {
     }
   };
 
+  const handleAdminActivation = async (stageId: string) => {
+    if (!transactionService || !user) return;
+    setProcessingId(stageId);
+    try {
+      await transactionService.activateManualStageOverride(transactionId, stageId, user.uid, currentUserName);
+      toast({ title: isRtl ? "تم الفتح الإداري الموازي" : "Admin Parallel Activation Done" });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('error'), description: e.message });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   const handleCompleteStage = async (stage: StageInstance, force: boolean = false) => {
     if (!transactionService || !user || !stage.id) return;
     
@@ -341,6 +354,7 @@ export default function TransactionDetailsPage() {
   if (!transaction) return <div className="p-20 text-center font-black text-slate-400">{isRtl ? 'المعاملة غير موجودة' : 'Transaction not found'}</div>;
 
   const currentFilteredStage = stages.find(s => s.id === filterStageId);
+  const isAnyStageInProgress = stages.some(s => s.status === 'in-progress' && !s.isTemporary);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-20" dir={dir}>
@@ -477,6 +491,11 @@ export default function TransactionDetailsPage() {
                                              <Sparkles className="h-2.5 w-2.5" /> {isRtl ? 'مرحلة طارئة' : 'Local Stage'}
                                            </Badge>
                                          )}
+                                         {stage.isManuallyActivated && (
+                                           <Badge variant="secondary" className="bg-amber-50 text-amber-600 border-amber-200 border-0 text-[8px] font-black h-5 px-2 uppercase shadow-sm">
+                                              <ShieldAlert className="h-2.5 w-2.5" /> {isRtl ? 'استثناء إداري' : 'Admin Override'}
+                                           </Badge>
+                                         )}
                                       </div>
                                       
                                       {stage.createdFromVO && (
@@ -530,7 +549,21 @@ export default function TransactionDetailsPage() {
                                          <Hammer className="h-4 w-4" /> {isRtl ? 'تسجيل إنجاز' : 'Log Progress'}
                                       </Button>
                                    )}
-                                   {stage.status === 'pending' && isPreviousCompleted && (
+                                   
+                                   {/* زر الفتح الاستثنائي للمدير فقط في المراحل الطارئة */}
+                                   {isAdmin && isTemporary && stage.status === 'pending' && isAnyStageInProgress && (
+                                      <Button 
+                                        onClick={() => handleAdminActivation(stage.id!)} 
+                                        disabled={processingId === stage.id} 
+                                        variant="outline"
+                                        className="h-11 px-4 rounded-xl border-2 border-amber-400 text-amber-600 font-black text-xs gap-2 hover:bg-amber-50"
+                                      >
+                                         {processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <ShieldAlert className="h-4 w-4" />}
+                                         {isRtl ? 'فتح استثنائي' : 'Admin Open'}
+                                      </Button>
+                                   )}
+
+                                   {stage.status === 'pending' && (isPreviousCompleted || (isAdmin && isTemporary)) && (
                                       <Button onClick={() => handleStartStage(stage.id!)} disabled={processingId === stage.id} className="h-11 px-6 rounded-xl bg-blue-600 text-white font-black text-xs gap-2">
                                          {processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Play className="h-4 w-4" />} {isRtl ? 'بدء' : 'Start'}
                                       </Button>
@@ -690,7 +723,7 @@ export default function TransactionDetailsPage() {
 
       {/* Record Progress Dialog */}
       <Dialog open={isRecordOpen} onOpenChange={(open) => { if(!open) { setIsRecordOpen(false); setIsComplementary(false); } }}>
-         <DialogContent className="rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
+         <DialogContent className="rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-lg" dir={dir}>
             <div className="bg-primary/5 p-8 text-slate-900 text-start border-b flex justify-between items-center">
                <div><DialogTitle className="text-2xl font-black font-headline flex items-center gap-3"><Hammer className="h-7 w-7 text-primary" />{isRtl ? 'تسجيل إنجاز ميداني' : 'Record Progress'}</DialogTitle><p className="text-xs font-bold text-slate-500 mt-2 uppercase tracking-widest">{targetStage?.name}</p></div>
             </div>
