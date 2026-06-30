@@ -203,6 +203,8 @@ export class BOQExecutionService {
     const itemsSnap = await getDocs(itemsRef);
     
     const allItems = itemsSnap.docs.map(d => ({ id: d.id, ...d.data() } as BOQItem));
+    
+    // تصفية البنود المرتبطة بالمرحلة المطلوبة (دعم الارتباط المتعدد)
     const linkedItems = allItems.filter(i => this.getAllowedTechnicalStageIds(i).includes(technicalStageId));
 
     if (linkedItems.length === 0) {
@@ -211,13 +213,15 @@ export class BOQExecutionService {
 
     let totalPlanned = 0;
     let totalExecutedForThisStage = 0;
-    let totalActiveLogsCount = 0;
 
     const executionsRef = collection(this.db, paths.executions(this.companyId));
 
     for (const item of linkedItems) {
-      totalPlanned += (item.plannedQuantity || 0);
+      // 1. الكمية المخططة النهائية للبند (تشمل أصل المقايسة + تعديلات VO المعتمدة)
+      const itemPlanned = item.plannedQuantity || 0;
+      totalPlanned += itemPlanned;
       
+      // 2. جلب سجلات التنفيذ الخاصة بهذا البند داخل هذه المرحلة حصراً
       const qExec = query(
         executionsRef, 
         where('boqItemId', '==', item.id!),
@@ -229,15 +233,14 @@ export class BOQExecutionService {
       execSnap.docs.forEach(d => {
          const data = d.data();
          if (data.isArchived !== true) {
-            totalActiveLogsCount++;
             itemExecSumFromLogs += (data.quantity || 0);
          }
       });
 
+      // 3. دعم البنود القديمة (Fallback): إذا لم توجد سجلات وكانت مرتبطة بمرحلة واحدة فقط تاريخياً
       if (itemExecSumFromLogs === 0 && (!item.technicalStageIds || item.technicalStageIds.length === 0)) {
          if ((item.executedQuantity || 0) > 0) {
            itemExecSumFromLogs = item.executedQuantity || 0;
-           totalActiveLogsCount++;
          }
       }
 
@@ -246,13 +249,18 @@ export class BOQExecutionService {
 
     const progress = totalPlanned > 0 ? (totalExecutedForThisStage / totalPlanned) * 100 : 0;
     
+    // القاعدة السيادية الجديدة: يجب أن يكون الإنجاز الفعلي >= المخطط بنسبة 100% للسماح بالإغلاق
+    const isFullyCompleted = totalPlanned > 0 ? (totalExecutedForThisStage >= totalPlanned) : true;
+    
     return {
       linkedItemsCount: linkedItems.length,
       totalPlanned,
       totalExecuted: totalExecutedForThisStage,
-      progressPercent: Math.round(progress * 100) / 100,
-      canComplete: totalActiveLogsCount > 0,
-      reason: totalActiveLogsCount === 0 ? "يجب تسجيل الإنجاز المادي أو التأكيد الفني المكمل أولاً." : undefined
+      progressPercent: Math.min(100, Math.round(progress * 100) / 100),
+      canComplete: isFullyCompleted,
+      reason: !isFullyCompleted 
+        ? "لا يمكن إغلاق المرحلة قبل اكتمال 100% من البنود المرتبطة بها (المرحلة ما زالت تحتوي على كميات غير منفذة)." 
+        : undefined
     };
   }
 }
