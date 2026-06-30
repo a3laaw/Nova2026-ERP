@@ -67,19 +67,18 @@ export default function TransactionBOQProgressPage() {
   [db, companyId, activeBoq]);
   const { data: variations } = useCollection<BOQVariation>(variationsQuery);
 
+  // التبسيط السيادي لتجنب الفهارس المركبة في collectionGroup
   const voItemsQuery = useMemo(() => 
-    companyId && db && activeBoq?.id 
-      ? query(collectionGroup(db, 'items'), where('companyId', '==', companyId), where('boqId', '==', activeBoq.id))
-      : null, 
-  [db, companyId, activeBoq]);
-  const { data: allItemsFromGroup } = useCollection<any>(voItemsQuery);
+    companyId && db ? query(collectionGroup(db, 'items'), where('companyId', '==', companyId)) : null, 
+  [db, companyId]);
+  const { data: rawAllItems } = useCollection<any>(voItemsQuery);
 
   // محرك تحليل التغيير لكل بند (Approved Delta Mapping)
   const voDeltaMap = useMemo(() => {
     const map: Record<string, number> = {};
     const approvedVoIds = new Set((variations || []).filter(v => v.status === 'approved').map(v => v.id));
 
-    (allItemsFromGroup || []).forEach(vItem => {
+    (rawAllItems || []).filter(i => i.boqId === activeBoq?.id).forEach(vItem => {
       if (vItem.variationId && approvedVoIds.has(vItem.variationId)) {
         if (vItem.sourceBoqItemId) {
           map[vItem.sourceBoqItemId] = (map[vItem.sourceBoqItemId] || 0) + (vItem.quantityDelta || 0);
@@ -87,15 +86,17 @@ export default function TransactionBOQProgressPage() {
       }
     });
     return map;
-  }, [allItemsFromGroup, variations]);
+  }, [rawAllItems, variations, activeBoq]);
 
-  // 3. جلب سجلات التنفيذ
+  // 3. جلب سجلات التنفيذ (تبسيط الاستعلام)
   const executionsQuery = useMemo(() => 
-    companyId && db && activeBoq?.id 
-      ? query(collectionGroup(db, 'executions'), where('companyId', '==', companyId), where('boqId', '==', activeBoq.id)) 
-      : null, 
-  [db, companyId, activeBoq]);
-  const { data: allExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
+    companyId && db ? query(collectionGroup(db, 'executions'), where('companyId', '==', companyId)) : null, 
+  [db, companyId]);
+  const { data: rawExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
+
+  const allExecutions = useMemo(() => {
+    return (rawExecutions || []).filter(e => e.boqId === activeBoq?.id);
+  }, [rawExecutions, activeBoq]);
 
   // محرك الحسابات المالية العامة (Triple Totals)
   const financialStats = useMemo(() => {

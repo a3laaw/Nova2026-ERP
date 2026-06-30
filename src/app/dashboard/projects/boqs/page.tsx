@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -104,11 +105,11 @@ export default function BOQExplorerPage() {
   [db, companyId]);
   const { data: boqs, loading: boqLoading } = useCollection<BOQ>(boqsQuery);
 
-  // 2. استعلام كافة الأوامر التغييرية (Collection Group)
+  // 2. استعلام كافة الأوامر التغييرية (التبسيط السيادي لتجنب الفهارس المركبة)
   const allVOsQuery = useMemo(() => 
-    companyId && db ? query(collectionGroup(db, 'variations'), where('companyId', '==', companyId), orderBy('createdAt', 'desc')) : null, 
+    companyId && db ? query(collectionGroup(db, 'variations'), where('companyId', '==', companyId)) : null, 
   [db, companyId]);
-  const { data: allVOs, loading: voLoading } = useCollection<BOQVariation>(allVOsQuery);
+  const { data: rawVOs, loading: voLoading } = useCollection<BOQVariation>(allVOsQuery);
 
   const filteredBoqs = useMemo(() => {
     return (boqs || []).filter(boq => 
@@ -119,20 +120,23 @@ export default function BOQExplorerPage() {
   }, [boqs, searchTerm]);
 
   const filteredVOs = useMemo(() => {
-    return (allVOs || []).filter(vo => 
-      (vo.title || "").toLowerCase().includes(searchTerm.toLowerCase()) || 
-      (vo.boqNumber || "").toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [allVOs, searchTerm]);
+    // التصفية والفرز في الذاكرة لضمان ظهور البيانات فوراً
+    return (rawVOs || [])
+      .filter(vo => 
+        (vo.title || "").toLowerCase().includes(searchTerm.toLowerCase()) || 
+        (vo.boqNumber || "").toLowerCase().includes(searchTerm.toLowerCase())
+      )
+      .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+  }, [rawVOs, searchTerm]);
 
   const stats = useMemo(() => {
     return {
       totalPlanned: (boqs || []).reduce((acc, b) => acc + (b.totalAmount || 0), 0),
-      totalVO: (allVOs || []).filter(v => v.status === 'approved').reduce((acc, v) => acc + (v.totalAmount || 0), 0),
+      totalVO: (rawVOs || []).filter(v => v.status === 'approved').reduce((acc, v) => acc + (v.totalAmount || 0), 0),
       boqCount: boqs?.length || 0,
-      voCount: allVOs?.length || 0
+      voCount: rawVOs?.length || 0
     };
-  }, [boqs, allVOs]);
+  }, [boqs, rawVOs]);
 
   const handleDelete = async () => {
     if (!db || !companyId || !deletingId) return;
