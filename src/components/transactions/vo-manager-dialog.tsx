@@ -277,8 +277,26 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                      <div className="p-1 rounded-xl border-2 bg-slate-50"><BOQReferenceSelector onSelect={(node) => updateItem(idx, 'boqReferenceNodeId', node)} className="grid-cols-1 md:grid-cols-1 gap-2" /></div>
                                   ) : (
                                      <Select value={item.sourceBoqItemId} onValueChange={v => updateItem(idx, 'sourceBoqItemId', v)}>
-                                        <SelectTrigger className="h-11 rounded-xl border-2 font-black text-[11px] bg-white"><SelectValue placeholder={isRtl ? "اختر من المقايسة..." : "Select from BOQ..."} /></SelectTrigger>
-                                        <SelectContent className="rounded-xl max-w-sm border-0 shadow-2xl">{boqItems.map(i => (<SelectItem key={i.id} value={i.id!} className="font-bold text-[10px] py-4 border-b last:border-0 border-slate-50"><div className="flex flex-col text-start"><span>{i.referenceTitle}</span><span className="text-[7px] text-slate-400 uppercase tracking-widest mt-1">QTY: {i.plannedQuantity} {i.unitSymbol}</span></div></SelectItem>))}</SelectContent>
+                                        <SelectTrigger className="h-11 rounded-xl border-2 font-black text-[11px] bg-white">
+                                          <SelectValue placeholder={isRtl ? "اختر من المقايسة..." : "Select from BOQ..."} />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-xl max-w-sm border-0 shadow-2xl">
+                                          {boqItems.map(i => {
+                                            const isVOItem = i.referenceCode?.startsWith('VO-');
+                                            return (
+                                              <SelectItem key={i.id} value={i.id!} className="font-bold text-[10px] py-4 border-b last:border-0 border-slate-50">
+                                                <div className="flex flex-col text-start">
+                                                   <div className="flex items-center gap-2">
+                                                      <span className="font-mono text-primary/60 text-[8px] bg-slate-50 px-1 rounded">#{i.referenceCode}</span>
+                                                      <span className={cn(isVOItem && "text-blue-600")}>{i.referenceTitle}</span>
+                                                      {isVOItem && <Badge className="bg-blue-50 text-blue-600 border-blue-100 text-[6px] h-3 px-1 font-black">VO</Badge>}
+                                                   </div>
+                                                   <span className="text-[7px] text-slate-400 uppercase tracking-widest mt-1">QTY: {i.plannedQuantity} {i.unitSymbol}</span>
+                                                </div>
+                                              </SelectItem>
+                                            );
+                                          })}
+                                        </SelectContent>
                                      </Select>
                                   )}
                                </div>
