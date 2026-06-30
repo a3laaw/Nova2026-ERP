@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -369,7 +368,7 @@ export default function BOQExplorerPage() {
                         <TableCell className="text-start">
                            <Badge className={cn(
                              "font-black px-4 py-1.5 rounded-lg border-0 shadow-sm uppercase text-[9px]",
-                             vo.status === 'approved' ? 'bg-emerald-500 text-white' :
+                             vo.status === 'approved' ? 'bg-emerald-50 text-emerald-600' :
                              vo.status === 'cancelled' ? 'bg-rose-500 text-white' :
                              'bg-blue-50 text-blue-600'
                            )}>
