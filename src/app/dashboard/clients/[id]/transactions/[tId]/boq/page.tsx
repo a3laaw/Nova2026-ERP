@@ -13,7 +13,7 @@ import {
   Printer, Folder, Calculator, ShieldCheck,
   Zap, History, PlusCircle, AlertCircle,
   CheckCircle2, XCircle, Ban, TrendingDown,
-  Info
+  Info, Sparkles
 } from "lucide-react";
 import { useFirestore, useCollection, useDoc } from '@/firebase';
 import { collection, query, where, doc, collectionGroup } from 'firebase/firestore';
