@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -74,9 +75,9 @@ export default function ClientsListPage() {
           <Table>
             <TableHeader className="bg-[#F4F6F9] border-b">
               <TableRow>
-                <TableHead className="py-5 ps-8">{isRtl ? 'العميل' : 'Client'}</TableHead>
-                <TableHead>{isRtl ? 'الهاتف' : 'Mobile'}</TableHead>
-                <TableHead>{isRtl ? 'الحالة' : 'Status'}</TableHead>
+                <TableHead className="py-5 ps-8 text-start">{isRtl ? 'العميل' : 'Client'}</TableHead>
+                <TableHead className="text-start">{isRtl ? 'الهاتف' : 'Mobile'}</TableHead>
+                <TableHead className="text-start">{isRtl ? 'الحالة' : 'Status'}</TableHead>
                 <TableHead className="pe-8 text-end"></TableHead>
               </TableRow>
             </TableHeader>
@@ -87,14 +88,14 @@ export default function ClientsListPage() {
                 <TableRow><TableCell colSpan={4} className="text-center py-20 italic text-slate-400 font-bold">{isRtl ? 'لا يوجد عملاء.' : 'No clients found.'}</TableCell></TableRow>
               ) : filtered.map((client) => (
                 <TableRow key={client.id} className="cursor-pointer group hover:bg-[#FFF9F2]" onClick={() => router.push(`/dashboard/clients/${client.id}`)}>
-                  <TableCell className="ps-8 py-5">
+                  <TableCell className="ps-8 py-5 text-start">
                      <div className="flex flex-col text-start">
                         <span className="font-black text-slate-800 text-sm leading-none">{client.nameAr}</span>
                         <span className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-widest">{client.fileNumber}</span>
                      </div>
                   </TableCell>
-                  <TableCell className="py-5 text-xs font-bold text-slate-600">{client.mobile}</TableCell>
-                  <TableCell className="py-5">
+                  <TableCell className="py-5 text-xs font-bold text-slate-600 text-start">{client.mobile}</TableCell>
+                  <TableCell className="py-5 text-start">
                      <Badge variant="outline" className={cn(
                        "text-[9px] font-black px-3 py-1 rounded-lg border-0 shadow-sm uppercase", 
                        client.status === 'contracted' ? 'bg-[#039BE5]/10 text-[#039BE5]' : 'bg-[#FFA000]/10 text-[#FFA000]'

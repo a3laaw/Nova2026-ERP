@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -99,9 +100,15 @@ export default function CRMPage() {
                 <DialogTitle className="text-start font-black text-2xl">{t('addLead')}</DialogTitle>
               </DialogHeader>
               <div className="p-8 space-y-6 text-start">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                   <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('name')}</Label><Input value={newLead.name} onChange={e => setNewLead({...newLead, name: e.target.value})} className="h-11 border-2 rounded-xl" /></div>
-                   <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('company')}</Label><Input value={newLead.company} onChange={e => setNewLead({...newLead, company: e.target.value})} className="h-11 border-2 rounded-xl" /></div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-start">
+                   <div className="space-y-2">
+                      <Label className="text-xs font-black uppercase text-slate-400">{t('name')}</Label>
+                      <Input value={newLead.name} onChange={e => setNewLead({...newLead, name: e.target.value})} className="h-11 border-2 rounded-xl" />
+                   </div>
+                   <div className="space-y-2">
+                      <Label className="text-xs font-black uppercase text-slate-400">{t('company')}</Label>
+                      <Input value={newLead.company} onChange={e => setNewLead({...newLead, company: e.target.value})} className="h-11 border-2 rounded-xl" />
+                   </div>
                 </div>
               </div>
               <DialogFooter className="p-8 bg-slate-50 border-t">
@@ -139,9 +146,9 @@ export default function CRMPage() {
           <Table>
             <TableHeader className="bg-[#F4F6F9] border-b">
               <TableRow>
-                <TableHead className="py-5 ps-8">{t('name')}</TableHead>
-                <TableHead>{t('company')}</TableHead>
-                <TableHead className="pe-8">{t('status')}</TableHead>
+                <TableHead className="py-5 ps-8 text-start text-xs font-black uppercase tracking-widest">{t('name')}</TableHead>
+                <TableHead className="text-start text-xs font-black uppercase tracking-widest">{t('company')}</TableHead>
+                <TableHead className="pe-8 text-start text-xs font-black uppercase tracking-widest">{t('status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -150,10 +157,10 @@ export default function CRMPage() {
               ) : filteredLeads.length === 0 ? (
                 <TableRow><TableCell colSpan={3} className="text-center py-20 italic text-slate-400 font-bold">{isRtl ? 'لا يوجد نتائج.' : 'No results found.'}</TableCell></TableRow>
               ) : filteredLeads.map((lead: any) => (
-                <TableRow key={lead.id} className="hover:bg-[#FFF9F2] transition-colors">
-                  <TableCell className="py-5 ps-8 font-black text-slate-800">{lead.name}</TableCell>
-                  <TableCell className="text-slate-500 font-bold text-sm">{lead.company}</TableCell>
-                  <TableCell className="pe-8">
+                <TableRow key={lead.id} className="hover:bg-[#FFF9F2] transition-colors border-b-slate-100">
+                  <TableCell className="py-5 ps-8 font-black text-slate-800 text-start">{lead.name}</TableCell>
+                  <TableCell className="text-slate-500 font-bold text-sm text-start">{lead.company}</TableCell>
+                  <TableCell className="pe-8 text-start">
                     <Badge variant="outline" className={cn(
                       "font-black text-[9px] uppercase px-3 py-1 border-0 shadow-sm",
                       lead.status === 'new' ? "bg-[#039BE5]/10 text-[#039BE5]" : "bg-[#FFA000]/10 text-[#FFA000]"

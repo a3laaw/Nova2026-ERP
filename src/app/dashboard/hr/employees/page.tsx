@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -134,13 +135,13 @@ export default function EmployeesPage() {
       <Card className="border-0 shadow-xl rounded-xl bg-white overflow-hidden ring-1 ring-black/5">
         <CardContent className="p-0 overflow-x-auto">
           <Table>
-            <TableHeader>
+            <TableHeader className="bg-[#F4F6F9] border-b">
               <TableRow>
-                <TableHead className="py-5 ps-8">{isRtl ? 'الموظف' : 'Employee'}</TableHead>
-                <TableHead>{isRtl ? 'الوظيفة' : 'Job'}</TableHead>
-                <TableHead>{isRtl ? 'الحالة' : 'Status'}</TableHead>
+                <TableHead className="py-5 ps-8 text-start">{isRtl ? 'الموظف' : 'Employee'}</TableHead>
+                <TableHead className="text-start">{isRtl ? 'الوظيفة' : 'Job'}</TableHead>
+                <TableHead className="text-start">{isRtl ? 'الحالة' : 'Status'}</TableHead>
                 {canSeeSalaries && <TableHead className="text-end">{isRtl ? 'الراتب' : 'Salary'}</TableHead>}
-                <TableHead className="pe-8"></TableHead>
+                <TableHead className="pe-8 text-end"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -149,24 +150,24 @@ export default function EmployeesPage() {
               ) : filteredEmployees.length === 0 ? (
                 <TableRow><TableCell colSpan={5} className="text-center py-24 italic text-slate-400 font-bold">{isRtl ? 'لا يوجد موظفين.' : 'No employees found.'}</TableCell></TableRow>
               ) : filteredEmployees.map((emp) => (
-                <TableRow key={emp.id} className="cursor-pointer border-b-slate-100" onClick={() => router.push(`/dashboard/hr/employees/${emp.id}`)}>
+                <TableRow key={emp.id} className="cursor-pointer border-b-slate-100 group" onClick={() => router.push(`/dashboard/hr/employees/${emp.id}`)}>
                   <TableCell className="py-5 ps-8 text-start">
                     <div className="flex items-center gap-4">
                        <div className="h-10 w-10 rounded-lg bg-slate-100 flex items-center justify-center font-black text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-all">
                           {emp.employeeNumber}
                        </div>
-                       <div className="flex flex-col">
+                       <div className="flex flex-col text-start">
                           <span className="font-black text-slate-800 text-sm">{emp.fullName}</span>
                           <span className="text-[10px] text-muted-foreground font-bold">{emp.mobile}</span>
                        </div>
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-start">
                      <span className="font-bold text-xs text-slate-700 flex items-center gap-1">
                         <Briefcase className="h-3 w-3 text-primary" /> {emp.jobTitle}
                      </span>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-start">
                      <Badge variant="outline" className={cn(
                        "font-black px-3 py-1 rounded-lg border-0 shadow-sm uppercase text-[9px]",
                        emp.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-[#FFA000]/10 text-[#FFA000]'
@@ -192,7 +193,7 @@ export default function EmployeesPage() {
                          </Button>
                        )}
                        <Button variant="ghost" size="icon" className="rounded-xl h-9 w-9">
-                         <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
+                         <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-0", isRtl && "rotate-180")} />
                        </Button>
                     </div>
                   </TableCell>

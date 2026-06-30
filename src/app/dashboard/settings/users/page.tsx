@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -198,7 +199,7 @@ export default function UsersManagementPage() {
                    </Select>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4 text-start">
                    <div className="space-y-2">
                       <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'اسم المستخدم' : 'Username'}</Label>
                       <Input value={createForm.username} onChange={e => setCreateForm({...createForm, username: e.target.value})} className="h-12 rounded-xl border-2 font-mono" placeholder={isRtl ? "اختياري (الافتراضي الرقم الوظيفي)" : "Optional (Default Emp #)"} />
@@ -214,12 +215,12 @@ export default function UsersManagementPage() {
                    </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 text-start">
                    <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'البريد الإلكتروني للدخول' : 'Email'}</Label>
                    <Input value={createForm.email} onChange={e => setCreateForm({...createForm, email: e.target.value})} className="h-12 rounded-xl border-2 text-start" dir="ltr" />
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 text-start">
                    <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'كلمة المرور المبدئية' : 'Initial Password'}</Label>
                    <Input value={createForm.password} onChange={e => setCreateForm({...createForm, password: e.target.value})} className="h-14 rounded-xl border-2 font-mono text-lg text-primary" placeholder="P@ssw0rd123" />
                 </div>
@@ -248,11 +249,11 @@ export default function UsersManagementPage() {
           <Table>
             <TableHeader className="bg-muted/30">
               <TableRow>
-                <TableHead className="py-6 ps-8 text-start">{isRtl ? 'المستخدم' : 'User'}</TableHead>
-                <TableHead className="text-start">{isRtl ? 'الدور' : 'Role'}</TableHead>
-                <TableHead className="text-start">{isRtl ? 'كلمة المرور الحالية' : 'Managed Pass'}</TableHead>
-                <TableHead className="text-center">{isRtl ? 'الحالة' : 'Status'}</TableHead>
-                <TableHead className="pe-8 text-end">{isRtl ? 'إجراءات' : 'Actions'}</TableHead>
+                <TableHead className="py-6 ps-8 text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'المستخدم' : 'User'}</TableHead>
+                <TableHead className="text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'الدور' : 'Role'}</TableHead>
+                <TableHead className="text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'كلمة المرور الحالية' : 'Managed Pass'}</TableHead>
+                <TableHead className="text-center text-xs font-black uppercase tracking-widest">{isRtl ? 'الحالة' : 'Status'}</TableHead>
+                <TableHead className="pe-8 text-end"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -282,13 +283,13 @@ export default function UsersManagementPage() {
                      <div className="flex items-center gap-2">
                         <div className="bg-slate-100 px-3 py-1.5 rounded-lg border font-mono text-[10px] min-w-[120px] flex items-center justify-between">
                            <span>{showPassMap[u.id] ? u.initialPassword : '••••••••'}</span>
-                           <Button variant="ghost" size="icon" className="h-4 w-4 p-0 hover:bg-transparent" onClick={() => togglePassVisibility(u.id)}>
+                           <button type="button" className="h-4 w-4 p-0 hover:bg-transparent" onClick={() => togglePassVisibility(u.id)}>
                               {showPassMap[u.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                           </Button>
+                           </button>
                         </div>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { navigator.clipboard.writeText(u.initialPassword || ''); toast({title: "Copied"}); }}>
+                        <button type="button" className="h-8 w-8" onClick={() => { navigator.clipboard.writeText(u.initialPassword || ''); toast({title: "Copied"}); }}>
                            <Copy className="h-3.5 w-3.5 text-slate-400" />
-                        </Button>
+                        </button>
                      </div>
                   </TableCell>
                   <TableCell className="text-center">
@@ -336,7 +337,7 @@ export default function UsersManagementPage() {
                   <Input value={editForm.displayName} onChange={e => setEditForm({...editForm, displayName: e.target.value})} className="h-12 rounded-xl border-2 font-bold" />
                </div>
 
-               <div className="grid grid-cols-2 gap-4">
+               <div className="grid grid-cols-2 gap-4 text-start">
                   <div className="space-y-2">
                      <Label className="text-xs font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اسم المستخدم (معرف الدخول)' : 'Username'}</Label>
                      <Input value={editForm.username} onChange={e => setEditForm({...editForm, username: e.target.value})} className="h-12 rounded-xl border-2 font-mono" />
@@ -356,7 +357,7 @@ export default function UsersManagementPage() {
                   </div>
                </div>
 
-               <div className="space-y-4 pt-4 border-t">
+               <div className="space-y-4 pt-4 border-t text-start">
                   <div className="flex items-center gap-2 text-primary font-black text-xs uppercase tracking-widest">
                      <Lock className="h-4 w-4" /> {isRtl ? 'تحديث كلمة المرور الإدارية' : 'Manage Password'}
                   </div>

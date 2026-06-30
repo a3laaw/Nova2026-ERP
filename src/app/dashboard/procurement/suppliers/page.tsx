@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -104,7 +105,7 @@ export default function SuppliersPage() {
                    <Label className="font-black text-xs uppercase tracking-widest text-slate-400">{isRtl ? 'التصنيف' : 'Category'}</Label>
                    <Input value={newSupplier.category} onChange={e => setNewSupplier({...newSupplier, category: e.target.value})} placeholder={isRtl ? "مثلاً: مواد بناء، حديد" : "e.g. Construction Materials"} className="h-14 rounded-2xl border-2" />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4 text-start">
                    <div className="space-y-2">
                       <Label className="font-black text-xs uppercase tracking-widest text-slate-400">{t('phone')}</Label>
                       <Input value={newSupplier.phone} onChange={e => setNewSupplier({...newSupplier, phone: e.target.value})} className="h-14 rounded-2xl border-2" />
@@ -136,8 +137,8 @@ export default function SuppliersPage() {
               <div className={cn("p-4 rounded-2xl w-fit mb-6 transition-transform group-hover:rotate-6", stat.bg, stat.color)}>
                  <stat.icon className="h-8 w-8" />
               </div>
-              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">{stat.label}</p>
-              <h3 className="text-4xl font-black font-headline text-slate-900">{stat.val}</h3>
+              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1 text-start">{stat.label}</p>
+              <h3 className="text-4xl font-black font-headline text-slate-900 text-start">{stat.val}</h3>
            </Card>
          ))}
       </div>
@@ -166,7 +167,7 @@ export default function SuppliersPage() {
                 <TableHead className="text-start font-black text-slate-900 uppercase text-xs tracking-widest">{isRtl ? 'الاتصال' : 'Contact'}</TableHead>
                 <TableHead className="text-center font-black text-slate-900 uppercase text-xs tracking-widest">{isRtl ? 'التقييم' : 'Rating'}</TableHead>
                 <TableHead className="text-start font-black text-slate-900 uppercase text-xs tracking-widest">{t('status')}</TableHead>
-                <TableHead className="pe-10"></TableHead>
+                <TableHead className="pe-10 text-end"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -196,7 +197,7 @@ export default function SuppliersPage() {
                        </Badge>
                     </TableCell>
                     <TableCell className="text-start">
-                       <div className="space-y-1.5">
+                       <div className="space-y-1.5 text-start">
                           <div className="flex items-center gap-2 text-xs font-bold text-slate-600"><Phone className="h-3 w-3 text-orange-400" /> {supplier.phone}</div>
                           <div className="flex items-center gap-2 text-xs font-bold text-slate-50"><Mail className="h-3 w-3 text-orange-400" /> {supplier.email}</div>
                        </div>
@@ -213,9 +214,9 @@ export default function SuppliersPage() {
                           <span className="text-xs font-black uppercase text-emerald-600">{isRtl ? 'نشط' : 'Active'}</span>
                        </div>
                     </TableCell>
-                    <TableCell className="pe-10 text-center">
+                    <TableCell className="pe-10 text-end">
                        <Button variant="ghost" size="icon" className="rounded-xl group-hover:bg-[#e87c24] group-hover:text-white transition-all h-12 w-12">
-                          <ArrowRight className={cn("h-6 w-6", !isRtl && "rotate-180")} />
+                          <ArrowRight className={cn("h-6 w-6", !isRtl && "rotate-0", isRtl && "rotate-180")} />
                        </Button>
                     </TableCell>
                   </TableRow>
@@ -225,25 +226,6 @@ export default function SuppliersPage() {
           </Table>
         </CardContent>
       </Card>
-
-      <div className="bg-white border-4 border-orange-100/50 rounded-[3rem] p-12 flex flex-col md:flex-row justify-between items-center gap-10 shadow-3xl relative overflow-hidden group">
-         <div className="absolute top-0 right-0 p-12 opacity-5 group-hover:scale-110 transition-transform">
-            <Sparkles className="h-48 w-48 text-primary" />
-         </div>
-         <div className="text-start space-y-4 relative z-10">
-            <h2 className="text-4xl font-black font-headline tracking-tight text-slate-900">{isRtl ? 'ذكاء المشتريات (AI Procurement)' : 'AI Procurement Assistant'}</h2>
-            <p className="text-slate-500 text-lg font-bold max-w-xl leading-relaxed">
-               {isRtl ? 'قم برفع عروض أسعار الموردين وسنقوم آلياً باستخراج البنود ومقارنتها واقتراح المورد الأفضل بناءً على معاييرك.' : 'Upload supplier quotes and let AI extract items, compare prices, and recommend the best option.'}
-            </p>
-         </div>
-         <Button 
-            className="h-20 px-12 rounded-[2.5rem] bg-primary text-white font-black text-2xl shadow-2xl hover:scale-105 transition-all gap-4 relative z-10"
-            onClick={() => router.push('/dashboard/ai')}
-         >
-            <Send className="h-8 w-8" />
-            {isRtl ? 'تحليل العروض بالـ AI' : 'Start AI Analysis'}
-         </Button>
-      </div>
     </div>
   );
 }

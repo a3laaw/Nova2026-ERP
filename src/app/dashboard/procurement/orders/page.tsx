@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -78,10 +79,10 @@ export default function PurchaseOrdersPage() {
           <Table>
             <TableHeader className="bg-muted/30">
               <TableRow>
-                <TableHead className="py-6 ps-8 text-start">{isRtl ? 'رقم الأمر / المورد' : 'PO # / Supplier'}</TableHead>
-                <TableHead className="text-start">{isRtl ? 'التاريخ' : 'Date'}</TableHead>
-                <TableHead className="text-end">{isRtl ? 'الإجمالي' : 'Amount'}</TableHead>
-                <TableHead className="text-start">{isRtl ? 'الحالة' : 'Status'}</TableHead>
+                <TableHead className="py-6 ps-8 text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'رقم الأمر / المورد' : 'PO # / Supplier'}</TableHead>
+                <TableHead className="text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'التاريخ' : 'Date'}</TableHead>
+                <TableHead className="text-end text-xs font-black uppercase tracking-widest">{isRtl ? 'الإجمالي' : 'Amount'}</TableHead>
+                <TableHead className="text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'الحالة' : 'Status'}</TableHead>
                 <TableHead className="pe-8 text-end"></TableHead>
               </TableRow>
             </TableHeader>
@@ -105,7 +106,7 @@ export default function PurchaseOrdersPage() {
                        </div>
                     </TableCell>
                     <TableCell className="text-start">
-                       <div className="flex flex-col">
+                       <div className="flex flex-col text-start">
                           <span className="text-xs font-bold text-slate-600">{po.date}</span>
                        </div>
                     </TableCell>
