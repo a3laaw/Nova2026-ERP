@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,15 +10,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { 
   FileSpreadsheet, Search, Loader2, ArrowRight, 
   Filter, TrendingUp, DollarSign, Calculator,
-  LayoutGrid, UserCircle, Activity, Trash2, AlertTriangle
+  LayoutGrid, UserCircle, Activity, Trash2, AlertTriangle,
+  History, Settings2
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, where } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
-import { BOQ } from '@/types/documents';
+import { BOQ, BOQVariation } from '@/types/documents';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Progress } from "@/components/ui/progress";
@@ -34,6 +35,54 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
+/**
+ * مكون فرعي لعرض ملخص أوامر التغيير لكل مقايسة
+ */
+function BOQVariationStats({ boqId, companyId }: { boqId: string, companyId: string }) {
+  const { lang } = useLanguage();
+  const db = useFirestore();
+  const isRtl = lang === 'ar';
+
+  const voQuery = useMemo(() =>
+    companyId && db ? query(collection(db, paths.boqVariations(companyId, boqId))) : null,
+  [db, companyId, boqId]);
+
+  const { data: variations, loading } = useCollection<BOQVariation>(voQuery);
+
+  if (loading) return <div className="h-4 w-12 bg-slate-100 animate-pulse rounded-md" />;
+  if (!variations || variations.length === 0) return <span className="text-[9px] text-slate-300 font-bold italic">{isRtl ? 'لا يوجد تعديلات' : 'No VOs'}</span>;
+
+  const stats = {
+    total: variations.length,
+    draft: variations.filter(v => v.status === 'draft').length,
+    approved: variations.filter(v => v.status === 'approved').length,
+    cancelled: variations.filter(v => v.status === 'cancelled').length
+  };
+
+  return (
+    <div className="flex flex-wrap gap-1 justify-start">
+      <Badge variant="outline" className="h-5 px-1.5 text-[8px] font-black border-slate-200 text-slate-500 bg-white">
+        VO: {stats.total}
+      </Badge>
+      {stats.draft > 0 && (
+        <Badge title={isRtl ? "مسودة" : "Draft"} className="h-5 px-1.5 text-[8px] font-black bg-blue-50 text-blue-600 border-0">
+          D: {stats.draft}
+        </Badge>
+      )}
+      {stats.approved > 0 && (
+        <Badge title={isRtl ? "معتمد" : "Approved"} className="h-5 px-1.5 text-[8px] font-black bg-emerald-50 text-emerald-600 border-0">
+          A: {stats.approved}
+        </Badge>
+      )}
+      {stats.cancelled > 0 && (
+        <Badge title={isRtl ? "ملغي" : "Cancelled"} className="h-5 px-1.5 text-[8px] font-black bg-rose-50 text-rose-600 border-0">
+          C: {stats.cancelled}
+        </Badge>
+      )}
+    </div>
+  );
+}
 
 export default function BOQExplorerPage() {
   const { globalUser, user } = useAuthContext();
@@ -161,7 +210,7 @@ export default function BOQExplorerPage() {
             <TableHeader className="bg-muted/30">
               <TableRow>
                 <TableHead className="py-8 ps-10 text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'المقايسة / العميل' : 'BOQ / Client'}</TableHead>
-                <TableHead className="text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'المسار الفني' : 'Technical Path'}</TableHead>
+                <TableHead className="text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'أوامر التغيير (VO)' : 'Variation Orders'}</TableHead>
                 <TableHead className="text-end text-xs font-black uppercase tracking-widest">{isRtl ? 'القيمة الإجمالية' : 'Planned Value'}</TableHead>
                 <TableHead className="text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'الحالة' : 'Status'}</TableHead>
                 <TableHead className="pe-10 text-end text-xs font-black uppercase tracking-widest">{isRtl ? 'إجراءات' : 'Actions'}</TableHead>
@@ -192,9 +241,11 @@ export default function BOQExplorerPage() {
                        </div>
                     </TableCell>
                     <TableCell className="text-start" onClick={() => router.push(`/dashboard/clients/${boq.clientId}/transactions/${boq.transactionId}/boq`)}>
-                       <div className="flex flex-col gap-1">
-                          <Badge variant="secondary" className="bg-primary/5 text-primary border-0 font-black text-[9px] uppercase px-3 w-fit">{boq.subServiceName || 'GENERAL'}</Badge>
-                          <span className="text-[10px] font-bold text-slate-400">{boq.templateName || 'Custom Draft'}</span>
+                       <div className="space-y-2">
+                          <BOQVariationStats boqId={boq.id!} companyId={companyId!} />
+                          <div className="flex flex-col gap-1">
+                             <Badge variant="secondary" className="bg-primary/5 text-primary border-0 font-black text-[9px] uppercase px-3 w-fit">{boq.subServiceName || 'GENERAL'}</Badge>
+                          </div>
                        </div>
                     </TableCell>
                     <TableCell className="text-end" onClick={() => router.push(`/dashboard/clients/${boq.clientId}/transactions/${boq.transactionId}/boq`)}>
@@ -225,12 +276,14 @@ export default function BOQExplorerPage() {
                              </Button>
                           )}
                           <Button 
-                            variant="ghost" 
-                            size="icon" 
+                            variant="outline" 
+                            size="sm" 
                             onClick={() => router.push(`/dashboard/clients/${boq.clientId}/transactions/${boq.transactionId}/boq`)}
-                            className="rounded-xl h-12 w-12 group-hover:bg-primary group-hover:text-white shadow-sm transition-all"
+                            className="rounded-xl h-12 px-5 font-black text-[10px] gap-2 hover:bg-primary hover:text-white transition-all shadow-sm"
                           >
-                             <ArrowRight className={cn("h-6 w-6", isRtl && "rotate-180")} />
+                             <Settings2 className="h-4 w-4" />
+                             {isRtl ? 'إدارة VO & المقايسة' : 'Manage VO'}
+                             <ArrowRight className={cn("h-4 w-4 ms-2", isRtl && "rotate-180")} />
                           </Button>
                        </div>
                     </TableCell>
@@ -270,4 +323,3 @@ export default function BOQExplorerPage() {
     </div>
   );
 }
-
