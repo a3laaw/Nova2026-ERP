@@ -60,10 +60,12 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
   const [items, setItems] = useState<Partial<BOQVariationItem>[]>([]);
   const [availableStages, setAvailableStages] = useState<any[]>([]);
 
+  // جلب مراحل المعاملة الحالية (بما فيها الطارئة المضافة يدوياً)
   useEffect(() => {
     async function fetchStages() {
       if (!db || !globalUser?.companyId || !isOpen) return;
-      const stagesSnap = await getDocs(query(collection(db, paths.transactionStages(globalUser.companyId, transactionId)), orderBy('order')));
+      const stagesPath = paths.transactionStages(globalUser.companyId, transactionId);
+      const stagesSnap = await getDocs(query(collection(db, stagesPath), orderBy('order')));
       setAvailableStages(stagesSnap.docs.map(d => ({ id: d.id, ...d.data() })));
     }
     fetchStages();
@@ -95,6 +97,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
         item.unitSymbol = source.unitSymbol;
         item.rate = source.estimatedRate || 0;
         item.sourcePlannedQuantity = source.plannedQuantity || 0;
+        // محاولة مطابقة المرحلة إذا كانت موجودة في المشروع
         item.technicalStageId = source.technicalStageId;
       }
     }
@@ -107,7 +110,10 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
        item.unitSymbol = node.unitSymbol;
        item.rate = node.estimatedRate || 0;
        item.sourcePlannedQuantity = 0;
-       item.technicalStageId = node.technicalStageId || '';
+       
+       // ذكاء الربط: إذا كان للملف المرجعي مرحلة تطابق إحدى مراحل المشروع الحالية، يتم اختيارها آلياً
+       const matchingStage = availableStages.find(s => s.technicalStageId === node.technicalStageId);
+       item.technicalStageId = matchingStage ? node.technicalStageId : '';
     }
 
     if (field === 'quantityDelta' || field === 'rate' || field === 'type') {
@@ -147,7 +153,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
           return false;
         }
         if (!item.technicalStageId) {
-          toast({ variant: "destructive", title: isRtl ? "مرحلة مفقودة" : "Missing Stage", description: isRtl ? `يرجى اختيار مرحلة فنية للبند الجديد في السطر ${sNo}` : `Select stage for new item at line ${sNo}` });
+          toast({ variant: "destructive", title: isRtl ? "مرحلة مفقودة" : "Missing Stage", description: isRtl ? `يرجى اختيار مرحلة فنية للبند الجديد في السطر ${sNo}. يمكنك إضافة مرحلة طارئة من خارج هذه النافذة أولاً.` : `Select stage for new item at line ${sNo}. Add emergency stage if needed.` });
           return false;
         }
       } else {
@@ -319,7 +325,6 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                    </div>
                                 </div>
 
-                                {/* الحسبة التفصيلية الميدانية في أسفل السطر */}
                                 <div className="pt-4 border-t border-dashed flex flex-col md:flex-row items-center justify-between gap-4">
                                    <div className="flex items-center gap-3">
                                       <div className={cn("h-7 px-3 rounded-lg flex items-center gap-2 text-[9px] font-black uppercase", (item.total || 0) >= 0 ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600")}>
@@ -331,7 +336,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                       </Badge>
                                    </div>
 
-                                   {/* ربط البند بمرحلة فنية - إلزامي للبند المستجد أو لتغيير الوجهة الفنية */}
+                                   {/* ربط البند بمرحلة فنية - يظهر كافة مراحل المشروع الحالية بما فيها الطارئة */}
                                    <div className="flex items-center gap-2 animate-in slide-in-from-top-2">
                                       <div className="flex items-center gap-2 text-primary font-black text-[9px] uppercase">
                                          <Workflow className="h-3.5 w-3.5" /> {isRtl ? 'ربط البند بمرحلة:' : 'Link to Stage:'}
@@ -354,7 +359,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
         </div>
 
         <DialogFooter className="p-10 bg-slate-50 border-t flex flex-row gap-4">
-           <Button variant="outline" onClick={onClose} className="flex-1 h-16 rounded-2xl border-2 font-black text-lg bg-white">Cancel</Button>
+           <Button variant="outline" onClick={onClose} className="flex-1 h-16 rounded-2xl border-2 font-black text-lg bg-white">إلغاء</Button>
            <Button 
              onClick={handleSave} 
              disabled={loading} 
