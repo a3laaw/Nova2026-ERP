@@ -38,20 +38,7 @@ service cloud.firestore {
       );
     }
 
-    // --- السجلات العالمية ---
-    
-    match /global_users/{uid} {
-      allow read: if isAuthenticated() && (request.auth.uid == uid || isDeveloper() || isAdmin(get(/databases/$(database)/documents/global_users/$(uid)).data.companyId));
-      allow create, update: if isDeveloper() || (isAuthenticated() && request.auth.uid == uid) || (isAuthenticated() && isAdmin(request.resource.data.companyId));
-      allow delete: if isDeveloper();
-    }
-    
-    match /company_requests/{reqId} {
-       allow create: if true;
-       allow read, write: if isDeveloper();
-    }
-
-    // --- قواعد المجموعات المشتركة (Collection Groups) ---
+    // --- سجلات المجموعات المشتركة (Collection Groups) ---
     // تمكين استعلامات المجموعات المشتركة مع شرط عزل البيانات لكل شركة
     
     match /{path=**}/stages/{stageId} {
@@ -64,6 +51,24 @@ service cloud.firestore {
 
     match /{path=**}/executions/{execId} {
       allow read: if belongsToCompany(resource.data.companyId);
+    }
+
+    // إضافة قاعدة للمجموعة المشتركة للبنود لتمكين تحليل VO
+    match /{path=**}/items/{itemId} {
+      allow read: if belongsToCompany(resource.data.companyId);
+    }
+
+    // --- سجلات المستخدمين العالمية ---
+    
+    match /global_users/{uid} {
+      allow read: if isAuthenticated() && (request.auth.uid == uid || isDeveloper() || isAdmin(get(/databases/$(database)/documents/global_users/$(uid)).data.companyId));
+      allow create, update: if isDeveloper() || (isAuthenticated() && request.auth.uid == uid) || (isAuthenticated() && isAdmin(request.resource.data.companyId));
+      allow delete: if isDeveloper();
+    }
+    
+    match /company_requests/{reqId} {
+       allow create: if true;
+       allow read, write: if isDeveloper();
     }
 
     // --- سجلات المنشأة (Multi-tenant) ---
