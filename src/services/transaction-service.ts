@@ -137,10 +137,6 @@ export class TransactionService {
     return transactionId;
   }
 
-  /**
-   * إضافة مرحلة طارئة يدوياً للمشاريع أو من خلال نافذة الـ VO.
-   * يتم تخزينها فقط في مصفوفة النسخ (transactionStages) دون المساس بالقاموس العام.
-   */
   async addManualStage(transactionId: string, name: string, userId: string, userName: string, isFromVO: boolean = false) {
     ensureActionPermission(this.permissions, 'projects:edit');
     
@@ -149,17 +145,14 @@ export class TransactionService {
     if (!transSnap.exists()) throw new Error('TRANSACTION_NOT_FOUND');
     const transData = transSnap.data();
 
-    // جلب آخر ترتيب لتكون المرحلة الجديدة في النهاية
     const stagesRef = collection(this.db, paths.transactionStages(this.companyId, transactionId));
     const q = query(stagesRef, orderBy('order', 'desc'), limit(1));
     const snap = await getDocs(q);
     const lastOrder = snap.empty ? -1 : (snap.docs[0].data().order || 0);
 
     const newInstanceRef = doc(stagesRef);
-    // استخدام معرف المستند كمعرف فني محلي لضمان الربط الميداني والمالي
     const technicalStageId = `manual_${newInstanceRef.id}`;
     
-    // توليد كود أوضح للمرحلة الطارئة
     const nextOrder = lastOrder + 1;
     const manualCode = `MANUAL_${(nextOrder + 1).toString().padStart(2, '0')}`;
 
@@ -237,7 +230,7 @@ export class TransactionService {
     });
   }
 
-  async completeStage(transactionId: string, stageId: string, userId: string, userName: string) {
+  async completeStage(transactionId: string, stageId: string, userId: string, userName: string, force: boolean = false) {
     ensureActionPermission(this.permissions, 'projects:edit');
     
     const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
@@ -245,11 +238,13 @@ export class TransactionService {
     if (!stageSnap.exists()) return;
     const stageData = stageSnap.data() as StageInstance;
 
-    const boqService = new BOQExecutionService(this.db, this.companyId, this.permissions);
-    const progress = await boqService.getTechnicalStageProgress(transactionId, stageData.technicalStageId);
-    
-    if (!progress.canComplete) {
-      throw new Error(progress.reason || "لا يمكن إغلاق المرحلة لعدم كفاية الإنجاز في بنود المقايسة.");
+    if (!force) {
+      const boqService = new BOQExecutionService(this.db, this.companyId, this.permissions);
+      const progress = await boqService.getTechnicalStageProgress(transactionId, stageData.technicalStageId);
+      
+      if (!progress.canComplete) {
+        throw new Error(progress.reason || "لا يمكن إغلاق المرحلة قبل اكتمال 100% من البنود المرتبطة بها.");
+      }
     }
 
     await updateDoc(stageRef, {
@@ -257,6 +252,7 @@ export class TransactionService {
       completedAt: serverTimestamp(),
       completedBy: userId,
       updatedAt: serverTimestamp(),
+      isForceClosed: force || false
     });
 
     const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
@@ -265,7 +261,9 @@ export class TransactionService {
       stageId: stageId,
       technicalStageId: stageData.technicalStageId,
       type: 'stage_complete',
-      content: `تم إنجاز المرحلة بنجاح: ${stageData.name}`,
+      content: force 
+        ? `تنبيه: تم إغلاق المرحلة إجبارياً (بواسطة المدير): ${stageData.name}`
+        : `تم إنجاز المرحلة بنجاح: ${stageData.name}`,
       userId,
       userName,
       isArchived: false,

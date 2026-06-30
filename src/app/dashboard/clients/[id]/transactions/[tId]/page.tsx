@@ -28,7 +28,8 @@ import {
   Info,
   Calculator,
   ShieldAlert,
-  Sparkles
+  Sparkles,
+  XCircle
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where, limit } from 'firebase/firestore';
@@ -103,6 +104,9 @@ export default function TransactionDetailsPage() {
   const [undoStage, setUndoStage] = useState<StageInstance | null>(null);
   const [clearLogsOnUndo, setClearLogsOnUndo] = useState(false);
 
+  // States for Incomplete Stage Warning (Sovereign Centered Dialog)
+  const [incompleteStage, setIncompleteStage] = useState<{ stage: StageInstance, progress: StageProgressResult } | null>(null);
+
   // States for VO
   const [isVOOpen, setIsVOOpen] = useState(false);
 
@@ -114,7 +118,6 @@ export default function TransactionDetailsPage() {
 
   const editAccess = check('projects', 'edit');
 
-  // تعزيز منطق الاسم لضمان ظهور الاسم الفعلي للمستخدم
   const currentUserName = useMemo(() => {
     return globalUser?.username || user?.displayName || user?.email?.split('@')[0] || 'Admin';
   }, [globalUser, user]);
@@ -263,13 +266,23 @@ export default function TransactionDetailsPage() {
     }
   };
 
-  const handleCompleteStage = async (stage: StageInstance) => {
+  const handleCompleteStage = async (stage: StageInstance, force: boolean = false) => {
     if (!transactionService || !user || !stage.id) return;
+    
+    // 1. فحص الإنجاز المحلي قبل الاستدعاء لتجنب الخطأ المباشر (Toast) وفتح الـ Dialog بدلاً منه
+    const progress = stageProgressMap[stage.technicalStageId];
+    if (!force && progress && !progress.canComplete) {
+       setIncompleteStage({ stage, progress });
+       return;
+    }
+
     setProcessingId(stage.id);
     try {
-      await transactionService.completeStage(transactionId, stage.id, user.uid, currentUserName);
+      await transactionService.completeStage(transactionId, stage.id, user.uid, currentUserName, force);
       toast({ title: isRtl ? "تم إنجاز المرحلة بنجاح" : "Stage Completed" });
+      setIncompleteStage(null);
     } catch (e: any) {
+      //Fallback handle error
       toast({ variant: "destructive", title: isRtl ? "تعذر إغلاق المرحلة" : "Cannot Close Stage", description: e.message });
     } finally {
       setProcessingId(null);
@@ -557,6 +570,60 @@ export default function TransactionDetailsPage() {
         </div>
       )}
 
+      {/* Sovereign Centered Warning Dialog for Incomplete Stages */}
+      <AlertDialog open={!!incompleteStage} onOpenChange={(open) => !open && setIncompleteStage(null)}>
+         <AlertDialogContent className="max-w-md rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
+            <div className="bg-rose-600 p-8 text-white text-center space-y-4">
+               <div className="mx-auto h-16 w-16 bg-white/20 rounded-2xl flex items-center justify-center">
+                  <XCircle className="h-10 w-10 text-white" />
+               </div>
+               <div className="space-y-1">
+                  <AlertDialogTitle className="text-xl font-black font-headline">تعذر إغلاق المرحلة</AlertDialogTitle>
+                  <p className="text-xs font-bold text-rose-100 opacity-90">لا يمكن إغلاق المرحلة قبل اكتمال 100% من البنود المرتبطة بها (المرحلة ما زالت تحتوي على كميات غير منفذة).</p>
+               </div>
+            </div>
+            <div className="p-8 space-y-6">
+               <div className="bg-slate-50 p-6 rounded-2xl border-2 border-slate-100 space-y-4 text-start">
+                  <div className="flex justify-between items-center text-[10px] font-black uppercase text-slate-400">
+                     <span>المرحلة المستهدفة:</span>
+                     <span className="text-slate-900">{incompleteStage?.stage.name}</span>
+                  </div>
+                  <div className="space-y-1.5">
+                     <div className="flex justify-between text-[11px] font-black">
+                        <span className="text-slate-500">نسبة الإنجاز الفعلية:</span>
+                        <span className="text-rose-600">{incompleteStage?.progress.progressPercent}%</span>
+                     </div>
+                     <Progress value={incompleteStage?.progress.progressPercent} className="h-2 bg-slate-200" />
+                  </div>
+               </div>
+
+               {isAdmin && (
+                  <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3 text-start animate-in zoom-in-95">
+                     <ShieldAlert className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                     <p className="text-[10px] font-bold text-amber-800 leading-relaxed">
+                        بما أنك تملك صلاحيات "مدير النظام"، يمكنك اختيار **التخطي الإجباري** لإغلاق المرحلة لأسباب استثنائية، مع العلم أن هذا الإجراء سيتم توثيقه في السجل الزمني.
+                     </p>
+                  </div>
+               )}
+            </div>
+            <AlertDialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-3">
+               <AlertDialogCancel className="flex-1 h-14 rounded-2xl border-2 font-bold bg-white">إلغاء</AlertDialogCancel>
+               {isAdmin ? (
+                  <Button 
+                    onClick={() => incompleteStage && handleCompleteStage(incompleteStage.stage, true)}
+                    disabled={!!processingId}
+                    className="flex-[2] h-14 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-black text-sm shadow-xl shadow-amber-200 border-b-4 border-amber-800 transition-all gap-2"
+                  >
+                     {processingId === incompleteStage?.stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <ShieldAlert className="h-4 w-4" />}
+                     تخطي وإغلاق إجباري
+                  </Button>
+               ) : (
+                  <Button onClick={() => setIncompleteStage(null)} className="flex-1 h-14 rounded-2xl bg-slate-900 text-white font-black">حسناً</Button>
+               )}
+            </AlertDialogFooter>
+         </AlertDialogContent>
+      </AlertDialog>
+
       {/* Naming Dialog for linking BOQ */}
       <Dialog open={!!namingTemplate} onOpenChange={(open) => !open && setNamingTemplate(null)}>
          <DialogContent className="rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
@@ -638,7 +705,7 @@ export default function TransactionDetailsPage() {
                     </div>
                     <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? "بند المقايسة" : "BOQ Item"}</Label><Select value={selectedItemId} onValueChange={setSelectedItemId}><SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/30"><SelectValue placeholder="..." /></SelectTrigger><SelectContent className="rounded-2xl border-2 shadow-2xl">{filteredItemsForStage.map(item => (<SelectItem key={item.id} value={item.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50"><div className="flex flex-col text-start"><span>{item.referenceTitle}</span><span className="text-[8px] text-slate-400 font-black uppercase">{item.referenceCode} | Qty: {item.plannedQuantity} {item.unitSymbol}</span></div></SelectItem>))}</SelectContent></Select></div>
                     {!isComplementary && (
-                      <div className="space-y-2 animate-in slide-in-from-top-2"><Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? "الكمية المنفذة" : "Executed Qty"}</Label><div className="relative"><input type="number" value={progressQty || ''} onChange={e => setProgressQty(Number(e.target.value))} className="h-14 w-full rounded-2xl border-2 font-black text-xl text-primary text-center outline-none focus:border-primary/50 transition-all" placeholder="0" /><div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 uppercase">QTY</div></div></div>
+                      <div className="space-y-2 animate-in slide-in-from-top-2"><Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? "الكمية المنفذة" : "Executed Qty"}</Label><div className="relative"><input type="number" value={progressQty || ''} onChange={e => setProgressQty(Number(e.target.value)} className="h-14 w-full rounded-2xl border-2 font-black text-xl text-primary text-center outline-none focus:border-primary/50 transition-all" placeholder="0" /><div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 uppercase">QTY</div></div></div>
                     )}
                     <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? "ملاحظات التنفيذ" : "Field Notes"}</Label><Textarea value={progressNotes} onChange={e => setProgressNotes(e.target.value)} className="min-h-[100px] rounded-2xl border-2 bg-slate-50/30 p-4 text-xs font-bold" placeholder={isRtl ? "اكتب هنا تفاصيل التنفيذ أو حالة الموقع..." : "Enter field details or site status..."} /></div>
                  </>
