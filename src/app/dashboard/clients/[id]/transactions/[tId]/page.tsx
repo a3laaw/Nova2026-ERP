@@ -26,7 +26,8 @@ import {
   Trash2,
   Pencil,
   Info,
-  Calculator
+  Calculator,
+  ShieldAlert
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where, limit } from 'firebase/firestore';
@@ -100,6 +101,10 @@ export default function TransactionDetailsPage() {
 
   const [undoStage, setUndoStage] = useState<StageInstance | null>(null);
   const [clearLogsOnUndo, setClearLogsOnUndo] = useState(false);
+
+  // Emergency Stage States
+  const [isAddStageOpen, setIsAddStageOpen] = useState(false);
+  const [newStageName, setNewStageName] = useState("");
 
   // States for VO
   const [isVOOpen, setIsVOOpen] = useState(false);
@@ -204,6 +209,21 @@ export default function TransactionDetailsPage() {
   }, [boqItems, targetStage]);
 
   // Actions
+  const handleAddManualStage = async () => {
+    if (!transactionService || !user || !newStageName.trim()) return;
+    setProcessingId('adding_stage');
+    try {
+      await transactionService.addManualStage(transactionId, newStageName, user.uid, currentUserName);
+      toast({ title: isRtl ? "تمت إضافة المرحلة بنجاح" : "Manual Stage Added" });
+      setIsAddStageOpen(false);
+      setNewStageName("");
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('error'), description: e.message });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   const handleInitiateLink = (template: BOQTemplate) => {
     setNamingTemplate(template);
     setCustomBOQName(`${template.name} - ${transaction?.transactionNumber || ''}`);
@@ -347,6 +367,14 @@ export default function TransactionDetailsPage() {
            </div>
         </div>
         <div className="flex gap-3">
+           <Button 
+             variant="outline"
+             onClick={() => setIsAddStageOpen(true)}
+             className="h-11 px-5 rounded-xl border-2 font-black text-xs gap-2 text-rose-600 border-rose-100 hover:bg-rose-50 shadow-sm"
+           >
+              <ShieldAlert className="h-4 w-4" /> {isRtl ? 'إجراء طارئ: إضافة مرحلة' : 'Emergency: Add Stage'}
+           </Button>
+
            {activeBoq && (
              <div className="flex gap-2">
                 <Button 
@@ -533,6 +561,45 @@ export default function TransactionDetailsPage() {
           </div>
         </div>
       )}
+
+      {/* Emergency Add Stage Dialog */}
+      <Dialog open={isAddStageOpen} onOpenChange={setIsAddStageOpen}>
+         <DialogContent className="rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
+            <div className="bg-rose-50 p-8 text-rose-900 text-start border-b flex items-center gap-4">
+               <div className="h-12 w-12 bg-rose-100 rounded-2xl flex items-center justify-center text-rose-600 shadow-inner">
+                  <ShieldAlert className="h-6 w-6" />
+               </div>
+               <div>
+                  <DialogTitle className="text-2xl font-black font-headline">{isRtl ? 'حقن مرحلة طارئة' : 'Emergency Stage Injection'}</DialogTitle>
+                  <p className="text-[10px] font-bold text-rose-600/70 uppercase tracking-widest">{isRtl ? 'إضافة مسار فني خارج القالب الأصلي' : 'Manual path extension'}</p>
+               </div>
+            </div>
+            <div className="p-8 space-y-6 text-start">
+               <div className="space-y-3">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'مسمى المرحلة الجديدة' : 'New Stage Name'}</Label>
+                  <Input 
+                    value={newStageName} 
+                    onChange={e => setNewStageName(e.target.value)} 
+                    className="h-14 rounded-2xl border-2 font-black text-lg focus:border-rose-300 bg-slate-50/30"
+                    placeholder={isRtl ? "مثلاً: أعمال إضافية - سرداب" : "e.g. Extra Works - Basement"}
+                  />
+               </div>
+               <div className="p-4 rounded-2xl bg-amber-50 border-2 border-amber-100 flex items-start gap-4">
+                  <Info className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                  <p className="text-[10px] text-amber-800 font-bold leading-relaxed">
+                     {isRtl ? 'تنبيه: سيتم إضافة هذه المرحلة في نهاية الجدول الزمني للمشروع، وستكون متاحة فوراً لربط بنود الأوامر التغييرية بها.' : 'Note: This stage will be added to the end of the timeline and available for VO mapping.'}
+                  </p>
+               </div>
+            </div>
+            <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-3">
+               <Button variant="outline" onClick={() => setIsAddStageOpen(false)} className="flex-1 h-14 rounded-2xl border-2 font-bold bg-white">إلغاء</Button>
+               <Button onClick={handleAddManualStage} disabled={processingId === 'adding_stage' || !newStageName.trim()} className="flex-[2] h-14 rounded-2xl bg-rose-600 text-white font-black text-lg shadow-xl shadow-rose-200 border-b-8 border-rose-800 hover:bg-rose-700 gap-2">
+                  {processingId === 'adding_stage' ? <Loader2 className="animate-spin h-5 w-5" /> : <Plus className="h-5 w-5" />}
+                  {isRtl ? 'تأكيد الإضافة' : 'Confirm Addition'}
+               </Button>
+            </DialogFooter>
+         </DialogContent>
+      </Dialog>
 
       {/* Naming Dialog for linking BOQ */}
       <Dialog open={!!namingTemplate} onOpenChange={(open) => !open && setNamingTemplate(null)}>

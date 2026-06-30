@@ -14,7 +14,9 @@ import {
   updateDoc,
   addDoc,
   deleteDoc,
-  where
+  where,
+  limit,
+  setDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { Transaction, TransactionTimelineEvent, StageInstance } from '@/types/transaction';
@@ -133,6 +135,65 @@ export class TransactionService {
 
     await batch.commit();
     return transactionId;
+  }
+
+  /**
+   * إضافة مرحلة طارئة يدوياً للمعاملة (Emergency Stage Injection)
+   */
+  async addManualStage(transactionId: string, name: string, userId: string, userName: string) {
+    ensureActionPermission(this.permissions, 'projects:edit');
+    
+    const transRef = doc(this.db, paths.transactions(this.companyId), transactionId);
+    const transSnap = await getDoc(transRef);
+    if (!transSnap.exists()) throw new Error('TRANSACTION_NOT_FOUND');
+    const transData = transSnap.data();
+
+    // جلب آخر ترتيب لتكون المرحلة الجديدة في النهاية
+    const stagesRef = collection(this.db, paths.transactionStages(this.companyId, transactionId));
+    const q = query(stagesRef, orderBy('order', 'desc'), limit(1));
+    const snap = await getDocs(q);
+    const lastOrder = snap.empty ? -1 : (snap.docs[0].data().order || 0);
+
+    const newInstanceRef = doc(stagesRef);
+    const stageData: StageInstance = {
+      transactionId,
+      technicalStageId: 'manual_' + newInstanceRef.id, // معرف فريد للمراحل اليدوية
+      code: 'MANUAL',
+      name,
+      description: 'مرحلة طارئة مضافة يدوياً لاستيعاب أعمال مستجدة',
+      order: lastOrder + 1,
+      isNumeric: false,
+      numericTarget: 0,
+      currentCount: 0,
+      isTimed: false,
+      timeTargetDays: 0,
+      isRequired: true,
+      isEditable: true,
+      nextStageIds: [],
+      status: 'pending',
+      activityTypeId: transData.activityTypeId,
+      serviceId: transData.serviceId,
+      subServiceId: transData.subServiceId,
+      companyId: this.companyId,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+
+    await setDoc(newInstanceRef, stageData);
+
+    // توثيق الحدث في السجل الزمني
+    const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
+    await addDoc(timelineRef, {
+      transactionId,
+      type: 'system',
+      content: `إجراء طارئ: تمت إضافة مرحلة فنية جديدة للمسار باسم "${name}"`,
+      userId,
+      userName,
+      companyId: this.companyId,
+      createdAt: serverTimestamp()
+    });
+
+    return newInstanceRef.id;
   }
 
   async startStage(transactionId: string, stageId: string, userId: string, userName: string) {
