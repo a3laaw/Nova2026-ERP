@@ -116,6 +116,7 @@ export interface BOQ extends BaseDocument {
  */
 export type BOQVariationStatus = 'draft' | 'approved' | 'cancelled';
 export type VariationType = 'increase_quantity' | 'decrease_quantity' | 'new_item' | 'omit_item';
+export type VOStageMode = 'existing_stage' | 'new_local_stage';
 
 export interface BOQVariation extends BaseReference {
   id: string;
@@ -130,6 +131,10 @@ export interface BOQVariation extends BaseReference {
   updatedBy?: string;
   approvedBy?: string;
   approvedAt?: any;
+  // حقول السياق لتسهيل الحقن
+  activityTypeId?: string;
+  serviceId?: string;
+  subServiceId?: string;
 }
 
 export interface BOQVariationItem extends BaseReference {
@@ -137,7 +142,7 @@ export interface BOQVariationItem extends BaseReference {
   variationId: string;
   sourceBoqItemId?: string;     // إذا كان تعديلاً على بند موجود
   boqReferenceNodeId?: string;  // إذا كان بنداً مستجداً من الشجرة
-  technicalStageId?: string;    // المرحلة الفنية المرتبطة بهذا التغيير (ضرورية للحقن الميداني)
+  technicalStageId?: string;    // المرحلة الفنية المرتبطة (موجودة)
   type: VariationType;
   description: string;
   unitName?: string;
@@ -147,4 +152,10 @@ export interface BOQVariationItem extends BaseReference {
   rate: number;
   total: number;                 // (quantityDelta * rate)
   reason?: string;
+
+  // حقول المرحلة المحلية الطارئة (Deferred Creation)
+  stageMode?: VOStageMode;
+  localStageName?: string;
+  localStageCode?: string;
+  insertAfterStageId?: string;   // المرحلة التي يتم إدراج المرحلة الجديدة بعدها
 }

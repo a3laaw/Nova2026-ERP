@@ -14,7 +14,8 @@ import {
   addDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
-import { BOQVariation, BOQVariationItem, BOQVariationStatus, BOQItem } from '@/types/documents';
+import { BOQVariation, BOQVariationItem, BOQVariationStatus, BOQItem, BOQ } from '@/types/documents';
+import { StageInstance } from '@/types/transaction';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { ensureActionPermission } from '@/lib/permissions';
@@ -41,6 +42,11 @@ export class VariationService {
     
     ensureActionPermission(this.permissions, 'projects:edit');
 
+    // جلب بيانات المقايسة للحصول على سياق المسار الفني
+    const boqRef = doc(this.db, paths.boqs(this.companyId), boqId);
+    const boqSnap = await getDoc(boqRef);
+    const boqData = boqSnap.exists() ? boqSnap.data() as BOQ : null;
+
     const batch = writeBatch(this.db);
     const variationRef = doc(collection(this.db, paths.boqVariations(this.companyId, boqId)));
     const voId = variationRef.id;
@@ -59,7 +65,10 @@ export class VariationService {
       companyId: this.companyId,
       createdBy: userId,
       createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
+      activityTypeId: boqData?.activityTypeId,
+      serviceId: boqData?.serviceId,
+      subServiceId: boqData?.subServiceId
     };
 
     batch.set(variationRef, variationData);
@@ -89,7 +98,7 @@ export class VariationService {
 
   /**
    * اعتماد الأمر التغييري وتعديل الواقع الميداني (The Sovereign Engine)
-   * يعالج الحالات الأربع ويقوم بإعادة فتح المراحل إذا لزم الأمر.
+   * يعالج الحالات الأربع ويقوم بإعادة فتح المراحل أو حقن مراحل محلية جديدة.
    */
   async approveVariation(boqId: string, voId: string, transactionId: string, userId: string, userName: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
@@ -98,20 +107,77 @@ export class VariationService {
     const voItemsSnap = await getDocs(collection(this.db, paths.boqVariationItems(this.companyId, boqId, voId)));
     const voSnap = await getDoc(voRef);
 
-    if (!voSnap.exists() || voSnap.data().status !== 'draft') throw new Error('VO_NOT_READY: هذا الأمر التغييري غير جاهز للاعتماد أو تم اعتماده مسبقاً.');
+    if (!voSnap.exists() || voSnap.data().status !== 'draft') {
+      throw new Error('VO_NOT_READY: هذا الأمر التغييري غير جاهز للاعتماد أو تم اعتماده مسبقاً.');
+    }
     const voData = voSnap.data() as BOQVariation;
 
     const batch = writeBatch(this.db);
     const boqRef = doc(this.db, paths.boqs(this.companyId), boqId);
     
-    // تتبع المراحل الفنية التي قد تحتاج لإعادة فتح (Re-opening)
+    // جلب المراحل الحالية للمعاملة للتعامل مع الترتيب والحقن
+    const stagesColl = collection(this.db, paths.transactionStages(this.companyId, transactionId));
+    const stagesSnap = await getDocs(query(stagesColl, orderBy('order', 'asc')));
+    let currentStages = stagesSnap.docs.map(d => ({ id: d.id, ...d.data() } as StageInstance));
+
     const stagesToReopen = new Set<string>();
 
     for (const itemDoc of voItemsSnap.docs) {
       const vItem = itemDoc.data() as BOQVariationItem;
-      
-      // تحقق من البيانات الأساسية للحقن
       if (!vItem.description) continue;
+
+      let targetTechnicalStageId = vItem.technicalStageId || '';
+
+      // الحالة: حقن مرحلة محلية جديدة (Deferred Injection)
+      if (vItem.type === 'new_item' && vItem.stageMode === 'new_local_stage' && vItem.localStageName) {
+        const afterStage = currentStages.find(s => s.id === vItem.insertAfterStageId);
+        const insertAtOrder = (afterStage?.order !== undefined) ? afterStage.order + 1 : currentStages.length;
+        
+        const newStageRef = doc(stagesColl);
+        targetTechnicalStageId = `manual_${newStageRef.id}`;
+        
+        const newStageData: StageInstance = {
+          id: newStageRef.id,
+          transactionId,
+          technicalStageId: targetTechnicalStageId,
+          code: vItem.localStageCode || `MANUAL_${(insertAtOrder + 1).toString().padStart(2, '0')}`,
+          name: vItem.localStageName,
+          description: vItem.localStageNotes || 'مرحلة طارئة محقونة من أمر تغييري',
+          order: insertAtOrder,
+          isNumeric: false,
+          numericTarget: 0,
+          currentCount: 0,
+          isTimed: false,
+          timeTargetDays: 0,
+          isRequired: true,
+          isEditable: true,
+          nextStageIds: [],
+          status: 'pending',
+          isTemporary: true,
+          createdFromVO: true,
+          originType: 'temporary_vo',
+          companyId: this.companyId,
+          activityTypeId: voData.activityTypeId || '',
+          serviceId: voData.serviceId || '',
+          subServiceId: voData.subServiceId || '',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        };
+
+        batch.set(newStageRef, newStageData);
+
+        // إزاحة المراحل اللاحقة
+        currentStages.forEach(s => {
+          if (s.order >= insertAtOrder) {
+            s.order += 1;
+            batch.update(doc(this.db, stagesColl.path, s.id!), { order: s.order, updatedAt: serverTimestamp() });
+          }
+        });
+
+        // تحديث القائمة المحلية للدورة القادمة إذا لزم الأمر
+        currentStages.push(newStageData);
+        currentStages.sort((a, b) => a.order - b.order);
+      }
 
       // الحالة 1 و 2 و 4: تعديل بند موجود
       if (vItem.type !== 'new_item' && vItem.sourceBoqItemId) {
@@ -130,19 +196,14 @@ export class VariationService {
 
           // منطق إعادة فتح المرحلة الذكي
           if (newPlanned > (currentItem.executedQuantity || 0)) {
-            if (vItem.technicalStageId) {
-              stagesToReopen.add(vItem.technicalStageId);
-            } else if (currentItem.technicalStageIds && currentItem.technicalStageIds.length > 0) {
-              currentItem.technicalStageIds.forEach(sid => stagesToReopen.add(sid));
-            } else if (currentItem.technicalStageId) {
-              stagesToReopen.add(currentItem.technicalStageId);
-            }
+            const stageToOpen = vItem.technicalStageId || currentItem.technicalStageId;
+            if (stageToOpen) stagesToReopen.add(stageToOpen);
           }
         }
       } 
       // الحالة 3: بند جديد تماماً
       else if (vItem.type === 'new_item') {
-        if (!vItem.technicalStageId) {
+        if (!targetTechnicalStageId) {
           throw new Error(`MISSING_STAGE: البند المستجد "${vItem.description}" لا يحتوي على مرحلة فنية مرتبطة.`);
         }
 
@@ -159,8 +220,8 @@ export class VariationService {
           estimatedRate: vItem.rate,
           unitName: vItem.unitName || '',
           unitSymbol: vItem.unitSymbol || '',
-          technicalStageId: vItem.technicalStageId,
-          technicalStageIds: [vItem.technicalStageId],
+          technicalStageId: targetTechnicalStageId,
+          technicalStageIds: [targetTechnicalStageId],
           companyId: this.companyId,
           order: 999,
           ancestorIds: [],
@@ -169,19 +230,15 @@ export class VariationService {
           updatedAt: serverTimestamp()
         };
         batch.set(newRef, newItem);
-        stagesToReopen.add(newItem.technicalStageId);
+        stagesToReopen.add(targetTechnicalStageId);
       }
     }
 
     // إدارة حالات مراحل العمل (الميدان)
     if (stagesToReopen.size > 0) {
-      const stagesColl = collection(this.db, paths.transactionStages(this.companyId, transactionId));
-      const stagesSnap = await getDocs(stagesColl);
-      
-      stagesSnap.docs.forEach(sDoc => {
-        const sData = sDoc.data();
-        if (stagesToReopen.has(sData.technicalStageId) && sData.status === 'completed') {
-          batch.update(sDoc.ref, { 
+      currentStages.forEach(s => {
+        if (stagesToReopen.has(s.technicalStageId) && s.status === 'completed') {
+          batch.update(doc(this.db, stagesColl.path, s.id!), { 
             status: 'in-progress', 
             completedAt: null, 
             completedBy: null,
@@ -201,7 +258,7 @@ export class VariationService {
     batch.set(timelineDoc, {
       transactionId,
       type: 'system',
-      content: `اعتماد الأمر التغييري: ${voData.title}. تم تعديل النطاق الميداني وإعادة فتح المراحل المتأثرة لتمكين تسجيل الزيادة.`,
+      content: `اعتماد الأمر التغييري: ${voData.title}. تم تعديل النطاق الميداني وحقن/تحديث المراحل الفنية المتأثرة.`,
       userId,
       userName,
       companyId: this.companyId,
