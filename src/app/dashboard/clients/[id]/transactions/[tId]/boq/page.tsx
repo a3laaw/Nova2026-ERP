@@ -18,6 +18,7 @@ import { useFirestore, useCollection, useDoc } from '@/firebase';
 import { collection, query, where, doc, collectionGroup } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
+import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { BOQ, BOQItem, BOQItemExecutionEntry, BOQVariation } from '@/types/documents';
 import { Transaction, StageInstance } from '@/types/transaction';
