@@ -197,6 +197,7 @@ export default function TransactionDetailsPage() {
         return;
     }
 
+    // PROTOCOL: Unlock UI before DB await
     setIsOverExecutionOpen(false);
     setIsRecordOpen(false);
 

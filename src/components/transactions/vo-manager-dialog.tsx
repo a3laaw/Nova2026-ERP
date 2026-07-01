@@ -25,7 +25,8 @@ import {
   Info,
   Sparkles,
   AlertTriangle,
-  GitBranch
+  GitBranch,
+  Pencil
 } from "lucide-react";
 import { 
   Select, 
@@ -279,7 +280,6 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                <div className="md:col-span-1 flex justify-end"><Button variant="ghost" size="icon" onClick={() => removeItem(idx)} className="h-11 w-11 text-rose-300"><Trash2 className="h-5 w-5" /></Button></div>
                             </div>
 
-                            {/* السطر الذكي المفقود: الوصف الميداني المخصص */}
                             <div className="md:col-span-12 space-y-1.5 text-start pt-2">
                                <Label className="text-[10px] font-black uppercase text-blue-600 tracking-widest flex items-center gap-2">
                                   <Pencil className="h-3 w-3" /> {isRtl ? 'الوصف الميداني المخصص (للمهندس في الموقع)' : 'Custom Field Description (for Site Engineer)'}
