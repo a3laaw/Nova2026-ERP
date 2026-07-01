@@ -127,6 +127,18 @@ export class VariationService {
 
       let targetTechnicalStageId = vItem.technicalStageId || '';
 
+      // --- التحقق الميداني الصارم: منع حذف بند في مرحلة نشطة ---
+      if (vItem.type === 'omit_item' && vItem.sourceBoqItemId) {
+         const sourceItemSnap = await getDoc(doc(this.db, paths.boqItems(this.companyId, boqId), vItem.sourceBoqItemId));
+         if (sourceItemSnap.exists()) {
+            const sItem = sourceItemSnap.data() as BOQItem;
+            const stage = currentStages.find(s => s.technicalStageId === sItem.technicalStageId);
+            if (stage?.status === 'in-progress') {
+               throw new Error(`STRICT_LOCK: لا يمكن حذف البند "${vItem.description}" لأن مرحلته الفنية قيد التنفيذ حالياً في الموقع.`);
+            }
+         }
+      }
+
       // الحالة: حقن مرحلة محلية جديدة
       if (vItem.type === 'new_item' && vItem.stageMode === 'new_local_stage' && vItem.localStageName) {
         const afterStage = currentStages.find(s => s.id === vItem.insertAfterStageId);

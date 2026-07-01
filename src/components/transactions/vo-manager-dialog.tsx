@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { 
   Calculator, Trash2, Loader2, Save, X, 
-  PlusCircle, AlertTriangle, LayoutGrid,
+  PlusCircle, AlertCircle, LayoutGrid,
   TrendingUp, TrendingDown, Workflow,
   CheckCircle2, Plus, ShieldAlert,
   ArrowRight,
@@ -98,9 +98,32 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
 
   const updateItem = (idx: number, field: keyof BOQVariationItem, val: any) => {
     const newItems = [...items];
-    const item = { ...newItems[idx], [field]: val };
+    const currentItem = newItems[idx];
     
-    // عند اختيار بند موجود من المقايسة (سواء كان أصلياً أو مستجداً من VO سابقة)
+    // الفحص السيادي: منع حذف بنود جاري العمل عليها
+    if ((field === 'sourceBoqItemId' && val) || (field === 'type' && val === 'omit_item')) {
+       const targetId = field === 'sourceBoqItemId' ? val : currentItem.sourceBoqItemId;
+       const targetType = field === 'type' ? val : currentItem.type;
+
+       if (targetId && targetType === 'omit_item') {
+          const source = boqItems.find(i => i.id === targetId);
+          const stage = availableStages.find(s => s.technicalStageId === source?.technicalStageId);
+          
+          if (stage?.status === 'in-progress') {
+             toast({
+               variant: "destructive",
+               title: isRtl ? "إجراء محظور ميدانياً" : "Field Operation Blocked",
+               description: isRtl 
+                 ? "لا يمكن حذف بند في مرحلة نشطة (قيد التنفيذ) حالياً. يرجى إيقاف المرحلة في الموقع أولاً." 
+                 : "Cannot omit an item in a currently active (in-progress) stage. Please stop the site stage first."
+             });
+             return; // إيقاف التحديث
+          }
+       }
+    }
+
+    const item = { ...currentItem, [field]: val };
+    
     if (field === 'sourceBoqItemId' && val) {
       const source = boqItems.find(i => i.id === val);
       if (source) {
@@ -111,14 +134,12 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
         item.sourcePlannedQuantity = source.plannedQuantity || 0;
         item.technicalStageId = source.technicalStageId;
         
-        // التحديث السيادي: إذا كان النوع "حذف بند"، نقوم بتصفير الكمية فور اختيار البند
         if (item.type === 'omit_item') {
            item.quantityDelta = -source.plannedQuantity;
         }
       }
     }
 
-    // عند تغيير نوع الحركة (مثلاً من زيادة إلى حذف بند)
     if (field === 'type' && val === 'omit_item' && item.sourceBoqItemId) {
        const source = boqItems.find(i => i.id === item.sourceBoqItemId);
        if (source) {
@@ -139,15 +160,12 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
        item.technicalStageId = matchingStage ? node.technicalStageId : '';
     }
 
-    // محرك الحسابات المالية اللحظي
     if (field === 'quantityDelta' || field === 'rate' || field === 'type' || field === 'sourceBoqItemId') {
       const type = (field === 'type' ? val : item.type) || 'increase_quantity';
       let q = field === 'quantityDelta' ? Math.abs(val) : Math.abs(item.quantityDelta || 0);
       const r = field === 'rate' ? val : (item.rate || 0);
-      
       const multiplier = (type === 'decrease_quantity' || type === 'omit_item') ? -1 : 1;
       
-      // في حالة حذف البند، نجبر الكمية على أن تكون مساوية للأصل بالسالب
       if (type === 'omit_item' && item.sourcePlannedQuantity) {
          q = item.sourcePlannedQuantity;
       }
@@ -165,7 +183,6 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
   const handleSave = async () => {
     if (!db || !globalUser?.companyId || !user) return;
     
-    // التحقق من اكتمال البيانات
     if (!title.trim()) {
       toast({ variant: "destructive", title: isRtl ? "عنوان الطلب مطلوب" : "Title required" });
       return;
@@ -226,15 +243,15 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                  <textarea value={reason} onChange={e => setReason(e.target.value)} className="w-full min-h-[150px] rounded-xl border-2 bg-slate-50 p-4 text-xs font-bold focus:bg-white transition-all resize-none shadow-inner" placeholder={isRtl ? "ما هو مبرر هذا التغيير؟" : "Why is this change required?..."} />
               </div>
 
-              <div className="p-6 rounded-[2.5rem] bg-blue-50 border-2 border-blue-100 space-y-3 animate-pulse shadow-sm">
+              <div className="p-6 rounded-[2.5rem] bg-blue-50 border-2 border-blue-100 space-y-3 shadow-sm">
                  <div className="flex items-center gap-2 text-blue-600">
-                    <Info className="h-4 w-4" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">{isRtl ? 'دليل الحذف' : 'Deletion Guide'}</span>
+                    <ShieldAlert className="h-4 w-4" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">{isRtl ? 'قاعدة الأمان الميداني' : 'Field Safety Rule'}</span>
                  </div>
                  <p className="text-[10px] text-blue-800 font-bold leading-relaxed">
                    {isRtl 
-                     ? 'لإلغاء بند (أصلي أو مستجد) تم اعتماده مسبقاً، اختر "حذف بند" ثم حدده من قائمة المقايسة. سيقوم النظام بتصفيره محاسبياً وميدانياً.' 
-                     : 'To cancel an approved item (Original or New), select "Omit Item" then pick it from the list. The system will zero it out financially and in the field.'}
+                     ? 'لا يمكن حذف (Omit) أي بند يقع ضمن مرحلة "قيد التنفيذ" في الموقع. يجب إيقاف المرحلة أو إكمالها أولاً لضمان عدم تضارب سجلات الإنجاز.' 
+                     : 'Items in an "In-Progress" stage cannot be omitted. Please stop or complete the stage first to maintain log integrity.'}
                  </p>
               </div>
            </div>
@@ -284,14 +301,16 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                           {boqItems.map(i => {
                                             const isVOItem = i.referenceCode?.startsWith('VO-');
                                             const stage = availableStages.find(s => s.technicalStageId === i.technicalStageId);
+                                            const isInProgress = stage?.status === 'in-progress';
                                             
                                             return (
-                                              <SelectItem key={i.id} value={i.id!} className="font-bold text-[10px] py-4 border-b last:border-0 border-slate-50">
+                                              <SelectItem key={i.id} value={i.id!} disabled={item.type === 'omit_item' && isInProgress} className="font-bold text-[10px] py-4 border-b last:border-0 border-slate-50">
                                                 <div className="flex flex-col text-start gap-1.5">
                                                    <div className="flex items-center justify-between">
                                                       <div className="flex items-center gap-2">
                                                          <span className="text-base font-black text-slate-800">{i.referenceTitle}</span>
                                                          {isVOItem && <Badge className="bg-blue-600 text-white border-0 text-[7px] font-black h-4 px-2 uppercase shadow-sm">VO ITEM</Badge>}
+                                                         {isInProgress && <Badge className="bg-amber-100 text-amber-700 border-0 text-[7px] font-black h-4 px-2 uppercase">ACTIVE IN FIELD</Badge>}
                                                       </div>
                                                       <span className="font-mono text-primary/40 text-[9px] font-black">#{i.referenceCode}</span>
                                                    </div>
@@ -308,15 +327,6 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                                             <Workflow className="h-2.5 w-2.5" /> {stage?.name || '---'}
                                                          </span>
                                                       </div>
-                                                      {i.createdAt && (
-                                                        <>
-                                                         <div className="w-[1px] h-4 bg-slate-200" />
-                                                         <div className="flex flex-col">
-                                                            <span className="text-[7px] font-black text-slate-400 uppercase">Added On</span>
-                                                            <span className="text-[10px] font-black text-slate-500 font-mono">{i.createdAt.toDate().toLocaleDateString()}</span>
-                                                         </div>
-                                                        </>
-                                                      )}
                                                    </div>
                                                 </div>
                                               </SelectItem>
@@ -375,9 +385,6 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                      {(item.total || 0) >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                                      {item.description || '...'}
                                   </div>
-                                  <Badge variant="outline" className="h-7 border-2 border-primary/20 bg-white font-black text-[9px] px-3 uppercase">
-                                     {item.unitName} ({item.unitSymbol || '-'})
-                                  </Badge>
                                </div>
 
                                <div className="flex items-center gap-3">
@@ -391,54 +398,6 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                   </Select>
                                </div>
                             </div>
-
-                            {item.stageMode === 'new_local_stage' && (
-                               <div className="p-6 bg-blue-50/50 rounded-[2rem] border-2 border-blue-100 animate-in slide-in-from-top-2 space-y-4">
-                                  <div className="flex items-center gap-3 text-blue-600 mb-2">
-                                     <PlusCircle className="h-4 w-4" />
-                                     <h5 className="font-black text-[10px] uppercase tracking-widest">{isRtl ? 'تعريف المسار الميداني الجديد' : 'Define New Field Path'}</h5>
-                                  </div>
-                                  
-                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                     <div className="space-y-1.5">
-                                        <Label className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'اسم المرحلة' : 'Stage Name'}</Label>
-                                        <Input 
-                                          value={item.localStageName || ''} 
-                                          onChange={e => updateItem(idx, 'localStageName', e.target.value)}
-                                          className="h-10 rounded-xl border-2 bg-white font-bold text-xs"
-                                          placeholder={isRtl ? "مثلاً: أعمال إضافية" : "e.g. Extra Works"}
-                                        />
-                                     </div>
-                                     <div className="space-y-1.5">
-                                        <Label className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'إدراج بعد مرحلة' : 'Insert After'}</Label>
-                                        <Select value={item.insertAfterStageId || ''} onValueChange={v => updateItem(idx, 'insertAfterStageId', v)}>
-                                           <SelectTrigger className="h-10 rounded-xl border-2 bg-white font-bold text-xs"><SelectValue placeholder="..." /></SelectTrigger>
-                                           <SelectContent className="rounded-xl">
-                                              {availableStages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs">{s.name}</SelectItem>)}
-                                           </SelectContent>
-                                        </Select>
-                                     </div>
-                                     <div className="space-y-1.5">
-                                        <Label className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'ملاحظات الحقن' : 'Notes'}</Label>
-                                        <Input 
-                                          value={item.localStageNotes || ''} 
-                                          onChange={e => updateItem(idx, 'localStageNotes', e.target.value)}
-                                          className="h-10 rounded-xl border-2 bg-white text-xs"
-                                        />
-                                     </div>
-                                  </div>
-                               </div>
-                            )}
-
-                            {item.stageMode !== 'new_local_stage' && (
-                               <div className="flex justify-end gap-3 items-center animate-in fade-in">
-                                  <Label className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'اختر المرحلة الفنية:' : 'Select Target Stage:'}</Label>
-                                  <Select value={item.technicalStageId || ''} onValueChange={v => updateItem(idx, 'technicalStageId', v)}>
-                                     <SelectTrigger className="h-9 rounded-lg border-2 font-black bg-white text-[10px] min-w-[180px] shadow-sm"><SelectValue placeholder="..." /></SelectTrigger>
-                                     <SelectContent className="rounded-xl border-0 shadow-2xl">{availableStages.map(s => <SelectItem key={s.id} value={s.technicalStageId} className="font-bold text-[10px]">{s.name}</SelectItem>)}</SelectContent>
-                                  </Select>
-                               </div>
-                            )}
                          </CardContent>
                       </Card>
                     );
