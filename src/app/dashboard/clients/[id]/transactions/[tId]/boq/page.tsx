@@ -14,7 +14,7 @@ import {
   Zap, History, PlusCircle, AlertCircle,
   CheckCircle2, XCircle, Ban, TrendingDown,
   Info, Sparkles, Pencil, Save, ShieldAlert,
-  LayoutGrid
+  LayoutGrid, X, Clock
 } from "lucide-react";
 import { useFirestore, useCollection, useDoc } from '@/firebase';
 import { collection, query, where, doc, collectionGroup } from 'firebase/firestore';
@@ -71,7 +71,7 @@ export default function TransactionBOQProgressPage() {
   const variationsQuery = useMemo(() => companyId && db && activeBoq?.id ? query(collection(db, paths.boqVariations(companyId, activeBoq.id))) : null, [db, companyId, activeBoq]);
   const { data: variations } = useCollection<BOQVariation>(variationsQuery);
 
-  const executionsQuery = useMemo(() => companyId && db ? query(collectionGroup(db, 'executions'), where('companyId', '==', companyId)) : null, [db, companyId]);
+  const executionsQuery = useMemo(() => companyId && db ? query(collection(db, paths.executions(companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
   const { data: rawExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
   const allExecutions = useMemo(() => (rawExecutions || []).filter(e => e.boqId === activeBoq?.id), [rawExecutions, activeBoq]);
 
@@ -88,6 +88,8 @@ export default function TransactionBOQProgressPage() {
   }, [allExecutions, stages]);
 
   const boqTree = useMemo(() => transformToBOQTree(items || []), [items]);
+
+  const pendingVOs = useMemo(() => (variations || []).filter(v => v.status === 'draft'), [variations]);
 
   const financialStats = useMemo(() => {
     const original = activeBoq?.totalAmount || 0;
@@ -126,6 +128,34 @@ export default function TransactionBOQProgressPage() {
       toast({ title: isRtl ? "تمت إضافة البند للمسودة" : "Item Added to Draft" });
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
+    }
+  };
+
+  const handleApproveVO = async (vo: BOQVariation) => {
+    if (!db || !companyId || !user) return;
+    setProcessingVOId(vo.id);
+    try {
+      const service = new VariationService(db, companyId, permissions);
+      await service.approveVariation(activeBoq!.id, vo.id!, transactionId, user.uid, globalUser?.username || 'Admin');
+      toast({ title: isRtl ? "تم اعتماد التعديل بنجاح" : "Variation Approved" });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('error'), description: e.message });
+    } finally {
+      setProcessingVOId(null);
+    }
+  };
+
+  const handleRejectVO = async (vo: BOQVariation) => {
+    if (!db || !companyId || !user) return;
+    setProcessingVOId(vo.id);
+    try {
+      const service = new VariationService(db, companyId, permissions);
+      await service.rejectVariation(activeBoq!.id, vo.id!, transactionId, user.uid, globalUser?.username || 'Admin');
+      toast({ title: isRtl ? "تم رفض التعديل" : "Variation Rejected" });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('error'), description: e.message });
+    } finally {
+      setProcessingVOId(null);
     }
   };
 
@@ -171,6 +201,45 @@ export default function TransactionBOQProgressPage() {
            <Button variant="outline" className="h-11 px-6 rounded-xl font-black text-xs gap-2 border-2"><Printer className="h-4 w-4" /> {isRtl ? 'طباعة' : 'Print'}</Button>
         </div>
       </header>
+
+      {/* منطقة الاعتمادات المعلقة للأوامر التغييرية */}
+      {pendingVOs.length > 0 && isAdmin && (
+        <div className="space-y-3 animate-in slide-in-from-top-4 duration-500">
+           {pendingVOs.map(vo => (
+              <div key={vo.id} className="bg-amber-50 border-2 border-amber-200 p-4 rounded-2xl flex items-center justify-between gap-4 shadow-sm">
+                 <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600">
+                       <Clock className="h-5 w-5 animate-pulse" />
+                    </div>
+                    <div className="text-start">
+                       <h5 className="font-black text-sm text-amber-900">{isRtl ? 'أمر تغييري قيد المراجعة' : 'Pending Variation Order'}</h5>
+                       <p className="text-[10px] font-bold text-amber-700">{vo.title} | {isRtl ? 'تأثير مالي:' : 'Impact:'} {vo.totalAmount.toLocaleString()} KWD</p>
+                    </div>
+                 </div>
+                 <div className="flex gap-2">
+                    <Button 
+                      onClick={() => handleRejectVO(vo)}
+                      disabled={processingVOId === vo.id}
+                      variant="outline" 
+                      size="sm" 
+                      className="h-9 px-4 rounded-xl border-rose-200 text-rose-600 hover:bg-rose-50 font-black text-[10px]"
+                    >
+                       <XCircle className="h-3.5 w-3.5 me-1" /> {isRtl ? 'رفض' : 'Reject'}
+                    </Button>
+                    <Button 
+                      onClick={() => handleApproveVO(vo)}
+                      disabled={processingVOId === vo.id}
+                      size="sm" 
+                      className="h-9 px-6 rounded-xl bg-emerald-600 text-white shadow-lg shadow-emerald-100 font-black text-[10px]"
+                    >
+                       {processingVOId === vo.id ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5 me-1" />}
+                       {isRtl ? 'اعتماد التغيير' : 'Approve'}
+                    </Button>
+                 </div>
+              </div>
+           ))}
+        </div>
+      )}
 
       {activeBoq.status === 'draft' && (
         <div className="bg-amber-50 border-2 border-dashed border-amber-200 p-6 rounded-[2.5rem] flex items-start gap-4 animate-in zoom-in-95">
