@@ -3,7 +3,7 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -34,7 +34,7 @@ import {
   ShieldX
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
-import { collection, query, orderBy, where, limit, doc, addDoc, updateDoc, setDoc } from 'firebase/firestore';
+import { collection, query, orderBy, where, limit, doc, addDoc } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -183,16 +183,21 @@ export default function TransactionDetailsPage() {
   const handleRecordProgress = async (force: boolean = false) => {
     if (!executionService || !user || !targetStage || !selectedItemId) return;
     
-    if (!isComplementary && (progressQty === "" || Number(progressQty) <= 0)) {
+    const qtyInput = isComplementary ? 0 : Number(progressQty);
+
+    if (!isComplementary && (progressQty === "" || qtyInput <= 0)) {
         toast({ variant: "destructive", title: isRtl ? "يرجى إدخال كمية صحيحة" : "Enter valid quantity" });
         return;
     }
 
-    const qtyInput = isComplementary ? 0 : Number(progressQty);
-    if (!force && selectedBOQItemMetrics && qtyInput > selectedBOQItemMetrics.remaining) {
+    if (!force && !isComplementary && selectedBOQItemMetrics && qtyInput > selectedBOQItemMetrics.remaining) {
         setIsOverExecutionOpen(true);
         return;
     }
+
+    // Sovereing Fix: Close dialogs immediately to release the UI before async work
+    if (force) setIsOverExecutionOpen(false);
+    setIsRecordOpen(false);
 
     setLoadingAction('recording');
     try {
@@ -207,14 +212,15 @@ export default function TransactionDetailsPage() {
         targetStage.id!
       );
       toast({ title: isRtl ? "تم تسجيل الإنجاز" : "Progress Logged" });
-      setIsRecordOpen(false);
-      setIsOverExecutionOpen(false);
+      
+      // Clear form states only on success
       setProgressQty(""); 
       setProgressNotes("");
       setSelectedItemId("");
       setIsComplementary(false);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
+      // If error, maybe keep form for retry? (already handled by not clearing)
     } finally {
       setLoadingAction(null);
     }
@@ -542,7 +548,10 @@ export default function TransactionDetailsPage() {
            <AlertDialogFooter className="mt-12 gap-4 flex flex-row">
               <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel>
               <AlertDialogAction 
-                onClick={() => handleRecordProgress(true)}
+                onClick={(e) => {
+                  e.preventDefault(); // Prevents Radix from closing before we are ready
+                  handleRecordProgress(true);
+                }}
                 className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200"
               >
                  {isRtl ? 'نعم، أقر بالتجاوز واحفظ' : 'Confirm Over-Execution'}
