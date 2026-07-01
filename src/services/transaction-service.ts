@@ -34,9 +34,6 @@ export class TransactionService {
     private permissions: string[] = []
   ) {}
 
-  /**
-   * فتح معاملة فنية جديدة.
-   */
   async createTransaction(data: {
     clientId: string;
     clientName: string;
@@ -111,9 +108,6 @@ export class TransactionService {
     return transactionId;
   }
 
-  /**
-   * دالة حقن المسار الفني.
-   */
   async initializeTechnicalPath(transactionId: string, activityId: string, serviceId: string, subServiceId: string, userId: string) {
     const existingStagesSnap = await getDocs(query(
       collection(this.db, paths.transactionStages(this.companyId, transactionId)), 
@@ -232,8 +226,7 @@ export class TransactionService {
   }
 
   /**
-   * إعادة فتح مرحلة مكتملة (التراجع السيادي)
-   * يقوم بأرشفة سجلات الإنجاز المرتبطة وتوثيق الحدث زمنياً
+   * إعادة فتح مرحلة مكتملة (التراجع السيادي) مع أرشفة شاملة للسرد القديم
    */
   async reopenStage(transactionId: string, stageId: string, userId: string, userName: string, clearLogs: boolean = false) {
     ensureActionPermission(this.permissions, 'projects:edit');
@@ -257,7 +250,7 @@ export class TransactionService {
       updatedBy: userId
     });
 
-    // 2. توثيق الحدث مع حفظ بصمة الوقت السابقة
+    // 2. توثيق الحدث السيادي
     const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
     batch.set(timelineRef, {
       transactionId,
@@ -274,9 +267,20 @@ export class TransactionService {
       createdAt: serverTimestamp()
     });
 
+    // 3. أرشفة سجلات التايم لاين المرتبطة بهذه المرحلة (التقارير الميدانية القديمة)
+    if (clearLogs) {
+      const timelineColl = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
+      const timelineSnap = await getDocs(query(timelineColl, where('stageId', '==', stageId)));
+      timelineSnap.docs.forEach(d => {
+        if (d.data().isArchived !== true) {
+          batch.update(d.ref, { isArchived: true, archivedAt: serverTimestamp() });
+        }
+      });
+    }
+
     await batch.commit();
 
-    // 3. أرشفة سجلات الإنجاز والتعليقات إذا طلب المستخدم
+    // 4. أرشفة سجلات الإنجاز والتعليقات
     if (clearLogs) {
       const boqExecService = new BOQExecutionService(this.db, this.companyId, this.permissions);
       await boqExecService.archiveStageExecutions(transactionId, stageData.technicalStageId, true);

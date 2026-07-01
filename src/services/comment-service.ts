@@ -9,7 +9,9 @@ import {
   deleteDoc, 
   serverTimestamp, 
   getDocs,
-  writeBatch
+  writeBatch,
+  query,
+  where
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { TransactionComment, CommentType } from '@/types/transaction';
@@ -59,22 +61,20 @@ export class CommentService {
   }
 
   /**
-   * أرشفة تعليقات مرحلة محددة عند التراجع
+   * أرشفة تعليقات مرحلة محددة عند التراجع السيادي
    */
   async archiveStageComments(transactionId: string, stageInstanceId: string) {
     const path = paths.transactionComments(this.companyId, transactionId);
+    const q = query(collection(this.db, path), where('stageInstanceId', '==', stageInstanceId));
     
-    // جلب كافة التعليقات لهذا المعاملة
-    const snap = await getDocs(collection(this.db, path));
+    const snap = await getDocs(q);
     if (snap.empty) return;
 
     const batch = writeBatch(this.db);
     let count = 0;
 
     snap.docs.forEach(d => {
-      const data = d.data();
-      // فلترة برمجية لضمان الدقة وتجنب مشاكل الفهارس
-      if (data.stageInstanceId === stageInstanceId && data.isArchived !== true) {
+      if (d.data().isArchived !== true) {
         batch.update(d.ref, { 
           isArchived: true, 
           archivedAt: serverTimestamp(),
