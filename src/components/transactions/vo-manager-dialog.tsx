@@ -279,6 +279,20 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                <div className="md:col-span-1 flex justify-end"><Button variant="ghost" size="icon" onClick={() => removeItem(idx)} className="h-11 w-11 text-rose-300"><Trash2 className="h-5 w-5" /></Button></div>
                             </div>
 
+                            {/* السطر الذكي المفقود: الوصف الميداني المخصص */}
+                            <div className="md:col-span-12 space-y-1.5 text-start pt-2">
+                               <Label className="text-[10px] font-black uppercase text-blue-600 tracking-widest flex items-center gap-2">
+                                  <Pencil className="h-3 w-3" /> {isRtl ? 'الوصف الميداني المخصص (للمهندس في الموقع)' : 'Custom Field Description (for Site Engineer)'}
+                               </Label>
+                               <Input 
+                                 value={item.description} 
+                                 onChange={e => updateItem(idx, 'description', e.target.value)}
+                                 className="h-11 rounded-xl border-2 border-blue-100 bg-blue-50/20 font-black text-xs text-slate-700 focus:bg-white transition-all shadow-inner"
+                                 placeholder={isRtl ? "مثال: تدعيم الجهه الشمالية المقابلة للجار..." : "e.g. North Side Shoring..."}
+                               />
+                               <p className="text-[9px] text-slate-400 font-bold italic">{isRtl ? 'سيظهر هذا الاسم في تطبيق المهندس وفي سجلات التايم لاين.' : 'This name will appear in the engineer app and timeline logs.'}</p>
+                            </div>
+
                             <div className="pt-6 border-t border-dashed space-y-4">
                                <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                                   <div className="flex items-center gap-3">
