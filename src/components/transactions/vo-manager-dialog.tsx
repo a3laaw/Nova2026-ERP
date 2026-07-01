@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -22,7 +23,8 @@ import {
   Settings2,
   Clock,
   Info,
-  Sparkles
+  Sparkles,
+  ShieldX
 } from "lucide-react";
 import { 
   Select, 
@@ -100,7 +102,6 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
     const newItems = [...items];
     const currentItem = newItems[idx];
     
-    // الفحص السيادي: منع حذف بنود جاري العمل عليها
     if ((field === 'sourceBoqItemId' && val) || (field === 'type' && val === 'omit_item')) {
        const targetId = field === 'sourceBoqItemId' ? val : currentItem.sourceBoqItemId;
        const targetType = field === 'type' ? val : currentItem.type;
@@ -117,7 +118,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                  ? "لا يمكن حذف بند في مرحلة نشطة (قيد التنفيذ) حالياً. يرجى إيقاف المرحلة في الموقع أولاً." 
                  : "Cannot omit an item in a currently active (in-progress) stage. Please stop the site stage first."
              });
-             return; // إيقاف التحديث
+             return; 
           }
        }
     }
@@ -243,6 +244,20 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                  <textarea value={reason} onChange={e => setReason(e.target.value)} className="w-full min-h-[150px] rounded-xl border-2 bg-slate-50 p-4 text-xs font-bold focus:bg-white transition-all resize-none shadow-inner" placeholder={isRtl ? "ما هو مبرر هذا التغيير؟" : "Why is this change required?..."} />
               </div>
 
+              {netTotal > 0 && (
+                <div className="p-6 rounded-[2.5rem] bg-orange-50 border-2 border-orange-200 space-y-3 shadow-sm animate-pulse">
+                   <div className="flex items-center gap-2 text-[#e87c24]">
+                      <AlertTriangle className="h-5 w-5" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Sovereign Warning: Budget Increase</span>
+                   </div>
+                   <p className="text-[10px] text-orange-800 font-bold leading-relaxed">
+                     {isRtl 
+                       ? 'تنبيه: هذا التعديل سيؤدي لزيادة ميزانية المشروع. يرجى التأكد من الحصول على موافقة العميل كتابياً قبل الاعتماد النهائي.' 
+                       : 'Note: This variation will increase project budget. Ensure written client approval before final commitment.'}
+                   </p>
+                </div>
+              )}
+
               <div className="p-6 rounded-[2.5rem] bg-blue-50 border-2 border-blue-100 space-y-3 shadow-sm">
                  <div className="flex items-center gap-2 text-blue-600">
                     <ShieldAlert className="h-4 w-4" />
@@ -351,7 +366,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                        type="number" 
                                        readOnly={isOmit}
                                        value={Math.abs(item.quantityDelta || 0)} 
-                                       onChange={e => updateItem(idx, 'quantityDelta', Number(e.target.value))} 
+                                       onChange={e => updateItem(idx, 'quantityDelta', e.target.value === '' ? '' : Number(e.target.value))} 
                                        className={cn("h-11 rounded-xl border-2 font-black text-center text-xs focus:border-primary", isOmit && "bg-slate-50 opacity-50")} 
                                      />
                                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-300 uppercase">{item.unitSymbol}</span>
@@ -361,7 +376,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                <div className="md:col-span-3 space-y-2 text-start">
                                   <Label className="text-[9px] font-black uppercase text-slate-400">Price & Total</Label>
                                   <div className="flex items-center gap-3">
-                                     <Input type="number" step="0.001" value={item.rate} onChange={e => updateItem(idx, 'rate', Number(e.target.value))} className="h-11 rounded-xl border-2 font-black text-emerald-600 text-xs" />
+                                     <Input type="number" step="0.001" value={item.rate} onChange={e => updateItem(idx, 'rate', e.target.value === '' ? '' : Number(e.target.value))} className="h-11 rounded-xl border-2 font-black text-emerald-600 text-xs" placeholder="..." />
                                      <div className="text-end min-w-[70px]"><p className={cn("text-xs font-black", (item.total || 0) >= 0 ? "text-emerald-500" : "text-rose-500")}>{(item.total || 0).toLocaleString()}</p><p className="text-[8px] font-black text-slate-300 uppercase">KWD</p></div>
                                   </div>
                                </div>

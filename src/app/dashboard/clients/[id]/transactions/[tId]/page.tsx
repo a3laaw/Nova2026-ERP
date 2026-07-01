@@ -30,7 +30,8 @@ import {
   ShieldAlert,
   Sparkles,
   XCircle,
-  LayoutGrid
+  LayoutGrid,
+  ShieldX
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, limit, doc, addDoc, updateDoc, setDoc } from 'firebase/firestore';
@@ -100,7 +101,6 @@ export default function TransactionDetailsPage() {
   const [isComplementary, setIsComplementary] = useState(false);
   const [targetStage, setTargetStage] = useState<StageInstance | null>(null);
   const [selectedItemId, setSelectedItemId] = useState("");
-  // FIXED: progressQty starts as empty string to avoid showing 0
   const [progressQty, setProgressQty] = useState<number | "">(""); 
   const [progressNotes, setProgressNotes] = useState("");
 
@@ -113,6 +113,9 @@ export default function TransactionDetailsPage() {
   const [customBOQName, setCustomBOQName] = useState("");
   const [isDeletingBOQ, setIsDeletingBOQ] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  
+  // Over-Execution Sovereign States
+  const [isOverExecutionOpen, setIsOverExecutionOpen] = useState(false);
 
   const editAccess = check('projects', 'edit');
   const currentUserName = useMemo(() => globalUser?.username || user?.displayName || 'Admin', [globalUser, user]);
@@ -139,10 +142,8 @@ export default function TransactionDetailsPage() {
   const executionsQuery = useMemo(() => companyId && db ? query(collection(db, paths.executions(companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
   const { data: allExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
 
-  // Filter out empty temporary stages that have no active work items
   const stages = useMemo(() => {
     if (!rawStages) return [];
-    
     return [...rawStages]
       .filter(s => {
         if (!s.isTemporary) return true;
@@ -180,44 +181,65 @@ export default function TransactionDetailsPage() {
 
   const transactionService = useMemo(() => db && companyId ? new TransactionService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
-  const handleInitiateLink = (template: BOQTemplate) => {
-    setNamingTemplate(template);
-    setCustomBOQName(`${template.name} - ${transaction?.transactionNumber || ''}`);
-  };
+  const handleRecordProgress = async (force: boolean = false) => {
+    if (!executionService || !user || !targetStage || !selectedItemId) return;
+    
+    // 1. الأساسيات
+    if (!isComplementary && (progressQty === "" || Number(progressQty) <= 0)) {
+        toast({ variant: "destructive", title: isRtl ? "يرجى إدخال كمية صحيحة" : "Enter valid quantity" });
+        return;
+    }
 
-  const handleConfirmLinkBOQ = async () => {
-    if (!db || !companyId || !user || !transaction || !namingTemplate) return;
-    setProcessingId('linking_boq');
+    // 2. فحص التجاوز الرقابي (Sovereign Guard)
+    const qtyInput = isComplementary ? 0 : Number(progressQty);
+    if (!force && selectedBOQItemMetrics && qtyInput > selectedBOQItemMetrics.remaining) {
+        setIsOverExecutionOpen(true);
+        return;
+    }
+
+    setLoadingAction('recording');
     try {
-      const docService = new DocumentService(db, companyId, permissions);
-      await docService.instantiateBoqFromTemplate(namingTemplate.id!, {
-          transactionId, clientId: transaction.clientId, clientName: transaction.clientName,
-          activityTypeId: transaction.activityTypeId, serviceId: transaction.serviceId,
-          subServiceId: transaction.subServiceId, name: customBOQName || namingTemplate.name
-      }, user.uid, currentUserName);
-      toast({ title: isRtl ? "تم إنشاء المقايسة المعتمدة" : "BOQ Approved & Ready" });
-      setNamingTemplate(null);
+      await executionService.recordBOQItemExecution(
+        activeBoq!.id, 
+        selectedItemId, 
+        targetStage.technicalStageId, 
+        qtyInput, 
+        user.uid, 
+        currentUserName, 
+        progressNotes,
+        targetStage.id!
+      );
+      toast({ title: isRtl ? "تم تسجيل الإنجاز" : "Progress Logged" });
+      setIsRecordOpen(false);
+      setIsOverExecutionOpen(false);
+      setProgressQty(""); 
+      setProgressNotes("");
+      setSelectedItemId("");
+      setIsComplementary(false);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
-      setProcessingId(null);
+      setLoadingAction(null);
     }
   };
 
-  const handleDeleteBOQ = async () => {
-    if (!activeBoq || !db || !companyId || !user) return;
-    setIsDeletingBOQ(true);
-    try {
-      const docService = new DocumentService(db, companyId, permissions);
-      await docService.deleteBOQ(activeBoq.id, transactionId, user.uid, currentUserName);
-      toast({ title: isRtl ? "تم حذف المقايسة وتطهير المسار" : "BOQ Removed & Path Cleared" });
-      setShowDeleteConfirm(false);
-    } catch (e: any) {
-      toast({ variant: "destructive", title: t('error'), description: e.message });
-    } finally {
-      setIsDeletingBOQ(false);
-    }
-  };
+  const selectedBOQItemMetrics = useMemo(() => {
+    if (!selectedItemId || !boqItems) return null;
+    const item = boqItems.find(i => i.id === selectedItemId);
+    if (!item) return null;
+    
+    const executed = (allExecutions || [])
+      .filter(e => e.boqItemId === selectedItemId && e.isArchived !== true)
+      .reduce((sum, e) => sum + (e.quantity || 0), 0);
+
+    return {
+      planned: item.plannedQuantity || 0,
+      executed,
+      remaining: Math.max(0, (item.plannedQuantity || 0) - executed),
+      unit: item.unitSymbol || item.unitName,
+      isExceeded: executed >= (item.plannedQuantity || 0)
+    };
+  }, [selectedItemId, boqItems, allExecutions]);
 
   const handleStartStage = async (stageId: string) => {
     if (!transactionService || !user) return;
@@ -251,57 +273,6 @@ export default function TransactionDetailsPage() {
       setProcessingId(null);
     }
   };
-
-  const handleRecordProgress = async () => {
-    if (!executionService || !user || !targetStage || !selectedItemId) return;
-    
-    // Validate empty inputs
-    if (!isComplementary && (progressQty === "" || Number(progressQty) <= 0)) {
-        toast({ variant: "destructive", title: isRtl ? "يرجى إدخال كمية صحيحة" : "Enter valid quantity" });
-        return;
-    }
-
-    setLoadingAction('recording');
-    try {
-      await executionService.recordBOQItemExecution(
-        activeBoq!.id, 
-        selectedItemId, 
-        targetStage.technicalStageId, 
-        isComplementary ? 0 : Number(progressQty), 
-        user.uid, 
-        currentUserName, 
-        progressNotes,
-        targetStage.id!
-      );
-      toast({ title: isRtl ? "تم تسجيل الإنجاز" : "Progress Logged" });
-      setIsRecordOpen(false);
-      setProgressQty(""); 
-      setProgressNotes("");
-      setSelectedItemId("");
-      setIsComplementary(false);
-    } catch (e: any) {
-      toast({ variant: "destructive", title: t('error'), description: e.message });
-    } finally {
-      setLoadingAction(null);
-    }
-  };
-
-  const selectedBOQItemMetrics = useMemo(() => {
-    if (!selectedItemId || !boqItems) return null;
-    const item = boqItems.find(i => i.id === selectedItemId);
-    if (!item) return null;
-    
-    const executed = (allExecutions || [])
-      .filter(e => e.boqItemId === selectedItemId && e.isArchived !== true)
-      .reduce((sum, e) => sum + (e.quantity || 0), 0);
-
-    return {
-      planned: item.plannedQuantity || 0,
-      executed,
-      remaining: Math.max(0, (item.plannedQuantity || 0) - executed),
-      unit: item.unitSymbol || item.unitName
-    };
-  }, [selectedItemId, boqItems, allExecutions]);
 
   if (transLoading || stagesLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>;
 
@@ -339,7 +310,10 @@ export default function TransactionDetailsPage() {
                </div>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {availableTemplates?.map(temp => (
-                    <Card key={temp.id} className="border-2 hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer rounded-3xl p-6 text-start group" onClick={() => handleInitiateLink(temp)}>
+                    <Card key={temp.id} className="border-2 hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer rounded-3xl p-6 text-start group" onClick={() => {
+                        setNamingTemplate(temp);
+                        setCustomBOQName(`${temp.name} - ${transaction?.transactionNumber || ''}`);
+                    }}>
                        <div className="flex items-center justify-between mb-4">
                           <Badge variant="outline" className="font-black text-[9px] px-3">{temp.code}</Badge>
                           <PlusCircle className="h-5 w-5 text-primary" />
@@ -450,6 +424,17 @@ export default function TransactionDetailsPage() {
                   </div>
                )}
 
+               {selectedBOQItemMetrics?.isExceeded && (
+                  <div className="p-4 bg-rose-50 border-2 border-rose-100 rounded-xl flex items-start gap-3 text-rose-800 animate-pulse">
+                     <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
+                     <div className="text-[10px] font-black uppercase leading-relaxed">
+                        {isRtl 
+                          ? 'تنبيه: لقد تم إنجاز الكمية المخططة لهذا البند بالكامل (100%). أي تسجيل إضافي سيخلق انحرافاً في الميزانية.' 
+                          : 'Warning: Planned quantity for this item is fully executed (100%). Further logs will create a budget variance.'}
+                     </div>
+                  </div>
+               )}
+
                <div className="space-y-5 pt-2">
                   <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border">
                      <div className="space-y-0.5">
@@ -468,11 +453,17 @@ export default function TransactionDetailsPage() {
                             step="0.01" 
                             value={progressQty} 
                             onChange={e => setProgressQty(e.target.value === '' ? '' : Number(e.target.value))} 
-                            className="h-14 rounded-xl border-2 font-black text-2xl text-center shadow-inner" 
+                            className={cn(
+                                "h-14 rounded-xl border-2 font-black text-2xl text-center shadow-inner",
+                                selectedBOQItemMetrics && Number(progressQty) > selectedBOQItemMetrics.remaining ? "border-rose-500 text-rose-600 bg-rose-50" : "border-slate-200"
+                            )} 
                             placeholder="..."
                           />
                           <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-300 uppercase">{selectedBOQItemMetrics?.unit}</div>
                        </div>
+                       {selectedBOQItemMetrics && Number(progressQty) > selectedBOQItemMetrics.remaining && (
+                          <p className="text-[9px] font-black text-rose-600 uppercase text-center mt-1">Sovereign Warning: Over-Execution Detected</p>
+                       )}
                     </div>
                   )}
 
@@ -485,13 +476,43 @@ export default function TransactionDetailsPage() {
 
             <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-3">
                <Button variant="outline" onClick={() => setIsRecordOpen(false)} className="flex-1 h-12 rounded-xl font-bold">إلغاء</Button>
-               <Button onClick={handleRecordProgress} disabled={loadingAction === 'recording' || (!isComplementary && (progressQty === "" || Number(progressQty) <= 0)) || !selectedItemId} className="flex-[2] h-12 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 transition-all gap-2 border-b-4 border-orange-700">
+               <Button 
+                onClick={() => handleRecordProgress()} 
+                disabled={loadingAction === 'recording' || (!isComplementary && (progressQty === "" || Number(progressQty) <= 0)) || !selectedItemId} 
+                className="flex-[2] h-12 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 transition-all gap-2 border-b-4 border-orange-700"
+               >
                   {loadingAction === 'recording' ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
                   {isRtl ? 'حفظ السجل' : 'Log Now'}
                </Button>
             </DialogFooter>
          </DialogContent>
       </Dialog>
+
+      {/* Exceptional Over-Execution Sovereign Guard */}
+      <AlertDialog open={isOverExecutionOpen} onOpenChange={setIsOverExecutionOpen}>
+        <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white" dir={dir}>
+           <AlertDialogHeader>
+              <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50">
+                 <ShieldX className="h-10 w-10" />
+              </div>
+              <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900 leading-tight">تحذير: تجاوز الكمية المخططة</AlertDialogTitle>
+              <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">
+                 {isRtl 
+                   ? `أنت تحاول تسجيل كمية (${progressQty}) تتجاوز الكمية المتبقية المخططة لهذا البند. هذا الإجراء سيؤدي لانحراف مالي في الميزانية (Positive Variance). هل ترغب في الاستمرار كتجاوز استثنائي؟` 
+                   : `You are recording a quantity (${progressQty}) that exceeds the remaining planned amount. This will create a positive financial variance. Do you want to proceed as an exceptional over-execution?`}
+              </AlertDialogDescription>
+           </AlertDialogHeader>
+           <AlertDialogFooter className="mt-12 gap-4 flex flex-row">
+              <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={() => handleRecordProgress(true)}
+                className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200"
+              >
+                 {isRtl ? 'نعم، أقر بالتجاوز واحفظ' : 'Confirm Over-Execution'}
+              </AlertDialogAction>
+           </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Reopen Stage Dialog (Reversal Protocol) */}
       <Dialog open={!!undoStage} onOpenChange={(open) => !open && setUndoStage(null)}>
@@ -580,7 +601,9 @@ export default function TransactionDetailsPage() {
 
       <Dialog open={!!namingTemplate} onOpenChange={(open) => !open && setNamingTemplate(null)}>
          <DialogContent className="rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
-            <div className="bg-primary/5 p-8 text-slate-900 text-start border-b"><DialogTitle className="text-2xl font-black font-headline flex items-center gap-3"><Pencil className="h-7 w-7 text-primary" />{isRtl ? 'تأكيد مسمى المقايسة' : 'Confirm Name'}</DialogTitle></div>
+            <div className="bg-primary/5 p-8 text-slate-900 text-start border-b">
+               <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3"><Pencil className="h-7 w-7 text-primary" />{isRtl ? 'تأكيد مسمى المقايسة' : 'Confirm Name'}</DialogTitle>
+            </div>
             <div className="p-8 space-y-6 text-start">
                <div className="space-y-3"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المسمى المختار' : 'Target BOQ Name'}</Label><Input value={customBOQName} onChange={e => setCustomBOQName(e.target.value)} className="h-14 rounded-2xl border-2 font-black text-lg focus:border-primary/50 transition-all shadow-inner" /></div>
             </div>
