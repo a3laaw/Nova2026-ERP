@@ -218,6 +218,7 @@ const translations: Record<Language, Record<string, string>> = {
     category: 'الفئة',
     addNewItem: 'إضافة عنصر جديد',
     manageCompanyData: 'إدارة الهوية والبيانات القانونية للمنظمة',
+    unitPrice: 'سعر الوحدة',
   },
   en: {
     dashboard: 'Dashboard',
@@ -425,6 +426,7 @@ const translations: Record<Language, Record<string, string>> = {
     category: 'Category',
     addNewItem: 'Add New Item',
     manageCompanyData: 'Manage organizational identity and legal data',
+    unitPrice: 'Unit Price',
   }
 };
 

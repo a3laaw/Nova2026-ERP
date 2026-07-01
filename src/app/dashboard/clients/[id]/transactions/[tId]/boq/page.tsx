@@ -166,9 +166,55 @@ export default function TransactionBOQProgressPage() {
         const itemPrefix = `${prefix.replace('.0', '')}.${iIdx + 1}`;
         const metrics = executionMetrics[item.id!] || { prev: 0, current: 0 };
         const totalCumulative = metrics.prev + metrics.current;
-        const totalPct = Math.round((totalCumulative / (item.plannedQuantity || 1)) * 100);
+        const planned = item.plannedQuantity || 1;
+        const prevPct = Math.round((metrics.prev / planned) * 100);
+        const currPct = Math.round((metrics.current / planned) * 100);
+        const totalPct = Math.round((totalCumulative / planned) * 100);
+
         return (
-          <TableRow key={item.id} className="hover:bg-primary/[0.02] border-b-slate-100"><TableCell className="font-mono text-[10px] font-bold text-slate-300 ps-8 text-start">{itemPrefix}</TableCell><TableCell className="font-mono text-[10px] font-black text-primary/60 text-start">{item.referenceCode}</TableCell><TableCell className="text-xs font-bold text-slate-700 text-start" style={{ paddingInlineStart: `${(node.depth + 1) * 20 + 16}px` }}>{item.referenceTitle}</TableCell><TableCell className="text-center font-black text-[10px] text-slate-400 uppercase">{item.unitSymbol || '-'}</TableCell><TableCell className="text-center w-[120px] font-mono font-black text-slate-900 text-xs border-x border-slate-100">{isEditingBaseline ? <Input type="number" className="h-8 text-center font-black" value={item.plannedQuantity} onChange={e => handleUpdateItem(item.id!, Number(e.target.value), item.estimatedRate || 0)} /> : item.plannedQuantity}</TableCell><TableCell className="text-center font-mono font-black text-blue-600 text-xs">{metrics.prev}</TableCell><TableCell className="text-center"><div className="h-7 px-3 rounded-full bg-orange-50 text-orange-600 font-black text-xs inline-flex items-center">{metrics.current}</div></TableCell><TableCell className="text-center"><Badge variant="outline" className="font-black text-xs px-4 h-8 bg-slate-900 text-white border-slate-900">{totalCumulative}</Badge></TableCell><TableCell className="text-center font-mono font-bold text-slate-400 text-xs w-[120px]">{isEditingBaseline ? <Input type="number" step="0.001" className="h-8 text-center font-black text-emerald-600" value={item.estimatedRate} onChange={e => handleUpdateItem(item.id!, item.plannedQuantity, Number(e.target.value))} /> : item.estimatedRate?.toLocaleString()}</TableCell><TableCell className="text-end font-mono font-black text-emerald-600 text-xs">{(totalCumulative * (item.estimatedRate || 0)).toLocaleString()}</TableCell><TableCell className="pe-6 w-[120px] text-end"><div className="space-y-1"><div className="flex justify-between text-[8px] font-black uppercase text-slate-400"><span>{totalPct}%</span></div><Progress value={totalPct} className="h-1" /></div></TableCell></TableRow>
+          <TableRow key={item.id} className="hover:bg-primary/[0.02] border-b-slate-100">
+            <TableCell className="font-mono text-[10px] font-bold text-slate-300 ps-8 text-start">{itemPrefix}</TableCell>
+            <TableCell className="font-mono text-[10px] font-black text-primary/60 text-start">{item.referenceCode}</TableCell>
+            <TableCell className="text-xs font-bold text-slate-700 text-start" style={{ paddingInlineStart: `${(node.depth + 1) * 20 + 16}px` }}>{item.referenceTitle}</TableCell>
+            <TableCell className="text-center font-black text-[10px] text-slate-400 uppercase">{item.unitSymbol || '-'}</TableCell>
+            <TableCell className="text-center w-[120px] font-mono font-black text-slate-900 text-xs border-x border-slate-100">
+              {isEditingBaseline ? (
+                <Input type="number" className="h-8 text-center font-black" value={item.plannedQuantity} onChange={e => handleUpdateItem(item.id!, Number(e.target.value), item.estimatedRate || 0)} />
+              ) : item.plannedQuantity}
+            </TableCell>
+            <TableCell className="text-center">
+               <div className="flex flex-col items-center">
+                  <span className="font-mono font-black text-blue-600 text-xs">{metrics.prev}</span>
+                  <span className="text-[8px] font-bold text-slate-400">{prevPct}%</span>
+               </div>
+            </TableCell>
+            <TableCell className="text-center">
+               <div className="flex flex-col items-center">
+                  <div className="h-7 px-3 rounded-full bg-orange-50 text-orange-600 font-black text-xs inline-flex items-center">{metrics.current}</div>
+                  <span className="text-[8px] font-bold text-slate-400 mt-0.5">{currPct}%</span>
+               </div>
+            </TableCell>
+            <TableCell className="text-center">
+               <div className="flex flex-col items-center">
+                  <Badge variant="outline" className="font-black text-xs px-4 h-8 bg-slate-900 text-white border-slate-900">{totalCumulative}</Badge>
+                  <span className="text-[8px] font-black text-slate-500 mt-1">{totalPct}%</span>
+               </div>
+            </TableCell>
+            <TableCell className="text-center font-mono font-bold text-slate-400 text-xs w-[120px]">
+              {isEditingBaseline ? (
+                <Input type="number" step="0.001" className="h-8 text-center font-black text-emerald-600" value={item.estimatedRate} onChange={e => handleUpdateItem(item.id!, item.plannedQuantity, Number(e.target.value))} />
+              ) : item.estimatedRate?.toLocaleString()}
+            </TableCell>
+            <TableCell className="text-end font-mono font-black text-emerald-600 text-xs">{(totalCumulative * (item.estimatedRate || 0)).toLocaleString()}</TableCell>
+            <TableCell className="pe-6 w-[120px] text-end">
+              <div className="space-y-1">
+                <div className="flex justify-between text-[8px] font-black uppercase text-slate-400">
+                  <span>{totalPct}%</span>
+                </div>
+                <Progress value={totalPct} className="h-1" />
+              </div>
+            </TableCell>
+          </TableRow>
         );
       })}
       {node.children.map((child, cIdx) => renderBOQTreeRows(child, `${prefix.replace('.0', '')}.${node.items.length + cIdx + 1}`)) }
@@ -257,7 +303,19 @@ export default function TransactionBOQProgressPage() {
       <div className="flex-1 bg-white rounded-3xl shadow-2xl border border-primary/5 overflow-hidden flex flex-col min-h-[600px]">
          <Table>
            <TableHeader className="bg-slate-900 sticky top-0 z-20">
-             <TableRow className="hover:bg-slate-900 border-0"><TableHead className="ps-6 w-[80px] text-white/40 font-mono text-[10px] text-start">S.No</TableHead><TableHead className="w-[100px] text-white/40 font-mono text-[10px] text-start">Code</TableHead><TableHead className="text-white font-black text-xs text-start">{isRtl ? 'البند' : 'Description'}</TableHead><TableHead className="text-center w-[60px] text-white font-black text-xs">{isRtl ? 'وحدة' : 'Unit'}</TableHead><TableHead className="text-center w-[120px] text-white font-black text-xs bg-white/10">{isRtl ? 'الكمية' : 'Planned'}</TableHead><TableHead className="text-center w-[100px] text-white font-black text-xs">{isRtl ? 'السابق' : 'Prev'}</TableHead><TableHead className="text-center w-[120px] text-white font-black text-xs">{isRtl ? 'الحالي' : 'Current'}</TableHead><TableHead className="text-center w-[120px] text-white font-black text-xs">{isRtl ? 'الإجمالي' : 'Total'}</TableHead><TableHead className="text-center w-[120px] text-white font-black text-xs">{isRtl ? 'الفئة' : 'Rate'}</TableHead><TableHead className="text-end w-[120px] text-white font-black text-xs">{isRtl ? 'القيمة' : 'Value'}</TableHead><TableHead className="pe-6 w-[120px] text-end text-white font-black text-xs">{isRtl ? 'إنجاز %' : 'Progress'}</TableHead></TableRow>
+             <TableRow className="hover:bg-slate-900 border-0">
+               <TableHead className="ps-6 w-[80px] text-white/40 font-mono text-[10px] text-start">S.No</TableHead>
+               <TableHead className="w-[100px] text-white/40 font-mono text-[10px] text-start">Code</TableHead>
+               <TableHead className="text-white font-black text-xs text-start">{isRtl ? 'البند' : 'Description'}</TableHead>
+               <TableHead className="text-center w-[60px] text-white font-black text-xs">{isRtl ? 'وحدة' : 'Unit'}</TableHead>
+               <TableHead className="text-center w-[120px] text-white font-black text-xs bg-white/10">{isRtl ? 'الكمية' : 'Planned'}</TableHead>
+               <TableHead className="text-center w-[100px] text-white font-black text-xs">{isRtl ? 'السابق' : 'Prev'}</TableHead>
+               <TableHead className="text-center w-[120px] text-white font-black text-xs">{isRtl ? 'الحالي' : 'Current'}</TableHead>
+               <TableHead className="text-center w-[120px] text-white font-black text-xs">{isRtl ? 'الإجمالي' : 'Total'}</TableHead>
+               <TableHead className="text-center w-[120px] text-white font-black text-xs">{t('unitPrice')}</TableHead>
+               <TableHead className="text-end w-[120px] text-white font-black text-xs">{isRtl ? 'القيمة' : 'Value'}</TableHead>
+               <TableHead className="pe-6 w-[120px] text-end text-white font-black text-xs">{isRtl ? 'إنجاز %' : 'Progress'}</TableHead>
+             </TableRow>
            </TableHeader>
            <TableBody>{boqTree.length === 0 ? <TableRow><TableCell colSpan={11} className="py-40 text-center opacity-30"><Calculator className="h-12 w-12 mx-auto text-slate-300" /><p className="text-lg font-black">{isRtl ? 'المقايسة فارغة' : 'Empty BOQ'}</p></TableCell></TableRow> : boqTree.map((node, idx) => renderBOQTreeRows(node, (idx + 1).toString() + ".0"))}</TableBody>
          </Table>
