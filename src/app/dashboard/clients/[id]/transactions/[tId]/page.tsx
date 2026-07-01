@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -123,7 +122,11 @@ export default function TransactionDetailsPage() {
   const transRef = useMemo(() => companyId && db ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
   const { data: transaction, loading: transLoading } = useDoc<Transaction>(transRef);
 
-  const stagesQuery = useMemo(() => companyId && db ? query(collection(db, paths.transactionStages(companyId, transactionId)), orderBy('order')) : null, [db, companyId, transactionId]);
+  const stagesQuery = useMemo(() => {
+    if (!companyId || !db) return null;
+    return query(collection(db, paths.transactionStages(companyId, transactionId)), orderBy('order', 'asc'));
+  }, [db, companyId, transactionId]);
+
   const { data: rawStages, loading: stagesLoading } = useCollection<StageInstance>(stagesQuery);
 
   const boqQuery = useMemo(() => companyId && db ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', transactionId), limit(1)) : null, [db, companyId, transactionId]);
@@ -180,29 +183,24 @@ export default function TransactionDetailsPage() {
 
   const transactionService = useMemo(() => db && companyId ? new TransactionService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
-  // ROOT CAUSE FIX: Decouple Dialog state from Async Database operations to prevent UI freeze
   const handleRecordProgress = (force: boolean = false) => {
     if (!executionService || !user || !targetStage || !selectedItemId) return;
     
     const qtyInput = isComplementary ? 0 : Number(progressQty);
 
-    // Initial Validation
     if (!isComplementary && (progressQty === "" || qtyInput <= 0)) {
         toast({ variant: "destructive", title: isRtl ? "يرجى إدخال كمية صحيحة" : "Enter valid quantity" });
         return;
     }
 
-    // Check for over-execution warning
     if (!force && !isComplementary && selectedBOQItemMetrics && qtyInput > selectedBOQItemMetrics.remaining) {
         setIsOverExecutionOpen(true);
         return;
     }
 
-    // 1. DISMISS ALL DIALOGS FIRST: This prevents Radix UI from locking the body/pointer-events
     setIsOverExecutionOpen(false);
     setIsRecordOpen(false);
 
-    // 2. WAIT FOR UI CLEANUP: Give the browser 100ms to remove the overlays and restore pointer events
     setTimeout(async () => {
         setLoadingAction('recording');
         try {
@@ -219,7 +217,6 @@ export default function TransactionDetailsPage() {
             
             toast({ title: isRtl ? "تم تسجيل الإنجاز" : "Progress Logged" });
             
-            // Reset form
             setProgressQty(""); 
             setProgressNotes("");
             setSelectedItemId("");
@@ -228,7 +225,6 @@ export default function TransactionDetailsPage() {
             toast({ variant: "destructive", title: t('error'), description: e.message });
         } finally {
             setLoadingAction(null);
-            // FINAL SAFETY NET: If the UI is still stuck, force unlock it
             if (typeof document !== 'undefined' && document.body.style.pointerEvents === 'none') {
                 document.body.style.pointerEvents = 'auto';
             }
@@ -287,7 +283,7 @@ export default function TransactionDetailsPage() {
     setProcessingId(undoStage.id!);
     try {
       await transactionService.reopenStage(transactionId, undoStage.id!, user.uid, currentUserName, clearLogsOnUndo);
-      toast({ title: isRtl ? "تمت إعادة فتح المرحلة" : "Stage Reopened" });
+      toast({ title: isRtl ? "تمت إعادة فتح المرحلة وتجميد اللاحقة" : "Stage Reopened & Path Receded" });
       setUndoStage(null);
       setActiveTabOverride('time_archive');
     } catch (e: any) {
@@ -413,6 +409,11 @@ export default function TransactionDetailsPage() {
                    {stages.map((stage, idx) => {
                       const boqProgress = stageProgressMap[stage.technicalStageId];
                       const isPreviousCompleted = idx === 0 || stages[idx - 1].status === 'completed';
+                      
+                      // حماية منطقية: لا تظهر أزرار التحكم إلا للمرحلة التي عليها الدور الفعلي
+                      // (إما هي حالياً In-Progress، أو هي Pending وتسبقها مرحلة مكتملة)
+                      const isOperationalFrontier = stage.status === 'in-progress' || (stage.status === 'pending' && isPreviousCompleted);
+
                       return (
                         <Card key={stage.id} onClick={() => setFilterStageId(filterStageId === stage.id ? null : stage.id!)} className={cn("border-0 shadow-lg rounded-[2.5rem] bg-white transition-all overflow-hidden border-s-8 cursor-pointer relative", stage.status === 'completed' ? 'border-s-emerald-500' : stage.status === 'in-progress' ? 'border-s-blue-500 ring-4 ring-blue-500/5' : isPreviousCompleted ? 'border-s-orange-300' : 'border-s-slate-100 opacity-50')}>
                           <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-6">
@@ -428,12 +429,22 @@ export default function TransactionDetailsPage() {
                                    )}
                                 </div>
                              </div>
-                             <div className="flex gap-2 shrink-0 z-10" onClick={e => e.stopPropagation()}>
-                                {stage.status === 'in-progress' && editAccess.can && <Button onClick={() => { setTargetStage(stage); setIsRecordOpen(true); }} variant="outline" className="h-11 px-4 rounded-xl border-2 border-primary/20 text-primary font-black text-xs gap-2"><Hammer className="h-4 w-4" /> {isRtl ? 'تسجيل إنجاز' : 'Log Progress'}</Button>}
-                                {stage.status === 'pending' && isPreviousCompleted && <Button onClick={() => handleStartStage(stage.id!)} disabled={!!processingId} className="h-11 px-6 rounded-xl bg-blue-600 text-white font-black text-xs gap-2">{processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Play className="h-4 w-4" />} {isRtl ? 'بدء' : 'Start'}</Button>}
-                                {stage.status === 'in-progress' && <Button onClick={() => handleCompleteStage(stage)} disabled={!!processingId} className="h-11 px-6 rounded-xl bg-emerald-600 text-white font-black text-xs gap-2">{processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Check className="h-4 w-4" />} {isRtl ? 'إكمال' : 'Complete'}</Button>}
-                                {stage.status === 'completed' && isAdmin && <Button variant="ghost" onClick={() => setUndoStage(stage)} className="h-11 w-11 p-0 rounded-xl text-slate-300 hover:text-rose-500 hover:bg-rose-50"><RotateCcw className="h-5 w-5" /></Button>}
-                             </div>
+                             
+                             {isOperationalFrontier && (
+                                <div className="flex gap-2 shrink-0 z-10 animate-in fade-in zoom-in-95" onClick={e => e.stopPropagation()}>
+                                   {stage.status === 'in-progress' && editAccess.can && <Button onClick={() => { setTargetStage(stage); setIsRecordOpen(true); }} variant="outline" className="h-11 px-4 rounded-xl border-2 border-primary/20 text-primary font-black text-xs gap-2"><Hammer className="h-4 w-4" /> {isRtl ? 'تسجيل إنجاز' : 'Log Progress'}</Button>}
+                                   {stage.status === 'pending' && isPreviousCompleted && <Button onClick={() => handleStartStage(stage.id!)} disabled={!!processingId} className="h-11 px-6 rounded-xl bg-blue-600 text-white font-black text-xs gap-2">{processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Play className="h-4 w-4" />} {isRtl ? 'بدء' : 'Start'}</Button>}
+                                   {stage.status === 'in-progress' && <Button onClick={() => handleCompleteStage(stage)} disabled={!!processingId} className="h-11 px-6 rounded-xl bg-emerald-600 text-white font-black text-xs gap-2">{processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Check className="h-4 w-4" />} {isRtl ? 'إكمال' : 'Complete'}</Button>}
+                                </div>
+                             )}
+
+                             {stage.status === 'completed' && isAdmin && (
+                                <div className="z-10" onClick={e => e.stopPropagation()}>
+                                   <Button variant="ghost" onClick={() => setUndoStage(stage)} className="h-11 w-11 p-0 rounded-xl text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors">
+                                      <RotateCcw className="h-5 w-5" />
+                                   </Button>
+                                </div>
+                             )}
                           </CardContent>
                         </Card>
                       );
@@ -487,17 +498,6 @@ export default function TransactionDetailsPage() {
                   </div>
                )}
 
-               {selectedBOQItemMetrics?.isExceeded && (
-                  <div className="p-4 bg-rose-50 border-2 border-rose-100 rounded-xl flex items-start gap-3 text-rose-800 animate-pulse">
-                     <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
-                     <div className="text-[10px] font-black uppercase leading-relaxed">
-                        {isRtl 
-                          ? 'تنبيه: لقد تم إنجاز الكمية المخططة لهذا البند بالكامل (100%). أي تسجيل إضافي سيخلق انحرافاً في الميزانية.' 
-                          : 'Warning: Planned quantity for this item is fully executed (100%). Further logs will create a budget variance.'}
-                     </div>
-                  </div>
-               )}
-
                <div className="space-y-5 pt-2">
                   <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border">
                      <div className="space-y-0.5">
@@ -524,9 +524,6 @@ export default function TransactionDetailsPage() {
                           />
                           <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-300 uppercase">{selectedBOQItemMetrics?.unit}</div>
                        </div>
-                       {selectedBOQItemMetrics && Number(progressQty) > selectedBOQItemMetrics.remaining && (
-                          <p className="text-[9px] font-black text-rose-600 uppercase text-center mt-1">Sovereign Warning: Over-Execution Detected</p>
-                       )}
                     </div>
                   )}
 
@@ -594,7 +591,7 @@ export default function TransactionDetailsPage() {
                   <div className="space-y-1">
                      <h5 className="font-black text-rose-900 text-sm">{isRtl ? 'إشعار تصفير البيانات' : 'Data Reset Notice'}</h5>
                      <p className="text-[10px] text-rose-700 font-bold leading-relaxed">
-                        {isRtl ? 'إعادة فتح المرحلة سيؤدي لإعادتها لحالة "قيد التنفيذ". يرجى تحديد ما إذا كنت ترغب في إلغاء سجلات الإنجاز الميداني المرتبطة بها والبدء من جديد.' : 'Reopening will return the stage to "In-Progress". Choose if you want to invalidate all current logs and reset quantities.'}
+                        {isRtl ? 'إعادة فتح المرحلة سيؤدي لإعادتها لحالة "قيد التنفيذ" وتجميد أي مراحل لاحقة قيد العمل حالياً. يرجى تحديد ما إذا كنت ترغب في إلغاء سجلات الإنجاز الميداني المرتبطة بها والبدء من جديد.' : 'Reopening will return the stage to "In-Progress" and freeze any subsequent active work. Choose if you want to invalidate all current logs and reset quantities.'}
                      </p>
                   </div>
                </div>
