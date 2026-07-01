@@ -116,10 +116,22 @@ export class TransactionService {
 
   /**
    * دالة حقن المسار الفني (تُستدعى عند اعتماد المقايسة)
+   * تم التحديث لمنع التكرار (Duplicate Guard)
    */
   async initializeTechnicalPath(transactionId: string, activityId: string, serviceId: string, subServiceId: string, userId: string) {
+    // 1. حارس سيادي: التأكد من عدم وجود مراحل مسبقة لمنع التكرار
+    const existingStagesSnap = await getDocs(query(
+      collection(this.db, paths.transactionStages(this.companyId, transactionId)), 
+      limit(1)
+    ));
+    
+    if (!existingStagesSnap.empty) {
+      console.warn("Stages already initialized for transaction:", transactionId);
+      return;
+    }
+
     const stagesPath = paths.technicalStages(this.companyId, activityId, serviceId, subServiceId);
-    const stagesSnap = await getDocs(query(collection(this.db, stagesPath), orderBy('order')));
+    const stagesSnap = await getDocs(query(collection(this.db, stagesPath), orderBy('order', 'asc')));
 
     if (stagesSnap.empty) return;
 

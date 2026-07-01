@@ -82,6 +82,7 @@ export class DocumentService {
     const boqRef = doc(collection(this.db, paths.boqs(this.companyId)));
     const boqId = boqRef.id;
 
+    // البدء كحالة APPROVED تلقائياً كما تم الاتفاق عليه، ولكن للسماح بالتعديل نتركها DRAFT حتى يضغط "اعتماد"
     const boqData: BOQ = {
       id: boqId,
       boqNumber,
@@ -95,7 +96,7 @@ export class DocumentService {
       serviceId: payload.serviceId,
       subServiceId: payload.subServiceId,
       measurementMode: template.measurementMode || 'quantity',
-      status: 'draft', // تبدأ كمسودة للتخصيص
+      status: 'draft', 
       totalAmount: template.baseAmount || 0,
       version: 1,
       companyId: this.companyId,
@@ -211,20 +212,38 @@ export class DocumentService {
     });
   }
 
+  /**
+   * حذف المقايسة وتطهير المسار الفني المرتبط بها تماماً للسماح بإعادة التهيئة بدون تكرار (Duplicates)
+   */
   async deleteBOQ(boqId: string, transactionId?: string, userId?: string, userName?: string) {
     ensureActionPermission(this.permissions, 'projects:delete');
+    
     const boqRef = doc(this.db, paths.boqs(this.companyId), boqId);
     const itemsSnap = await getDocs(collection(this.db, paths.boqItems(this.companyId, boqId)));
     const batch = writeBatch(this.db);
+    
+    // 1. حذف بنود المقايسة والمقايسة نفسها
     itemsSnap.docs.forEach(d => batch.delete(d.ref));
     batch.delete(boqRef);
+    
+    // 2. إذا كانت مرتبطة بمعاملة، نقوم بـ "تطهير" مراحل التنفيذ الميدانية لمنع التكرار (Duplicates)
     if (transactionId) {
+       const stagesSnap = await getDocs(collection(this.db, paths.transactionStages(this.companyId, transactionId)));
+       stagesSnap.docs.forEach(d => batch.delete(d.ref));
+
+       // توثيق عملية التطهير في التايم لاين
        const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
        batch.set(timelineRef, {
-         transactionId, type: 'system', content: `تم حذف المقايسة المربوطة لتصفير العمل والبدء من جديد.`,
-         userId, userName, companyId: this.companyId, createdAt: serverTimestamp()
+         transactionId, 
+         type: 'system', 
+         content: `تنبيه: تم حذف المقايسة المربوطة وتطهير المسار الفني بالكامل لإعادة هندسة المشروع من جديد.`,
+         userId, 
+         userName, 
+         companyId: this.companyId, 
+         createdAt: serverTimestamp()
        });
     }
+    
     await batch.commit();
   }
 }
