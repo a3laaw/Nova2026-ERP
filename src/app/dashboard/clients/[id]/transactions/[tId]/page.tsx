@@ -159,6 +159,13 @@ export default function TransactionDetailsPage() {
     return Math.round((completedCount / stages.length) * 100);
   }, [stages]);
 
+  // --- Sovereign Protocol: Determine the only stage allowed to be reopened (LIFO) ---
+  const maxCompletedOrder = useMemo(() => {
+    if (!stages || stages.length === 0) return -1;
+    const completedOrders = stages.filter(s => s.status === 'completed').map(s => s.order || 0);
+    return completedOrders.length > 0 ? Math.max(...completedOrders) : -1;
+  }, [stages]);
+
   const executionService = useMemo(() => (db && companyId) ? new BOQExecutionService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
   useEffect(() => {
@@ -199,9 +206,8 @@ export default function TransactionDetailsPage() {
     setIsOverExecutionOpen(false);
     setIsRecordOpen(false);
 
-    // ترحيل العملية للدورة التالية لضمان تنظيف الـ DOM
+    // ترحيل العملية للدورة التالية لضمان تنظيف الـ DOM وتحرير Pointer Events
     setTimeout(async () => {
-        // حماية قسرية لتحرير النقر
         if (typeof document !== 'undefined') {
           document.body.style.pointerEvents = 'auto';
         }
@@ -221,7 +227,6 @@ export default function TransactionDetailsPage() {
             
             toast({ title: isRtl ? "تم تسجيل الإنجاز" : "Progress Logged" });
             
-            // تصفير النموذج
             setProgressQty(""); 
             setProgressNotes("");
             setSelectedItemId("");
@@ -282,17 +287,24 @@ export default function TransactionDetailsPage() {
 
   const handleReopenStage = async () => {
     if (!transactionService || !user || !undoStage) return;
-    setProcessingId(undoStage.id!);
-    try {
-      await transactionService.reopenStage(transactionId, undoStage.id!, user.uid, currentUserName, clearLogsOnUndo);
-      toast({ title: isRtl ? "تمت إعادة فتح المرحلة وتجميد اللاحقة" : "Stage Reopened & Path Receded" });
-      setUndoStage(null);
-      setActiveTabOverride('time_archive');
-    } catch (e: any) {
-      toast({ variant: "destructive", title: t('error'), description: e.message });
-    } finally {
-      setProcessingId(null);
-    }
+    
+    // Safety Release
+    setUndoStage(null);
+
+    setTimeout(async () => {
+        if (typeof document !== 'undefined') document.body.style.pointerEvents = 'auto';
+        
+        setProcessingId(undoStage.id!);
+        try {
+          await transactionService.reopenStage(transactionId, undoStage.id!, user.uid, currentUserName, clearLogsOnUndo);
+          toast({ title: isRtl ? "تمت إعادة فتح المرحلة وتجميد اللاحقة" : "Stage Reopened & Path Receded" });
+          setActiveTabOverride('time_archive');
+        } catch (e: any) {
+          toast({ variant: "destructive", title: t('error'), description: e.message });
+        } finally {
+          setProcessingId(null);
+        }
+    }, 100);
   };
 
   const handleDeleteBOQ = async () => {
@@ -438,7 +450,8 @@ export default function TransactionDetailsPage() {
                                 </div>
                              )}
 
-                             {stage.status === 'completed' && isAdmin && (
+                             {/* --- Sovereign LIFO Guard: Only allow undo if it's the LAST completed stage --- */}
+                             {stage.status === 'completed' && isAdmin && (stage.order === maxCompletedOrder) && (
                                 <div className="z-10" onClick={e => e.stopPropagation()}>
                                    <Button variant="ghost" onClick={() => setUndoStage(stage)} className="h-11 w-11 p-0 rounded-xl text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors">
                                       <RotateCcw className="h-5 w-5" />
@@ -606,10 +619,9 @@ export default function TransactionDetailsPage() {
 
                <Button 
                 onClick={handleReopenStage} 
-                disabled={!!processingId} 
                 className="w-full h-16 rounded-2xl bg-rose-600 text-white font-black text-xl shadow-xl shadow-rose-200 border-b-8 border-rose-800 hover:bg-rose-700"
                >
-                  {processingId === undoStage?.id ? <Loader2 className="animate-spin h-6 w-6" /> : <RotateCw className="h-6 w-6" />}
+                  <RotateCw className="h-6 w-6" />
                   {isRtl ? 'تأكيد إعادة الفتح' : 'Confirm Reopen'}
                </Button>
             </div>

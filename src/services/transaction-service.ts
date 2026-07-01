@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -227,7 +228,7 @@ export class TransactionService {
 
   /**
    * إعادة فتح مرحلة مكتملة (التراجع السيادي)
-   * تم التحديث: الآن يقوم آلياً بتعطيل أي مراحل لاحقة كانت قيد التنفيذ لضمان سلامة المسار الفني.
+   * تم التحديث: الآن يقوم آلياً بتعطيل أي مراحل لاحقة كانت قيد التنفيذ أو مكتملة لضمان سلامة المسار الفني.
    */
   async reopenStage(transactionId: string, stageId: string, userId: string, userName: string, clearLogs: boolean = false) {
     ensureActionPermission(this.permissions, 'projects:edit');
@@ -251,15 +252,17 @@ export class TransactionService {
       updatedBy: userId
     });
 
-    // 2. بروتوكول التصحيح التلقائي (Sequential Path Correction):
-    // أي مرحلة ترتيبها (order) أكبر من المرحلة الحالية وهي حالياً In-Progress، يجب إعادتها لـ Pending.
+    // 2. بروتوكول التصحيح التلقائي المتسلسل (Sequential Path Correction):
+    // أي مرحلة ترتيبها (order) أكبر من المرحلة الحالية، يجب إعادتها لـ Pending (سواء كانت مكتملة أو قيد التنفيذ).
     const allStagesSnap = await getDocs(collection(this.db, paths.transactionStages(this.companyId, transactionId)));
     allStagesSnap.docs.forEach(d => {
        const s = d.data() as StageInstance;
-       if (s.order > stageData.order && s.status === 'in-progress') {
+       if (s.order > stageData.order) {
           batch.update(d.ref, {
              status: 'pending',
              startedAt: null,
+             completedAt: null,
+             completedBy: null,
              updatedAt: serverTimestamp()
           });
        }
@@ -272,7 +275,7 @@ export class TransactionService {
       stageId,
       technicalStageId: stageData.technicalStageId,
       type: 'stage_reopen',
-      content: `إجراء إداري: إعادة فتح مرحلة "${stageData.name}" للمراجعة. تم تجميد المراحل اللاحقة لضمان سلامة المسار.`,
+      content: `إجراء إداري: إعادة فتح مرحلة "${stageData.name}" للمراجعة. تم تجميد كافة المراحل اللاحقة لضمان سلامة المسار.`,
       previousStart,
       previousEnd,
       userId,
