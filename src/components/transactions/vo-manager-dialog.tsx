@@ -430,4 +430,3 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
     </Dialog>
   );
 }
-
