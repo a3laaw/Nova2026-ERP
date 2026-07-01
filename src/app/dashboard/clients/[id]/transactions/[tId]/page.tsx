@@ -123,7 +123,7 @@ export default function TransactionDetailsPage() {
   const transRef = useMemo(() => companyId && db ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
   const { data: transaction, loading: transLoading } = useDoc<Transaction>(transRef);
 
-  const stagesQuery = useMemo(() => companyId && db ? query(collection(db, paths.transactionStages(companyId, transactionId)), orderBy('order')) : null, [db, companyId, transactionId]);
+  const stagesQuery = useMemo(() => companyId && db ? query(collection(db, paths.transactionStages(companyId), transactionId)), orderBy('order')) : null, [db, companyId, transactionId]);
   const { data: rawStages, loading: stagesLoading } = useCollection<StageInstance>(stagesQuery);
 
   const boqQuery = useMemo(() => companyId && db ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', transactionId), limit(1)) : null, [db, companyId, transactionId]);
@@ -229,7 +229,7 @@ export default function TransactionDetailsPage() {
         } finally {
             setLoadingAction(null);
             // FINAL SAFETY NET: If the UI is still stuck, force unlock it
-            if (document.body.style.pointerEvents === 'none') {
+            if (typeof document !== 'undefined' && document.body.style.pointerEvents === 'none') {
                 document.body.style.pointerEvents = 'auto';
             }
         }

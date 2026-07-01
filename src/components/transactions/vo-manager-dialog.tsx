@@ -24,7 +24,8 @@ import {
   Clock,
   Info,
   Sparkles,
-  ShieldX
+  ShieldX,
+  AlertTriangle
 } from "lucide-react";
 import { 
   Select, 
@@ -70,7 +71,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
   const fetchStages = async () => {
     if (!db || !globalUser?.companyId) return;
     const stagesPath = paths.transactionStages(globalUser.companyId, transactionId);
-    const stagesSnap = await getDocs(query(collection(db, stagesPath), orderBy('order')));
+    const stagesSnap = await getDocs(query(collection(db, stagesPath), orderBy('order', 'asc')));
     setAvailableStages(stagesSnap.docs.map(d => ({ id: d.id, ...d.data() })));
   };
 
@@ -429,3 +430,4 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
     </Dialog>
   );
 }
+
