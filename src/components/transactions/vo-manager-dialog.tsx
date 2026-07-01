@@ -89,10 +89,10 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
       type: 'increase_quantity', 
       stageMode: 'existing_stage',
       description: '', 
-      quantityDelta: 0, 
-      rate: 0, 
+      quantityDelta: "", 
+      rate: "", 
       total: 0 
-    }]);
+    } as any]);
   };
 
   const removeItem = (idx: number) => {
@@ -164,8 +164,8 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
 
     if (field === 'quantityDelta' || field === 'rate' || field === 'type' || field === 'sourceBoqItemId') {
       const type = (field === 'type' ? val : item.type) || 'increase_quantity';
-      let q = field === 'quantityDelta' ? Math.abs(val) : Math.abs(item.quantityDelta || 0);
-      const r = field === 'rate' ? val : (item.rate || 0);
+      let q = field === 'quantityDelta' ? (val === "" ? 0 : Math.abs(Number(val))) : Math.abs(Number(item.quantityDelta) || 0);
+      const r = field === 'rate' ? (val === "" ? 0 : Number(val)) : (Number(item.rate) || 0);
       const multiplier = (type === 'decrease_quantity' || type === 'omit_item') ? -1 : 1;
       
       if (type === 'omit_item' && item.sourcePlannedQuantity) {
@@ -180,7 +180,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
     setItems(newItems);
   };
 
-  const netTotal = useMemo(() => items.reduce((acc, i) => acc + (i.total || 0), 0), [items]);
+  const netTotal = useMemo(() => items.reduce((acc, i) => acc + (Number(i.total) || 0), 0), [items]);
 
   const handleSave = async () => {
     if (!db || !globalUser?.companyId || !user) return;
@@ -282,7 +282,6 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                  {items.map((item, idx) => {
                     const isNewItem = item.type === 'new_item';
                     const isOmit = item.type === 'omit_item';
-                    const isApprovedNewItemInList = !isNewItem && item.sourceBoqItemId && boqItems.find(i => i.id === item.sourceBoqItemId)?.referenceCode?.startsWith('VO-');
 
                     return (
                       <Card key={idx} className={cn(
@@ -366,19 +365,20 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                      <Input 
                                        type="number" 
                                        readOnly={isOmit}
-                                       value={Math.abs(item.quantityDelta || 0)} 
-                                       onChange={e => updateItem(idx, 'quantityDelta', e.target.value === '' ? '' : Number(e.target.value))} 
+                                       value={item.quantityDelta === "" ? "" : Math.abs(Number(item.quantityDelta) || 0)} 
+                                       onChange={e => updateItem(idx, 'quantityDelta', e.target.value)} 
                                        className={cn("h-11 rounded-xl border-2 font-black text-center text-xs focus:border-primary", isOmit && "bg-slate-50 opacity-50")} 
+                                       placeholder="..."
                                      />
                                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-300 uppercase">{item.unitSymbol}</span>
                                   </div>
                                </div>
 
                                <div className="md:col-span-3 space-y-2 text-start">
-                                  <Label className="text-[9px] font-black uppercase text-slate-400">Price & Total</Label>
+                                  <Label className="text-[9px] font-black uppercase text-slate-400">Unit Price & Total</Label>
                                   <div className="flex items-center gap-3">
-                                     <Input type="number" step="0.001" value={item.rate} onChange={e => updateItem(idx, 'rate', e.target.value === '' ? '' : Number(e.target.value))} className="h-11 rounded-xl border-2 font-black text-emerald-600 text-xs" placeholder="..." />
-                                     <div className="text-end min-w-[70px]"><p className={cn("text-xs font-black", (item.total || 0) >= 0 ? "text-emerald-500" : "text-rose-500")}>{(item.total || 0).toLocaleString()}</p><p className="text-[8px] font-black text-slate-300 uppercase">KWD</p></div>
+                                     <Input type="number" step="0.001" value={item.rate} onChange={e => updateItem(idx, 'rate', e.target.value)} className="h-11 rounded-xl border-2 font-black text-emerald-600 text-xs text-center" placeholder="..." />
+                                     <div className="text-end min-w-[70px]"><p className={cn("text-xs font-black", (Number(item.total) || 0) >= 0 ? "text-emerald-500" : "text-rose-500")}>{(Number(item.total) || 0).toLocaleString()}</p><p className="text-[8px] font-black text-slate-300 uppercase">KWD</p></div>
                                   </div>
                                </div>
 
@@ -392,13 +392,8 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                         <PlusCircle className="h-2 w-2" /> {isRtl ? 'بند مستجد' : 'NEW ITEM'}
                                      </Badge>
                                   )}
-                                  {isApprovedNewItemInList && (
-                                     <Badge className="bg-amber-100 text-amber-700 border-0 text-[8px] font-black h-5 px-3 uppercase">
-                                        {isRtl ? 'تعديل مستجد معتمد' : 'REVISING NEW ITEM'}
-                                     </Badge>
-                                  )}
-                                  <div className={cn("h-7 px-3 rounded-lg flex items-center gap-2 text-[9px] font-black uppercase", (item.total || 0) >= 0 ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600")}>
-                                     {(item.total || 0) >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                                  <div className={cn("h-7 px-3 rounded-lg flex items-center gap-2 text-[9px] font-black uppercase", (Number(item.total) || 0) >= 0 ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600")}>
+                                     {(Number(item.total) || 0) >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                                      {item.description || '...'}
                                   </div>
                                </div>

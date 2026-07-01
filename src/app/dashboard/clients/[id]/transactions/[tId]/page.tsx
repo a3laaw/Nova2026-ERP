@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -33,7 +34,7 @@ import {
   ShieldX
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
-import { collection, query, orderBy, where, limit, doc, addDoc } from 'firebase/firestore';
+import { collection, query, orderBy, where, limit, doc, addDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -119,29 +120,25 @@ export default function TransactionDetailsPage() {
   const currentUserName = useMemo(() => globalUser?.username || user?.displayName || 'Admin', [globalUser, user]);
 
   // Data Fetching
-  const transRef = useMemo(() => companyId && db ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
+  const transRef = useMemo(() => (companyId && db) ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
   const { data: transaction, loading: transLoading } = useDoc<Transaction>(transRef);
 
-  const stagesQuery = useMemo(() => {
-    if (!companyId || !db) return null;
-    return query(collection(db, paths.transactionStages(companyId, transactionId)), orderBy('order', 'asc'));
-  }, [db, companyId, transactionId]);
-
+  const stagesQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.transactionStages(companyId, transactionId)), orderBy('order', 'asc')) : null, [db, companyId, transactionId]);
   const { data: rawStages, loading: stagesLoading } = useCollection<StageInstance>(stagesQuery);
 
-  const boqQuery = useMemo(() => companyId && db ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', transactionId), limit(1)) : null, [db, companyId, transactionId]);
+  const boqQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', transactionId), limit(1)) : null, [db, companyId, transactionId]);
   const { data: boqs, loading: boqLoading } = useCollection<BOQ>(boqQuery);
   const activeBoq = boqs && boqs.length > 0 ? boqs[0] : null;
 
   const templatesQuery = useMemo(() => 
-    companyId && db && transaction ? query(collection(db, paths.boqTemplates(companyId)), where('subServiceId', '==', transaction.subServiceId), where('isActive', '==', true)) : null, 
+    (companyId && db && transaction) ? query(collection(db, paths.boqTemplates(companyId)), where('subServiceId', '==', transaction.subServiceId), where('isActive', '==', true)) : null, 
   [db, companyId, transaction]);
   const { data: availableTemplates } = useCollection<BOQTemplate>(templatesQuery);
 
-  const itemsQuery = useMemo(() => companyId && db && activeBoq?.id ? query(collection(db, paths.boqItems(companyId, activeBoq.id))) : null, [db, companyId, activeBoq]);
+  const itemsQuery = useMemo(() => (companyId && db && activeBoq?.id) ? query(collection(db, paths.boqItems(companyId, activeBoq.id))) : null, [db, companyId, activeBoq]);
   const { data: boqItems } = useCollection<BOQItem>(itemsQuery);
 
-  const executionsQuery = useMemo(() => companyId && db ? query(collection(db, paths.executions(companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
+  const executionsQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.executions(companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
   const { data: allExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
 
   const stages = useMemo(() => {
@@ -162,7 +159,7 @@ export default function TransactionDetailsPage() {
     return Math.round((completedCount / stages.length) * 100);
   }, [stages]);
 
-  const executionService = useMemo(() => db && companyId ? new BOQExecutionService(db, companyId, permissions) : null, [db, companyId, permissions]);
+  const executionService = useMemo(() => (db && companyId) ? new BOQExecutionService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
   useEffect(() => {
     let active = true;
@@ -181,7 +178,7 @@ export default function TransactionDetailsPage() {
     return () => { active = false; };
   }, [executionService, stages, transactionId, allExecutions]);
 
-  const transactionService = useMemo(() => db && companyId ? new TransactionService(db, companyId, permissions) : null, [db, companyId, permissions]);
+  const transactionService = useMemo(() => (db && companyId) ? new TransactionService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
   const handleRecordProgress = (force: boolean = false) => {
     if (!executionService || !user || !targetStage || !selectedItemId) return;
@@ -198,10 +195,17 @@ export default function TransactionDetailsPage() {
         return;
     }
 
+    // الحل الجذري: إغلاق النوافذ وتحرير الواجهة فوراً قبل البدء
     setIsOverExecutionOpen(false);
     setIsRecordOpen(false);
 
+    // ترحيل العملية للدورة التالية لضمان تنظيف الـ DOM
     setTimeout(async () => {
+        // حماية قسرية لتحرير النقر
+        if (typeof document !== 'undefined') {
+          document.body.style.pointerEvents = 'auto';
+        }
+
         setLoadingAction('recording');
         try {
             await executionService.recordBOQItemExecution(
@@ -217,6 +221,7 @@ export default function TransactionDetailsPage() {
             
             toast({ title: isRtl ? "تم تسجيل الإنجاز" : "Progress Logged" });
             
+            // تصفير النموذج
             setProgressQty(""); 
             setProgressNotes("");
             setSelectedItemId("");
@@ -225,11 +230,8 @@ export default function TransactionDetailsPage() {
             toast({ variant: "destructive", title: t('error'), description: e.message });
         } finally {
             setLoadingAction(null);
-            if (typeof document !== 'undefined' && document.body.style.pointerEvents === 'none') {
-                document.body.style.pointerEvents = 'auto';
-            }
         }
-    }, 150);
+    }, 100);
   };
 
   const selectedBOQItemMetrics = useMemo(() => {
@@ -410,8 +412,6 @@ export default function TransactionDetailsPage() {
                       const boqProgress = stageProgressMap[stage.technicalStageId];
                       const isPreviousCompleted = idx === 0 || stages[idx - 1].status === 'completed';
                       
-                      // حماية منطقية: لا تظهر أزرار التحكم إلا للمرحلة التي عليها الدور الفعلي
-                      // (إما هي حالياً In-Progress، أو هي Pending وتسبقها مرحلة مكتملة)
                       const isOperationalFrontier = stage.status === 'in-progress' || (stage.status === 'pending' && isPreviousCompleted);
 
                       return (
