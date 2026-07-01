@@ -180,7 +180,7 @@ export default function TransactionDetailsPage() {
 
   const transactionService = useMemo(() => db && companyId ? new TransactionService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
-  // RADICAL FIX: Use sequential state updates to prevent UI freeze
+  // ROOT CAUSE FIX: Decouple Dialog state from Async Database operations to prevent UI freeze
   const handleRecordProgress = (force: boolean = false) => {
     if (!executionService || !user || !targetStage || !selectedItemId) return;
     
@@ -192,17 +192,17 @@ export default function TransactionDetailsPage() {
         return;
     }
 
-    // Check for over-execution
+    // Check for over-execution warning
     if (!force && !isComplementary && selectedBOQItemMetrics && qtyInput > selectedBOQItemMetrics.remaining) {
         setIsOverExecutionOpen(true);
         return;
     }
 
-    // 1. Release the UI immediately
+    // 1. DISMISS ALL DIALOGS FIRST: This prevents Radix UI from locking the body/pointer-events
     setIsOverExecutionOpen(false);
     setIsRecordOpen(false);
 
-    // 2. Perform the actual work after UIsettles
+    // 2. WAIT FOR UI CLEANUP: Give the browser 100ms to remove the overlays and restore pointer events
     setTimeout(async () => {
         setLoadingAction('recording');
         try {
@@ -219,7 +219,7 @@ export default function TransactionDetailsPage() {
             
             toast({ title: isRtl ? "تم تسجيل الإنجاز" : "Progress Logged" });
             
-            // Cleanup form
+            // Reset form
             setProgressQty(""); 
             setProgressNotes("");
             setSelectedItemId("");
@@ -228,8 +228,12 @@ export default function TransactionDetailsPage() {
             toast({ variant: "destructive", title: t('error'), description: e.message });
         } finally {
             setLoadingAction(null);
+            // FINAL SAFETY NET: If the UI is still stuck, force unlock it
+            if (document.body.style.pointerEvents === 'none') {
+                document.body.style.pointerEvents = 'auto';
+            }
         }
-    }, 300); // 300ms is enough for Radix animations and DOM cleanup
+    }, 150);
   };
 
   const selectedBOQItemMetrics = useMemo(() => {
