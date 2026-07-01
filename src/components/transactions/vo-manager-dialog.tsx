@@ -200,10 +200,10 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                 <div className="p-6 rounded-[2.5rem] bg-orange-50 border-2 border-orange-200 space-y-3 shadow-sm animate-pulse">
                    <div className="flex items-center gap-2 text-[#e87c24]">
                       <AlertTriangle className="h-5 w-5" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Budget Increase</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest">Sovereign Warning: Budget Increase</span>
                    </div>
                    <p className="text-[10px] text-orange-800 font-bold leading-relaxed">
-                     تنبيه: هذا التعديل سيؤدي لزيادة ميزانية المشروع.
+                     بناءً على بروتوكول الرقابة المالية، سيؤدي هذا التعديل لزيادة الميزانية المخططة للمشروع. يرجى ضمان وجود موافقة كتابية من العميل.
                    </p>
                 </div>
               )}
@@ -267,7 +267,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                <div className="md:col-span-3 space-y-2 text-start">
                                   <Label className="text-[9px] font-black uppercase text-slate-400">Unit Price & Total</Label>
                                   <div className="flex items-center gap-3">
-                                     <Input type="number" step="0.001" value={item.rate} onChange={e => updateItem(idx, 'rate', e.target.value)} className="h-11 rounded-xl border-2 font-black text-emerald-600 text-xs text-center" />
+                                     <Input type="number" step="0.001" value={item.rate} onChange={e => updateItem(idx, 'rate', e.target.value)} className="h-11 rounded-xl border-2 font-black text-emerald-600 text-xs text-center" placeholder="..." />
                                      <div className="text-end min-w-[70px]"><p className={cn("text-xs font-black", (Number(item.total) || 0) >= 0 ? "text-emerald-500" : "text-rose-500")}>{(Number(item.total) || 0).toLocaleString()}</p></div>
                                   </div>
                                </div>
@@ -289,7 +289,6 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                   </div>
                                </div>
 
-                               {/* السطر الذي يظهر عند اختيار "مرحلة محلية جديدة" - Root Cause Resolution */}
                                {isNewStage && (
                                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6 p-6 bg-blue-50/50 rounded-2xl border-2 border-blue-100 animate-in slide-in-from-top-4">
                                     <div className="md:col-span-4 space-y-1.5 text-start">

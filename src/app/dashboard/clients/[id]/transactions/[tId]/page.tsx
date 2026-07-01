@@ -199,9 +199,11 @@ export default function TransactionDetailsPage() {
         return;
     }
 
+    // Radical UI Fix: Close all overlays before starting heavy work to prevent freeze
     setIsOverExecutionOpen(false);
     setIsRecordOpen(false);
 
+    // Force pointer events back to normal
     setTimeout(async () => {
         if (typeof document !== 'undefined') document.body.style.pointerEvents = 'auto';
         setLoadingAction('recording');
@@ -357,7 +359,7 @@ export default function TransactionDetailsPage() {
          </Card>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-8 space-y-8">
+          <div className="lg:col-span-8 space-y-6">
              <div className="space-y-6">
                 <div className="flex justify-between items-end px-2"><h3 className="text-xl font-black font-headline text-slate-800 flex items-center gap-2"><Workflow className="h-6 w-6 text-primary" /> {isRtl ? 'رادار المسار الميداني' : 'Field Pipeline'}</h3><span className="text-4xl font-black font-headline text-primary">{progressPercent}%</span></div>
                 <div className="space-y-4">
