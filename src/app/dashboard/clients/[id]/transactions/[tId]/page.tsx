@@ -113,7 +113,6 @@ export default function TransactionDetailsPage() {
   const [customBOQName, setCustomBOQName] = useState("");
   const [isDeletingBOQ, setIsDeletingBOQ] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  
   const [isOverExecutionOpen, setIsOverExecutionOpen] = useState(false);
 
   const editAccess = check('projects', 'edit');
@@ -159,7 +158,6 @@ export default function TransactionDetailsPage() {
     return Math.round((completedCount / stages.length) * 100);
   }, [stages]);
 
-  // --- Sovereign Protocol: Determine the only stage allowed to be reopened (LIFO) ---
   const maxCompletedOrder = useMemo(() => {
     if (!stages || stages.length === 0) return -1;
     const completedOrders = stages.filter(s => s.status === 'completed').map(s => s.order || 0);
@@ -189,7 +187,6 @@ export default function TransactionDetailsPage() {
 
   const handleRecordProgress = (force: boolean = false) => {
     if (!executionService || !user || !targetStage || !selectedItemId) return;
-    
     const qtyInput = isComplementary ? 0 : Number(progressQty);
 
     if (!isComplementary && (progressQty === "" || qtyInput <= 0)) {
@@ -202,31 +199,15 @@ export default function TransactionDetailsPage() {
         return;
     }
 
-    // الحل الجذري: إغلاق النوافذ وتحرير الواجهة فوراً قبل البدء
     setIsOverExecutionOpen(false);
     setIsRecordOpen(false);
 
-    // ترحيل العملية للدورة التالية لضمان تنظيف الـ DOM وتحرير Pointer Events
     setTimeout(async () => {
-        if (typeof document !== 'undefined') {
-          document.body.style.pointerEvents = 'auto';
-        }
-
+        if (typeof document !== 'undefined') document.body.style.pointerEvents = 'auto';
         setLoadingAction('recording');
         try {
-            await executionService.recordBOQItemExecution(
-                activeBoq!.id, 
-                selectedItemId, 
-                targetStage.technicalStageId, 
-                qtyInput, 
-                user.uid, 
-                currentUserName, 
-                progressNotes,
-                targetStage.id!
-            );
-            
+            await executionService.recordBOQItemExecution(activeBoq!.id, selectedItemId, targetStage.technicalStageId, qtyInput, user.uid, currentUserName, progressNotes, targetStage.id!);
             toast({ title: isRtl ? "تم تسجيل الإنجاز" : "Progress Logged" });
-            
             setProgressQty(""); 
             setProgressNotes("");
             setSelectedItemId("");
@@ -243,27 +224,14 @@ export default function TransactionDetailsPage() {
     if (!selectedItemId || !boqItems) return null;
     const item = boqItems.find(i => i.id === selectedItemId);
     if (!item) return null;
-    
-    const executed = (allExecutions || [])
-      .filter(e => e.boqItemId === selectedItemId && e.isArchived !== true)
-      .reduce((sum, e) => sum + (e.quantity || 0), 0);
-
-    return {
-      planned: item.plannedQuantity || 0,
-      executed,
-      remaining: Math.max(0, (item.plannedQuantity || 0) - executed),
-      unit: item.unitSymbol || item.unitName,
-      isExceeded: executed >= (item.plannedQuantity || 0)
-    };
+    const executed = (allExecutions || []).filter(e => e.boqItemId === selectedItemId && e.isArchived !== true).reduce((sum, e) => sum + (e.quantity || 0), 0);
+    return { planned: item.plannedQuantity || 0, executed, remaining: Math.max(0, (item.plannedQuantity || 0) - executed), unit: item.unitSymbol || item.unitName, isExceeded: executed >= (item.plannedQuantity || 0) };
   }, [selectedItemId, boqItems, allExecutions]);
 
   const handleStartStage = async (stageId: string) => {
     if (!transactionService || !user) return;
     setProcessingId(stageId);
-    try { 
-      await transactionService.startStage(transactionId, stageId, user.uid, currentUserName); 
-      toast({ title: isRtl ? "تم بدء العمل" : "Stage Started" }); 
-    }
+    try { await transactionService.startStage(transactionId, stageId, user.uid, currentUserName); toast({ title: isRtl ? "تم بدء العمل" : "Stage Started" }); }
     catch (e: any) { toast({ variant: "destructive", title: t('error'), description: e.message }); }
     finally { setProcessingId(null); }
   };
@@ -271,33 +239,22 @@ export default function TransactionDetailsPage() {
   const handleCompleteStage = async (stage: StageInstance, force: boolean = false) => {
     if (!transactionService || !user || !stage.id) return;
     const progress = stageProgressMap[stage.technicalStageId];
-    if (!force && progress && !progress.canComplete) { 
-      setIncompleteStage({ stage, progress }); 
-      return; 
-    }
+    if (!force && progress && !progress.canComplete) { setIncompleteStage({ stage, progress }); return; }
     setProcessingId(stage.id);
-    try { 
-      await transactionService.completeStage(transactionId, stage.id, user.uid, currentUserName, force); 
-      toast({ title: isRtl ? "تم إنجاز المرحلة" : "Stage Completed" }); 
-      setIncompleteStage(null); 
-    }
+    try { await transactionService.completeStage(transactionId, stage.id, user.uid, currentUserName, force); toast({ title: isRtl ? "تم إنجاز المرحلة" : "Stage Completed" }); setIncompleteStage(null); }
     catch (e: any) { toast({ variant: "destructive", title: isRtl ? "تعذر إغلاق المرحلة" : "Cannot Close", description: e.message }); }
     finally { setProcessingId(null); }
   };
 
   const handleReopenStage = async () => {
     if (!transactionService || !user || !undoStage) return;
-    
-    // Safety Release
     setUndoStage(null);
-
     setTimeout(async () => {
         if (typeof document !== 'undefined') document.body.style.pointerEvents = 'auto';
-        
         setProcessingId(undoStage.id!);
         try {
           await transactionService.reopenStage(transactionId, undoStage.id!, user.uid, currentUserName, clearLogsOnUndo);
-          toast({ title: isRtl ? "تمت إعادة فتح المرحلة وتجميد اللاحقة" : "Stage Reopened & Path Receded" });
+          toast({ title: isRtl ? "تمت إعادة فتح المرحلة وتجميد اللاحقة" : "Stage Reopened" });
           setActiveTabOverride('time_archive');
         } catch (e: any) {
           toast({ variant: "destructive", title: t('error'), description: e.message });
@@ -328,15 +285,10 @@ export default function TransactionDetailsPage() {
     try {
       const docService = new DocumentService(db, companyId, permissions);
       const bId = await docService.instantiateBoqFromTemplate(namingTemplate.id!, {
-        transactionId,
-        clientId: transaction.clientId,
-        clientName: transaction.clientName,
-        activityTypeId: transaction.activityTypeId,
-        serviceId: transaction.serviceId,
-        subServiceId: transaction.subServiceId,
-        name: customBOQName
+        transactionId, clientId: transaction.clientId, clientName: transaction.clientName,
+        activityTypeId: transaction.activityTypeId, serviceId: transaction.serviceId,
+        subServiceId: transaction.subServiceId, name: customBOQName
       }, user.uid, currentUserName);
-      
       toast({ title: isRtl ? "تم إنشاء المقايسة" : "BOQ Created" });
       setNamingTemplate(null);
       router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`);
@@ -365,9 +317,9 @@ export default function TransactionDetailsPage() {
         <div className="flex gap-3">
            {activeBoq && (
              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setIsVOOpen(true)} className="h-11 px-5 rounded-xl bg-white border-2 font-black text-xs gap-2 text-blue-600 border-blue-100 shadow-sm hover:bg-blue-50"><Calculator className="h-4 w-4" /> {isRtl ? 'أمر تغييري' : 'VO'}</Button>
+                <Button variant="outline" size="sm" onClick={() => setIsVOOpen(true)} className="h-11 px-5 rounded-xl bg-white border-2 font-black text-xs gap-2 text-blue-600 border-blue-100 shadow-sm"><Calculator className="h-4 w-4" /> {isRtl ? 'أمر تغييري' : 'VO'}</Button>
                 <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="h-11 px-6 rounded-xl bg-white border-2 font-black text-xs gap-2 text-primary border-primary/20 shadow-sm"><FileSpreadsheet className="h-4 w-4" /> {isRtl ? 'إدارة المقايسة' : 'Manage BOQ'}</Button>
-                {isAdmin && <Button variant="ghost" size="icon" onClick={() => setShowDeleteConfirm(true)} className="h-11 w-11 rounded-xl text-rose-300 hover:text-rose-600 hover:bg-rose-50 border-2 border-transparent hover:border-rose-100"><Trash2 className="h-5 w-5" /></Button>}
+                {isAdmin && <Button variant="ghost" size="icon" onClick={() => setShowDeleteConfirm(true)} className="h-11 w-11 rounded-xl text-rose-300 hover:text-rose-600 hover:bg-rose-50 border-2 border-transparent"><Trash2 className="h-5 w-5" /></Button>}
              </div>
            )}
         </div>
@@ -376,7 +328,7 @@ export default function TransactionDetailsPage() {
       {!activeBoq ? (
          <Card className="border-4 border-dashed border-primary/20 rounded-[3rem] bg-white shadow-2xl p-12 text-center animate-in zoom-in-95">
             <div className="max-w-2xl mx-auto space-y-8">
-               <div className="mx-auto w-24 h-24 bg-primary/10 text-primary rounded-[2.5rem] flex items-center justify-center shadow-inner"><FileSpreadsheet className="h-12 w-12" /></div>
+               <div className="mx-auto w-24 h-24 bg-primary/10 text-primary rounded-[2rem] flex items-center justify-center shadow-inner"><FileSpreadsheet className="h-12 w-12" /></div>
                <div className="space-y-2">
                   <h2 className="text-3xl font-black font-headline">{isRtl ? 'المرحلة الأولى: هندسة الميزانية' : 'Step 1: Budget Engineering'}</h2>
                   <p className="text-slate-500 font-bold leading-relaxed">{isRtl ? 'اختر قالب المقايسة المناسب للمشروع لتخصيص الكميات والأسعار قبل بدء التنفيذ الميداني.' : 'Choose the appropriate BOQ template to customize quantities and rates before site execution starts.'}</p>
@@ -387,10 +339,7 @@ export default function TransactionDetailsPage() {
                         setNamingTemplate(temp);
                         setCustomBOQName(`${temp.name} - ${transaction?.transactionNumber || ''}`);
                     }}>
-                       <div className="flex items-center justify-between mb-4">
-                          <Badge variant="outline" className="font-black text-[9px] px-3">{temp.code}</Badge>
-                          <PlusCircle className="h-5 w-5 text-primary" />
-                       </div>
+                       <div className="flex items-center justify-between mb-4"><Badge variant="outline" className="font-black text-[9px] px-3">{temp.code}</Badge><PlusCircle className="h-5 w-5 text-primary" /></div>
                        <h4 className="font-black text-slate-800">{temp.name}</h4>
                        <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase">EST. VALUE: {temp.baseAmount?.toLocaleString()} KWD</p>
                     </Card>
@@ -402,28 +351,19 @@ export default function TransactionDetailsPage() {
          <Card className="border-4 border-dashed border-blue-200 rounded-[3rem] bg-blue-50/20 p-12 text-center animate-in zoom-in-95">
             <div className="max-w-2xl mx-auto space-y-8">
                <div className="mx-auto w-24 h-24 bg-blue-100 text-blue-600 rounded-[2.5rem] flex items-center justify-center shadow-inner"><Calculator className="h-12 w-12" /></div>
-               <div className="space-y-2">
-                  <h2 className="text-3xl font-black font-headline text-blue-900">{isRtl ? 'الميزانية قيد التخصيص' : 'Budget Under Customization'}</h2>
-                  <p className="text-blue-700/60 font-bold leading-relaxed">{isRtl ? 'يجب الانتهاء من ضبط الكميات والبنود في صفحة المقايسة والضغط على "اعتماد" لتفعيل المسار الفني وبدء العمل.' : 'Finalize quantities and items in the BOQ page and click "Approve" to activate the technical path and start site work.'}</p>
-               </div>
-               <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="h-16 px-12 rounded-2xl bg-blue-600 text-white font-black text-xl gap-3 shadow-xl">
-                  <Pencil className="h-6 w-6" /> {isRtl ? 'تخصيص بنود المقايسة الآن' : 'Customize BOQ Items Now'}
-               </Button>
+               <div className="space-y-2"><h2 className="text-3xl font-black font-headline text-blue-900">{isRtl ? 'الميزانية قيد التخصيص' : 'Budget Under Customization'}</h2><p className="text-blue-700/60 font-bold leading-relaxed">{isRtl ? 'يجب الانتهاء من ضبط الكميات والبنود في صفحة المقايسة والضغط على "اعتماد" لتفعيل المسار الفني وبدء العمل.' : 'Finalize quantities and items in the BOQ page and click "Approve" to activate the technical path and start site work.'}</p></div>
+               <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="h-16 px-12 rounded-2xl bg-blue-600 text-white font-black text-xl gap-3 shadow-xl"><Pencil className="h-6 w-6" /> {isRtl ? 'تخصيص بنود المقايسة الآن' : 'Customize BOQ Items Now'}</Button>
             </div>
          </Card>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-8 space-y-8">
              <div className="space-y-6">
-                <div className="flex justify-between items-end px-2">
-                   <h3 className="text-xl font-black font-headline text-slate-800 flex items-center gap-2"><Workflow className="h-6 w-6 text-primary" /> {isRtl ? 'رادار المسار الميداني' : 'Field Pipeline'}</h3>
-                   <span className="text-4xl font-black font-headline text-primary">{progressPercent}%</span>
-                </div>
+                <div className="flex justify-between items-end px-2"><h3 className="text-xl font-black font-headline text-slate-800 flex items-center gap-2"><Workflow className="h-6 w-6 text-primary" /> {isRtl ? 'رادار المسار الميداني' : 'Field Pipeline'}</h3><span className="text-4xl font-black font-headline text-primary">{progressPercent}%</span></div>
                 <div className="space-y-4">
                    {stages.map((stage, idx) => {
                       const boqProgress = stageProgressMap[stage.technicalStageId];
                       const isPreviousCompleted = idx === 0 || stages[idx - 1].status === 'completed';
-                      
                       const isOperationalFrontier = stage.status === 'in-progress' || (stage.status === 'pending' && isPreviousCompleted);
 
                       return (
@@ -432,13 +372,8 @@ export default function TransactionDetailsPage() {
                              <div className="flex items-center gap-6 flex-1 text-start">
                                 <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-sm border", stage.status === 'completed' ? "bg-emerald-50 text-emerald-600" : "bg-white")}>{stage.status === 'completed' ? <CheckCircle2 className="h-6 w-6" /> : (idx + 1)}</div>
                                 <div className="space-y-1 flex-1">
-                                   <div className="flex items-center gap-2">
-                                      <h4 className="font-black text-lg text-slate-900 tracking-tight">{stage.name}</h4>
-                                      {stage.isTemporary && <Badge className="bg-blue-100 text-blue-600 border-0 text-[7px] font-black uppercase h-4 px-1.5">MANUAL STAGE</Badge>}
-                                   </div>
-                                   {boqProgress && boqProgress.linkedItemsCount > 0 && (
-                                     <div className="mt-2 space-y-1.5"><div className="flex justify-between text-[9px] font-black uppercase text-slate-400"><span>{isRtl ? 'إنجاز بنود المقايسة' : 'BOQ Items Progress'}</span><span>{boqProgress.progressPercent}%</span></div><Progress value={boqProgress.progressPercent} className="h-1.5" /></div>
-                                   )}
+                                   <div className="flex items-center gap-2"><h4 className="font-black text-lg text-slate-900 tracking-tight">{stage.name}</h4>{stage.isTemporary && <Badge className="bg-blue-100 text-blue-600 border-0 text-[7px] font-black uppercase h-4 px-1.5">MANUAL STAGE</Badge>}</div>
+                                   {boqProgress && boqProgress.linkedItemsCount > 0 && (<div className="mt-2 space-y-1.5"><div className="flex justify-between text-[9px] font-black uppercase text-slate-400"><span>{isRtl ? 'إنجاز بنود المقايسة' : 'BOQ Items Progress'}</span><span>{boqProgress.progressPercent}%</span></div><Progress value={boqProgress.progressPercent} className="h-1.5" /></div>)}
                                 </div>
                              </div>
                              
@@ -450,12 +385,9 @@ export default function TransactionDetailsPage() {
                                 </div>
                              )}
 
-                             {/* --- Sovereign LIFO Guard: Only allow undo if it's the LAST completed stage --- */}
                              {stage.status === 'completed' && isAdmin && (stage.order === maxCompletedOrder) && (
                                 <div className="z-10" onClick={e => e.stopPropagation()}>
-                                   <Button variant="ghost" onClick={() => setUndoStage(stage)} className="h-11 w-11 p-0 rounded-xl text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors">
-                                      <RotateCcw className="h-5 w-5" />
-                                   </Button>
+                                   <Button variant="ghost" onClick={() => setUndoStage(stage)} className="h-11 w-11 p-0 rounded-xl text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"><RotateCcw className="h-5 w-5" /></Button>
                                 </div>
                              )}
                           </CardContent>
@@ -473,222 +405,76 @@ export default function TransactionDetailsPage() {
       <Dialog open={isRecordOpen} onOpenChange={setIsRecordOpen}>
          <DialogContent className="rounded-2xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-md ring-1 ring-black/5" dir={dir}>
             <div className="bg-slate-900 p-6 text-white text-start">
-               <DialogTitle className="text-xl font-black font-headline flex items-center gap-3">
-                  <Hammer className="h-6 w-6 text-primary" />
-                  {isRtl ? 'تسجيل إنجاز فني' : 'Log Technical Progress'}
-               </DialogTitle>
+               <DialogTitle className="text-xl font-black font-headline flex items-center gap-3"><Hammer className="h-6 w-6 text-primary" />{isRtl ? 'تسجيل إنجاز فني' : 'Log Technical Progress'}</DialogTitle>
                <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-widest">{targetStage?.name}</p>
             </div>
-
             <div className="p-6 space-y-6 text-start">
                <div className="space-y-1.5">
                   <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'بند العمل الميداني' : 'Target Work Item'}</Label>
                   <Select value={selectedItemId} onValueChange={setSelectedItemId}>
-                     <SelectTrigger className="h-11 rounded-xl border-2 font-bold bg-slate-50/50">
-                        <SelectValue placeholder={isRtl ? "اختر البند المنجز..." : "Select work item..."} />
-                     </SelectTrigger>
+                     <SelectTrigger className="h-11 rounded-xl border-2 font-bold bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
                      <SelectContent className="rounded-xl border-0 shadow-2xl">
                         {boqItems?.filter(i => (i.plannedQuantity || 0) > 0 && (i.technicalStageIds?.includes(targetStage?.technicalStageId!) || i.technicalStageId === targetStage?.technicalStageId))
                           .map(i => <SelectItem key={i.id} value={i.id!} className="font-bold py-3 text-xs border-b last:border-0 border-slate-50">{i.referenceTitle}</SelectItem>)}
                      </SelectContent>
                   </Select>
                </div>
-
                {selectedBOQItemMetrics && (
                   <div className="grid grid-cols-3 gap-3 animate-in zoom-in-95">
-                     <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-center">
-                        <span className="text-[8px] font-black text-slate-400 block uppercase">Planned</span>
-                        <span className="text-sm font-black text-slate-800">{selectedBOQItemMetrics.planned}</span>
-                     </div>
-                     <div className="p-3 rounded-xl bg-emerald-50/50 border border-emerald-100 text-center">
-                        <span className="text-[8px] font-black text-emerald-600 block uppercase">Done</span>
-                        <span className="text-sm font-black text-emerald-600">{selectedBOQItemMetrics.executed}</span>
-                     </div>
-                     <div className="p-3 rounded-xl bg-orange-50 border border-orange-100 text-center">
-                        <span className="text-[8px] font-black text-orange-600 block uppercase">Balance</span>
-                        <span className="text-sm font-black text-orange-600">{selectedBOQItemMetrics.remaining}</span>
-                     </div>
+                     <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-center"><span className="text-[8px] font-black text-slate-400 block uppercase">Planned</span><span className="text-sm font-black text-slate-800">{selectedBOQItemMetrics.planned}</span></div>
+                     <div className="p-3 rounded-xl bg-emerald-50/50 border border-emerald-100 text-center"><span className="text-[8px] font-black text-emerald-600 block uppercase">Done</span><span className="text-sm font-black text-emerald-600">{selectedBOQItemMetrics.executed}</span></div>
+                     <div className="p-3 rounded-xl bg-orange-50 border border-orange-100 text-center"><span className="text-[8px] font-black text-orange-600 block uppercase">Balance</span><span className="text-sm font-black text-orange-600">{selectedBOQItemMetrics.remaining}</span></div>
                   </div>
                )}
-
                <div className="space-y-5 pt-2">
-                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border">
-                     <div className="space-y-0.5">
-                        <Label className="font-black text-xs uppercase tracking-tighter">{isRtl ? 'إنجاز تكميلي' : 'Complementary Log'}</Label>
-                        <p className="text-[8px] text-slate-400 font-bold">تسجيل ملاحظة بدون كمية</p>
-                     </div>
-                     <Switch checked={isComplementary} onCheckedChange={setIsComplementary} />
-                  </div>
-
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border"><div className="space-y-0.5"><Label className="font-black text-xs uppercase tracking-tighter">{isRtl ? 'إنجاز تكميلي' : 'Complementary Log'}</Label><p className="text-[8px] text-slate-400 font-bold">تسجيل ملاحظة بدون كمية</p></div><Switch checked={isComplementary} onCheckedChange={setIsComplementary} /></div>
                   {!isComplementary && (
                     <div className="space-y-2 animate-in slide-in-from-top-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الكمية المنفذة حالياً' : 'Quantity Executed'}</Label>
-                       <div className="relative">
-                          <Input 
-                            type="number" 
-                            step="0.01" 
-                            value={progressQty} 
-                            onChange={e => setProgressQty(e.target.value === '' ? '' : Number(e.target.value))} 
-                            className={cn(
-                                "h-14 rounded-xl border-2 font-black text-2xl text-center shadow-inner",
-                                selectedBOQItemMetrics && Number(progressQty) > selectedBOQItemMetrics.remaining ? "border-rose-500 text-rose-600 bg-rose-50" : "border-slate-200"
-                            )} 
-                            placeholder="..."
-                          />
-                          <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-300 uppercase">{selectedBOQItemMetrics?.unit}</div>
-                       </div>
+                       <div className="relative"><Input type="number" step="0.01" value={progressQty} onChange={e => setProgressQty(e.target.value === '' ? '' : Number(e.target.value))} className={cn("h-14 rounded-xl border-2 font-black text-2xl text-center shadow-inner", selectedBOQItemMetrics && Number(progressQty) > selectedBOQItemMetrics.remaining ? "border-rose-500 text-rose-600 bg-rose-50" : "border-slate-200")} placeholder="..." /><div className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-300 uppercase">{selectedBOQItemMetrics?.unit}</div></div>
                     </div>
                   )}
-
-                  <div className="space-y-1.5">
-                     <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'تقرير ميداني مصغر' : 'Field Notes'}</Label>
-                     <Textarea value={progressNotes} onChange={e => setProgressNotes(e.target.value)} className="min-h-[100px] rounded-xl bg-slate-50/50 border-2 resize-none p-4 text-xs font-bold" placeholder="..." />
-                  </div>
+                  <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'تقرير ميداني مصغر' : 'Field Notes'}</Label><Textarea value={progressNotes} onChange={e => setProgressNotes(e.target.value)} className="min-h-[100px] rounded-xl bg-slate-50/50 border-2 resize-none p-4 text-xs font-bold" placeholder="..." /></div>
                </div>
             </div>
-
-            <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-3">
-               <Button variant="outline" onClick={() => setIsRecordOpen(false)} className="flex-1 h-12 rounded-xl font-bold">إلغاء</Button>
-               <Button 
-                onClick={() => handleRecordProgress()} 
-                disabled={loadingAction === 'recording' || (!isComplementary && (progressQty === "" || Number(progressQty) <= 0)) || !selectedItemId} 
-                className="flex-[2] h-12 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 transition-all gap-2 border-b-4 border-orange-700"
-               >
-                  {loadingAction === 'recording' ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
-                  {isRtl ? 'حفظ السجل' : 'Log Now'}
-               </Button>
-            </DialogFooter>
+            <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-3"><Button variant="outline" onClick={() => setIsRecordOpen(false)} className="flex-1 h-12 rounded-xl font-bold">إلغاء</Button><Button onClick={() => handleRecordProgress()} disabled={loadingAction === 'recording' || (!isComplementary && (progressQty === "" || Number(progressQty) <= 0)) || !selectedItemId} className="flex-[2] h-12 rounded-xl bg-primary text-white font-black shadow-xl gap-2 border-b-4 border-orange-700">{loadingAction === 'recording' ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}{isRtl ? 'حفظ السجل' : 'Log Now'}</Button></DialogFooter>
          </DialogContent>
       </Dialog>
 
-      {/* Exceptional Over-Execution Sovereign Guard */}
       <AlertDialog open={isOverExecutionOpen} onOpenChange={setIsOverExecutionOpen}>
         <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white" dir={dir}>
-           <AlertDialogHeader>
-              <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50">
-                 <ShieldX className="h-10 w-10" />
-              </div>
-              <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900 leading-tight">تحذير: تجاوز الكمية المخططة</AlertDialogTitle>
-              <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">
-                 {isRtl 
-                   ? `أنت تحاول تسجيل كمية (${progressQty}) تتجاوز الكمية المتبقية المخططة لهذا البند. هذا الإجراء سيؤدي لانحراف مالي في الميزانية (Positive Variance). هل ترغب في الاستمرار كتجاوز استثنائي؟` 
-                   : `You are recording a quantity (${progressQty}) that exceeds the remaining planned amount. This will create a positive financial variance. Do you want to proceed as an exceptional over-execution?`}
-              </AlertDialogDescription>
-           </AlertDialogHeader>
-           <AlertDialogFooter className="mt-12 gap-4 flex flex-row">
-              <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel>
-              <AlertDialogAction 
-                onClick={() => handleRecordProgress(true)}
-                className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200"
-              >
-                 {isRtl ? 'نعم، أقر بالتجاوز واحفظ' : 'Confirm Over-Execution'}
-              </AlertDialogAction>
-           </AlertDialogFooter>
+           <AlertDialogHeader><div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50"><ShieldX className="h-10 w-10" /></div><AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900 leading-tight">تحذير: تجاوز الكمية المخططة</AlertDialogTitle><AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">{isRtl ? `أنت تحاول تسجيل كمية (${progressQty}) تتجاوز الكمية المتبقية لهذا البند. هل ترغب في الاستمرار؟` : `You are recording an over-execution. Continue?`}</AlertDialogDescription></AlertDialogHeader>
+           <AlertDialogFooter className="mt-12 gap-4 flex flex-row"><AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel><AlertDialogAction onClick={() => handleRecordProgress(true)} className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200">{isRtl ? 'نعم، أقر بالتجاوز واحفظ' : 'Confirm'}</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Reopen Stage Dialog (Reversal Protocol) */}
       <Dialog open={!!undoStage} onOpenChange={(open) => !open && setUndoStage(null)}>
          <DialogContent className="rounded-2xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-md ring-1 ring-black/5" dir={dir}>
-            <div className="bg-rose-600 p-8 text-white text-start">
-               <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3">
-                  <RotateCcw className="h-7 w-7" />
-                  {isRtl ? 'بروتوكول التراجع عن الإنجاز' : 'Stage Reversal Protocol'}
-               </DialogTitle>
-               <p className="text-white/70 font-bold mt-2">{isRtl ? `إعادة فتح: ${undoStage?.name}` : `Reopening: ${undoStage?.name}`}</p>
-            </div>
-            
-            <div className="p-8 space-y-6 text-start bg-white">
-               <div className="p-6 rounded-[2rem] bg-rose-50 border-2 border-rose-100 flex items-start gap-4">
-                  <AlertTriangle className="h-6 w-6 text-rose-600 shrink-0 mt-1" />
-                  <div className="space-y-1">
-                     <h5 className="font-black text-rose-900 text-sm">{isRtl ? 'إشعار تصفير البيانات' : 'Data Reset Notice'}</h5>
-                     <p className="text-[10px] text-rose-700 font-bold leading-relaxed">
-                        {isRtl ? 'إعادة فتح المرحلة سيؤدي لإعادتها لحالة "قيد التنفيذ" وتجميد أي مراحل لاحقة قيد العمل حالياً. يرجى تحديد ما إذا كنت ترغب في إلغاء سجلات الإنجاز الميداني المرتبطة بها والبدء من جديد.' : 'Reopening will return the stage to "In-Progress" and freeze any subsequent active work. Choose if you want to invalidate all current logs and reset quantities.'}
-                     </p>
-                  </div>
-               </div>
-
-               <div className="flex items-center justify-between p-6 bg-slate-50 rounded-2xl border-2">
-                  <div className="space-y-0.5">
-                     <Label className="font-black text-xs uppercase tracking-tighter text-rose-600">{isRtl ? 'تطهير سجلات الإنجاز' : 'Purge Field Logs'}</Label>
-                     <p className="text-[8px] text-slate-400 font-bold">أرشفة كافة سجلات الكميات والتعليقات</p>
-                  </div>
-                  <Switch checked={clearLogsOnUndo} onCheckedChange={setClearLogsOnUndo} />
-               </div>
-
-               <Button 
-                onClick={handleReopenStage} 
-                className="w-full h-16 rounded-2xl bg-rose-600 text-white font-black text-xl shadow-xl shadow-rose-200 border-b-8 border-rose-800 hover:bg-rose-700"
-               >
-                  <RotateCw className="h-6 w-6" />
-                  {isRtl ? 'تأكيد إعادة الفتح' : 'Confirm Reopen'}
-               </Button>
-            </div>
+            <div className="bg-rose-600 p-8 text-white text-start"><DialogTitle className="text-2xl font-black font-headline flex items-center gap-3"><RotateCcw className="h-7 w-7" />{isRtl ? 'بروتوكول التراجع عن الإنجاز' : 'Stage Reversal Protocol'}</DialogTitle><p className="text-white/70 font-bold mt-2">{isRtl ? `إعادة فتح: ${undoStage?.name}` : `Reopening: ${undoStage?.name}`}</p></div>
+            <div className="p-8 space-y-6 text-start bg-white"><div className="p-6 rounded-[2rem] bg-rose-50 border-2 border-rose-100 flex items-start gap-4"><AlertTriangle className="h-6 w-6 text-rose-600 shrink-0 mt-1" /><div className="space-y-1"><h5 className="font-black text-rose-900 text-sm">{isRtl ? 'إشعار تصفير البيانات' : 'Data Reset Notice'}</h5><p className="text-[10px] text-rose-700 font-bold leading-relaxed">{isRtl ? 'إعادة فتح المرحلة سيؤدي لإعادتها لحالة "قيد التنفيذ" وتجميد أي مراحل لاحقة.' : 'Reopening will return the stage to "In-Progress" and freeze subsequent work.'}</p></div></div><div className="flex items-center justify-between p-6 bg-slate-50 rounded-2xl border-2"><div className="space-y-0.5"><Label className="font-black text-xs uppercase tracking-tighter text-rose-600">{isRtl ? 'تطهير سجلات الإنجاز' : 'Purge Field Logs'}</Label><p className="text-[8px] text-slate-400 font-bold">أرشفة كافة سجلات الكميات والتعليقات</p></div><Switch checked={clearLogsOnUndo} onCheckedChange={setClearLogsOnUndo} /></div><Button onClick={handleReopenStage} className="w-full h-16 rounded-2xl bg-rose-600 text-white font-black text-xl shadow-xl shadow-rose-200 border-b-8 border-rose-800 hover:bg-rose-700"><RotateCw className="h-6 w-6" />{isRtl ? 'تأكيد إعادة الفتح' : 'Confirm Reopen'}</Button></div>
          </DialogContent>
       </Dialog>
 
-      {/* Exceptional Closure Dialog */}
       <Dialog open={!!incompleteStage} onOpenChange={(open) => !open && setIncompleteStage(null)}>
         <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
-           <div className="bg-amber-500 p-8 text-white text-start">
-              <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3">
-                 <ShieldAlert className="h-8 w-8" />
-                 {isRtl ? 'تحذير: إنجاز غير مكتمل' : 'Incomplete Progress Warning'}
-              </DialogTitle>
-           </div>
-           <div className="p-8 space-y-6 text-start">
-              <p className="font-bold text-slate-600 leading-relaxed">
-                 {isRtl 
-                   ? `المرحلة "${incompleteStage?.stage.name}" لم تكتمل بنسبة 100% بعد (الإنجاز الحالي: ${incompleteStage?.progress.progressPercent}%).` 
-                   : `The stage "${incompleteStage?.stage.name}" is not 100% complete (Current: ${incompleteStage?.progress.progressPercent}%).`}
-              </p>
-              <div className="p-6 rounded-2xl bg-amber-50 border-2 border-amber-100 flex items-start gap-4">
-                 <Info className="h-5 w-5 text-amber-600 shrink-0 mt-1" />
-                 <p className="text-[10px] text-amber-800 font-bold italic">{incompleteStage?.progress.reason}</p>
-              </div>
-              <p className="text-xs font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'هل ترغب في تجاوز الرقابة وإغلاق المرحلة إجبارياً؟' : 'Do you want to override guard and force close?'}</p>
-           </div>
-           <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-3">
-              <Button variant="outline" onClick={() => setIncompleteStage(null)} className="flex-1 h-14 rounded-xl border-2 font-bold">إلغاء</Button>
-              {isAdmin && (
-                <Button onClick={() => handleCompleteStage(incompleteStage!.stage, true)} className="flex-[2] h-14 rounded-xl bg-slate-900 text-white font-black shadow-xl">
-                   {isRtl ? 'إغلاق استثنائي (تجاوز)' : 'Exceptional Closure'}
-                </Button>
-              )}
-           </DialogFooter>
+           <div className="bg-amber-500 p-8 text-white text-start"><DialogTitle className="text-2xl font-black font-headline flex items-center gap-3"><ShieldAlert className="h-8 w-8" />{isRtl ? 'تحذير: إنجاز غير مكتمل' : 'Incomplete Progress Warning'}</DialogTitle></div>
+           <div className="p-8 space-y-6 text-start"><p className="font-bold text-slate-600 leading-relaxed">{isRtl ? `المرحلة "${incompleteStage?.stage.name}" لم تكتمل بنسبة 100% بعد.` : `Stage not 100% complete.`}</p><div className="p-6 rounded-2xl bg-amber-50 border-2 border-amber-100 flex items-start gap-4"><Info className="h-5 w-5 text-amber-600 shrink-0 mt-1" /><p className="text-[10px] text-amber-800 font-bold italic">{incompleteStage?.progress.reason}</p></div></div>
+           <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-3"><Button variant="outline" onClick={() => setIncompleteStage(null)} className="flex-1 h-14 rounded-xl border-2 font-bold">إلغاء</Button>{isAdmin && (<Button onClick={() => handleCompleteStage(incompleteStage!.stage, true)} className="flex-[2] h-14 rounded-xl bg-slate-900 text-white font-black shadow-xl">{isRtl ? 'إغلاق استثنائي (تجاوز)' : 'Exceptional Closure'}</Button>)}</DialogFooter>
         </DialogContent>
       </Dialog>
 
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white" dir={dir}>
-          <AlertDialogHeader>
-             <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50"><Trash2 className="h-10 w-10" /></div>
-             <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900">{isRtl ? 'حذف المقايسة تماماً؟' : 'Permanent BOQ Delete?'}</AlertDialogTitle>
-             <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">{isRtl ? 'سيتم حذف كافة البنود وسجلات التنفيذ للبدء من جديد.' : 'All items and execution logs will be removed to start over.'}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="mt-12 gap-4 flex flex-row">
-            <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDeleteBOQ} 
-              disabled={isDeletingBOQ} 
-              className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200"
-            >
-              {isDeletingBOQ ? <Loader2 className="animate-spin h-5 w-5" /> : (isRtl ? 'نعم، احذف' : 'Delete')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
+          <AlertDialogHeader><div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50"><Trash2 className="h-10 w-10" /></div><AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900">{isRtl ? 'حذف المقايسة تماماً؟' : 'Permanent BOQ Delete?'}</AlertDialogTitle><AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">{isRtl ? 'سيتم حذف كافة البنود وسجلات التنفيذ للبدء من جديد.' : 'All items and execution logs will be removed to start over.'}</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogFooter className="mt-12 gap-4 flex flex-row"><AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel><AlertDialogAction onClick={handleDeleteBOQ} disabled={isDeletingBOQ} className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200">{isDeletingBOQ ? <Loader2 className="animate-spin h-5 w-5" /> : (isRtl ? 'نعم، احذف' : 'Delete')}</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       <Dialog open={!!namingTemplate} onOpenChange={(open) => !open && setNamingTemplate(null)}>
          <DialogContent className="rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
-            <div className="bg-primary/5 p-8 text-slate-900 text-start border-b">
-               <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3"><Pencil className="h-7 w-7 text-primary" />{isRtl ? 'تأكيد مسمى المقايسة' : 'Confirm Name'}</DialogTitle>
-            </div>
-            <div className="p-8 space-y-6 text-start">
-               <div className="space-y-3"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المسمى المختار' : 'Target BOQ Name'}</Label><Input value={customBOQName} onChange={e => setCustomBOQName(e.target.value)} className="h-14 rounded-2xl border-2 font-black text-lg focus:border-primary/50 transition-all shadow-inner" /></div>
-            </div>
-            <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-3"><Button variant="outline" onClick={() => setNamingTemplate(null)} className="flex-1 h-14 rounded-2xl border-2 font-bold bg-white">إلغاء</Button><Button onClick={handleConfirmLinkBOQ} disabled={processingId === 'linking_boq' || !customBOQName.trim()} className="flex-[2] h-14 rounded-2xl bg-primary text-white font-black text-lg shadow-xl shadow-primary/20 gap-2 border-b-8 border-orange-700">{processingId === 'linking_boq' ? <Loader2 className="animate-spin h-5 w-5" /> : <CheckCircle2 className="h-5 w-5" />}{isRtl ? 'اعتماد وإنشاء' : 'Confirm'}</Button></DialogFooter>
+            <div className="bg-primary/5 p-8 text-slate-900 text-start border-b"><DialogTitle className="text-2xl font-black font-headline flex items-center gap-3"><Pencil className="h-7 w-7 text-primary" />{isRtl ? 'تأكيد مسمى المقايسة' : 'Confirm Name'}</DialogTitle></div>
+            <div className="p-8 space-y-6 text-start"><div className="space-y-3"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المسمى المختار' : 'Target BOQ Name'}</Label><Input value={customBOQName} onChange={e => setCustomBOQName(e.target.value)} className="h-14 rounded-2xl border-2 font-black text-lg focus:border-primary/50 transition-all shadow-inner" /></div></div>
+            <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-3"><Button variant="outline" onClick={() => setNamingTemplate(null)} className="flex-1 h-14 rounded-2xl border-2 font-bold bg-white">إلغاء</Button><Button onClick={handleConfirmLinkBOQ} disabled={processingId === 'linking_boq' || !customBOQName.trim()} className="flex-[2] h-14 rounded-2xl bg-primary text-white font-black text-lg shadow-xl gap-2 border-b-8 border-orange-700">{processingId === 'linking_boq' ? <Loader2 className="animate-spin h-5 w-5" /> : <CheckCircle2 className="h-5 w-5" />}{isRtl ? 'اعتماد وإنشاء' : 'Confirm'}</Button></DialogFooter>
          </DialogContent>
       </Dialog>
 
