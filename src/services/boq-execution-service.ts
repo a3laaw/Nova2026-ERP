@@ -44,7 +44,7 @@ export class BOQExecutionService {
   ) {}
 
   /**
-   * Helper to get normalized technical stage IDs for a BOQ item (singular vs plural support)
+   * Helper to get normalized technical stage IDs for a BOQ item.
    */
   private getAllowedTechnicalStageIds(item: BOQItem): string[] {
     if (item.technicalStageIds && item.technicalStageIds.length > 0) {
@@ -61,7 +61,7 @@ export class BOQExecutionService {
     userId: string,
     userName: string,
     notes?: string,
-    stageInstanceId?: string // Optional: Stage Instance ID for timeline linking
+    stageInstanceId?: string 
   ) {
     ensureActionPermission(this.permissions, 'projects:edit');
 
@@ -118,7 +118,7 @@ export class BOQExecutionService {
         content: quantity === 0 
           ? `تأكيد فني: ${itemData.referenceTitle}`
           : `تسجيل إنجاز: ${itemData.referenceTitle} (${quantity} وحدة)`,
-        notes: notes || '', // دمج ملاحظات المستخدم في التايم لاين
+        notes: notes || '', 
         quantity,
         boqItemId: itemId,
         userId,
@@ -204,7 +204,7 @@ export class BOQExecutionService {
     
     const allItems = itemsSnap.docs.map(d => ({ id: d.id, ...d.data() } as BOQItem));
     
-    // التعديل السيادي الصارم: استبعاد البنود التي تم حذفها تماماً (plannedQuantity === 0)
+    // Strict Guard: Exclude items that are effectively deleted (plannedQuantity === 0)
     const linkedItems = allItems.filter(i => 
       this.getAllowedTechnicalStageIds(i).includes(technicalStageId) && 
       (i.plannedQuantity || 0) > 0
@@ -238,6 +238,7 @@ export class BOQExecutionService {
          }
       });
 
+      // Handling legacy items or items without execution logs but with totals
       if (itemExecSumFromLogs === 0 && (!item.technicalStageIds || item.technicalStageIds.length === 0)) {
          if ((item.executedQuantity || 0) > 0) {
            itemExecSumFromLogs = item.executedQuantity || 0;

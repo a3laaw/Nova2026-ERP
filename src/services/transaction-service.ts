@@ -26,7 +26,6 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { ensureActionPermission } from '@/lib/permissions/engine';
 import { BOQExecutionService } from './boq-execution-service';
 import { CommentService } from './comment-service';
-import { differenceInHours, differenceInDays } from 'date-fns';
 
 export class TransactionService {
   constructor(
@@ -37,7 +36,6 @@ export class TransactionService {
 
   /**
    * فتح معاملة فنية جديدة.
-   * التعديل السيادي: لا يتم إنشاء مراحل التنفيذ هنا، بل تُترك المعاملة "خام" حتى ربط واعتماد المقايسة.
    */
   async createTransaction(data: {
     clientId: string;
@@ -98,7 +96,6 @@ export class TransactionService {
       updatedAt: serverTimestamp()
     });
 
-    // التوثيق الأولي
     const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
     batch.set(timelineRef, {
       transactionId,
@@ -115,20 +112,15 @@ export class TransactionService {
   }
 
   /**
-   * دالة حقن المسار الفني (تُستدعى عند اعتماد المقايسة)
-   * تم التحديث لمنع التكرار (Duplicate Guard)
+   * دالة حقن المسار الفني.
    */
   async initializeTechnicalPath(transactionId: string, activityId: string, serviceId: string, subServiceId: string, userId: string) {
-    // 1. حارس سيادي: التأكد من عدم وجود مراحل مسبقة لمنع التكرار
     const existingStagesSnap = await getDocs(query(
       collection(this.db, paths.transactionStages(this.companyId, transactionId)), 
       limit(1)
     ));
     
-    if (!existingStagesSnap.empty) {
-      console.warn("Stages already initialized for transaction:", transactionId);
-      return;
-    }
+    if (!existingStagesSnap.empty) return;
 
     const stagesPath = paths.technicalStages(this.companyId, activityId, serviceId, subServiceId);
     const stagesSnap = await getDocs(query(collection(this.db, stagesPath), orderBy('order', 'asc')));
@@ -184,8 +176,8 @@ export class TransactionService {
 
     const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
     await addDoc(timelineRef, {
-      transactionId: transactionId,
-      stageId: stageId,
+      transactionId,
+      stageId,
       technicalStageId: stageData.technicalStageId,
       type: 'stage_start',
       content: `تم بدء العمل في المرحلة الفنية: ${stageData.name}`,
@@ -224,8 +216,8 @@ export class TransactionService {
 
     const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
     await addDoc(timelineRef, {
-      transactionId: transactionId,
-      stageId: stageId,
+      transactionId,
+      stageId,
       technicalStageId: stageData.technicalStageId,
       type: 'stage_complete',
       content: force 
@@ -237,6 +229,61 @@ export class TransactionService {
       companyId: this.companyId,
       createdAt: serverTimestamp()
     });
+  }
+
+  /**
+   * إعادة فتح مرحلة مكتملة (التراجع السيادي)
+   * يقوم بأرشفة سجلات الإنجاز المرتبطة وتوثيق الحدث زمنياً
+   */
+  async reopenStage(transactionId: string, stageId: string, userId: string, userName: string, clearLogs: boolean = false) {
+    ensureActionPermission(this.permissions, 'projects:edit');
+    
+    const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
+    const stageSnap = await getDoc(stageRef);
+    if (!stageSnap.exists()) return;
+    const stageData = stageSnap.data() as StageInstance;
+
+    const previousStart = stageData.startedAt;
+    const previousEnd = stageData.completedAt;
+
+    const batch = writeBatch(this.db);
+    
+    // 1. تحديث الحالة
+    batch.update(stageRef, {
+      status: 'in-progress',
+      completedAt: null,
+      completedBy: null,
+      updatedAt: serverTimestamp(),
+      updatedBy: userId
+    });
+
+    // 2. توثيق الحدث مع حفظ بصمة الوقت السابقة
+    const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
+    batch.set(timelineRef, {
+      transactionId,
+      stageId,
+      technicalStageId: stageData.technicalStageId,
+      type: 'stage_reopen',
+      content: `إجراء إداري: إعادة فتح مرحلة "${stageData.name}" للمراجعة.`,
+      previousStart,
+      previousEnd,
+      userId,
+      userName,
+      isArchived: false,
+      companyId: this.companyId,
+      createdAt: serverTimestamp()
+    });
+
+    await batch.commit();
+
+    // 3. أرشفة سجلات الإنجاز والتعليقات إذا طلب المستخدم
+    if (clearLogs) {
+      const boqExecService = new BOQExecutionService(this.db, this.companyId, this.permissions);
+      await boqExecService.archiveStageExecutions(transactionId, stageData.technicalStageId, true);
+      
+      const commentService = new CommentService(this.db, this.companyId, this.permissions);
+      await commentService.archiveStageComments(transactionId, stageId);
+    }
   }
 
   async deleteTransaction(transactionId: string) {
