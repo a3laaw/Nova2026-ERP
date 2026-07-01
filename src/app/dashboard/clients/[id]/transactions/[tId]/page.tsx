@@ -180,25 +180,30 @@ export default function TransactionDetailsPage() {
 
   const transactionService = useMemo(() => db && companyId ? new TransactionService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
+  // Robust Record Progress Handler
   const handleRecordProgress = async (force: boolean = false) => {
     if (!executionService || !user || !targetStage || !selectedItemId) return;
     
     const qtyInput = isComplementary ? 0 : Number(progressQty);
 
+    // Initial Validation
     if (!isComplementary && (progressQty === "" || qtyInput <= 0)) {
         toast({ variant: "destructive", title: isRtl ? "يرجى إدخال كمية صحيحة" : "Enter valid quantity" });
         return;
     }
 
+    // Check for over-execution
     if (!force && !isComplementary && selectedBOQItemMetrics && qtyInput > selectedBOQItemMetrics.remaining) {
         setIsOverExecutionOpen(true);
         return;
     }
 
-    // Sovereing Fix: Close dialogs immediately to release the UI before async work
-    if (force) setIsOverExecutionOpen(false);
+    // PHASE 1: Release the UI completely
+    // We close the dialogs first and wait a tick to ensure Radix removes overlays
+    setIsOverExecutionOpen(false);
     setIsRecordOpen(false);
 
+    // PHASE 2: Trigger Async Processing after UI is unlocked
     setLoadingAction('recording');
     try {
       await executionService.recordBOQItemExecution(
@@ -211,16 +216,16 @@ export default function TransactionDetailsPage() {
         progressNotes,
         targetStage.id!
       );
+      
       toast({ title: isRtl ? "تم تسجيل الإنجاز" : "Progress Logged" });
       
-      // Clear form states only on success
+      // Cleanup form
       setProgressQty(""); 
       setProgressNotes("");
       setSelectedItemId("");
       setIsComplementary(false);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
-      // If error, maybe keep form for retry? (already handled by not clearing)
     } finally {
       setLoadingAction(null);
     }
@@ -247,7 +252,10 @@ export default function TransactionDetailsPage() {
   const handleStartStage = async (stageId: string) => {
     if (!transactionService || !user) return;
     setProcessingId(stageId);
-    try { await transactionService.startStage(transactionId, stageId, user.uid, currentUserName); toast({ title: isRtl ? "تم بدء العمل" : "Stage Started" }); }
+    try { 
+      await transactionService.startStage(transactionId, stageId, user.uid, currentUserName); 
+      toast({ title: isRtl ? "تم بدء العمل" : "Stage Started" }); 
+    }
     catch (e: any) { toast({ variant: "destructive", title: t('error'), description: e.message }); }
     finally { setProcessingId(null); }
   };
@@ -255,9 +263,16 @@ export default function TransactionDetailsPage() {
   const handleCompleteStage = async (stage: StageInstance, force: boolean = false) => {
     if (!transactionService || !user || !stage.id) return;
     const progress = stageProgressMap[stage.technicalStageId];
-    if (!force && progress && !progress.canComplete) { setIncompleteStage({ stage, progress }); return; }
+    if (!force && progress && !progress.canComplete) { 
+      setIncompleteStage({ stage, progress }); 
+      return; 
+    }
     setProcessingId(stage.id);
-    try { await transactionService.completeStage(transactionId, stage.id, user.uid, currentUserName, force); toast({ title: isRtl ? "تم إنجاز المرحلة" : "Stage Completed" }); setIncompleteStage(null); }
+    try { 
+      await transactionService.completeStage(transactionId, stage.id, user.uid, currentUserName, force); 
+      toast({ title: isRtl ? "تم إنجاز المرحلة" : "Stage Completed" }); 
+      setIncompleteStage(null); 
+    }
     catch (e: any) { toast({ variant: "destructive", title: isRtl ? "تعذر إغلاق المرحلة" : "Cannot Close", description: e.message }); }
     finally { setProcessingId(null); }
   };
@@ -297,7 +312,7 @@ export default function TransactionDetailsPage() {
     setProcessingId('linking_boq');
     try {
       const docService = new DocumentService(db, companyId, permissions);
-      await docService.instantiateBoqFromTemplate(namingTemplate.id!, {
+      const boqId = await docService.instantiateBoqFromTemplate(namingTemplate.id!, {
         transactionId,
         clientId: transaction.clientId,
         clientName: transaction.clientName,
@@ -548,10 +563,7 @@ export default function TransactionDetailsPage() {
            <AlertDialogFooter className="mt-12 gap-4 flex flex-row">
               <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel>
               <AlertDialogAction 
-                onClick={(e) => {
-                  e.preventDefault(); // Prevents Radix from closing before we are ready
-                  handleRecordProgress(true);
-                }}
+                onClick={() => handleRecordProgress(true)}
                 className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200"
               >
                  {isRtl ? 'نعم، أقر بالتجاوز واحفظ' : 'Confirm Over-Execution'}
