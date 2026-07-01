@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -57,7 +56,12 @@ export default function TransactionBOQProgressPage() {
   const activeBoq = boqs?.[0];
 
   const itemsQuery = useMemo(() => companyId && db && activeBoq?.id ? query(collection(db, paths.boqItems(companyId, activeBoq.id))) : null, [db, companyId, activeBoq]);
-  const { data: items, loading: itemsLoading } = useCollection<BOQItem>(itemsQuery);
+  const { data: rawItems, loading: itemsLoading } = useCollection<BOQItem>(itemsQuery);
+
+  // التعديل السيادي الصارم: استبعاد البنود التي تم حذفها (plannedQuantity === 0) من جدول تتبع المقايسة
+  const items = useMemo(() => {
+    return (rawItems || []).filter(i => (i.plannedQuantity || 0) > 0);
+  }, [rawItems]);
 
   // 2. جلب الأوامر التغييرية وبنودها التفصيلية للتحليل
   const variationsQuery = useMemo(() => 
@@ -173,6 +177,9 @@ export default function TransactionBOQProgressPage() {
   };
 
   const renderBOQTreeRows = (node: BOQTreeNode, prefix: string): React.ReactNode => {
+    // إخفاء العقد الفارغة التي ليس بها بنود نشطة
+    if (node.items.length === 0 && node.children.length === 0) return null;
+
     return (
       <React.Fragment key={node.id}>
         <TableRow className="bg-slate-50/50 hover:bg-slate-100 border-b-2 border-white">
@@ -368,7 +375,18 @@ export default function TransactionBOQProgressPage() {
              </TableRow>
            </TableHeader>
            <TableBody>
-              {boqTree.map((node, idx) => renderBOQTreeRows(node, (idx + 1).toString() + ".0"))}
+              {boqTree.length === 0 ? (
+                <TableRow>
+                   <TableCell colSpan={13} className="py-40 text-center opacity-30">
+                      <div className="flex flex-col items-center gap-4">
+                         <Calculator className="h-12 w-12 text-slate-300" />
+                         <p className="text-lg font-black">{isRtl ? 'المقايسة لا تحتوي على بنود نشطة' : 'No active items in BOQ'}</p>
+                      </div>
+                   </TableCell>
+                </TableRow>
+              ) : (
+                boqTree.map((node, idx) => renderBOQTreeRows(node, (idx + 1).toString() + ".0"))
+              )}
            </TableBody>
          </Table>
 
@@ -402,7 +420,7 @@ export default function TransactionBOQProgressPage() {
         boqId={activeBoq.id}
         transactionId={transactionId}
         boqNumber={activeBoq.boqNumber}
-        boqItems={items || []}
+        boqItems={rawItems || []}
       />
     </div>
   );

@@ -163,26 +163,34 @@ export default function TransactionDetailsPage() {
   [db, companyId, transactionId]);
   const { data: allExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
 
-  // التعديل السيادي: فلترة المسار الفني لإخفاء المراحل الطارئة الفارغة
+  // التعديل السيادي الصارم: تطهير المسار الفني من المراحل التي تم إلغاء كافة أعمالها
   const stages = useMemo(() => {
     if (!rawStages) return [];
     return [...rawStages]
       .filter(s => {
-        // 1. دائماً نعرض المراحل الهندسية الأصلية أو المراحل التي تم البدء فيها/إنجازها
-        if (!s.isTemporary && s.originType !== 'temporary_vo') return true;
-        if (s.status !== 'pending') return true;
-
-        // 2. بالنسبة للمراحل الطارئة المنتظرة: نخفيها إذا لم يعد يوجد أي بند نشط مرتبط بها
-        // بند نشط يعني plannedQuantity > 0
+        // 1. المراحل الأصلية (من القالب) تظل ظاهرة إلا إذا لم تبدأ وأصبحت فارغة
         const hasActiveWork = boqItems?.some(item => 
           (item.technicalStageId === s.technicalStageId || item.technicalStageIds?.includes(s.technicalStageId)) 
           && (item.plannedQuantity || 0) > 0
         );
 
-        return !!hasActiveWork;
+        const hasExecutionHistory = allExecutions?.some(exec => exec.technicalStageId === s.technicalStageId && !exec.isArchived);
+
+        // إذا كانت المرحلة طارئة (VO)
+        if (s.isTemporary || s.originType === 'temporary_vo') {
+          // نخفيها إذا كانت فارغة تماماً (لا يوجد عمل مخطط > 0) ولم يتم البدء فيها بعد ولم يسجل فيها إنجاز
+          if (s.status === 'pending' && !hasActiveWork && !hasExecutionHistory) return false;
+          // حتى لو كانت in-progress، إذا أصبحت فارغة (تم إلغاء بنودها بـ VO عكسية) وليس بها سجلات، نخفيها
+          if (s.status === 'in-progress' && !hasActiveWork && !hasExecutionHistory) return false;
+        } else {
+          // المراحل الأصلية: إذا أصبحت فارغة تماماً ولم تبدأ بعد، نخفيها لتقليل الضجيج
+          if (s.status === 'pending' && !hasActiveWork && !hasExecutionHistory) return false;
+        }
+
+        return true;
       })
       .sort((a, b) => (a.order || 0) - (b.order || 0));
-  }, [rawStages, boqItems]);
+  }, [rawStages, boqItems, allExecutions]);
 
   const progressPercent = useMemo(() => {
     if (!stages || stages.length === 0) return 0;
@@ -215,13 +223,14 @@ export default function TransactionDetailsPage() {
     db && companyId ? new TransactionService(db, companyId, permissions) : null, 
   [db, companyId, permissions]);
 
+  // التعديل السيادي: استبعاد البنود الملغاة (Planned == 0) من قائمة تسجيل الإنجاز
   const filteredItemsForStage = useMemo(() => {
     if (!boqItems || !targetStage) return [];
     const sId = targetStage.technicalStageId;
     return boqItems.filter(item => {
       const allowedIds = item.technicalStageIds || [];
       const primaryId = item.technicalStageId;
-      // تجاهل البنود الملغاة في نافذة تسجيل الإنجاز
+      // الفلترة الصارمة: البند يجب أن يكون مرتبطاً بالمرحلة وله كمية مخططة موجبة
       return (allowedIds.includes(sId) || primaryId === sId) && (item.plannedQuantity || 0) > 0;
     });
   }, [boqItems, targetStage]);
@@ -779,7 +788,7 @@ export default function TransactionDetailsPage() {
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? "بند المقايسة المستهدف" : "Target Work Item"}</Label>
                        <Select value={selectedItemId} onValueChange={setSelectedItemId}>
-                          <SelectTrigger className="h-11 rounded-xl border-2 font-bold bg-white focus:ring-0">
+                          <SelectTrigger className="h-12 rounded-xl border-2 font-black text-xs bg-white focus:ring-0 shadow-inner">
                              <SelectValue placeholder="..." />
                           </SelectTrigger>
                           <SelectContent className="rounded-xl border-2 shadow-2xl">
@@ -826,7 +835,7 @@ export default function TransactionDetailsPage() {
                               type="number" 
                               value={progressQty || ''} 
                               onChange={e => setProgressQty(Number(e.target.value))} 
-                              className="h-14 w-full rounded-xl border-2 border-primary/20 font-black text-2xl text-primary text-center outline-none focus:border-primary transition-all bg-slate-50/50" 
+                              className="h-14 w-full rounded-xl border-2 border-primary/20 font-black text-2xl text-primary text-center outline-none focus:border-primary transition-all bg-slate-50/50 shadow-inner" 
                               placeholder="0" 
                             />
                             <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 uppercase">

@@ -204,8 +204,7 @@ export class BOQExecutionService {
     
     const allItems = itemsSnap.docs.map(d => ({ id: d.id, ...d.data() } as BOQItem));
     
-    // تصفية البنود المرتبطة بالمرحلة المطلوبة (دعم الارتباط المتعدد)
-    // التعديل السيادي: تجاهل البنود التي تم حذفها (plannedQuantity === 0)
+    // التعديل السيادي الصارم: استبعاد البنود التي تم حذفها تماماً (plannedQuantity === 0)
     const linkedItems = allItems.filter(i => 
       this.getAllowedTechnicalStageIds(i).includes(technicalStageId) && 
       (i.plannedQuantity || 0) > 0
