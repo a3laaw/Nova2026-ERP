@@ -32,7 +32,7 @@ import {
   LayoutGrid
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
-import { doc, collection, query, orderBy, where, limit } from 'firebase/firestore';
+import { collection, query, orderBy, where, limit } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -99,7 +99,8 @@ export default function TransactionDetailsPage() {
   const [isComplementary, setIsComplementary] = useState(false);
   const [targetStage, setTargetStage] = useState<StageInstance | null>(null);
   const [selectedItemId, setSelectedItemId] = useState("");
-  const [progressQty, setProgressQty] = useState<number | "">(""); // FIXED: Empty instead of 0
+  // FIXED: progressQty starts as empty string to avoid showing 0
+  const [progressQty, setProgressQty] = useState<number | "">(""); 
   const [progressNotes, setProgressNotes] = useState("");
 
   const [undoStage, setUndoStage] = useState<StageInstance | null>(null);
@@ -252,6 +253,13 @@ export default function TransactionDetailsPage() {
 
   const handleRecordProgress = async () => {
     if (!executionService || !user || !targetStage || !selectedItemId) return;
+    
+    // Validate empty inputs
+    if (!isComplementary && (progressQty === "" || Number(progressQty) <= 0)) {
+        toast({ variant: "destructive", title: isRtl ? "يرجى إدخال كمية صحيحة" : "Enter valid quantity" });
+        return;
+    }
+
     setLoadingAction('recording');
     try {
       await executionService.recordBOQItemExecution(
@@ -266,7 +274,7 @@ export default function TransactionDetailsPage() {
       );
       toast({ title: isRtl ? "تم تسجيل الإنجاز" : "Progress Logged" });
       setIsRecordOpen(false);
-      setProgressQty(""); // Reset to empty
+      setProgressQty(""); 
       setProgressNotes("");
       setSelectedItemId("");
       setIsComplementary(false);
@@ -454,7 +462,6 @@ export default function TransactionDetailsPage() {
                     <div className="space-y-2 animate-in slide-in-from-top-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الكمية المنفذة حالياً' : 'Quantity Executed'}</Label>
                        <div className="relative">
-                          {/* FIXED: No default 0, uses empty state */}
                           <Input 
                             type="number" 
                             step="0.01" 
@@ -477,8 +484,7 @@ export default function TransactionDetailsPage() {
 
             <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-3">
                <Button variant="outline" onClick={() => setIsRecordOpen(false)} className="flex-1 h-12 rounded-xl font-bold">إلغاء</Button>
-               {/* FIXED: disabled if not complementary and qty is empty or <= 0 */}
-               <Button onClick={handleRecordProgress} disabled={!!loadingAction || (!isComplementary && (progressQty === "" || Number(progressQty) <= 0)) || !selectedItemId} className="flex-[2] h-12 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 transition-all gap-2 border-b-4 border-orange-700">
+               <Button onClick={handleRecordProgress} disabled={loadingAction === 'recording' || (!isComplementary && (progressQty === "" || Number(progressQty) <= 0)) || !selectedItemId} className="flex-[2] h-12 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 transition-all gap-2 border-b-4 border-orange-700">
                   {loadingAction === 'recording' ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
                   {isRtl ? 'حفظ السجل' : 'Log Now'}
                </Button>

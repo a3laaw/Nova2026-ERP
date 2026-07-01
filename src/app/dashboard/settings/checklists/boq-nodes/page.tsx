@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -415,11 +414,11 @@ export default function BOQNodesPage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('code')}</Label>
+                        <Label className="text-[10px] font-black uppercase text-slate-400">{t('code')}</Label>
                         <Input value={editingNode?.code || ''} onChange={e => setEditingNode({...editingNode!, code: e.target.value.toUpperCase()})} className="h-11 rounded-xl border-2 font-mono font-black text-primary" />
                     </div>
                     <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'ترتيب الظهور' : 'Display Order'}</Label>
+                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'ترتيب الظهور' : 'Display Order'}</Label>
                         <Input type="number" value={editingNode?.order || 0} onChange={e => setEditingNode({...editingNode!, order: Number(e.target.value)})} className="h-11 rounded-xl border-2 font-bold" />
                     </div>
                   </div>
@@ -715,9 +714,9 @@ export default function BOQNodesPage() {
                        </Select>
                     </div>
                     <div className="space-y-1.5">
-                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">الفئة المرجعية (KWD)</Label>
+                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'سعر الوحدة المرجعي (KWD)' : 'Reference Unit Price (KWD)'}</Label>
                        <div className="relative">
-                          <Input type="number" step="0.001" value={editingNode.estimatedRate || 0} onChange={e => setEditingNode({...editingNode!, estimatedRate: Number(e.target.value)})} className="h-12 rounded-xl border-2 font-black text-emerald-600 text-xl text-center" />
+                          <Input type="number" step="0.001" value={editingNode.estimatedRate || ''} onChange={e => setEditingNode({...editingNode!, estimatedRate: e.target.value === '' ? '' : Number(e.target.value)} as any)} className="h-12 rounded-xl border-2 font-black text-emerald-600 text-xl text-center" placeholder="..." />
                           <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-300">KWD</div>
                        </div>
                     </div>

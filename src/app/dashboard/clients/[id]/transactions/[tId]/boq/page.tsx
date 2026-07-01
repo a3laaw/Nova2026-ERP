@@ -14,10 +14,10 @@ import {
   Zap, History, PlusCircle, AlertCircle,
   CheckCircle2, XCircle, Ban, TrendingDown,
   Info, Sparkles, Pencil, Save, ShieldAlert,
-  LayoutGrid, X, Clock
+  LayoutGrid, X, Clock, DollarSign
 } from "lucide-react";
 import { useFirestore, useCollection, useDoc } from '@/firebase';
-import { collection, query, where, doc, collectionGroup } from 'firebase/firestore';
+import { collection, query, where, doc, getDocs } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -75,9 +75,12 @@ export default function TransactionBOQProgressPage() {
   const { data: rawExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
   const allExecutions = useMemo(() => (rawExecutions || []).filter(e => e.boqId === activeBoq?.id), [rawExecutions, activeBoq]);
 
+  // FIXED: executionMetrics now filters out archived logs to prevent inflated numbers
   const executionMetrics = useMemo(() => {
     const metrics: Record<string, { prev: number, current: number }> = {};
     (allExecutions || []).forEach(exec => {
+      if (exec.isArchived) return; // SKIP ARCHIVED LOGS
+
       const stage = stages?.find(s => s.technicalStageId === exec.technicalStageId);
       const itemId = exec.boqItemId;
       if (!metrics[itemId]) metrics[itemId] = { prev: 0, current: 0 };
@@ -190,13 +193,13 @@ export default function TransactionBOQProgressPage() {
             </TableCell>
             <TableCell className="text-center">
                <div className="flex flex-col items-center">
-                  <div className="h-7 px-3 rounded-full bg-orange-50 text-orange-600 font-black text-xs inline-flex items-center">{metrics.current}</div>
+                  <div className={cn("h-7 px-3 rounded-full font-black text-xs inline-flex items-center", metrics.current > 0 ? "bg-orange-50 text-orange-600" : "text-slate-300")}>{metrics.current}</div>
                   <span className="text-[8px] font-bold text-slate-400 mt-0.5">{currPct}%</span>
                </div>
             </TableCell>
             <TableCell className="text-center">
                <div className="flex flex-col items-center">
-                  <Badge variant="outline" className="font-black text-xs px-4 h-8 bg-slate-900 text-white border-slate-900">{totalCumulative}</Badge>
+                  <Badge variant="outline" className={cn("font-black text-xs px-4 h-8 border-0 shadow-sm", totalCumulative > 0 ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-400")}>{totalCumulative}</Badge>
                   <span className="text-[8px] font-black text-slate-500 mt-1">{totalPct}%</span>
                </div>
             </TableCell>
@@ -312,7 +315,7 @@ export default function TransactionBOQProgressPage() {
                <TableHead className="text-center w-[100px] text-white font-black text-xs">{isRtl ? 'السابق' : 'Prev'}</TableHead>
                <TableHead className="text-center w-[120px] text-white font-black text-xs">{isRtl ? 'الحالي' : 'Current'}</TableHead>
                <TableHead className="text-center w-[120px] text-white font-black text-xs">{isRtl ? 'الإجمالي' : 'Total'}</TableHead>
-               <TableHead className="text-center w-[120px] text-white font-black text-xs">{t('unitPrice')}</TableHead>
+               <TableHead className="text-center w-[120px] text-white font-black text-xs">{isRtl ? 'سعر الوحدة' : 'Unit Price'}</TableHead>
                <TableHead className="text-end w-[120px] text-white font-black text-xs">{isRtl ? 'القيمة' : 'Value'}</TableHead>
                <TableHead className="pe-6 w-[120px] text-end text-white font-black text-xs">{isRtl ? 'إنجاز %' : 'Progress'}</TableHead>
              </TableRow>
