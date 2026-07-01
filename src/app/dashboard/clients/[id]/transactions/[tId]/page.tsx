@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -119,7 +120,12 @@ export default function TransactionDetailsPage() {
   const transRef = useMemo(() => (companyId && db) ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
   const { data: transaction, loading: transLoading } = useDoc<Transaction>(transRef);
 
-  const stagesQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.transactionStages(companyId, transactionId)), orderBy('order', 'asc')) : null, [db, companyId, transactionId]);
+  const stagesQuery = useMemo(() => 
+    companyId && db 
+      ? query(collection(db, paths.transactionStages(companyId, transactionId)), orderBy('order', 'asc')) 
+      : null, 
+  [db, companyId, transactionId]);
+  
   const { data: rawStages, loading: stagesLoading } = useCollection<StageInstance>(stagesQuery);
 
   const boqQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', transactionId), limit(1)) : null, [db, companyId, transactionId]);
@@ -157,7 +163,6 @@ export default function TransactionDetailsPage() {
 
   const maxCompletedOrder = useMemo(() => {
     if (!stages || stages.length === 0) return -1;
-    // Strictly find the max order of a NON-complementary completed stage
     const completedOrders = stages.filter(s => s.status === 'completed' && !s.isComplementary).map(s => s.order || 0);
     return completedOrders.length > 0 ? Math.max(...completedOrders) : -1;
   }, [stages]);
@@ -197,9 +202,11 @@ export default function TransactionDetailsPage() {
         return;
     }
 
+    // صمام أمان لفك تجمد الواجهة
     setIsOverExecutionOpen(false);
     setIsRecordOpen(false);
 
+    // ترحيل الحفظ لضمان تحرير المتصفح من الـ AlertDialog تماماً
     setTimeout(async () => {
         if (typeof document !== 'undefined') document.body.style.pointerEvents = 'auto';
         setLoadingAction('recording');
@@ -246,12 +253,13 @@ export default function TransactionDetailsPage() {
 
   const handleReopenStage = async () => {
     if (!transactionService || !user || !undoStage) return;
+    const sId = undoStage.id!;
     setUndoStage(null);
     setTimeout(async () => {
         if (typeof document !== 'undefined') document.body.style.pointerEvents = 'auto';
-        setProcessingId(undoStage.id!);
+        setProcessingId(sId);
         try {
-          await transactionService.reopenStage(transactionId, undoStage.id!, user.uid, currentUserName, clearLogsOnUndo);
+          await transactionService.reopenStage(transactionId, sId, user.uid, currentUserName, clearLogsOnUndo);
           toast({ title: isRtl ? "تمت إعادة فتح المرحلة وتجميد اللاحقة" : "Stage Reopened" });
           setActiveTabOverride('time_archive');
         } catch (e: any) {
@@ -282,7 +290,7 @@ export default function TransactionDetailsPage() {
     setProcessingId('linking_boq');
     try {
       const docService = new DocumentService(db, companyId, permissions);
-      await docService.instantiateBoqFromTemplate(namingTemplate.id!, {
+      const boqId = await docService.instantiateBoqFromTemplate(namingTemplate.id!, {
         transactionId, clientId: transaction.clientId, clientName: transaction.clientName,
         activityTypeId: transaction.activityTypeId, serviceId: transaction.serviceId,
         subServiceId: transaction.subServiceId, name: customBOQName
@@ -362,9 +370,6 @@ export default function TransactionDetailsPage() {
                    {stages.map((stage, idx) => {
                       const boqProgress = stageProgressMap[stage.technicalStageId];
                       
-                      // Flexible Operational Frontier:
-                      // A stage can be started if it's the first OR its non-complementary predecessor is done.
-                      // For complementary stages, they can start as soon as their preceding anchor is at least started.
                       const isPreviousCompleted = (() => {
                         if (idx === 0) return true;
                         let prevIdx = idx - 1;
@@ -431,7 +436,14 @@ export default function TransactionDetailsPage() {
                      <SelectTrigger className="h-11 rounded-xl border-2 font-bold bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
                      <SelectContent className="rounded-xl border-0 shadow-2xl">
                         {boqItems?.filter(i => (i.plannedQuantity || 0) > 0 && (i.technicalStageIds?.includes(targetStage?.technicalStageId!) || i.technicalStageId === targetStage?.technicalStageId))
-                          .map(i => <SelectItem key={i.id} value={i.id!} className="font-bold py-3 text-xs border-b last:border-0 border-slate-50">{i.referenceTitle}</SelectItem>)}
+                          .map(i => (
+                            <SelectItem key={i.id} value={i.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
+                               <div className="flex flex-col text-start">
+                                  <span className="font-black">{i.referenceTitle}</span>
+                                  <span className="text-[10px] text-slate-400 font-mono">#{i.referenceCode}</span>
+                               </div>
+                            </SelectItem>
+                          ))}
                      </SelectContent>
                   </Select>
                </div>
@@ -488,8 +500,15 @@ export default function TransactionDetailsPage() {
 
       <Dialog open={!!namingTemplate} onOpenChange={(open) => !open && setNamingTemplate(null)}>
          <DialogContent className="rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
-            <div className="bg-primary/5 p-8 text-slate-900 text-start border-b"><DialogTitle className="text-2xl font-black font-headline flex items-center gap-3"><Pencil className="h-7 w-7 text-primary" />{isRtl ? 'تأكيد مسمى المقايسة' : 'Confirm Name'}</DialogTitle></div>
-            <div className="p-8 space-y-6 text-start"><div className="space-y-3"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المسمى المختار' : 'Target BOQ Name'}</Label><Input value={customBOQName} onChange={e => setCustomBOQName(e.target.value)} className="h-14 rounded-2xl border-2 font-black text-lg focus:border-primary/50 transition-all shadow-inner" /></div></div>
+            <div className="bg-primary/5 p-8 text-slate-900 text-start border-b">
+               <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3"><Pencil className="h-7 w-7 text-primary" />{isRtl ? 'تأكيد مسمى المقايسة' : 'Confirm Name'}</DialogTitle>
+            </div>
+            <div className="p-8 space-y-6 text-start">
+               <div className="space-y-3">
+                  <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المسمى المختار' : 'Target BOQ Name'}</Label>
+                  <Input value={customBOQName} onChange={e => setCustomBOQName(e.target.value)} className="h-14 rounded-2xl border-2 font-black text-lg focus:border-primary/50 transition-all shadow-inner" />
+               </div>
+            </div>
             <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-3"><Button variant="outline" onClick={() => setNamingTemplate(null)} className="flex-1 h-14 rounded-2xl border-2 font-bold bg-white">إلغاء</Button><Button onClick={handleConfirmLinkBOQ} disabled={processingId === 'linking_boq' || !customBOQName.trim()} className="flex-[2] h-14 rounded-2xl bg-primary text-white font-black text-lg shadow-xl gap-2 border-b-8 border-orange-700">{processingId === 'linking_boq' ? <Loader2 className="animate-spin h-5 w-5" /> : <CheckCircle2 className="h-5 w-5" />}{isRtl ? 'اعتماد وإنشاء' : 'Confirm'}</Button></DialogFooter>
          </DialogContent>
       </Dialog>

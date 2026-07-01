@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -33,7 +34,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
+import { Switch } from '@/components/ui/switch';
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -94,7 +95,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
       total: 0,
       localStageName: '',
       insertAfterStageId: '',
-      isComplementary: true // default to true for better UI experience
+      isComplementary: true
     } as any]);
   };
 
@@ -244,7 +245,14 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                      <Select value={item.sourceBoqItemId} onValueChange={v => updateItem(idx, 'sourceBoqItemId', v)}>
                                         <SelectTrigger className="h-11 rounded-xl border-2 font-black text-[11px] bg-white"><SelectValue placeholder="..." /></SelectTrigger>
                                         <SelectContent>
-                                          {boqItems.map(i => <SelectItem key={i.id} value={i.id!} className="font-bold text-xs py-3">{i.referenceTitle}</SelectItem>)}
+                                          {boqItems.map(i => (
+                                            <SelectItem key={i.id} value={i.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
+                                              <div className="flex flex-col text-start">
+                                                <span className="font-black">{i.referenceTitle}</span>
+                                                <span className="text-[10px] text-slate-400 font-mono">#{i.referenceCode}</span>
+                                              </div>
+                                            </SelectItem>
+                                          ))}
                                         </SelectContent>
                                      </Select>
                                   )}
