@@ -90,6 +90,7 @@ export default function TransactionDetailsPage() {
 
   // States
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [stageProgressMap, setStageProgressMap] = useState<Record<string, StageProgressResult>>({});
   const [filterStageId, setFilterStageId] = useState<string | null>(null);
   const [activeTabOverride, setActiveTabOverride] = useState<'active' | 'timeline' | 'chat_archive' | 'time_archive' | undefined>(undefined);
@@ -297,7 +298,7 @@ export default function TransactionDetailsPage() {
     };
   }, [selectedItemId, boqItems, allExecutions]);
 
-  if (transLoading || stagesLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
+  if (transLoading || stagesLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-20" dir={dir}>
@@ -465,7 +466,7 @@ export default function TransactionDetailsPage() {
 
                   <div className="space-y-1.5">
                      <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'تقرير ميداني مصغر' : 'Field Notes'}</Label>
-                     <Textarea value={progressNotes} onChange={e => setProgressNotes(e.target.value)} className="min-h-[80px] rounded-xl bg-slate-50/50 border-2 resize-none p-4 text-xs font-bold" placeholder="..." />
+                     <Textarea value={progressNotes} onChange={e => setProgressNotes(e.target.value)} className="min-h-[100px] rounded-xl bg-slate-50/50 border-2 resize-none p-4 text-xs font-bold" placeholder="..." />
                   </div>
                </div>
             </div>
@@ -482,7 +483,7 @@ export default function TransactionDetailsPage() {
 
       {/* Reopen Stage Dialog (Reversal Protocol) */}
       <Dialog open={!!undoStage} onOpenChange={(open) => !open && setUndoStage(null)}>
-         <DialogContent className="rounded-2xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-md ring-1 ring-black/5" dir={dir}>
+         <DialogContent className="rounded-2xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-md ring-1 ring-black/5" dir={dir}>
             <div className="bg-rose-600 p-8 text-white text-start">
                <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3">
                   <RotateCcw className="h-7 w-7" />
