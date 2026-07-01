@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -14,7 +13,7 @@ import {
   orderBy,
   limit,
   writeBatch,
-  deleteDoc
+  updateDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { BOQTemplate, BOQTemplateItem, QuotationTemplate, ContractTemplate } from '@/types/templates';
@@ -69,8 +68,7 @@ export class DocumentService {
 
   /**
    * استنساخ جدول كميات (BOQ) فعلي من قالب وربطه بالمعاملة أو المشروع.
-   * يقوم بنسخ كافة البنود وتصفير الإنجاز الفعلي.
-   * التحديث السيادي: تم تغيير الحالة الافتراضية إلى 'approved' لأنها تصدر عن معاملة رسمية.
+   * الحالة تبدأ بـ 'draft' للسماح بتعديل الكميات المخصصة لهذا المشروع قبل الاعتماد النهائي.
    */
   async instantiateBoqFromTemplate(
     templateId: string, 
@@ -89,10 +87,8 @@ export class DocumentService {
     userName: string
   ): Promise<string> {
     
-    // 1. التحقق من صلاحية الإنشاء
     ensureActionPermission(this.permissions, 'projects:create');
 
-    // 2. جلب بيانات القالب ورأس القالب
     const templateRef = doc(this.db, paths.boqTemplates(this.companyId), templateId);
     const templateSnap = await getDoc(templateRef);
 
@@ -101,16 +97,12 @@ export class DocumentService {
     }
 
     const template = templateSnap.data() as BOQTemplate;
-    
-    // 3. جلب كافة بنود القالب من المجموعة الفرعية
     const templateItemsSnap = await getDocs(collection(this.db, paths.boqTemplateItems(this.companyId, templateId)));
     
-    // 4. توليد رقم المقايسة والمسار الجديد
     const boqNumber = await this.getNextBOQNumber();
     const boqRef = doc(collection(this.db, paths.boqs(this.companyId)));
     const boqId = boqRef.id;
 
-    // 5. بناء كائن المقايسة الفعلي (Runtime BOQ Header)
     const boqData: BOQ = {
       id: boqId,
       boqNumber,
@@ -126,7 +118,7 @@ export class DocumentService {
       serviceId: payload.serviceId || template.serviceId,
       subServiceId: payload.subServiceId || template.subServiceId,
       measurementMode: template.measurementMode || 'quantity',
-      status: 'approved', // التعديل: تصبح معتمدة فورياً عند الربط بمعاملة رسمية
+      status: 'draft', // تبدأ كمسودة للسماح بالتعديل المشروع-تلو-المشروع
       totalAmount: template.baseAmount || 0,
       version: 1,
       companyId: this.companyId,
@@ -137,11 +129,8 @@ export class DocumentService {
     };
 
     const batch = writeBatch(this.db);
-    
-    // كتابة رأس المقايسة
     batch.set(boqRef, boqData);
 
-    // 6. استنساخ البنود إلى المجموعة الفرعية (Runtime Items)
     templateItemsSnap.docs.forEach(itemDoc => {
       const item = itemDoc.data() as BOQTemplateItem;
       const itemRef = doc(collection(this.db, paths.boqItems(this.companyId, boqId)));
@@ -188,13 +177,12 @@ export class DocumentService {
       batch.set(itemRef, runtimeItem);
     });
 
-    // 7. توثيق الحدث في المعاملة
     if (payload.transactionId) {
       const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, payload.transactionId)));
       batch.set(timelineRef, {
         transactionId: payload.transactionId,
         type: 'system',
-        content: `تم إنشاء جدول كميات فعلي معتمد باسم "${boqData.name}" برقم ${boqNumber}`,
+        content: `تم استنساخ مسودة مقايسة للمشروع من القالب المرجعي برقم ${boqNumber}`,
         userId,
         userName,
         companyId: this.companyId,
@@ -214,26 +202,56 @@ export class DocumentService {
   }
 
   /**
-   * حذف المقايسة وكافة بنودها لبدء العمل "على نظافة"
+   * تحديث كمية وفئة بند في ميزانية المسودة (تعديل المشروع فقط)
    */
+  async updateBOQItem(boqId: string, itemId: string, qty: number, rate: number) {
+    ensureActionPermission(this.permissions, 'projects:edit');
+    const itemRef = doc(this.db, paths.boqItems(this.companyId, boqId), itemId);
+    await updateDoc(itemRef, {
+      plannedQuantity: qty,
+      estimatedRate: rate,
+      updatedAt: serverTimestamp()
+    });
+  }
+
+  /**
+   * اعتماد المقايسة كـ Baseline رسمي للمشروع
+   */
+  async approveBOQ(boqId: string, totalAmount: number, transactionId: string, userId: string, userName: string) {
+    ensureActionPermission(this.permissions, 'projects:edit');
+    const boqRef = doc(this.db, paths.boqs(this.companyId), boqId);
+    
+    await updateDoc(boqRef, {
+      status: 'approved',
+      totalAmount,
+      updatedBy: userId,
+      updatedAt: serverTimestamp()
+    });
+
+    // توثيق الاعتماد في التايم لاين
+    const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
+    await addDoc(timelineRef, {
+      transactionId,
+      type: 'system',
+      content: `تم اعتماد الميزانية المرجعية (Project Baseline) بقيمة إجمالية ${totalAmount.toLocaleString()} KWD. تم قفل التعديل المباشر.`,
+      userId,
+      userName,
+      companyId: this.companyId,
+      createdAt: serverTimestamp()
+    });
+  }
+
   async deleteBOQ(boqId: string, transactionId?: string, userId?: string, userName?: string) {
     ensureActionPermission(this.permissions, 'projects:delete');
 
     const boqRef = doc(this.db, paths.boqs(this.companyId), boqId);
     const itemsRef = collection(this.db, paths.boqItems(this.companyId, boqId));
     
-    // 1. جلب كافة البنود لحذفها
     const itemsSnap = await getDocs(itemsRef);
-    
     const batch = writeBatch(this.db);
-    
-    // 2. حذف البنود
     itemsSnap.docs.forEach(d => batch.delete(d.ref));
-    
-    // 3. حذف الرأس
     batch.delete(boqRef);
 
-    // 4. توثيق الحذف في السجل الزمني
     if (transactionId && userId) {
        const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
        batch.set(timelineRef, {

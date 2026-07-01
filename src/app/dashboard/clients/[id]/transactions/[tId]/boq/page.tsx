@@ -13,7 +13,7 @@ import {
   Printer, Folder, Calculator, ShieldCheck,
   Zap, History, PlusCircle, AlertCircle,
   CheckCircle2, XCircle, Ban, TrendingDown,
-  Info, Sparkles
+  Info, Sparkles, Pencil, Save, ShieldAlert
 } from "lucide-react";
 import { useFirestore, useCollection, useDoc } from '@/firebase';
 import { collection, query, where, doc, collectionGroup } from 'firebase/firestore';
@@ -28,7 +28,9 @@ import { BOQTreeNode } from '@/types/templates';
 import { cn } from '@/lib/utils';
 import { VOManagerDialog } from '@/components/transactions/vo-manager-dialog';
 import { VariationService } from '@/services/variation-service';
+import { DocumentService } from '@/services/document-service';
 import { toast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
 
 export default function TransactionBOQProgressPage() {
   const params = useParams();
@@ -43,6 +45,8 @@ export default function TransactionBOQProgressPage() {
 
   const [isVOOpen, setIsVOOpen] = useState(false);
   const [processingVOId, setProcessingVOId] = useState<string | null>(null);
+  const [isEditingBaseline, setIsEditingBaseline] = useState(false);
+  const [loadingAction, setLoadingAction] = useState<string | null>(null);
 
   // 1. جلب البيانات الأساسية
   const transRef = useMemo(() => companyId && db ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
@@ -58,12 +62,10 @@ export default function TransactionBOQProgressPage() {
   const itemsQuery = useMemo(() => companyId && db && activeBoq?.id ? query(collection(db, paths.boqItems(companyId, activeBoq.id))) : null, [db, companyId, activeBoq]);
   const { data: rawItems, loading: itemsLoading } = useCollection<BOQItem>(itemsQuery);
 
-  // التعديل السيادي الصارم: استبعاد البنود التي تم حذفها (plannedQuantity === 0) من جدول تتبع المقايسة
   const items = useMemo(() => {
     return (rawItems || []).filter(i => (i.plannedQuantity || 0) > 0);
   }, [rawItems]);
 
-  // 2. جلب الأوامر التغييرية وبنودها التفصيلية للتحليل
   const variationsQuery = useMemo(() => 
     companyId && db && activeBoq?.id 
       ? query(collection(db, paths.boqVariations(companyId, activeBoq.id))) 
@@ -71,13 +73,11 @@ export default function TransactionBOQProgressPage() {
   [db, companyId, activeBoq]);
   const { data: variations } = useCollection<BOQVariation>(variationsQuery);
 
-  // التبسيط السيادي لتجنب الفهارس المركبة في collectionGroup
   const voItemsQuery = useMemo(() => 
     companyId && db ? query(collectionGroup(db, 'items'), where('companyId', '==', companyId)) : null, 
   [db, companyId]);
   const { data: rawAllItems } = useCollection<any>(voItemsQuery);
 
-  // محرك تحليل التغيير لكل بند (Approved Delta Mapping)
   const voDeltaMap = useMemo(() => {
     const map: Record<string, number> = {};
     const approvedVoIds = new Set((variations || []).filter(v => v.status === 'approved').map(v => v.id));
@@ -92,7 +92,6 @@ export default function TransactionBOQProgressPage() {
     return map;
   }, [rawAllItems, variations, activeBoq]);
 
-  // 3. جلب سجلات التنفيذ (تبسيط الاستعلام)
   const executionsQuery = useMemo(() => 
     companyId && db ? query(collectionGroup(db, 'executions'), where('companyId', '==', companyId)) : null, 
   [db, companyId]);
@@ -102,7 +101,6 @@ export default function TransactionBOQProgressPage() {
     return (rawExecutions || []).filter(e => e.boqId === activeBoq?.id);
   }, [rawExecutions, activeBoq]);
 
-  // محرك الحسابات المالية العامة (Triple Totals)
   const financialStats = useMemo(() => {
     const original = activeBoq?.totalAmount || 0;
     const voTotal = (variations || [])
@@ -116,7 +114,6 @@ export default function TransactionBOQProgressPage() {
     };
   }, [activeBoq, variations]);
 
-  // محرك الحساب الآلي المئوي للإنجاز الميداني
   const executionMetrics = useMemo(() => {
     if (!allExecutions || !stages) return {};
     const metrics: Record<string, { prev: number, current: number }> = {};
@@ -145,6 +142,28 @@ export default function TransactionBOQProgressPage() {
       progress: financialStats.final > 0 ? Math.round((totalE / financialStats.final) * 100) : 0
     };
   }, [items, executionMetrics, financialStats]);
+
+  const handleApproveBaseline = async () => {
+    if (!db || !companyId || !user || !activeBoq) return;
+    setLoadingAction('approving');
+    try {
+      const service = new DocumentService(db, companyId, permissions);
+      const currentTotal = items.reduce((acc, i) => acc + (i.plannedQuantity * (i.estimatedRate || 0)), 0);
+      await service.approveBOQ(activeBoq.id, currentTotal, transactionId, user.uid, globalUser?.username || user.displayName || 'Admin');
+      toast({ title: isRtl ? "تم اعتماد الميزانية الرسمية للمشروع" : "Project Baseline Approved" });
+      setIsEditingBaseline(false);
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('error'), description: e.message });
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  const handleUpdateItem = async (itemId: string, qty: number, rate: number) => {
+    if (!db || !companyId || !activeBoq) return;
+    const service = new DocumentService(db, companyId, permissions);
+    await service.updateBOQItem(activeBoq.id, itemId, qty, rate);
+  };
 
   const handleApproveVO = async (voId: string) => {
     if (!db || !companyId || !user || !activeBoq) return;
@@ -177,7 +196,6 @@ export default function TransactionBOQProgressPage() {
   };
 
   const renderBOQTreeRows = (node: BOQTreeNode, prefix: string): React.ReactNode => {
-    // إخفاء العقد الفارغة التي ليس بها بنود نشطة
     if (node.items.length === 0 && node.children.length === 0) return null;
 
     return (
@@ -234,8 +252,15 @@ export default function TransactionBOQProgressPage() {
                    </span>
                  ) : <span className="text-slate-200">0</span>}
               </TableCell>
-              <TableCell className="text-center w-[80px] font-mono font-black text-slate-900 text-xs border-x border-slate-100">
-                 {finalPlan}
+              <TableCell className="text-center w-[120px] font-mono font-black text-slate-900 text-xs border-x border-slate-100">
+                 {isEditingBaseline ? (
+                   <Input 
+                     type="number" 
+                     className="h-8 text-center font-black border-primary/30" 
+                     value={item.plannedQuantity} 
+                     onChange={e => handleUpdateItem(item.id!, Number(e.target.value), item.estimatedRate || 0)} 
+                   />
+                 ) : finalPlan}
               </TableCell>
               
               <TableCell className="text-center font-mono font-black text-blue-600 text-xs">{metrics.prev}</TableCell>
@@ -249,7 +274,17 @@ export default function TransactionBOQProgressPage() {
                     {totalCumulative}
                  </Badge>
               </TableCell>
-              <TableCell className="text-center font-mono font-bold text-slate-400 text-xs">{item.estimatedRate?.toLocaleString()}</TableCell>
+              <TableCell className="text-center font-mono font-bold text-slate-400 text-xs w-[120px]">
+                 {isEditingBaseline ? (
+                   <Input 
+                     type="number" 
+                     step="0.001"
+                     className="h-8 text-center font-black border-primary/30 text-emerald-600" 
+                     value={item.estimatedRate} 
+                     onChange={e => handleUpdateItem(item.id!, item.plannedQuantity, Number(e.target.value))} 
+                   />
+                 ) : item.estimatedRate?.toLocaleString()}
+              </TableCell>
               <TableCell className="text-end font-mono font-black text-emerald-600 text-xs">
                 {(totalCumulative * (item.estimatedRate || 0)).toLocaleString()}
               </TableCell>
@@ -281,6 +316,8 @@ export default function TransactionBOQProgressPage() {
     </div>
   );
 
+  const isDraft = activeBoq.status === 'draft';
+
   return (
     <div className="flex flex-col h-full space-y-4 animate-in fade-in duration-500" dir={dir}>
       
@@ -290,53 +327,98 @@ export default function TransactionBOQProgressPage() {
               <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
            </Button>
            <div className="text-start">
-              <h1 className="text-xl font-black text-slate-900 leading-none">{activeBoq.boqNumber}</h1>
+              <div className="flex items-center gap-3">
+                 <h1 className="text-xl font-black text-slate-900 leading-none">{activeBoq.boqNumber}</h1>
+                 <Badge variant="outline" className={cn(
+                    "text-[8px] font-black uppercase px-2",
+                    isDraft ? "bg-amber-50 text-amber-600 border-amber-200" : "bg-emerald-50 text-emerald-600 border-emerald-200"
+                 )}>
+                    {activeBoq.status}
+                 </Badge>
+              </div>
               <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">{transaction?.clientName}</p>
            </div>
         </div>
         
         <div className="flex items-center gap-3">
-           <div className="flex gap-2">
-              {(variations || []).filter(v => v.status === 'draft').map(vo => (
-                <div key={vo.id} className="p-1 px-3 bg-amber-50 rounded-xl border border-amber-200 flex items-center gap-3 shadow-sm">
-                   <div className="text-start">
-                      <p className="text-[8px] font-black text-amber-600 uppercase">DRAFT VO</p>
-                      <p className="text-[10px] font-black text-slate-800">{vo.title}</p>
-                   </div>
-                   {isAdmin && (
-                      <div className="flex gap-1">
-                         <Button 
-                           size="sm" 
-                           onClick={() => handleApproveVO(vo.id)}
-                           disabled={processingVOId === vo.id}
-                           className="h-8 rounded-lg bg-emerald-600 text-white font-black text-[9px] hover:bg-emerald-700 px-3"
-                         >
-                            {processingVOId === vo.id ? <Loader2 className="animate-spin h-3 w-3" /> : (isRtl ? 'اعتماد وصرف' : 'Approve')}
-                         </Button>
-                         <Button 
-                           size="sm" 
-                           variant="ghost"
-                           onClick={() => handleRejectVO(vo.id)}
-                           disabled={processingVOId === vo.id}
-                           className="h-8 rounded-lg text-rose-600 font-black text-[9px] hover:bg-rose-50 px-3"
-                         >
-                            {isRtl ? 'رفض' : 'Reject'}
-                         </Button>
-                      </div>
-                   )}
+           {isDraft ? (
+              <div className="flex gap-2">
+                 <Button 
+                   onClick={() => setIsEditingBaseline(!isEditingBaseline)}
+                   variant={isEditingBaseline ? "secondary" : "outline"}
+                   className="h-11 px-6 rounded-xl font-black text-xs gap-2 border-2"
+                 >
+                    {isEditingBaseline ? <CheckCircle2 className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
+                    {isEditingBaseline ? (isRtl ? 'تم التعديل' : 'Finish Editing') : (isRtl ? 'تعديل كميات الميزانية' : 'Customize Project BOQ')}
+                 </Button>
+                 <Button 
+                   onClick={handleApproveBaseline}
+                   disabled={loadingAction === 'approving'}
+                   className="h-11 px-8 rounded-xl bg-emerald-600 text-white font-black text-xs gap-2 shadow-xl shadow-emerald-100"
+                 >
+                    {loadingAction === 'approving' ? <Loader2 className="animate-spin h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
+                    {isRtl ? 'اعتماد الميزانية والبدء' : 'Approve & Start Site Work'}
+                 </Button>
+              </div>
+           ) : (
+             <div className="flex gap-2">
+                <div className="flex gap-2">
+                   {(variations || []).filter(v => v.status === 'draft').map(vo => (
+                     <div key={vo.id} className="p-1 px-3 bg-amber-50 rounded-xl border border-amber-200 flex items-center gap-3 shadow-sm">
+                        <div className="text-start">
+                           <p className="text-[8px] font-black text-amber-600 uppercase">DRAFT VO</p>
+                           <p className="text-[10px] font-black text-slate-800">{vo.title}</p>
+                        </div>
+                        {isAdmin && (
+                           <div className="flex gap-1">
+                              <Button 
+                                size="sm" 
+                                onClick={() => handleApproveVO(vo.id)}
+                                disabled={processingVOId === vo.id}
+                                className="h-8 rounded-lg bg-emerald-600 text-white font-black text-[9px] hover:bg-emerald-700 px-3"
+                              >
+                                 {processingVOId === vo.id ? <Loader2 className="animate-spin h-3 w-3" /> : (isRtl ? 'اعتماد وصرف' : 'Approve')}
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="ghost"
+                                onClick={() => handleRejectVO(vo.id)}
+                                disabled={processingVOId === vo.id}
+                                className="h-8 rounded-lg text-rose-600 font-black text-[9px] hover:bg-rose-50 px-3"
+                              >
+                                 {isRtl ? 'رفض' : 'Reject'}
+                              </Button>
+                           </div>
+                        )}
+                     </div>
+                   ))}
                 </div>
-              ))}
-           </div>
 
-           <Button 
-             onClick={() => setIsVOOpen(true)}
-             className="h-11 px-6 rounded-xl font-black text-xs gap-2 bg-[#1e1b4b] text-white hover:bg-slate-800 shadow-xl"
-           >
-              <PlusCircle className="h-4 w-4 text-primary" /> {isRtl ? 'إنشاء أمر تغييري' : 'New Variation'}
-           </Button>
+                <Button 
+                  onClick={() => setIsVOOpen(true)}
+                  className="h-11 px-6 rounded-xl font-black text-xs gap-2 bg-[#1e1b4b] text-white hover:bg-slate-800 shadow-xl"
+                >
+                   <PlusCircle className="h-4 w-4 text-primary" /> {isRtl ? 'إنشاء أمر تغييري' : 'New Variation'}
+                </Button>
+             </div>
+           )}
            <Button variant="outline" className="h-11 px-6 rounded-xl font-black text-xs gap-2 border-2"><Printer className="h-4 w-4" /> {isRtl ? 'طباعة تقرير الإنجاز' : 'Print Certificate'}</Button>
         </div>
       </header>
+
+      {isDraft && (
+        <div className="bg-amber-50 border-2 border-dashed border-amber-200 p-6 rounded-[2.5rem] flex items-start gap-4 animate-in zoom-in-95">
+           <ShieldAlert className="h-6 w-6 text-amber-600 shrink-0 mt-1" />
+           <div className="text-start">
+              <h5 className="font-black text-sm text-amber-900">{isRtl ? 'مرحلة ضبط الميزانية المخصصة للمشروع' : 'Project Baseline Customization Phase'}</h5>
+              <p className="text-xs font-bold text-amber-800/80 leading-relaxed mt-1">
+                 {isRtl 
+                   ? 'يمكنك الآن تعديل الكميات والأسعار لتناسب هذا المشروع تحديداً قبل اعتماده كمرجع رسمي للموقع. القالب الأصلي لن يتأثر بتغييراتك هنا.' 
+                   : 'You can now adjust quantities and rates to fit this specific project before approving it as the official baseline. Global templates won\'t be affected.'}
+              </p>
+           </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
          <Card className="border-0 shadow-lg rounded-2xl p-5 text-start bg-white">
@@ -364,12 +446,12 @@ export default function TransactionBOQProgressPage() {
                
                <TableHead className="text-center w-[70px] text-white/60 font-black text-[9px] bg-white/5">{isRtl ? 'الأصل' : 'Orig'}</TableHead>
                <TableHead className="text-center w-[70px] text-white/60 font-black text-[9px] bg-white/5">{isRtl ? 'تغيير VO' : 'VO Δ'}</TableHead>
-               <TableHead className="text-center w-[80px] text-white font-black text-xs bg-white/10">{isRtl ? 'النهائي' : 'Revised'}</TableHead>
+               <TableHead className="text-center w-[120px] text-white font-black text-xs bg-white/10">{isRtl ? (isEditingBaseline ? 'تعديل الكمية' : 'المخطط') : (isEditingBaseline ? 'Qty Edit' : 'Revised')}</TableHead>
                
                <TableHead className="text-center w-[100px] text-white font-black text-xs">{isRtl ? 'السابق' : 'Prev'}</TableHead>
                <TableHead className="text-center w-[120px] text-white font-black text-xs">{isRtl ? 'الحالي' : 'Current'}</TableHead>
                <TableHead className="text-center w-[120px] text-white font-black text-xs">{isRtl ? 'الإجمالي' : 'Total'}</TableHead>
-               <TableHead className="text-center w-[100px] text-white font-black text-xs">{isRtl ? 'الفئة' : 'Rate'}</TableHead>
+               <TableHead className="text-center w-[120px] text-white font-black text-xs">{isRtl ? (isEditingBaseline ? 'تعديل السعر' : 'الفئة') : 'Rate'}</TableHead>
                <TableHead className="text-end w-[120px] text-white font-black text-xs">{isRtl ? 'القيمة' : 'Value'}</TableHead>
                <TableHead className="pe-6 w-[120px] text-end text-white font-black text-xs">{isRtl ? 'الإنجاز' : 'Progress'}</TableHead>
              </TableRow>
