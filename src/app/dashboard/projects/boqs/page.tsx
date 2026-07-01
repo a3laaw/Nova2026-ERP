@@ -12,7 +12,8 @@ import {
   FileSpreadsheet, Search, Loader2, ArrowRight, 
   Filter, TrendingUp, DollarSign, Calculator,
   LayoutGrid, UserCircle, Activity, Trash2, AlertTriangle,
-  History, Settings2, FileText, Sparkles, Clock
+  History, Settings2, FileText, Sparkles, Clock,
+  CheckCircle2, XCircle
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, collectionGroup } from 'firebase/firestore';
@@ -25,6 +26,7 @@ import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Progress } from "@/components/ui/progress";
 import { DocumentService } from '@/services/document-service';
+import { VariationService } from '@/services/variation-service';
 import { toast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -98,6 +100,7 @@ export default function BOQExplorerPage() {
   const [activeTab, setActiveTab] = useState("boqs");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   // 1. استعلام المقايسات
   const boqsQuery = useMemo(() => 
@@ -105,7 +108,7 @@ export default function BOQExplorerPage() {
   [db, companyId]);
   const { data: boqs, loading: boqLoading } = useCollection<BOQ>(boqsQuery);
 
-  // 2. استعلام كافة الأوامر التغييرية (التبسيط السيادي لتجنب الفهارس المركبة)
+  // 2. استعلام كافة الأوامر التغييرية
   const allVOsQuery = useMemo(() => 
     companyId && db ? query(collectionGroup(db, 'variations'), where('companyId', '==', companyId)) : null, 
   [db, companyId]);
@@ -120,7 +123,6 @@ export default function BOQExplorerPage() {
   }, [boqs, searchTerm]);
 
   const filteredVOs = useMemo(() => {
-    // التصفية والفرز في الذاكرة لضمان ظهور البيانات فوراً
     return (rawVOs || [])
       .filter(vo => 
         (vo.title || "").toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -151,6 +153,34 @@ export default function BOQExplorerPage() {
       toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleApproveVO = async (vo: BOQVariation) => {
+    if (!db || !companyId || !user) return;
+    setProcessingId(vo.id!);
+    try {
+      const service = new VariationService(db, companyId, permissions);
+      await service.approveVariation(vo.boqId, vo.id!, vo.transactionId, user.uid, user.displayName || 'Admin');
+      toast({ title: isRtl ? "تم اعتماد التعديل وتحديث الميدان" : "Variation Approved & Field Updated" });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('error'), description: e.message });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleRejectVO = async (vo: BOQVariation) => {
+    if (!db || !companyId || !user) return;
+    setProcessingId(vo.id!);
+    try {
+      const service = new VariationService(db, companyId, permissions);
+      await service.rejectVariation(vo.boqId, vo.id!, vo.transactionId, user.uid, user.displayName || 'Admin');
+      toast({ title: isRtl ? "تم رفض وإلغاء طلب التغيير" : "Variation Rejected" });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('error'), description: e.message });
+    } finally {
+      setProcessingId(null);
     }
   };
 
@@ -324,7 +354,7 @@ export default function BOQExplorerPage() {
                     <TableHead className="text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'التاريخ' : 'Created Date'}</TableHead>
                     <TableHead className="text-end text-xs font-black uppercase tracking-widest">{isRtl ? 'قيمة التغيير (صافي)' : 'Net Amount'}</TableHead>
                     <TableHead className="text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'الحالة' : 'Status'}</TableHead>
-                    <TableHead className="pe-10 text-end"></TableHead>
+                    <TableHead className="pe-10 text-end">{isRtl ? 'قرار الإدارة' : 'Admin Decision'}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -334,8 +364,8 @@ export default function BOQExplorerPage() {
                     <TableRow><TableCell colSpan={6} className="text-center py-32 text-slate-400 font-bold italic">{isRtl ? 'لا يوجد أوامر تغيير حالياً.' : 'No variation orders found.'}</TableCell></TableRow>
                   ) : (
                     filteredVOs.map((vo) => (
-                      <TableRow key={vo.id} className="hover:bg-slate-50/50 transition-colors group border-b-slate-50 cursor-pointer" onClick={() => router.push(`/dashboard/clients/${vo.clientId || 'unknown'}/transactions/${vo.transactionId}/boq`)}>
-                        <TableCell className="py-8 ps-10 text-start">
+                      <TableRow key={vo.id} className="hover:bg-slate-50/50 transition-colors group border-b-slate-50">
+                        <TableCell className="py-8 ps-10 text-start" onClick={() => router.push(`/dashboard/clients/${vo.clientId || 'unknown'}/transactions/${vo.transactionId}/boq`)}>
                            <div className="flex items-center gap-5">
                               <div className={cn(
                                 "h-14 w-14 rounded-2xl shadow-lg flex items-center justify-center font-black text-xl border-2 transition-transform group-hover:scale-110",
@@ -380,9 +410,32 @@ export default function BOQExplorerPage() {
                            </Badge>
                         </TableCell>
                         <TableCell className="pe-10 text-end">
-                           <Button variant="ghost" size="icon" className="rounded-xl group-hover:bg-primary group-hover:text-white transition-all h-12 w-12">
-                              <ArrowRight className={cn("h-6 w-6", !isRtl && "rotate-0", isRtl && "rotate-180")} />
-                           </Button>
+                           {vo.status === 'draft' && isAdmin ? (
+                             <div className="flex justify-end gap-2">
+                               <Button 
+                                 size="sm" 
+                                 onClick={() => handleApproveVO(vo)}
+                                 disabled={processingId === vo.id}
+                                 className="bg-emerald-600 text-white font-black text-[10px] rounded-xl px-4 h-9 shadow-lg shadow-emerald-100 hover:scale-105 transition-all gap-1.5"
+                               >
+                                 {processingId === vo.id ? <Loader2 className="animate-spin h-3 w-3" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                                 {isRtl ? 'اعتماد' : 'Approve'}
+                               </Button>
+                               <Button 
+                                 size="sm" 
+                                 variant="outline"
+                                 onClick={() => handleRejectVO(vo)}
+                                 disabled={processingId === vo.id}
+                                 className="text-rose-600 border-rose-100 hover:bg-rose-50 font-black text-[10px] rounded-xl px-4 h-9"
+                               >
+                                 <XCircle className="h-3.5 w-3.5" />
+                               </Button>
+                             </div>
+                           ) : (
+                             <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => router.push(`/dashboard/clients/${vo.clientId || 'unknown'}/transactions/${vo.transactionId}/boq`)}>
+                                <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-0", isRtl && "rotate-180")} />
+                             </Button>
+                           )}
                         </TableCell>
                       </TableRow>
                     ))
