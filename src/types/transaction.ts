@@ -27,8 +27,8 @@ export interface Transaction extends BaseReference {
 export interface TransactionTimelineEvent extends BaseReference {
   id?: string;
   transactionId: string;
-  stageId?: string; // Stage Instance ID (Local to transaction)
-  technicalStageId?: string; // Reference ID (From technical path)
+  stageId?: string; 
+  technicalStageId?: string; 
   type: 'system' | 'stage_start' | 'stage_complete' | 'stage_reopen' | 'comment' | 'numeric_update' | 'admin_override';
   content: string;
   userId: string;
@@ -42,7 +42,7 @@ export type CommentType = 'general' | 'note' | 'warning' | 'instruction';
 export interface TransactionComment extends BaseReference {
   id?: string;
   transactionId: string;
-  stageInstanceId?: string | null; // Stage Instance ID
+  stageInstanceId?: string | null; 
   stageName?: string; 
   content: string;
   commentType: CommentType;
@@ -58,7 +58,7 @@ export interface TransactionComment extends BaseReference {
 export interface StageInstance extends BaseReference {
   id?: string;
   transactionId: string;
-  technicalStageId: string; // Reference ID
+  technicalStageId: string; 
   code: string;
   name: string;
   description?: string;
@@ -79,9 +79,9 @@ export interface StageInstance extends BaseReference {
   completedAt?: any;
   completedBy?: string;
   updatedBy?: string;
-  // Metadata for local/temporary stages
   isTemporary?: boolean;
+  isComplementary?: boolean; // NEW: flag to allow parallel execution without blocking the main path
   createdFromVO?: boolean;
   originType?: 'temporary_vo' | 'manual_injection';
-  isManuallyActivated?: boolean; // الاستثناء الإداري
+  isManuallyActivated?: boolean; 
 }

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -90,7 +89,6 @@ export default function TransactionDetailsPage() {
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
-  // States
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [stageProgressMap, setStageProgressMap] = useState<Record<string, StageProgressResult>>({});
@@ -118,7 +116,6 @@ export default function TransactionDetailsPage() {
   const editAccess = check('projects', 'edit');
   const currentUserName = useMemo(() => globalUser?.username || user?.displayName || 'Admin', [globalUser, user]);
 
-  // Data Fetching
   const transRef = useMemo(() => (companyId && db) ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
   const { data: transaction, loading: transLoading } = useDoc<Transaction>(transRef);
 
@@ -160,7 +157,8 @@ export default function TransactionDetailsPage() {
 
   const maxCompletedOrder = useMemo(() => {
     if (!stages || stages.length === 0) return -1;
-    const completedOrders = stages.filter(s => s.status === 'completed').map(s => s.order || 0);
+    // Strictly find the max order of a NON-complementary completed stage
+    const completedOrders = stages.filter(s => s.status === 'completed' && !s.isComplementary).map(s => s.order || 0);
     return completedOrders.length > 0 ? Math.max(...completedOrders) : -1;
   }, [stages]);
 
@@ -199,11 +197,9 @@ export default function TransactionDetailsPage() {
         return;
     }
 
-    // Radical UI Fix: Close all overlays before starting heavy work to prevent freeze
     setIsOverExecutionOpen(false);
     setIsRecordOpen(false);
 
-    // Force pointer events back to normal
     setTimeout(async () => {
         if (typeof document !== 'undefined') document.body.style.pointerEvents = 'auto';
         setLoadingAction('recording');
@@ -286,7 +282,7 @@ export default function TransactionDetailsPage() {
     setProcessingId('linking_boq');
     try {
       const docService = new DocumentService(db, companyId, permissions);
-      const bId = await docService.instantiateBoqFromTemplate(namingTemplate.id!, {
+      await docService.instantiateBoqFromTemplate(namingTemplate.id!, {
         transactionId, clientId: transaction.clientId, clientName: transaction.clientName,
         activityTypeId: transaction.activityTypeId, serviceId: transaction.serviceId,
         subServiceId: transaction.subServiceId, name: customBOQName
@@ -365,16 +361,34 @@ export default function TransactionDetailsPage() {
                 <div className="space-y-4">
                    {stages.map((stage, idx) => {
                       const boqProgress = stageProgressMap[stage.technicalStageId];
-                      const isPreviousCompleted = idx === 0 || stages[idx - 1].status === 'completed';
-                      const isOperationalFrontier = stage.status === 'in-progress' || (stage.status === 'pending' && isPreviousCompleted);
+                      
+                      // Flexible Operational Frontier:
+                      // A stage can be started if it's the first OR its non-complementary predecessor is done.
+                      // For complementary stages, they can start as soon as their preceding anchor is at least started.
+                      const isPreviousCompleted = (() => {
+                        if (idx === 0) return true;
+                        let prevIdx = idx - 1;
+                        while (prevIdx >= 0 && stages[prevIdx].isComplementary) prevIdx--;
+                        if (prevIdx < 0) return true;
+                        return stages[prevIdx].status === 'completed';
+                      })();
+
+                      const isAnchorStarted = idx === 0 || stages[idx - 1].status !== 'pending';
+                      
+                      const isOperationalFrontier = stage.isComplementary 
+                        ? (stage.status === 'in-progress' || (stage.status === 'pending' && isAnchorStarted))
+                        : (stage.status === 'in-progress' || (stage.status === 'pending' && isPreviousCompleted));
 
                       return (
-                        <Card key={stage.id} onClick={() => setFilterStageId(filterStageId === stage.id ? null : stage.id!)} className={cn("border-0 shadow-lg rounded-[2.5rem] bg-white transition-all overflow-hidden border-s-8 cursor-pointer relative", stage.status === 'completed' ? 'border-s-emerald-500' : stage.status === 'in-progress' ? 'border-s-blue-500 ring-4 ring-blue-500/5' : isPreviousCompleted ? 'border-s-orange-300' : 'border-s-slate-100 opacity-50')}>
+                        <Card key={stage.id} onClick={() => setFilterStageId(filterStageId === stage.id ? null : stage.id!)} className={cn("border-0 shadow-lg rounded-[2.5rem] bg-white transition-all overflow-hidden border-s-8 cursor-pointer relative", stage.status === 'completed' ? 'border-s-emerald-500' : stage.status === 'in-progress' ? 'border-s-blue-500 ring-4 ring-blue-500/5' : isOperationalFrontier ? 'border-s-orange-300' : 'border-s-slate-100 opacity-50')}>
                           <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-6">
                              <div className="flex items-center gap-6 flex-1 text-start">
                                 <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-sm border", stage.status === 'completed' ? "bg-emerald-50 text-emerald-600" : "bg-white")}>{stage.status === 'completed' ? <CheckCircle2 className="h-6 w-6" /> : (idx + 1)}</div>
                                 <div className="space-y-1 flex-1">
-                                   <div className="flex items-center gap-2"><h4 className="font-black text-lg text-slate-900 tracking-tight">{stage.name}</h4>{stage.isTemporary && <Badge className="bg-blue-100 text-blue-600 border-0 text-[7px] font-black uppercase h-4 px-1.5">MANUAL STAGE</Badge>}</div>
+                                   <div className="flex items-center gap-2">
+                                      <h4 className="font-black text-lg text-slate-900 tracking-tight">{stage.name}</h4>
+                                      {stage.isTemporary && <Badge className="bg-blue-100 text-blue-600 border-0 text-[7px] font-black uppercase h-4 px-1.5">{stage.isComplementary ? 'PARALLEL STAGE' : 'MANUAL STAGE'}</Badge>}
+                                   </div>
                                    {boqProgress && boqProgress.linkedItemsCount > 0 && (<div className="mt-2 space-y-1.5"><div className="flex justify-between text-[9px] font-black uppercase text-slate-400"><span>{isRtl ? 'إنجاز بنود المقايسة' : 'BOQ Items Progress'}</span><span>{boqProgress.progressPercent}%</span></div><Progress value={boqProgress.progressPercent} className="h-1.5" /></div>)}
                                 </div>
                              </div>
@@ -382,12 +396,12 @@ export default function TransactionDetailsPage() {
                              {isOperationalFrontier && (
                                 <div className="flex gap-2 shrink-0 z-10 animate-in fade-in zoom-in-95" onClick={e => e.stopPropagation()}>
                                    {stage.status === 'in-progress' && editAccess.can && <Button onClick={() => { setTargetStage(stage); setIsRecordOpen(true); }} variant="outline" className="h-11 px-4 rounded-xl border-2 border-primary/20 text-primary font-black text-xs gap-2"><Hammer className="h-4 w-4" /> {isRtl ? 'تسجيل إنجاز' : 'Log Progress'}</Button>}
-                                   {stage.status === 'pending' && isPreviousCompleted && <Button onClick={() => handleStartStage(stage.id!)} disabled={!!processingId} className="h-11 px-6 rounded-xl bg-blue-600 text-white font-black text-xs gap-2">{processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Play className="h-4 w-4" />} {isRtl ? 'بدء' : 'Start'}</Button>}
+                                   {stage.status === 'pending' && <Button onClick={() => handleStartStage(stage.id!)} disabled={!!processingId} className="h-11 px-6 rounded-xl bg-blue-600 text-white font-black text-xs gap-2">{processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Play className="h-4 w-4" />} {isRtl ? 'بدء' : 'Start'}</Button>}
                                    {stage.status === 'in-progress' && <Button onClick={() => handleCompleteStage(stage)} disabled={!!processingId} className="h-11 px-6 rounded-xl bg-emerald-600 text-white font-black text-xs gap-2">{processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Check className="h-4 w-4" />} {isRtl ? 'إكمال' : 'Complete'}</Button>}
                                 </div>
                              )}
 
-                             {stage.status === 'completed' && isAdmin && (stage.order === maxCompletedOrder) && (
+                             {stage.status === 'completed' && isAdmin && (stage.order === maxCompletedOrder || stage.isComplementary) && (
                                 <div className="z-10" onClick={e => e.stopPropagation()}>
                                    <Button variant="ghost" onClick={() => setUndoStage(stage)} className="h-11 w-11 p-0 rounded-xl text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"><RotateCcw className="h-5 w-5" /></Button>
                                 </div>

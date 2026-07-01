@@ -1,6 +1,5 @@
 /**
  * @fileOverview تعريف واجهات البيانات للمستندات الحية (Instantiated Documents).
- * تم تحديثها لتتوافق مع المرجع الشجري الديناميكي الجديد لبنود BOQ.
  */
 
 import { BaseReference } from './reference';
@@ -14,7 +13,7 @@ export interface BaseDocument extends BaseReference {
   projectId?: string;
   clientId: string;
   clientName: string;
-  templateId: string; // مرجع للقالب الأصلي
+  templateId: string; 
   status: DocumentStatus;
   totalAmount: number;
   version: number;
@@ -41,17 +40,11 @@ export interface Contract extends BaseDocument {
   contractType?: string;
 }
 
-/**
- * بند المقايسة الفعلي (Runtime BOQ Item)
- * تم تحديثه ليدعم النموذج الشجري الديناميكي (Dynamic Tree Structure)
- */
 export interface BOQItem extends BaseReference {
   id: string;
   boqId: string;
   transactionId?: string;
   projectId?: string;
-  
-  // البيانات المرجعية المستنسخة من القاموس
   boqReferenceNodeId: string;
   referenceCode: string;
   referenceTitle: string;
@@ -60,8 +53,6 @@ export interface BOQItem extends BaseReference {
   ancestorIds: string[];
   ancestorTitles?: string[];
   depth: number;
-
-  // الخصائص الفنية
   unitTypeId?: string;
   unitName?: string;
   unitSymbol?: string;
@@ -69,10 +60,8 @@ export interface BOQItem extends BaseReference {
   technicalStageIds?: string[];
   billingTriggerGroup?: string;
   allowedItemCategoryIds?: string[];
-
-  // الحقول التنفيذية والمالية
   plannedQuantity: number;
-  executedQuantity: number; // تبدأ دائماً بـ 0 عند الاستنساخ
+  executedQuantity: number; 
   estimatedRate?: number;
   estimatedCostRate?: number;
   actualRate?: number;
@@ -80,9 +69,6 @@ export interface BOQItem extends BaseReference {
   order: number;
 }
 
-/**
- * سجل تنفيذ مرحلي لبند BOQ (Execution Entry)
- */
 export interface BOQItemExecutionEntry extends BaseReference {
   id?: string;
   boqId: string;
@@ -97,9 +83,6 @@ export interface BOQItemExecutionEntry extends BaseReference {
   archivedAt?: any;
 }
 
-/**
- * مستند المقايسة الفعلي (Runtime BOQ Document)
- */
 export interface BOQ extends BaseDocument {
   boqNumber: string;
   name: string;
@@ -111,9 +94,6 @@ export interface BOQ extends BaseDocument {
   measurementMode: MeasurementMode;
 }
 
-/**
- * --- الأوامر التغييرية (Variation Orders - VO Lite) ---
- */
 export type BOQVariationStatus = 'draft' | 'approved' | 'cancelled';
 export type VariationType = 'increase_quantity' | 'decrease_quantity' | 'new_item' | 'omit_item';
 export type VOStageMode = 'existing_stage' | 'new_local_stage';
@@ -126,14 +106,13 @@ export interface BOQVariation extends BaseReference {
   title: string;
   reason: string;
   status: BOQVariationStatus;
-  totalAmount: number; // صافي التغيير المالي
+  totalAmount: number; 
   createdBy: string;
   updatedBy?: string;
   approvedBy?: string;
   approvedAt?: any;
   rejectedBy?: string;
   rejectedAt?: any;
-  // حقول السياق لتسهيل الحقن
   activityTypeId?: string;
   serviceId?: string;
   subServiceId?: string;
@@ -142,22 +121,21 @@ export interface BOQVariation extends BaseReference {
 export interface BOQVariationItem extends BaseReference {
   id: string;
   variationId: string;
-  sourceBoqItemId?: string;     // إذا كان تعديلاً على بند موجود
-  boqReferenceNodeId?: string;  // إذا كان بنداً مستجداً من الشجرة
-  technicalStageId?: string;    // المرحلة الفنية المرتبطة (موجودة)
+  sourceBoqItemId?: string;     
+  boqReferenceNodeId?: string;  
+  technicalStageId?: string;    
   type: VariationType;
   description: string;
   unitName?: string;
   unitSymbol?: string;
-  sourcePlannedQuantity?: number; // الكمية الأصلية قبل التعديل
-  quantityDelta: number;         // مقدار التغير (موجب أو سالب)
+  sourcePlannedQuantity?: number; 
+  quantityDelta: number;         
   rate: number;
-  total: number;                 // (quantityDelta * rate)
+  total: number;                 
   reason?: string;
-
-  // حقول المرحلة المحلية الطارئة (Deferred Creation)
   stageMode?: VOStageMode;
   localStageName?: string;
   localStageCode?: string;
-  insertAfterStageId?: string;   // المرحلة التي يتم إدراج المرحلة الجديدة بعدها
+  insertAfterStageId?: string;   
+  isComplementary?: boolean; // NEW: flag for parallel manual stages
 }

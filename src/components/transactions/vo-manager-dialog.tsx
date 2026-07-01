@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -17,14 +16,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { 
   Calculator, Trash2, Loader2, Save, X, 
   PlusCircle, AlertCircle, LayoutGrid,
-  TrendingUp, TrendingDown, Workflow,
-  CheckCircle2, Plus, ShieldAlert,
+  TrendingUp, Workflow,
+  CheckCircle2, Plus, 
   ArrowRight,
   Settings2,
   Clock,
   Info,
   Sparkles,
-  ShieldX,
   AlertTriangle,
   GitBranch
 } from "lucide-react";
@@ -35,6 +33,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -94,7 +93,8 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
       rate: "", 
       total: 0,
       localStageName: '',
-      insertAfterStageId: ''
+      insertAfterStageId: '',
+      isComplementary: true // default to true for better UI experience
     } as any]);
   };
 
@@ -106,7 +106,6 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
     const newItems = [...items];
     const item = { ...newItems[idx], [field]: val };
     
-    // Logic for item calculation
     if (field === 'sourceBoqItemId' && val && item.type !== 'new_item') {
       const source = boqItems.find(i => i.id === val);
       if (source) {
@@ -116,7 +115,6 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
         item.rate = source.estimatedRate || 0;
         item.sourcePlannedQuantity = source.plannedQuantity || 0;
         item.technicalStageId = source.technicalStageId;
-        if (item.type === 'omit_item') item.quantityDelta = -source.plannedQuantity;
       }
     }
 
@@ -135,8 +133,6 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
       let q = field === 'quantityDelta' ? (val === "" ? 0 : Math.abs(Number(val))) : Math.abs(Number(item.quantityDelta) || 0);
       const r = field === 'rate' ? (val === "" ? 0 : Number(val)) : (Number(item.rate) || 0);
       const multiplier = (type === 'decrease_quantity' || type === 'omit_item') ? -1 : 1;
-      
-      if (type === 'omit_item' && item.sourcePlannedQuantity) q = item.sourcePlannedQuantity;
       item.total = q * r * multiplier;
       item.quantityDelta = q * multiplier;
     }
@@ -261,7 +257,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
 
                                <div className="md:col-span-1 space-y-2 text-start">
                                   <Label className="text-[9px] font-black uppercase text-primary">Delta</Label>
-                                  <Input type="number" readOnly={item.type === 'omit_item'} value={item.quantityDelta === "" ? "" : Math.abs(Number(item.quantityDelta) || 0)} onChange={e => updateItem(idx, 'quantityDelta', e.target.value)} className="h-11 rounded-xl border-2 font-black text-center text-xs" />
+                                  <Input type="number" value={item.quantityDelta === "" ? "" : Math.abs(Number(item.quantityDelta) || 0)} onChange={e => updateItem(idx, 'quantityDelta', e.target.value)} className="h-11 rounded-xl border-2 font-black text-center text-xs" />
                                </div>
 
                                <div className="md:col-span-3 space-y-2 text-start">
@@ -299,7 +295,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                        <Label className="text-[9px] font-black uppercase text-blue-600">Code</Label>
                                        <Input value={item.localStageCode || ''} onChange={e => updateItem(idx, 'localStageCode', e.target.value.toUpperCase())} className="h-10 rounded-xl border-2 bg-white font-mono text-xs" placeholder="M-01" />
                                     </div>
-                                    <div className="md:col-span-6 space-y-1.5 text-start">
+                                    <div className="md:col-span-4 space-y-1.5 text-start">
                                        <Label className="text-[9px] font-black uppercase text-blue-600">{isRtl ? 'تحقن بعد مرحلة:' : 'Insert After Stage:'}</Label>
                                        <Select value={item.insertAfterStageId || ''} onValueChange={v => updateItem(idx, 'insertAfterStageId', v)}>
                                           <SelectTrigger className="h-10 rounded-xl border-2 bg-white font-bold text-xs"><SelectValue placeholder="..." /></SelectTrigger>
@@ -307,6 +303,10 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                              {availableStages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs">{s.name}</SelectItem>)}
                                           </SelectContent>
                                        </Select>
+                                    </div>
+                                    <div className="md:col-span-2 flex flex-col items-center justify-center gap-1.5 border-s border-blue-200 ps-4">
+                                       <Label className="text-[8px] font-black text-blue-400 uppercase">{isRtl ? 'مكمل موازٍ' : 'Parallel'}</Label>
+                                       <Switch checked={item.isComplementary || false} onCheckedChange={v => updateItem(idx, 'isComplementary', v)} />
                                     </div>
                                  </div>
                                )}

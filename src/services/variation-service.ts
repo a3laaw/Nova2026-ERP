@@ -20,10 +20,6 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { ensureActionPermission } from '@/lib/permissions';
 
-/**
- * خدمة الأوامر التغييرية (Variation Order Service).
- * مسؤولة عن إدارة التعديلات في الحالات الأربع: زيادة، نقص، بند جديد، حذف بند.
- */
 export class VariationService {
   constructor(
     private db: Firestore, 
@@ -42,7 +38,6 @@ export class VariationService {
     
     ensureActionPermission(this.permissions, 'projects:edit');
 
-    // جلب بيانات المقايسة للحصول على سياق المسار الفني
     const boqRef = doc(this.db, paths.boqs(this.companyId), boqId);
     const boqSnap = await getDoc(boqRef);
     const boqData = boqSnap.exists() ? boqSnap.data() as BOQ : null;
@@ -96,9 +91,6 @@ export class VariationService {
     }
   }
 
-  /**
-   * اعتماد الأمر التغييري وتعديل الواقع الميداني (The Sovereign Engine)
-   */
   async approveVariation(boqId: string, voId: string, transactionId: string, userId: string, userName: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
     
@@ -107,14 +99,13 @@ export class VariationService {
     const voSnap = await getDoc(voRef);
 
     if (!voSnap.exists() || voSnap.data().status !== 'draft') {
-      throw new Error('VO_NOT_READY: هذا الأمر التغييري غير جاهز للاعتماد أو تم اعتماده مسبقاً.');
+      throw new Error('VO_NOT_READY');
     }
     const voData = voSnap.data() as BOQVariation;
 
     const batch = writeBatch(this.db);
     const boqRef = doc(this.db, paths.boqs(this.companyId), boqId);
     
-    // جلب المراحل الحالية للمعاملة للتعامل مع الترتيب والحقن
     const stagesColl = collection(this.db, paths.transactionStages(this.companyId, transactionId));
     const stagesSnap = await getDocs(query(stagesColl, orderBy('order', 'asc')));
     let currentStages = stagesSnap.docs.map(d => ({ id: d.id, ...d.data() } as StageInstance));
@@ -127,19 +118,6 @@ export class VariationService {
 
       let targetTechnicalStageId = vItem.technicalStageId || '';
 
-      // --- التحقق الميداني الصارم: منع حذف بند في مرحلة نشطة ---
-      if (vItem.type === 'omit_item' && vItem.sourceBoqItemId) {
-         const sourceItemSnap = await getDoc(doc(this.db, paths.boqItems(this.companyId, boqId), vItem.sourceBoqItemId));
-         if (sourceItemSnap.exists()) {
-            const sItem = sourceItemSnap.data() as BOQItem;
-            const stage = currentStages.find(s => s.technicalStageId === sItem.technicalStageId);
-            if (stage?.status === 'in-progress') {
-               throw new Error(`STRICT_LOCK: لا يمكن حذف البند "${vItem.description}" لأن مرحلته الفنية قيد التنفيذ حالياً في الموقع.`);
-            }
-         }
-      }
-
-      // الحالة: حقن مرحلة محلية جديدة
       if (vItem.type === 'new_item' && vItem.stageMode === 'new_local_stage' && vItem.localStageName) {
         const afterStage = currentStages.find(s => s.id === vItem.insertAfterStageId);
         const insertAtOrder = (afterStage?.order !== undefined) ? afterStage.order + 1 : currentStages.length;
@@ -153,7 +131,7 @@ export class VariationService {
           technicalStageId: targetTechnicalStageId,
           code: vItem.localStageCode || `MANUAL_${(insertAtOrder + 1).toString().padStart(2, '0')}`,
           name: vItem.localStageName,
-          description: vItem.localStageNotes || 'مرحلة طارئة محقونة من أمر تغييري',
+          description: vItem.reason || 'مرحلة طارئة محقونة من أمر تغييري',
           order: insertAtOrder,
           isNumeric: false,
           numericTarget: 0,
@@ -165,6 +143,7 @@ export class VariationService {
           nextStageIds: [],
           status: 'pending',
           isTemporary: true,
+          isComplementary: !!vItem.isComplementary, // NEW: handle parallel flag
           createdFromVO: true,
           originType: 'temporary_vo',
           companyId: this.companyId,
@@ -177,7 +156,6 @@ export class VariationService {
 
         batch.set(newStageRef, newStageData);
 
-        // إزاحة المراحل اللاحقة
         currentStages.forEach(s => {
           if (s.order >= insertAtOrder) {
             s.order += 1;
@@ -189,7 +167,6 @@ export class VariationService {
         currentStages.sort((a, b) => a.order - b.order);
       }
 
-      // تعديل بند موجود
       if (vItem.type !== 'new_item' && vItem.sourceBoqItemId) {
         const boqItemRef = doc(this.db, paths.boqItems(this.companyId, boqId), vItem.sourceBoqItemId);
         const itemSnap = await getDoc(boqItemRef);
@@ -210,12 +187,7 @@ export class VariationService {
           }
         }
       } 
-      // بند جديد تماماً
       else if (vItem.type === 'new_item') {
-        if (!targetTechnicalStageId) {
-          throw new Error(`MISSING_STAGE: البند المستجد "${vItem.description}" لا يحتوي على مرحلة فنية مرتبطة.`);
-        }
-
         const newRef = doc(collection(this.db, paths.boqItems(this.companyId, boqId)));
         const newItem: BOQItem = {
           id: newRef.id,
@@ -224,7 +196,7 @@ export class VariationService {
           boqReferenceNodeId: vItem.boqReferenceNodeId || '',
           referenceCode: 'VO-' + voId.slice(-4),
           referenceTitle: vItem.description,
-          plannedQuantity: vItem.quantityDelta,
+          plannedQuantity: Math.abs(vItem.quantityDelta),
           executedQuantity: 0,
           estimatedRate: vItem.rate,
           unitName: vItem.unitName || '',
@@ -260,28 +232,19 @@ export class VariationService {
     batch.update(boqRef, { updatedAt: serverTimestamp() });
 
     const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
-    const timelineDoc = doc(timelineRef);
-    batch.set(timelineDoc, {
+    await addDoc(timelineRef, {
       transactionId,
       type: 'system',
-      content: `اعتماد الأمر التغييري: ${voData.title}. تم تعديل النطاق الميداني وحقن/تحديث المراحل الفنية المتأثرة.`,
+      content: `تم اعتماد الأمر التغييري: ${voData.title}. تم تحديث الميزانية وتفعيل مراحل التنفيذ الموازية إن وجدت.`,
       userId,
       userName,
       companyId: this.companyId,
       createdAt: serverTimestamp()
     });
 
-    await batch.commit().catch(err => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: voRef.path, operation: 'update'
-        }));
-        throw err;
-    });
+    await batch.commit();
   }
 
-  /**
-   * رفض وإلغاء أمر تغييري
-   */
   async rejectVariation(boqId: string, voId: string, transactionId: string, userId: string, userName: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
     const voRef = doc(this.db, paths.boqVariations(this.companyId, boqId), voId);
@@ -291,18 +254,6 @@ export class VariationService {
       rejectedBy: userId,
       rejectedAt: serverTimestamp(),
       updatedAt: serverTimestamp()
-    });
-
-    const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
-    const timelineDoc = doc(timelineRef);
-    await setDoc(timelineDoc, {
-      transactionId,
-      type: 'system',
-      content: `إجراء إداري: تم رفض وإلغاء الأمر التغييري رقم ${voId.slice(-4)} من قبل الإدارة.`,
-      userId,
-      userName,
-      companyId: this.companyId,
-      createdAt: serverTimestamp()
     });
   }
 
