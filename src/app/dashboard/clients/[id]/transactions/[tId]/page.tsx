@@ -114,7 +114,6 @@ export default function TransactionDetailsPage() {
   const [isDeletingBOQ, setIsDeletingBOQ] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
-  // Over-Execution Sovereign States
   const [isOverExecutionOpen, setIsOverExecutionOpen] = useState(false);
 
   const editAccess = check('projects', 'edit');
@@ -184,13 +183,11 @@ export default function TransactionDetailsPage() {
   const handleRecordProgress = async (force: boolean = false) => {
     if (!executionService || !user || !targetStage || !selectedItemId) return;
     
-    // 1. الأساسيات
     if (!isComplementary && (progressQty === "" || Number(progressQty) <= 0)) {
         toast({ variant: "destructive", title: isRtl ? "يرجى إدخال كمية صحيحة" : "Enter valid quantity" });
         return;
     }
 
-    // 2. فحص التجاوز الرقابي (Sovereign Guard)
     const qtyInput = isComplementary ? 0 : Number(progressQty);
     if (!force && selectedBOQItemMetrics && qtyInput > selectedBOQItemMetrics.remaining) {
         setIsOverExecutionOpen(true);
@@ -267,6 +264,46 @@ export default function TransactionDetailsPage() {
       toast({ title: isRtl ? "تمت إعادة فتح المرحلة" : "Stage Reopened" });
       setUndoStage(null);
       setActiveTabOverride('time_archive');
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('error'), description: e.message });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleDeleteBOQ = async () => {
+    if (!db || !companyId || !activeBoq) return;
+    setIsDeletingBOQ(true);
+    try {
+      const docService = new DocumentService(db, companyId, permissions);
+      await docService.deleteBOQ(activeBoq.id, transactionId, user?.uid, currentUserName);
+      toast({ title: isRtl ? "تم حذف المقايسة وتطهير المسار" : "BOQ & Path Purged" });
+      setShowDeleteConfirm(false);
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('error'), description: e.message });
+    } finally {
+      setIsDeletingBOQ(false);
+    }
+  };
+
+  const handleConfirmLinkBOQ = async () => {
+    if (!db || !companyId || !user || !namingTemplate || !transaction) return;
+    setProcessingId('linking_boq');
+    try {
+      const docService = new DocumentService(db, companyId, permissions);
+      await docService.instantiateBoqFromTemplate(namingTemplate.id!, {
+        transactionId,
+        clientId: transaction.clientId,
+        clientName: transaction.clientName,
+        activityTypeId: transaction.activityTypeId,
+        serviceId: transaction.serviceId,
+        subServiceId: transaction.subServiceId,
+        name: customBOQName
+      }, user.uid, currentUserName);
+      
+      toast({ title: isRtl ? "تم إنشاء المقايسة" : "BOQ Created" });
+      setNamingTemplate(null);
+      router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
@@ -382,7 +419,7 @@ export default function TransactionDetailsPage() {
         </div>
       )}
 
-      {/* Record Progress Dialog - COMPACT PROFESSIONAL UI */}
+      {/* Record Progress Dialog */}
       <Dialog open={isRecordOpen} onOpenChange={setIsRecordOpen}>
          <DialogContent className="rounded-2xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-md ring-1 ring-black/5" dir={dir}>
             <div className="bg-slate-900 p-6 text-white text-start">
@@ -595,7 +632,16 @@ export default function TransactionDetailsPage() {
              <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900">{isRtl ? 'حذف المقايسة تماماً؟' : 'Permanent BOQ Delete?'}</AlertDialogTitle>
              <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">{isRtl ? 'سيتم حذف كافة البنود وسجلات التنفيذ للبدء من جديد.' : 'All items and execution logs will be removed to start over.'}</AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="mt-12 gap-4 flex flex-row"><AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel><AlertDialogAction onClick={handleDeleteBOQ} disabled={isDeletingBOQ} className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200">{isDeletingBOQ ? <Loader2 className="animate-spin h-5 w-5" /> : (isRtl ? 'نعم، احذف' : 'Delete')}</AlertDialogAction></AlertDialogFooter>
+          <AlertDialogFooter className="mt-12 gap-4 flex flex-row">
+            <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteBOQ} 
+              disabled={isDeletingBOQ} 
+              className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200"
+            >
+              {isDeletingBOQ ? <Loader2 className="animate-spin h-5 w-5" /> : (isRtl ? 'نعم، احذف' : 'Delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
