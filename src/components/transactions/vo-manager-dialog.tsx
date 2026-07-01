@@ -152,10 +152,10 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
     setLoading(true);
     try {
       const service = new VariationService(db, globalUser.companyId, permissions);
-      // استخدام الوصف المخصص كاسم للمرحلة والبند معاً لتبسيط العمل
+      // استخدام الوصف الميداني المعتمد كأساس للهوية الإجرائية
       const sanitizedItems = items.map(it => ({
         ...it,
-        localStageName: it.description, // مزامنة تلقائية
+        localStageName: it.description, 
       }));
       await service.createVariation(boqId, transactionId, boqNumber, { title, reason }, sanitizedItems, user.uid);
       toast({ title: isRtl ? "تم حفظ مسودة الأمر" : "Draft Saved" });
@@ -349,3 +349,4 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
     </Dialog>
   );
 }
+

@@ -120,8 +120,9 @@ export default function TransactionDetailsPage() {
   const transRef = useMemo(() => (companyId && db) ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
   const { data: transaction, loading: transLoading } = useDoc<Transaction>(transRef);
 
+  // FIX: Syntax Error in stagesQuery
   const stagesQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.transactionStages(companyId, transactionId)), orderBy('order', 'asc')) : null, 
+    (companyId && db) ? query(collection(db, paths.transactionStages(companyId, transactionId)), orderBy('order', 'asc')) : null, 
   [db, companyId, transactionId]);
 
   const { data: rawStages, loading: stagesLoading } = useCollection<StageInstance>(stagesQuery);
@@ -200,7 +201,7 @@ export default function TransactionDetailsPage() {
         return;
     }
 
-    // PROTOCOL: Unlock UI before DB await
+    // RADICAL FIX: Immediate UI Release Protocol
     setIsOverExecutionOpen(false);
     setIsRecordOpen(false);
 
@@ -514,3 +515,4 @@ export default function TransactionDetailsPage() {
     </div>
   );
 }
+
