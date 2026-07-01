@@ -99,7 +99,7 @@ export default function TransactionDetailsPage() {
   const [isComplementary, setIsComplementary] = useState(false);
   const [targetStage, setTargetStage] = useState<StageInstance | null>(null);
   const [selectedItemId, setSelectedItemId] = useState("");
-  const [progressQty, setProgressQty] = useState<number>(0);
+  const [progressQty, setProgressQty] = useState<number | "">(""); // FIXED: Empty instead of 0
   const [progressNotes, setProgressNotes] = useState("");
 
   const [undoStage, setUndoStage] = useState<StageInstance | null>(null);
@@ -143,11 +143,8 @@ export default function TransactionDetailsPage() {
     
     return [...rawStages]
       .filter(s => {
-        // If it's not a temporary/manual stage, always show it
         if (!s.isTemporary) return true;
-        // If it's already completed or in progress, show it
         if (s.status !== 'pending') return true;
-        // If it's pending and temporary, check if any BOQ items are linked to it
         const hasWork = (boqItems || []).some(i => (i.plannedQuantity || 0) > 0 && (i.technicalStageIds?.includes(s.technicalStageId) || i.technicalStageId === s.technicalStageId));
         return hasWork;
       })
@@ -191,7 +188,7 @@ export default function TransactionDetailsPage() {
     setProcessingId('linking_boq');
     try {
       const docService = new DocumentService(db, companyId, permissions);
-      const boqId = await docService.instantiateBoqFromTemplate(namingTemplate.id!, {
+      await docService.instantiateBoqFromTemplate(namingTemplate.id!, {
           transactionId, clientId: transaction.clientId, clientName: transaction.clientName,
           activityTypeId: transaction.activityTypeId, serviceId: transaction.serviceId,
           subServiceId: transaction.subServiceId, name: customBOQName || namingTemplate.name
@@ -261,7 +258,7 @@ export default function TransactionDetailsPage() {
         activeBoq!.id, 
         selectedItemId, 
         targetStage.technicalStageId, 
-        isComplementary ? 0 : progressQty, 
+        isComplementary ? 0 : Number(progressQty), 
         user.uid, 
         currentUserName, 
         progressNotes,
@@ -269,7 +266,7 @@ export default function TransactionDetailsPage() {
       );
       toast({ title: isRtl ? "تم تسجيل الإنجاز" : "Progress Logged" });
       setIsRecordOpen(false);
-      setProgressQty(0);
+      setProgressQty(""); // Reset to empty
       setProgressNotes("");
       setSelectedItemId("");
       setIsComplementary(false);
@@ -285,7 +282,6 @@ export default function TransactionDetailsPage() {
     const item = boqItems.find(i => i.id === selectedItemId);
     if (!item) return null;
     
-    // Calculate executed quantity from all logs
     const executed = (allExecutions || [])
       .filter(e => e.boqItemId === selectedItemId && e.isArchived !== true)
       .reduce((sum, e) => sum + (e.quantity || 0), 0);
@@ -458,7 +454,15 @@ export default function TransactionDetailsPage() {
                     <div className="space-y-2 animate-in slide-in-from-top-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الكمية المنفذة حالياً' : 'Quantity Executed'}</Label>
                        <div className="relative">
-                          <Input type="number" step="0.01" value={progressQty} onChange={e => setProgressQty(Number(e.target.value))} className="h-14 rounded-xl border-2 font-black text-2xl text-center shadow-inner" />
+                          {/* FIXED: No default 0, uses empty state */}
+                          <Input 
+                            type="number" 
+                            step="0.01" 
+                            value={progressQty} 
+                            onChange={e => setProgressQty(e.target.value === '' ? '' : Number(e.target.value))} 
+                            className="h-14 rounded-xl border-2 font-black text-2xl text-center shadow-inner" 
+                            placeholder="..."
+                          />
                           <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-300 uppercase">{selectedBOQItemMetrics?.unit}</div>
                        </div>
                     </div>
@@ -473,7 +477,8 @@ export default function TransactionDetailsPage() {
 
             <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-3">
                <Button variant="outline" onClick={() => setIsRecordOpen(false)} className="flex-1 h-12 rounded-xl font-bold">إلغاء</Button>
-               <Button onClick={handleRecordProgress} disabled={loadingAction === 'recording' || (!isComplementary && progressQty <= 0) || !selectedItemId} className="flex-[2] h-12 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 transition-all gap-2 border-b-4 border-orange-700">
+               {/* FIXED: disabled if not complementary and qty is empty or <= 0 */}
+               <Button onClick={handleRecordProgress} disabled={!!loadingAction || (!isComplementary && (progressQty === "" || Number(progressQty) <= 0)) || !selectedItemId} className="flex-[2] h-12 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 transition-all gap-2 border-b-4 border-orange-700">
                   {loadingAction === 'recording' ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
                   {isRtl ? 'حفظ السجل' : 'Log Now'}
                </Button>

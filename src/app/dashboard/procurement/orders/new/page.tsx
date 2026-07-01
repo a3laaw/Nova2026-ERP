@@ -53,7 +53,8 @@ export default function NewPurchaseOrderPage() {
     notes: ''
   });
   
-  const [items, setItems] = useState<any[]>([{ itemName: '', quantity: 1, unitPrice: 0, unit: 'pcs', boqItemId: '' }]);
+  // FIXED: unitPrice starts as empty string to avoid showing 0
+  const [items, setItems] = useState<any[]>([{ itemName: '', quantity: 1, unitPrice: '', unit: 'pcs', boqItemId: '' }]);
 
   // جلب البيانات المرجعية
   const suppliersQuery = useMemo(() => companyId && db ? query(collection(db, paths.suppliers(companyId)), orderBy('name')) : null, [db, companyId]);
@@ -74,7 +75,7 @@ export default function NewPurchaseOrderPage() {
     }
   }, [db, companyId, formData.boqId]);
 
-  const addItem = () => setItems([...items, { itemName: '', quantity: 1, unitPrice: 0, unit: 'pcs', boqItemId: '' }]);
+  const addItem = () => setItems([...items, { itemName: '', quantity: 1, unitPrice: '', unit: 'pcs', boqItemId: '' }]);
   const removeItem = (idx: number) => setItems(items.filter((_, i) => i !== idx));
   const updateItem = (idx: number, field: string, val: any) => {
     const newItems = [...items];
@@ -82,7 +83,7 @@ export default function NewPurchaseOrderPage() {
     setItems(newItems);
   };
 
-  const totalAmount = useMemo(() => items.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0), [items]);
+  const totalAmount = useMemo(() => items.reduce((acc, item) => acc + ((Number(item.quantity) || 0) * (Number(item.unitPrice) || 0)), 0), [items]);
 
   const handleSave = async () => {
     if (!db || !companyId || !user || !formData.supplierId) return;
@@ -93,8 +94,9 @@ export default function NewPurchaseOrderPage() {
       
       const finalItems = items.map(item => ({
         ...item,
+        unitPrice: Number(item.unitPrice) || 0,
         boqId: formData.boqId, // ربط كل بند بالمقايسة الأم
-        totalPrice: item.quantity * item.unitPrice
+        totalPrice: (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0)
       }));
 
       const poId = await service.createPurchaseOrder({
@@ -214,12 +216,13 @@ export default function NewPurchaseOrderPage() {
 
                           <div className="md:col-span-2 space-y-1">
                              <Label className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'الكمية' : 'Qty'}</Label>
-                             <Input type="number" value={item.quantity} onChange={e => updateItem(idx, 'quantity', Number(e.target.value))} className="h-11 border-2 font-black text-center rounded-xl" />
+                             <Input type="number" value={item.quantity} onChange={e => updateItem(idx, 'quantity', e.target.value === '' ? '' : Number(e.target.value))} className="h-11 border-2 font-black text-center rounded-xl" />
                           </div>
                           
                           <div className="md:col-span-3 space-y-1">
                              <Label className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'سعر الوحدة' : 'Unit Price'}</Label>
-                             <Input type="number" step="0.001" value={item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', Number(e.target.value))} className="h-11 border-2 font-black text-center rounded-xl text-emerald-600" />
+                             {/* FIXED: Placeholder used instead of 0 */}
+                             <Input type="number" step="0.001" value={item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', e.target.value === '' ? '' : Number(e.target.value))} className="h-11 border-2 font-black text-center rounded-xl text-emerald-600" placeholder="..." />
                           </div>
                           
                           <div className="md:col-span-1 flex justify-end">
@@ -267,4 +270,3 @@ export default function NewPurchaseOrderPage() {
     </div>
   );
 }
-
