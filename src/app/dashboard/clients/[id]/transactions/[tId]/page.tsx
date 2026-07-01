@@ -33,7 +33,7 @@ import {
   LayoutGrid
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
-import { collection, query, orderBy, where, limit, doc } from 'firebase/firestore';
+import { collection, query, orderBy, where, limit, doc, addDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
