@@ -95,7 +95,8 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
       rate: "", 
       total: 0,
       insertAfterStageId: '',
-      isComplementary: true
+      isComplementary: true,
+      localStageName: ''
     } as any]);
   };
 
@@ -152,12 +153,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
     setLoading(true);
     try {
       const service = new VariationService(db, globalUser.companyId, permissions);
-      // استخدام الوصف الميداني المعتمد كأساس للهوية الإجرائية
-      const sanitizedItems = items.map(it => ({
-        ...it,
-        localStageName: it.description, 
-      }));
-      await service.createVariation(boqId, transactionId, boqNumber, { title, reason }, sanitizedItems, user.uid);
+      await service.createVariation(boqId, transactionId, boqNumber, { title, reason }, items, user.uid);
       toast({ title: isRtl ? "تم حفظ مسودة الأمر" : "Draft Saved" });
       onClose();
     } catch (e: any) {
@@ -284,19 +280,6 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                <div className="md:col-span-1 flex justify-end"><Button variant="ghost" size="icon" onClick={() => removeItem(idx)} className="h-11 w-11 text-rose-300"><Trash2 className="h-5 w-5" /></Button></div>
                             </div>
 
-                            <div className="md:col-span-12 space-y-1.5 text-start pt-2">
-                               <Label className="text-[10px] font-black uppercase text-blue-600 tracking-widest flex items-center gap-2">
-                                  <Pencil className="h-3 w-3" /> {isRtl ? 'المسمى الميداني المعتمد (مثلاً: التدعيم)' : 'Professional Field Name (e.g. Reinforcement)'}
-                                </Label>
-                               <Input 
-                                 value={item.description} 
-                                 onChange={e => updateItem(idx, 'description', e.target.value)}
-                                 className="h-14 rounded-xl border-2 border-blue-100 bg-blue-50/20 font-black text-lg text-slate-800 focus:bg-white transition-all shadow-inner"
-                                 placeholder={isRtl ? "اكتب هنا الاسم الذي سيظهر للمهندس..." : "e.g. North Side Support..."}
-                               />
-                               <p className="text-[9px] text-slate-400 font-bold italic">{isRtl ? 'ملاحظة: هذا الاسم سيستخدم تلقائياً كاسم للمرحلة وبند العمل في الميدان.' : 'Note: This name will be automatically used for both the Stage and the Work Item.'}</p>
-                            </div>
-
                             <div className="pt-6 border-t border-dashed space-y-4">
                                <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                                   <div className="flex items-center gap-3">
@@ -314,17 +297,22 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                {isNewStage && (
                                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6 p-6 bg-blue-50/50 rounded-2xl border-2 border-blue-100 animate-in slide-in-from-top-4">
                                     <div className="md:col-span-6 space-y-1.5 text-start">
-                                       <Label className="text-[9px] font-black uppercase text-blue-600">{isRtl ? 'تحقن بعد مرحلة:' : 'Insert After Stage:'}</Label>
+                                       <Label className="text-[9px] font-black uppercase text-blue-600">{isRtl ? 'اسم المرحلة الجديدة:' : 'New Stage Name:'}</Label>
+                                       <Input 
+                                         value={item.localStageName || ''} 
+                                         onChange={e => updateItem(idx, 'localStageName', e.target.value)} 
+                                         className="h-10 rounded-xl border-2 bg-white font-bold" 
+                                         placeholder={isRtl ? "مثلاً: التدعيم" : "e.g. Reinforcement"} 
+                                       />
+                                    </div>
+                                    <div className="md:col-span-3 space-y-1.5 text-start">
+                                       <Label className="text-[9px] font-black uppercase text-blue-600">{isRtl ? 'تحقن بعد مرحلة:' : 'Insert After:'}</Label>
                                        <Select value={item.insertAfterStageId || ''} onValueChange={v => updateItem(idx, 'insertAfterStageId', v)}>
                                           <SelectTrigger className="h-10 rounded-xl border-2 bg-white font-bold text-xs"><SelectValue placeholder="..." /></SelectTrigger>
                                           <SelectContent>
                                              {availableStages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs">{s.name}</SelectItem>)}
                                           </SelectContent>
                                        </Select>
-                                    </div>
-                                    <div className="md:col-span-3 space-y-1.5 text-start">
-                                       <Label className="text-[9px] font-black uppercase text-blue-600">Code</Label>
-                                       <Input value={item.localStageCode || ''} onChange={e => updateItem(idx, 'localStageCode', e.target.value.toUpperCase())} className="h-10 rounded-xl border-2 bg-white font-mono text-xs" placeholder="M-01" />
                                     </div>
                                     <div className="md:col-span-3 flex flex-col items-center justify-center gap-1.5 border-s border-blue-200 ps-4">
                                        <Label className="text-[8px] font-black text-blue-400 uppercase">{isRtl ? 'مكمل موازٍ' : 'Parallel'}</Label>
@@ -349,4 +337,3 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
     </Dialog>
   );
 }
-

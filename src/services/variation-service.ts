@@ -115,11 +115,9 @@ export class VariationService {
 
     for (const itemDoc of voItemsSnap.docs) {
       const vItem = itemDoc.data() as BOQVariationItem;
-      if (!vItem.description) continue;
-
       let targetTechnicalStageId = vItem.technicalStageId || '';
 
-      // SMART FIX: Unified Naming for New Local Stages
+      // SMART FIX: Use localStageName for both Stage and Item if it's a new manual injection
       if (vItem.type === 'new_item' && vItem.stageMode === 'new_local_stage') {
         const afterStage = currentStages.find(s => s.id === vItem.insertAfterStageId);
         const insertAtOrder = (afterStage?.order !== undefined) ? afterStage.order + 1 : currentStages.length;
@@ -132,7 +130,7 @@ export class VariationService {
           transactionId,
           technicalStageId: targetTechnicalStageId,
           code: vItem.localStageCode || `MANUAL_${(insertAtOrder + 1).toString().padStart(2, '0')}`,
-          name: vItem.description, // USE DESCRIPTION AS STAGE NAME
+          name: vItem.localStageName || vItem.description, 
           description: vItem.reason || 'مرحلة طارئة محقونة من أمر تغييري',
           order: insertAtOrder,
           isNumeric: false,
@@ -177,9 +175,9 @@ export class VariationService {
           const currentItem = itemSnap.data() as BOQItem;
           const newPlanned = Math.max(0, (currentItem.plannedQuantity || 0) + (vItem.quantityDelta || 0));
           
+          // CRITICAL: DO NOT overwrite referenceTitle for existing items to keep the math integrity (e.g. Concrete remains Concrete)
           batch.update(boqItemRef, { 
             plannedQuantity: newPlanned,
-            referenceTitle: vItem.description, // UPDATE ITEM TITLE TO USER CUSTOM DESC
             estimatedRate: vItem.rate || currentItem.estimatedRate,
             updatedAt: serverTimestamp() 
           });
@@ -198,7 +196,7 @@ export class VariationService {
           transactionId,
           boqReferenceNodeId: vItem.boqReferenceNodeId || '',
           referenceCode: 'VO-' + voId.slice(-4),
-          referenceTitle: vItem.description, // USE CUSTOM DESCRIPTION AS TITLE
+          referenceTitle: vItem.localStageName || vItem.description, 
           plannedQuantity: Math.abs(vItem.quantityDelta),
           executedQuantity: 0,
           estimatedRate: vItem.rate,
