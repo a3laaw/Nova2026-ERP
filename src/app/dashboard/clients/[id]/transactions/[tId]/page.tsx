@@ -180,8 +180,8 @@ export default function TransactionDetailsPage() {
 
   const transactionService = useMemo(() => db && companyId ? new TransactionService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
-  // Robust Record Progress Handler
-  const handleRecordProgress = async (force: boolean = false) => {
+  // RADICAL FIX: Use sequential state updates to prevent UI freeze
+  const handleRecordProgress = (force: boolean = false) => {
     if (!executionService || !user || !targetStage || !selectedItemId) return;
     
     const qtyInput = isComplementary ? 0 : Number(progressQty);
@@ -198,37 +198,38 @@ export default function TransactionDetailsPage() {
         return;
     }
 
-    // PHASE 1: Release the UI completely
-    // We close the dialogs first and wait a tick to ensure Radix removes overlays
+    // 1. Release the UI immediately
     setIsOverExecutionOpen(false);
     setIsRecordOpen(false);
 
-    // PHASE 2: Trigger Async Processing after UI is unlocked
-    setLoadingAction('recording');
-    try {
-      await executionService.recordBOQItemExecution(
-        activeBoq!.id, 
-        selectedItemId, 
-        targetStage.technicalStageId, 
-        qtyInput, 
-        user.uid, 
-        currentUserName, 
-        progressNotes,
-        targetStage.id!
-      );
-      
-      toast({ title: isRtl ? "تم تسجيل الإنجاز" : "Progress Logged" });
-      
-      // Cleanup form
-      setProgressQty(""); 
-      setProgressNotes("");
-      setSelectedItemId("");
-      setIsComplementary(false);
-    } catch (e: any) {
-      toast({ variant: "destructive", title: t('error'), description: e.message });
-    } finally {
-      setLoadingAction(null);
-    }
+    // 2. Perform the actual work after UIsettles
+    setTimeout(async () => {
+        setLoadingAction('recording');
+        try {
+            await executionService.recordBOQItemExecution(
+                activeBoq!.id, 
+                selectedItemId, 
+                targetStage.technicalStageId, 
+                qtyInput, 
+                user.uid, 
+                currentUserName, 
+                progressNotes,
+                targetStage.id!
+            );
+            
+            toast({ title: isRtl ? "تم تسجيل الإنجاز" : "Progress Logged" });
+            
+            // Cleanup form
+            setProgressQty(""); 
+            setProgressNotes("");
+            setSelectedItemId("");
+            setIsComplementary(false);
+        } catch (e: any) {
+            toast({ variant: "destructive", title: t('error'), description: e.message });
+        } finally {
+            setLoadingAction(null);
+        }
+    }, 300); // 300ms is enough for Radix animations and DOM cleanup
   };
 
   const selectedBOQItemMetrics = useMemo(() => {
@@ -312,7 +313,7 @@ export default function TransactionDetailsPage() {
     setProcessingId('linking_boq');
     try {
       const docService = new DocumentService(db, companyId, permissions);
-      const boqId = await docService.instantiateBoqFromTemplate(namingTemplate.id!, {
+      const bId = await docService.instantiateBoqFromTemplate(namingTemplate.id!, {
         transactionId,
         clientId: transaction.clientId,
         clientName: transaction.clientName,
