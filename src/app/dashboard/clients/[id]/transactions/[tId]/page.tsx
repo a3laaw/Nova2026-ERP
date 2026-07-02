@@ -21,7 +21,8 @@ import {
   ArrowRight,
   Trash2,
   Pencil,
-  Target
+  Target,
+  Info
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, limit, doc, addDoc, updateDoc } from 'firebase/firestore';
@@ -290,7 +291,7 @@ export default function TransactionDetailsPage() {
         <div className="flex items-center gap-4 text-start">
            <div className="h-11 px-4 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black text-sm border-2 border-primary/20 shadow-inner">{transaction?.transactionNumber}</div>
            <div>
-              <h1 className="text-xl font-black font-headline text-slate-900 leading-tight">{transaction?.subServiceName}</h1>
+              <h1 className="text-xl font-black text-slate-900 leading-tight">{transaction?.subServiceName}</h1>
               <div className="flex items-center gap-3 mt-0.5">
                  <Badge className={cn("font-black px-2 py-0.5 rounded-lg border-0 shadow-sm uppercase text-[8px]", transaction?.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600')}>{transaction?.status}</Badge>
                  <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1"><Activity className="h-2.5 w-2.5 text-primary" /> {transaction?.activityTypeName}</span>
