@@ -9,27 +9,17 @@ import { Progress } from "@/components/ui/progress";
 import { 
   Activity, Clock, Loader2, 
   CheckCircle2,
-  Lock, Play, Check,
-  FileSpreadsheet, TrendingUp, MessageSquare,
+  Play, Check,
+  FileSpreadsheet, Calculator,
   Hammer, Save,
   AlertTriangle,
   RotateCcw,
-  RotateCw,
-  DatabaseZap,
-  Target,
   Zap,
-  Plus,
   Workflow,
   PlusCircle,
   ArrowRight,
   Trash2,
   Pencil,
-  Info,
-  Calculator,
-  ShieldAlert,
-  Sparkles,
-  XCircle,
-  LayoutGrid,
   ShieldX
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
@@ -83,7 +73,7 @@ export default function TransactionDetailsPage() {
   const transactionId = params.tId as string;
   const { globalUser, user } = useAuthContext();
   const { t, lang, dir } = useLanguage();
-  const { check, permissions, isAdmin } = usePermissions();
+  const { permissions, isAdmin } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
@@ -113,7 +103,7 @@ export default function TransactionDetailsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isOverExecutionOpen, setIsOverExecutionOpen] = useState(false);
 
-  // --- Sovereign UI Guard: Standard Reset Protocol ---
+  // Sovereign UI Guard: Release pointer events forcibly on any state change that closes a modal
   useEffect(() => {
     const isAnyModalOpen = isRecordOpen || isOverExecutionOpen || !!undoStage || !!incompleteStage || !!namingTemplate || showDeleteConfirm || isVOOpen;
     if (!isAnyModalOpen && typeof document !== 'undefined') {
@@ -128,7 +118,6 @@ export default function TransactionDetailsPage() {
   const transRef = useMemo(() => (companyId && db) ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
   const { data: transaction, loading: transLoading } = useDoc<Transaction>(transRef);
 
-  // FIXED: Correct memoized stagesQuery syntax
   const stagesQuery = useMemo(() => 
     (companyId && db) ? query(collection(db, paths.transactionStages(companyId, transactionId)), orderBy('order', 'asc')) : null, 
   [db, companyId, transactionId]);
@@ -285,7 +274,6 @@ export default function TransactionDetailsPage() {
     }, 100);
   };
 
-  // ADDED: handleDeleteBOQ function
   const handleDeleteBOQ = async () => {
     if (!db || !companyId || !activeBoq) return;
     setIsDeletingBOQ(true);
@@ -301,7 +289,6 @@ export default function TransactionDetailsPage() {
     }
   };
 
-  // ADDED: handleConfirmLinkBOQ function
   const handleConfirmLinkBOQ = async () => {
     if (!db || !companyId || !user || !namingTemplate || !transaction) return;
     setProcessingId('linking_boq');
@@ -439,7 +426,6 @@ export default function TransactionDetailsPage() {
         </div>
       )}
 
-      {/* Record Progress Dialog - Revised compact buttons */}
       <Dialog open={isRecordOpen} onOpenChange={setIsRecordOpen}>
          <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-md ring-1 ring-black/5" dir={dir}>
             <div className="bg-[#1e1b4b] p-6 text-white text-start">
@@ -495,7 +481,7 @@ export default function TransactionDetailsPage() {
                        )}
                     </div>
                   )}
-                  <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'تقرير ميداني مصغر' : 'Field Notes'}</Label><Textarea value={progressNotes} onChange={e => setProgressNotes(e.target.value)} className="min-h-[80px] rounded-lg bg-slate-50/50 border-2 resize-none p-3 text-xs font-bold" placeholder="..." /></div>
+                  <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'تقرير ميداني مصغر' : 'Field Notes'}</Label><Textarea value={progressNotes} onChange={e => setProgressNotes(e.target.value)} className="min-h-[100px] rounded-lg bg-slate-50/50 border-2 resize-none p-3 text-xs font-bold" placeholder="..." /></div>
                </div>
             </div>
             <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-3"><Button variant="outline" onClick={() => setIsRecordOpen(false)} className="flex-1 h-11 rounded-lg font-bold">إلغاء</Button><Button onClick={() => handleRecordProgress()} disabled={loadingAction === 'recording' || (!isComplementary && (progressQty === "" || Number(progressQty) <= 0)) || !selectedItemId} className="flex-[2] h-11 rounded-lg bg-primary text-white font-black shadow-lg gap-2 border-b-4 border-orange-700">{loadingAction === 'recording' ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}{isRtl ? 'حفظ السجل' : 'Log Now'}</Button></DialogFooter>

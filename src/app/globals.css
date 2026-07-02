@@ -6,7 +6,7 @@
 
 @layer base {
   :root {
-    /* Standardized Palette based on the provided image */
+    /* Standardized Palette */
     --background: 210 20% 98%; 
     --foreground: 222 47% 11%;
     
@@ -45,9 +45,18 @@
   * { @apply border-border; }
   body { @apply bg-background text-foreground font-body antialiased; }
   h1, h2, h3, h4, h5, h6 { @apply font-headline tracking-tight font-bold text-slate-900; }
+  
+  /* منع ظهور الأسهم في حقول الأرقام */
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type=number] {
+    -moz-appearance: textfield;
+  }
 }
 
-/* The Sovereign Gradient for Buttons and Active Items */
 .btn-gradient {
   @apply bg-gradient-to-r from-[#F57C00] to-[#FFB000] text-white shadow-xl shadow-orange-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all border-b-2 border-orange-700/30 font-black;
 }

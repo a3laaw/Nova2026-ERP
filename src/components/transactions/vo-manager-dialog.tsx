@@ -16,7 +16,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { 
   Calculator, Trash2, Loader2, Save, X, 
   PlusCircle, LayoutGrid,
-  TrendingUp, Workflow,
+  Workflow,
   CheckCircle2, Plus, 
   ArrowRight,
   Settings2,
@@ -272,7 +272,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                </div>
 
                                <div className="md:col-span-3 space-y-2 text-start">
-                                  <Label className="text-[9px] font-black uppercase text-slate-400">Unit Price & Total</Label>
+                                  <Label className="text-[9px] font-black text-slate-400">Unit Price & Total</Label>
                                   <div className="flex items-center gap-3">
                                      <Input type="number" step="0.001" value={item.rate} onChange={e => updateItem(idx, 'rate', e.target.value)} className="h-10 rounded-lg border-2 font-black text-emerald-600 text-xs text-center" placeholder="..." />
                                      <div className="text-end min-w-[70px]"><p className={cn("text-[10px] font-black", (Number(item.total) || 0) >= 0 ? "text-emerald-500" : "text-rose-500")}>{(Number(item.total) || 0).toLocaleString()}</p></div>
