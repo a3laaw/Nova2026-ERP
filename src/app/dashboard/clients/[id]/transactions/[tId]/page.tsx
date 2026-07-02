@@ -54,6 +54,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -480,8 +481,8 @@ export default function TransactionDetailsPage() {
                        {selectedBOQItemMetrics && Number(progressQty) > selectedBOQItemMetrics.remaining && (
                          <div className="p-4 rounded-xl bg-rose-50 border-2 border-rose-100 flex items-start gap-3 animate-in shake-1 duration-500">
                            <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
-                           <p className="text-[10px] font-bold text-rose-600 leading-relaxed">
-                              {isRtl ? 'تنبيه: الكمية تتجاوز الميزانية المعتمدة. يرجى التوجه لإصدار VO.' : 'Quantity exceeds BOQ budget. Issue a VO.'}
+                           <p className="text-[10px] font-bold text-rose-600 leading-relaxed text-start">
+                              {isRtl ? 'تنبيه: الكمية المدخلة تتجاوز الميزانية المعتمدة في بنود الكميات. يرجى التوجه لإصدار أمر تغييري (VO) لهذا البند.' : 'The input quantity exceeds the budget approved in the Bill of Quantities. Please issue a Variation Order (VO) for this item.'}
                            </p>
                          </div>
                        )}
@@ -510,7 +511,7 @@ export default function TransactionDetailsPage() {
       <Dialog open={!!undoStage} onOpenChange={(open) => !open && setUndoStage(null)}>
          <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-md ring-1 ring-black/5" dir={dir}>
             <div className="bg-rose-600 p-6 text-white text-start"><DialogTitle className="text-xl font-black font-headline flex items-center gap-3"><RotateCcw className="h-5 w-5" />{isRtl ? 'بروتوكول التراجع عن الإنجاز' : 'Stage Reversal Protocol'}</DialogTitle></div>
-            <div className="p-6 space-y-5 text-start bg-white"><div className="p-4 rounded-xl bg-rose-50 border-2 border-rose-100 flex items-start gap-3"><AlertTriangle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" /><p className="text-[10px] text-rose-700 font-bold leading-relaxed">{isRtl ? 'إعادة فتح المرحلة سيؤدي لإعادتها لحالة "قيد التنفيذ" وتجميد أي مراحل لاحقة.' : 'Reopening will reset subsequent stages to pending.'}</p></div><div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border-2"><Label className="font-black text-xs uppercase tracking-tighter text-rose-600">{isRtl ? 'تطهير السجلات' : 'Purge Logs'}</Label><Switch checked={clearLogsOnUndo} onCheckedChange={setClearLogsOnUndo} /></div><Button onClick={handleReopenStage} className="w-full h-14 rounded-lg bg-rose-600 text-white font-black text-lg shadow-xl shadow-rose-200 border-b-4 border-rose-800 hover:bg-rose-700">{isRtl ? 'تأكيد إعادة الفتح' : 'Confirm Reopen'}</Button></div>
+            <div className="p-6 space-y-5 text-start bg-white"><div className="p-4 rounded-xl bg-rose-50/50 border-2 border-dashed border-rose-100 flex items-start gap-3"><AlertTriangle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" /><p className="text-[10px] text-rose-700 font-bold leading-relaxed">{isRtl ? 'إعادة فتح المرحلة سيؤدي لإعادتها لحالة "قيد التنفيذ" وتجميد أي مراحل لاحقة.' : 'Reopening will reset subsequent stages to pending.'}</p></div><div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border-2"><Label className="font-black text-xs uppercase tracking-tighter text-rose-600">{isRtl ? 'تطهير السجلات' : 'Purge Logs'}</Label><Switch checked={clearLogsOnUndo} onCheckedChange={setClearLogsOnUndo} /></div><Button onClick={handleReopenStage} className="w-full h-14 rounded-lg bg-rose-600 text-white font-black text-lg shadow-xl shadow-rose-200 border-b-4 border-rose-800 hover:bg-rose-700">{isRtl ? 'تأكيد إعادة الفتح' : 'Confirm Reopen'}</Button></div>
          </DialogContent>
       </Dialog>
 
@@ -525,3 +526,4 @@ export default function TransactionDetailsPage() {
     </div>
   );
 }
+
