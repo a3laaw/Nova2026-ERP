@@ -269,7 +269,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                </div>
 
                                <div className="md:col-span-1 space-y-2 text-start">
-                                  <Label className="text-[10px] font-black text-slate-400 uppercase">Original</Label>
+                                  <Label className="text-[10px] font-black uppercase text-slate-400">Original</Label>
                                   <div className="h-10 flex items-center justify-center bg-slate-100 rounded-lg font-black text-slate-500 text-[10px]">{isNewItem ? '0' : (item.sourcePlannedQuantity || 0)}</div>
                                </div>
 
