@@ -40,7 +40,7 @@ import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useFirestore } from '@/firebase';
-import { BOQItem, VariationType, BOQVariationItem, VOStageMode } from '@/types/documents';
+import { BOQItem, BOQVariationItem, VOStageMode, BOQVariation } from '@/types/documents';
 import { VariationService } from '@/services/variation-service';
 import { BOQReferenceSelector } from '@/components/settings/checklists/boq-reference/boq-reference-selector';
 import { toast } from '@/hooks/use-toast';
@@ -327,15 +327,20 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                            </SelectContent>
                                         </Select>
                                      </div>
-                                     <div className="md:col-span-3 flex flex-col items-center justify-center gap-2 border-s border-slate-200 ps-4">
-                                        <Label className="text-[12px] font-black text-slate-900 uppercase tracking-tighter whitespace-nowrap">
-                                          {isRtl ? 'مكمل موازٍ' : 'Parallel Execution'}
-                                        </Label>
-                                        <Switch 
-                                          checked={item.isComplementary || false} 
-                                          onCheckedChange={v => updateItem(idx, 'isComplementary', v)} 
-                                          className="data-[state=checked]:bg-[#FFA000]"
-                                        />
+                                     <div className="md:col-span-3">
+                                        <div className="flex items-center justify-between p-4 bg-white rounded-xl border-2 border-primary/10 shadow-sm transition-all group">
+                                           <div className="flex items-center gap-2">
+                                              <Zap className="h-3 w-3 text-[#FFA000]" />
+                                              <Label className="text-xs font-black text-[#1e1b4b] whitespace-nowrap uppercase tracking-tighter">
+                                                 {isRtl ? 'مكمل موازٍ' : 'Parallel'}
+                                              </Label>
+                                           </div>
+                                           <Switch 
+                                             checked={item.isComplementary || false} 
+                                             onCheckedChange={v => updateItem(idx, 'isComplementary', v)} 
+                                             className="data-[state=checked]:bg-[#FFA000]"
+                                           />
+                                        </div>
                                      </div>
                                   </div>
                                 )}

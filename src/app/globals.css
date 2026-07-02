@@ -46,14 +46,14 @@
   body { @apply bg-background text-foreground font-body antialiased; }
   h1, h2, h3, h4, h5, h6 { @apply font-headline tracking-tight font-bold text-slate-900; }
   
-  /* منع ظهور الأسهم في حقول الأرقام - صيانة سيادية */
+  /* منع ظهور الأسهم في حقول الأرقام نهائياً - صيانة سيادية */
   input::-webkit-outer-spin-button,
   input::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
+    -webkit-appearance: none !important;
+    margin: 0 !important;
   }
   input[type=number] {
-    -moz-appearance: textfield;
+    -moz-appearance: textfield !important;
   }
 }
 
