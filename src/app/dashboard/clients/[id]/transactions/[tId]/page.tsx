@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -72,7 +73,7 @@ export default function TransactionDetailsPage() {
   const transactionId = params.tId as string;
   const { globalUser, user } = useAuthContext();
   const { t, lang, dir } = useLanguage();
-  const { permissions, isAdmin } = usePermissions();
+  const { permissions, isAdmin, check } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
@@ -433,7 +434,7 @@ export default function TransactionDetailsPage() {
         </div>
       )}
 
-      {/* مودال تسجيل الإنجاز */}
+      {/* مودال تسجيل الإنجاز المطور */}
       <Dialog open={isRecordOpen} onOpenChange={setIsRecordOpen}>
          <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-md ring-1 ring-black/5" dir={dir}>
             <div className="bg-[#1e1b4b] p-6 text-white text-start">
@@ -459,9 +460,24 @@ export default function TransactionDetailsPage() {
                   </Select>
                </div>
                <div className="space-y-5 pt-2">
-                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border"><div className="space-y-0.5"><Label className="font-black text-[12px] text-slate-900 uppercase tracking-tighter">{isRtl ? 'إنجاز تكميلي' : 'Complementary Log'}</Label></div><Switch checked={isComplementary} onCheckedChange={setIsComplementary} /></div>
+                  <div className="space-y-2">
+                     <Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{isRtl ? 'نوع الربط الميداني' : 'Field Link Type'}</Label>
+                     <Select value={isComplementary ? 'parallel' : 'critical'} onValueChange={(v) => setIsComplementary(v === 'parallel')}>
+                        <SelectTrigger className={cn(
+                           "h-12 rounded-xl border-2 font-black shadow-sm",
+                           isComplementary ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100"
+                        )}>
+                           <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-0 shadow-2xl">
+                           <SelectItem value="parallel" className="font-bold text-emerald-600">{isRtl ? 'مفعل (يعمل بالتوازي)' : 'Active (Parallel Stage)'}</SelectItem>
+                           <SelectItem value="critical" className="font-bold text-rose-600">{isRtl ? 'غير مفعل (مرحلة حرجة)' : 'Inactive (Critical Stage)'}</SelectItem>
+                        </SelectContent>
+                     </Select>
+                  </div>
+                  
                   {!isComplementary && (
-                    <div className="space-y-4">
+                    <div className="space-y-4 animate-in slide-in-from-top-2">
                        <div className="space-y-2">
                           <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'الكمية المنفذة حالياً' : 'Quantity Executed'}</Label>
                           <div className="relative">
@@ -483,7 +499,7 @@ export default function TransactionDetailsPage() {
                          <div className="p-4 rounded-xl bg-rose-50 border-2 border-rose-100 flex items-start gap-3 animate-in shake-1 duration-500">
                            <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
                            <p className="text-[10px] font-bold text-rose-600 leading-relaxed text-start">
-                              {isRtl ? 'تنبيه: الكمية المدخلة تتجاوز الميزانية المعتمدة في بنود الكميات. يرجى التوجه لإصدار أمر تغييري (VO) لهذا البند.' : 'The input quantity exceeds the budget approved in the Bill of Quantities. Please issue a Variation Order (VO) for this item.'}
+                              {isRtl ? 'تنبيه: الكمية تتجاوز المتبقي في الميزانية. تسجيلها سيؤدي لحقن تعليق رقابي باسمك في التايم لاين.' : 'Quantity exceeds budget. Over-execution will be logged with your name in timeline.'}
                            </p>
                          </div>
                        )}
@@ -521,8 +537,11 @@ export default function TransactionDetailsPage() {
                        : 'Reopening will reset subsequent stages to pending to maintain path integrity.'}
                   </p>
                </div>
-               <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border-2">
-                  <Label className="font-black text-xs uppercase tracking-tighter text-rose-600">{isRtl ? 'تطهير سجلات الإنجاز' : 'Purge Logs'}</Label>
+               <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border-2 text-start">
+                  <div className="space-y-0.5">
+                    <Label className="font-black text-xs uppercase tracking-tighter text-rose-600">{isRtl ? 'تطهير سجلات الإنجاز' : 'Purge Logs'}</Label>
+                    <p className="text-[8px] text-slate-400 font-bold">مسح كافة كميات المرحلة والبدء من جديد</p>
+                  </div>
                   <Switch checked={clearLogsOnUndo} onCheckedChange={setClearLogsOnUndo} />
                </div>
                <Button onClick={handleReopenStage} className="w-full h-14 rounded-lg bg-rose-600 text-white font-black text-lg shadow-xl shadow-rose-200 border-b-4 border-rose-800 hover:bg-rose-700">
