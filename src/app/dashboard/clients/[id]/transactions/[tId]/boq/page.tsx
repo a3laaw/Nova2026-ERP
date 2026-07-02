@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -84,7 +85,11 @@ export default function TransactionBOQProgressPage() {
   const variationsQuery = useMemo(() => companyId && db && activeBoq?.id ? query(collection(db, paths.boqVariations(companyId, activeBoq.id))) : null, [db, companyId, activeBoq]);
   const { data: variations } = useCollection<BOQVariation>(variationsQuery);
 
-  const executionsQuery = useMemo(() => companyId && db ? query(collection(db, paths.executions(companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
+  const executionsQuery = useMemo(() => {
+    if (!companyId || !db) return null;
+    return query(collection(db, paths.executions(companyId)), where('transactionId', '==', transactionId));
+  }, [db, companyId, transactionId]);
+
   const { data: rawExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
   const allExecutions = useMemo(() => (rawExecutions || []).filter(e => e.boqId === activeBoq?.id), [rawExecutions, activeBoq]);
 
@@ -312,19 +317,6 @@ export default function TransactionBOQProgressPage() {
            ))}
         </div>
       )}
-
-      {activeBoq.status === 'draft' && (
-        <div className="bg-amber-50 border-2 border-dashed border-amber-200 p-6 rounded-[2.5rem] flex items-start gap-4 animate-in zoom-in-95">
-           <ShieldAlert className="h-6 w-6 text-amber-600 shrink-0 mt-1" />
-           <div className="text-start"><h5 className="font-black text-sm text-amber-900">{isRtl ? 'تخصيص ميزانية المشروع' : 'Project Baseline Setup'}</h5><p className="text-xs font-bold text-amber-800/80 leading-relaxed mt-1">{isRtl ? 'يمكنك الآن تعديل الكميات وإضافة بنود إضافية من القاموس السيادي. بمجرد الاعتماد، سيتم حقن مراحل العمل آلياً في المعاملة.' : 'You can adjust quantities and add items from the registry. Once approved, work stages will be injected into the transaction.'}</p></div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-         <Card className="border-0 shadow-lg rounded-2xl p-5 text-start bg-white"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'الميزانية المخططة' : 'Planned'}</p><h3 className="text-xl font-black text-slate-900">{financialStats.final.toLocaleString()} KWD</h3></Card>
-         <Card className="border-0 shadow-lg rounded-2xl p-5 text-start bg-white border-s-4 border-s-[#039BE5]"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'تعديلات معتمدة' : 'Approved VOs'}</p><h3 className="text-xl font-black text-[#039BE5]">{financialStats.voTotal.toLocaleString()} KWD</h3></Card>
-         <Card className="border-0 shadow-lg rounded-2xl p-5 text-start bg-[#1e1b4b] text-white border-s-4 border-s-emerald-500"><p className="text-[9px] font-black text-primary uppercase tracking-widest mb-1">{isRtl ? 'الإنجاز الفعلي' : 'Actual Execution'}</p><h3 className="text-xl font-black text-emerald-400">{items.reduce((acc,i)=>(acc+(i.executedQuantity*(i.estimatedRate||0))),0).toLocaleString()} KWD</h3></Card>
-      </div>
 
       <div className="flex-1 bg-white rounded-3xl shadow-2xl border border-primary/5 overflow-hidden flex flex-col min-h-[600px]">
          <Table>

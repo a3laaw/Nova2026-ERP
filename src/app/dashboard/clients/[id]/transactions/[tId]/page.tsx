@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -128,11 +129,6 @@ export default function TransactionDetailsPage() {
   const { data: boqs, loading: boqLoading } = useCollection<BOQ>(boqQuery);
   const activeBoq = boqs && boqs.length > 0 ? boqs[0] : null;
 
-  const templatesQuery = useMemo(() => 
-    (companyId && db && transaction) ? query(collection(db, paths.boqTemplates(companyId)), where('subServiceId', '==', transaction.subServiceId), where('isActive', '==', true)) : null, 
-  [db, companyId, transaction]);
-  const { data: availableTemplates } = useCollection<BOQTemplate>(templatesQuery);
-
   const itemsQuery = useMemo(() => (companyId && db && activeBoq?.id) ? query(collection(db, paths.boqItems(companyId, activeBoq.id))) : null, [db, companyId, activeBoq]);
   const { data: boqItems } = useCollection<BOQItem>(itemsQuery);
 
@@ -247,11 +243,25 @@ export default function TransactionDetailsPage() {
   const handleCompleteStage = async (stage: StageInstance, force: boolean = false) => {
     if (!transactionService || !user || !stage.id) return;
     const progress = stageProgressMap[stage.technicalStageId];
-    if (!force && progress && !progress.canComplete) { setIncompleteStage({ stage, progress }); return; }
+    
+    // إذا لم يكن إغلاقاً إجبارياً، والعمل لم يكتمل 100%، نعرض نافذة التنبيه
+    if (!force && progress && !progress.canComplete) {
+      setIncompleteStage({ stage, progress });
+      return;
+    }
+
     setProcessingId(stage.id);
-    try { await transactionService.completeStage(transactionId, stage.id, user.uid, currentUserName, force); toast({ title: isRtl ? "تم إنجاز المرحلة" : "Stage Completed" }); setIncompleteStage(null); }
-    catch (e: any) { toast({ variant: "destructive", title: isRtl ? "تعذر إغلاق المرحلة" : "Cannot Close", description: e.message }); }
-    finally { setProcessingId(null); }
+    try { 
+      await transactionService.completeStage(transactionId, stage.id, user.uid, currentUserName, force); 
+      toast({ title: isRtl ? "تم إنجاز المرحلة بنجاح" : "Stage Completed" }); 
+      setIncompleteStage(null); 
+    }
+    catch (e: any) { 
+      toast({ variant: "destructive", title: isRtl ? "تعذر إغلاق المرحلة" : "Cannot Close", description: e.message }); 
+    }
+    finally { 
+      setProcessingId(null); 
+    }
   };
 
   const handleReopenStage = async () => {
@@ -270,41 +280,6 @@ export default function TransactionDetailsPage() {
           setProcessingId(null);
         }
     }, 100);
-  };
-
-  const handleDeleteBOQ = async () => {
-    if (!db || !companyId || !activeBoq) return;
-    setIsDeletingBOQ(true);
-    try {
-      const docService = new DocumentService(db, companyId, permissions);
-      await docService.deleteBOQ(activeBoq.id, transactionId, user?.uid, currentUserName);
-      toast({ title: isRtl ? "تم حذف المقايسة وتطهير المسار" : "BOQ & Path Purged" });
-      setShowDeleteConfirm(false);
-    } catch (e: any) {
-      toast({ variant: "destructive", title: t('error'), description: e.message });
-    } finally {
-      setIsDeletingBOQ(false);
-    }
-  };
-
-  const handleConfirmLinkBOQ = async () => {
-    if (!db || !companyId || !user || !namingTemplate || !transaction) return;
-    setProcessingId('linking_boq');
-    try {
-      const docService = new DocumentService(db, companyId, permissions);
-      const boqId = await docService.instantiateBoqFromTemplate(namingTemplate.id!, {
-        transactionId, clientId: transaction.clientId, clientName: transaction.clientName,
-        activityTypeId: transaction.activityTypeId, serviceId: transaction.serviceId,
-        subServiceId: transaction.subServiceId, name: customBOQName
-      }, user.uid, currentUserName);
-      toast({ title: isRtl ? "تم إنشاء المقايسة" : "BOQ Created" });
-      setNamingTemplate(null);
-      router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`);
-    } catch (e: any) {
-      toast({ variant: "destructive", title: t('error'), description: e.message });
-    } finally {
-      setProcessingId(null);
-    }
   };
 
   if (transLoading || stagesLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>;
@@ -331,46 +306,12 @@ export default function TransactionDetailsPage() {
                 <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="btn-gradient h-10 px-6 rounded-xl gap-2">
                   <FileSpreadsheet className="h-4 w-4" /> {isRtl ? 'عرض المقايسة' : 'View BOQ'}
                 </Button>
-                {isAdmin && <Button variant="ghost" size="icon" onClick={() => setShowDeleteConfirm(true)} className="h-10 w-10 rounded-xl text-rose-300 hover:text-rose-600 hover:bg-rose-50 transition-all"><Trash2 className="h-5 w-5" /></Button>}
              </>
            )}
         </div>
       </div>
 
-      {!activeBoq ? (
-         <Card className="border-4 border-dashed border-primary/20 rounded-[2.5rem] bg-white shadow-2xl p-12 text-center animate-in zoom-in-95">
-            <div className="max-w-2xl mx-auto space-y-8">
-               <div className="mx-auto w-20 h-20 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shadow-inner"><FileSpreadsheet className="h-10 w-10" /></div>
-               <div className="space-y-2">
-                  <h2 className="text-2xl font-black font-headline">{isRtl ? 'المرحلة الأولى: هندسة الميزانية' : 'Step 1: Budget Engineering'}</h2>
-                  <p className="text-slate-500 font-bold text-sm leading-relaxed">{isRtl ? 'اختر قالب المقايسة المناسب للمشروع لتخصيص الكميات والأسعار قبل بدء التنفيذ الميداني.' : 'Choose the appropriate BOQ template to customize quantities and rates before site execution starts.'}</p>
-               </div>
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {availableTemplates?.map(temp => (
-                    <Card key={temp.id} className="border-2 hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer rounded-2xl p-6 text-start group" onClick={() => {
-                        setNamingTemplate(temp);
-                        setCustomBOQName(`${temp.name} - ${transaction?.transactionNumber || ''}`);
-                    }}>
-                       <div className="flex items-center justify-between mb-4"><Badge variant="outline" className="font-black text-[8px] px-2">{temp.code}</Badge><PlusCircle className="h-4 w-4 text-primary" /></div>
-                       <h4 className="font-black text-slate-800 text-sm">{temp.name}</h4>
-                       <p className="text-[9px] text-slate-400 font-bold mt-1 uppercase tracking-tighter">EST. VALUE: {temp.baseAmount?.toLocaleString()} KWD</p>
-                    </Card>
-                  ))}
-               </div>
-            </div>
-         </Card>
-      ) : activeBoq.status === 'draft' ? (
-         <Card className="border-4 border-dashed border-primary/10 rounded-[2.5rem] bg-white p-12 text-center animate-in zoom-in-95">
-            <div className="max-w-2xl mx-auto space-y-8">
-               <div className="mx-auto w-20 h-20 bg-primary/5 text-primary rounded-2xl flex items-center justify-center shadow-inner"><Calculator className="h-10 w-10" /></div>
-               <div className="space-y-2"><h2 className="text-2xl font-black font-headline text-slate-900">{isRtl ? 'الميزانية قيد التخصيص' : 'Budget Under Customization'}</h2><p className="text-slate-500 font-bold text-sm leading-relaxed">{isRtl ? 'يجب الانتهاء من ضبط الكميات والبنود في صفحة المقايسة والضغط على "اعتماد" لتفعيل المسار الفني وبدء العمل.' : 'Finalize quantities and items in the BOQ page and click "Approve" to activate the technical path and start site work.'}</p></div>
-               <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="btn-gradient h-16 px-12 rounded-2xl text-xl gap-3">
-                 <Pencil className="h-6 w-6" /> {isRtl ? 'تخصيص بنود المقايسة الآن' : 'Customize BOQ Now'}
-               </Button>
-            </div>
-         </Card>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-8 space-y-6">
              <div className="space-y-6">
                 <div className="flex justify-between items-end px-2"><h3 className="text-lg font-black font-headline text-slate-800 flex items-center gap-2"><Workflow className="h-5 w-5 text-primary" /> {isRtl ? 'رادار المسار الميداني' : 'Field Pipeline'}</h3><span className="text-3xl font-black font-headline text-primary">{progressPercent}%</span></div>
@@ -431,8 +372,7 @@ export default function TransactionDetailsPage() {
              </div>
           </div>
           <div className="lg:col-span-4"><CommentSection transactionId={transactionId} path={paths.transactionComments(companyId!, transactionId)} externalLogs={allExecutions || []} boqItems={boqItems || []} stages={stages} filterStageId={filterStageId} technicalStageId={stages.find(s=>s.id===filterStageId)?.technicalStageId} selectedStageName={stages.find(s=>s.id===filterStageId)?.name} onClearFilter={() => setFilterStageId(null)} activeTabOverride={activeTabOverride} /></div>
-        </div>
-      )}
+      </div>
 
       {/* مودال تسجيل الإنجاز المطور */}
       <Dialog open={isRecordOpen} onOpenChange={setIsRecordOpen}>
@@ -460,7 +400,6 @@ export default function TransactionDetailsPage() {
                   </Select>
                </div>
 
-               {/* لوحة المؤشرات الميدانية (Planned / Executed / Remaining) */}
                {selectedBOQItemMetrics && (
                  <div className="grid grid-cols-3 gap-2 p-4 bg-slate-50 rounded-xl border-2 border-white shadow-inner animate-in zoom-in-95">
                     <div className="text-center">
@@ -539,6 +478,55 @@ export default function TransactionDetailsPage() {
          </DialogContent>
       </Dialog>
 
+      {/* نافذة تنبيه عدم الاكتمال مع خيار الإغلاق الإجباري للمدير */}
+      <Dialog open={!!incompleteStage} onOpenChange={(open) => !open && setIncompleteStage(null)}>
+         <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-md ring-1 ring-black/5" dir={dir}>
+            <div className="bg-amber-600 p-6 text-white text-start">
+               <DialogTitle className="text-xl font-black font-headline flex items-center gap-3"><AlertTriangle className="h-6 w-6" />{isRtl ? 'تنبيه: المرحلة لم تكتمل' : 'Incomplete Stage Warning'}</DialogTitle>
+            </div>
+            <div className="p-8 space-y-6 text-start bg-white">
+               <div className="p-5 rounded-2xl bg-amber-50 border-2 border-amber-100 flex items-start gap-4">
+                  <Info className="h-6 w-6 text-amber-600 shrink-0 mt-1" />
+                  <div className="space-y-2">
+                     <p className="text-sm font-bold text-amber-900 leading-relaxed">
+                        {isRtl ? 'لا يمكن إغلاق المرحلة لأن نسبة الإنجاز الفني الحالية هي:' : 'Cannot close. Current technical progress is:'}
+                     </p>
+                     <div className="flex items-center gap-4">
+                        <span className="text-4xl font-black font-headline text-amber-600">{incompleteStage?.progress.progressPercent}%</span>
+                        <div className="flex-1 h-2 bg-amber-200 rounded-full overflow-hidden"><div className="h-full bg-amber-600" style={{ width: `${incompleteStage?.progress.progressPercent}%` }} /></div>
+                     </div>
+                  </div>
+               </div>
+               
+               <p className="text-xs text-slate-500 font-bold italic leading-relaxed">
+                  {isRtl ? 'يجب تسجيل كافة الكميات المتبقية للبند لتتمكن من الإغلاق الطبيعي.' : 'All remaining quantities must be logged for a normal closure.'}
+               </p>
+
+               {isAdmin && (
+                  <div className="pt-4 border-t border-slate-100 space-y-4">
+                     <div className="p-4 rounded-xl bg-slate-900 text-white flex items-center gap-3">
+                        <ShieldCheck className="h-5 w-5 text-primary" />
+                        <p className="text-[10px] font-black uppercase tracking-widest">{isRtl ? 'صلاحيات المدير: تجاوز الرقابة' : 'Admin: Override Control'}</p>
+                     </div>
+                     <Button 
+                       onClick={() => handleCompleteStage(incompleteStage!.stage, true)}
+                       disabled={!!processingId}
+                       className="w-full h-14 rounded-xl bg-orange-600 text-white font-black text-lg shadow-xl shadow-orange-100 gap-2"
+                     >
+                        {processingId === incompleteStage?.stage.id ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />}
+                        {isRtl ? 'إغلاق المرحلة إجبارياً' : 'Force Close Stage'}
+                     </Button>
+                  </div>
+               )}
+            </div>
+            {!isAdmin && (
+               <DialogFooter className="p-6 bg-slate-50 border-t">
+                  <Button variant="outline" onClick={() => setIncompleteStage(null)} className="w-full h-12 rounded-xl font-bold">إغلاق</Button>
+               </DialogFooter>
+            )}
+         </DialogContent>
+      </Dialog>
+
       <AlertDialog open={isOverExecutionOpen} onOpenChange={setIsOverExecutionOpen}>
         <AlertDialogContent className="rounded-xl p-8 border-0 shadow-3xl bg-white" dir={dir}>
            <AlertDialogHeader><div className="mx-auto w-20 h-20 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mb-6 shadow-inner ring-4 ring-rose-50/50"><AlertTriangle className="h-8 w-8" /></div><AlertDialogTitle className="text-start font-black text-2xl font-headline text-slate-900">تحذير: تجاوز الكمية المخططة</AlertDialogTitle><AlertDialogDescription className="text-start font-bold text-slate-400 mt-2 text-base leading-relaxed">{isRtl ? `أنت تحاول تسجيل كمية تتجاوز المخطط. هل ترغب في الاستمرار؟ سيتم توثيق إقرارك بالموافقة باسمك في سجل التايم لاين.` : `You are recording an over-execution. Continue? Your approval will be logged.`}</AlertDialogDescription></AlertDialogHeader>
@@ -571,13 +559,6 @@ export default function TransactionDetailsPage() {
             </div>
          </DialogContent>
       </Dialog>
-
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent className="rounded-xl p-8 border-0 shadow-3xl bg-white" dir={dir}>
-          <AlertDialogHeader><div className="mx-auto w-20 h-20 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mb-6 shadow-inner ring-4 ring-rose-50/50"><Trash2 className="h-8 w-8" /></div><AlertDialogTitle className="text-start font-black text-2xl font-headline text-slate-900">{isRtl ? 'حذف المقايسة تماماً؟' : 'Permanent Delete?'}</AlertDialogTitle><AlertDialogDescription className="text-start font-bold text-slate-400 mt-2 text-base">{isRtl ? 'سيتم حذف كافة البنود وسجلات التنفيذ وتطهير المسار الفني للبدء من جديد.' : 'All items, execution logs and path will be cleared.'}</AlertDialogDescription></AlertDialogHeader>
-          <AlertDialogFooter className="mt-8 gap-3 flex flex-row"><AlertDialogCancel className="flex-1 h-12 rounded-lg font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel><AlertDialogAction onClick={handleDeleteBOQ} disabled={isDeletingBOQ} className="flex-[2] h-12 rounded-lg font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200">{isDeletingBOQ ? <Loader2 className="animate-spin h-5 w-5" /> : (isRtl ? 'نعم، احذف' : 'Delete')}</AlertDialogAction></AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {activeBoq && <VOManagerDialog isOpen={isVOOpen} onClose={() => setIsVOOpen(false)} boqId={activeBoq.id} transactionId={transactionId} boqNumber={activeBoq.boqNumber} boqItems={boqItems || []} />}
     </div>
