@@ -25,7 +25,8 @@ import {
   Sparkles,
   AlertTriangle,
   GitBranch,
-  Pencil
+  Pencil,
+  Zap
 } from "lucide-react";
 import { 
   Select, 
@@ -153,13 +154,19 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
     try {
       const service = new VariationService(db, globalUser.companyId, permissions);
       await service.createVariation(boqId, transactionId, boqNumber, { title, reason }, items, user.uid);
+      
+      // بروتوكول تحرير المتصفح قسرياً لمنع التجمد
+      if (typeof document !== 'undefined') {
+        document.body.style.pointerEvents = 'auto';
+        document.body.style.overflow = 'auto';
+      }
+      
       toast({ title: isRtl ? "تم حفظ مسودة الأمر" : "Draft Saved" });
       onClose();
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
       setLoading(false);
-      if (typeof document !== 'undefined') document.body.style.pointerEvents = 'auto';
     }
   };
 
@@ -188,11 +195,11 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
         <div className="p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 max-h-[65vh] overflow-y-auto scrollbar-hide">
            <div className="lg:col-span-3 space-y-6 text-start">
               <div className="space-y-2">
-                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'عنوان التعديل' : 'VO Title'}</Label>
+                 <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'عنوان التعديل' : 'VO Title'}</Label>
                  <Input value={title} onChange={e => setTitle(e.target.value)} className="h-11 rounded-xl border-2 font-bold focus:border-primary/50" placeholder="..." />
               </div>
               <div className="space-y-2">
-                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'المبرر الفني' : 'Justification'}</Label>
+                 <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'المبرر الفني' : 'Justification'}</Label>
                  <textarea value={reason} onChange={e => setReason(e.target.value)} className="w-full min-h-[120px] rounded-xl border-2 bg-slate-50 p-4 text-xs font-bold focus:bg-white transition-all resize-none shadow-inner" placeholder="..." />
               </div>
 
@@ -228,7 +235,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                          <CardContent className="p-6 space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
                                <div className="md:col-span-2 space-y-2 text-start">
-                                  <Label className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'الإجراء' : 'Action'}</Label>
+                                  <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'الإجراء' : 'Action'}</Label>
                                   <Select value={item.type} onValueChange={(v: any) => updateItem(idx, 'type', v)}>
                                      <SelectTrigger className="h-10 rounded-lg border-2 font-black text-[10px] bg-slate-50/30"><SelectValue /></SelectTrigger>
                                      <SelectContent className="rounded-xl">
@@ -241,7 +248,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                </div>
 
                                <div className="md:col-span-4 space-y-2 text-start">
-                                  <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'البند المستهدف' : 'Target Item'}</Label>
+                                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'البند المستهدف' : 'Target Item'}</Label>
                                   {isNewItem ? (
                                      <div className="p-1 rounded-lg border-2 bg-slate-50"><BOQReferenceSelector onSelect={(node) => updateItem(idx, 'boqReferenceNodeId', node)} className="grid-cols-1 md:grid-cols-1 gap-2" /></div>
                                   ) : (
@@ -262,17 +269,17 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                </div>
 
                                <div className="md:col-span-1 space-y-2 text-start">
-                                  <Label className="text-[9px] font-black text-slate-400 uppercase">Original</Label>
+                                  <Label className="text-[10px] font-black text-slate-400 uppercase">Original</Label>
                                   <div className="h-10 flex items-center justify-center bg-slate-100 rounded-lg font-black text-slate-500 text-[10px]">{isNewItem ? '0' : (item.sourcePlannedQuantity || 0)}</div>
                                </div>
 
                                <div className="md:col-span-1 space-y-2 text-start">
-                                  <Label className="text-[9px] font-black uppercase text-primary">Delta</Label>
+                                  <Label className="text-[10px] font-black uppercase text-primary">Delta</Label>
                                   <Input type="number" value={item.quantityDelta === "" ? "" : Math.abs(Number(item.quantityDelta) || 0)} onChange={e => updateItem(idx, 'quantityDelta', e.target.value)} className="h-10 rounded-lg border-2 font-black text-center text-xs" />
                                </div>
 
                                <div className="md:col-span-3 space-y-2 text-start">
-                                  <Label className="text-[9px] font-black text-slate-400">Unit Price & Total</Label>
+                                  <Label className="text-[10px] font-black text-slate-400">Unit Price & Total</Label>
                                   <div className="flex items-center gap-3">
                                      <Input type="number" step="0.001" value={item.rate} onChange={e => updateItem(idx, 'rate', e.target.value)} className="h-10 rounded-lg border-2 font-black text-emerald-600 text-xs text-center" placeholder="..." />
                                      <div className="text-end min-w-[70px]"><p className={cn("text-[10px] font-black", (Number(item.total) || 0) >= 0 ? "text-emerald-500" : "text-rose-500")}>{(Number(item.total) || 0).toLocaleString()}</p></div>
@@ -286,7 +293,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                               <div className="pt-6 border-t border-dashed space-y-4 animate-in slide-in-from-top-2">
                                 <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                                    <div className="flex items-center gap-3">
-                                      <div className="flex items-center gap-2 text-slate-700 font-black text-[9px] uppercase"><Workflow className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'طريقة الربط الفني:' : 'Technical Link:'}</div>
+                                      <div className="flex items-center gap-2 text-slate-700 font-black text-[10px] uppercase tracking-widest"><Workflow className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'طريقة الربط الفني:' : 'Technical Link:'}</div>
                                       <Select value={item.stageMode || 'existing_stage'} onValueChange={(v: VOStageMode) => updateItem(idx, 'stageMode', v)}>
                                          <SelectTrigger className="h-8 rounded-lg border-2 font-black bg-white text-[9px] min-w-[140px] shadow-sm"><SelectValue /></SelectTrigger>
                                          <SelectContent className="rounded-xl">
@@ -298,18 +305,21 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                 </div>
 
                                 {isNewStage && (
-                                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6 p-5 bg-slate-50 rounded-2xl border-2 border-white shadow-inner">
+                                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6 p-5 bg-slate-50 rounded-2xl border-2 border-white shadow-inner items-center">
                                      <div className="md:col-span-6 space-y-1.5 text-start">
-                                        <Label className="text-[9px] font-black uppercase text-slate-500">{isRtl ? 'اسم المرحلة الجديدة:' : 'New Stage Name:'}</Label>
-                                        <Input 
-                                          value={item.localStageName || ''} 
-                                          onChange={e => updateItem(idx, 'localStageName', e.target.value)} 
-                                          className="h-10 rounded-lg border-2 bg-white font-bold text-xs" 
-                                          placeholder={isRtl ? "مثلاً: التدعيم" : "e.g. Reinforcement"} 
-                                        />
+                                        <Label className="text-[11px] font-black uppercase text-slate-500 tracking-tight">{isRtl ? 'اسم المرحلة الجديدة:' : 'New Stage Name:'}</Label>
+                                        <div className="relative">
+                                          <Pencil className="absolute start-3 top-1/2 -translate-y-1/2 h-3 w-3 text-primary/30" />
+                                          <Input 
+                                            value={item.localStageName || ''} 
+                                            onChange={e => updateItem(idx, 'localStageName', e.target.value)} 
+                                            className="h-10 rounded-lg border-2 bg-white font-bold text-xs ps-9" 
+                                            placeholder={isRtl ? "مثلاً: التدعيم" : "e.g. Reinforcement"} 
+                                          />
+                                        </div>
                                      </div>
                                      <div className="md:col-span-3 space-y-1.5 text-start">
-                                        <Label className="text-[9px] font-black uppercase text-slate-500">{isRtl ? 'تحقن بعد مرحلة:' : 'Insert After:'}</Label>
+                                        <Label className="text-[11px] font-black uppercase text-slate-500 tracking-tight">{isRtl ? 'تحقن بعد مرحلة:' : 'Insert After:'}</Label>
                                         <Select value={item.insertAfterStageId || ''} onValueChange={v => updateItem(idx, 'insertAfterStageId', v)}>
                                            <SelectTrigger className="h-10 rounded-lg border-2 bg-white font-bold text-[10px]"><SelectValue placeholder="..." /></SelectTrigger>
                                            <SelectContent className="rounded-xl">
@@ -317,9 +327,15 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                            </SelectContent>
                                         </Select>
                                      </div>
-                                     <div className="md:col-span-3 flex flex-col items-center justify-center gap-1.5 border-s border-slate-200 ps-4">
-                                        <Label className="text-[8px] font-black text-slate-400 uppercase">{isRtl ? 'مكمل موازٍ' : 'Parallel'}</Label>
-                                        <Switch checked={item.isComplementary || false} onCheckedChange={v => updateItem(idx, 'isComplementary', v)} />
+                                     <div className="md:col-span-3 flex flex-col items-center justify-center gap-2 border-s border-slate-200 ps-4">
+                                        <Label className="text-[12px] font-black text-slate-900 uppercase tracking-tighter whitespace-nowrap">
+                                          {isRtl ? 'مكمل موازٍ' : 'Parallel Execution'}
+                                        </Label>
+                                        <Switch 
+                                          checked={item.isComplementary || false} 
+                                          onCheckedChange={v => updateItem(idx, 'isComplementary', v)} 
+                                          className="data-[state=checked]:bg-[#FFA000]"
+                                        />
                                      </div>
                                   </div>
                                 )}
@@ -334,8 +350,11 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
         </div>
 
         <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4">
-           <Button variant="outline" onClick={onClose} className="flex-1 h-12 rounded-xl border-2 font-bold text-sm bg-white">إلغاء</Button>
-           <Button onClick={handleSave} disabled={loading} className="flex-[2] h-12 rounded-xl bg-[#1e1b4b] text-white font-black text-base shadow-xl hover:scale-[1.02] transition-all gap-3 border-b-4 border-slate-950"><Save className="h-5 w-5 text-primary" />{isRtl ? 'حفظ مسودة الأمر التغييري' : 'Save VO Draft'}</Button>
+           <Button variant="outline" onClick={onClose} className="flex-1 h-14 rounded-2xl border-2 font-bold text-base bg-white">إلغاء</Button>
+           <Button onClick={handleSave} disabled={loading} className="flex-[2] h-14 rounded-2xl bg-gradient-to-r from-[#F57C00] to-[#FFB000] text-white font-black text-lg shadow-xl shadow-orange-500/20 hover:scale-[1.02] transition-all gap-3 border-b-8 border-orange-700">
+              {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
+              {isRtl ? 'حفظ مسودة الأمر التغييري' : 'Save VO Draft'}
+           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -327,9 +327,13 @@ export default function TransactionDetailsPage() {
         <div className="flex gap-2">
            {activeBoq && (
              <>
-                <Button variant="outline" size="sm" onClick={() => setIsVOOpen(true)} className="h-9 px-4 rounded-lg bg-white border-2 font-black text-[10px] gap-1.5 text-[#1e1b4b] border-slate-100 shadow-sm hover:bg-slate-50"><Calculator className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'أمر تغييري' : 'VO'}</Button>
-                <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="h-9 px-4 rounded-lg bg-white border-2 font-black text-[10px] gap-1.5 text-slate-700 border-slate-100 shadow-sm hover:bg-slate-50"><FileSpreadsheet className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'المقايسة' : 'BOQ'}</Button>
-                {isAdmin && <Button variant="ghost" size="icon" onClick={() => setShowDeleteConfirm(true)} className="h-9 w-9 rounded-lg text-rose-300 hover:text-rose-600 hover:bg-rose-50"><Trash2 className="h-4 w-4" /></Button>}
+                <Button onClick={() => setIsVOOpen(true)} className="h-10 px-6 rounded-xl bg-gradient-to-r from-[#F57C00] to-[#FFB000] text-white font-black text-xs gap-2 shadow-xl border-b-2 border-orange-700/30">
+                  <Calculator className="h-4 w-4" /> {isRtl ? 'أمر تغييري' : 'Variation Order'}
+                </Button>
+                <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="h-10 px-6 rounded-xl bg-gradient-to-r from-[#F57C00] to-[#FFB000] text-white font-black text-xs gap-2 shadow-xl border-b-2 border-orange-700/30">
+                  <FileSpreadsheet className="h-4 w-4" /> {isRtl ? 'عرض المقايسة' : 'View BOQ'}
+                </Button>
+                {isAdmin && <Button variant="ghost" size="icon" onClick={() => setShowDeleteConfirm(true)} className="h-10 w-10 rounded-xl text-rose-300 hover:text-rose-600 hover:bg-rose-50 transition-all"><Trash2 className="h-5 w-5" /></Button>}
              </>
            )}
         </div>
@@ -362,7 +366,9 @@ export default function TransactionDetailsPage() {
             <div className="max-w-2xl mx-auto space-y-8">
                <div className="mx-auto w-20 h-20 bg-primary/5 text-primary rounded-2xl flex items-center justify-center shadow-inner"><Calculator className="h-10 w-10" /></div>
                <div className="space-y-2"><h2 className="text-2xl font-black font-headline text-slate-900">{isRtl ? 'الميزانية قيد التخصيص' : 'Budget Under Customization'}</h2><p className="text-slate-500 font-bold text-sm leading-relaxed">{isRtl ? 'يجب الانتهاء من ضبط الكميات والبنود في صفحة المقايسة والضغط على "اعتماد" لتفعيل المسار الفني وبدء العمل.' : 'Finalize quantities and items in the BOQ page and click "Approve" to activate the technical path and start site work.'}</p></div>
-               <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="h-14 px-10 rounded-xl bg-primary text-white font-black text-lg gap-2 shadow-xl border-b-4 border-orange-700"><Pencil className="h-5 w-5" /> {isRtl ? 'تخصيص بنود المقايسة الآن' : 'Customize BOQ Now'}</Button>
+               <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="h-16 px-12 rounded-2xl bg-gradient-to-r from-[#F57C00] to-[#FFB000] text-white font-black text-xl gap-3 shadow-2xl shadow-orange-500/20 border-b-4 border-orange-700 hover:scale-105 transition-all">
+                 <Pencil className="h-6 w-6" /> {isRtl ? 'تخصيص بنود المقايسة الآن' : 'Customize BOQ Now'}
+               </Button>
             </div>
          </Card>
       ) : (
@@ -404,7 +410,11 @@ export default function TransactionDetailsPage() {
                              
                              {isOperationalFrontier && (
                                 <div className="flex gap-2 shrink-0 z-10 animate-in fade-in zoom-in-95" onClick={e => e.stopPropagation()}>
-                                   {stage.status === 'in-progress' && editAccess.can && <Button onClick={() => { setTargetStage(stage); setIsRecordOpen(true); }} variant="outline" className="h-9 px-3 rounded-lg border-2 border-primary/20 text-primary font-black text-[10px] gap-1.5"><Hammer className="h-3.5 w-3.5" /> {isRtl ? 'تسجيل إنجاز' : 'Log'}</Button>}
+                                   {stage.status === 'in-progress' && editAccess.can && (
+                                     <Button onClick={() => { setTargetStage(stage); setIsRecordOpen(true); }} className="h-9 px-4 rounded-xl bg-gradient-to-r from-[#F57C00] to-[#FFB000] text-white font-black text-[10px] gap-2 shadow-lg border-b-2 border-orange-700/30">
+                                       <Hammer className="h-3.5 w-3.5" /> {isRtl ? 'تسجيل إنجاز' : 'Log'}
+                                     </Button>
+                                   )}
                                    {stage.status === 'pending' && <Button onClick={() => handleStartStage(stage.id!)} disabled={!!processingId} className="h-9 px-5 rounded-lg bg-blue-600 text-white font-black text-[10px] gap-1.5">{processingId === stage.id ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />} {isRtl ? 'بدء' : 'Start'}</Button>}
                                    {stage.status === 'in-progress' && <Button onClick={() => handleCompleteStage(stage)} disabled={!!processingId} className="h-9 px-5 rounded-lg bg-emerald-600 text-white font-black text-[10px] gap-1.5">{processingId === stage.id ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5" />} {isRtl ? 'إكمال' : 'Done'}</Button>}
                                 </div>
@@ -434,7 +444,7 @@ export default function TransactionDetailsPage() {
             </div>
             <div className="p-6 space-y-6 text-start">
                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'بند العمل الميداني' : 'Target Work Item'}</Label>
+                  <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'بند العمل الميداني' : 'Target Work Item'}</Label>
                   <Select value={selectedItemId} onValueChange={setSelectedItemId}>
                      <SelectTrigger className="h-10 rounded-lg border-2 font-bold bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
                      <SelectContent className="rounded-xl border-0 shadow-2xl">
@@ -451,11 +461,11 @@ export default function TransactionDetailsPage() {
                   </Select>
                </div>
                <div className="space-y-5 pt-2">
-                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border"><div className="space-y-0.5"><Label className="font-black text-xs uppercase tracking-tighter">{isRtl ? 'إنجاز تكميلي' : 'Complementary Log'}</Label></div><Switch checked={isComplementary} onCheckedChange={setIsComplementary} /></div>
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border"><div className="space-y-0.5"><Label className="font-black text-[12px] text-slate-900 uppercase tracking-tighter">{isRtl ? 'إنجاز تكميلي' : 'Complementary Log'}</Label></div><Switch checked={isComplementary} onCheckedChange={setIsComplementary} /></div>
                   {!isComplementary && (
                     <div className="space-y-4">
                        <div className="space-y-2">
-                          <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الكمية المنفذة حالياً' : 'Quantity Executed'}</Label>
+                          <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'الكمية المنفذة حالياً' : 'Quantity Executed'}</Label>
                           <div className="relative">
                             <Input 
                               type="number" 
@@ -481,10 +491,16 @@ export default function TransactionDetailsPage() {
                        )}
                     </div>
                   )}
-                  <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'تقرير ميداني مصغر' : 'Field Notes'}</Label><Textarea value={progressNotes} onChange={e => setProgressNotes(e.target.value)} className="min-h-[100px] rounded-lg bg-slate-50/50 border-2 resize-none p-3 text-xs font-bold" placeholder="..." /></div>
+                  <div className="space-y-1.5"><Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'تقرير ميداني مصغر' : 'Field Notes'}</Label><Textarea value={progressNotes} onChange={e => setProgressNotes(e.target.value)} className="min-h-[100px] rounded-lg bg-slate-50/50 border-2 resize-none p-3 text-xs font-bold" placeholder="..." /></div>
                </div>
             </div>
-            <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-3"><Button variant="outline" onClick={() => setIsRecordOpen(false)} className="flex-1 h-11 rounded-lg font-bold">إلغاء</Button><Button onClick={() => handleRecordProgress()} disabled={loadingAction === 'recording' || (!isComplementary && (progressQty === "" || Number(progressQty) <= 0)) || !selectedItemId} className="flex-[2] h-11 rounded-lg bg-primary text-white font-black shadow-lg gap-2 border-b-4 border-orange-700">{loadingAction === 'recording' ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}{isRtl ? 'حفظ السجل' : 'Log Now'}</Button></DialogFooter>
+            <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-3">
+               <Button variant="outline" onClick={() => setIsRecordOpen(false)} className="flex-1 h-12 rounded-xl font-bold">إلغاء</Button>
+               <Button onClick={() => handleRecordProgress()} disabled={loadingAction === 'recording' || (!isComplementary && (progressQty === "" || Number(progressQty) <= 0)) || !selectedItemId} className="flex-[2] h-12 rounded-xl bg-gradient-to-r from-[#F57C00] to-[#FFB000] text-white font-black shadow-lg gap-2 border-b-4 border-orange-700">
+                  {loadingAction === 'recording' ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
+                  {isRtl ? 'حفظ السجل الميداني' : 'Commit Log'}
+               </Button>
+            </DialogFooter>
          </DialogContent>
       </Dialog>
 
