@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -61,7 +62,8 @@ export class BOQExecutionService {
     userId: string,
     userName: string,
     notes?: string,
-    stageInstanceId?: string 
+    stageInstanceId?: string,
+    isForced: boolean = false
   ) {
     ensureActionPermission(this.permissions, 'projects:edit');
 
@@ -83,7 +85,13 @@ export class BOQExecutionService {
       throw new Error('هذه المرحلة غير مرتبطة بهذا البند');
     }
 
+    // 1. Calculate remaining before saving (for smart comment logic)
     const executionsRef = collection(this.db, paths.executions(this.companyId));
+    const qPrev = query(executionsRef, where('boqItemId', '==', itemId), where('isArchived', '==', false));
+    const snapPrev = await getDocs(qPrev);
+    const totalExecutedSoFar = snapPrev.docs.reduce((s, d) => s + (d.data().quantity || 0), 0);
+    const remainingBeforeThis = (itemData.plannedQuantity || 0) - totalExecutedSoFar;
+
     const executionData: any = {
       companyId: this.companyId,
       boqId,
@@ -95,6 +103,7 @@ export class BOQExecutionService {
       recordedBy: userId,
       recordedByName: userName,
       isArchived: false,
+      isForcedOverExecution: isForced,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
@@ -110,20 +119,29 @@ export class BOQExecutionService {
 
     if (itemData.transactionId) {
       const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, itemData.transactionId));
+      
+      // Smart Comment Logic: Detect if this record exceeds remaining quantity
+      let timelineContent = quantity === 0 
+        ? `تأكيد فني: ${itemData.referenceTitle}`
+        : `تسجيل إنجاز: ${itemData.referenceTitle} (${quantity} وحدة)`;
+
+      if (quantity > remainingBeforeThis && quantity > 0) {
+        timelineContent = `🛑 تنبيه تجاوز: تم تسجيل كمية (${quantity}) للبند [${itemData.referenceTitle}] بما يتجاوز المخطط المتبقي (${remainingBeforeThis.toFixed(2)}) بناءً على إقرار وموافقة المسؤول: ${userName}`;
+      }
+
       await addDoc(timelineRef, {
         transactionId: itemData.transactionId,
         stageId: stageInstanceId || '', 
         technicalStageId: technicalStageId,
         type: 'numeric_update',
-        content: quantity === 0 
-          ? `تأكيد فني: ${itemData.referenceTitle}`
-          : `تسجيل إنجاز: ${itemData.referenceTitle} (${quantity} وحدة)`,
+        content: timelineContent,
         notes: notes || '', 
         quantity,
         boqItemId: itemId,
         userId,
         userName,
         isArchived: false,
+        isOverExecution: quantity > remainingBeforeThis,
         companyId: this.companyId,
         createdAt: serverTimestamp()
       });

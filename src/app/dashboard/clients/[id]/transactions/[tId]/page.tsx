@@ -120,7 +120,6 @@ export default function TransactionDetailsPage() {
   const transRef = useMemo(() => (companyId && db) ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
   const { data: transaction, loading: transLoading } = useDoc<Transaction>(transRef);
 
-  // FIX: Corrected Syntax for query building
   const stagesQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.transactionStages(companyId, transactionId)), orderBy('order', 'asc')) : null, [db, companyId, transactionId]);
   const { data: rawStages, loading: stagesLoading } = useCollection<StageInstance>(stagesQuery);
 
@@ -206,7 +205,17 @@ export default function TransactionDetailsPage() {
         if (typeof document !== 'undefined') document.body.style.pointerEvents = 'auto';
         setLoadingAction('recording');
         try {
-            await executionService.recordBOQItemExecution(activeBoq!.id, selectedItemId, targetStage.technicalStageId, qtyInput, user.uid, currentUserName, progressNotes, targetStage.id!);
+            await executionService.recordBOQItemExecution(
+              activeBoq!.id, 
+              selectedItemId, 
+              targetStage.technicalStageId, 
+              qtyInput, 
+              user.uid, 
+              currentUserName, 
+              progressNotes, 
+              targetStage.id!,
+              force // Pass the forced flag for smart commenting
+            );
             toast({ title: isRtl ? "تم تسجيل الإنجاز" : "Progress Logged" });
             setProgressQty(""); 
             setProgressNotes("");
@@ -496,8 +505,8 @@ export default function TransactionDetailsPage() {
 
       <AlertDialog open={isOverExecutionOpen} onOpenChange={setIsOverExecutionOpen}>
         <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white" dir={dir}>
-           <AlertDialogHeader><div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50"><ShieldX className="h-10 w-10" /></div><AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900 leading-tight">تحذير: تجاوز الكمية المخططة</AlertDialogTitle><AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">{isRtl ? `أنت تحاول تسجيل كمية (${progressQty}) تتجاوز الكمية المتبقية لهذا البند. هل ترغب في الاستمرار؟` : `You are recording an over-execution. Continue?`}</AlertDialogDescription></AlertDialogHeader>
-           <AlertDialogFooter className="mt-12 gap-4 flex flex-row"><AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel><AlertDialogAction onClick={() => handleRecordProgress(true)} className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200">{isRtl ? 'نعم، أقر بالتجاوز واحفظ' : 'Confirm'}</AlertDialogAction></AlertDialogFooter>
+           <AlertDialogHeader><div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50"><ShieldX className="h-10 w-10" /></div><AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900 leading-tight">تحذير: تجاوز الكمية المخططة</AlertDialogTitle><AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">{isRtl ? `أنت تحاول تسجيل كمية (${progressQty}) تتجاوز الكمية المتبقية لهذا البند. هل ترغب في الاستمرار؟ سيتم توثيق إقرارك بالموافقة في سجلات المشروع.` : `You are recording an over-execution. Continue? Your approval will be logged in project records.`}</AlertDialogDescription></AlertDialogHeader>
+           <AlertDialogFooter className="mt-12 gap-4 flex flex-row"><AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel><AlertDialogAction onClick={() => handleRecordProgress(true)} className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200">{isRtl ? 'نعم، أقر بالتجاوز واحفظ' : 'Confirm & Log Approval'}</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
