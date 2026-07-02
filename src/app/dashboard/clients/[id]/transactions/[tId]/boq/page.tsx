@@ -15,7 +15,7 @@ import {
   CheckCircle2, XCircle, Ban, TrendingDown,
   Info, Sparkles, Pencil, Save, ShieldAlert,
   LayoutGrid, X, Clock, DollarSign, Search,
-  Eye
+  Eye, FileSearch
 } from "lucide-react";
 import { useFirestore, useCollection, useDoc } from '@/firebase';
 import { collection, query, where, doc, getDocs } from 'firebase/firestore';
@@ -71,7 +71,7 @@ export default function TransactionBOQProgressPage() {
   const transRef = useMemo(() => companyId && db ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
   const { data: transaction } = useDoc<Transaction>(transRef);
 
-  const stagesQuery = useMemo(() => companyId && db ? query(collection(db, paths.transactionStages(companyId, transactionId))) : null, [db, companyId, transactionId]);
+  const stagesQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.transactionStages(companyId, transactionId))) : null, [db, companyId, transactionId]);
   const { data: stages } = useCollection<StageInstance>(stagesQuery);
 
   const boqQuery = useMemo(() => companyId && db ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
@@ -86,7 +86,7 @@ export default function TransactionBOQProgressPage() {
   const variationsQuery = useMemo(() => companyId && db && activeBoq?.id ? query(collection(db, paths.boqVariations(companyId, activeBoq.id))) : null, [db, companyId, activeBoq]);
   const { data: variations } = useCollection<BOQVariation>(variationsQuery);
 
-  const executionsQuery = useMemo(() => companyId && db ? query(collection(db, paths.executions(companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
+  const executionsQuery = useMemo(() => companyId && db ? query(collection(this.db, paths.executions(this.companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
   const { data: rawExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
   const allExecutions = useMemo(() => (rawExecutions || []).filter(e => e.boqId === activeBoq?.id), [rawExecutions, activeBoq]);
 
@@ -230,7 +230,7 @@ export default function TransactionBOQProgressPage() {
             <TableCell className="text-center">
                <div className="flex flex-col items-center">
                   <Badge variant="outline" className={cn("font-black text-xs px-4 h-8 border-0 shadow-sm", totalCumulative > 0 ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-400")}>{totalCumulative}</Badge>
-                  <span className="text-[8px] font-black text-slate-500 mt-1">{totalPct}%</span>
+                  <span className="text-[8px] font-black text-slate-50 mt-1">{totalPct}%</span>
                </div>
             </TableCell>
             <TableCell className="text-center font-mono font-bold text-slate-400 text-xs w-[120px]">
@@ -301,7 +301,7 @@ export default function TransactionBOQProgressPage() {
                       onClick={() => handleReviewVO(vo)}
                       className="h-10 px-6 rounded-xl btn-gradient text-xs gap-2"
                     >
-                       <Eye className="h-4 w-4" /> {isRtl ? 'مراجعة بنود التعديل' : 'Review Changes'}
+                       <FileSearch className="h-4 w-4" /> {isRtl ? 'مراجعة بنود التعديل' : 'Review Changes'}
                     </Button>
                  </div>
               </div>
@@ -372,13 +372,13 @@ export default function TransactionBOQProgressPage() {
 
                <div className="border rounded-2xl overflow-hidden shadow-sm">
                   <Table>
-                     <TableHeader className="bg-slate-50">
+                     <TableHeader className="bg-[#1e1b4b]">
                         <TableRow>
-                           <TableHead className="ps-6">{isRtl ? 'نوع التعديل' : 'Type'}</TableHead>
-                           <TableHead>{isRtl ? 'البند' : 'Work Item'}</TableHead>
-                           <TableHead className="text-center">{isRtl ? 'فرق الكمية' : 'Delta'}</TableHead>
-                           <TableHead className="text-end">{isRtl ? 'الفئة' : 'Rate'}</TableHead>
-                           <TableHead className="text-end pe-6">{isRtl ? 'الإجمالي' : 'Total'}</TableHead>
+                           <TableHead className="ps-6 text-white">{isRtl ? 'نوع التعديل' : 'Type'}</TableHead>
+                           <TableHead className="text-white">{isRtl ? 'البند' : 'Work Item'}</TableHead>
+                           <TableHead className="text-center text-white">{isRtl ? 'فرق الكمية' : 'Delta'}</TableHead>
+                           <TableHead className="text-end text-white">{isRtl ? 'الفئة' : 'Rate'}</TableHead>
+                           <TableHead className="text-end pe-6 text-white">{isRtl ? 'الإجمالي' : 'Total'}</TableHead>
                         </TableRow>
                      </TableHeader>
                      <TableBody>
