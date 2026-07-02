@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -245,7 +244,7 @@ export default function TransactionBOQProgressPage() {
            ) : (
              <div className="flex gap-2">
                 <Button onClick={() => setIsEditingBaseline(!isEditingBaseline)} variant={isEditingBaseline ? "secondary" : "outline"} className="h-11 px-6 rounded-xl font-black text-xs gap-2 border-2">{isEditingBaseline ? <CheckCircle2 className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}{isRtl ? 'تعديل استثنائي' : 'Edit Baseline'}</Button>
-                <Button onClick={() => setIsVOOpen(true)} className="h-11 px-6 rounded-xl bg-[#1e1b4b] text-white font-black text-xs gap-2 shadow-xl"><PlusCircle className="h-4 w-4 text-primary" /> {isRtl ? 'أمر تغييري' : 'New VO'}</Button>
+                <Button onClick={() => setIsVOOpen(true)} className="btn-gradient h-11 px-6 rounded-xl gap-2 shadow-xl"><PlusCircle className="h-4 w-4 text-white" /> {isRtl ? 'أمر تغييري' : 'New VO'}</Button>
              </div>
            )}
            <Button variant="outline" className="h-11 px-6 rounded-xl font-black text-xs gap-2 border-2"><Printer className="h-4 w-4" /> {isRtl ? 'طباعة' : 'Print'}</Button>
@@ -299,19 +298,19 @@ export default function TransactionBOQProgressPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
          <Card className="border-0 shadow-lg rounded-2xl p-5 text-start bg-white"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'الميزانية المخططة' : 'Planned'}</p><h3 className="text-xl font-black text-slate-900">{financialStats.final.toLocaleString()} KWD</h3></Card>
-         <Card className="border-0 shadow-lg rounded-2xl p-5 text-start bg-white border-s-4 border-s-blue-500"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'تعديلات معتمدة' : 'Approved VOs'}</p><h3 className="text-xl font-black text-blue-600">{financialStats.voTotal.toLocaleString()} KWD</h3></Card>
+         <Card className="border-0 shadow-lg rounded-2xl p-5 text-start bg-white border-s-4 border-s-[#039BE5]"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'تعديلات معتمدة' : 'Approved VOs'}</p><h3 className="text-xl font-black text-[#039BE5]">{financialStats.voTotal.toLocaleString()} KWD</h3></Card>
          <Card className="border-0 shadow-lg rounded-2xl p-5 text-start bg-slate-900 text-white border-s-4 border-s-emerald-500"><p className="text-[9px] font-black text-primary uppercase tracking-widest mb-1">{isRtl ? 'الإنجاز الفعلي' : 'Actual Execution'}</p><h3 className="text-xl font-black text-emerald-400">{items.reduce((acc,i)=>(acc+(i.executedQuantity*(i.estimatedRate||0))),0).toLocaleString()} KWD</h3></Card>
       </div>
 
       <div className="flex-1 bg-white rounded-3xl shadow-2xl border border-primary/5 overflow-hidden flex flex-col min-h-[600px]">
          <Table>
-           <TableHeader className="bg-slate-900 sticky top-0 z-20">
-             <TableRow className="hover:bg-slate-900 border-0">
+           <TableHeader className="bg-[#1e1b4b] sticky top-0 z-20 border-0">
+             <TableRow className="hover:bg-[#1e1b4b] border-0">
                <TableHead className="ps-6 w-[80px] text-white/40 font-mono text-[10px] text-start">S.No</TableHead>
                <TableHead className="w-[100px] text-white/40 font-mono text-[10px] text-start">Code</TableHead>
                <TableHead className="text-white font-black text-xs text-start">{isRtl ? 'البند' : 'Description'}</TableHead>
                <TableHead className="text-center w-[60px] text-white font-black text-xs">{isRtl ? 'وحدة' : 'Unit'}</TableHead>
-               <TableHead className="text-center w-[120px] text-white font-black text-xs bg-white/10">{isRtl ? 'الكمية' : 'Planned'}</TableHead>
+               <TableHead className="text-center w-[120px] text-white font-black text-xs bg-white/5">{isRtl ? 'الكمية' : 'Planned'}</TableHead>
                <TableHead className="text-center w-[100px] text-white font-black text-xs">{isRtl ? 'السابق' : 'Prev'}</TableHead>
                <TableHead className="text-center w-[120px] text-white font-black text-xs">{isRtl ? 'الحالي' : 'Current'}</TableHead>
                <TableHead className="text-center w-[120px] text-white font-black text-xs">{isRtl ? 'الإجمالي' : 'Total'}</TableHead>
