@@ -120,10 +120,8 @@ export default function TransactionDetailsPage() {
   const transRef = useMemo(() => (companyId && db) ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
   const { data: transaction, loading: transLoading } = useDoc<Transaction>(transRef);
 
-  const stagesQuery = useMemo(() => 
-    (companyId && db) ? query(collection(db, paths.transactionStages(companyId, transactionId)), orderBy('order', 'asc')) : null, 
-  [db, companyId, transactionId]);
-
+  // FIX: Corrected Syntax for query building
+  const stagesQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.transactionStages(companyId, transactionId)), orderBy('order', 'asc')) : null, [db, companyId, transactionId]);
   const { data: rawStages, loading: stagesLoading } = useCollection<StageInstance>(stagesQuery);
 
   const boqQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', transactionId), limit(1)) : null, [db, companyId, transactionId]);
@@ -454,9 +452,39 @@ export default function TransactionDetailsPage() {
                <div className="space-y-5 pt-2">
                   <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border"><div className="space-y-0.5"><Label className="font-black text-xs uppercase tracking-tighter">{isRtl ? 'إنجاز تكميلي' : 'Complementary Log'}</Label><p className="text-[8px] text-slate-400 font-bold">تسجيل ملاحظة بدون كمية</p></div><Switch checked={isComplementary} onCheckedChange={setIsComplementary} /></div>
                   {!isComplementary && (
-                    <div className="space-y-2 animate-in slide-in-from-top-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الكمية المنفذة حالياً' : 'Quantity Executed'}</Label>
-                       <div className="relative"><Input type="number" step="0.01" value={progressQty} onChange={e => setProgressQty(e.target.value === '' ? '' : Number(e.target.value))} className={cn("h-14 rounded-xl border-2 font-black text-2xl text-center shadow-inner", selectedBOQItemMetrics && Number(progressQty) > selectedBOQItemMetrics.remaining ? "border-rose-500 text-rose-600 bg-rose-50" : "border-slate-200")} placeholder="..." /><div className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-300 uppercase">{selectedBOQItemMetrics?.unit}</div></div>
+                    <div className="space-y-4 animate-in slide-in-from-top-2">
+                       <div className="space-y-2">
+                          <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الكمية المنفذة حالياً' : 'Quantity Executed'}</Label>
+                          <div className="relative">
+                            <Input 
+                              type="number" 
+                              step="0.01" 
+                              value={progressQty} 
+                              onChange={e => setProgressQty(e.target.value === '' ? '' : Number(e.target.value))} 
+                              className={cn(
+                                "h-14 rounded-xl border-2 font-black text-2xl text-center shadow-inner", 
+                                selectedBOQItemMetrics && Number(progressQty) > selectedBOQItemMetrics.remaining ? "border-rose-500 text-rose-600 bg-rose-50" : "border-slate-200"
+                              )} 
+                              placeholder="..." 
+                            />
+                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-300 uppercase">{selectedBOQItemMetrics?.unit}</div>
+                          </div>
+                       </div>
+
+                       {/* تجميد المسار: تحذير التجاوز والمطالبة بـ VO */}
+                       {selectedBOQItemMetrics && Number(progressQty) > selectedBOQItemMetrics.remaining && (
+                         <div className="p-4 rounded-xl bg-rose-50 border-2 border-rose-100 flex items-start gap-3 animate-in shake-1 duration-500">
+                           <AlertTriangle className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
+                           <div className="text-start space-y-1">
+                              <p className="text-[11px] font-black text-rose-900 uppercase">تنبيه: تجاوز الميزانية المعتمدة</p>
+                              <p className="text-[10px] font-bold text-rose-600 leading-relaxed">
+                                {isRtl 
+                                  ? 'يرجى التوجه لإصدار أمر تغييري (VO) لهذا البند، حيث أن الكمية المدخلة تتجاوز الميزانية المعتمدة في بنود الكميات.' 
+                                  : 'Please issue a Variation Order (VO) for this item. The quantity exceeds the approved BOQ budget.'}
+                              </p>
+                           </div>
+                         </div>
+                       )}
                     </div>
                   )}
                   <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'تقرير ميداني مصغر' : 'Field Notes'}</Label><Textarea value={progressNotes} onChange={e => setProgressNotes(e.target.value)} className="min-h-[100px] rounded-xl bg-slate-50/50 border-2 resize-none p-4 text-xs font-bold" placeholder="..." /></div>
