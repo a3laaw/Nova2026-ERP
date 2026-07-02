@@ -207,12 +207,12 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                       <AlertTriangle className="h-4 w-4" />
                       <span className="text-[9px] font-black uppercase tracking-widest">Budget Warning</span>
                    </div>
-                   <p className="text-[10px] text-orange-800 font-bold leading-relaxed">
+                   <p className="text-[10px] text-orange-800 font-bold leading-relaxed text-start">
                      بناءً على بروتوكول الرقابة، سيؤدي هذا التعديل لزيادة الميزانية المخططة للمشروع.
                    </p>
                 </div>
               )}
-        </div>
+           </div>
 
            <div className="lg:col-span-9 space-y-6">
               <div className="flex justify-between items-center px-2">
@@ -288,13 +288,13 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                             </div>
 
                             {isNewItem && (
-                              <div className="pt-6 border-t border-dashed space-y-4 animate-in slide-in-from-top-2">
+                              <div className="pt-6 border-t border-dashed space-y-6 animate-in slide-in-from-top-2">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                                    <div className="flex items-center gap-3">
-                                      <div className="flex items-center gap-2 text-[#1e1b4b] font-black text-[11px] uppercase tracking-widest text-start"><Workflow className="h-4 w-4 text-[#039BE5]" /> {isRtl ? 'نوع الارتباط الفني الميداني:' : 'Technical Link Type:'}</div>
+                                      <div className="flex items-center gap-2 text-[#1e1b4b] font-black text-[11px] uppercase tracking-widest text-start"><Workflow className="h-4 w-4 text-[#039BE5]" /> {isRtl ? 'نوع الارتباط الميداني:' : 'Field Link Type:'}</div>
                                       <Select value={item.isComplementary ? 'parallel' : 'critical'} onValueChange={(v) => updateItem(idx, 'isComplementary', v === 'parallel')}>
                                          <SelectTrigger className={cn(
-                                            "h-10 rounded-xl border-2 font-black text-[11px] min-w-[160px] shadow-sm",
+                                            "h-10 rounded-xl border-2 font-black text-[11px] min-w-[180px] shadow-sm",
                                             item.isComplementary ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100"
                                          )}>
                                             <SelectValue />
@@ -306,12 +306,12 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                       </Select>
                                    </div>
                                    
-                                   <div className="flex items-center gap-2 text-slate-500 bg-slate-50 p-2 rounded-lg border">
-                                      <Info className="h-3.5 w-3.5 text-[#039BE5]" />
-                                      <p className="text-[10px] font-bold text-start">
+                                   <div className="flex items-center gap-2 text-slate-500 bg-slate-50 p-3 rounded-xl border-2 border-white shadow-inner">
+                                      <Info className="h-4 w-4 text-[#039BE5]" />
+                                      <p className="text-[10px] font-bold text-start leading-tight">
                                          {item.isComplementary 
-                                           ? (isRtl ? 'مرحلة موازية: يمكن تسجيل الإنجاز فيها بالتزامن مع المسار الأصلي.' : 'Parallel: Can log progress while main path continues.')
-                                           : (isRtl ? 'مرحلة حرجة: يجب إنهاء هذا البند تماماً قبل بدء أي عمل تالٍ.' : 'Critical: Must complete 100% before moving to next main stage.')
+                                           ? (isRtl ? 'مرحلة موازية: يمكن تسجيل الإنجاز فيها بالتزامن مع المسار الأصلي دون تعطيله.' : 'Parallel: Can log progress while main path continues.')
+                                           : (isRtl ? 'مرحلة حرجة: سيتم قفل المسار وتجميده حتى تنتهي من هذا البند تماماً.' : 'Critical: Path will freeze until this item is 100% complete.')
                                          }
                                       </p>
                                    </div>
@@ -321,7 +321,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                    <div className="flex items-center gap-3">
                                       <div className="flex items-center gap-2 text-[#1e1b4b] font-black text-[11px] uppercase tracking-widest text-start"><Zap className="h-4 w-4 text-[#F57C00]" /> {isRtl ? 'تحديد مسار المباشرة:' : 'Start Path Logic:'}</div>
                                       <Select value={item.stageMode || 'existing_stage'} onValueChange={(v: VOStageMode) => updateItem(idx, 'stageMode', v)}>
-                                         <SelectTrigger className="h-10 rounded-xl border-2 font-black bg-white text-[11px] min-w-[160px] shadow-sm"><SelectValue /></SelectTrigger>
+                                         <SelectTrigger className="h-10 rounded-xl border-2 font-black bg-white text-[11px] min-w-[180px] shadow-sm"><SelectValue /></SelectTrigger>
                                          <SelectContent className="rounded-xl">
                                             <SelectItem value="existing_stage" className="font-bold">{isRtl ? 'مرحلة موجودة' : 'Existing Stage'}</SelectItem>
                                             <SelectItem value="new_local_stage" className="font-bold text-primary">{isRtl ? 'مرحلة محلية جديدة' : 'New Local Stage'}</SelectItem>
@@ -378,4 +378,3 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
     </Dialog>
   );
 }
-

@@ -58,7 +58,7 @@
 }
 
 .btn-gradient {
-  @apply bg-gradient-to-r from-[#F57C00] to-[#FFB000] text-white shadow-xl shadow-orange-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all border-b-2 border-orange-700/30 font-black;
+  @apply bg-gradient-to-r from-[#F57C00] to-[#FFB000] text-white shadow-xl shadow-orange-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all border-b-4 border-orange-700 font-black;
 }
 
 .card-shadow {
