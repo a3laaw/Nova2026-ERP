@@ -86,6 +86,7 @@ export default function TransactionBOQProgressPage() {
   const variationsQuery = useMemo(() => companyId && db && activeBoq?.id ? query(collection(db, paths.boqVariations(companyId, activeBoq.id))) : null, [db, companyId, activeBoq]);
   const { data: variations } = useCollection<BOQVariation>(variationsQuery);
 
+  // FIX: إزالة this.db واستبدالها بـ db المستقر من Hook
   const executionsQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.executions(companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
   const { data: rawExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
   const allExecutions = useMemo(() => (rawExecutions || []).filter(e => e.boqId === activeBoq?.id), [rawExecutions, activeBoq]);
@@ -235,7 +236,7 @@ export default function TransactionBOQProgressPage() {
             </TableCell>
             <TableCell className="text-center font-mono font-bold text-slate-400 text-xs w-[120px]">
               {isEditingBaseline || activeBoq?.status === 'draft' ? (
-                <Input type="number" step="0.001" className="h-8 text-center font-black text-emerald-600" value={item.estimatedRate} onChange={e => updateItem(originalIdx, 'estimatedRate', Number(e.target.value))} />
+                <Input type="number" step="0.001" className="h-8 text-center font-black text-emerald-600" value={item.estimatedRate} onChange={e => handleUpdateItem(item.id!, item.plannedQuantity || 1, Number(e.target.value))} />
               ) : item.estimatedRate?.toLocaleString()}
             </TableCell>
             <TableCell className="text-end font-mono font-black text-emerald-600 text-xs">{(totalCumulative * (item.estimatedRate || 0)).toLocaleString()}</TableCell>

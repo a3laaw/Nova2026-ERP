@@ -460,7 +460,7 @@ export default function TransactionDetailsPage() {
                </div>
                <div className="space-y-5 pt-2">
                   <div className="space-y-2">
-                     <Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{isRtl ? 'نوع الربط الميداني' : 'Field Link Type'}</Label>
+                     <Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{isRtl ? 'نوع الارتباط الميداني' : 'Field Link Type'}</Label>
                      <Select value={isComplementary ? 'parallel' : 'critical'} onValueChange={(v) => setIsComplementary(v === 'parallel')}>
                         <SelectTrigger className={cn(
                            "h-12 rounded-xl border-2 font-black shadow-sm",
