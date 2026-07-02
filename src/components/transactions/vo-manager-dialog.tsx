@@ -91,8 +91,8 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
       type: 'increase_quantity', 
       stageMode: 'existing_stage',
       description: '', 
-      quantityDelta: "", // فارغ بدلاً من 0
-      rate: "",         // فارغ بدلاً من 0
+      quantityDelta: "",
+      rate: "",         
       total: 0,
       insertAfterStageId: '',
       isComplementary: false,
@@ -151,10 +151,13 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
     boqItems.forEach(i => {
        if (i.ancestorIds && i.ancestorIds.length > 0) {
           const lastId = i.ancestorIds[i.ancestorIds.length - 1];
-          // تصحيح: استخدام مسمى عربي بدلاً من Section
-          const lastTitle = i.ancestorTitles ? i.ancestorTitles[i.ancestorTitles.length - 1] : (isRtl ? 'قسم غير مسمى' : 'Unnamed Section');
-          if (lastTitle && lastTitle !== 'Section') {
-             sections.set(lastId, lastTitle);
+          const lastTitle = i.ancestorTitles ? i.ancestorTitles[i.ancestorTitles.length - 1] : '';
+          
+          // Use reference code as fallback if title is missing to avoid "Unnamed section"
+          const finalTitle = lastTitle || i.referenceCode || (isRtl ? 'قسم رئيسي غير معرف' : 'Unnamed Section');
+          
+          if (finalTitle !== 'Section') {
+             sections.set(lastId, finalTitle);
           }
        }
     });
@@ -170,13 +173,6 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
     try {
       const service = new VariationService(db, globalUser.companyId, permissions);
       await service.createVariation(boqId, transactionId, boqNumber, { title, reason }, items, user.uid);
-      
-      if (typeof document !== 'undefined') {
-        document.body.style.pointerEvents = 'auto';
-        document.body.style.overflow = 'auto';
-      }
-      
-      toast({ title: isRtl ? "تم حفظ مسودة الأمر" : "Draft Saved" });
       onClose();
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });

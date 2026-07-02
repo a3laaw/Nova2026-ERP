@@ -23,7 +23,8 @@ import {
   Pencil,
   Target,
   Info,
-  ShieldCheck
+  ShieldCheck,
+  RefreshCcw
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, limit, doc, addDoc, updateDoc } from 'firebase/firestore';
@@ -100,20 +101,16 @@ export default function TransactionDetailsPage() {
 
   const [incompleteStage, setIncompleteStage] = useState<{ stage: StageInstance, progress: StageProgressResult } | null>(null);
   const [isVOOpen, setIsVOOpen] = useState(false);
-  const [namingTemplate, setNamingTemplate] = useState<BOQTemplate | null>(null);
-  const [customBOQName, setCustomBOQName] = useState("");
-  const [isDeletingBOQ, setIsDeletingBOQ] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isOverExecutionOpen, setIsOverExecutionOpen] = useState(false);
 
   // Sovereign UI Guard: تحرير تحكم المتصفح قسرياً عند إغلاق النوافذ
   useEffect(() => {
-    const isAnyModalOpen = isRecordOpen || isOverExecutionOpen || !!undoStage || !!incompleteStage || !!namingTemplate || showDeleteConfirm || isVOOpen;
+    const isAnyModalOpen = isRecordOpen || isOverExecutionOpen || !!undoStage || !!incompleteStage || isVOOpen;
     if (!isAnyModalOpen && typeof document !== 'undefined') {
        document.body.style.pointerEvents = 'auto';
        document.body.style.overflow = 'auto';
     }
-  }, [isRecordOpen, isOverExecutionOpen, undoStage, incompleteStage, namingTemplate, showDeleteConfirm, isVOOpen]);
+  }, [isRecordOpen, isOverExecutionOpen, undoStage, incompleteStage, isVOOpen]);
 
   const editAccess = check('projects', 'edit');
   const currentUserName = useMemo(() => globalUser?.username || user?.displayName || 'Admin', [globalUser, user]);
@@ -246,7 +243,6 @@ export default function TransactionDetailsPage() {
     if (!transactionService || !user || !stage.id) return;
     const progress = stageProgressMap[stage.technicalStageId];
     
-    // إذا لم يكن إغلاقاً إجبارياً، والعمل لم يكتمل 100%، نعرض نافذة التنبيه
     if (!force && progress && !progress.canComplete) {
       setIncompleteStage({ stage, progress });
       return;
@@ -376,7 +372,6 @@ export default function TransactionDetailsPage() {
           <div className="lg:col-span-4"><CommentSection transactionId={transactionId} path={paths.transactionComments(companyId!, transactionId)} externalLogs={allExecutions || []} boqItems={boqItems || []} stages={stages} filterStageId={filterStageId} technicalStageId={stages.find(s=>s.id===filterStageId)?.technicalStageId} selectedStageName={stages.find(s=>s.id===filterStageId)?.name} onClearFilter={() => setFilterStageId(null)} activeTabOverride={activeTabOverride} /></div>
       </div>
 
-      {/* مودال تسجيل الإنجاز المطور */}
       <Dialog open={isRecordOpen} onOpenChange={setIsRecordOpen}>
          <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-md ring-1 ring-black/5" dir={dir}>
             <div className="bg-[#1e1b4b] p-6 text-white text-start">
@@ -480,7 +475,6 @@ export default function TransactionDetailsPage() {
          </DialogContent>
       </Dialog>
 
-      {/* نافذة تنبيه عدم الاكتمال مع خيار الإغلاق الإجباري للمدير */}
       <Dialog open={!!incompleteStage} onOpenChange={(open) => !open && setIncompleteStage(null)}>
          <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-md ring-1 ring-black/5" dir={dir}>
             <div className="bg-amber-600 p-6 text-white text-start">
@@ -523,7 +517,7 @@ export default function TransactionDetailsPage() {
             </div>
             {!isAdmin && (
                <DialogFooter className="p-6 bg-slate-50 border-t">
-                  <Button variant="outline" onClick={() => setIncompleteStage(null)} className="w-full h-12 rounded-xl font-bold">إغلاق</Button>
+                  <Button variant="outline" onClick={() => setIncompleteStage(null)} className="w-full h-12 rounded-xl font-bold">إلغاء</Button>
                </DialogFooter>
             )}
          </DialogContent>
