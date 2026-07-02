@@ -19,11 +19,10 @@ import {
   PlusCircle,
   ArrowRight,
   Trash2,
-  Pencil,
-  ShieldX
+  Pencil
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
-import { collection, query, orderBy, where, limit, doc, addDoc, updateDoc, writeBatch } from 'firebase/firestore';
+import { collection, query, orderBy, where, limit, doc, addDoc, updateDoc } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
