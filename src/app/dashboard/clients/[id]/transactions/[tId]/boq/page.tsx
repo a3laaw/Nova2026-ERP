@@ -14,7 +14,8 @@ import {
   Zap, History, PlusCircle, AlertCircle,
   CheckCircle2, XCircle, Ban, TrendingDown,
   Info, Sparkles, Pencil, Save, ShieldAlert,
-  LayoutGrid, X, Clock, DollarSign
+  LayoutGrid, X, Clock, DollarSign, Search,
+  Eye
 } from "lucide-react";
 import { useFirestore, useCollection, useDoc } from '@/firebase';
 import { collection, query, where, doc, getDocs } from 'firebase/firestore';
@@ -22,7 +23,7 @@ import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
-import { BOQ, BOQItem, BOQItemExecutionEntry, BOQVariation } from '@/types/documents';
+import { BOQ, BOQItem, BOQItemExecutionEntry, BOQVariation, BOQVariationItem } from '@/types/documents';
 import { Transaction, StageInstance } from '@/types/transaction';
 import { transformToBOQTree } from '@/lib/boq-tree-utils';
 import { BOQTreeNode } from '@/types/templates';
@@ -40,7 +41,7 @@ export default function TransactionBOQProgressPage() {
   const transactionId = params.tId as string;
   const { globalUser, user } = useAuthContext();
   const { t, lang, dir } = useLanguage();
-  const { permissions, isAdmin } = usePermissions();
+  const { permissions, check, isAdmin } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
@@ -51,6 +52,20 @@ export default function TransactionBOQProgressPage() {
   const [processingVOId, setProcessingVOId] = useState<string | null>(null);
   const [isEditingBaseline, setIsEditingBaseline] = useState(false);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  
+  // States for VO Review
+  const [reviewVO, setReviewVO] = useState<BOQVariation | null>(null);
+  const [reviewItems, setReviewItems] = useState<BOQVariationItem[]>([]);
+  const [loadingReview, setLoadingReview] = useState(false);
+
+  // Sovereign Release Protocol: Unstick UI
+  useEffect(() => {
+    const isModalOpen = isVOOpen || isPickerOpen || !!reviewVO || isEditingBaseline;
+    if (!isModalOpen && typeof document !== 'undefined') {
+       document.body.style.pointerEvents = 'auto';
+       document.body.style.overflow = 'auto';
+    }
+  }, [isVOOpen, isPickerOpen, reviewVO, isEditingBaseline]);
 
   // 1. Data Fetching
   const transRef = useMemo(() => companyId && db ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
@@ -132,13 +147,29 @@ export default function TransactionBOQProgressPage() {
     }
   };
 
-  const handleApproveVO = async (vo: BOQVariation) => {
-    if (!db || !companyId || !user) return;
-    setProcessingVOId(vo.id);
+  const handleReviewVO = async (vo: BOQVariation) => {
+    if (!db || !companyId) return;
+    setLoadingReview(true);
+    setReviewVO(vo);
+    try {
+      const itemsPath = paths.boqVariationItems(companyId, vo.boqId, vo.id);
+      const snap = await getDocs(collection(db, itemsPath));
+      setReviewItems(snap.docs.map(d => ({ id: d.id, ...d.data() } as BOQVariationItem)));
+    } catch (e) {
+      toast({ variant: "destructive", title: t('error') });
+    } finally {
+      setLoadingReview(false);
+    }
+  };
+
+  const handleApproveVO = async () => {
+    if (!db || !companyId || !user || !reviewVO) return;
+    setProcessingVOId(reviewVO.id);
     try {
       const service = new VariationService(db, companyId, permissions);
-      await service.approveVariation(activeBoq!.id, vo.id!, transactionId, user.uid, globalUser?.username || 'Admin');
+      await service.approveVariation(activeBoq!.id, reviewVO.id!, transactionId, user.uid, globalUser?.username || 'Admin');
       toast({ title: isRtl ? "تم اعتماد التعديل بنجاح" : "Variation Approved" });
+      setReviewVO(null);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
@@ -146,13 +177,14 @@ export default function TransactionBOQProgressPage() {
     }
   };
 
-  const handleRejectVO = async (vo: BOQVariation) => {
-    if (!db || !companyId || !user) return;
-    setProcessingVOId(vo.id);
+  const handleRejectVO = async () => {
+    if (!db || !companyId || !user || !reviewVO) return;
+    setProcessingVOId(reviewVO.id);
     try {
       const service = new VariationService(db, companyId, permissions);
-      await service.rejectVariation(activeBoq!.id, vo.id!, transactionId, user.uid, globalUser?.username || 'Admin');
+      await service.rejectVariation(activeBoq!.id, reviewVO.id!, transactionId, user.uid, globalUser?.username || 'Admin');
       toast({ title: isRtl ? "تم رفض التعديل" : "Variation Rejected" });
+      setReviewVO(null);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
@@ -266,22 +298,10 @@ export default function TransactionBOQProgressPage() {
                  </div>
                  <div className="flex gap-2">
                     <Button 
-                      onClick={() => handleRejectVO(vo)}
-                      disabled={processingVOId === vo.id}
-                      variant="outline" 
-                      size="sm" 
-                      className="h-9 px-4 rounded-xl border-rose-200 text-rose-600 hover:bg-rose-50 font-black text-[10px]"
+                      onClick={() => handleReviewVO(vo)}
+                      className="h-10 px-6 rounded-xl btn-gradient text-xs gap-2"
                     >
-                       <XCircle className="h-3.5 w-3.5 me-1" /> {isRtl ? 'رفض' : 'Reject'}
-                    </Button>
-                    <Button 
-                      onClick={() => handleApproveVO(vo)}
-                      disabled={processingVOId === vo.id}
-                      size="sm" 
-                      className="h-9 px-6 rounded-xl bg-emerald-600 text-white shadow-lg shadow-emerald-100 font-black text-[10px]"
-                    >
-                       {processingVOId === vo.id ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5 me-1" />}
-                       {isRtl ? 'اعتماد التغيير' : 'Approve'}
+                       <Eye className="h-4 w-4" /> {isRtl ? 'مراجعة بنود التعديل' : 'Review Changes'}
                     </Button>
                  </div>
               </div>
@@ -322,6 +342,91 @@ export default function TransactionBOQProgressPage() {
            <TableBody>{boqTree.length === 0 ? <TableRow><TableCell colSpan={11} className="py-40 text-center opacity-30"><Calculator className="h-12 w-12 mx-auto text-slate-300" /><p className="text-lg font-black">{isRtl ? 'المقايسة فارغة' : 'Empty BOQ'}</p></TableCell></TableRow> : boqTree.map((node, idx) => renderBOQTreeRows(node, (idx + 1).toString() + ".0"))}</TableBody>
          </Table>
       </div>
+
+      {/* VO Review Dialog */}
+      <Dialog open={!!reviewVO} onOpenChange={(open) => !open && setReviewVO(null)}>
+         <DialogContent className="max-w-5xl rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
+            <div className="bg-[#1e1b4b] p-8 text-white text-start flex justify-between items-center">
+               <div className="flex items-center gap-6">
+                  <div className="h-14 w-14 bg-primary/20 rounded-2xl flex items-center justify-center text-primary shadow-2xl ring-4 ring-primary/5">
+                     <FileSearch className="h-7 w-7" />
+                  </div>
+                  <div>
+                     <DialogTitle className="text-2xl font-black font-headline">{isRtl ? 'مراجعة أمر تغييري' : 'Review Variation Order'}</DialogTitle>
+                     <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">{reviewVO?.title} | {reviewVO?.boqNumber}</p>
+                  </div>
+               </div>
+               <div className="text-end">
+                  <p className="text-[9px] font-black text-primary uppercase mb-1">Total Impact</p>
+                  <h3 className={cn("text-3xl font-black font-mono", (reviewVO?.totalAmount || 0) >= 0 ? "text-emerald-400" : "text-rose-400")}>
+                    {reviewVO?.totalAmount.toLocaleString()} <span className="text-xs opacity-40">KWD</span>
+                  </h3>
+               </div>
+            </div>
+
+            <div className="p-8 space-y-6 max-h-[60vh] overflow-y-auto scrollbar-hide text-start">
+               <div className="p-6 bg-slate-50 rounded-2xl border-2 border-white shadow-inner space-y-2">
+                  <h5 className="font-black text-xs text-slate-400 uppercase tracking-widest">Justification / المبرر الفني</h5>
+                  <p className="text-sm font-bold text-slate-700 leading-relaxed">{reviewVO?.reason || '---'}</p>
+               </div>
+
+               <div className="border rounded-2xl overflow-hidden shadow-sm">
+                  <Table>
+                     <TableHeader className="bg-slate-50">
+                        <TableRow>
+                           <TableHead className="ps-6">{isRtl ? 'نوع التعديل' : 'Type'}</TableHead>
+                           <TableHead>{isRtl ? 'البند' : 'Work Item'}</TableHead>
+                           <TableHead className="text-center">{isRtl ? 'فرق الكمية' : 'Delta'}</TableHead>
+                           <TableHead className="text-end">{isRtl ? 'الفئة' : 'Rate'}</TableHead>
+                           <TableHead className="text-end pe-6">{isRtl ? 'الإجمالي' : 'Total'}</TableHead>
+                        </TableRow>
+                     </TableHeader>
+                     <TableBody>
+                        {loadingReview ? (
+                          <TableRow><TableCell colSpan={5} className="text-center py-12"><Loader2 className="animate-spin mx-auto text-primary" /></TableCell></TableRow>
+                        ) : reviewItems.map((item, idx) => (
+                          <TableRow key={idx}>
+                             <TableCell className="ps-6">
+                                <Badge variant="outline" className={cn(
+                                  "font-black text-[8px] uppercase px-2 py-0.5",
+                                  item.type === 'increase_quantity' ? "text-emerald-600 bg-emerald-50 border-emerald-100" :
+                                  item.type === 'decrease_quantity' ? "text-rose-600 bg-rose-50 border-rose-100" :
+                                  "text-orange-600 bg-orange-50 border-orange-100"
+                                )}>
+                                   {item.type}
+                                </Badge>
+                             </TableCell>
+                             <TableCell className="font-bold text-xs text-slate-700">{item.description}</TableCell>
+                             <TableCell className="text-center font-mono font-black text-xs">{item.quantityDelta}</TableCell>
+                             <TableCell className="text-end font-mono text-xs text-slate-500">{item.rate.toLocaleString()}</TableCell>
+                             <TableCell className="text-end pe-6 font-mono font-black text-slate-900">{item.total.toLocaleString()}</TableCell>
+                          </TableRow>
+                        ))}
+                     </TableBody>
+                  </Table>
+               </div>
+            </div>
+
+            <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4">
+               <Button 
+                 onClick={handleRejectVO}
+                 disabled={!!processingVOId}
+                 variant="outline" 
+                 className="flex-1 h-16 rounded-2xl border-2 text-rose-600 font-black text-lg gap-2"
+               >
+                  <XCircle className="h-6 w-6" /> {isRtl ? 'رفض وإلغاء' : 'Reject & Cancel'}
+               </Button>
+               <Button 
+                 onClick={handleApproveVO}
+                 disabled={!!processingVOId}
+                 className="flex-[2] h-16 rounded-2xl btn-gradient text-xl gap-3"
+               >
+                  {processingVOId ? <Loader2 className="animate-spin h-6 w-6" /> : <CheckCircle2 className="h-6 w-6" />}
+                  {isRtl ? 'اعتماد وتحديث الميدان' : 'Approve & Activate'}
+               </Button>
+            </DialogFooter>
+         </DialogContent>
+      </Dialog>
 
       <VOManagerDialog isOpen={isVOOpen} onClose={() => setIsVOOpen(false)} boqId={activeBoq.id} transactionId={transactionId} boqNumber={activeBoq.boqNumber} boqItems={rawItems || []} />
     </div>
