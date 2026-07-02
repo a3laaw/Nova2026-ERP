@@ -86,7 +86,8 @@ export default function TransactionBOQProgressPage() {
   const variationsQuery = useMemo(() => companyId && db && activeBoq?.id ? query(collection(db, paths.boqVariations(companyId, activeBoq.id))) : null, [db, companyId, activeBoq]);
   const { data: variations } = useCollection<BOQVariation>(variationsQuery);
 
-  const executionsQuery = useMemo(() => companyId && db ? query(collection(this.db, paths.executions(this.companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
+  // FIXED: Removed 'this' context and corrected executionsQuery structure
+  const executionsQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.executions(companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
   const { data: rawExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
   const allExecutions = useMemo(() => (rawExecutions || []).filter(e => e.boqId === activeBoq?.id), [rawExecutions, activeBoq]);
 
@@ -242,7 +243,7 @@ export default function TransactionBOQProgressPage() {
             <TableCell className="pe-6 w-[120px] text-end">
               <div className="space-y-1">
                 <div className="flex justify-between text-[8px] font-black uppercase text-slate-400">
-                  <span>{totalPct}%</span>
+                  <span>{totalPct} %</span>
                 </div>
                 <Progress value={totalPct} className="h-1" />
               </div>
