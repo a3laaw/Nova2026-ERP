@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -194,7 +195,13 @@ export default function TransactionBOQProgressPage() {
 
   const renderBOQTreeRows = (node: BOQTreeNode, prefix: string): React.ReactNode => (
     <React.Fragment key={node.id}>
-      <TableRow className="bg-[#1e1b4b]/5 hover:bg-[#1e1b4b]/10 border-b-2 border-white"><TableCell className="font-mono text-[11px] font-black text-slate-400 ps-6 text-start">{prefix}</TableCell><TableCell colSpan={2} className="font-black text-[#1e1b4b] text-sm py-4 text-start" style={{ paddingInlineStart: `${node.depth * 20 + 16}px` }}><div className="flex items-center gap-2"><Folder className="h-4 w-4 text-[#F57C00]" />{node.title}</div></TableCell><TableCell colSpan={10}></TableCell></TableRow>
+      <TableRow className="bg-[#1e1b4b] hover:bg-[#1e1b4b]/90 border-b-2 border-white/10">
+        <TableCell className="font-mono text-[11px] font-black text-white/40 ps-6 text-start">{prefix}</TableCell>
+        <TableCell colSpan={2} className="font-black text-white text-sm py-4 text-start" style={{ paddingInlineStart: `${node.depth * 20 + 16}px` }}>
+          <div className="flex items-center gap-2"><Folder className="h-4 w-4 text-primary" />{node.title}</div>
+        </TableCell>
+        <TableCell colSpan={10}></TableCell>
+      </TableRow>
       {node.items.map((item, iIdx) => {
         const itemPrefix = `${prefix.replace('.0', '')}.${iIdx + 1}`;
         const metrics = executionMetrics[item.id!] || { prev: 0, current: 0 };

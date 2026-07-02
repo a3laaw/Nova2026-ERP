@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -90,8 +91,8 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
       type: 'increase_quantity', 
       stageMode: 'existing_stage',
       description: '', 
-      quantityDelta: "", // فارغ بدلاً من صفر
-      rate: "",         // فارغ بدلاً من صفر
+      quantityDelta: "", 
+      rate: "",         
       total: 0,
       insertAfterStageId: '',
       isComplementary: false,

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -19,7 +20,8 @@ import {
   PlusCircle,
   ArrowRight,
   Trash2,
-  Pencil
+  Pencil,
+  Target
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, limit, doc, addDoc, updateDoc } from 'firebase/firestore';
@@ -102,7 +104,7 @@ export default function TransactionDetailsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isOverExecutionOpen, setIsOverExecutionOpen] = useState(false);
 
-  // Sovereign UI Guard: تحرير تحكم المتصفح قسرياً لمنع التجمد
+  // Sovereign UI Guard: تحرير تحكم المتصفح قسرياً عند إغلاق النوافذ
   useEffect(() => {
     const isAnyModalOpen = isRecordOpen || isOverExecutionOpen || !!undoStage || !!incompleteStage || !!namingTemplate || showDeleteConfirm || isVOOpen;
     if (!isAnyModalOpen && typeof document !== 'undefined') {
@@ -458,6 +460,27 @@ export default function TransactionDetailsPage() {
                      </SelectContent>
                   </Select>
                </div>
+
+               {/* لوحة المؤشرات الميدانية (Planned / Executed / Remaining) */}
+               {selectedBOQItemMetrics && (
+                 <div className="grid grid-cols-3 gap-2 p-4 bg-slate-50 rounded-xl border-2 border-white shadow-inner animate-in zoom-in-95">
+                    <div className="text-center">
+                       <p className="text-[8px] font-black text-slate-400 uppercase">{isRtl ? 'المخطط' : 'Planned'}</p>
+                       <p className="text-sm font-black text-slate-700">{selectedBOQItemMetrics.planned}</p>
+                    </div>
+                    <div className="text-center border-x-2 border-white">
+                       <p className="text-[8px] font-black text-slate-400 uppercase">{isRtl ? 'المنجز سابقاً' : 'Executed'}</p>
+                       <p className="text-sm font-black text-blue-600">{selectedBOQItemMetrics.executed}</p>
+                    </div>
+                    <div className="text-center">
+                       <p className="text-[8px] font-black text-slate-400 uppercase">{isRtl ? 'المتبقي' : 'Remaining'}</p>
+                       <p className={cn("text-sm font-black", selectedBOQItemMetrics.remaining <= 0 ? "text-rose-500" : "text-emerald-600")}>
+                          {selectedBOQItemMetrics.remaining}
+                       </p>
+                    </div>
+                 </div>
+               )}
+
                <div className="space-y-5 pt-2">
                   <div className="space-y-2">
                      <Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{isRtl ? 'نوع الارتباط الميداني' : 'Field Link Type'}</Label>
