@@ -54,7 +54,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from '@/components/ui/switch';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -201,7 +200,6 @@ export default function TransactionDetailsPage() {
     setIsRecordOpen(false);
 
     setTimeout(async () => {
-        if (typeof document !== 'undefined') document.body.style.pointerEvents = 'auto';
         setLoadingAction('recording');
         try {
             await executionService.recordBOQItemExecution(
@@ -259,7 +257,6 @@ export default function TransactionDetailsPage() {
     const sId = undoStage.id!;
     setUndoStage(null);
     setTimeout(async () => {
-        if (typeof document !== 'undefined') document.body.style.pointerEvents = 'auto';
         setProcessingId(sId);
         try {
           await transactionService.reopenStage(transactionId, sId, user.uid, currentUserName, clearLogsOnUndo);
@@ -326,10 +323,10 @@ export default function TransactionDetailsPage() {
         <div className="flex gap-2">
            {activeBoq && (
              <>
-                <Button onClick={() => setIsVOOpen(true)} className="h-10 px-6 rounded-xl bg-gradient-to-r from-[#F57C00] to-[#FFB000] text-white font-black text-xs gap-2 shadow-xl border-b-2 border-orange-700/30">
+                <Button onClick={() => setIsVOOpen(true)} className="btn-gradient h-10 px-6 rounded-xl gap-2">
                   <Calculator className="h-4 w-4" /> {isRtl ? 'أمر تغييري' : 'Variation Order'}
                 </Button>
-                <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="h-10 px-6 rounded-xl bg-gradient-to-r from-[#F57C00] to-[#FFB000] text-white font-black text-xs gap-2 shadow-xl border-b-2 border-orange-700/30">
+                <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="btn-gradient h-10 px-6 rounded-xl gap-2">
                   <FileSpreadsheet className="h-4 w-4" /> {isRtl ? 'عرض المقايسة' : 'View BOQ'}
                 </Button>
                 {isAdmin && <Button variant="ghost" size="icon" onClick={() => setShowDeleteConfirm(true)} className="h-10 w-10 rounded-xl text-rose-300 hover:text-rose-600 hover:bg-rose-50 transition-all"><Trash2 className="h-5 w-5" /></Button>}
@@ -365,7 +362,7 @@ export default function TransactionDetailsPage() {
             <div className="max-w-2xl mx-auto space-y-8">
                <div className="mx-auto w-20 h-20 bg-primary/5 text-primary rounded-2xl flex items-center justify-center shadow-inner"><Calculator className="h-10 w-10" /></div>
                <div className="space-y-2"><h2 className="text-2xl font-black font-headline text-slate-900">{isRtl ? 'الميزانية قيد التخصيص' : 'Budget Under Customization'}</h2><p className="text-slate-500 font-bold text-sm leading-relaxed">{isRtl ? 'يجب الانتهاء من ضبط الكميات والبنود في صفحة المقايسة والضغط على "اعتماد" لتفعيل المسار الفني وبدء العمل.' : 'Finalize quantities and items in the BOQ page and click "Approve" to activate the technical path and start site work.'}</p></div>
-               <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="h-16 px-12 rounded-2xl bg-gradient-to-r from-[#F57C00] to-[#FFB000] text-white font-black text-xl gap-3 shadow-2xl shadow-orange-500/20 border-b-4 border-orange-700 hover:scale-105 transition-all">
+               <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="btn-gradient h-16 px-12 rounded-2xl text-xl gap-3">
                  <Pencil className="h-6 w-6" /> {isRtl ? 'تخصيص بنود المقايسة الآن' : 'Customize BOQ Now'}
                </Button>
             </div>
@@ -410,7 +407,7 @@ export default function TransactionDetailsPage() {
                              {isOperationalFrontier && (
                                 <div className="flex gap-2 shrink-0 z-10 animate-in fade-in zoom-in-95" onClick={e => e.stopPropagation()}>
                                    {stage.status === 'in-progress' && editAccess.can && (
-                                     <Button onClick={() => { setTargetStage(stage); setIsRecordOpen(true); }} className="h-9 px-4 rounded-xl bg-gradient-to-r from-[#F57C00] to-[#FFB000] text-white font-black text-[10px] gap-2 shadow-lg border-b-2 border-orange-700/30">
+                                     <Button onClick={() => { setTargetStage(stage); setIsRecordOpen(true); }} className="btn-gradient h-9 px-4 rounded-xl text-[10px] gap-2">
                                        <Hammer className="h-3.5 w-3.5" /> {isRtl ? 'تسجيل إنجاز' : 'Log'}
                                      </Button>
                                    )}
@@ -495,7 +492,7 @@ export default function TransactionDetailsPage() {
             </div>
             <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-3">
                <Button variant="outline" onClick={() => setIsRecordOpen(false)} className="flex-1 h-12 rounded-xl font-bold">إلغاء</Button>
-               <Button onClick={() => handleRecordProgress()} disabled={loadingAction === 'recording' || (!isComplementary && (progressQty === "" || Number(progressQty) <= 0)) || !selectedItemId} className="flex-[2] h-12 rounded-xl bg-gradient-to-r from-[#F57C00] to-[#FFB000] text-white font-black shadow-lg gap-2 border-b-4 border-orange-700">
+               <Button onClick={() => handleRecordProgress()} disabled={loadingAction === 'recording' || (!isComplementary && (progressQty === "" || Number(progressQty) <= 0)) || !selectedItemId} className="flex-[2] btn-gradient h-12 rounded-xl text-lg gap-2">
                   {loadingAction === 'recording' ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
                   {isRtl ? 'حفظ السجل الميداني' : 'Commit Log'}
                </Button>
@@ -505,7 +502,7 @@ export default function TransactionDetailsPage() {
 
       <AlertDialog open={isOverExecutionOpen} onOpenChange={setIsOverExecutionOpen}>
         <AlertDialogContent className="rounded-xl p-8 border-0 shadow-3xl bg-white" dir={dir}>
-           <AlertDialogHeader><div className="mx-auto w-20 h-20 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mb-6 shadow-inner ring-4 ring-rose-50/50"><ShieldX className="h-8 w-8" /></div><AlertDialogTitle className="text-start font-black text-2xl font-headline text-slate-900">تحذير: تجاوز الكمية المخططة</AlertDialogTitle><AlertDialogDescription className="text-start font-bold text-slate-400 mt-2 text-base leading-relaxed">{isRtl ? `أنت تحاول تسجيل كمية تتجاوز المخطط. هل ترغب في الاستمرار؟ سيتم توثيق إقرارك بالموافقة باسمك.` : `You are recording an over-execution. Continue? Your approval will be logged.`}</AlertDialogDescription></AlertDialogHeader>
+           <AlertDialogHeader><div className="mx-auto w-20 h-20 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mb-6 shadow-inner ring-4 ring-rose-50/50"><AlertTriangle className="h-8 w-8" /></div><AlertDialogTitle className="text-start font-black text-2xl font-headline text-slate-900">تحذير: تجاوز الكمية المخططة</AlertDialogTitle><AlertDialogDescription className="text-start font-bold text-slate-400 mt-2 text-base leading-relaxed">{isRtl ? `أنت تحاول تسجيل كمية تتجاوز المخطط. هل ترغب في الاستمرار؟ سيتم توثيق إقرارك بالموافقة باسمك.` : `You are recording an over-execution. Continue? Your approval will be logged.`}</AlertDialogDescription></AlertDialogHeader>
            <AlertDialogFooter className="mt-8 gap-3 flex flex-row"><AlertDialogCancel className="flex-1 h-12 rounded-lg font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel><AlertDialogAction onClick={() => handleRecordProgress(true)} className="flex-[2] h-12 rounded-lg font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200">{isRtl ? 'نعم، أقر بالتجاوز' : 'Confirm & Log'}</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
