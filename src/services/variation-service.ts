@@ -117,7 +117,7 @@ export class VariationService {
       const vItem = itemDoc.data() as BOQVariationItem;
       let targetTechnicalStageId = vItem.technicalStageId || '';
 
-      // SMART FIX: Use localStageName for both Stage and Item if it's a new manual injection
+      // 1. Handle New Manual Stage Injections
       if (vItem.type === 'new_item' && vItem.stageMode === 'new_local_stage') {
         const afterStage = currentStages.find(s => s.id === vItem.insertAfterStageId);
         const insertAtOrder = (afterStage?.order !== undefined) ? afterStage.order + 1 : currentStages.length;
@@ -156,6 +156,7 @@ export class VariationService {
 
         batch.set(newStageRef, newStageData);
 
+        // Shift subsequent stages
         currentStages.forEach(s => {
           if (s.order >= insertAtOrder) {
             s.order += 1;
@@ -167,6 +168,7 @@ export class VariationService {
         currentStages.sort((a, b) => a.order - b.order);
       }
 
+      // 2. Manage Persistent BOQ Items
       if (vItem.type !== 'new_item' && vItem.sourceBoqItemId) {
         const boqItemRef = doc(this.db, paths.boqItems(this.companyId, boqId), vItem.sourceBoqItemId);
         const itemSnap = await getDoc(boqItemRef);
@@ -175,7 +177,6 @@ export class VariationService {
           const currentItem = itemSnap.data() as BOQItem;
           const newPlanned = Math.max(0, (currentItem.plannedQuantity || 0) + (vItem.quantityDelta || 0));
           
-          // CRITICAL: DO NOT overwrite referenceTitle for existing items to keep the math integrity (e.g. Concrete remains Concrete)
           batch.update(boqItemRef, { 
             plannedQuantity: newPlanned,
             estimatedRate: vItem.rate || currentItem.estimatedRate,

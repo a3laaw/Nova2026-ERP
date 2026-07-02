@@ -327,61 +327,61 @@ export default function TransactionDetailsPage() {
     <div className="space-y-8 animate-in fade-in duration-700 pb-20" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4">
         <div className="flex items-center gap-4 text-start">
-           <div className="h-12 px-5 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-black text-lg border-2 border-primary/20 shadow-inner">{transaction?.transactionNumber}</div>
+           <div className="h-11 px-4 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black text-sm border-2 border-primary/20 shadow-inner">{transaction?.transactionNumber}</div>
            <div>
-              <h1 className="text-2xl font-black font-headline text-slate-900 leading-tight">{transaction?.subServiceName}</h1>
-              <div className="flex items-center gap-3 mt-1">
-                 <Badge className={cn("font-black px-3 py-1 rounded-lg border-0 shadow-sm uppercase text-[9px]", transaction?.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600')}>{transaction?.status}</Badge>
-                 <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1"><Activity className="h-3 w-3 text-primary" /> {transaction?.activityTypeName}</span>
+              <h1 className="text-xl font-black font-headline text-slate-900 leading-tight">{transaction?.subServiceName}</h1>
+              <div className="flex items-center gap-3 mt-0.5">
+                 <Badge className={cn("font-black px-2 py-0.5 rounded-lg border-0 shadow-sm uppercase text-[8px]", transaction?.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600')}>{transaction?.status}</Badge>
+                 <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1"><Activity className="h-2.5 w-2.5 text-primary" /> {transaction?.activityTypeName}</span>
               </div>
            </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2">
            {activeBoq && (
-             <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setIsVOOpen(true)} className="h-11 px-5 rounded-xl bg-white border-2 font-black text-xs gap-2 text-blue-600 border-blue-100 shadow-sm"><Calculator className="h-4 w-4" /> {isRtl ? 'أمر تغييري' : 'VO'}</Button>
-                <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="h-11 px-6 rounded-xl bg-white border-2 font-black text-xs gap-2 text-primary border-primary/20 shadow-sm"><FileSpreadsheet className="h-4 w-4" /> {isRtl ? 'إدارة المقايسة' : 'Manage BOQ'}</Button>
-                {isAdmin && <Button variant="ghost" size="icon" onClick={() => setShowDeleteConfirm(true)} className="h-11 w-11 rounded-xl text-rose-300 hover:text-rose-600 hover:bg-rose-50 border-2 border-transparent"><Trash2 className="h-5 w-5" /></Button>}
-             </div>
+             <>
+                <Button variant="outline" size="sm" onClick={() => setIsVOOpen(true)} className="h-9 px-4 rounded-lg bg-white border-2 font-black text-[10px] gap-1.5 text-[#1e1b4b] border-slate-100 shadow-sm hover:bg-slate-50"><Calculator className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'أمر تغييري' : 'VO'}</Button>
+                <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="h-9 px-4 rounded-lg bg-white border-2 font-black text-[10px] gap-1.5 text-slate-700 border-slate-100 shadow-sm hover:bg-slate-50"><FileSpreadsheet className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'المقايسة' : 'BOQ'}</Button>
+                {isAdmin && <Button variant="ghost" size="icon" onClick={() => setShowDeleteConfirm(true)} className="h-9 w-9 rounded-lg text-rose-300 hover:text-rose-600 hover:bg-rose-50"><Trash2 className="h-4 w-4" /></Button>}
+             </>
            )}
         </div>
       </div>
 
       {!activeBoq ? (
-         <Card className="border-4 border-dashed border-primary/20 rounded-[3rem] bg-white shadow-2xl p-12 text-center animate-in zoom-in-95">
+         <Card className="border-4 border-dashed border-primary/20 rounded-[2.5rem] bg-white shadow-2xl p-12 text-center animate-in zoom-in-95">
             <div className="max-w-2xl mx-auto space-y-8">
-               <div className="mx-auto w-24 h-24 bg-primary/10 text-primary rounded-[2rem] flex items-center justify-center shadow-inner"><FileSpreadsheet className="h-12 w-12" /></div>
+               <div className="mx-auto w-20 h-20 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shadow-inner"><FileSpreadsheet className="h-10 w-10" /></div>
                <div className="space-y-2">
-                  <h2 className="text-3xl font-black font-headline">{isRtl ? 'المرحلة الأولى: هندسة الميزانية' : 'Step 1: Budget Engineering'}</h2>
-                  <p className="text-slate-500 font-bold leading-relaxed">{isRtl ? 'اختر قالب المقايسة المناسب للمشروع لتخصيص الكميات والأسعار قبل بدء التنفيذ الميداني.' : 'Choose the appropriate BOQ template to customize quantities and rates before site execution starts.'}</p>
+                  <h2 className="text-2xl font-black font-headline">{isRtl ? 'المرحلة الأولى: هندسة الميزانية' : 'Step 1: Budget Engineering'}</h2>
+                  <p className="text-slate-500 font-bold text-sm leading-relaxed">{isRtl ? 'اختر قالب المقايسة المناسب للمشروع لتخصيص الكميات والأسعار قبل بدء التنفيذ الميداني.' : 'Choose the appropriate BOQ template to customize quantities and rates before site execution starts.'}</p>
                </div>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {availableTemplates?.map(temp => (
-                    <Card key={temp.id} className="border-2 hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer rounded-3xl p-6 text-start group" onClick={() => {
+                    <Card key={temp.id} className="border-2 hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer rounded-2xl p-6 text-start group" onClick={() => {
                         setNamingTemplate(temp);
                         setCustomBOQName(`${temp.name} - ${transaction?.transactionNumber || ''}`);
                     }}>
-                       <div className="flex items-center justify-between mb-4"><Badge variant="outline" className="font-black text-[9px] px-3">{temp.code}</Badge><PlusCircle className="h-5 w-5 text-primary" /></div>
-                       <h4 className="font-black text-slate-800">{temp.name}</h4>
-                       <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase">EST. VALUE: {temp.baseAmount?.toLocaleString()} KWD</p>
+                       <div className="flex items-center justify-between mb-4"><Badge variant="outline" className="font-black text-[8px] px-2">{temp.code}</Badge><PlusCircle className="h-4 w-4 text-primary" /></div>
+                       <h4 className="font-black text-slate-800 text-sm">{temp.name}</h4>
+                       <p className="text-[9px] text-slate-400 font-bold mt-1 uppercase tracking-tighter">EST. VALUE: {temp.baseAmount?.toLocaleString()} KWD</p>
                     </Card>
                   ))}
                </div>
             </div>
          </Card>
       ) : activeBoq.status === 'draft' ? (
-         <Card className="border-4 border-dashed border-blue-200 rounded-[3rem] bg-blue-50/20 p-12 text-center animate-in zoom-in-95">
+         <Card className="border-4 border-dashed border-primary/10 rounded-[2.5rem] bg-white p-12 text-center animate-in zoom-in-95">
             <div className="max-w-2xl mx-auto space-y-8">
-               <div className="mx-auto w-24 h-24 bg-blue-100 text-blue-600 rounded-[2.5rem] flex items-center justify-center shadow-inner"><Calculator className="h-12 w-12" /></div>
-               <div className="space-y-2"><h2 className="text-3xl font-black font-headline text-blue-900">{isRtl ? 'الميزانية قيد التخصيص' : 'Budget Under Customization'}</h2><p className="text-blue-700/60 font-bold leading-relaxed">{isRtl ? 'يجب الانتهاء من ضبط الكميات والبنود في صفحة المقايسة والضغط على "اعتماد" لتفعيل المسار الفني وبدء العمل.' : 'Finalize quantities and items in the BOQ page and click "Approve" to activate the technical path and start site work.'}</p></div>
-               <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="h-16 px-12 rounded-2xl bg-blue-600 text-white font-black text-xl gap-3 shadow-xl"><Pencil className="h-6 w-6" /> {isRtl ? 'تخصيص بنود المقايسة الآن' : 'Customize BOQ Items Now'}</Button>
+               <div className="mx-auto w-20 h-20 bg-primary/5 text-primary rounded-2xl flex items-center justify-center shadow-inner"><Calculator className="h-10 w-10" /></div>
+               <div className="space-y-2"><h2 className="text-2xl font-black font-headline text-slate-900">{isRtl ? 'الميزانية قيد التخصيص' : 'Budget Under Customization'}</h2><p className="text-slate-500 font-bold text-sm leading-relaxed">{isRtl ? 'يجب الانتهاء من ضبط الكميات والبنود في صفحة المقايسة والضغط على "اعتماد" لتفعيل المسار الفني وبدء العمل.' : 'Finalize quantities and items in the BOQ page and click "Approve" to activate the technical path and start site work.'}</p></div>
+               <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="h-14 px-10 rounded-xl bg-primary text-white font-black text-lg gap-2 shadow-xl border-b-4 border-orange-700"><Pencil className="h-5 w-5" /> {isRtl ? 'تخصيص بنود المقايسة الآن' : 'Customize BOQ Now'}</Button>
             </div>
          </Card>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-8 space-y-6">
              <div className="space-y-6">
-                <div className="flex justify-between items-end px-2"><h3 className="text-xl font-black font-headline text-slate-800 flex items-center gap-2"><Workflow className="h-6 w-6 text-primary" /> {isRtl ? 'رادار المسار الميداني' : 'Field Pipeline'}</h3><span className="text-4xl font-black font-headline text-primary">{progressPercent}%</span></div>
+                <div className="flex justify-between items-end px-2"><h3 className="text-lg font-black font-headline text-slate-800 flex items-center gap-2"><Workflow className="h-5 w-5 text-primary" /> {isRtl ? 'رادار المسار الميداني' : 'Field Pipeline'}</h3><span className="text-3xl font-black font-headline text-primary">{progressPercent}%</span></div>
                 <div className="space-y-4">
                    {stages.map((stage, idx) => {
                       const boqProgress = stageProgressMap[stage.technicalStageId];
@@ -401,30 +401,30 @@ export default function TransactionDetailsPage() {
                         : (stage.status === 'in-progress' || (stage.status === 'pending' && isPreviousCompleted));
 
                       return (
-                        <Card key={stage.id} onClick={() => setFilterStageId(filterStageId === stage.id ? null : stage.id!)} className={cn("border-0 shadow-lg rounded-[2.5rem] bg-white transition-all overflow-hidden border-s-8 cursor-pointer relative", stage.status === 'completed' ? 'border-s-emerald-500' : stage.status === 'in-progress' ? 'border-s-blue-500 ring-4 ring-blue-500/5' : isOperationalFrontier ? 'border-s-orange-300' : 'border-s-slate-100 opacity-50')}>
-                          <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-6">
-                             <div className="flex items-center gap-6 flex-1 text-start">
-                                <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-sm border", stage.status === 'completed' ? "bg-emerald-50 text-emerald-600" : "bg-white")}>{stage.status === 'completed' ? <CheckCircle2 className="h-6 w-6" /> : (idx + 1)}</div>
-                                <div className="space-y-1 flex-1">
+                        <Card key={stage.id} onClick={() => setFilterStageId(filterStageId === stage.id ? null : stage.id!)} className={cn("border-0 shadow-lg rounded-2xl bg-white transition-all overflow-hidden border-s-8 cursor-pointer relative", stage.status === 'completed' ? 'border-s-emerald-500' : stage.status === 'in-progress' ? 'border-s-blue-500 ring-4 ring-blue-500/5' : isOperationalFrontier ? 'border-s-orange-300' : 'border-s-slate-100 opacity-50')}>
+                          <CardContent className="p-5 flex flex-col md:flex-row items-center justify-between gap-6">
+                             <div className="flex items-center gap-5 flex-1 text-start">
+                                <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center font-black text-base shadow-sm border", stage.status === 'completed' ? "bg-emerald-50 text-emerald-600" : "bg-white")}>{stage.status === 'completed' ? <CheckCircle2 className="h-5 w-5" /> : (idx + 1)}</div>
+                                <div className="space-y-0.5 flex-1">
                                    <div className="flex items-center gap-2">
-                                      <h4 className="font-black text-lg text-slate-900 tracking-tight">{stage.name}</h4>
-                                      {stage.isTemporary && <Badge className="bg-blue-100 text-blue-600 border-0 text-[7px] font-black uppercase h-4 px-1.5">{stage.isComplementary ? 'PARALLEL STAGE' : 'MANUAL STAGE'}</Badge>}
+                                      <h4 className="font-black text-base text-slate-900 tracking-tight">{stage.name}</h4>
+                                      {stage.isTemporary && <Badge className="bg-primary/5 text-primary border-0 text-[7px] font-black uppercase h-4 px-1.5">{stage.isComplementary ? 'PARALLEL' : 'MANUAL'}</Badge>}
                                    </div>
-                                   {boqProgress && boqProgress.linkedItemsCount > 0 && (<div className="mt-2 space-y-1.5"><div className="flex justify-between text-[9px] font-black uppercase text-slate-400"><span>{isRtl ? 'إنجاز بنود المقايسة' : 'BOQ Items Progress'}</span><span>{boqProgress.progressPercent}%</span></div><Progress value={boqProgress.progressPercent} className="h-1.5" /></div>)}
+                                   {boqProgress && boqProgress.linkedItemsCount > 0 && (<div className="mt-2 space-y-1.5"><div className="flex justify-between text-[8px] font-black uppercase text-slate-400"><span>{isRtl ? 'الإنجاز' : 'Progress'}</span><span>{boqProgress.progressPercent}%</span></div><Progress value={boqProgress.progressPercent} className="h-1" /></div>)}
                                 </div>
                              </div>
                              
                              {isOperationalFrontier && (
                                 <div className="flex gap-2 shrink-0 z-10 animate-in fade-in zoom-in-95" onClick={e => e.stopPropagation()}>
-                                   {stage.status === 'in-progress' && editAccess.can && <Button onClick={() => { setTargetStage(stage); setIsRecordOpen(true); }} variant="outline" className="h-11 px-4 rounded-xl border-2 border-primary/20 text-primary font-black text-xs gap-2"><Hammer className="h-4 w-4" /> {isRtl ? 'تسجيل إنجاز' : 'Log Progress'}</Button>}
-                                   {stage.status === 'pending' && <Button onClick={() => handleStartStage(stage.id!)} disabled={!!processingId} className="h-11 px-6 rounded-xl bg-blue-600 text-white font-black text-xs gap-2">{processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Play className="h-4 w-4" />} {isRtl ? 'بدء' : 'Start'}</Button>}
-                                   {stage.status === 'in-progress' && <Button onClick={() => handleCompleteStage(stage)} disabled={!!processingId} className="h-11 px-6 rounded-xl bg-emerald-600 text-white font-black text-xs gap-2">{processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Check className="h-4 w-4" />} {isRtl ? 'إكمال' : 'Complete'}</Button>}
+                                   {stage.status === 'in-progress' && editAccess.can && <Button onClick={() => { setTargetStage(stage); setIsRecordOpen(true); }} variant="outline" className="h-9 px-3 rounded-lg border-2 border-primary/20 text-primary font-black text-[10px] gap-1.5"><Hammer className="h-3.5 w-3.5" /> {isRtl ? 'تسجيل إنجاز' : 'Log'}</Button>}
+                                   {stage.status === 'pending' && <Button onClick={() => handleStartStage(stage.id!)} disabled={!!processingId} className="h-9 px-5 rounded-lg bg-blue-600 text-white font-black text-[10px] gap-1.5">{processingId === stage.id ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />} {isRtl ? 'بدء' : 'Start'}</Button>}
+                                   {stage.status === 'in-progress' && <Button onClick={() => handleCompleteStage(stage)} disabled={!!processingId} className="h-9 px-5 rounded-lg bg-emerald-600 text-white font-black text-[10px] gap-1.5">{processingId === stage.id ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5" />} {isRtl ? 'إكمال' : 'Done'}</Button>}
                                 </div>
                              )}
 
                              {stage.status === 'completed' && isAdmin && (stage.order === maxCompletedOrder || stage.isComplementary) && (
                                 <div className="z-10" onClick={e => e.stopPropagation()}>
-                                   <Button variant="ghost" onClick={() => setUndoStage(stage)} className="h-11 w-11 p-0 rounded-xl text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"><RotateCcw className="h-5 w-5" /></Button>
+                                   <Button variant="ghost" onClick={() => setUndoStage(stage)} className="h-9 w-9 p-0 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"><RotateCcw className="h-4 w-4" /></Button>
                                 </div>
                              )}
                           </CardContent>
@@ -438,42 +438,35 @@ export default function TransactionDetailsPage() {
         </div>
       )}
 
-      {/* Record Progress Dialog */}
+      {/* Record Progress Dialog - Revised compact buttons */}
       <Dialog open={isRecordOpen} onOpenChange={setIsRecordOpen}>
-         <DialogContent className="rounded-2xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-md ring-1 ring-black/5" dir={dir}>
-            <div className="bg-slate-900 p-6 text-white text-start">
-               <DialogTitle className="text-xl font-black font-headline flex items-center gap-3"><Hammer className="h-6 w-6 text-primary" />{isRtl ? 'تسجيل إنجاز فني' : 'Log Technical Progress'}</DialogTitle>
-               <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-widest">{targetStage?.name}</p>
+         <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-md ring-1 ring-black/5" dir={dir}>
+            <div className="bg-[#1e1b4b] p-6 text-white text-start">
+               <DialogTitle className="text-lg font-black font-headline flex items-center gap-3"><Hammer className="h-5 w-5 text-primary" />{isRtl ? 'تسجيل إنجاز فني' : 'Log Technical Progress'}</DialogTitle>
+               <p className="text-[9px] text-slate-400 font-bold mt-1 uppercase tracking-widest">{targetStage?.name}</p>
             </div>
             <div className="p-6 space-y-6 text-start">
                <div className="space-y-1.5">
                   <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'بند العمل الميداني' : 'Target Work Item'}</Label>
                   <Select value={selectedItemId} onValueChange={setSelectedItemId}>
-                     <SelectTrigger className="h-11 rounded-xl border-2 font-bold bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
+                     <SelectTrigger className="h-10 rounded-lg border-2 font-bold bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
                      <SelectContent className="rounded-xl border-0 shadow-2xl">
                         {boqItems?.filter(i => (i.plannedQuantity || 0) > 0 && (i.technicalStageIds?.includes(targetStage?.technicalStageId!) || i.technicalStageId === targetStage?.technicalStageId))
                           .map(i => (
                             <SelectItem key={i.id} value={i.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
                                <div className="flex flex-col text-start">
-                                  <span className="font-black">{i.referenceTitle}</span>
-                                  <span className="text-[10px] text-slate-400 font-mono">#{i.referenceCode}</span>
+                                  <span className="font-black text-slate-800">{i.referenceTitle}</span>
+                                  <span className="text-[8px] text-slate-400 font-mono">#{i.referenceCode}</span>
                                </div>
                             </SelectItem>
                           ))}
                      </SelectContent>
                   </Select>
                </div>
-               {selectedBOQItemMetrics && (
-                  <div className="grid grid-cols-3 gap-3 animate-in zoom-in-95">
-                     <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-center"><span className="text-[8px] font-black text-slate-400 block uppercase">Planned</span><span className="text-sm font-black text-slate-800">{selectedBOQItemMetrics.planned}</span></div>
-                     <div className="p-3 rounded-xl bg-emerald-50/50 border border-emerald-100 text-center"><span className="text-[8px] font-black text-emerald-600 block uppercase">Done</span><span className="text-sm font-black text-emerald-600">{selectedBOQItemMetrics.executed}</span></div>
-                     <div className="p-3 rounded-xl bg-orange-50 border border-orange-100 text-center"><span className="text-[8px] font-black text-orange-600 block uppercase">Balance</span><span className="text-sm font-black text-orange-600">{selectedBOQItemMetrics.remaining}</span></div>
-                  </div>
-               )}
                <div className="space-y-5 pt-2">
-                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border"><div className="space-y-0.5"><Label className="font-black text-xs uppercase tracking-tighter">{isRtl ? 'إنجاز تكميلي' : 'Complementary Log'}</Label><p className="text-[8px] text-slate-400 font-bold">تسجيل ملاحظة بدون كمية</p></div><Switch checked={isComplementary} onCheckedChange={setIsComplementary} /></div>
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border"><div className="space-y-0.5"><Label className="font-black text-xs uppercase tracking-tighter">{isRtl ? 'إنجاز تكميلي' : 'Complementary Log'}</Label></div><Switch checked={isComplementary} onCheckedChange={setIsComplementary} /></div>
                   {!isComplementary && (
-                    <div className="space-y-4 animate-in slide-in-from-top-2">
+                    <div className="space-y-4">
                        <div className="space-y-2">
                           <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الكمية المنفذة حالياً' : 'Quantity Executed'}</Label>
                           <div className="relative">
@@ -483,7 +476,7 @@ export default function TransactionDetailsPage() {
                               value={progressQty} 
                               onChange={e => setProgressQty(e.target.value === '' ? '' : Number(e.target.value))} 
                               className={cn(
-                                "h-14 rounded-xl border-2 font-black text-2xl text-center shadow-inner", 
+                                "h-12 rounded-lg border-2 font-black text-xl text-center shadow-inner", 
                                 selectedBOQItemMetrics && Number(progressQty) > selectedBOQItemMetrics.remaining ? "border-rose-500 text-rose-600 bg-rose-50" : "border-slate-200"
                               )} 
                               placeholder="..." 
@@ -491,72 +484,43 @@ export default function TransactionDetailsPage() {
                             <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-300 uppercase">{selectedBOQItemMetrics?.unit}</div>
                           </div>
                        </div>
-
                        {selectedBOQItemMetrics && Number(progressQty) > selectedBOQItemMetrics.remaining && (
                          <div className="p-4 rounded-xl bg-rose-50 border-2 border-rose-100 flex items-start gap-3 animate-in shake-1 duration-500">
-                           <AlertTriangle className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
-                           <div className="text-start space-y-1">
-                              <p className="text-[11px] font-black text-rose-900 uppercase">تنبيه: تجاوز الميزانية المعتمدة</p>
-                              <p className="text-[10px] font-bold text-rose-600 leading-relaxed">
-                                {isRtl 
-                                  ? 'يرجى التوجه لإصدار أمر تغييري (VO) لهذا البند، حيث أن الكمية المدخلة تتجاوز الميزانية المعتمدة في بنود الكميات.' 
-                                  : 'Please issue a Variation Order (VO) for this item. The quantity exceeds the approved BOQ budget.'}
-                              </p>
-                           </div>
+                           <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+                           <p className="text-[10px] font-bold text-rose-600 leading-relaxed">
+                              {isRtl ? 'تنبيه: الكمية تتجاوز الميزانية المعتمدة. يرجى التوجه لإصدار VO.' : 'Quantity exceeds BOQ budget. Issue a VO.'}
+                           </p>
                          </div>
                        )}
                     </div>
                   )}
-                  <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'تقرير ميداني مصغر' : 'Field Notes'}</Label><Textarea value={progressNotes} onChange={e => setProgressNotes(e.target.value)} className="min-h-[100px] rounded-xl bg-slate-50/50 border-2 resize-none p-4 text-xs font-bold" placeholder="..." /></div>
+                  <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'تقرير ميداني مصغر' : 'Field Notes'}</Label><Textarea value={progressNotes} onChange={e => setProgressNotes(e.target.value)} className="min-h-[80px] rounded-lg bg-slate-50/50 border-2 resize-none p-3 text-xs font-bold" placeholder="..." /></div>
                </div>
             </div>
-            <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-3"><Button variant="outline" onClick={() => setIsRecordOpen(false)} className="flex-1 h-12 rounded-xl font-bold">إلغاء</Button><Button onClick={() => handleRecordProgress()} disabled={loadingAction === 'recording' || (!isComplementary && (progressQty === "" || Number(progressQty) <= 0)) || !selectedItemId} className="flex-[2] h-12 rounded-xl bg-primary text-white font-black shadow-xl gap-2 border-b-4 border-orange-700">{loadingAction === 'recording' ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}{isRtl ? 'حفظ السجل' : 'Log Now'}</Button></DialogFooter>
+            <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-3"><Button variant="outline" onClick={() => setIsRecordOpen(false)} className="flex-1 h-11 rounded-lg font-bold">إلغاء</Button><Button onClick={() => handleRecordProgress()} disabled={loadingAction === 'recording' || (!isComplementary && (progressQty === "" || Number(progressQty) <= 0)) || !selectedItemId} className="flex-[2] h-11 rounded-lg bg-primary text-white font-black shadow-lg gap-2 border-b-4 border-orange-700">{loadingAction === 'recording' ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}{isRtl ? 'حفظ السجل' : 'Log Now'}</Button></DialogFooter>
          </DialogContent>
       </Dialog>
 
       <AlertDialog open={isOverExecutionOpen} onOpenChange={setIsOverExecutionOpen}>
-        <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white" dir={dir}>
-           <AlertDialogHeader><div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50"><ShieldX className="h-10 w-10" /></div><AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900 leading-tight">تحذير: تجاوز الكمية المخططة</AlertDialogTitle><AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">{isRtl ? `أنت تحاول تسجيل كمية (${progressQty}) تتجاوز الكمية المتبقية لهذا البند. هل ترغب في الاستمرار؟ سيتم توثيق إقرارك بالموافقة في سجلات المشروع.` : `You are recording an over-execution. Continue? Your approval will be logged in project records.`}</AlertDialogDescription></AlertDialogHeader>
-           <AlertDialogFooter className="mt-12 gap-4 flex flex-row"><AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel><AlertDialogAction onClick={() => handleRecordProgress(true)} className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200">{isRtl ? 'نعم، أقر بالتجاوز واحفظ' : 'Confirm & Log Approval'}</AlertDialogAction></AlertDialogFooter>
+        <AlertDialogContent className="rounded-xl p-8 border-0 shadow-3xl bg-white" dir={dir}>
+           <AlertDialogHeader><div className="mx-auto w-20 h-20 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mb-6 shadow-inner ring-4 ring-rose-50/50"><ShieldX className="h-8 w-8" /></div><AlertDialogTitle className="text-start font-black text-2xl font-headline text-slate-900">تحذير: تجاوز الكمية المخططة</AlertDialogTitle><AlertDialogDescription className="text-start font-bold text-slate-400 mt-2 text-base leading-relaxed">{isRtl ? `أنت تحاول تسجيل كمية تتجاوز المخطط. هل ترغب في الاستمرار؟ سيتم توثيق إقرارك بالموافقة باسمك.` : `You are recording an over-execution. Continue? Your approval will be logged.`}</AlertDialogDescription></AlertDialogHeader>
+           <AlertDialogFooter className="mt-8 gap-3 flex flex-row"><AlertDialogCancel className="flex-1 h-12 rounded-lg font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel><AlertDialogAction onClick={() => handleRecordProgress(true)} className="flex-[2] h-12 rounded-lg font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200">{isRtl ? 'نعم، أقر بالتجاوز' : 'Confirm & Log'}</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       <Dialog open={!!undoStage} onOpenChange={(open) => !open && setUndoStage(null)}>
-         <DialogContent className="rounded-2xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-md ring-1 ring-black/5" dir={dir}>
-            <div className="bg-rose-600 p-8 text-white text-start"><DialogTitle className="text-2xl font-black font-headline flex items-center gap-3"><RotateCcw className="h-7 w-7" />{isRtl ? 'بروتوكول التراجع عن الإنجاز' : 'Stage Reversal Protocol'}</DialogTitle><p className="text-white/70 font-bold mt-2">{isRtl ? `إعادة فتح: ${undoStage?.name}` : `Reopening: ${undoStage?.name}`}</p></div>
-            <div className="p-8 space-y-6 text-start bg-white"><div className="p-6 rounded-[2rem] bg-rose-50 border-2 border-rose-100 flex items-start gap-4"><AlertTriangle className="h-6 w-6 text-rose-600 shrink-0 mt-1" /><div className="space-y-1"><h5 className="font-black text-rose-900 text-sm">{isRtl ? 'إشعار تصفير البيانات' : 'Data Reset Notice'}</h5><p className="text-[10px] text-rose-700 font-bold leading-relaxed">{isRtl ? 'إعادة فتح المرحلة سيؤدي لإعادتها لحالة "قيد التنفيذ" وتجميد أي مراحل لاحقة.' : 'Reopening will return the stage to "In-Progress" and freeze subsequent work.'}</p></div></div><div className="flex items-center justify-between p-6 bg-slate-50 rounded-2xl border-2"><div className="space-y-0.5"><Label className="font-black text-xs uppercase tracking-tighter text-rose-600">{isRtl ? 'تطهير سجلات الإنجاز' : 'Purge Field Logs'}</Label><p className="text-[8px] text-slate-400 font-bold">أرشفة كافة سجلات الكميات والتعليقات</p></div><Switch checked={clearLogsOnUndo} onCheckedChange={setClearLogsOnUndo} /></div><Button onClick={handleReopenStage} className="w-full h-16 rounded-2xl bg-rose-600 text-white font-black text-xl shadow-xl shadow-rose-200 border-b-8 border-rose-800 hover:bg-rose-700"><RotateCw className="h-6 w-6" />{isRtl ? 'تأكيد إعادة الفتح' : 'Confirm Reopen'}</Button></div>
+         <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-md ring-1 ring-black/5" dir={dir}>
+            <div className="bg-rose-600 p-6 text-white text-start"><DialogTitle className="text-xl font-black font-headline flex items-center gap-3"><RotateCcw className="h-5 w-5" />{isRtl ? 'بروتوكول التراجع عن الإنجاز' : 'Stage Reversal Protocol'}</DialogTitle></div>
+            <div className="p-6 space-y-5 text-start bg-white"><div className="p-4 rounded-xl bg-rose-50 border-2 border-rose-100 flex items-start gap-3"><AlertTriangle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" /><p className="text-[10px] text-rose-700 font-bold leading-relaxed">{isRtl ? 'إعادة فتح المرحلة سيؤدي لإعادتها لحالة "قيد التنفيذ" وتجميد أي مراحل لاحقة.' : 'Reopening will reset subsequent stages to pending.'}</p></div><div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border-2"><Label className="font-black text-xs uppercase tracking-tighter text-rose-600">{isRtl ? 'تطهير السجلات' : 'Purge Logs'}</Label><Switch checked={clearLogsOnUndo} onCheckedChange={setClearLogsOnUndo} /></div><Button onClick={handleReopenStage} className="w-full h-14 rounded-lg bg-rose-600 text-white font-black text-lg shadow-xl shadow-rose-200 border-b-4 border-rose-800 hover:bg-rose-700">{isRtl ? 'تأكيد إعادة الفتح' : 'Confirm Reopen'}</Button></div>
          </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!incompleteStage} onOpenChange={(open) => !open && setIncompleteStage(null)}>
-        <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
-           <div className="bg-amber-500 p-8 text-white text-start"><DialogTitle className="text-2xl font-black font-headline flex items-center gap-3"><ShieldAlert className="h-8 w-8" />{isRtl ? 'تحذير: إنجاز غير مكتمل' : 'Incomplete Progress Warning'}</DialogTitle></div>
-           <div className="p-8 space-y-6 text-start"><p className="font-bold text-slate-600 leading-relaxed">{isRtl ? `المرحلة "${incompleteStage?.stage.name}" لم تكتمل بنسبة 100% بعد.` : `Stage not 100% complete.`}</p><div className="p-6 rounded-2xl bg-amber-50 border-2 border-amber-100 flex items-start gap-4"><Info className="h-5 w-5 text-amber-600 shrink-0 mt-1" /><p className="text-[10px] text-amber-800 font-bold italic">{incompleteStage?.progress.reason}</p></div></div>
-           <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-3"><Button variant="outline" onClick={() => setIncompleteStage(null)} className="flex-1 h-14 rounded-xl border-2 font-bold">إلغاء</Button>{isAdmin && (<Button onClick={() => handleCompleteStage(incompleteStage!.stage, true)} className="flex-[2] h-14 rounded-xl bg-slate-900 text-white font-black shadow-xl">{isRtl ? 'إغلاق استثنائي (تجاوز)' : 'Exceptional Closure'}</Button>)}</DialogFooter>
-        </DialogContent>
       </Dialog>
 
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white" dir={dir}>
-          <AlertDialogHeader><div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50"><Trash2 className="h-10 w-10" /></div><AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900">{isRtl ? 'حذف المقايسة تماماً؟' : 'Permanent BOQ Delete?'}</AlertDialogTitle><AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">{isRtl ? 'سيتم حذف كافة البنود وسجلات التنفيذ للبدء من جديد.' : 'All items and execution logs will be removed to start over.'}</AlertDialogDescription></AlertDialogHeader>
-          <AlertDialogFooter className="mt-12 gap-4 flex flex-row"><AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel><AlertDialogAction onClick={handleDeleteBOQ} disabled={isDeletingBOQ} className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200">{isDeletingBOQ ? <Loader2 className="animate-spin h-5 w-5" /> : (isRtl ? 'نعم، احذف' : 'Delete')}</AlertDialogAction></AlertDialogFooter>
+        <AlertDialogContent className="rounded-xl p-8 border-0 shadow-3xl bg-white" dir={dir}>
+          <AlertDialogHeader><div className="mx-auto w-20 h-20 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mb-6 shadow-inner ring-4 ring-rose-50/50"><Trash2 className="h-8 w-8" /></div><AlertDialogTitle className="text-start font-black text-2xl font-headline text-slate-900">{isRtl ? 'حذف المقايسة تماماً؟' : 'Permanent Delete?'}</AlertDialogTitle><AlertDialogDescription className="text-start font-bold text-slate-400 mt-2 text-base">{isRtl ? 'سيتم حذف كافة البنود وسجلات التنفيذ للبدء من جديد.' : 'All items and execution logs will be removed.'}</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogFooter className="mt-8 gap-3 flex flex-row"><AlertDialogCancel className="flex-1 h-12 rounded-lg font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel><AlertDialogAction onClick={handleDeleteBOQ} disabled={isDeletingBOQ} className="flex-[2] h-12 rounded-lg font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200">{isDeletingBOQ ? <Loader2 className="animate-spin h-5 w-5" /> : (isRtl ? 'نعم، احذف' : 'Delete')}</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <Dialog open={!!namingTemplate} onOpenChange={(open) => !open && setNamingTemplate(null)}>
-         <DialogContent className="rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
-            <div className="bg-primary/5 p-8 text-slate-900 text-start border-b">
-               <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3"><Pencil className="h-7 w-7 text-primary" />{isRtl ? 'تأكيد مسمى المقايسة' : 'Confirm Name'}</DialogTitle>
-            </div>
-            <div className="p-8 space-y-6 text-start">
-               <div className="space-y-3">
-                  <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المسمى المختار' : 'Target BOQ Name'}</Label>
-                  <Input value={customBOQName} onChange={e => setCustomBOQName(e.target.value)} className="h-14 rounded-2xl border-2 font-black text-lg focus:border-primary/50 transition-all shadow-inner" />
-               </div>
-            </div>
-            <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-3"><Button variant="outline" onClick={() => setNamingTemplate(null)} className="flex-1 h-14 rounded-2xl border-2 font-bold bg-white">إلغاء</Button><Button onClick={handleConfirmLinkBOQ} disabled={processingId === 'linking_boq' || !customBOQName.trim()} className="flex-[2] h-14 rounded-2xl bg-primary text-white font-black text-lg shadow-xl gap-2 border-b-8 border-orange-700">{processingId === 'linking_boq' ? <Loader2 className="animate-spin h-5 w-5" /> : <CheckCircle2 className="h-5 w-5" />}{isRtl ? 'اعتماد وإنشاء' : 'Confirm'}</Button></DialogFooter>
-         </DialogContent>
-      </Dialog>
 
       {activeBoq && <VOManagerDialog isOpen={isVOOpen} onClose={() => setIsVOOpen(false)} boqId={activeBoq.id} transactionId={transactionId} boqNumber={activeBoq.boqNumber} boqItems={boqItems || []} />}
     </div>
