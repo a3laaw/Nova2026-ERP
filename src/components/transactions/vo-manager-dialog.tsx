@@ -146,19 +146,18 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
 
   const netTotal = useMemo(() => items.reduce((acc, i) => acc + (Number(i.total) || 0), 0), [items]);
 
+  // الرادار الهيكلي المطور: لا يظهر أي قسم إلا إذا كان موجوداً بالفعل في المقايسة الحالية
   const boqSections = useMemo(() => {
     const sections = new Map<string, string>();
     boqItems.forEach(i => {
-       if (i.ancestorIds && i.ancestorIds.length > 0) {
-          const lastId = i.ancestorIds[i.ancestorIds.length - 1];
-          const lastTitle = i.ancestorTitles ? i.ancestorTitles[i.ancestorTitles.length - 1] : '';
-          
-          // Use reference code as fallback if title is missing to avoid "Unnamed section"
-          const finalTitle = lastTitle || i.referenceCode || (isRtl ? 'قسم رئيسي غير معرف' : 'Unnamed Section');
-          
-          if (finalTitle !== 'Section') {
-             sections.set(lastId, finalTitle);
-          }
+       // فحص كافة الأسلاف (المجلدات) المرتبطة بالبنود الحالية فقط
+       if (i.ancestorIds && i.ancestorTitles) {
+          i.ancestorIds.forEach((id, idx) => {
+             const title = i.ancestorTitles![idx] || i.referenceCode || (isRtl ? 'بند رئيسي غير مسمى' : 'Unnamed Section');
+             if (title !== 'Section' && title !== 'Root') {
+                sections.set(id, title);
+             }
+          });
        }
     });
     return Array.from(sections.entries()).map(([id, title]) => ({ id, title }));

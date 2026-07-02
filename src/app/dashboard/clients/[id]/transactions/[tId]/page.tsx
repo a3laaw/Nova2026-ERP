@@ -103,7 +103,6 @@ export default function TransactionDetailsPage() {
   const [isVOOpen, setIsVOOpen] = useState(false);
   const [isOverExecutionOpen, setIsOverExecutionOpen] = useState(false);
 
-  // Sovereign UI Guard: تحرير تحكم المتصفح قسرياً عند إغلاق النوافذ
   useEffect(() => {
     const isAnyModalOpen = isRecordOpen || isOverExecutionOpen || !!undoStage || !!incompleteStage || isVOOpen;
     if (!isAnyModalOpen && typeof document !== 'undefined') {
