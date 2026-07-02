@@ -102,7 +102,7 @@ export default function TransactionDetailsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isOverExecutionOpen, setIsOverExecutionOpen] = useState(false);
 
-  // Sovereign UI Guard: Release pointer events forcibly on any state change that closes a modal
+  // Sovereign UI Guard: تحرير قسري للمتصفح عند إغلاق النوافذ لمنع التجمد
   useEffect(() => {
     const isAnyModalOpen = isRecordOpen || isOverExecutionOpen || !!undoStage || !!incompleteStage || !!namingTemplate || showDeleteConfirm || isVOOpen;
     if (!isAnyModalOpen && typeof document !== 'undefined') {
@@ -433,6 +433,7 @@ export default function TransactionDetailsPage() {
         </div>
       )}
 
+      {/* مودال تسجيل الإنجاز */}
       <Dialog open={isRecordOpen} onOpenChange={setIsRecordOpen}>
          <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-md ring-1 ring-black/5" dir={dir}>
             <div className="bg-[#1e1b4b] p-6 text-white text-start">
@@ -503,7 +504,7 @@ export default function TransactionDetailsPage() {
 
       <AlertDialog open={isOverExecutionOpen} onOpenChange={setIsOverExecutionOpen}>
         <AlertDialogContent className="rounded-xl p-8 border-0 shadow-3xl bg-white" dir={dir}>
-           <AlertDialogHeader><div className="mx-auto w-20 h-20 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mb-6 shadow-inner ring-4 ring-rose-50/50"><AlertTriangle className="h-8 w-8" /></div><AlertDialogTitle className="text-start font-black text-2xl font-headline text-slate-900">تحذير: تجاوز الكمية المخططة</AlertDialogTitle><AlertDialogDescription className="text-start font-bold text-slate-400 mt-2 text-base leading-relaxed">{isRtl ? `أنت تحاول تسجيل كمية تتجاوز المخطط. هل ترغب في الاستمرار؟ سيتم توثيق إقرارك بالموافقة باسمك.` : `You are recording an over-execution. Continue? Your approval will be logged.`}</AlertDialogDescription></AlertDialogHeader>
+           <AlertDialogHeader><div className="mx-auto w-20 h-20 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mb-6 shadow-inner ring-4 ring-rose-50/50"><AlertTriangle className="h-8 w-8" /></div><AlertDialogTitle className="text-start font-black text-2xl font-headline text-slate-900">تحذير: تجاوز الكمية المخططة</AlertDialogTitle><AlertDialogDescription className="text-start font-bold text-slate-400 mt-2 text-base leading-relaxed">{isRtl ? `أنت تحاول تسجيل كمية تتجاوز المخطط. هل ترغب في الاستمرار؟ سيتم توثيق إقرارك بالموافقة باسمك في سجل التايم لاين.` : `You are recording an over-execution. Continue? Your approval will be logged.`}</AlertDialogDescription></AlertDialogHeader>
            <AlertDialogFooter className="mt-8 gap-3 flex flex-row"><AlertDialogCancel className="flex-1 h-12 rounded-lg font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel><AlertDialogAction onClick={() => handleRecordProgress(true)} className="flex-[2] h-12 rounded-lg font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200">{isRtl ? 'نعم، أقر بالتجاوز' : 'Confirm & Log'}</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -511,13 +512,29 @@ export default function TransactionDetailsPage() {
       <Dialog open={!!undoStage} onOpenChange={(open) => !open && setUndoStage(null)}>
          <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-md ring-1 ring-black/5" dir={dir}>
             <div className="bg-rose-600 p-6 text-white text-start"><DialogTitle className="text-xl font-black font-headline flex items-center gap-3"><RotateCcw className="h-5 w-5" />{isRtl ? 'بروتوكول التراجع عن الإنجاز' : 'Stage Reversal Protocol'}</DialogTitle></div>
-            <div className="p-6 space-y-5 text-start bg-white"><div className="p-4 rounded-xl bg-rose-50/50 border-2 border-dashed border-rose-100 flex items-start gap-3"><AlertTriangle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" /><p className="text-[10px] text-rose-700 font-bold leading-relaxed">{isRtl ? 'إعادة فتح المرحلة سيؤدي لإعادتها لحالة "قيد التنفيذ" وتجميد أي مراحل لاحقة.' : 'Reopening will reset subsequent stages to pending.'}</p></div><div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border-2"><Label className="font-black text-xs uppercase tracking-tighter text-rose-600">{isRtl ? 'تطهير السجلات' : 'Purge Logs'}</Label><Switch checked={clearLogsOnUndo} onCheckedChange={setClearLogsOnUndo} /></div><Button onClick={handleReopenStage} className="w-full h-14 rounded-lg bg-rose-600 text-white font-black text-lg shadow-xl shadow-rose-200 border-b-4 border-rose-800 hover:bg-rose-700">{isRtl ? 'تأكيد إعادة الفتح' : 'Confirm Reopen'}</Button></div>
+            <div className="p-6 space-y-5 text-start bg-white">
+               <div className="p-4 rounded-xl bg-rose-50/50 border-2 border-dashed border-rose-100 flex items-start gap-3">
+                  <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+                  <p className="text-[10px] text-rose-700 font-bold leading-relaxed">
+                     {isRtl 
+                       ? 'إعادة فتح المرحلة سيؤدي لإعادتها لحالة "قيد التنفيذ" وتجميد أي مراحل لاحقة (إعادتها لانتظار) لضمان سلامة المسار الفني.' 
+                       : 'Reopening will reset subsequent stages to pending to maintain path integrity.'}
+                  </p>
+               </div>
+               <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border-2">
+                  <Label className="font-black text-xs uppercase tracking-tighter text-rose-600">{isRtl ? 'تطهير سجلات الإنجاز' : 'Purge Logs'}</Label>
+                  <Switch checked={clearLogsOnUndo} onCheckedChange={setClearLogsOnUndo} />
+               </div>
+               <Button onClick={handleReopenStage} className="w-full h-14 rounded-lg bg-rose-600 text-white font-black text-lg shadow-xl shadow-rose-200 border-b-4 border-rose-800 hover:bg-rose-700">
+                  {isRtl ? 'تأكيد إعادة الفتح والتجميد' : 'Confirm Reopen'}
+               </Button>
+            </div>
          </DialogContent>
       </Dialog>
 
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent className="rounded-xl p-8 border-0 shadow-3xl bg-white" dir={dir}>
-          <AlertDialogHeader><div className="mx-auto w-20 h-20 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mb-6 shadow-inner ring-4 ring-rose-50/50"><Trash2 className="h-8 w-8" /></div><AlertDialogTitle className="text-start font-black text-2xl font-headline text-slate-900">{isRtl ? 'حذف المقايسة تماماً؟' : 'Permanent Delete?'}</AlertDialogTitle><AlertDialogDescription className="text-start font-bold text-slate-400 mt-2 text-base">{isRtl ? 'سيتم حذف كافة البنود وسجلات التنفيذ للبدء من جديد.' : 'All items and execution logs will be removed.'}</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogHeader><div className="mx-auto w-20 h-20 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mb-6 shadow-inner ring-4 ring-rose-50/50"><Trash2 className="h-8 w-8" /></div><AlertDialogTitle className="text-start font-black text-2xl font-headline text-slate-900">{isRtl ? 'حذف المقايسة تماماً؟' : 'Permanent Delete?'}</AlertDialogTitle><AlertDialogDescription className="text-start font-bold text-slate-400 mt-2 text-base">{isRtl ? 'سيتم حذف كافة البنود وسجلات التنفيذ وتطهير المسار الفني للبدء من جديد.' : 'All items, execution logs and path will be cleared.'}</AlertDialogDescription></AlertDialogHeader>
           <AlertDialogFooter className="mt-8 gap-3 flex flex-row"><AlertDialogCancel className="flex-1 h-12 rounded-lg font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel><AlertDialogAction onClick={handleDeleteBOQ} disabled={isDeletingBOQ} className="flex-[2] h-12 rounded-lg font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200">{isDeletingBOQ ? <Loader2 className="animate-spin h-5 w-5" /> : (isRtl ? 'نعم، احذف' : 'Delete')}</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -154,6 +154,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
       const service = new VariationService(db, globalUser.companyId, permissions);
       await service.createVariation(boqId, transactionId, boqNumber, { title, reason }, items, user.uid);
       
+      // التحرير السيادي للمتصفح لمنع التجمد
       if (typeof document !== 'undefined') {
         document.body.style.pointerEvents = 'auto';
         document.body.style.overflow = 'auto';
@@ -223,7 +224,6 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
               <div className="space-y-4 pb-6">
                  {items.map((item, idx) => {
                     const isNewItem = item.type === 'new_item';
-                    const isNewStage = item.stageMode === 'new_local_stage' && isNewItem;
 
                     return (
                       <Card key={idx} className={cn(

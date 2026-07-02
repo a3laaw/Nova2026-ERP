@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -228,7 +227,7 @@ export class TransactionService {
 
   /**
    * إعادة فتح مرحلة مكتملة (التراجع السيادي)
-   * تم التحديث: الآن يقوم آلياً بتعطيل أي مراحل لاحقة كانت قيد التنفيذ أو مكتملة لضمان سلامة المسار الفني.
+   * الآن يقوم آلياً بتعطيل وتجميد كافة المراحل اللاحقة لضمان سلامة المسار الفني.
    */
   async reopenStage(transactionId: string, stageId: string, userId: string, userName: string, clearLogs: boolean = false) {
     ensureActionPermission(this.permissions, 'projects:edit');
@@ -243,7 +242,7 @@ export class TransactionService {
 
     const batch = writeBatch(this.db);
     
-    // 1. تحديث حالة المرحلة الحالية إلى "قيد التنفيذ"
+    // 1. إعادة المرحلة المختارة لحالة "قيد التنفيذ"
     batch.update(stageRef, {
       status: 'in-progress',
       completedAt: null,
@@ -252,8 +251,8 @@ export class TransactionService {
       updatedBy: userId
     });
 
-    // 2. بروتوكول التصحيح التلقائي المتسلسل (Sequential Path Correction):
-    // أي مرحلة ترتيبها (order) أكبر من المرحلة الحالية، يجب إعادتها لـ Pending (سواء كانت مكتملة أو قيد التنفيذ).
+    // 2. بروتوكول التصحيح التلقائي المتسلسل:
+    // أي مرحلة ترتيبها أكبر من المرحلة الحالية، يتم تجميدها وإعادتها لـ Pending
     const allStagesSnap = await getDocs(collection(this.db, paths.transactionStages(this.companyId, transactionId)));
     allStagesSnap.docs.forEach(d => {
        const s = d.data() as StageInstance;
@@ -268,14 +267,14 @@ export class TransactionService {
        }
     });
 
-    // 3. توثيق الحدث السيادي
+    // 3. توثيق الحدث السيادي في التايم لاين
     const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
     batch.set(timelineRef, {
       transactionId,
       stageId,
       technicalStageId: stageData.technicalStageId,
       type: 'stage_reopen',
-      content: `إجراء إداري: إعادة فتح مرحلة "${stageData.name}" للمراجعة. تم تجميد كافة المراحل اللاحقة لضمان سلامة المسار.`,
+      content: `إجراء إداري: إعادة فتح مرحلة "${stageData.name}" للمراجعة. تم تجميد كافة المراحل اللاحقة لضمان سلامة المسار الفني.`,
       previousStart,
       previousEnd,
       userId,
@@ -285,7 +284,7 @@ export class TransactionService {
       createdAt: serverTimestamp()
     });
 
-    // 4. أرشفة سجلات التايم لاين المرتبطة بهذه المرحلة (التقارير الميدانية القديمة)
+    // 4. أرشفة سجلات التايم لاين المرتبطة بهذه المرحلة إذا طلب المستخدم "تطهير"
     if (clearLogs) {
       const timelineColl = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
       const timelineSnap = await getDocs(query(timelineColl, where('stageId', '==', stageId)));
@@ -298,7 +297,7 @@ export class TransactionService {
 
     await batch.commit();
 
-    // 5. أرشفة سجلات الإنجاز والتعليقات
+    // 5. أرشفة سجلات الإنجاز والتعليقات إذا طلب "التطهير"
     if (clearLogs) {
       const boqExecService = new BOQExecutionService(this.db, this.companyId, this.permissions);
       await boqExecService.archiveStageExecutions(transactionId, stageData.technicalStageId, true);
