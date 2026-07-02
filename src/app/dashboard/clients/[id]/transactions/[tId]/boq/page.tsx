@@ -194,7 +194,7 @@ export default function TransactionBOQProgressPage() {
 
   const renderBOQTreeRows = (node: BOQTreeNode, prefix: string): React.ReactNode => (
     <React.Fragment key={node.id}>
-      <TableRow className="bg-slate-100 hover:bg-slate-200 border-b-2 border-white"><TableCell className="font-mono text-[11px] font-black text-slate-400 ps-6 text-start">{prefix}</TableCell><TableCell colSpan={2} className="font-black text-slate-800 text-sm py-4 text-start" style={{ paddingInlineStart: `${node.depth * 20 + 16}px` }}><div className="flex items-center gap-2"><Folder className="h-4 w-4 text-orange-400" />{node.title}</div></TableCell><TableCell colSpan={10}></TableCell></TableRow>
+      <TableRow className="bg-[#1e1b4b]/5 hover:bg-[#1e1b4b]/10 border-b-2 border-white"><TableCell className="font-mono text-[11px] font-black text-slate-400 ps-6 text-start">{prefix}</TableCell><TableCell colSpan={2} className="font-black text-[#1e1b4b] text-sm py-4 text-start" style={{ paddingInlineStart: `${node.depth * 20 + 16}px` }}><div className="flex items-center gap-2"><Folder className="h-4 w-4 text-[#F57C00]" />{node.title}</div></TableCell><TableCell colSpan={10}></TableCell></TableRow>
       {node.items.map((item, iIdx) => {
         const itemPrefix = `${prefix.replace('.0', '')}.${iIdx + 1}`;
         const metrics = executionMetrics[item.id!] || { prev: 0, current: 0 };
@@ -235,7 +235,7 @@ export default function TransactionBOQProgressPage() {
             </TableCell>
             <TableCell className="text-center font-mono font-bold text-slate-400 text-xs w-[120px]">
               {isEditingBaseline || activeBoq?.status === 'draft' ? (
-                <Input type="number" step="0.001" className="h-8 text-center font-black text-emerald-600" value={item.estimatedRate} onChange={e => handleUpdateItem(item.id!, item.plannedQuantity, Number(e.target.value))} />
+                <Input type="number" step="0.001" className="h-8 text-center font-black text-emerald-600" value={item.estimatedRate} onChange={e => updateItem(originalIdx, 'estimatedRate', Number(e.target.value))} />
               ) : item.estimatedRate?.toLocaleString()}
             </TableCell>
             <TableCell className="text-end font-mono font-black text-emerald-600 text-xs">{(totalCumulative * (item.estimatedRate || 0)).toLocaleString()}</TableCell>
@@ -397,7 +397,7 @@ export default function TransactionBOQProgressPage() {
                                 </Badge>
                              </TableCell>
                              <TableCell className="font-bold text-xs text-slate-700">
-                                {item.localStageName || item.description}
+                                {item.description}
                              </TableCell>
                              <TableCell className="text-center font-mono font-black text-xs">{item.quantityDelta}</TableCell>
                              <TableCell className="text-end font-mono text-xs text-slate-500">{item.rate.toLocaleString()}</TableCell>

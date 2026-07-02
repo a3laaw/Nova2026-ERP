@@ -190,13 +190,19 @@ export class VariationService {
       } 
       else if (vItem.type === 'new_item') {
         const newRef = doc(collection(this.db, paths.boqItems(this.companyId, boqId)));
+        
+        // وراثة الأسلاف من القسم المختار (Target Section) لضمان الترتيب الشجري
+        let ancestorIds: string[] = [];
+        if (vItem.targetSectionId) {
+            ancestorIds = [vItem.targetSectionId];
+        }
+
         const newItem: BOQItem = {
           id: newRef.id,
           boqId,
           transactionId,
           boqReferenceNodeId: vItem.boqReferenceNodeId || '',
           referenceCode: 'VO-' + voId.slice(-4),
-          // تصحيح: استخدام الاسم المحلي "التدعيم" بدلاً من اسم القاموس "الحفر" عند الحقن في المقايسة
           referenceTitle: vItem.localStageName || vItem.description, 
           plannedQuantity: Math.abs(vItem.quantityDelta),
           executedQuantity: 0,
@@ -207,8 +213,8 @@ export class VariationService {
           technicalStageIds: [targetTechnicalStageId],
           companyId: this.companyId,
           order: 999,
-          ancestorIds: [],
-          depth: 0,
+          ancestorIds,
+          depth: ancestorIds.length,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         };
@@ -238,10 +244,7 @@ export class VariationService {
       transactionId,
       type: 'system',
       content: `تم اعتماد الأمر التغييري: ${voData.title}. تم تحديث الميزانية وتفعيل مراحل التنفيذ الموازية إن وجدت.`,
-      userId,
-      userName,
-      companyId: this.companyId,
-      createdAt: serverTimestamp()
+      userId, userName, companyId: this.companyId, createdAt: serverTimestamp()
     });
 
     await batch.commit();

@@ -95,7 +95,8 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
       total: 0,
       insertAfterStageId: '',
       isComplementary: false,
-      localStageName: ''
+      localStageName: '',
+      targetSectionId: '' // NEW: selection of parent category
     } as any]);
   };
 
@@ -129,7 +130,6 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
        item.technicalStageId = node.technicalStageId || '';
     }
 
-    // تصحيح منطق التسمية: إذا تغير الاسم المحلي، نقوم بتحديث الوصف لضمان ظهوره في شاشة المراجعة
     if (field === 'localStageName' && item.type === 'new_item') {
        item.description = val || item.description;
     }
@@ -149,6 +149,19 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
 
   const netTotal = useMemo(() => items.reduce((acc, i) => acc + (Number(i.total) || 0), 0), [items]);
 
+  // استخراج البنود الرئيسية (المجلدات) لتسهيل عملية الحقن المنظم
+  const boqSections = useMemo(() => {
+    const sections = new Map<string, string>();
+    boqItems.forEach(i => {
+       if (i.ancestorIds && i.ancestorIds.length > 0) {
+          const lastId = i.ancestorIds[i.ancestorIds.length - 1];
+          const lastTitle = i.ancestorTitles ? i.ancestorTitles[i.ancestorTitles.length - 1] : 'Section';
+          sections.set(lastId, lastTitle);
+       }
+    });
+    return Array.from(sections.entries()).map(([id, title]) => ({ id, title }));
+  }, [boqItems]);
+
   const handleSave = async () => {
     if (!db || !globalUser?.companyId || !user) return;
     if (!title.trim()) return toast({ variant: "destructive", title: isRtl ? "عنوان الطلب مطلوب" : "Title required" });
@@ -159,7 +172,6 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
       const service = new VariationService(db, globalUser.companyId, permissions);
       await service.createVariation(boqId, transactionId, boqNumber, { title, reason }, items, user.uid);
       
-      // التحرير السيادي للمتصفح لمنع التجمد
       if (typeof document !== 'undefined') {
         document.body.style.pointerEvents = 'auto';
         document.body.style.overflow = 'auto';
@@ -294,12 +306,23 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
 
                             {isNewItem && (
                               <div className="pt-6 border-t border-dashed space-y-6 animate-in slide-in-from-top-2">
+                                
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-                                   <div className="flex items-center gap-3">
-                                      <div className="flex items-center gap-2 text-[#1e1b4b] font-black text-[11px] uppercase tracking-widest text-start"><Workflow className="h-4 w-4 text-[#039BE5]" /> {isRtl ? 'نوع الارتباط الميداني:' : 'Field Link Type:'}</div>
+                                   <div className="space-y-2 text-start">
+                                      <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'القسم المالي المستهدف (بند رئيسي):' : 'Target BOQ Section (Parent):'}</Label>
+                                      <Select value={item.targetSectionId} onValueChange={v => updateItem(idx, 'targetSectionId', v)}>
+                                         <SelectTrigger className="h-10 rounded-xl border-2 font-black text-xs bg-primary/5 border-primary/20"><SelectValue placeholder="..." /></SelectTrigger>
+                                         <SelectContent className="rounded-xl">
+                                            {boqSections.map(s => <SelectItem key={s.id} value={s.id} className="font-bold">{s.title}</SelectItem>)}
+                                         </SelectContent>
+                                      </Select>
+                                   </div>
+                                   
+                                   <div className="space-y-2 text-start">
+                                      <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'نوع الارتباط الميداني:' : 'Field Link Type:'}</Label>
                                       <Select value={item.isComplementary ? 'parallel' : 'critical'} onValueChange={(v) => updateItem(idx, 'isComplementary', v === 'parallel')}>
                                          <SelectTrigger className={cn(
-                                            "h-10 rounded-xl border-2 font-black text-[11px] min-w-[180px] shadow-sm",
+                                            "h-10 rounded-xl border-2 font-black text-[11px] shadow-sm",
                                             item.isComplementary ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100"
                                          )}>
                                             <SelectValue />
@@ -310,19 +333,9 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                          </SelectContent>
                                       </Select>
                                    </div>
-                                   
-                                   <div className="flex items-center gap-2 text-slate-500 bg-slate-50 p-3 rounded-xl border-2 border-white shadow-inner">
-                                      <Info className="h-4 w-4 text-[#039BE5]" />
-                                      <p className="text-[10px] font-bold text-start leading-tight">
-                                         {item.isComplementary 
-                                           ? (isRtl ? 'مرحلة موازية: يمكن تسجيل الإنجاز فيها بالتزامن مع المسار الأصلي دون تعطيله.' : 'Parallel: Can log progress while main path continues.')
-                                           : (isRtl ? 'مرحلة حرجة: سيتم قفل المسار وتجميده حتى تنتهي من هذا البند تماماً.' : 'Critical: Path will freeze until this item is 100% complete.')
-                                         }
-                                      </p>
-                                   </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                                <div className="p-6 bg-slate-50 rounded-2xl border-2 border-white shadow-inner space-y-6">
                                    <div className="flex items-center gap-3">
                                       <div className="flex items-center gap-2 text-[#1e1b4b] font-black text-[11px] uppercase tracking-widest text-start"><Zap className="h-4 w-4 text-[#F57C00]" /> {isRtl ? 'تحديد مسار المباشرة:' : 'Start Path Logic:'}</div>
                                       <Select value={item.stageMode || 'existing_stage'} onValueChange={(v: VOStageMode) => updateItem(idx, 'stageMode', v)}>
@@ -333,11 +346,9 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                          </SelectContent>
                                       </Select>
                                    </div>
-                                </div>
 
-                                {item.stageMode === 'new_local_stage' && (
-                                  <div className="p-6 bg-slate-50 rounded-2xl border-2 border-white shadow-inner space-y-6 animate-in zoom-in-95">
-                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                                   {item.stageMode === 'new_local_stage' && (
+                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end animate-in zoom-in-95">
                                         <div className="space-y-1.5 text-start">
                                            <Label className="text-[11px] font-black uppercase text-slate-500 tracking-tight">{isRtl ? 'المسمى الميداني المعتمد:' : 'Approved Field Label:'}</Label>
                                            <div className="relative">
@@ -360,8 +371,8 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                            </Select>
                                         </div>
                                      </div>
-                                  </div>
-                                )}
+                                   )}
+                                </div>
                               </div>
                             )}
                          </CardContent>
