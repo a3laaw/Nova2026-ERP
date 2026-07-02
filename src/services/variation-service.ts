@@ -196,6 +196,7 @@ export class VariationService {
           transactionId,
           boqReferenceNodeId: vItem.boqReferenceNodeId || '',
           referenceCode: 'VO-' + voId.slice(-4),
+          // تصحيح: استخدام الاسم المحلي "التدعيم" بدلاً من اسم القاموس "الحفر" عند الحقن في المقايسة
           referenceTitle: vItem.localStageName || vItem.description, 
           plannedQuantity: Math.abs(vItem.quantityDelta),
           executedQuantity: 0,

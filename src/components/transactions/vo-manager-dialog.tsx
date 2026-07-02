@@ -129,6 +129,11 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
        item.technicalStageId = node.technicalStageId || '';
     }
 
+    // تصحيح منطق التسمية: إذا تغير الاسم المحلي، نقوم بتحديث الوصف لضمان ظهوره في شاشة المراجعة
+    if (field === 'localStageName' && item.type === 'new_item') {
+       item.description = val || item.description;
+    }
+
     if (field === 'quantityDelta' || field === 'rate' || field === 'type' || field === 'sourceBoqItemId') {
       const type = (field === 'type' ? val : item.type) || 'increase_quantity';
       let q = field === 'quantityDelta' ? (val === "" ? 0 : Math.abs(Number(val))) : Math.abs(Number(item.quantityDelta) || 0);

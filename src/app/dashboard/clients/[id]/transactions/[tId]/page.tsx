@@ -102,7 +102,7 @@ export default function TransactionDetailsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isOverExecutionOpen, setIsOverExecutionOpen] = useState(false);
 
-  // Sovereign UI Guard: تحرير قسري للمتصفح عند إغلاق النوافذ لمنع التجمد
+  // Sovereign UI Guard: تحرير تحكم المتصفح قسرياً لمنع التجمد
   useEffect(() => {
     const isAnyModalOpen = isRecordOpen || isOverExecutionOpen || !!undoStage || !!incompleteStage || !!namingTemplate || showDeleteConfirm || isVOOpen;
     if (!isAnyModalOpen && typeof document !== 'undefined') {
@@ -470,7 +470,7 @@ export default function TransactionDetailsPage() {
                         </SelectTrigger>
                         <SelectContent className="rounded-xl border-0 shadow-2xl">
                            <SelectItem value="parallel" className="font-bold text-emerald-600">{isRtl ? 'مفعل (يعمل بالتوازي)' : 'Active (Parallel Stage)'}</SelectItem>
-                           <SelectItem value="critical" className="font-bold text-rose-600">{isRtl ? 'غير مفعل (مرحلة حرجة)' : 'Inactive (Critical Stage)'}</SelectItem>
+                           <SelectItem value="critical" className="font-bold text-rose-600">{isRtl ? 'غير مفعل (إنجاز أساسي)' : 'Inactive (Critical Stage)'}</SelectItem>
                         </SelectContent>
                      </Select>
                   </div>

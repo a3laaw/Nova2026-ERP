@@ -41,7 +41,7 @@ export default function TransactionBOQProgressPage() {
   const transactionId = params.tId as string;
   const { globalUser, user } = useAuthContext();
   const { t, lang, dir } = useLanguage();
-  const { permissions, check, isAdmin } = usePermissions();
+  const { permissions, isAdmin } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
@@ -58,7 +58,7 @@ export default function TransactionBOQProgressPage() {
   const [reviewItems, setReviewItems] = useState<BOQVariationItem[]>([]);
   const [loadingReview, setLoadingReview] = useState(false);
 
-  // Sovereign Release Protocol: Unstick UI
+  // Sovereign Release Protocol: تحرير تحكم المتصفح قسرياً عند إغلاق النوافذ
   useEffect(() => {
     const isModalOpen = isVOOpen || isPickerOpen || !!reviewVO || isEditingBaseline;
     if (!isModalOpen && typeof document !== 'undefined') {
@@ -86,7 +86,6 @@ export default function TransactionBOQProgressPage() {
   const variationsQuery = useMemo(() => companyId && db && activeBoq?.id ? query(collection(db, paths.boqVariations(companyId, activeBoq.id))) : null, [db, companyId, activeBoq]);
   const { data: variations } = useCollection<BOQVariation>(variationsQuery);
 
-  // FIXED: Removed 'this' context and corrected executionsQuery structure
   const executionsQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.executions(companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
   const { data: rawExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
   const allExecutions = useMemo(() => (rawExecutions || []).filter(e => e.boqId === activeBoq?.id), [rawExecutions, activeBoq]);
@@ -195,7 +194,7 @@ export default function TransactionBOQProgressPage() {
 
   const renderBOQTreeRows = (node: BOQTreeNode, prefix: string): React.ReactNode => (
     <React.Fragment key={node.id}>
-      <TableRow className="bg-slate-50/50 border-b-2 border-white"><TableCell className="font-mono text-[11px] font-black text-slate-400 ps-6 text-start">{prefix}</TableCell><TableCell colSpan={2} className="font-black text-slate-800 text-sm py-4 text-start" style={{ paddingInlineStart: `${node.depth * 20 + 16}px` }}><div className="flex items-center gap-2"><Folder className="h-4 w-4 text-orange-400" />{node.title}</div></TableCell><TableCell colSpan={10}></TableCell></TableRow>
+      <TableRow className="bg-slate-100 hover:bg-slate-200 border-b-2 border-white"><TableCell className="font-mono text-[11px] font-black text-slate-400 ps-6 text-start">{prefix}</TableCell><TableCell colSpan={2} className="font-black text-slate-800 text-sm py-4 text-start" style={{ paddingInlineStart: `${node.depth * 20 + 16}px` }}><div className="flex items-center gap-2"><Folder className="h-4 w-4 text-orange-400" />{node.title}</div></TableCell><TableCell colSpan={10}></TableCell></TableRow>
       {node.items.map((item, iIdx) => {
         const itemPrefix = `${prefix.replace('.0', '')}.${iIdx + 1}`;
         const metrics = executionMetrics[item.id!] || { prev: 0, current: 0 };
@@ -346,7 +345,7 @@ export default function TransactionBOQProgressPage() {
 
       {/* VO Review Dialog */}
       <Dialog open={!!reviewVO} onOpenChange={(open) => !open && setReviewVO(null)}>
-         <DialogContent className="max-w-5xl rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
+         <DialogContent className="max-w-5xl rounded-none p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
             <div className="bg-[#1e1b4b] p-8 text-white text-start flex justify-between items-center">
                <div className="flex items-center gap-6">
                   <div className="h-14 w-14 bg-primary/20 rounded-2xl flex items-center justify-center text-primary shadow-2xl ring-4 ring-primary/5">
@@ -392,12 +391,14 @@ export default function TransactionBOQProgressPage() {
                                   "font-black text-[8px] uppercase px-2 py-0.5",
                                   item.type === 'increase_quantity' ? "text-emerald-600 bg-emerald-50 border-emerald-100" :
                                   item.type === 'decrease_quantity' ? "text-rose-600 bg-rose-50 border-rose-100" :
-                                  "text-orange-600 bg-orange-50 border-orange-100"
+                                  "text-[#FFA000] bg-orange-50 border-orange-100"
                                 )}>
                                    {item.type}
                                 </Badge>
                              </TableCell>
-                             <TableCell className="font-bold text-xs text-slate-700">{item.description}</TableCell>
+                             <TableCell className="font-bold text-xs text-slate-700">
+                                {item.localStageName || item.description}
+                             </TableCell>
                              <TableCell className="text-center font-mono font-black text-xs">{item.quantityDelta}</TableCell>
                              <TableCell className="text-end font-mono text-xs text-slate-500">{item.rate.toLocaleString()}</TableCell>
                              <TableCell className="text-end pe-6 font-mono font-black text-slate-900">{item.total.toLocaleString()}</TableCell>
