@@ -120,7 +120,6 @@ export default function TransactionDetailsPage() {
   const transRef = useMemo(() => (companyId && db) ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
   const { data: transaction, loading: transLoading } = useDoc<Transaction>(transRef);
 
-  // FIX: Syntax Error in stagesQuery - Correct nesting of query parameters
   const stagesQuery = useMemo(() => 
     (companyId && db) ? query(collection(db, paths.transactionStages(companyId, transactionId)), orderBy('order', 'asc')) : null, 
   [db, companyId, transactionId]);
@@ -201,7 +200,7 @@ export default function TransactionDetailsPage() {
         return;
     }
 
-    // RADICAL FIX: Immediate UI Release Protocol
+    // Forced Release Protocol
     setIsOverExecutionOpen(false);
     setIsRecordOpen(false);
 

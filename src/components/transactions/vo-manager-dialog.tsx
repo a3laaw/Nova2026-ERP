@@ -158,7 +158,10 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
       onClose();
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+      if (typeof document !== 'undefined') document.body.style.pointerEvents = 'auto';
+    }
   };
 
   return (

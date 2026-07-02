@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -75,12 +76,10 @@ export default function TransactionBOQProgressPage() {
   const { data: rawExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
   const allExecutions = useMemo(() => (rawExecutions || []).filter(e => e.boqId === activeBoq?.id), [rawExecutions, activeBoq]);
 
-  // FIXED: executionMetrics now filters out archived logs to prevent inflated numbers
   const executionMetrics = useMemo(() => {
     const metrics: Record<string, { prev: number, current: number }> = {};
     (allExecutions || []).forEach(exec => {
-      if (exec.isArchived) return; // SKIP ARCHIVED LOGS
-
+      if (exec.isArchived) return; 
       const stage = stages?.find(s => s.technicalStageId === exec.technicalStageId);
       const itemId = exec.boqItemId;
       if (!metrics[itemId]) metrics[itemId] = { prev: 0, current: 0 };
@@ -181,7 +180,7 @@ export default function TransactionBOQProgressPage() {
             <TableCell className="text-xs font-bold text-slate-700 text-start" style={{ paddingInlineStart: `${(node.depth + 1) * 20 + 16}px` }}>{item.referenceTitle}</TableCell>
             <TableCell className="text-center font-black text-[10px] text-slate-400 uppercase">{item.unitSymbol || '-'}</TableCell>
             <TableCell className="text-center w-[120px] font-mono font-black text-slate-900 text-xs border-x border-slate-100">
-              {isEditingBaseline ? (
+              {isEditingBaseline || activeBoq?.status === 'draft' ? (
                 <Input type="number" className="h-8 text-center font-black" value={item.plannedQuantity} onChange={e => handleUpdateItem(item.id!, Number(e.target.value), item.estimatedRate || 0)} />
               ) : item.plannedQuantity}
             </TableCell>
@@ -204,7 +203,7 @@ export default function TransactionBOQProgressPage() {
                </div>
             </TableCell>
             <TableCell className="text-center font-mono font-bold text-slate-400 text-xs w-[120px]">
-              {isEditingBaseline ? (
+              {isEditingBaseline || activeBoq?.status === 'draft' ? (
                 <Input type="number" step="0.001" className="h-8 text-center font-black text-emerald-600" value={item.estimatedRate} onChange={e => handleUpdateItem(item.id!, item.plannedQuantity, Number(e.target.value))} />
               ) : item.estimatedRate?.toLocaleString()}
             </TableCell>
@@ -231,7 +230,7 @@ export default function TransactionBOQProgressPage() {
     <div className="flex flex-col h-full space-y-4 animate-in fade-in" dir={dir}>
       <header className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white p-5 rounded-2xl shadow-sm border border-primary/10">
         <div className="flex items-center gap-4">
-           <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-10 w-10 border-2 rounded-xl"><ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} /></Button>
+           <button onClick={() => router.back()} className="h-10 w-10 border-2 rounded-xl flex items-center justify-center hover:bg-slate-50 transition-colors"><ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} /></button>
            <div className="text-start"><h1 className="text-xl font-black text-slate-900 leading-none">{activeBoq.boqNumber}</h1><p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">{transaction?.clientName}</p></div>
         </div>
         <div className="flex items-center gap-3">
@@ -241,17 +240,18 @@ export default function TransactionBOQProgressPage() {
                     <DialogTrigger asChild><Button variant="outline" className="h-11 px-6 rounded-xl font-black text-xs gap-2 border-2"><LayoutGrid className="h-4 w-4" /> {isRtl ? 'إضافة بنود من القاموس' : 'Add Items from Registry'}</Button></DialogTrigger>
                     <DialogContent className="max-w-4xl rounded-[2.5rem] p-8 border-0 shadow-3xl bg-white text-start"><DialogHeader><DialogTitle className="text-2xl font-black flex items-center gap-3"><Sparkles className="text-primary h-6 w-6" /> {isRtl ? 'القاموس الهندسي السيادي' : 'Sovereign Registry'}</DialogTitle></DialogHeader><div className="py-6"><BOQReferenceSelector onSelect={handleAddItemFromRegistry} activityTypeId={transaction?.activityTypeId} serviceId={transaction?.serviceId} /></div><DialogFooter><Button onClick={() => setIsPickerOpen(false)} className="rounded-xl px-10">إغلاق</Button></DialogFooter></DialogContent>
                  </Dialog>
-                 <Button onClick={() => setIsEditingBaseline(!isEditingBaseline)} variant={isEditingBaseline ? "secondary" : "outline"} className="h-11 px-6 rounded-xl font-black text-xs gap-2 border-2">{isEditingBaseline ? <CheckCircle2 className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}{isRtl ? 'تعديل المسودة' : 'Edit Draft'}</Button>
                  <Button onClick={handleApproveBaseline} disabled={!!loadingAction} className="h-11 px-8 rounded-xl bg-emerald-600 text-white font-black text-xs gap-2 shadow-xl shadow-emerald-100">{loadingAction ? <Loader2 className="animate-spin h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}{isRtl ? 'اعتماد الميزانية وتفعيل الميدان' : 'Approve & Activate Field'}</Button>
               </div>
            ) : (
-             <Button onClick={() => setIsVOOpen(true)} className="h-11 px-6 rounded-xl bg-[#1e1b4b] text-white font-black text-xs gap-2 shadow-xl"><PlusCircle className="h-4 w-4 text-primary" /> {isRtl ? 'أمر تغييري' : 'New VO'}</Button>
+             <div className="flex gap-2">
+                <Button onClick={() => setIsEditingBaseline(!isEditingBaseline)} variant={isEditingBaseline ? "secondary" : "outline"} className="h-11 px-6 rounded-xl font-black text-xs gap-2 border-2">{isEditingBaseline ? <CheckCircle2 className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}{isRtl ? 'تعديل استثنائي' : 'Edit Baseline'}</Button>
+                <Button onClick={() => setIsVOOpen(true)} className="h-11 px-6 rounded-xl bg-[#1e1b4b] text-white font-black text-xs gap-2 shadow-xl"><PlusCircle className="h-4 w-4 text-primary" /> {isRtl ? 'أمر تغييري' : 'New VO'}</Button>
+             </div>
            )}
            <Button variant="outline" className="h-11 px-6 rounded-xl font-black text-xs gap-2 border-2"><Printer className="h-4 w-4" /> {isRtl ? 'طباعة' : 'Print'}</Button>
         </div>
       </header>
 
-      {/* منطقة الاعتمادات المعلقة للأوامر التغييرية */}
       {pendingVOs.length > 0 && isAdmin && (
         <div className="space-y-3 animate-in slide-in-from-top-4 duration-500">
            {pendingVOs.map(vo => (
