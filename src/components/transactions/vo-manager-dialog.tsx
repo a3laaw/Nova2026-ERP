@@ -90,13 +90,13 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
       type: 'increase_quantity', 
       stageMode: 'existing_stage',
       description: '', 
-      quantityDelta: "", 
-      rate: "", 
+      quantityDelta: "", // فارغ بدلاً من صفر
+      rate: "",         // فارغ بدلاً من صفر
       total: 0,
       insertAfterStageId: '',
       isComplementary: false,
       localStageName: '',
-      targetSectionId: '' // NEW: selection of parent category
+      targetSectionId: ''
     } as any]);
   };
 
@@ -114,7 +114,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
         item.description = source.referenceTitle;
         item.unitName = source.unitName;
         item.unitSymbol = source.unitSymbol;
-        item.rate = source.estimatedRate || 0;
+        item.rate = source.estimatedRate || "";
         item.sourcePlannedQuantity = source.plannedQuantity || 0;
         item.technicalStageId = source.technicalStageId;
       }
@@ -126,7 +126,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
        item.description = node.title;
        item.unitName = node.unitName;
        item.unitSymbol = node.unitSymbol;
-       item.rate = node.estimatedRate || 0;
+       item.rate = node.estimatedRate || "";
        item.technicalStageId = node.technicalStageId || '';
     }
 
@@ -149,7 +149,6 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
 
   const netTotal = useMemo(() => items.reduce((acc, i) => acc + (Number(i.total) || 0), 0), [items]);
 
-  // استخراج البنود الرئيسية (المجلدات) لتسهيل عملية الحقن المنظم
   const boqSections = useMemo(() => {
     const sections = new Map<string, string>();
     boqItems.forEach(i => {
@@ -290,7 +289,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
 
                                <div className="md:col-span-1 space-y-2 text-start">
                                   <Label className="text-[10px] font-black uppercase text-primary">Delta</Label>
-                                  <Input type="number" value={item.quantityDelta === "" ? "" : Math.abs(Number(item.quantityDelta) || 0)} onChange={e => updateItem(idx, 'quantityDelta', e.target.value)} className="h-10 rounded-lg border-2 font-black text-center text-xs" />
+                                  <Input type="number" value={item.quantityDelta === "" ? "" : Math.abs(Number(item.quantityDelta) || 0)} onChange={e => updateItem(idx, 'quantityDelta', e.target.value)} className="h-10 rounded-lg border-2 font-black text-center text-xs" placeholder="..." />
                                </div>
 
                                <div className="md:col-span-3 space-y-2 text-start">
