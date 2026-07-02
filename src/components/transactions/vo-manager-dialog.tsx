@@ -91,8 +91,8 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
       type: 'increase_quantity', 
       stageMode: 'existing_stage',
       description: '', 
-      quantityDelta: "", 
-      rate: "",         
+      quantityDelta: "", // فارغ بدلاً من 0
+      rate: "",         // فارغ بدلاً من 0
       total: 0,
       insertAfterStageId: '',
       isComplementary: false,
@@ -118,6 +118,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
         item.rate = source.estimatedRate || "";
         item.sourcePlannedQuantity = source.plannedQuantity || 0;
         item.technicalStageId = source.technicalStageId;
+        item.ancestorTitles = source.ancestorTitles || [];
       }
     }
 
@@ -131,17 +132,12 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
        item.technicalStageId = node.technicalStageId || '';
     }
 
-    if (field === 'localStageName' && item.type === 'new_item') {
-       item.description = val || item.description;
-    }
-
     if (field === 'quantityDelta' || field === 'rate' || field === 'type' || field === 'sourceBoqItemId') {
       const type = (field === 'type' ? val : item.type) || 'increase_quantity';
       let q = field === 'quantityDelta' ? (val === "" ? 0 : Math.abs(Number(val))) : Math.abs(Number(item.quantityDelta) || 0);
       const r = field === 'rate' ? (val === "" ? 0 : Number(val)) : (Number(item.rate) || 0);
       const multiplier = (type === 'decrease_quantity' || type === 'omit_item') ? -1 : 1;
       item.total = q * r * multiplier;
-      item.quantityDelta = q * multiplier;
     }
 
     newItems[idx] = item;
@@ -155,12 +151,15 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
     boqItems.forEach(i => {
        if (i.ancestorIds && i.ancestorIds.length > 0) {
           const lastId = i.ancestorIds[i.ancestorIds.length - 1];
-          const lastTitle = i.ancestorTitles ? i.ancestorTitles[i.ancestorTitles.length - 1] : 'Section';
-          sections.set(lastId, lastTitle);
+          // تصحيح: استخدام مسمى عربي بدلاً من Section
+          const lastTitle = i.ancestorTitles ? i.ancestorTitles[i.ancestorTitles.length - 1] : (isRtl ? 'قسم غير مسمى' : 'Unnamed Section');
+          if (lastTitle && lastTitle !== 'Section') {
+             sections.set(lastId, lastTitle);
+          }
        }
     });
     return Array.from(sections.entries()).map(([id, title]) => ({ id, title }));
-  }, [boqItems]);
+  }, [boqItems, isRtl]);
 
   const handleSave = async () => {
     if (!db || !globalUser?.companyId || !user) return;
@@ -290,7 +289,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
 
                                <div className="md:col-span-1 space-y-2 text-start">
                                   <Label className="text-[10px] font-black uppercase text-primary">Delta</Label>
-                                  <Input type="number" value={item.quantityDelta === "" ? "" : Math.abs(Number(item.quantityDelta) || 0)} onChange={e => updateItem(idx, 'quantityDelta', e.target.value)} className="h-10 rounded-lg border-2 font-black text-center text-xs" placeholder="..." />
+                                  <Input type="number" value={item.quantityDelta} onChange={e => updateItem(idx, 'quantityDelta', e.target.value)} className="h-10 rounded-lg border-2 font-black text-center text-xs" placeholder="..." />
                                </div>
 
                                <div className="md:col-span-3 space-y-2 text-start">

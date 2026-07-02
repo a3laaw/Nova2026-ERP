@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -46,7 +47,7 @@ export class VariationService {
     const variationRef = doc(collection(this.db, paths.boqVariations(this.companyId, boqId)));
     const voId = variationRef.id;
 
-    const totalAmount = items.reduce((sum, item) => sum + (item.total || 0), 0);
+    const totalAmount = items.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
 
     const variationData: BOQVariation = {
       id: voId,
@@ -110,6 +111,9 @@ export class VariationService {
     const stagesSnap = await getDocs(query(stagesColl, orderBy('order', 'asc')));
     let currentStages = stagesSnap.docs.map(d => ({ id: d.id, ...d.data() } as StageInstance));
 
+    const allBoqItemsSnap = await getDocs(collection(this.db, paths.boqItems(this.companyId, boqId)));
+    const allBoqItems = allBoqItemsSnap.docs.map(d => ({ id: d.id, ...d.data() } as BOQItem));
+
     const stagesToReopen = new Set<string>();
 
     for (const itemDoc of voItemsSnap.docs) {
@@ -155,7 +159,6 @@ export class VariationService {
 
         batch.set(newStageRef, newStageData);
 
-        // Shift subsequent stages
         currentStages.forEach(s => {
           if (s.order >= insertAtOrder) {
             s.order += 1;
@@ -178,7 +181,7 @@ export class VariationService {
           
           batch.update(boqItemRef, { 
             plannedQuantity: newPlanned,
-            estimatedRate: vItem.rate || currentItem.estimatedRate,
+            estimatedRate: Number(vItem.rate) || currentItem.estimatedRate,
             updatedAt: serverTimestamp() 
           });
 
@@ -193,8 +196,16 @@ export class VariationService {
         
         // وراثة الأسلاف من القسم المختار (Target Section) لضمان الترتيب الشجري
         let ancestorIds: string[] = [];
+        let ancestorTitles: string[] = [];
         if (vItem.targetSectionId) {
             ancestorIds = [vItem.targetSectionId];
+            const sampleItem = allBoqItems.find(i => i.ancestorIds?.includes(vItem.targetSectionId!));
+            if (sampleItem && sampleItem.ancestorTitles) {
+               const idx = sampleItem.ancestorIds.indexOf(vItem.targetSectionId);
+               if (idx !== -1) {
+                  ancestorTitles = sampleItem.ancestorTitles.slice(0, idx + 1);
+               }
+            }
         }
 
         const newItem: BOQItem = {
@@ -204,9 +215,9 @@ export class VariationService {
           boqReferenceNodeId: vItem.boqReferenceNodeId || '',
           referenceCode: 'VO-' + voId.slice(-4),
           referenceTitle: vItem.localStageName || vItem.description, 
-          plannedQuantity: Math.abs(vItem.quantityDelta),
+          plannedQuantity: Math.abs(Number(vItem.quantityDelta) || 0),
           executedQuantity: 0,
-          estimatedRate: vItem.rate,
+          estimatedRate: Number(vItem.rate) || 0,
           unitName: vItem.unitName || '',
           unitSymbol: vItem.unitSymbol || '',
           technicalStageId: targetTechnicalStageId,
@@ -214,6 +225,7 @@ export class VariationService {
           companyId: this.companyId,
           order: 999,
           ancestorIds,
+          ancestorTitles,
           depth: ancestorIds.length,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()

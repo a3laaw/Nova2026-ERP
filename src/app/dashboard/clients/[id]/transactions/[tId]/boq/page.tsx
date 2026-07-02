@@ -59,7 +59,6 @@ export default function TransactionBOQProgressPage() {
   const [reviewItems, setReviewItems] = useState<BOQVariationItem[]>([]);
   const [loadingReview, setLoadingReview] = useState(false);
 
-  // Sovereign Release Protocol: تحرير تحكم المتصفح قسرياً عند إغلاق النوافذ
   useEffect(() => {
     const isModalOpen = isVOOpen || isPickerOpen || !!reviewVO || isEditingBaseline;
     if (!isModalOpen && typeof document !== 'undefined') {
@@ -68,7 +67,6 @@ export default function TransactionBOQProgressPage() {
     }
   }, [isVOOpen, isPickerOpen, reviewVO, isEditingBaseline]);
 
-  // 1. Data Fetching
   const transRef = useMemo(() => companyId && db ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
   const { data: transaction } = useDoc<Transaction>(transRef);
 
@@ -326,7 +324,7 @@ export default function TransactionBOQProgressPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
          <Card className="border-0 shadow-lg rounded-2xl p-5 text-start bg-white"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'الميزانية المخططة' : 'Planned'}</p><h3 className="text-xl font-black text-slate-900">{financialStats.final.toLocaleString()} KWD</h3></Card>
          <Card className="border-0 shadow-lg rounded-2xl p-5 text-start bg-white border-s-4 border-s-[#039BE5]"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'تعديلات معتمدة' : 'Approved VOs'}</p><h3 className="text-xl font-black text-[#039BE5]">{financialStats.voTotal.toLocaleString()} KWD</h3></Card>
-         <Card className="border-0 shadow-lg rounded-2xl p-5 text-start bg-slate-900 text-white border-s-4 border-s-emerald-500"><p className="text-[9px] font-black text-primary uppercase tracking-widest mb-1">{isRtl ? 'الإنجاز الفعلي' : 'Actual Execution'}</p><h3 className="text-xl font-black text-emerald-400">{items.reduce((acc,i)=>(acc+(i.executedQuantity*(i.estimatedRate||0))),0).toLocaleString()} KWD</h3></Card>
+         <Card className="border-0 shadow-lg rounded-2xl p-5 text-start bg-[#1e1b4b] text-white border-s-4 border-s-emerald-500"><p className="text-[9px] font-black text-primary uppercase tracking-widest mb-1">{isRtl ? 'الإنجاز الفعلي' : 'Actual Execution'}</p><h3 className="text-xl font-black text-emerald-400">{items.reduce((acc,i)=>(acc+(i.executedQuantity*(i.estimatedRate||0))),0).toLocaleString()} KWD</h3></Card>
       </div>
 
       <div className="flex-1 bg-white rounded-3xl shadow-2xl border border-primary/5 overflow-hidden flex flex-col min-h-[600px]">
@@ -350,7 +348,6 @@ export default function TransactionBOQProgressPage() {
          </Table>
       </div>
 
-      {/* VO Review Dialog */}
       <Dialog open={!!reviewVO} onOpenChange={(open) => !open && setReviewVO(null)}>
          <DialogContent className="max-w-5xl rounded-none p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
             <div className="bg-[#1e1b4b] p-8 text-white text-start flex justify-between items-center">
