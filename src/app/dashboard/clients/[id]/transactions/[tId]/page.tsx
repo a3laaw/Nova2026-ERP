@@ -114,13 +114,25 @@ export default function TransactionDetailsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isOverExecutionOpen, setIsOverExecutionOpen] = useState(false);
 
+  // --- Sovereign UI Guard: Preventing Freeze ---
+  useEffect(() => {
+    const isAnyModalOpen = isRecordOpen || isOverExecutionOpen || !!undoStage || !!incompleteStage || !!namingTemplate || showDeleteConfirm || isVOOpen;
+    if (!isAnyModalOpen && typeof document !== 'undefined') {
+       document.body.style.pointerEvents = 'auto';
+       document.body.style.overflow = 'auto';
+    }
+  }, [isRecordOpen, isOverExecutionOpen, undoStage, incompleteStage, namingTemplate, showDeleteConfirm, isVOOpen]);
+
   const editAccess = check('projects', 'edit');
   const currentUserName = useMemo(() => globalUser?.username || user?.displayName || 'Admin', [globalUser, user]);
 
   const transRef = useMemo(() => (companyId && db) ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
   const { data: transaction, loading: transLoading } = useDoc<Transaction>(transRef);
 
-  const stagesQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.transactionStages(companyId, transactionId)), orderBy('order', 'asc')) : null, [db, companyId, transactionId]);
+  const stagesQuery = useMemo(() => 
+    (companyId && db) ? query(collection(db, paths.transactionStages(companyId, transactionId)), orderBy('order', 'asc')) : null, 
+  [db, companyId, transactionId]);
+
   const { data: rawStages, loading: stagesLoading } = useCollection<StageInstance>(stagesQuery);
 
   const boqQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', transactionId), limit(1)) : null, [db, companyId, transactionId]);
@@ -197,7 +209,7 @@ export default function TransactionDetailsPage() {
         return;
     }
 
-    // Forced Release Protocol
+    // --- Forced Safe Close Sequence ---
     setIsOverExecutionOpen(false);
     setIsRecordOpen(false);
 
@@ -214,7 +226,7 @@ export default function TransactionDetailsPage() {
               currentUserName, 
               progressNotes, 
               targetStage.id!,
-              force // Pass the forced flag for smart commenting
+              force 
             );
             toast({ title: isRtl ? "تم تسجيل الإنجاز" : "Progress Logged" });
             setProgressQty(""); 
@@ -480,7 +492,6 @@ export default function TransactionDetailsPage() {
                           </div>
                        </div>
 
-                       {/* تجميد المسار: تحذير التجاوز والمطالبة بـ VO */}
                        {selectedBOQItemMetrics && Number(progressQty) > selectedBOQItemMetrics.remaining && (
                          <div className="p-4 rounded-xl bg-rose-50 border-2 border-rose-100 flex items-start gap-3 animate-in shake-1 duration-500">
                            <AlertTriangle className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
