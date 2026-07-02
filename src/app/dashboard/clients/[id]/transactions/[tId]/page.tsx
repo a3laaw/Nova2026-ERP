@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -114,7 +113,7 @@ export default function TransactionDetailsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isOverExecutionOpen, setIsOverExecutionOpen] = useState(false);
 
-  // --- Sovereign UI Guard: Preventing Freeze ---
+  // --- Sovereign UI Guard: Standard Reset Protocol ---
   useEffect(() => {
     const isAnyModalOpen = isRecordOpen || isOverExecutionOpen || !!undoStage || !!incompleteStage || !!namingTemplate || showDeleteConfirm || isVOOpen;
     if (!isAnyModalOpen && typeof document !== 'undefined') {
@@ -129,6 +128,7 @@ export default function TransactionDetailsPage() {
   const transRef = useMemo(() => (companyId && db) ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
   const { data: transaction, loading: transLoading } = useDoc<Transaction>(transRef);
 
+  // FIXED: Correct memoized stagesQuery syntax
   const stagesQuery = useMemo(() => 
     (companyId && db) ? query(collection(db, paths.transactionStages(companyId, transactionId)), orderBy('order', 'asc')) : null, 
   [db, companyId, transactionId]);
@@ -209,7 +209,6 @@ export default function TransactionDetailsPage() {
         return;
     }
 
-    // --- Forced Safe Close Sequence ---
     setIsOverExecutionOpen(false);
     setIsRecordOpen(false);
 
@@ -286,6 +285,7 @@ export default function TransactionDetailsPage() {
     }, 100);
   };
 
+  // ADDED: handleDeleteBOQ function
   const handleDeleteBOQ = async () => {
     if (!db || !companyId || !activeBoq) return;
     setIsDeletingBOQ(true);
@@ -301,6 +301,7 @@ export default function TransactionDetailsPage() {
     }
   };
 
+  // ADDED: handleConfirmLinkBOQ function
   const handleConfirmLinkBOQ = async () => {
     if (!db || !companyId || !user || !namingTemplate || !transaction) return;
     setProcessingId('linking_boq');

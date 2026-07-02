@@ -9,15 +9,10 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        /* Primary: Solid Firebase Orange */
-        default: "bg-[#FFA000] text-white hover:bg-[#F57C00] shadow-md border-b-2 border-orange-700/20",
-        destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm",
-        /* Secondary: Elegant Orange Outline - Strict 1px border */
-        outline:
-          "border border-[#FFA000] bg-transparent text-[#FFA000] hover:bg-orange-50/50 shadow-sm",
-        secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        default: "bg-gradient-to-r from-[#F57C00] to-[#FFB000] text-white shadow-lg hover:brightness-110 border-b-2 border-orange-700/40",
+        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm",
+        outline: "border-2 border-[#FFA000] bg-transparent text-[#FFA000] hover:bg-orange-50 shadow-sm",
+        secondary: "bg-slate-900 text-white hover:bg-slate-800 shadow-lg",
         ghost: "hover:bg-slate-100 hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
       },

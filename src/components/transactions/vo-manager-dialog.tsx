@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -167,7 +166,6 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-7xl rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
-        {/* Header Header with compact sizing */}
         <div className="bg-[#1e1b4b] p-8 text-white text-start flex justify-between items-center relative overflow-hidden">
            <div className="absolute top-0 right-0 p-8 opacity-5"><Calculator className="h-48 w-48" /></div>
            <div className="flex items-center gap-6 relative z-10">
@@ -284,7 +282,6 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                <div className="md:col-span-1 flex justify-end"><Button variant="ghost" size="icon" onClick={() => removeItem(idx)} className="h-10 w-10 text-rose-300 hover:text-rose-600"><Trash2 className="h-4 w-4" /></Button></div>
                             </div>
 
-                            {/* Section: Technical Injection (Only for New Items) */}
                             {isNewItem && (
                               <div className="pt-6 border-t border-dashed space-y-4 animate-in slide-in-from-top-2">
                                 <div className="flex flex-col md:flex-row items-center justify-between gap-4">
