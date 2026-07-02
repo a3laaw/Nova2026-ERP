@@ -22,7 +22,8 @@ import {
   Trash2,
   Pencil,
   Target,
-  Info
+  Info,
+  ShieldCheck
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, limit, doc, addDoc, updateDoc } from 'firebase/firestore';
