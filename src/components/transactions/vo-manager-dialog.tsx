@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -79,8 +78,8 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
       type: 'increase_quantity', 
       stageMode: 'existing_stage',
       description: '', 
-      quantityDelta: "", // Empty instead of zero
-      rate: "",         // Empty instead of zero
+      quantityDelta: "", // Empty to follow Sovereign Rule: No Zeros
+      rate: "",         // Empty to follow Sovereign Rule: No Zeros
       total: 0,
       insertAfterStageId: '',
       isComplementary: false,
@@ -133,13 +132,15 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
 
   const netTotal = useMemo(() => items.reduce((acc, i) => acc + (Number(i.total) || 0), 0), [items]);
 
-  // Sovereign Extraction: Extract only sections used in the CURRENT BOQ
+  /**
+   * Sovereign Extraction: Extract only sections used in the CURRENT BOQ to avoid cluttering.
+   */
   const boqSections = useMemo(() => {
     const sections = new Map<string, string>();
     boqItems.forEach(i => {
        if (i.ancestorIds && i.ancestorTitles) {
           i.ancestorIds.forEach((id, idx) => {
-             const title = i.ancestorTitles![idx] || i.referenceCode || (isRtl ? 'بند رئيسي غير معرف' : 'Unnamed Section');
+             const title = i.ancestorTitles![idx] || i.referenceCode || (isRtl ? 'بند رئيسي غير معرف' : 'Primary Section');
              if (title !== 'Section' && title !== 'Root') {
                 sections.set(id, title);
              }

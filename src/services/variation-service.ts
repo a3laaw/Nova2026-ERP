@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -92,7 +91,7 @@ export class VariationService {
   }
 
   /**
-   * Refactored: Extraction of sub-methods for cleaner logic and scalability.
+   * Refactored: Extraction of sub-methods for cleaner logic and scalability (Martin Fowler: Extract Method).
    */
   async approveVariation(boqId: string, voId: string, transactionId: string, userId: string, userName: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
@@ -101,7 +100,7 @@ export class VariationService {
     const voSnap = await getDoc(voRef);
 
     if (!voSnap.exists() || voSnap.data().status !== 'draft') {
-      throw new Error('VO_NOT_READY');
+      throw new Error('VO_NOT_READY: الطلب ليس في حالة مسودة أو تم اعتماده مسبقاً.');
     }
     
     const voData = voSnap.data() as BOQVariation;
@@ -112,13 +111,13 @@ export class VariationService {
     let currentStages = stagesSnap.docs.map(d => ({ id: d.id, ...d.data() } as StageInstance));
     const stagesToReopen = new Set<string>();
 
-    // Pass 1: Process each variation item
+    // Pass 1: Process each variation item through extracted handlers
     for (const itemDoc of voItemsSnap.docs) {
       const vItem = itemDoc.data() as BOQVariationItem;
       await this.applyVariationToBOQ(vItem, voData, transactionId, boqId, batch, currentStages, stagesToReopen);
     }
 
-    // Pass 2: Reopen stages that need more work due to quantity increases
+    // Pass 2: Reopen stages that need more work due to quantity increases (Sovereign Quality Control)
     if (stagesToReopen.size > 0) {
       this.syncStagesWithNewQuantities(currentStages, stagesToReopen, batch, transactionId);
     }
@@ -149,7 +148,7 @@ export class VariationService {
   ) {
     let techId = vItem.technicalStageId || '';
 
-    // If it's a new item with a new local stage, inject it
+    // If it's a new item with a new local stage, inject it into the pipeline
     if (vItem.type === 'new_item' && vItem.stageMode === 'new_local_stage') {
       techId = await this.injectNewManualStage(vItem, transactionId, batch, currentStages);
     }
@@ -183,7 +182,7 @@ export class VariationService {
       createdAt: serverTimestamp()
     });
 
-    // Reorder subsequent stages
+    // Reorder subsequent stages to accommodate the new one
     currentStages.forEach(s => {
       if (s.order >= order) {
         batch.update(doc(this.db, paths.transactionStages(this.companyId, transactionId), s.id!), { order: s.order + 1 });
@@ -224,6 +223,7 @@ export class VariationService {
       updatedAt: serverTimestamp() 
     });
 
+    // If work expanded, we must ensure the stage allows further logs
     if (newPlanned > (current.executedQuantity || 0)) {
       stagesToReopen.add(vItem.technicalStageId || current.technicalStageId || '');
     }
