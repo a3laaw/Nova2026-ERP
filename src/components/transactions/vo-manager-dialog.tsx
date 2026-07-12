@@ -146,14 +146,12 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
 
   const netTotal = useMemo(() => items.reduce((acc, i) => acc + (Number(i.total) || 0), 0), [items]);
 
-  // الرادار الهيكلي المطور: لا يظهر أي قسم إلا إذا كان موجوداً بالفعل في المقايسة الحالية
   const boqSections = useMemo(() => {
     const sections = new Map<string, string>();
     boqItems.forEach(i => {
-       // فحص كافة الأسلاف (المجلدات) المرتبطة بالبنود الحالية فقط
        if (i.ancestorIds && i.ancestorTitles) {
           i.ancestorIds.forEach((id, idx) => {
-             const title = i.ancestorTitles![idx] || i.referenceCode || (isRtl ? 'بند رئيسي غير مسمى' : 'Unnamed Section');
+             const title = i.ancestorTitles![idx] || i.referenceCode || (isRtl ? 'بند رئيسي غير معرف' : 'Unnamed Section');
              if (title !== 'Section' && title !== 'Root') {
                 sections.set(id, title);
              }
