@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -90,9 +91,6 @@ export class VariationService {
     }
   }
 
-  /**
-   * Refactored Approval Logic (Martin Fowler: Extract Method)
-   */
   async approveVariation(boqId: string, voId: string, transactionId: string, userId: string, userName: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
     

@@ -44,9 +44,6 @@ export class BOQExecutionService {
     private permissions: string[] = []
   ) {}
 
-  /**
-   * Helper to get normalized technical stage IDs for a BOQ item.
-   */
   private getAllowedTechnicalStageIds(item: BOQItem): string[] {
     if (item.technicalStageIds && item.technicalStageIds.length > 0) {
       return item.technicalStageIds;
@@ -77,7 +74,6 @@ export class BOQExecutionService {
     if (!itemSnap.exists()) throw new Error('ITEM_NOT_FOUND: البند غير موجود.');
     const itemData = itemSnap.data() as BOQItem;
 
-    // Check if the stage is allowed for this item
     const allowedStages = this.getAllowedTechnicalStageIds(itemData);
     const isStageAllowed = allowedStages.includes(technicalStageId);
 
@@ -85,7 +81,6 @@ export class BOQExecutionService {
       throw new Error('هذه المرحلة غير مرتبطة بهذا البند');
     }
 
-    // 1. Calculate remaining before saving (for smart comment logic)
     const executionsRef = collection(this.db, paths.executions(this.companyId));
     const qPrev = query(executionsRef, where('boqItemId', '==', itemId), where('isArchived', '==', false));
     const snapPrev = await getDocs(qPrev);
@@ -120,7 +115,6 @@ export class BOQExecutionService {
     if (itemData.transactionId) {
       const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, itemData.transactionId));
       
-      // Smart Comment Logic: Detect if this record exceeds remaining quantity
       let timelineContent = quantity === 0 
         ? `تأكيد فني: ${itemData.referenceTitle}`
         : `تسجيل إنجاز: ${itemData.referenceTitle} (${quantity} وحدة)`;
@@ -222,7 +216,6 @@ export class BOQExecutionService {
     
     const allItems = itemsSnap.docs.map(d => ({ id: d.id, ...d.data() } as BOQItem));
     
-    // Strict Guard: Exclude items that are effectively deleted (plannedQuantity === 0)
     const linkedItems = allItems.filter(i => 
       this.getAllowedTechnicalStageIds(i).includes(technicalStageId) && 
       (i.plannedQuantity || 0) > 0
@@ -256,7 +249,6 @@ export class BOQExecutionService {
          }
       });
 
-      // Handling legacy items or items without execution logs but with totals
       if (itemExecSumFromLogs === 0 && (!item.technicalStageIds || item.technicalStageIds.length === 0)) {
          if ((item.executedQuantity || 0) > 0) {
            itemExecSumFromLogs = item.executedQuantity || 0;

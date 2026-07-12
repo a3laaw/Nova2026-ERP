@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -78,8 +79,8 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
       type: 'increase_quantity', 
       stageMode: 'existing_stage',
       description: '', 
-      quantityDelta: "", // Empty to follow Sovereign Rule
-      rate: "",         // Empty to follow Sovereign Rule
+      quantityDelta: "", 
+      rate: "",         
       total: 0,
       insertAfterStageId: '',
       isComplementary: false,
@@ -102,7 +103,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
         item.description = source.referenceTitle;
         item.unitName = source.unitName;
         item.unitSymbol = source.unitSymbol;
-        item.rate = source.estimatedRate || "";
+        item.rate = source.estimatedRate ?? "";
         item.sourcePlannedQuantity = source.plannedQuantity || 0;
         item.technicalStageId = source.technicalStageId;
       }
@@ -114,7 +115,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
        item.description = node.title;
        item.unitName = node.unitName;
        item.unitSymbol = node.unitSymbol;
-       item.rate = node.estimatedRate || "";
+       item.rate = node.estimatedRate ?? "";
        item.technicalStageId = node.technicalStageId || '';
     }
 
@@ -138,7 +139,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
        if (i.ancestorIds && i.ancestorTitles) {
           i.ancestorIds.forEach((id, idx) => {
              const title = i.ancestorTitles![idx] || i.referenceCode || (isRtl ? 'بند رئيسي غير معرف' : 'Primary Section');
-             if (title !== 'Section' && title !== 'Root') {
+             if (title !== 'Section' && title !== 'Root' && title !== 'Root Section') {
                 sections.set(id, title);
              }
           });

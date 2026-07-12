@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -14,7 +15,6 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
         )}
         ref={ref}
         onWheel={(e) => {
-          // Sovereign Protection: Prevent number changes via mouse wheel
           if (type === 'number') {
             (e.target as HTMLInputElement).blur();
           }
