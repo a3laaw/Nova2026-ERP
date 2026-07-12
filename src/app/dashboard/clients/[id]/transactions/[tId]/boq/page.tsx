@@ -106,12 +106,6 @@ export default function TransactionBOQProgressPage() {
 
   const boqTree = useMemo(() => transformToBOQTree(items || []), [items]);
 
-  const financialStats = useMemo(() => {
-    const original = activeBoq?.totalAmount || 0;
-    const voTotal = (variations || []).filter(v => v.status === 'approved').reduce((sum, v) => sum + (v.totalAmount || 0), 0);
-    return { original, voTotal, final: original + voTotal };
-  }, [activeBoq, variations]);
-
   const handleApproveBaseline = async () => {
     if (!db || !companyId || !user || !activeBoq) return;
     setLoadingAction('approving');

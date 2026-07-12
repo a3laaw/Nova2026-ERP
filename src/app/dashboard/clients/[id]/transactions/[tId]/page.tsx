@@ -140,12 +140,6 @@ export default function TransactionDetailsPage() {
     return Math.round((completedCount / stages.length) * 100);
   }, [stages]);
 
-  const maxCompletedOrder = useMemo(() => {
-    if (!stages || stages.length === 0) return -1;
-    const completedOrders = stages.filter(s => s.status === 'completed' && !s.isComplementary).map(s => s.order || 0);
-    return completedOrders.length > 0 ? Math.max(...completedOrders) : -1;
-  }, [stages]);
-
   const executionService = useMemo(() => (db && companyId) ? new BOQExecutionService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
   useEffect(() => {
@@ -216,13 +210,22 @@ export default function TransactionDetailsPage() {
     const item = boqItems.find(i => i.id === selectedItemId);
     if (!item) return null;
     const executed = (allExecutions || []).filter(e => e.boqItemId === selectedItemId && e.isArchived !== true).reduce((sum, e) => sum + (e.quantity || 0), 0);
-    return { planned: item.plannedQuantity || 0, executed, remaining: Math.max(0, (item.plannedQuantity || 0) - executed), unit: item.unitSymbol || item.unitName, isExceeded: executed >= (item.plannedQuantity || 0) };
+    return { 
+      planned: item.plannedQuantity || 0, 
+      executed, 
+      remaining: Math.max(0, (item.plannedQuantity || 0) - executed), 
+      unit: item.unitSymbol || item.unitName, 
+      isExceeded: executed >= (item.plannedQuantity || 0) 
+    };
   }, [selectedItemId, boqItems, allExecutions]);
 
   const handleStartStage = async (stageId: string) => {
     if (!transactionService || !user) return;
     setProcessingId(stageId);
-    try { await transactionService.startStage(transactionId, stageId, user.uid, currentUserName); toast({ title: isRtl ? "تم بدء العمل" : "Stage Started" }); }
+    try { 
+      await transactionService.startStage(transactionId, stageId, user.uid, currentUserName); 
+      toast({ title: isRtl ? "تم بدء العمل" : "Stage Started" }); 
+    }
     catch (e: any) { toast({ variant: "destructive", title: t('error'), description: e.message }); }
     finally { setProcessingId(null); }
   };
@@ -327,6 +330,7 @@ export default function TransactionDetailsPage() {
           <div className="lg:col-span-4"><CommentSection transactionId={transactionId} path={paths.transactionComments(companyId!, transactionId)} externalLogs={allExecutions || []} boqItems={boqItems || []} stages={stages} filterStageId={filterStageId} technicalStageId={stages.find(s=>s.id===filterStageId)?.technicalStageId} selectedStageName={stages.find(s=>s.id===filterStageId)?.name} onClearFilter={() => setFilterStageId(null)} activeTabOverride={activeTabOverride} /></div>
       </div>
 
+      {/* Record Progress Modal */}
       <Dialog open={isRecordOpen} onOpenChange={setIsRecordOpen}>
          <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-md" dir={dir}>
             <div className="bg-[#1e1b4b] p-6 text-white text-start">
@@ -417,6 +421,7 @@ export default function TransactionDetailsPage() {
          </DialogContent>
       </Dialog>
 
+      {/* Incomplete Stage Warning / Override Modal */}
       <Dialog open={!!incompleteStage} onOpenChange={(open) => !open && setIncompleteStage(null)}>
          <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-md" dir={dir}>
             <div className="bg-amber-600 p-6 text-white text-start">

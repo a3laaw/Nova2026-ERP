@@ -79,8 +79,8 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
       type: 'increase_quantity', 
       stageMode: 'existing_stage',
       description: '', 
-      quantityDelta: "",
-      rate: "",         
+      quantityDelta: "", // Empty instead of zero
+      rate: "",         // Empty instead of zero
       total: 0,
       insertAfterStageId: '',
       isComplementary: false,
@@ -133,6 +133,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
 
   const netTotal = useMemo(() => items.reduce((acc, i) => acc + (Number(i.total) || 0), 0), [items]);
 
+  // Sovereign Extraction: Extract only sections used in the CURRENT BOQ
   const boqSections = useMemo(() => {
     const sections = new Map<string, string>();
     boqItems.forEach(i => {

@@ -15,7 +15,7 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
         )}
         ref={ref}
         onWheel={(e) => {
-          // منع تغيير الأرقام عند تحريك بكرة الماوس لضمان السيادة المحاسبية
+          // Sovereign Protection: Prevent number changes via mouse wheel
           if (type === 'number') {
             (e.target as HTMLInputElement).blur();
           }
