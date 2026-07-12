@@ -19,7 +19,7 @@ import { BOQVariation, BOQVariationItem, BOQVariationStatus, BOQItem, BOQ } from
 import { StageInstance } from '@/types/transaction';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { ensureActionPermission } from '@/lib/permissions';
+import { ensureActionPermission } from '@/lib/permissions/engine';
 
 export class VariationService {
   constructor(
@@ -36,7 +36,6 @@ export class VariationService {
     items: Partial<BOQVariationItem>[],
     userId: string
   ): Promise<string> {
-    
     ensureActionPermission(this.permissions, 'projects:edit');
 
     const boqRef = doc(this.db, paths.boqs(this.companyId), boqId);
@@ -92,164 +91,41 @@ export class VariationService {
     }
   }
 
+  /**
+   * REFACTORED: Decomposed into smaller logic units (Martin Fowler: Extract Method)
+   */
   async approveVariation(boqId: string, voId: string, transactionId: string, userId: string, userName: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
     
     const voRef = doc(this.db, paths.boqVariations(this.companyId, boqId), voId);
-    const voItemsSnap = await getDocs(collection(this.db, paths.boqVariationItems(this.companyId, boqId, voId)));
     const voSnap = await getDoc(voRef);
 
     if (!voSnap.exists() || voSnap.data().status !== 'draft') {
       throw new Error('VO_NOT_READY');
     }
-    const voData = voSnap.data() as BOQVariation;
-
-    const batch = writeBatch(this.db);
-    const boqRef = doc(this.db, paths.boqs(this.companyId), boqId);
     
-    const stagesColl = collection(this.db, paths.transactionStages(this.companyId, transactionId));
-    const stagesSnap = await getDocs(query(stagesColl, orderBy('order', 'asc')));
+    const voData = voSnap.data() as BOQVariation;
+    const voItemsSnap = await getDocs(collection(this.db, paths.boqVariationItems(this.companyId, boqId, voId)));
+    const batch = writeBatch(this.db);
+    
+    // 1. Resolve current state for field mapping
+    const stagesSnap = await getDocs(query(collection(this.db, paths.transactionStages(this.companyId, transactionId)), orderBy('order', 'asc')));
     let currentStages = stagesSnap.docs.map(d => ({ id: d.id, ...d.data() } as StageInstance));
-
-    const allBoqItemsSnap = await getDocs(collection(this.db, paths.boqItems(this.companyId, boqId)));
-    const allBoqItems = allBoqItemsSnap.docs.map(d => ({ id: d.id, ...d.data() } as BOQItem));
-
     const stagesToReopen = new Set<string>();
 
+    // 2. Process items
     for (const itemDoc of voItemsSnap.docs) {
       const vItem = itemDoc.data() as BOQVariationItem;
-      let targetTechnicalStageId = vItem.technicalStageId || '';
-
-      // 1. Handle New Manual Stage Injections
-      if (vItem.type === 'new_item' && vItem.stageMode === 'new_local_stage') {
-        const afterStage = currentStages.find(s => s.id === vItem.insertAfterStageId);
-        const insertAtOrder = (afterStage?.order !== undefined) ? afterStage.order + 1 : currentStages.length;
-        
-        const newStageRef = doc(stagesColl);
-        targetTechnicalStageId = `manual_${newStageRef.id}`;
-        
-        const newStageData: StageInstance = {
-          id: newStageRef.id,
-          transactionId,
-          technicalStageId: targetTechnicalStageId,
-          code: vItem.localStageCode || `MANUAL_${(insertAtOrder + 1).toString().padStart(2, '0')}`,
-          name: vItem.localStageName || vItem.description, 
-          description: vItem.reason || 'مرحلة طارئة محقونة من أمر تغييري',
-          order: insertAtOrder,
-          isNumeric: false,
-          numericTarget: 0,
-          currentCount: 0,
-          isTimed: false,
-          timeTargetDays: 0,
-          isRequired: true,
-          isEditable: true,
-          nextStageIds: [],
-          status: 'pending',
-          isTemporary: true,
-          isComplementary: !!vItem.isComplementary,
-          createdFromVO: true,
-          originType: 'temporary_vo',
-          companyId: this.companyId,
-          activityTypeId: voData.activityTypeId || '',
-          serviceId: voData.serviceId || '',
-          subServiceId: voData.subServiceId || '',
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        };
-
-        batch.set(newStageRef, newStageData);
-
-        currentStages.forEach(s => {
-          if (s.order >= insertAtOrder) {
-            s.order += 1;
-            batch.update(doc(this.db, stagesColl.path, s.id!), { order: s.order, updatedAt: serverTimestamp() });
-          }
-        });
-
-        currentStages.push(newStageData);
-        currentStages.sort((a, b) => a.order - b.order);
-      }
-
-      // 2. Manage Persistent BOQ Items
-      if (vItem.type !== 'new_item' && vItem.sourceBoqItemId) {
-        const boqItemRef = doc(this.db, paths.boqItems(this.companyId, boqId), vItem.sourceBoqItemId);
-        const itemSnap = await getDoc(boqItemRef);
-        
-        if (itemSnap.exists()) {
-          const currentItem = itemSnap.data() as BOQItem;
-          const newPlanned = Math.max(0, (currentItem.plannedQuantity || 0) + (vItem.quantityDelta || 0));
-          
-          batch.update(boqItemRef, { 
-            plannedQuantity: newPlanned,
-            estimatedRate: Number(vItem.rate) || currentItem.estimatedRate,
-            updatedAt: serverTimestamp() 
-          });
-
-          if (newPlanned > (currentItem.executedQuantity || 0)) {
-            const stageToOpen = vItem.technicalStageId || currentItem.technicalStageId;
-            if (stageToOpen) stagesToReopen.add(stageToOpen);
-          }
-        }
-      } 
-      else if (vItem.type === 'new_item') {
-        const newRef = doc(collection(this.db, paths.boqItems(this.companyId, boqId)));
-        
-        // وراثة الأسلاف من القسم المختار (Target Section) لضمان الترتيب الشجري
-        let ancestorIds: string[] = [];
-        let ancestorTitles: string[] = [];
-        if (vItem.targetSectionId) {
-            ancestorIds = [vItem.targetSectionId];
-            const sampleItem = allBoqItems.find(i => i.ancestorIds?.includes(vItem.targetSectionId!));
-            if (sampleItem && sampleItem.ancestorTitles) {
-               const idx = sampleItem.ancestorIds.indexOf(vItem.targetSectionId);
-               if (idx !== -1) {
-                  ancestorTitles = sampleItem.ancestorTitles.slice(0, idx + 1);
-               }
-            }
-        }
-
-        const newItem: BOQItem = {
-          id: newRef.id,
-          boqId,
-          transactionId,
-          boqReferenceNodeId: vItem.boqReferenceNodeId || '',
-          referenceCode: 'VO-' + voId.slice(-4),
-          referenceTitle: vItem.localStageName || vItem.description, 
-          plannedQuantity: Math.abs(Number(vItem.quantityDelta) || 0),
-          executedQuantity: 0,
-          estimatedRate: Number(vItem.rate) || 0,
-          unitName: vItem.unitName || '',
-          unitSymbol: vItem.unitSymbol || '',
-          technicalStageId: targetTechnicalStageId,
-          technicalStageIds: [targetTechnicalStageId],
-          companyId: this.companyId,
-          order: 999,
-          ancestorIds,
-          ancestorTitles,
-          depth: ancestorIds.length,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        };
-        batch.set(newRef, newItem);
-        stagesToReopen.add(targetTechnicalStageId);
-      }
+      await this.processVariationItem(vItem, voData, transactionId, boqId, batch, currentStages, stagesToReopen);
     }
 
+    // 3. Finalize
     if (stagesToReopen.size > 0) {
-      currentStages.forEach(s => {
-        if (stagesToReopen.has(s.technicalStageId) && s.status === 'completed') {
-          batch.update(doc(this.db, stagesColl.path, s.id!), { 
-            status: 'in-progress', 
-            completedAt: null, 
-            completedBy: null,
-            updatedAt: serverTimestamp() 
-          });
-        }
-      });
+      this.reopenRelatedStages(currentStages, stagesToReopen, batch, transactionId);
     }
 
     batch.update(voRef, { status: 'approved', approvedBy: userId, approvedAt: serverTimestamp() });
-    batch.update(boqRef, { updatedAt: serverTimestamp() });
+    batch.update(doc(this.db, paths.boqs(this.companyId), boqId), { updatedAt: serverTimestamp() });
 
     const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
     await addDoc(timelineRef, {
@@ -262,21 +138,114 @@ export class VariationService {
     await batch.commit();
   }
 
-  async rejectVariation(boqId: string, voId: string, transactionId: string, userId: string, userName: string) {
-    ensureActionPermission(this.permissions, 'projects:edit');
-    const voRef = doc(this.db, paths.boqVariations(this.companyId, boqId), voId);
+  private async processVariationItem(
+    vItem: BOQVariationItem, 
+    voData: BOQVariation, 
+    transactionId: string, 
+    boqId: string, 
+    batch: any, 
+    currentStages: StageInstance[],
+    stagesToReopen: Set<string>
+  ) {
+    let targetTechnicalStageId = vItem.technicalStageId || '';
+
+    // Handle New Item Stage Injection
+    if (vItem.type === 'new_item' && vItem.stageMode === 'new_local_stage') {
+      targetTechnicalStageId = await this.injectManualStage(vItem, voData, transactionId, batch, currentStages);
+    }
+
+    // Handle BOQ Item Sync
+    if (vItem.type !== 'new_item' && vItem.sourceBoqItemId) {
+      await this.syncExistingItem(vItem, boqId, batch, stagesToReopen);
+    } 
+    else if (vItem.type === 'new_item') {
+      await this.injectNewItemIntoBOQ(vItem, boqId, voData.id, targetTechnicalStageId, batch, stagesToReopen);
+    }
+  }
+
+  private async injectManualStage(vItem: BOQVariationItem, voData: BOQVariation, transactionId: string, batch: any, currentStages: StageInstance[]) {
+    const afterStage = currentStages.find(s => s.id === vItem.insertAfterStageId);
+    const insertAtOrder = (afterStage?.order !== undefined) ? afterStage.order + 1 : currentStages.length;
     
-    await updateDoc(voRef, {
-      status: 'cancelled',
-      rejectedBy: userId,
-      rejectedAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+    const newStageRef = doc(collection(this.db, paths.transactionStages(this.companyId, transactionId)));
+    const techId = `manual_${newStageRef.id}`;
+    
+    batch.set(newStageRef, {
+      id: newStageRef.id,
+      transactionId,
+      technicalStageId: techId,
+      code: vItem.localStageCode || `VO_INJ_${Math.floor(Math.random()*1000)}`,
+      name: vItem.localStageName || vItem.description,
+      status: 'pending',
+      isTemporary: true,
+      isComplementary: !!vItem.isComplementary,
+      order: insertAtOrder,
+      companyId: this.companyId,
+      createdAt: serverTimestamp()
+    });
+
+    // Update existing orders
+    currentStages.forEach(s => {
+      if (s.order >= insertAtOrder) {
+        s.order += 1;
+        batch.update(doc(this.db, paths.transactionStages(this.companyId, transactionId), s.id!), { order: s.order });
+      }
+    });
+
+    return techId;
+  }
+
+  private async syncExistingItem(vItem: BOQVariationItem, boqId: string, batch: any, stagesToReopen: Set<string>) {
+    const itemRef = doc(this.db, paths.boqItems(this.companyId, boqId), vItem.sourceBoqItemId!);
+    const snap = await getDoc(itemRef);
+    if (!snap.exists()) return;
+    const current = snap.data() as BOQItem;
+    
+    const newPlanned = Math.max(0, (current.plannedQuantity || 0) + (vItem.quantityDelta || 0));
+    batch.update(itemRef, { 
+      plannedQuantity: newPlanned,
+      estimatedRate: Number(vItem.rate) || current.estimatedRate,
+      updatedAt: serverTimestamp() 
+    });
+
+    if (newPlanned > (current.executedQuantity || 0)) {
+      stagesToReopen.add(vItem.technicalStageId || current.technicalStageId || '');
+    }
+  }
+
+  private async injectNewItemIntoBOQ(vItem: BOQVariationItem, boqId: string, voId: string, techId: string, batch: any, stagesToReopen: Set<string>) {
+    const newRef = doc(collection(this.db, paths.boqItems(this.companyId, boqId)));
+    batch.set(newRef, {
+      id: newRef.id,
+      boqId,
+      referenceCode: 'VO-' + voId.slice(-4),
+      referenceTitle: vItem.localStageName || vItem.description,
+      plannedQuantity: Math.abs(Number(vItem.quantityDelta) || 0),
+      executedQuantity: 0,
+      estimatedRate: Number(vItem.rate) || 0,
+      technicalStageId: techId,
+      technicalStageIds: [techId],
+      companyId: this.companyId,
+      createdAt: serverTimestamp()
+    });
+    stagesToReopen.add(techId);
+  }
+
+  private reopenRelatedStages(stages: StageInstance[], technicalIds: Set<string>, batch: any, transactionId: string) {
+    stages.forEach(s => {
+      if (technicalIds.has(s.technicalStageId) && s.status === 'completed') {
+        batch.update(doc(this.db, paths.transactionStages(this.companyId, transactionId), s.id!), { 
+          status: 'in-progress', 
+          completedAt: null, 
+          completedBy: null 
+        });
+      }
     });
   }
 
-  async getVariations(boqId: string): Promise<BOQVariation[]> {
-    const q = query(collection(this.db, paths.boqVariations(this.companyId, boqId)), orderBy('createdAt', 'desc'));
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() } as BOQVariation));
+  async rejectVariation(boqId: string, voId: string, transactionId: string, userId: string, userName: string) {
+    ensureActionPermission(this.permissions, 'projects:edit');
+    const voRef = doc(this.db, paths.boqVariations(this.companyId, boqId), voId);
+    await updateDoc(voRef, { status: 'cancelled', rejectedBy: userId, rejectedAt: serverTimestamp() });
   }
 }

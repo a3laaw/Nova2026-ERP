@@ -9,21 +9,12 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { 
   Activity, Clock, Loader2, 
-  CheckCircle2,
-  Play, Check,
+  CheckCircle2, Play, Check,
   FileSpreadsheet, Calculator,
-  Hammer, Save,
-  AlertTriangle,
-  RotateCcw,
-  Zap,
-  Workflow,
-  PlusCircle,
-  ArrowRight,
-  Trash2,
-  Pencil,
-  Target,
-  Info,
-  ShieldCheck,
+  Hammer, Save, AlertTriangle,
+  RotateCcw, Zap, Workflow,
+  PlusCircle, ArrowRight, Trash2,
+  Pencil, Target, Info, ShieldCheck,
   RefreshCcw
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
@@ -35,9 +26,7 @@ import { paths } from '@/firebase/multi-tenant';
 import { Transaction, StageInstance } from '@/types/transaction';
 import { TransactionService } from '@/services/transaction-service';
 import { BOQExecutionService, StageProgressResult } from '@/services/boq-execution-service';
-import { DocumentService } from '@/services/document-service';
 import { BOQ, BOQItem, BOQItemExecutionEntry } from '@/types/documents';
-import { BOQTemplate } from '@/types/templates';
 import { CommentSection } from '@/components/transactions/comment-section';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -124,7 +113,7 @@ export default function TransactionDetailsPage() {
   const { data: rawStages, loading: stagesLoading } = useCollection<StageInstance>(stagesQuery);
 
   const boqQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', transactionId), limit(1)) : null, [db, companyId, transactionId]);
-  const { data: boqs, loading: boqLoading } = useCollection<BOQ>(boqQuery);
+  const { data: boqs } = useCollection<BOQ>(boqQuery);
   const activeBoq = boqs && boqs.length > 0 ? boqs[0] : null;
 
   const itemsQuery = useMemo(() => (companyId && db && activeBoq?.id) ? query(collection(db, paths.boqItems(companyId, activeBoq.id))) : null, [db, companyId, activeBoq]);
@@ -261,24 +250,6 @@ export default function TransactionDetailsPage() {
     }
   };
 
-  const handleReopenStage = async () => {
-    if (!transactionService || !user || !undoStage) return;
-    const sId = undoStage.id!;
-    setUndoStage(null);
-    setTimeout(async () => {
-        setProcessingId(sId);
-        try {
-          await transactionService.reopenStage(transactionId, sId, user.uid, currentUserName, clearLogsOnUndo);
-          toast({ title: isRtl ? "تمت إعادة فتح المرحلة وتجميد اللاحقة" : "Stage Reopened" });
-          setActiveTabOverride('time_archive');
-        } catch (e: any) {
-          toast({ variant: "destructive", title: t('error'), description: e.message });
-        } finally {
-          setProcessingId(null);
-        }
-    }, 100);
-  };
-
   if (transLoading || stagesLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>;
 
   return (
@@ -315,17 +286,8 @@ export default function TransactionDetailsPage() {
                 <div className="space-y-4">
                    {stages.map((stage, idx) => {
                       const boqProgress = stageProgressMap[stage.technicalStageId];
-                      
-                      const isPreviousCompleted = (() => {
-                        if (idx === 0) return true;
-                        let prevIdx = idx - 1;
-                        while (prevIdx >= 0 && stages[prevIdx].isComplementary) prevIdx--;
-                        if (prevIdx < 0) return true;
-                        return stages[prevIdx].status === 'completed';
-                      })();
-
+                      const isPreviousCompleted = idx === 0 || stages[idx-1].status === 'completed';
                       const isAnchorStarted = idx === 0 || stages[idx - 1].status !== 'pending';
-                      
                       const isOperationalFrontier = stage.isComplementary 
                         ? (stage.status === 'in-progress' || (stage.status === 'pending' && isAnchorStarted))
                         : (stage.status === 'in-progress' || (stage.status === 'pending' && isPreviousCompleted));
@@ -345,7 +307,7 @@ export default function TransactionDetailsPage() {
                              </div>
                              
                              {isOperationalFrontier && (
-                                <div className="flex gap-2 shrink-0 z-10 animate-in fade-in zoom-in-95" onClick={e => e.stopPropagation()}>
+                                <div className="flex gap-2 shrink-0 z-10" onClick={e => e.stopPropagation()}>
                                    {stage.status === 'in-progress' && editAccess.can && (
                                      <Button onClick={() => { setTargetStage(stage); setIsRecordOpen(true); }} className="btn-gradient h-9 px-4 rounded-xl text-[10px] gap-2">
                                        <Hammer className="h-3.5 w-3.5" /> {isRtl ? 'تسجيل إنجاز' : 'Log'}
@@ -353,12 +315,6 @@ export default function TransactionDetailsPage() {
                                    )}
                                    {stage.status === 'pending' && <Button onClick={() => handleStartStage(stage.id!)} disabled={!!processingId} className="h-9 px-5 rounded-lg bg-blue-600 text-white font-black text-[10px] gap-1.5">{processingId === stage.id ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />} {isRtl ? 'بدء' : 'Start'}</Button>}
                                    {stage.status === 'in-progress' && <Button onClick={() => handleCompleteStage(stage)} disabled={!!processingId} className="h-9 px-5 rounded-lg bg-emerald-600 text-white font-black text-[10px] gap-1.5">{processingId === stage.id ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5" />} {isRtl ? 'إكمال' : 'Done'}</Button>}
-                                </div>
-                             )}
-
-                             {stage.status === 'completed' && isAdmin && (stage.order === maxCompletedOrder || stage.isComplementary) && (
-                                <div className="z-10" onClick={e => e.stopPropagation()}>
-                                   <Button variant="ghost" onClick={() => setUndoStage(stage)} className="h-9 w-9 p-0 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"><RotateCcw className="h-4 w-4" /></Button>
                                 </div>
                              )}
                           </CardContent>
@@ -372,7 +328,7 @@ export default function TransactionDetailsPage() {
       </div>
 
       <Dialog open={isRecordOpen} onOpenChange={setIsRecordOpen}>
-         <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-md ring-1 ring-black/5" dir={dir}>
+         <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-md" dir={dir}>
             <div className="bg-[#1e1b4b] p-6 text-white text-start">
                <DialogTitle className="text-lg font-black font-headline flex items-center gap-3"><Hammer className="h-5 w-5 text-primary" />{isRtl ? 'تسجيل إنجاز فني' : 'Log Technical Progress'}</DialogTitle>
                <p className="text-[9px] text-slate-400 font-bold mt-1 uppercase tracking-widest">{targetStage?.name}</p>
@@ -433,32 +389,19 @@ export default function TransactionDetailsPage() {
                   </div>
                   
                   {!isComplementary && (
-                    <div className="space-y-4 animate-in slide-in-from-top-2">
-                       <div className="space-y-2">
-                          <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'الكمية المنفذة حالياً' : 'Quantity Executed'}</Label>
-                          <div className="relative">
-                            <Input 
-                              type="number" 
-                              step="0.01" 
-                              value={progressQty} 
-                              onChange={e => setProgressQty(e.target.value === '' ? '' : Number(e.target.value))} 
-                              className={cn(
-                                "h-12 rounded-lg border-2 font-black text-xl text-center shadow-inner", 
-                                selectedBOQItemMetrics && Number(progressQty) > selectedBOQItemMetrics.remaining ? "border-rose-500 text-rose-600 bg-rose-50" : "border-slate-200"
-                              )} 
-                              placeholder="..." 
-                            />
-                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-300 uppercase">{selectedBOQItemMetrics?.unit}</div>
-                          </div>
+                    <div className="space-y-2 animate-in slide-in-from-top-2">
+                       <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'الكمية المنفذة حالياً' : 'Quantity Executed'}</Label>
+                       <div className="relative">
+                         <Input 
+                           type="number" 
+                           step="0.01" 
+                           value={progressQty} 
+                           onChange={e => setProgressQty(e.target.value === '' ? '' : Number(e.target.value))} 
+                           className="h-12 rounded-lg border-2 font-black text-xl text-center shadow-inner" 
+                           placeholder="..." 
+                         />
+                         <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-300 uppercase">{selectedBOQItemMetrics?.unit}</div>
                        </div>
-                       {selectedBOQItemMetrics && Number(progressQty) > selectedBOQItemMetrics.remaining && (
-                         <div className="p-4 rounded-xl bg-rose-50 border-2 border-rose-100 flex items-start gap-3 animate-in shake-1 duration-500">
-                           <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
-                           <p className="text-[10px] font-bold text-rose-600 leading-relaxed text-start">
-                              {isRtl ? 'تنبيه: الكمية تتجاوز المتبقي في الميزانية. تسجيلها سيؤدي لحقن تعليق رقابي باسمك في التايم لاين.' : 'Quantity exceeds budget. Over-execution will be logged with your name in timeline.'}
-                           </p>
-                         </div>
-                       )}
                     </div>
                   )}
                   <div className="space-y-1.5"><Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'تقرير ميداني مصغر' : 'Field Notes'}</Label><Textarea value={progressNotes} onChange={e => setProgressNotes(e.target.value)} className="min-h-[100px] rounded-lg bg-slate-50/50 border-2 resize-none p-3 text-xs font-bold" placeholder="..." /></div>
@@ -475,7 +418,7 @@ export default function TransactionDetailsPage() {
       </Dialog>
 
       <Dialog open={!!incompleteStage} onOpenChange={(open) => !open && setIncompleteStage(null)}>
-         <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-md ring-1 ring-black/5" dir={dir}>
+         <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-md" dir={dir}>
             <div className="bg-amber-600 p-6 text-white text-start">
                <DialogTitle className="text-xl font-black font-headline flex items-center gap-3"><AlertTriangle className="h-6 w-6" />{isRtl ? 'تنبيه: المرحلة لم تكتمل' : 'Incomplete Stage Warning'}</DialogTitle>
             </div>
@@ -528,32 +471,6 @@ export default function TransactionDetailsPage() {
            <AlertDialogFooter className="mt-8 gap-3 flex flex-row"><AlertDialogCancel className="flex-1 h-12 rounded-lg font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel><AlertDialogAction onClick={() => handleRecordProgress(true)} className="flex-[2] h-12 rounded-lg font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200">{isRtl ? 'نعم، أقر بالتجاوز' : 'Confirm & Log'}</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <Dialog open={!!undoStage} onOpenChange={(open) => !open && setUndoStage(null)}>
-         <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-md ring-1 ring-black/5" dir={dir}>
-            <div className="bg-rose-600 p-6 text-white text-start"><DialogTitle className="text-xl font-black font-headline flex items-center gap-3"><RotateCcw className="h-5 w-5" />{isRtl ? 'بروتوكول التراجع عن الإنجاز' : 'Stage Reversal Protocol'}</DialogTitle></div>
-            <div className="p-6 space-y-5 text-start bg-white">
-               <div className="p-4 rounded-xl bg-rose-50/50 border-2 border-dashed border-rose-100 flex items-start gap-3">
-                  <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
-                  <p className="text-[10px] text-rose-700 font-bold leading-relaxed">
-                     {isRtl 
-                       ? 'إعادة فتح المرحلة سيؤدي لإعادتها لحالة "قيد التنفيذ" وتجميد أي مراحل لاحقة (إعادتها لانتظار) لضمان سلامة المسار الفني.' 
-                       : 'Reopening will reset subsequent stages to pending to maintain path integrity.'}
-                  </p>
-               </div>
-               <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border-2 text-start">
-                  <div className="space-y-0.5">
-                    <Label className="font-black text-xs uppercase tracking-tighter text-rose-600">{isRtl ? 'تطهير سجلات الإنجاز' : 'Purge Logs'}</Label>
-                    <p className="text-[8px] text-slate-400 font-bold">مسح كافة كميات المرحلة والبدء من جديد</p>
-                  </div>
-                  <Switch checked={clearLogsOnUndo} onCheckedChange={setClearLogsOnUndo} />
-               </div>
-               <Button onClick={handleReopenStage} className="w-full h-14 rounded-lg bg-rose-600 text-white font-black text-lg shadow-xl shadow-rose-200 border-b-4 border-rose-800 hover:bg-rose-700">
-                  {isRtl ? 'تأكيد إعادة الفتح والتجميد' : 'Confirm Reopen'}
-               </Button>
-            </div>
-         </DialogContent>
-      </Dialog>
 
       {activeBoq && <VOManagerDialog isOpen={isVOOpen} onClose={() => setIsVOOpen(false)} boqId={activeBoq.id} transactionId={transactionId} boqNumber={activeBoq.boqNumber} boqItems={boqItems || []} />}
     </div>

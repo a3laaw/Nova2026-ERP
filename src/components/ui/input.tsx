@@ -2,7 +2,6 @@
 "use client"
 
 import * as React from "react"
-
 import { cn } from "@/lib/utils"
 
 const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
@@ -16,7 +15,7 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
         )}
         ref={ref}
         onWheel={(e) => {
-          // منع تغيير الأرقام عند تحريك بكرة الماوس (Mouse Wheel) لضمان السيادة المحاسبية
+          // منع تغيير الأرقام عند تحريك بكرة الماوس لضمان السيادة المحاسبية
           if (type === 'number') {
             (e.target as HTMLInputElement).blur();
           }
