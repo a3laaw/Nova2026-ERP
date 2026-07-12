@@ -85,8 +85,6 @@ export default function TransactionDetailsPage() {
   const [progressNotes, setProgressNotes] = useState("");
 
   const [undoStage, setUndoStage] = useState<StageInstance | null>(null);
-  const [clearLogsOnUndo, setClearLogsOnUndo] = useState(false);
-
   const [incompleteStage, setIncompleteStage] = useState<{ stage: StageInstance, progress: StageProgressResult } | null>(null);
   const [isVOOpen, setIsVOOpen] = useState(false);
   const [isOverExecutionOpen, setIsOverExecutionOpen] = useState(false);

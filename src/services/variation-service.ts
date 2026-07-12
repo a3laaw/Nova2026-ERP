@@ -14,7 +14,7 @@ import {
   addDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
-import { BOQVariation, BOQVariationItem, BOQVariationStatus, BOQItem, BOQ } from '@/types/documents';
+import { BOQVariation, BOQVariationItem, BOQVariationStatus, BOQItem, BOQ, VOStageMode } from '@/types/documents';
 import { StageInstance } from '@/types/transaction';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -91,7 +91,7 @@ export class VariationService {
   }
 
   /**
-   * Refactored: Extraction of sub-methods for cleaner logic and scalability (Martin Fowler: Extract Method).
+   * Refactored Approval Logic (Martin Fowler: Extract Method)
    */
   async approveVariation(boqId: string, voId: string, transactionId: string, userId: string, userName: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
@@ -108,24 +108,20 @@ export class VariationService {
     const batch = writeBatch(this.db);
     
     const stagesSnap = await getDocs(query(collection(this.db, paths.transactionStages(this.companyId, transactionId)), orderBy('order', 'asc')));
-    let currentStages = stagesSnap.docs.map(d => ({ id: d.id, ...d.data() } as StageInstance));
+    const currentStages = stagesSnap.docs.map(d => ({ id: d.id, ...d.data() } as StageInstance));
     const stagesToReopen = new Set<string>();
 
-    // Pass 1: Process each variation item through extracted handlers
     for (const itemDoc of voItemsSnap.docs) {
       const vItem = itemDoc.data() as BOQVariationItem;
       await this.applyVariationToBOQ(vItem, voData, transactionId, boqId, batch, currentStages, stagesToReopen);
     }
 
-    // Pass 2: Reopen stages that need more work due to quantity increases (Sovereign Quality Control)
     if (stagesToReopen.size > 0) {
       this.syncStagesWithNewQuantities(currentStages, stagesToReopen, batch, transactionId);
     }
 
-    // Update VO Status
     batch.update(voRef, { status: 'approved', approvedBy: userId, approvedAt: serverTimestamp() });
     
-    // Add Timeline Event
     const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
     await addDoc(timelineRef, {
       transactionId,
@@ -148,7 +144,6 @@ export class VariationService {
   ) {
     let techId = vItem.technicalStageId || '';
 
-    // If it's a new item with a new local stage, inject it into the pipeline
     if (vItem.type === 'new_item' && vItem.stageMode === 'new_local_stage') {
       techId = await this.injectNewManualStage(vItem, transactionId, batch, currentStages);
     }
@@ -182,7 +177,6 @@ export class VariationService {
       createdAt: serverTimestamp()
     });
 
-    // Reorder subsequent stages to accommodate the new one
     currentStages.forEach(s => {
       if (s.order >= order) {
         batch.update(doc(this.db, paths.transactionStages(this.companyId, transactionId), s.id!), { order: s.order + 1 });
@@ -223,7 +217,6 @@ export class VariationService {
       updatedAt: serverTimestamp() 
     });
 
-    // If work expanded, we must ensure the stage allows further logs
     if (newPlanned > (current.executedQuantity || 0)) {
       stagesToReopen.add(vItem.technicalStageId || current.technicalStageId || '');
     }
