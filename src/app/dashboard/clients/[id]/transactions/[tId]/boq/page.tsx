@@ -178,13 +178,14 @@ export default function TransactionBOQProgressPage() {
         <TableCell colSpan={8}></TableCell>
       </TableRow>
       {node.items.map((item, iIdx) => {
+        const itemPrefix = `${prefix}.${iIdx + 1}`;
         const metrics = executionMetrics[item.id!] || { prev: 0, current: 0 };
         const planned = item.plannedQuantity || 1;
         const totalPct = Math.round(((metrics.prev + metrics.current) / planned) * 100);
 
         return (
           <TableRow key={item.id} className="hover:bg-primary/[0.02] border-b-slate-100">
-            <TableCell className="font-mono text-[10px] font-bold text-slate-300 ps-8 text-start">{itemPrefix || prefix + "." + (iIdx + 1)}</TableCell>
+            <TableCell className="font-mono text-[10px] font-bold text-slate-300 ps-8 text-start">{itemPrefix}</TableCell>
             <TableCell className="font-mono text-[10px] font-black text-primary/60 text-start">{item.referenceCode}</TableCell>
             <TableCell className="text-xs font-bold text-slate-700 text-start">{item.referenceTitle}</TableCell>
             <TableCell className="text-center font-black text-[10px] text-slate-400 uppercase">{item.unitSymbol || '-'}</TableCell>
