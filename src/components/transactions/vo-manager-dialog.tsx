@@ -132,16 +132,12 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
 
   const netTotal = useMemo(() => items.reduce((acc, i) => acc + (Number(i.total) || 0), 0), [items]);
 
-  /**
-   * استخراج الأقسام الموجودة حصراً في المقايسة الحالية
-   */
   const boqSections = useMemo(() => {
     const sections = new Map<string, string>();
     boqItems.forEach(i => {
        if (i.ancestorIds && i.ancestorTitles) {
           i.ancestorIds.forEach((id, idx) => {
              const title = i.ancestorTitles![idx] || i.referenceCode || (isRtl ? 'بند رئيسي غير معرف' : 'Primary Section');
-             // تصفية العناوين العامة غير المفيدة
              if (title !== 'Section' && title !== 'Root' && title !== 'Root Section') {
                 sections.set(id, title);
              }
@@ -299,7 +295,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
         </div>
 
         <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4">
-           <Button variant="outline" onClose={onClose} className="flex-1 h-14 rounded-2xl border-2 font-bold text-base bg-white">إلغاء</Button>
+           <Button variant="outline" onClick={onClose} className="flex-1 h-14 rounded-2xl border-2 font-bold text-base bg-white">إلغاء</Button>
            <Button onClick={handleSave} disabled={loading} className="flex-[2] btn-gradient h-14 rounded-2xl text-lg gap-3">
               {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
               {isRtl ? 'تأكيد وحفظ الأمر التغييري' : 'Confirm & Save VO'}
