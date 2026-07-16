@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -91,7 +92,7 @@ export class VariationService {
   }
 
   /**
-   * Refactored: Approve Variation using small atomic steps
+   * Refactored Approval: Splitting logic into specialized methods (Pass 1 & 2)
    */
   async approveVariation(boqId: string, voId: string, transactionId: string, userId: string, userName: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
@@ -109,6 +110,7 @@ export class VariationService {
     
     const stagesSnap = await getDocs(query(collection(this.db, paths.transactionStages(this.companyId, transactionId)), orderBy('order', 'asc')));
     const currentStages = stagesSnap.docs.map(d => ({ id: d.id, ...d.data() } as StageInstance));
+    
     const stagesToReopen = new Set<string>();
 
     for (const itemDoc of voItemsSnap.docs) {
@@ -116,7 +118,7 @@ export class VariationService {
       await this.applyVariationToBOQ(vItem, voData, transactionId, boqId, batch, currentStages, stagesToReopen);
     }
 
-    // Sync status of affected stages
+    // Reactivate completed stages if they now have unexecuted quantities
     if (stagesToReopen.size > 0) {
       this.syncStagesWithNewQuantities(currentStages, stagesToReopen, batch, transactionId);
     }
@@ -145,11 +147,12 @@ export class VariationService {
   ) {
     let techId = vItem.technicalStageId || '';
 
-    // Handle new local stages injection
+    // Step 1: Handle Stage Injection (Local/Manual Stages)
     if (vItem.type === 'new_item' && vItem.stageMode === 'new_local_stage') {
       techId = await this.injectNewManualStage(vItem, transactionId, batch, currentStages);
     }
 
+    // Step 2: Handle BOQ Data Mutation
     if (vItem.type === 'new_item') {
       this.addNewBOQItem(vItem, boqId, voData.id, techId, batch);
       stagesToReopen.add(techId);
@@ -179,7 +182,7 @@ export class VariationService {
       createdAt: serverTimestamp()
     });
 
-    // Reorder subsequent stages
+    // Reorder subsequent stages to accommodate the injection
     currentStages.forEach(s => {
       if (s.order >= order) {
         batch.update(doc(this.db, paths.transactionStages(this.companyId, transactionId), s.id!), { order: s.order + 1 });
@@ -213,7 +216,7 @@ export class VariationService {
     if (!snap.exists()) return;
     const current = snap.data() as BOQItem;
     
-    const newPlanned = Math.max(0, (current.plannedQuantity || 0) + (vItem.quantityDelta || 0));
+    const newPlanned = Math.max(0, (current.plannedQuantity || 0) + (Number(vItem.quantityDelta) || 0));
     batch.update(itemRef, { 
       plannedQuantity: newPlanned,
       estimatedRate: Number(vItem.rate) || current.estimatedRate,

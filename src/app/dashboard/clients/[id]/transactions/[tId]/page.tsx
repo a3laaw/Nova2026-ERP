@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -120,13 +121,25 @@ export default function TransactionDetailsPage() {
   const { data: boqs } = useCollection<BOQ>(boqQuery);
   const activeBoq = boqs && boqs.length > 0 ? boqs[0] : null;
 
-  const templatesQuery = useMemo(() => (companyId && db && transaction?.subServiceId) ? query(collection(db, paths.boqTemplates(companyId)), where('subServiceId', '==', transaction?.subServiceId)) : null, [db, companyId, transaction?.subServiceId]);
+  const templatesQuery = useMemo(() => {
+    if (!companyId || !db || !transaction?.subServiceId) return null;
+    return query(collection(db, paths.boqTemplates(companyId)), where('subServiceId', '==', transaction.subServiceId));
+  }, [db, companyId, transaction?.subServiceId]);
+  
   const { data: templates } = useCollection<BOQTemplate>(templatesQuery);
 
-  const itemsQuery = useMemo(() => (companyId && db && activeBoq?.id) ? query(collection(db, paths.boqItems(companyId, activeBoq.id))) : null, [db, companyId, activeBoq]);
+  const itemsQuery = useMemo(() => {
+    if (!companyId || !db || !activeBoq?.id) return null;
+    return query(collection(db, paths.boqItems(companyId, activeBoq.id)));
+  }, [db, companyId, activeBoq]);
+  
   const { data: boqItems } = useCollection<BOQItem>(itemsQuery);
 
-  const executionsQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.executions(companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
+  const executionsQuery = useMemo(() => {
+    if (!companyId || !db || !transactionId) return null;
+    return query(collection(db, paths.executions(companyId)), where('transactionId', '==', transactionId));
+  }, [db, companyId, transactionId]);
+  
   const { data: allExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
 
   const stages = useMemo(() => {
@@ -194,9 +207,9 @@ export default function TransactionDetailsPage() {
 
   const handleRecordProgress = (force: boolean = false) => {
     if (!executionService || !user || !targetStage || !selectedItemId) return;
-    const qtyInput = isComplementary ? 0 : Number(progressQty);
+    const qtyInput = isComplementary ? 0 : (progressQty === "" ? 0 : Number(progressQty));
 
-    if (!isComplementary && (progressQty === "" || qtyInput <= 0)) {
+    if (!isComplementary && (progressQty === "" || Number(progressQty) <= 0)) {
         toast({ variant: "destructive", title: isRtl ? "يرجى إدخال كمية صحيحة" : "Enter valid quantity" });
         return;
     }
@@ -328,14 +341,19 @@ export default function TransactionDetailsPage() {
                      <h3 className="text-2xl font-black text-slate-400">{isRtl ? 'بانتظار تفعيل المسار الفني' : 'Awaiting Pipeline Activation'}</h3>
                      <p className="text-xs font-bold text-slate-300 max-w-xs mx-auto">
                         {isRtl 
-                          ? 'لا يظهر رادار التنفيذ إلا بعد اعتماد ميزانية المشروع (BOQ Baseline). يرجى إنشاء المقايسة أولاً.' 
-                          : 'Technical radar will appear once the project BOQ baseline is approved.'}
+                          ? 'لا يظهر رادار التنفيذ إلا بعد اعتماد ميزانية المشروع (BOQ Baseline). يرجى إنشاء المقايسة والضغط على "اعتماد" من داخلها.' 
+                          : 'Technical radar will appear once the project BOQ baseline is approved. Go to BOQ and click "Approve".'}
                      </p>
                   </div>
                   {!activeBoq && (
                     <Button onClick={() => setIsBoqInitOpen(true)} className="h-14 px-10 rounded-2xl gap-3">
                        <Sparkles className="h-5 w-5" /> {isRtl ? 'إنشاء مقايسة للمشروع الآن' : 'Create BOQ Now'}
                     </Button>
+                  )}
+                  {activeBoq && activeBoq.status === 'draft' && (
+                     <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="h-14 px-10 rounded-2xl gap-3 bg-emerald-600 text-white">
+                        <CheckCircle2 className="h-5 w-5" /> {isRtl ? 'الذهاب لاعتماد المقايسة وتفعيل الرادار' : 'Go Approve BOQ'}
+                     </Button>
                   )}
                </div>
              ) : (

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -183,7 +184,7 @@ export default function TransactionBOQProgressPage() {
 
         return (
           <TableRow key={item.id} className="hover:bg-primary/[0.02] border-b-slate-100">
-            <TableCell className="font-mono text-[10px] font-bold text-slate-300 ps-8 text-start">{prefix}.{iIdx + 1}</TableCell>
+            <TableCell className="font-mono text-[10px] font-bold text-slate-300 ps-8 text-start">{itemPrefix || prefix + "." + (iIdx + 1)}</TableCell>
             <TableCell className="font-mono text-[10px] font-black text-primary/60 text-start">{item.referenceCode}</TableCell>
             <TableCell className="text-xs font-bold text-slate-700 text-start">{item.referenceTitle}</TableCell>
             <TableCell className="text-center font-black text-[10px] text-slate-400 uppercase">{item.unitSymbol || '-'}</TableCell>
@@ -248,7 +249,7 @@ export default function TransactionBOQProgressPage() {
                   <p className="text-[10px] font-bold text-amber-700">{vo.title} | {vo.totalAmount.toLocaleString()} KWD</p>
                </div>
             </div>
-            <Button onClick={() => handleReviewVO(vo)} className="h-10 px-6 rounded-xl btn-gradient text-xs gap-2"><FileSearch className="h-4 w-4" /> {isRtl ? 'مراجعة البنود' : 'Review'}</Button>
+            <Button onClick={() => handleReviewVO(vo)} className="h-10 px-6 rounded-xl btn-gradient text-xs gap-2"><FileSearch className="h-4 w-4" /> {isRtl ? 'مراجعة بنود التعديل' : 'Review'}</Button>
          </div>
       ))}
 
@@ -305,7 +306,7 @@ export default function TransactionBOQProgressPage() {
          </DialogContent>
       </Dialog>
 
-      <VOManagerDialog isOpen={isVOOpen} onClose={() => setIsVOOpen(false)} boqId={activeBoq.id} transactionId={transactionId} boqNumber={activeBoq.boqNumber} boqItems={rawItems || []} />
+      {activeBoq && <VOManagerDialog isOpen={isVOOpen} onClose={() => setIsVOOpen(false)} boqId={activeBoq.id} transactionId={transactionId} boqNumber={activeBoq.boqNumber} boqItems={rawItems || []} />}
     </div>
   );
 }
