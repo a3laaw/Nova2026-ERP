@@ -286,7 +286,7 @@ export default function GeoPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-8 gap-4">
-            <AlertDialogCancel className="rounded-xl h-11 border-2">{isRtl ? 'إلغاء' : 'Cancel'}</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-xl h-11 font-bold border-2">{isRtl ? 'إلغاء' : 'Cancel'}</AlertDialogCancel>
             <AlertDialogAction 
               onClick={() => {
                 if (deletingId) {

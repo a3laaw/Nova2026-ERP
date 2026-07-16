@@ -298,7 +298,13 @@ export default function TransactionBOQProgressPage() {
                      <TableHeader className="bg-[#1e1b4b]"><TableRow><TableHead className="ps-6 text-white">Action</TableHead><TableHead className="text-white">Item</TableHead><TableHead className="text-center text-white">Delta</TableHead><TableHead className="text-end text-white">Rate</TableHead><TableHead className="text-end pe-6 text-white">Total</TableHead></TableRow></TableHeader>
                      <TableBody>
                         {loadingReview ? <TableRow><TableCell colSpan={5} className="text-center py-12"><Loader2 className="animate-spin mx-auto text-primary" /></TableCell></TableRow> : reviewItems.map((item, idx) => (
-                          <TableRow key={idx}><TableCell className="ps-6"><Badge variant="outline" className="font-black text-[8px] uppercase">{item.type}</Badge></TableCell><TableCell className="font-bold text-xs text-slate-700">{item.description}</TableCell><TableCell className="text-center font-mono font-black text-xs">{item.quantityDelta}</TableCell><TableCell className="text-end font-mono text-xs">{item.rate.toLocaleString()}</TableCell><TableCell className="text-end pe-6 font-mono font-black">{item.total.toLocaleString()}</TableCell></TableRow>
+                          <TableRow key={idx}>
+                             <TableCell className="ps-6"><Badge variant="outline" className="font-black text-[8px] uppercase">{item.type}</Badge></TableCell>
+                             <TableCell className="font-bold text-xs text-slate-700">{item.description}</TableCell>
+                             <TableCell className="text-center font-mono font-black text-xs">{item.quantityDelta}</TableCell>
+                             <TableCell className="text-end font-mono text-xs">{item.rate?.toLocaleString()}</TableCell>
+                             <TableCell className="text-end pe-6 font-mono font-black">{item.total?.toLocaleString()}</TableCell>
+                          </TableRow>
                         ))}
                      </TableBody>
                   </Table>
@@ -311,7 +317,7 @@ export default function TransactionBOQProgressPage() {
          </DialogContent>
       </Dialog>
 
-      {activeBoq && <VOManagerDialog isOpen={isVOOpen} onClose={() => setIsVOOpen(false)} boqId={activeBoq.id} transactionId={transactionId} boqNumber={activeBoq.boqNumber} boqItems={rawItems || []} />}
+      {activeBoq && <VOManagerDialog isOpen={isVOOpen} onClose={() => setIsVOOpen(false)} boqId={activeBoq.id} transactionId={transactionId} boqNumber={activeBoq.boqNumber} boqItems={items || []} />}
     </div>
   );
 }

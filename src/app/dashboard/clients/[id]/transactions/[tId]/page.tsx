@@ -77,9 +77,8 @@ export default function TransactionDetailsPage() {
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [stageProgressMap, setStageProgressMap] = useState<Record<string, StageProgressResult>>({});
   const [filterStageId, setFilterStageId] = useState<string | null>(null);
-  const [activeTabOverride, setActiveTabOverride] = useState<'active' | 'timeline' | 'chat_archive' | 'time_archive' | undefined>(undefined);
   
-  // States for Recording Progress
+  // States for Recording Progress - Numeric Sovereignty
   const [isRecordOpen, setIsRecordOpen] = useState(false);
   const [isComplementary, setIsComplementary] = useState(false);
   const [targetStage, setTargetStage] = useState<StageInstance | null>(null);
@@ -400,7 +399,7 @@ export default function TransactionDetailsPage() {
                </div>
              )}
           </div>
-          <div className="lg:col-span-4"><CommentSection transactionId={transactionId} path={paths.transactionComments(companyId!, transactionId)} externalLogs={allExecutions || []} boqItems={boqItems || []} stages={stages} filterStageId={filterStageId} technicalStageId={stages.find(s=>s.id===filterStageId)?.technicalStageId} selectedStageName={stages.find(s=>s.id===filterStageId)?.name} onClearFilter={() => setFilterStageId(null)} activeTabOverride={activeTabOverride} /></div>
+          <div className="lg:col-span-4"><CommentSection transactionId={transactionId} path={paths.transactionComments(companyId!, transactionId)} externalLogs={allExecutions || []} boqItems={boqItems || []} stages={stages} filterStageId={filterStageId} technicalStageId={stages.find(s=>s.id===filterStageId)?.technicalStageId} selectedStageName={stages.find(s=>s.id===filterStageId)?.name} onClearFilter={() => setFilterStageId(null)} /></div>
       </div>
 
       {/* BOQ Initiation Modal */}
@@ -592,7 +591,7 @@ export default function TransactionDetailsPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {activeBoq && <VOManagerDialog isOpen={isVOOpen} onClose={() => setIsVOOpen(false)} boqId={activeBoq.id} transactionId={transactionId} boqNumber={activeBoq.boqNumber} boqItems={rawItems || []} />}
+      {activeBoq && <VOManagerDialog isOpen={isVOOpen} onClose={() => setIsVOOpen(false)} boqId={activeBoq.id} transactionId={transactionId} boqNumber={activeBoq.boqNumber} boqItems={boqItems || []} />}
     </div>
   );
 }
