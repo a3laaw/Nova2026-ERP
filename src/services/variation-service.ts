@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -110,13 +109,11 @@ export class VariationService {
     
     const stagesToReopen = new Set<string>();
 
-    // Pass 1: Process each variation item (Refactoring: Logic extracted to sub-methods)
     for (const itemDoc of voItemsSnap.docs) {
       const vItem = itemDoc.data() as BOQVariationItem;
       await this.applyVariationToBOQ(vItem, voData, transactionId, boqId, batch, currentStages, stagesToReopen);
     }
 
-    // Pass 2: Sync stages status if needed
     if (stagesToReopen.size > 0) {
       this.syncStagesWithNewQuantities(currentStages, stagesToReopen, batch, transactionId);
     }
@@ -145,7 +142,6 @@ export class VariationService {
   ) {
     let techId = vItem.technicalStageId || '';
 
-    // Handle manual stage injection from VO
     if (vItem.type === 'new_item' && vItem.stageMode === 'new_local_stage') {
       techId = await this.injectNewManualStage(vItem, transactionId, batch, currentStages);
     }
@@ -179,7 +175,6 @@ export class VariationService {
       createdAt: serverTimestamp()
     });
 
-    // Reorder subsequent stages
     currentStages.forEach(s => {
       if (s.order >= order) {
         batch.update(doc(this.db, paths.transactionStages(this.companyId, transactionId), s.id!), { order: s.order + 1 });

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -133,12 +132,16 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
 
   const netTotal = useMemo(() => items.reduce((acc, i) => acc + (Number(i.total) || 0), 0), [items]);
 
+  /**
+   * استخراج الأقسام الموجودة حصراً في المقايسة الحالية
+   */
   const boqSections = useMemo(() => {
     const sections = new Map<string, string>();
     boqItems.forEach(i => {
        if (i.ancestorIds && i.ancestorTitles) {
           i.ancestorIds.forEach((id, idx) => {
              const title = i.ancestorTitles![idx] || i.referenceCode || (isRtl ? 'بند رئيسي غير معرف' : 'Primary Section');
+             // تصفية العناوين العامة غير المفيدة
              if (title !== 'Section' && title !== 'Root' && title !== 'Root Section') {
                 sections.set(id, title);
              }

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -283,7 +282,7 @@ export default function GeoPage() {
             </div>
             <AlertDialogTitle className="text-start font-black text-2xl">{t('confirmDelete')}</AlertDialogTitle>
             <AlertDialogDescription className="text-start font-bold">
-              {isRtl ? 'هل أنت متأكد؟ سيؤدي هذا لحذف السجل نهائياً.' : 'Are you sure? This will permanently delete the record.'}
+              {isRtl ? 'هل أنت متأكد؟ سيتم حذف السجل نهائياً.' : 'Are you sure? This will permanently delete the record.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-8 gap-4">

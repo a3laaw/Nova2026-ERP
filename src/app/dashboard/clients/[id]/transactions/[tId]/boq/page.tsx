@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -178,7 +177,7 @@ export default function TransactionBOQProgressPage() {
         <TableCell colSpan={8}></TableCell>
       </TableRow>
       {node.items.map((item, iIdx) => {
-        const itemPrefix = `${prefix}.${iIdx + 1}`;
+        const itemPrefix = prefix + "." + (iIdx + 1);
         const metrics = executionMetrics[item.id!] || { prev: 0, current: 0 };
         const planned = item.plannedQuantity || 1;
         const totalPct = Math.round(((metrics.prev + metrics.current) / planned) * 100);
@@ -213,7 +212,7 @@ export default function TransactionBOQProgressPage() {
           </TableRow>
         );
       })}
-      {node.children.map((child, cIdx) => renderBOQTreeRows(child, `${prefix}.${node.items.length + cIdx + 1}`)) }
+      {node.children.map((child, cIdx) => renderBOQTreeRows(child, prefix + "." + (node.items.length + cIdx + 1))) }
     </React.Fragment>
   );
 
@@ -301,7 +300,7 @@ export default function TransactionBOQProgressPage() {
                         {loadingReview ? <TableRow><TableCell colSpan={5} className="text-center py-12"><Loader2 className="animate-spin mx-auto text-primary" /></TableCell></TableRow> : reviewItems.map((item, idx) => (
                           <TableRow key={idx}><TableCell className="ps-6"><Badge variant="outline" className="font-black text-[8px] uppercase">{item.type}</Badge></TableCell><TableCell className="font-bold text-xs text-slate-700">{item.description}</TableCell><TableCell className="text-center font-mono font-black text-xs">{item.quantityDelta}</TableCell><TableCell className="text-end font-mono text-xs">{item.rate.toLocaleString()}</TableCell><TableCell className="text-end pe-6 font-mono font-black">{item.total.toLocaleString()}</TableCell></TableRow>
                         ))}
-                     </tbody>
+                     </TableBody>
                   </Table>
                </div>
             </div>
