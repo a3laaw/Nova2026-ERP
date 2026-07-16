@@ -115,7 +115,6 @@ export default function TransactionBOQProgressPage() {
       await service.approveBOQ(activeBoq.id, currentTotal, transactionId, user.uid, globalUser?.username || user.displayName || 'Admin');
       toast({ title: isRtl ? "تم اعتماد الميزانية وتفعيل المسار الفني" : "Baseline Approved & Pipeline Active" });
       setIsEditingBaseline(false);
-      router.push(`/dashboard/clients/${transaction?.clientId}/transactions/${transactionId}`);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {

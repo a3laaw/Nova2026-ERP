@@ -216,7 +216,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                          <CardContent className="p-6 space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
                                <div className="md:col-span-2 space-y-2 text-start">
-                                  <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'الإجراء' : 'Action'}</Label>
+                                  <Label className="text-10px font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'الإجراء' : 'Action'}</Label>
                                   <Select value={item.type} onValueChange={(v: any) => updateItem(idx, 'type', v)}>
                                      <SelectTrigger className="h-10 rounded-lg border-2 font-black text-[10px] bg-slate-50/30"><SelectValue /></SelectTrigger>
                                      <SelectContent className="rounded-xl">
@@ -229,7 +229,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                </div>
 
                                <div className="md:col-span-4 space-y-2 text-start">
-                                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'البند المستهدف' : 'Target Item'}</Label>
+                                  <Label className="text-10px font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'البند المستهدف' : 'Target Item'}</Label>
                                   {isNewItem ? (
                                      <div className="p-1 rounded-lg border-2 bg-slate-50"><BOQReferenceSelector onSelect={(node) => updateItem(idx, 'boqReferenceNodeId', node)} className="grid-cols-1 md:grid-cols-1 gap-2" /></div>
                                   ) : (
@@ -250,12 +250,12 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                </div>
 
                                <div className="md:col-span-2 space-y-2 text-start">
-                                  <Label className="text-[10px] font-black uppercase text-primary">Delta Qty</Label>
+                                  <Label className="text-10px font-black uppercase text-primary">Delta Qty</Label>
                                   <Input type="number" value={item.quantityDelta} onChange={e => updateItem(idx, 'quantityDelta', e.target.value)} className="h-10 rounded-lg border-2 font-black text-center text-xs" placeholder="..." />
                                </div>
 
                                <div className="md:col-span-3 space-y-2 text-start">
-                                  <Label className="text-[10px] font-black text-slate-400">Rate & Total</Label>
+                                  <Label className="text-10px font-black text-slate-400">Rate & Total</Label>
                                   <div className="flex items-center gap-3">
                                      <Input type="number" step="0.001" value={item.rate} onChange={e => updateItem(idx, 'rate', e.target.value)} className="h-10 rounded-lg border-2 font-black text-emerald-600 text-xs text-center" placeholder="..." />
                                      <div className="text-end min-w-[70px]"><p className={cn("text-[10px] font-black", (Number(item.total) || 0) >= 0 ? "text-emerald-500" : "text-rose-500")}>{(Number(item.total) || 0).toLocaleString()}</p></div>
@@ -269,7 +269,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                               <div className="pt-6 border-t border-dashed space-y-6 animate-in slide-in-from-top-2 text-start">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                                    <div className="space-y-2 text-start">
-                                      <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'القسم المالي المستهدف (بند رئيسي):' : 'Target Section:'}</Label>
+                                      <Label className="text-10px font-black uppercase text-primary tracking-widest">{isRtl ? 'القسم المالي المستهدف (بند رئيسي):' : 'Target Section:'}</Label>
                                       <Select value={item.targetSectionId} onValueChange={v => updateItem(idx, 'targetSectionId', v)}>
                                          <SelectTrigger className="h-10 rounded-xl border-2 font-black text-xs bg-primary/5 border-primary/20"><SelectValue placeholder="..." /></SelectTrigger>
                                          <SelectContent className="rounded-xl">
@@ -278,7 +278,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                       </Select>
                                    </div>
                                    <div className="space-y-2 text-start">
-                                      <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'تحديد مسار المباشرة:' : 'Start Path:'}</Label>
+                                      <Label className="text-10px font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'تحديد مسار المباشرة:' : 'Start Path:'}</Label>
                                       <Select value={item.stageMode || 'existing_stage'} onValueChange={(v: VOStageMode) => updateItem(idx, 'stageMode', v)}>
                                          <SelectTrigger className="h-10 rounded-xl border-2 font-black text-[11px]"><SelectValue /></SelectTrigger>
                                          <SelectContent className="rounded-xl"><SelectItem value="existing_stage" className="font-bold">{isRtl ? 'مرحلة موجودة' : 'Existing Stage'}</SelectItem><SelectItem value="new_local_stage" className="font-bold text-primary">{isRtl ? 'مرحلة محلية جديدة' : 'New Local Stage'}</SelectItem></SelectContent>
@@ -296,7 +296,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
         </div>
 
         <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4">
-           <Button variant="outline" onClick={onClose} className="flex-1 h-14 rounded-2xl border-2 font-bold text-base bg-white">إلغاء</Button>
+           <Button variant="outline" onClose={onClose} className="flex-1 h-14 rounded-2xl border-2 font-bold text-base bg-white">إلغاء</Button>
            <Button onClick={handleSave} disabled={loading} className="flex-[2] btn-gradient h-14 rounded-2xl text-lg gap-3">
               {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
               {isRtl ? 'تأكيد وحفظ الأمر التغييري' : 'Confirm & Save VO'}

@@ -15,7 +15,7 @@ import {
   RotateCcw, Zap, Workflow,
   PlusCircle, ArrowRight, Trash2,
   Pencil, Target, Info, ShieldCheck,
-  RefreshCcw
+  RefreshCcw, FilePlus, Sparkles
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, limit, doc, addDoc, updateDoc } from 'firebase/firestore';
@@ -27,7 +27,9 @@ import { Transaction, StageInstance } from '@/types/transaction';
 import { TransactionService } from '@/services/transaction-service';
 import { BOQExecutionService, StageProgressResult } from '@/services/boq-execution-service';
 import { BOQ, BOQItem, BOQItemExecutionEntry } from '@/types/documents';
+import { BOQTemplate } from '@/types/templates';
 import { CommentSection } from '@/components/transactions/comment-section';
+import { DocumentService } from '@/services/document-service';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { VOManagerDialog } from '@/components/transactions/vo-manager-dialog';
@@ -78,6 +80,7 @@ export default function TransactionDetailsPage() {
   const [filterStageId, setFilterStageId] = useState<string | null>(null);
   const [activeTabOverride, setActiveTabOverride] = useState<'active' | 'timeline' | 'chat_archive' | 'time_archive' | undefined>(undefined);
   
+  // States for Recording Progress
   const [isRecordOpen, setIsRecordOpen] = useState(false);
   const [isComplementary, setIsComplementary] = useState(false);
   const [targetStage, setTargetStage] = useState<StageInstance | null>(null);
@@ -85,18 +88,22 @@ export default function TransactionDetailsPage() {
   const [progressQty, setProgressQty] = useState<number | "">(""); 
   const [progressNotes, setProgressNotes] = useState("");
 
+  // States for BOQ Initiation
+  const [isBoqInitOpen, setIsBoqInitOpen] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
+
   const [undoStage, setUndoStage] = useState<StageInstance | null>(null);
   const [incompleteStage, setIncompleteStage] = useState<{ stage: StageInstance, progress: StageProgressResult } | null>(null);
   const [isVOOpen, setIsVOOpen] = useState(false);
   const [isOverExecutionOpen, setIsOverExecutionOpen] = useState(false);
 
   useEffect(() => {
-    const isAnyModalOpen = isRecordOpen || isOverExecutionOpen || !!undoStage || !!incompleteStage || isVOOpen;
+    const isAnyModalOpen = isRecordOpen || isOverExecutionOpen || !!undoStage || !!incompleteStage || isVOOpen || isBoqInitOpen;
     if (!isAnyModalOpen && typeof document !== 'undefined') {
        document.body.style.pointerEvents = 'auto';
        document.body.style.overflow = 'auto';
     }
-  }, [isRecordOpen, isOverExecutionOpen, undoStage, incompleteStage, isVOOpen]);
+  }, [isRecordOpen, isOverExecutionOpen, undoStage, incompleteStage, isVOOpen, isBoqInitOpen]);
 
   const editAccess = check('projects', 'edit');
   const currentUserName = useMemo(() => globalUser?.username || user?.displayName || 'Admin', [globalUser, user]);
@@ -113,6 +120,9 @@ export default function TransactionDetailsPage() {
   const boqQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', transactionId), limit(1)) : null, [db, companyId, transactionId]);
   const { data: boqs } = useCollection<BOQ>(boqQuery);
   const activeBoq = boqs && boqs.length > 0 ? boqs[0] : null;
+
+  const templatesQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.boqTemplates(companyId)), where('subServiceId', '==', transaction?.subServiceId)) : null, [db, companyId, transaction?.subServiceId]);
+  const { data: templates } = useCollection<BOQTemplate>(templatesQuery);
 
   const itemsQuery = useMemo(() => (companyId && db && activeBoq?.id) ? query(collection(db, paths.boqItems(companyId, activeBoq.id))) : null, [db, companyId, activeBoq]);
   const { data: boqItems } = useCollection<BOQItem>(itemsQuery);
@@ -158,6 +168,30 @@ export default function TransactionDetailsPage() {
   }, [executionService, stages, transactionId, allExecutions]);
 
   const transactionService = useMemo(() => (db && companyId) ? new TransactionService(db, companyId, permissions) : null, [db, companyId, permissions]);
+
+  const handleCreateBOQ = async () => {
+    if (!db || !companyId || !user || !selectedTemplateId) return;
+    setLoadingAction('creating_boq');
+    try {
+      const docService = new DocumentService(db, companyId, permissions);
+      await docService.instantiateBoqFromTemplate(selectedTemplateId, {
+        transactionId,
+        clientId,
+        clientName: transaction?.clientName || '',
+        activityTypeId: transaction?.activityTypeId || '',
+        serviceId: transaction?.serviceId || '',
+        subServiceId: transaction?.subServiceId || '',
+        name: transaction?.subServiceName || ''
+      }, user.uid, currentUserName);
+      
+      toast({ title: isRtl ? "تم استنساخ المقايسة بنجاح" : "BOQ Template Instantiated" });
+      setIsBoqInitOpen(false);
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('error'), description: e.message });
+    } finally {
+      setLoadingAction(null);
+    }
+  };
 
   const handleRecordProgress = (force: boolean = false) => {
     if (!executionService || !user || !targetStage || !selectedItemId) return;
@@ -267,7 +301,7 @@ export default function TransactionDetailsPage() {
            </div>
         </div>
         <div className="flex gap-2">
-           {activeBoq && (
+           {activeBoq ? (
              <>
                 <Button onClick={() => setIsVOOpen(true)} className="btn-gradient h-10 px-6 rounded-xl gap-2">
                   <Calculator className="h-4 w-4" /> {isRtl ? 'أمر تغييري' : 'Variation Order'}
@@ -276,57 +310,124 @@ export default function TransactionDetailsPage() {
                   <FileSpreadsheet className="h-4 w-4" /> {isRtl ? 'عرض المقايسة' : 'View BOQ'}
                 </Button>
              </>
+           ) : (
+             <Button onClick={() => setIsBoqInitOpen(true)} className="btn-gradient h-12 px-8 rounded-xl gap-2 shadow-2xl">
+               <FilePlus className="h-5 w-5" /> {isRtl ? 'بدء هندسة المقايسة' : 'Setup BOQ'}
+             </Button>
            )}
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-8 space-y-6">
-             <div className="space-y-6">
-                <div className="flex justify-between items-end px-2"><h3 className="text-lg font-black font-headline text-slate-800 flex items-center gap-2"><Workflow className="h-5 w-5 text-primary" /> {isRtl ? 'رادار المسار الميداني' : 'Field Pipeline'}</h3><span className="text-3xl font-black font-headline text-primary">{progressPercent}%</span></div>
-                <div className="space-y-4">
-                   {stages.map((stage, idx) => {
-                      const boqProgress = stageProgressMap[stage.technicalStageId];
-                      const isPreviousCompleted = idx === 0 || stages[idx-1].status === 'completed';
-                      const isAnchorStarted = idx === 0 || stages[idx - 1].status !== 'pending';
-                      const isOperationalFrontier = stage.isComplementary 
-                        ? (stage.status === 'in-progress' || (stage.status === 'pending' && isAnchorStarted))
-                        : (stage.status === 'in-progress' || (stage.status === 'pending' && isPreviousCompleted));
+             {stages.length === 0 ? (
+               <div className="py-24 text-center bg-white rounded-[3rem] border-4 border-dashed border-slate-100 space-y-6 animate-pulse">
+                  <div className="w-24 h-24 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto text-slate-200">
+                     <Workflow className="h-12 w-12" />
+                  </div>
+                  <div className="space-y-2">
+                     <h3 className="text-2xl font-black text-slate-400">{isRtl ? 'بانتظار تفعيل المسار الفني' : 'Awaiting Pipeline Activation'}</h3>
+                     <p className="text-xs font-bold text-slate-300 max-w-xs mx-auto">
+                        {isRtl 
+                          ? 'لا يظهر رادار التنفيذ إلا بعد اعتماد ميزانية المشروع (BOQ Baseline). يرجى إنشاء المقايسة أولاً.' 
+                          : 'Technical radar will appear once the project BOQ baseline is approved.'}
+                     </p>
+                  </div>
+                  {!activeBoq && (
+                    <Button onClick={() => setIsBoqInitOpen(true)} className="h-14 px-10 rounded-2xl gap-3">
+                       <Sparkles className="h-5 w-5" /> {isRtl ? 'إنشاء مقايسة للمشروع الآن' : 'Create BOQ Now'}
+                    </Button>
+                  )}
+               </div>
+             ) : (
+               <div className="space-y-6">
+                  <div className="flex justify-between items-end px-2"><h3 className="text-lg font-black font-headline text-slate-800 flex items-center gap-2"><Workflow className="h-5 w-5 text-primary" /> {isRtl ? 'رادار المسار الميداني' : 'Field Pipeline'}</h3><span className="text-3xl font-black font-headline text-primary">{progressPercent}%</span></div>
+                  <div className="space-y-4">
+                     {stages.map((stage, idx) => {
+                        const boqProgress = stageProgressMap[stage.technicalStageId];
+                        const isPreviousCompleted = idx === 0 || stages[idx-1].status === 'completed';
+                        const isAnchorStarted = idx === 0 || stages[idx - 1].status !== 'pending';
+                        const isOperationalFrontier = stage.isComplementary 
+                          ? (stage.status === 'in-progress' || (stage.status === 'pending' && isAnchorStarted))
+                          : (stage.status === 'in-progress' || (stage.status === 'pending' && isPreviousCompleted));
 
-                      return (
-                        <Card key={stage.id} onClick={() => setFilterStageId(filterStageId === stage.id ? null : stage.id!)} className={cn("border-0 shadow-lg rounded-2xl bg-white transition-all overflow-hidden border-s-8 cursor-pointer relative", stage.status === 'completed' ? 'border-s-emerald-500' : stage.status === 'in-progress' ? 'border-s-blue-500 ring-4 ring-blue-500/5' : isOperationalFrontier ? 'border-s-orange-300' : 'border-s-slate-100 opacity-50')}>
-                          <CardContent className="p-5 flex flex-col md:flex-row items-center justify-between gap-6">
-                             <div className="flex items-center gap-5 flex-1 text-start">
-                                <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center font-black text-base shadow-sm border", stage.status === 'completed' ? "bg-emerald-50 text-emerald-600" : "bg-white")}>{stage.status === 'completed' ? <CheckCircle2 className="h-5 w-5" /> : (idx + 1)}</div>
-                                <div className="space-y-0.5 flex-1">
-                                   <div className="flex items-center gap-2">
-                                      <h4 className="font-black text-base text-slate-900 tracking-tight">{stage.name}</h4>
-                                      {stage.isTemporary && <Badge className="bg-primary/5 text-primary border-0 text-[7px] font-black uppercase h-4 px-1.5">{stage.isComplementary ? 'PARALLEL' : 'MANUAL'}</Badge>}
-                                   </div>
-                                   {boqProgress && boqProgress.linkedItemsCount > 0 && (<div className="mt-2 space-y-1.5"><div className="flex justify-between text-[8px] font-black uppercase text-slate-400"><span>{isRtl ? 'الإنجاز' : 'Progress'}</span><span>{boqProgress.progressPercent}%</span></div><Progress value={boqProgress.progressPercent} className="h-1" /></div>)}
-                                </div>
-                             </div>
-                             
-                             {isOperationalFrontier && (
-                                <div className="flex gap-2 shrink-0 z-10" onClick={e => e.stopPropagation()}>
-                                   {stage.status === 'in-progress' && editAccess.can && (
-                                     <Button onClick={() => { setTargetStage(stage); setIsRecordOpen(true); }} className="btn-gradient h-9 px-4 rounded-xl text-[10px] gap-2">
-                                       <Hammer className="h-3.5 w-3.5" /> {isRtl ? 'تسجيل إنجاز' : 'Log'}
-                                     </Button>
-                                   )}
-                                   {stage.status === 'pending' && <Button onClick={() => handleStartStage(stage.id!)} disabled={!!processingId} className="h-9 px-5 rounded-lg bg-blue-600 text-white font-black text-[10px] gap-1.5">{processingId === stage.id ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />} {isRtl ? 'بدء' : 'Start'}</Button>}
-                                   {stage.status === 'in-progress' && <Button onClick={() => handleCompleteStage(stage)} disabled={!!processingId} className="h-9 px-5 rounded-lg bg-emerald-600 text-white font-black text-[10px] gap-1.5">{processingId === stage.id ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5" />} {isRtl ? 'إكمال' : 'Done'}</Button>}
-                                </div>
-                             )}
-                          </CardContent>
-                        </Card>
-                      );
-                   })}
-                </div>
-             </div>
+                        return (
+                          <Card key={stage.id} onClick={() => setFilterStageId(filterStageId === stage.id ? null : stage.id!)} className={cn("border-0 shadow-lg rounded-2xl bg-white transition-all overflow-hidden border-s-8 cursor-pointer relative", stage.status === 'completed' ? 'border-s-emerald-500' : stage.status === 'in-progress' ? 'border-s-blue-500 ring-4 ring-blue-500/5' : isOperationalFrontier ? 'border-s-orange-300' : 'border-s-slate-100 opacity-50')}>
+                            <CardContent className="p-5 flex flex-col md:flex-row items-center justify-between gap-6">
+                               <div className="flex items-center gap-5 flex-1 text-start">
+                                  <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center font-black text-base shadow-sm border", stage.status === 'completed' ? "bg-emerald-50 text-emerald-600" : "bg-white")}>{stage.status === 'completed' ? <CheckCircle2 className="h-5 w-5" /> : (idx + 1)}</div>
+                                  <div className="space-y-0.5 flex-1">
+                                     <div className="flex items-center gap-2">
+                                        <h4 className="font-black text-base text-slate-900 tracking-tight">{stage.name}</h4>
+                                        {stage.isTemporary && <Badge className="bg-primary/5 text-primary border-0 text-[7px] font-black uppercase h-4 px-1.5">{stage.isComplementary ? 'PARALLEL' : 'MANUAL'}</Badge>}
+                                     </div>
+                                     {boqProgress && boqProgress.linkedItemsCount > 0 && (<div className="mt-2 space-y-1.5"><div className="flex justify-between text-[8px] font-black uppercase text-slate-400"><span>{isRtl ? 'الإنجاز' : 'Progress'}</span><span>{boqProgress.progressPercent}%</span></div><Progress value={boqProgress.progressPercent} className="h-1" /></div>)}
+                                  </div>
+                               </div>
+                               
+                               {isOperationalFrontier && (
+                                  <div className="flex gap-2 shrink-0 z-10" onClick={e => e.stopPropagation()}>
+                                     {stage.status === 'in-progress' && editAccess.can && (
+                                       <Button onClick={() => { setTargetStage(stage); setIsRecordOpen(true); }} className="btn-gradient h-9 px-4 rounded-xl text-[10px] gap-2">
+                                         <Hammer className="h-3.5 w-3.5" /> {isRtl ? 'تسجيل إنجاز' : 'Log'}
+                                       </Button>
+                                     )}
+                                     {stage.status === 'pending' && <Button onClick={() => handleStartStage(stage.id!)} disabled={!!processingId} className="h-9 px-5 rounded-lg bg-blue-600 text-white font-black text-[10px] gap-1.5">{processingId === stage.id ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />} {isRtl ? 'بدء' : 'Start'}</Button>}
+                                     {stage.status === 'in-progress' && <Button onClick={() => handleCompleteStage(stage)} disabled={!!processingId} className="h-9 px-5 rounded-lg bg-emerald-600 text-white font-black text-[10px] gap-1.5">{processingId === stage.id ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5" />} {isRtl ? 'إكمال' : 'Done'}</Button>}
+                                  </div>
+                               )}
+                            </CardContent>
+                          </Card>
+                        );
+                     })}
+                  </div>
+               </div>
+             )}
           </div>
           <div className="lg:col-span-4"><CommentSection transactionId={transactionId} path={paths.transactionComments(companyId!, transactionId)} externalLogs={allExecutions || []} boqItems={boqItems || []} stages={stages} filterStageId={filterStageId} technicalStageId={stages.find(s=>s.id===filterStageId)?.technicalStageId} selectedStageName={stages.find(s=>s.id===filterStageId)?.name} onClearFilter={() => setFilterStageId(null)} activeTabOverride={activeTabOverride} /></div>
       </div>
+
+      {/* BOQ Initiation Modal */}
+      <Dialog open={isBoqInitOpen} onOpenChange={setIsBoqInitOpen}>
+         <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
+            <div className="bg-[#1e1b4b] p-10 text-white text-start">
+               <DialogTitle className="text-2xl font-black font-headline flex items-center gap-4">
+                  <FilePlus className="h-8 w-8 text-primary" />
+                  {isRtl ? 'استنساخ مقايسة من القوالب' : 'Create BOQ from Template'}
+               </DialogTitle>
+               <p className="text-slate-400 font-bold mt-2 text-xs uppercase tracking-widest">{transaction?.subServiceName}</p>
+            </div>
+            <div className="p-10 space-y-6 text-start bg-white">
+               <div className="space-y-3">
+                  <Label className="font-black text-xs uppercase text-slate-400 tracking-widest">{isRtl ? 'اختر قالب المقايسة المناسب' : 'Select BOQ Template'}</Label>
+                  <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                     <SelectTrigger className="h-14 rounded-2xl border-2 font-black">
+                        <SelectValue placeholder="..." />
+                     </SelectTrigger>
+                     <SelectContent className="rounded-2xl border-0 shadow-2xl">
+                        {templates?.map(t => (
+                           <SelectItem key={t.id} value={t.id!} className="font-bold py-4">
+                              {t.name} <span className="text-[10px] text-slate-400 font-mono ms-2">#{t.code}</span>
+                           </SelectItem>
+                        ))}
+                     </SelectContent>
+                  </Select>
+               </div>
+               
+               <div className="p-6 rounded-3xl bg-amber-50 border-2 border-amber-100 flex items-start gap-4">
+                  <Info className="h-6 w-6 text-amber-600 shrink-0 mt-1" />
+                  <p className="text-xs text-amber-800 font-bold leading-relaxed">
+                     {isRtl ? 'سيقوم النظام بنسخ كافة البنود والكميات الافتراضية من القالب. يمكنك تعديلها لاحقاً قبل الاعتماد.' : 'System will copy all items and default quantities. You can adjust them before baseline approval.'}
+                  </p>
+               </div>
+
+               <Button onClick={handleCreateBOQ} disabled={!selectedTemplateId || !!loadingAction} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 gap-3">
+                  {loadingAction === 'creating_boq' ? <Loader2 className="animate-spin h-6 w-6" /> : <Sparkles className="h-6 w-6" />}
+                  {isRtl ? 'إنشاء مسودة المقايسة' : 'Generate Draft BOQ'}
+               </Button>
+            </div>
+         </DialogContent>
+      </Dialog>
 
       {/* Record Progress Modal */}
       <Dialog open={isRecordOpen} onOpenChange={setIsRecordOpen}>
