@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -79,7 +80,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
       type: 'increase_quantity', 
       stageMode: 'existing_stage',
       description: '', 
-      quantityDelta: "", // Sovereign Rule: Start empty
+      quantityDelta: "", 
       rate: "",         
       total: 0,
       insertAfterStageId: '',
@@ -98,7 +99,6 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
     const newItems = [...items];
     const item = { ...newItems[idx], [field]: val };
     
-    // Capture from existing BOQ item
     if (field === 'sourceBoqItemId' && val && item.type !== 'new_item') {
       const source = boqItems.find(i => i.id === val);
       if (source) {
@@ -111,7 +111,6 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
       }
     }
 
-    // Capture from Registry Node
     if (field === 'boqReferenceNodeId' && val) {
        const node = val as any;
        item.boqReferenceNodeId = node.id;
@@ -123,7 +122,6 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
        item.technicalStageIds = node.technicalStageIds || [];
     }
 
-    // Math Logic
     if (field === 'quantityDelta' || field === 'rate' || field === 'type' || field === 'sourceBoqItemId') {
       const type = (field === 'type' ? val : item.type) || 'increase_quantity';
       let q = field === 'quantityDelta' ? (val === "" ? 0 : Math.abs(Number(val))) : Math.abs(Number(item.quantityDelta) || 0);
@@ -272,7 +270,6 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                <div className="md:col-span-1 flex justify-end"><Button variant="ghost" size="icon" onClick={() => removeItem(idx)} className="h-10 w-10 text-rose-300 hover:text-rose-600"><Trash2 className="h-4 w-4" /></Button></div>
                             </div>
 
-                            {/* Sovereign Linkage & Injection Module */}
                             {isNewItem && (
                               <div className="pt-6 border-t border-dashed space-y-6 animate-in slide-in-from-top-2">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center text-start">
@@ -297,7 +294,6 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                    </div>
                                 </div>
 
-                                {/* Conditional Module: Existing Stage Selector */}
                                 {item.stageMode === 'existing_stage' && (
                                    <div className="space-y-2 animate-in fade-in duration-300 text-start">
                                       <Label className="text-10px font-black uppercase text-blue-600 flex items-center gap-2">
@@ -319,7 +315,6 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                    </div>
                                 )}
 
-                                {/* Conditional Module: New Stage Definition (The fix for "Where is the name?") */}
                                 {item.stageMode === 'new_local_stage' && (
                                    <div className="p-6 bg-slate-50 rounded-2xl border-2 border-white shadow-inner space-y-6 animate-in slide-in-from-top-4 duration-500 text-start">
                                       <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest">
