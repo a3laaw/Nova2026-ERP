@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -188,7 +189,7 @@ export default function GeoPage() {
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
-                      <ChevronRight className={cn("h-4 w-4 ms-2", isRtl && 'rotate-180', selectedDept?.id === dept.id && 'text-primary')} />
+                      <ChevronRight className={cn("h-4 w-4 ms-2", isRtl && 'rotate-180', selectedGov?.id === gov.id && 'text-primary')} />
                     </div>
                   </div>
                 ))

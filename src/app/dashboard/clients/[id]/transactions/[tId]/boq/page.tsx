@@ -191,7 +191,12 @@ export default function TransactionBOQProgressPage() {
             <TableCell className="text-center font-black text-[10px] text-slate-400 uppercase">{item.unitSymbol || '-'}</TableCell>
             <TableCell className="text-center">
                {isEditingBaseline || activeBoq?.status === 'draft' ? (
-                 <Input type="number" className="h-8 text-center" value={item.plannedQuantity === 0 ? "" : item.plannedQuantity} onChange={e => handleUpdateItem(item.id!, e.target.value === "" ? 0 : Number(e.target.value), item.estimatedRate || 0)} />
+                 <Input 
+                   type="number" 
+                   className="h-8 text-center" 
+                   value={item.plannedQuantity === 0 ? "" : item.plannedQuantity} 
+                   onChange={e => handleUpdateItem(item.id!, e.target.value === "" ? 0 : Number(e.target.value), item.estimatedRate || 0)} 
+                 />
                ) : item.plannedQuantity}
             </TableCell>
             <TableCell className="text-center font-mono font-black text-blue-600 text-xs">{metrics.prev}</TableCell>
@@ -296,7 +301,7 @@ export default function TransactionBOQProgressPage() {
                         {loadingReview ? <TableRow><TableCell colSpan={5} className="text-center py-12"><Loader2 className="animate-spin mx-auto text-primary" /></TableCell></TableRow> : reviewItems.map((item, idx) => (
                           <TableRow key={idx}><TableCell className="ps-6"><Badge variant="outline" className="font-black text-[8px] uppercase">{item.type}</Badge></TableCell><TableCell className="font-bold text-xs text-slate-700">{item.description}</TableCell><TableCell className="text-center font-mono font-black text-xs">{item.quantityDelta}</TableCell><TableCell className="text-end font-mono text-xs">{item.rate.toLocaleString()}</TableCell><TableCell className="text-end pe-6 font-mono font-black">{item.total.toLocaleString()}</TableCell></TableRow>
                         ))}
-                     </TableBody>
+                     </tbody>
                   </Table>
                </div>
             </div>
