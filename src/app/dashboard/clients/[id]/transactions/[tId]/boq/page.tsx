@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -65,13 +64,13 @@ export default function TransactionBOQProgressPage() {
     }
   }, [isVOOpen, isPickerOpen, reviewVO, isEditingBaseline]);
 
-  const transRef = useMemo(() => (companyId && db) ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
+  const transRef = useMemo(() => (companyId && db && transactionId) ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
   const { data: transaction } = useDoc<Transaction>(transRef);
 
-  const stagesQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.transactionStages(companyId, transactionId))) : null, [db, companyId, transactionId]);
+  const stagesQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.transactionStages(companyId, transactionId))) : null, [db, companyId, transactionId]);
   const { data: stages } = useCollection<StageInstance>(stagesQuery);
 
-  const boqQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
+  const boqQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
   const { data: boqs, loading: boqLoading } = useCollection<BOQ>(boqQuery);
   const activeBoq = boqs?.[0];
 
@@ -84,7 +83,7 @@ export default function TransactionBOQProgressPage() {
   const { data: variations } = useCollection<BOQVariation>(variationsQuery);
 
   const executionsQuery = useMemo(() => {
-    if (!companyId || !db) return null;
+    if (!companyId || !db || !transactionId) return null;
     return query(collection(db, paths.executions(companyId)), where('transactionId', '==', transactionId));
   }, [db, companyId, transactionId]);
 
@@ -190,7 +189,7 @@ export default function TransactionBOQProgressPage() {
             <TableCell className="text-center font-black text-[10px] text-slate-400 uppercase">{item.unitSymbol || '-'}</TableCell>
             <TableCell className="text-center">
                {isEditingBaseline || activeBoq?.status === 'draft' ? (
-                 <Input type="number" className="h-8 text-center" value={item.plannedQuantity} onChange={e => handleUpdateItem(item.id!, Number(e.target.value), item.estimatedRate || 0)} />
+                 <Input type="number" className="h-8 text-center" value={item.plannedQuantity === 0 ? "" : item.plannedQuantity} onChange={e => handleUpdateItem(item.id!, e.target.value === "" ? 0 : Number(e.target.value), item.estimatedRate || 0)} />
                ) : item.plannedQuantity}
             </TableCell>
             <TableCell className="text-center font-mono font-black text-blue-600 text-xs">{metrics.prev}</TableCell>

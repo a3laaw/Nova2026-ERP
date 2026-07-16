@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -91,6 +90,9 @@ export class VariationService {
     }
   }
 
+  /**
+   * Refactored: Approve Variation using small atomic steps
+   */
   async approveVariation(boqId: string, voId: string, transactionId: string, userId: string, userName: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
     
@@ -114,6 +116,7 @@ export class VariationService {
       await this.applyVariationToBOQ(vItem, voData, transactionId, boqId, batch, currentStages, stagesToReopen);
     }
 
+    // Sync status of affected stages
     if (stagesToReopen.size > 0) {
       this.syncStagesWithNewQuantities(currentStages, stagesToReopen, batch, transactionId);
     }
@@ -142,6 +145,7 @@ export class VariationService {
   ) {
     let techId = vItem.technicalStageId || '';
 
+    // Handle new local stages injection
     if (vItem.type === 'new_item' && vItem.stageMode === 'new_local_stage') {
       techId = await this.injectNewManualStage(vItem, transactionId, batch, currentStages);
     }
@@ -175,6 +179,7 @@ export class VariationService {
       createdAt: serverTimestamp()
     });
 
+    // Reorder subsequent stages
     currentStages.forEach(s => {
       if (s.order >= order) {
         batch.update(doc(this.db, paths.transactionStages(this.companyId, transactionId), s.id!), { order: s.order + 1 });
