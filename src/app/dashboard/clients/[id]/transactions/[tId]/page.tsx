@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -13,7 +14,7 @@ import {
   Hammer, Save, AlertTriangle,
   Zap, Workflow,
   PlusCircle, ArrowRight,
-  Info, Sparkles, FilePlus
+  Info, Sparkles, FilePlus, ShieldCheck
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, limit, doc, addDoc } from 'firebase/firestore';
@@ -487,7 +488,7 @@ export default function TransactionDetailsPage() {
 
       {/* Incomplete Stage Warning / Override Modal */}
       <Dialog open={!!incompleteStage} onOpenChange={(open) => !open && setIncompleteStage(null)}>
-         <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-md" dir={dir}>
+         <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-md" dir={dir}>
             <div className="bg-amber-600 p-6 text-white text-start">
                <DialogTitle className="text-xl font-black font-headline flex items-center gap-3"><AlertTriangle className="h-6 w-6" />{isRtl ? 'تنبيه: المرحلة لم تكتمل' : 'Incomplete Stage Warning'}</DialogTitle>
             </div>

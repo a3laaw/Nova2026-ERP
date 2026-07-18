@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -13,7 +14,7 @@ import {
   CheckCircle2, FileSearch, UserCircle, Settings2
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, where, collectionGroup, getDocs, doc } from 'firebase/firestore';
+import { collection, query, orderBy, where, collectionGroup, getDocs } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -91,7 +92,7 @@ export default function BOQExplorerPage() {
   [db, companyId]);
   const { data: boqs, loading: boqLoading } = useCollection<BOQ>(boqsQuery);
 
-  // تحسين الاستعلام العالمي للأوامر التغييرية
+  // تحديث الاستعلام الموحد للأوامر التغييرية ليعمل عالمياً
   const allVOsQuery = useMemo(() => 
     companyId && db ? query(collectionGroup(db, 'variations'), where('companyId', '==', companyId)) : null, 
   [db, companyId]);
@@ -306,7 +307,7 @@ export default function BOQExplorerPage() {
                </div>
                <div className="text-end">
                   <p className="text-[9px] font-black text-primary uppercase mb-1">Impact</p>
-                  <h3 className={cn("text-3xl font-black font-mono", (reviewVO?.totalAmount || 0) >= 0 ? "text-emerald-400" : "text-rose-400")}>{reviewVO?.totalAmount.toLocaleString()} <span className="text-sm opacity-40">KWD</span></h3>
+                  <h3 className={cn("text-3xl font-black font-mono", (reviewVO?.totalAmount || 0) >= 0 ? "text-emerald-400" : "text-rose-400")}>{reviewVO?.totalAmount.toLocaleString()} <span className="text-xs opacity-40">KWD</span></h3>
                </div>
             </div>
             <div className="p-8 space-y-6 max-h-[60vh] overflow-y-auto scrollbar-hide text-start">
