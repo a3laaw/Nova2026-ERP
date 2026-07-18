@@ -91,4 +91,9 @@ export const paths = {
 
   // سجلات التنفيذ الميدانية
   executions: (companyId: string) => getTenantPath(companyId, 'executions'),
+
+  // المواعيد والزيارات الميدانية
+  appointments: (companyId: string) => getTenantPath(companyId, 'appointments'),
+  fieldVisits: (companyId: string, transactionId: string) =>
+    `${getTenantPath(companyId, 'transactions')}/${transactionId}/fieldVisits`,
 };
