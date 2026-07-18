@@ -62,36 +62,34 @@ export const paths = {
   technicalStages: (companyId: string, actId: string, srvId: string, subId: string) => `${getTenantPath(companyId, 'activityTypes')}/${actId}/services/${srvId}/subServices/${subId}/stages`,
 
   // المشاريع (Operations & Projects)
-  projects: (companyId: string) => getTenantPath(companyId, 'transactions'), // نستخدم المعاملات كمشاريع
+  projects: (companyId: string) => getTenantPath(companyId, 'transactions'), 
   stageInstances: (companyId: string, projectId: string) => `${getTenantPath(companyId, 'transactions')}/${projectId}/stageInstances`,
-  projectContracts: (companyId: string, projectId: string) => `${getTenantPath(companyId, 'transactions')}/${projectId}/contracts`,
 
   // المعاملات الفنية (Technical Transactions)
   transactions: (companyId: string) => getTenantPath(companyId, 'transactions'),
   transactionStages: (companyId: string, tId: string) => `${getTenantPath(companyId, 'transactions')}/${tId}/stageInstances`,
   transactionTimeline: (companyId: string, tId: string) => `${getTenantPath(companyId, 'transactions')}/${tId}/timeline`,
   transactionComments: (companyId: string, tId: string) => `${getTenantPath(companyId, 'transactions')}/${tId}/comments`,
-  stageComments: (companyId: string, tId: string, sId: string) => `${getTenantPath(companyId, 'transactions')}/${tId}/stageInstances/${sId}/comments`,
 
-  // المرجع الشجري الديناميكي الموحد لبنود BOQ (The Registry - Single Source of Truth)
+  // المرجع الشجري الديناميكي الموحد لبنود BOQ
   boqReferenceNodes: (companyId: string) => getTenantPath(companyId, 'boqReferenceNodes'),
 
-  // مكتبة القوالب (Template Library)
+  // مكتبة القوالب
   quotationTemplates: (companyId: string) => getTenantPath(companyId, 'quotationTemplates'),
   contractTemplates: (companyId: string) => getTenantPath(companyId, 'contractTemplates'),
   boqTemplates: (companyId: string) => getTenantPath(companyId, 'boqTemplates'),
   boqTemplateItems: (companyId: string, templateId: string) => `${getTenantPath(companyId, 'boqTemplates')}/${templateId}/items`,
 
-  // المستندات الحية (Active Documents)
+  // المستندات الحية
   quotations: (companyId: string) => getTenantPath(companyId, 'quotations'),
   contracts: (companyId: string) => getTenantPath(companyId, 'contracts'),
   boqs: (companyId: string) => getTenantPath(companyId, 'boqs'),
   boqItems: (companyId: string, boqId: string) => `${getTenantPath(companyId, 'boqs')}/${boqId}/items`,
   
-  // الأوامر التغييرية (Variation Orders)
+  // الأوامر التغييرية
   boqVariations: (companyId: string, boqId: string) => `${getTenantPath(companyId, 'boqs')}/${boqId}/variations`,
   boqVariationItems: (companyId: string, boqId: string, voId: string) => `${getTenantPath(companyId, 'boqs')}/${boqId}/variations/${voId}/items`,
 
-  // سجلات التنفيذ الميدانية (Flat Structure for Performance)
+  // سجلات التنفيذ الميدانية
   executions: (companyId: string) => getTenantPath(companyId, 'executions'),
 };

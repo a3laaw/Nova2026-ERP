@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -12,13 +11,12 @@ import {
   CheckCircle2, Play, Check,
   FileSpreadsheet, Calculator,
   Hammer, Save, AlertTriangle,
-  RotateCcw, Zap, Workflow,
-  PlusCircle, ArrowRight, Trash2,
-  Pencil, Target, Info, ShieldCheck,
-  RefreshCcw, FilePlus, Sparkles
+  Zap, Workflow,
+  PlusCircle, ArrowRight,
+  Info, Sparkles, FilePlus
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
-import { collection, query, orderBy, where, limit, doc, addDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, orderBy, where, limit, doc, addDoc } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -50,7 +48,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -79,30 +76,26 @@ export default function TransactionDetailsPage() {
   const [stageProgressMap, setStageProgressMap] = useState<Record<string, StageProgressResult>>({});
   const [filterStageId, setFilterStageId] = useState<string | null>(null);
   
-  // States for Recording Progress - Numeric Sovereignty
   const [isRecordOpen, setIsRecordOpen] = useState(false);
-  const [isComplementary, setIsComplementary] = useState(false);
   const [targetStage, setTargetStage] = useState<StageInstance | null>(null);
   const [selectedItemId, setSelectedItemId] = useState("");
   const [progressQty, setProgressQty] = useState<number | "">(""); 
   const [progressNotes, setProgressNotes] = useState("");
 
-  // States for BOQ Initiation
   const [isBoqInitOpen, setIsBoqInitOpen] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
 
-  const [undoStage, setUndoStage] = useState<StageInstance | null>(null);
   const [incompleteStage, setIncompleteStage] = useState<{ stage: StageInstance, progress: StageProgressResult } | null>(null);
   const [isVOOpen, setIsVOOpen] = useState(false);
   const [isOverExecutionOpen, setIsOverExecutionOpen] = useState(false);
 
   useEffect(() => {
-    const isAnyModalOpen = isRecordOpen || isOverExecutionOpen || !!undoStage || !!incompleteStage || isVOOpen || isBoqInitOpen;
+    const isAnyModalOpen = isRecordOpen || isOverExecutionOpen || !!incompleteStage || isVOOpen || isBoqInitOpen;
     if (!isAnyModalOpen && typeof document !== 'undefined') {
        document.body.style.pointerEvents = 'auto';
        document.body.style.overflow = 'auto';
     }
-  }, [isRecordOpen, isOverExecutionOpen, undoStage, incompleteStage, isVOOpen, isBoqInitOpen]);
+  }, [isRecordOpen, isOverExecutionOpen, incompleteStage, isVOOpen, isBoqInitOpen]);
 
   const editAccess = check('projects', 'edit');
   const currentUserName = useMemo(() => globalUser?.username || user?.displayName || 'Admin', [globalUser, user]);
@@ -143,15 +136,8 @@ export default function TransactionDetailsPage() {
 
   const stages = useMemo(() => {
     if (!rawStages) return [];
-    return [...rawStages]
-      .filter(s => {
-        if (!s.isTemporary) return true;
-        if (s.status !== 'pending') return true;
-        const hasWork = (boqItems || []).some(i => (i.plannedQuantity || 0) > 0 && (i.technicalStageIds?.includes(s.technicalStageId) || i.technicalStageId === s.technicalStageId));
-        return hasWork;
-      })
-      .sort((a, b) => (a.order || 0) - (b.order || 0));
-  }, [rawStages, boqItems]);
+    return [...rawStages].sort((a, b) => (a.order || 0) - (b.order || 0));
+  }, [rawStages]);
 
   const progressPercent = useMemo(() => {
     if (!stages || stages.length === 0) return 0;
@@ -206,14 +192,14 @@ export default function TransactionDetailsPage() {
 
   const handleRecordProgress = (force: boolean = false) => {
     if (!executionService || !user || !targetStage || !selectedItemId) return;
-    const qtyInput = isComplementary ? 0 : (progressQty === "" ? 0 : Number(progressQty));
+    const qtyInput = progressQty === "" ? 0 : Number(progressQty);
 
-    if (!isComplementary && (progressQty === "" || Number(progressQty) <= 0)) {
+    if (progressQty === "" || Number(progressQty) <= 0) {
         toast({ variant: "destructive", title: isRtl ? "يرجى إدخال كمية صحيحة" : "Enter valid quantity" });
         return;
     }
 
-    if (!force && !isComplementary && selectedBOQItemMetrics && qtyInput > selectedBOQItemMetrics.remaining) {
+    if (!force && selectedBOQItemMetrics && qtyInput > selectedBOQItemMetrics.remaining) {
         setIsOverExecutionOpen(true);
         return;
     }
@@ -239,7 +225,6 @@ export default function TransactionDetailsPage() {
             setProgressQty(""); 
             setProgressNotes("");
             setSelectedItemId("");
-            setIsComplementary(false);
         } catch (e: any) {
             toast({ variant: "destructive", title: t('error'), description: e.message });
         } finally {
@@ -362,10 +347,7 @@ export default function TransactionDetailsPage() {
                      {stages.map((stage, idx) => {
                         const boqProgress = stageProgressMap[stage.technicalStageId];
                         const isPreviousCompleted = idx === 0 || stages[idx-1].status === 'completed';
-                        const isAnchorStarted = idx === 0 || stages[idx - 1].status !== 'pending';
-                        const isOperationalFrontier = stage.isComplementary 
-                          ? (stage.status === 'in-progress' || (stage.status === 'pending' && isAnchorStarted))
-                          : (stage.status === 'in-progress' || (stage.status === 'pending' && isPreviousCompleted));
+                        const isOperationalFrontier = stage.status === 'in-progress' || (stage.status === 'pending' && isPreviousCompleted);
 
                         return (
                           <Card key={stage.id} onClick={() => setFilterStageId(filterStageId === stage.id ? null : stage.id!)} className={cn("border-0 shadow-lg rounded-2xl bg-white transition-all overflow-hidden border-s-8 cursor-pointer relative", stage.status === 'completed' ? 'border-s-emerald-500' : stage.status === 'in-progress' ? 'border-s-blue-500 ring-4 ring-blue-500/5' : isOperationalFrontier ? 'border-s-orange-300' : 'border-s-slate-100 opacity-50')}>
@@ -411,32 +393,17 @@ export default function TransactionDetailsPage() {
                   <FilePlus className="h-8 w-8 text-primary" />
                   {isRtl ? 'استنساخ مقايسة من القوالب' : 'Create BOQ from Template'}
                </DialogTitle>
-               <p className="text-slate-400 font-bold mt-2 text-xs uppercase tracking-widest">{transaction?.subServiceName}</p>
             </div>
             <div className="p-10 space-y-6 text-start bg-white">
                <div className="space-y-3">
                   <Label className="font-black text-xs uppercase text-slate-400 tracking-widest">{isRtl ? 'اختر قالب المقايسة المناسب' : 'Select BOQ Template'}</Label>
                   <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-                     <SelectTrigger className="h-14 rounded-2xl border-2 font-black">
-                        <SelectValue placeholder="..." />
-                     </SelectTrigger>
-                     <SelectContent className="rounded-2xl border-0 shadow-2xl">
-                        {templates?.map(t => (
-                           <SelectItem key={t.id} value={t.id!} className="font-bold py-4">
-                              {t.name} <span className="text-[10px] text-slate-400 font-mono ms-2">#{t.code}</span>
-                           </SelectItem>
-                        ))}
+                     <SelectTrigger className="h-14 rounded-2xl border-2 font-black"><SelectValue placeholder="..." /></SelectTrigger>
+                     <SelectContent className="rounded-2xl">
+                        {templates?.map(t => (<SelectItem key={t.id} value={t.id!} className="font-bold py-4">{t.name}</SelectItem>))}
                      </SelectContent>
                   </Select>
                </div>
-               
-               <div className="p-6 rounded-3xl bg-amber-50 border-2 border-amber-100 flex items-start gap-4">
-                  <Info className="h-6 w-6 text-amber-600 shrink-0 mt-1" />
-                  <p className="text-xs text-amber-800 font-bold leading-relaxed">
-                     {isRtl ? 'سيقوم النظام بنسخ كافة البنود والكميات الافتراضية من القالب. يمكنك تعديلها لاحقاً قبل الاعتماد.' : 'System will copy all items and default quantities. You can adjust them before baseline approval.'}
-                  </p>
-               </div>
-
                <Button onClick={handleCreateBOQ} disabled={!selectedTemplateId || !!loadingAction} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 gap-3">
                   {loadingAction === 'creating_boq' ? <Loader2 className="animate-spin h-6 w-6" /> : <Sparkles className="h-6 w-6" />}
                   {isRtl ? 'إنشاء مسودة المقايسة' : 'Generate Draft BOQ'}
@@ -490,45 +457,27 @@ export default function TransactionDetailsPage() {
                  </div>
                )}
 
-               <div className="space-y-5 pt-2">
+               <div className="space-y-4 pt-2">
                   <div className="space-y-2">
-                     <Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{isRtl ? 'نوع الارتباط الميداني' : 'Field Link Type'}</Label>
-                     <Select value={isComplementary ? 'parallel' : 'critical'} onValueChange={(v) => setIsComplementary(v === 'parallel')}>
-                        <SelectTrigger className={cn(
-                           "h-12 rounded-xl border-2 font-black shadow-sm",
-                           isComplementary ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100"
-                        )}>
-                           <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl border-0 shadow-2xl">
-                           <SelectItem value="parallel" className="font-bold text-emerald-600">{isRtl ? 'مفعل (يعمل بالتوازي)' : 'Active (Parallel Stage)'}</SelectItem>
-                           <SelectItem value="critical" className="font-bold text-rose-600">{isRtl ? 'غير مفعل (إنجاز أساسي)' : 'Inactive (Critical Stage)'}</SelectItem>
-                        </SelectContent>
-                     </Select>
+                     <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'الكمية المنفذة حالياً' : 'Quantity Executed'}</Label>
+                     <div className="relative">
+                       <Input 
+                         type="number" 
+                         step="0.01" 
+                         value={progressQty} 
+                         onChange={e => setProgressQty(e.target.value === '' ? '' : Number(e.target.value))} 
+                         className="h-12 rounded-lg border-2 font-black text-xl text-center shadow-inner" 
+                         placeholder="..." 
+                       />
+                       <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-300 uppercase">{selectedBOQItemMetrics?.unit}</div>
+                     </div>
                   </div>
-                  
-                  {!isComplementary && (
-                    <div className="space-y-2 animate-in slide-in-from-top-2">
-                       <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'الكمية المنفذة حالياً' : 'Quantity Executed'}</Label>
-                       <div className="relative">
-                         <Input 
-                           type="number" 
-                           step="0.01" 
-                           value={progressQty} 
-                           onChange={e => setProgressQty(e.target.value === '' ? '' : Number(e.target.value))} 
-                           className="h-12 rounded-lg border-2 font-black text-xl text-center shadow-inner" 
-                           placeholder="..." 
-                         />
-                         <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-300 uppercase">{selectedBOQItemMetrics?.unit}</div>
-                       </div>
-                    </div>
-                  )}
                   <div className="space-y-1.5"><Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'تقرير ميداني مصغر' : 'Field Notes'}</Label><Textarea value={progressNotes} onChange={e => setProgressNotes(e.target.value)} className="min-h-[100px] rounded-lg bg-slate-50/50 border-2 resize-none p-3 text-xs font-bold" placeholder="..." /></div>
                </div>
             </div>
             <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-3">
                <Button variant="outline" onClick={() => setIsRecordOpen(false)} className="flex-1 h-12 rounded-xl font-bold">إلغاء</Button>
-               <Button onClick={() => handleRecordProgress()} disabled={loadingAction === 'recording' || (!isComplementary && (progressQty === "" || Number(progressQty) <= 0)) || !selectedItemId} className="flex-[2] btn-gradient h-12 rounded-xl text-lg gap-2">
+               <Button onClick={() => handleRecordProgress()} disabled={loadingAction === 'recording' || progressQty === "" || Number(progressQty) <= 0 || !selectedItemId} className="flex-[2] btn-gradient h-12 rounded-xl text-lg gap-2">
                   {loadingAction === 'recording' ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
                   {isRtl ? 'حفظ السجل الميداني' : 'Commit Log'}
                </Button>
@@ -551,15 +500,10 @@ export default function TransactionDetailsPage() {
                      </p>
                      <div className="flex items-center gap-4">
                         <span className="text-4xl font-black font-headline text-amber-600">{incompleteStage?.progress.progressPercent}%</span>
-                        <div className="flex-1 h-2 bg-amber-200 rounded-full overflow-hidden"><div className="h-full bg-amber-600" style={{ width: `${incompleteStage?.progress.progressPercent}%` }} /></div>
                      </div>
                   </div>
                </div>
                
-               <p className="text-xs text-slate-500 font-bold italic leading-relaxed">
-                  {isRtl ? 'يجب تسجيل كافة الكميات المتبقية للبند لتتمكن من الإغلاق الطبيعي.' : 'All remaining quantities must be logged for a normal closure.'}
-               </p>
-
                {isAdmin && (
                   <div className="pt-4 border-t border-slate-100 space-y-4">
                      <div className="p-4 rounded-xl bg-slate-900 text-white flex items-center gap-3">
@@ -569,7 +513,7 @@ export default function TransactionDetailsPage() {
                      <Button 
                        onClick={() => handleCompleteStage(incompleteStage!.stage, true)}
                        disabled={!!processingId}
-                       className="w-full h-14 rounded-xl bg-orange-600 text-white font-black text-lg shadow-xl shadow-orange-100 gap-2"
+                       className="w-full h-14 rounded-xl bg-orange-600 text-white font-black text-lg shadow-xl gap-2"
                      >
                         {processingId === incompleteStage?.stage.id ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />}
                         {isRtl ? 'إغلاق المرحلة إجبارياً' : 'Force Close Stage'}
@@ -577,11 +521,6 @@ export default function TransactionDetailsPage() {
                   </div>
                )}
             </div>
-            {!isAdmin && (
-               <DialogFooter className="p-6 bg-slate-50 border-t">
-                  <Button variant="outline" onClick={() => setIncompleteStage(null)} className="w-full h-12 rounded-xl font-bold">إلغاء</Button>
-               </DialogFooter>
-            )}
          </DialogContent>
       </Dialog>
 

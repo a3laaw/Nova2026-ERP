@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -10,12 +9,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   FileSpreadsheet, Search, Loader2, ArrowRight, 
-  TrendingUp, Activity, Trash2, AlertTriangle,
-  History, Settings2, FileText, Sparkles, Clock,
-  CheckCircle2, XCircle, FileSearch, UserCircle
+  Trash2, AlertTriangle, Sparkles, Clock,
+  CheckCircle2, FileSearch, UserCircle, Settings2
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, where, collectionGroup, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, where, collectionGroup, getDocs, doc } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -55,8 +53,7 @@ function BOQVariationStats({ boqId, companyId }: { boqId: string, companyId: str
   const stats = {
     total: variations.length,
     draft: variations.filter(v => v.status === 'draft').length,
-    approved: variations.filter(v => v.status === 'approved').length,
-    cancelled: variations.filter(v => v.status === 'cancelled').length
+    approved: variations.filter(v => v.status === 'approved').length
   };
 
   return (
@@ -85,7 +82,6 @@ export default function BOQExplorerPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [processingId, setProcessingId] = useState<string | null>(null);
   
-  // States for VO Review
   const [reviewVO, setReviewVO] = useState<BOQVariation | null>(null);
   const [reviewItems, setReviewItems] = useState<BOQVariationItem[]>([]);
   const [loadingReview, setLoadingReview] = useState(false);
@@ -95,6 +91,7 @@ export default function BOQExplorerPage() {
   [db, companyId]);
   const { data: boqs, loading: boqLoading } = useCollection<BOQ>(boqsQuery);
 
+  // تحسين الاستعلام العالمي للأوامر التغييرية
   const allVOsQuery = useMemo(() => 
     companyId && db ? query(collectionGroup(db, 'variations'), where('companyId', '==', companyId)) : null, 
   [db, companyId]);
@@ -268,6 +265,8 @@ export default function BOQExplorerPage() {
                 <TableBody>
                   {voLoading ? (
                     <TableRow><TableCell colSpan={5} className="text-center py-32"><Loader2 className="animate-spin h-12 w-12 mx-auto text-primary/20" /></TableCell></TableRow>
+                  ) : filteredVOs.length === 0 ? (
+                    <TableRow><TableCell colSpan={5} className="text-center py-32 text-slate-400 font-bold italic">{isRtl ? 'لا يوجد أوامر تغييرية معلقة حالياً.' : 'No pending variations found.'}</TableCell></TableRow>
                   ) : filteredVOs.map((vo) => (
                     <TableRow key={vo.id} className="hover:bg-slate-50/50 border-b-slate-50">
                       <TableCell className="py-8 ps-10 text-start">
@@ -307,7 +306,7 @@ export default function BOQExplorerPage() {
                </div>
                <div className="text-end">
                   <p className="text-[9px] font-black text-primary uppercase mb-1">Impact</p>
-                  <h3 className={cn("text-3xl font-black font-mono", (reviewVO?.totalAmount || 0) >= 0 ? "text-emerald-400" : "text-rose-400")}>{reviewVO?.totalAmount.toLocaleString()} KWD</h3>
+                  <h3 className={cn("text-3xl font-black font-mono", (reviewVO?.totalAmount || 0) >= 0 ? "text-emerald-400" : "text-rose-400")}>{reviewVO?.totalAmount.toLocaleString()} <span className="text-sm opacity-40">KWD</span></h3>
                </div>
             </div>
             <div className="p-8 space-y-6 max-h-[60vh] overflow-y-auto scrollbar-hide text-start">
@@ -340,7 +339,7 @@ export default function BOQExplorerPage() {
         <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white" dir={dir}>
           <AlertDialogHeader>
              <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50"><AlertTriangle className="h-10 w-10" /></div>
-             <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900">{t('confirmDelete')}</AlertDialogTitle>
+             <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900 leading-tight">{t('confirmDelete')}</AlertDialogTitle>
              <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">{isRtl ? 'هل أنت متأكد؟ سيتم حذف المقايسة وكافة سجلات التنفيذ الميداني المرتبطة بها نهائياً.' : 'Are you sure? This BOQ and all associated field execution logs will be permanently deleted.'}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-12 gap-4 flex flex-row">

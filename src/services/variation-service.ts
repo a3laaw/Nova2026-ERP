@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -12,7 +11,8 @@ import {
   orderBy,
   writeBatch,
   updateDoc,
-  addDoc
+  addDoc,
+  where
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { BOQVariation, BOQVariationItem, BOQItem, BOQ } from '@/types/documents';
@@ -91,9 +91,6 @@ export class VariationService {
     }
   }
 
-  /**
-   * اعتماد الأمر التغييري: حقن البنود والمراحل في المسار الفني والميزانية
-   */
   async approveVariation(boqId: string, voId: string, transactionId: string, userId: string, userName: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
     
@@ -108,43 +105,35 @@ export class VariationService {
     const voItemsSnap = await getDocs(collection(this.db, paths.boqVariationItems(this.companyId, boqId, voId)));
     const batch = writeBatch(this.db);
     
-    // جلب المراحل الحالية للترتيب والحقن
     const stagesSnap = await getDocs(query(collection(this.db, paths.transactionStages(this.companyId, transactionId)), orderBy('order', 'asc')));
     const currentStages = stagesSnap.docs.map(d => ({ id: d.id, ...d.data() } as StageInstance));
     
-    // تجميع المراحل التي تحتاج لإعادة فتح (Reopen) إذا أضيفت كميات جديدة لمرحلة مكتملة
     const stagesToReopen = new Set<string>();
 
     for (const itemDoc of voItemsSnap.docs) {
       const vItem = itemDoc.data() as BOQVariationItem;
       let techId = vItem.technicalStageId || '';
 
-      // 1. حقن مرحلة محلية جديدة إذا طلب ذلك
       if (vItem.type === 'new_item' && vItem.stageMode === 'new_local_stage') {
         techId = await this.injectNewManualStage(batch, transactionId, vItem, currentStages);
       }
 
-      // 2. تحديث بنود المقايسة
       if (vItem.type === 'new_item') {
         this.applyNewItemToBOQ(batch, boqId, transactionId, voId, vItem, techId);
-        stagesToReopen.add(techId);
+        if (techId) stagesToReopen.add(techId);
       } else if (vItem.sourceBoqItemId) {
         await this.applyQuantityChangeToBOQ(batch, boqId, vItem, stagesToReopen);
       }
     }
 
-    // 3. إعادة فتح المراحل المكتملة المتأثرة بالتغيير
     this.reopenRequiredStages(batch, transactionId, currentStages, stagesToReopen);
-
-    // 4. تحديث حالة الطلب
     batch.update(voRef, { status: 'approved', approvedBy: userId, approvedAt: serverTimestamp() });
     
-    // 5. توثيق الاعتماد في التايم لاين
     const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
     await addDoc(timelineRef, {
       transactionId,
       type: 'system',
-      content: `تم اعتماد الأمر التغييري: ${voData.title}. تم تحديث الميزانية وتفعيل مسارات التنفيذ المطلوبة.`,
+      content: `تم اعتماد الأمر التغييري: ${voData.title}. تم تحديث الميزانية وتفعيل مسارات التنفيذ الميدانية.`,
       userId, userName, companyId: this.companyId, createdAt: serverTimestamp()
     });
 
@@ -172,7 +161,6 @@ export class VariationService {
       createdAt: serverTimestamp()
     });
 
-    // إزاحة المراحل التالية
     currentStages.forEach(s => {
       if (s.order >= order) {
         batch.update(doc(this.db, paths.transactionStages(this.companyId, transactionId), s.id!), { order: s.order + 1 });
@@ -212,7 +200,6 @@ export class VariationService {
         estimatedRate: Number(vItem.rate) || current.estimatedRate,
         updatedAt: serverTimestamp() 
       });
-      // إذا كانت الكمية الجديدة أكبر من المنفذ، نحتاج لفتح المرحلة مجدداً للعمل
       if (newPlanned > (current.executedQuantity || 0)) {
         stagesToReopen.add(vItem.technicalStageId || current.technicalStageId || '');
       }

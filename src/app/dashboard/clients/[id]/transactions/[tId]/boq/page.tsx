@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -10,13 +9,11 @@ import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   FileSpreadsheet, ArrowRight, Loader2, 
-  TrendingUp, ChevronDown, ChevronRight,
-  Printer, Folder, Calculator, ShieldCheck,
-  Zap, History, PlusCircle, AlertCircle,
-  CheckCircle2, XCircle, Ban, TrendingDown,
-  Info, Sparkles, Pencil, Save, ShieldAlert,
-  LayoutGrid, X, Clock, DollarSign, Search,
-  Eye, FileSearch
+  ChevronDown, ChevronRight,
+  Printer, Folder, Calculator,
+  PlusCircle, AlertCircle,
+  CheckCircle2, Sparkles, FileSearch, 
+  LayoutGrid, X, Clock
 } from "lucide-react";
 import { useFirestore, useCollection, useDoc } from '@/firebase';
 import { collection, query, where, doc, getDocs } from 'firebase/firestore';
@@ -54,7 +51,6 @@ export default function TransactionBOQProgressPage() {
   const [isEditingBaseline, setIsEditingBaseline] = useState(false);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   
-  // States for VO Review
   const [reviewVO, setReviewVO] = useState<BOQVariation | null>(null);
   const [reviewItems, setReviewItems] = useState<BOQVariationItem[]>([]);
   const [loadingReview, setLoadingReview] = useState(false);
@@ -160,7 +156,7 @@ export default function TransactionBOQProgressPage() {
     setProcessingVOId(reviewVO.id);
     try {
       const service = new VariationService(db, companyId, permissions);
-      await service.approveVariation(activeBoq!.id, reviewVO.id!, transactionId, user.uid, globalUser?.username || 'Admin');
+      await service.approveVariation(reviewVO.boqId, reviewVO.id!, transactionId, user.uid, globalUser?.username || 'Admin');
       toast({ title: isRtl ? "تم اعتماد التعديل بنجاح" : "Variation Approved" });
       setReviewVO(null);
     } catch (e: any) {
@@ -175,7 +171,7 @@ export default function TransactionBOQProgressPage() {
     setProcessingVOId(reviewVO.id);
     try {
       const service = new VariationService(db, companyId, permissions);
-      await service.rejectVariation(activeBoq!.id, reviewVO.id!, transactionId, user.uid, globalUser?.username || 'Admin');
+      await service.rejectVariation(reviewVO.boqId, reviewVO.id!, transactionId, user.uid, globalUser?.username || 'Admin');
       toast({ title: isRtl ? "تم رفض وإلغاء الطلب" : "Variation Rejected" });
       setReviewVO(null);
     } catch (e: any) {
@@ -297,7 +293,6 @@ export default function TransactionBOQProgressPage() {
          </Table>
       </div>
 
-      {/* Review Dialog for VO in BOQ Page */}
       <Dialog open={!!reviewVO} onOpenChange={(open) => !open && setReviewVO(null)}>
          <DialogContent className="max-w-5xl rounded-none p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
             <div className="bg-[#1e1b4b] p-8 text-white text-start flex justify-between items-center">
@@ -307,7 +302,7 @@ export default function TransactionBOQProgressPage() {
                </div>
                <div className="text-end">
                   <p className="text-[9px] font-black text-primary uppercase mb-1">Impact</p>
-                  <h3 className={cn("text-3xl font-black font-mono", (reviewVO?.totalAmount || 0) >= 0 ? "text-emerald-400" : "text-rose-400")}>{reviewVO?.totalAmount.toLocaleString()} KWD</h3>
+                  <h3 className={cn("text-3xl font-black font-mono", (reviewVO?.totalAmount || 0) >= 0 ? "text-emerald-400" : "text-rose-400")}>{reviewVO?.totalAmount.toLocaleString()} <span className="text-xs opacity-40">KWD</span></h3>
                </div>
             </div>
             <div className="p-8 space-y-6 max-h-[60vh] overflow-y-auto scrollbar-hide text-start">

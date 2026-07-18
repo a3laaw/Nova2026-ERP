@@ -16,9 +16,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { 
   Calculator, Trash2, Loader2, Save, X, 
   PlusCircle, LayoutGrid, Workflow,
-  CheckCircle2, Plus, ArrowRight,
-  Settings2, Clock, Info, Sparkles,
-  AlertTriangle, GitBranch, Pencil, Zap
+  Plus, ArrowRight,
+  Settings2, Sparkles,
+  AlertTriangle, GitBranch, Zap
 } from "lucide-react";
 import { 
   Select, 
