@@ -34,7 +34,10 @@ import {
   Search,
   HardHat,
   Save,
-  Navigation
+  Navigation,
+  UserPlus,
+  Building2,
+  Phone
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs } from 'firebase/firestore';
@@ -43,10 +46,12 @@ import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { WorkHoursService } from '@/services/work-hours-service';
 import { AppointmentService } from '@/services/appointment-service';
+import { ClientService } from '@/services/client-service';
 import { Appointment, AppointmentType } from '@/types/appointment';
 import { Client } from '@/types/client';
 import { Employee } from '@/types/hr';
 import { DayOfWeek, WorkHoursSettings } from '@/types/work-hours';
+import { Governorate } from '@/types/reference';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -54,6 +59,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
@@ -99,10 +105,10 @@ const weekDays: { id: DayOfWeek; labelAr: string; labelEn: string }[] = [
 ];
 
 function getVisitColor(visitCount: number, status?: string): string {
-  if (visitCount === 1) return '#facc15'; // Yellow: First Visit
-  if (visitCount > 1 && status !== 'contracted') return '#22c55e'; // Green: Follow-up
-  if (visitCount > 1 && status === 'contracted') return '#3b82f6'; // Blue: Contracted
-  return '#9ca3af'; // Gray: Default
+  if (visitCount === 1) return '#facc15'; 
+  if (visitCount > 1 && status !== 'contracted') return '#22c55e'; 
+  if (visitCount > 1 && status === 'contracted') return '#3b82f6'; 
+  return '#9ca3af'; 
 }
 
 function cardGradient(color: string) {
@@ -156,13 +162,11 @@ export function ArchitecturalAppointmentsView() {
   const db = useFirestore();
   const companyId = globalUser?.companyId;
 
-  // --- State ---
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [settings, setSettings] = useState<WorkHoursSettings | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogData, setDialogData] = useState<{ mode: 'create' | 'edit'; appointment?: Appointment; slot?: string; engineer?: Employee } | null>(null);
 
-  // --- Data Fetching ---
   const apptsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.appointments(companyId)), orderBy('start')) : null, 
   [db, companyId]);
@@ -186,7 +190,6 @@ export function ArchitecturalAppointmentsView() {
     }
   }, [db, companyId]);
 
-  // --- Computations ---
   const engineers = useMemo(() => {
     return allEmployees.filter(e => e.departmentName?.includes('معماري') || e.departmentName?.includes('Arch'));
   }, [allEmployees]);
@@ -232,7 +235,7 @@ export function ArchitecturalAppointmentsView() {
         return { morning: generateTimeSlots(arch.morningStartTime, arch.morningEndTime, dur, buf), evening: [] };
       }
       mEnd = settings.halfDay.endTime;
-      eStart = "00:00"; eEnd = "00:00"; // Disable evening
+      eStart = "00:00"; eEnd = "00:00"; 
     }
 
     return {
@@ -265,7 +268,6 @@ export function ArchitecturalAppointmentsView() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700" dir={dir}>
-      {/* --- Print Style --- */}
       <style>{`
         @media print {
           .no-print { display: none !important; }
@@ -277,7 +279,6 @@ export function ArchitecturalAppointmentsView() {
         #print-header { display: none; }
       `}</style>
 
-      {/* --- Header --- */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 no-print">
         <div className="flex items-center gap-6">
            <div className="flex items-center bg-white rounded-2xl shadow-xl border-2 border-slate-50 p-1">
@@ -310,7 +311,6 @@ export function ArchitecturalAppointmentsView() {
         </div>
       </div>
 
-      {/* --- Stats --- */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6 no-print">
          <Card className="border-0 shadow-lg rounded-3xl bg-white border-b-8 border-slate-900">
             <CardContent className="p-6 text-start">
@@ -338,7 +338,6 @@ export function ArchitecturalAppointmentsView() {
          </Card>
       </div>
 
-      {/* --- Main Grid --- */}
       <div className="space-y-12 pb-20">
          <GridSection 
            title={isRtl ? "الفترة الصباحية ☀️" : "Morning Session"} 
@@ -364,7 +363,6 @@ export function ArchitecturalAppointmentsView() {
          )}
       </div>
 
-      {/* --- Dialogs --- */}
       {dialogOpen && (
         <AppointmentManagerDialog 
           isOpen={dialogOpen} 
@@ -373,6 +371,7 @@ export function ArchitecturalAppointmentsView() {
           clients={allClients}
           companyId={companyId!}
           userId={user!.uid}
+          userName={user!.displayName || 'User'}
           db={db}
         />
       )}
@@ -398,7 +397,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                    {engineers.map((eng: Employee) => (
                      <th key={eng.id} className="p-6 border-b-2 border-white border-s-2 text-start">
                         <div className="flex items-center gap-3">
-                           <AvatarFallback className="h-10 w-10 rounded-xl bg-primary/10 text-primary font-black text-xs uppercase">{eng.fullName.charAt(0)}</AvatarFallback>
+                           <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-xs uppercase shadow-inner">{eng.fullName.charAt(0)}</div>
                            <div className="flex flex-col">
                               <span className="font-black text-slate-800 text-sm">{eng.fullName}</span>
                               <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">{eng.jobTitle}</span>
@@ -457,31 +456,70 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
   );
 }
 
-function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, userId, db }: { isOpen: boolean, onClose: () => void, data: any, clients: Client[], companyId: string, userId: string, db: any }) {
+function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, userId, userName, db }: any) {
   const { lang, isRtl, t } = useLanguage();
   const [loading, setLoading] = useState(false);
+  const [isNewClient, setIsNewClient] = useState(false);
+  
   const [formData, setFormData] = useState({
     title: data.appointment?.title || '',
     clientId: data.appointment?.clientId || '',
     clientName: data.appointment?.clientName || '',
+    newClientName: '',
+    newClientPhone: '',
+    newClientGovId: '',
     date: data.appointment ? format(parseISO(data.appointment.start), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
     time: data.slot || (data.appointment ? format(parseISO(data.appointment.start), 'HH:mm') : '08:00'),
     notes: data.appointment?.notes || ''
   });
 
+  const govsQuery = useMemo(() => companyId && db ? query(collection(db, paths.governorates(companyId)), orderBy('order')) : null, [db, companyId]);
+  const { data: governorates } = useCollection<Governorate>(govsQuery);
+
   const handleSave = async () => {
-    if (!formData.title || !formData.clientId || !formData.date) return;
+    const isCreate = data.mode === 'create';
+    const finalTitle = formData.title || (isNewClient ? `زيارة أولى: ${formData.newClientName}` : 'اجتماع عميل');
+    
     setLoading(true);
     try {
-      const service = new AppointmentService(db, companyId);
-      const start = new Date(`${formData.date}T${formData.time}:00`).toISOString();
-      const selectedClient = clients.find(c => c.id === formData.clientId);
+      const appService = new AppointmentService(db, companyId);
+      const clientService = new ClientService(db, companyId);
+      let targetClientId = formData.clientId;
+      let targetClientName = formData.clientName;
 
-      if (data.mode === 'create') {
-        await service.createAppointment({
-          title: formData.title,
-          clientId: formData.clientId,
-          clientName: selectedClient?.nameAr || formData.clientName,
+      // إذا كان عميلاً جديداً، نقوم بتسجيله أولاً في النظام
+      if (isCreate && isNewClient) {
+        if (!formData.newClientName || !formData.newClientPhone) {
+          toast({ variant: "destructive", title: isRtl ? "بيانات العميل الجديد ناقصة" : "New client data missing" });
+          setLoading(false);
+          return;
+        }
+
+        const gov = governorates?.find(g => g.id === formData.newClientGovId);
+        const nextFileNum = await clientService.getNextFileNumber();
+        
+        targetClientId = await clientService.addClient({
+          nameAr: formData.newClientName,
+          mobile: formData.newClientPhone,
+          governorateId: formData.newClientGovId,
+          governorateName: gov ? (isRtl ? gov.name : gov.nameEn) : '',
+          fileNumber: nextFileNum,
+          status: 'new'
+        }, userId, userName);
+        
+        targetClientName = formData.newClientName;
+      } else if (isCreate) {
+        const selected = clients.find((c: any) => c.id === targetClientId);
+        targetClientName = selected?.nameAr || '';
+      }
+
+      const start = new Date(`${formData.date}T${formData.time}:00`).toISOString();
+
+      if (isCreate) {
+        await appService.createAppointment({
+          title: finalTitle,
+          clientId: targetClientId,
+          clientName: targetClientName,
           engineerId: data.engineer.id,
           engineerName: data.engineer.fullName,
           type: 'client_meeting',
@@ -490,10 +528,10 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, u
           notes: formData.notes
         }, userId);
       } else if (data.appointment?.id) {
-        await service.updateAppointment(data.appointment.id, {
+        await appService.updateAppointment(data.appointment.id, {
           title: formData.title,
-          clientId: formData.clientId,
-          clientName: selectedClient?.nameAr || formData.clientName,
+          clientId: targetClientId,
+          clientName: targetClientName,
           start,
           notes: formData.notes
         });
@@ -507,54 +545,119 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, u
     }
   };
 
+  const isCreate = data.mode === 'create';
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-xl">
-        <div className="bg-[#1e1b4b] p-8 text-white text-start">
-           <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3">
-              <Navigation className="h-6 w-6 text-blue-600" />
-              {data.mode === 'create' ? (isRtl ? 'حجز موعد معماري' : 'Book Appointment') : (isRtl ? 'تعديل بيانات الموعد' : 'Edit Appointment')}
-           </DialogTitle>
-           <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-widest">{data.engineer?.fullName || data.appointment?.engineerName}</p>
-        </div>
-
-        <div className="p-8 space-y-6 text-start">
-           <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'غرض الزيارة / العنوان' : 'Subject / Purpose'}</Label>
-              <Input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="h-12 rounded-xl border-2 font-bold" placeholder="..." />
-           </div>
-
-           <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'العميل المالك' : 'Client'}</Label>
-              <Select value={formData.clientId} onValueChange={v => setFormData({...formData, clientId: v})}>
-                 <SelectTrigger className="h-12 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                 <SelectContent className="rounded-xl border-0 shadow-2xl">
-                    {clients.map(c => <SelectItem key={c.id} value={c.id!} className="font-bold">{c.nameAr}</SelectItem>)}
-                 </SelectContent>
-              </Select>
-           </div>
-
-           <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                 <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'التاريخ' : 'Date'}</Label>
-                 <Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="h-11 rounded-xl border-2 font-bold" />
+      <DialogContent className="rounded-[2rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
+        {/* Header - Light & Clean */}
+        <div className="bg-primary/5 p-8 text-slate-900 text-start border-b">
+           <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                 <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center text-primary shadow-xl border-2 border-primary/10">
+                    {isCreate ? <UserPlus className="h-6 w-6" /> : <Edit3 className="h-6 w-6" />}
+                 </div>
+                 <div>
+                    <DialogTitle className="text-xl font-black font-headline">
+                       {isCreate ? (isRtl ? 'حجز موعد جديد' : 'New Appointment') : (isRtl ? 'تعديل الموعد' : 'Edit Appointment')}
+                    </DialogTitle>
+                    <p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-0.5">
+                       {data.engineer?.fullName || data.appointment?.engineerName}
+                    </p>
+                 </div>
               </div>
-              <div className="space-y-2">
-                 <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الوقت' : 'Time'}</Label>
-                 <Input type="time" value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} className="h-11 rounded-xl border-2 font-bold" />
-              </div>
-           </div>
-
-           <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'ملاحظات' : 'Internal Notes'}</Label>
-              <textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="w-full h-24 rounded-xl border-2 bg-slate-50/50 p-4 text-xs font-bold resize-none shadow-inner" placeholder="..." />
+              {isCreate && (
+                 <Badge variant="outline" className="h-9 px-4 border-2 font-black text-xs bg-white text-slate-400">
+                    <Clock className="h-3.5 w-3.5 me-2" /> {formData.time}
+                 </Badge>
+              )}
            </div>
         </div>
 
-        <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-3">
-           <Button variant="outline" onClick={onClose} className="flex-1 h-14 rounded-2xl border-2 font-bold bg-white">إلغاء</Button>
-           <Button onClick={handleSave} disabled={loading} className="flex-[2] h-14 rounded-2xl bg-primary text-white font-black shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-2 border-b-8 border-orange-700">
-              {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />}
+        <div className="p-8 space-y-6 text-start max-h-[65vh] overflow-y-auto scrollbar-hide">
+           
+           {/* New Client Toggle */}
+           {isCreate && (
+             <div className="flex items-center justify-between p-5 rounded-[1.5rem] bg-slate-50 border-2 border-white shadow-inner">
+                <div className="flex items-center gap-3">
+                   <div className="h-8 w-8 rounded-lg bg-white flex items-center justify-center text-primary shadow-sm border"><Sparkles className="h-4 w-4" /></div>
+                   <div className="text-start">
+                      <Label className="font-black text-xs">{isRtl ? 'عميل جديد (أول زيارة)' : 'New Client?'}</Label>
+                      <p className="text-[8px] text-slate-400 font-bold uppercase">{isRtl ? 'سيتم فتح ملف مالي وتجاري تلقائياً' : 'Automated file provisioning'}</p>
+                   </div>
+                </div>
+                <Switch checked={isNewClient} onCheckedChange={setIsNewClient} />
+             </div>
+           )}
+
+           <div className="space-y-4 animate-in fade-in duration-300">
+              {isNewClient ? (
+                 <div className="space-y-4 p-6 rounded-[2rem] border-2 border-primary/10 bg-primary/5 animate-in slide-in-from-top-2">
+                    <div className="space-y-2">
+                       <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'اسم العميل الكامل' : 'Client Full Name'}</Label>
+                       <Input value={formData.newClientName} onChange={e => setFormData({...formData, newClientName: e.target.value})} className="h-11 rounded-xl border-2 font-bold bg-white" placeholder="..." />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                       <div className="space-y-2">
+                          <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'رقم الهاتف' : 'Mobile'}</Label>
+                          <div className="relative">
+                             <Phone className="absolute start-3 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-300" />
+                             <Input value={formData.newClientPhone} onChange={e => setFormData({...formData, newClientPhone: e.target.value})} className="h-11 rounded-xl border-2 font-bold ps-9 bg-white" placeholder="+965" />
+                          </div>
+                       </div>
+                       <div className="space-y-2">
+                          <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المحافظة' : 'Gov'}</Label>
+                          <Select value={formData.newClientGovId} onValueChange={v => setFormData({...formData, newClientGovId: v})}>
+                             <SelectTrigger className="h-11 border-2 font-bold bg-white rounded-xl"><SelectValue placeholder="..." /></SelectTrigger>
+                             <SelectContent className="rounded-xl border-0 shadow-2xl">
+                                {governorates?.map(g => <SelectItem key={g.id} value={g.id!} className="font-bold">{isRtl ? g.name : g.nameEn}</SelectItem>)}
+                             </SelectContent>
+                          </Select>
+                       </div>
+                    </div>
+                 </div>
+              ) : (
+                 <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'اختر العميل المسجل' : 'Registered Client'}</Label>
+                    <Select value={formData.clientId} onValueChange={v => setFormData({...formData, clientId: v})}>
+                       <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/50"><SelectValue placeholder={isRtl ? "البحث في قاعدة العملاء..." : "Search clients..."} /></SelectTrigger>
+                       <SelectContent className="rounded-xl border-0 shadow-2xl">
+                          {clients.map((c: any) => <SelectItem key={c.id} value={c.id!} className="font-bold py-3">{c.nameAr}</SelectItem>)}
+                       </SelectContent>
+                    </Select>
+                 </div>
+              )}
+           </div>
+
+           <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'غرض الزيارة / العنوان' : 'Purpose / Title'}</Label>
+              <Input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="h-12 rounded-xl border-2 font-bold" placeholder={isRtl ? "مثلاً: معاينة موقع فيلا السالمية" : "e.g. Site Visit"} />
+           </div>
+
+           {/* Date/Time only visible in EDIT mode or if specifically needed */}
+           {!isCreate && (
+              <div className="grid grid-cols-2 gap-4 animate-in fade-in">
+                 <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'التاريخ' : 'Date'}</Label>
+                    <Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="h-11 rounded-xl border-2 font-bold" />
+                 </div>
+                 <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الوقت' : 'Time'}</Label>
+                    <Input type="time" value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} className="h-11 rounded-xl border-2 font-bold" />
+                 </div>
+              </div>
+           )}
+
+           <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'ملاحظات إضافية' : 'Notes'}</Label>
+              <textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="w-full h-24 rounded-2xl border-2 bg-slate-50/50 p-4 text-xs font-bold resize-none shadow-inner" placeholder="..." />
+           </div>
+        </div>
+
+        <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4">
+           <Button variant="outline" onClick={onClose} className="flex-1 h-16 rounded-2xl border-2 font-bold bg-white">إلغاء</Button>
+           <Button onClick={handleSave} disabled={loading} className="flex-[2] h-16 rounded-2xl bg-primary text-white font-black shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-8 border-orange-700">
+              {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <CheckCircle2 className="h-6 w-6" />}
               {isRtl ? 'تثبيت الموعد' : 'Confirm Booking'}
            </Button>
         </DialogFooter>
