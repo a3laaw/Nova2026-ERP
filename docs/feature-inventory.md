@@ -1,116 +1,86 @@
 # خريطة ميزات نظام NovaFlow ERP السيادية 🇸🇦
 
-هذا المستند يمثل الحصر الشامل لكافة الوظائف والميزات الموجودة في النظام حتى تاريخه، ويعتبر المرجع الأساسي لسياسة "عدم التراجع".
+هذا المستند يمثل الحصر الشامل لكافة الوظائف والميزات الموجودة في النظام، ويعتبر المرجع الأساسي لسياسة "عدم التراجع".
 
-## 1. الوحدات الرئيسية (Sovereign Modules)
-- **لوحة التحكم (Dashboard)**: ملخص العمليات والأداء المالي.
-- **إدارة العملاء والفرص (CRM)**: تتبع العملاء والفرص البيعية.
-- **المشاريع الهندسية (Projects)**: رادار التنفيذ الميداني وإدارة المقاولات.
-- **الموارد البشرية (HR)**: شؤون الموظفين، الرواتب، والامتثال القانوني.
-- **المشتريات والتوريد (Procurement)**: سلسلة التوريد الذكية.
-- **المحاسبة والمالية (Accounting)**: المطابقة البنكية والقيود.
-- **المخازن والعهد (Inventory)**: تتبع المخزون والعهد الميدانية.
-- **ذكاء Nova الاصطناعي (Nova AI)**: المساعد المحاسبي ومحلل عروض الأسعار.
-- **لوحة المطور (Developer Console)**: إدارة المنشآت والاشتراكات.
+## 1. مسارات الصفحات الفعلية (App Router Routes)
 
-## 2. المسارات والصفحات (App Routes)
-### العملاء والـ CRM
-- `/dashboard/crm`: إدارة الفرص البيعية (Leads).
-- `/dashboard/clients`: قاعدة بيانات العملاء.
-- `/dashboard/clients/new`: تسجيل عميل جديد.
-- `/dashboard/clients/[id]`: ملف العميل المتكامل.
-- `/dashboard/clients/[id]/edit`: تعديل بيانات العميل.
-- `/dashboard/clients/[id]/transactions/new`: فتح معاملة فنية جديدة.
+| المسار (Route) | الملف المصدري (File Path) | الوصف |
+| :--- | :--- | :--- |
+| `/` | `src/app/page.tsx` | بوابة التوجيه الرئيسية |
+| `/login` | `src/app/login/page.tsx` | بوابة الدخول الموحدة |
+| `/register` | `src/app/register/page.tsx` | تسجيل المنشآت الجديدة |
+| `/dashboard` | `src/app/dashboard/page.tsx` | لوحة تحكم العمليات |
+| `/dashboard/crm` | `src/app/dashboard/crm/page.tsx` | إدارة الفرص والعملاء |
+| `/dashboard/clients` | `src/app/dashboard/clients/page.tsx` | قاعدة بيانات العملاء |
+| `/dashboard/clients/new` | `src/app/dashboard/clients/new/page.tsx` | تسجيل عميل جديد |
+| `/dashboard/clients/[id]` | `src/app/dashboard/clients/[id]/page.tsx` | ملف العميل ورادار الموقع |
+| `/dashboard/clients/[id]/edit` | `src/app/dashboard/clients/[id]/edit/page.tsx` | تعديل بيانات العميل |
+| `/dashboard/clients/[id]/transactions/new` | `src/app/dashboard/clients/[id]/transactions/new/page.tsx` | فتح معاملة فنية |
+| `/dashboard/clients/[id]/transactions/[tId]` | `src/app/dashboard/clients/[id]/transactions/[tId]/page.tsx` | رادار المسار الميداني |
+| `/dashboard/clients/[id]/transactions/[tId]/boq` | `src/app/dashboard/clients/[id]/transactions/[tId]/boq/page.tsx` | هندسة المقايسة التنفيذية |
+| `/dashboard/projects` | `src/app/dashboard/projects/page.tsx` | رادار المشاريع الموحد |
+| `/dashboard/projects/boqs` | `src/app/dashboard/projects/boqs/page.tsx` | مستكشف المقايسات العالمي |
+| `/dashboard/hr` | `src/app/dashboard/hr/page.tsx` | لوحة الموارد البشرية |
+| `/dashboard/hr/employees` | `src/app/dashboard/hr/employees/page.tsx` | سجل الموظفين الشامل |
+| `/dashboard/hr/payroll` | `src/app/dashboard/hr/payroll/page.tsx` | إدارة مسيرات الرواتب |
+| `/dashboard/hr/payroll/new` | `src/app/dashboard/hr/payroll/new/page.tsx` | توليد الرواتب الذكي |
+| `/dashboard/hr/gratuity-calculator` | `src/app/dashboard/hr/gratuity-calculator/page.tsx` | حاسبة نهاية الخدمة |
+| `/dashboard/hr/legal-guide` | `src/app/dashboard/hr/legal-guide/page.tsx` | دليل الامتثال القانوني |
+| `/dashboard/procurement` | `src/app/dashboard/procurement/page.tsx` | لوحة المشتريات |
+| `/dashboard/accounting` | `src/app/dashboard/accounting/page.tsx` | المطابقة البنكية الذكية |
+| `/dashboard/ai` | `src/app/dashboard/ai/page.tsx` | مركز ذكاء Nova |
+| `/dashboard/settings` | `src/app/dashboard/settings/page.tsx` | محطة الإعدادات المركزية |
+| `/developer` | `src/app/developer/page.tsx` | كونسول المطور (Tenants) |
+| `/apply/[companyId]` | `src/app/apply/[companyId]/page.tsx` | بوابة التوظيف العامة |
 
-### المشاريع والعمليات
-- `/dashboard/projects`: رادار المشاريع الهندسية الموحد.
-- `/dashboard/projects/boqs`: مستكشف المقايسات والأوامر التغييرية (Global BOQ Explorer).
-- `/dashboard/clients/[id]/transactions/[tId]`: رادار المسار الميداني (Technical Path Radar).
-- `/dashboard/clients/[id]/transactions/[tId]/boq`: هندسة المقايسة التنفيذية (Execution BOQ).
+## 2. عناصر القائمة الجانبية (Sidebar Items)
 
-### الموارد البشرية (HR & Payroll)
-- `/dashboard/hr`: لوحة معلومات الموارد البشرية والامتثال.
-- `/dashboard/hr/employees`: سجل الموظفين الشامل.
-- `/dashboard/hr/employees/new`: إضافة موظف جديد.
-- `/dashboard/hr/employees/[id]`: ملف الموظف (Audit, Termination, Bio).
-- `/dashboard/hr/attendance/import`: استيراد ملفات البصمة الذكي (XLSX).
-- `/dashboard/hr/leaves`: إدارة طلبات الإجازات.
-- `/dashboard/hr/leaves/new`: بوابة التقديم الذاتي للإجازات.
-- `/dashboard/hr/permissions`: إدارة طلبات الاستئذان.
-- `/dashboard/hr/permissions/new`: بوابة التقديم الذاتي للاستئذان.
-- `/dashboard/hr/payroll`: إدارة مسيرات الرواتب.
-- `/dashboard/hr/payroll/new`: توليد الرواتب الذكي (Smart Payroll Generator).
-- `/dashboard/hr/payroll/[id]`: تفاصيل كشف الرواتب المعتمد.
-- `/dashboard/hr/gratuity`: حاسبة مستحقات نهاية الخدمة (قانون العمل الكويتي).
-- `/dashboard/hr/legal-guide`: دليل الامتثال التشغيلي والقانوني.
-- `/dashboard/hr/recruitment`: بوابة إدارة التوظيف والمواهب.
+- **الرئيسية**: `/dashboard`
+- **CRM**: الفرص البيعية، العملاء.
+- **المشاريع**: المشاريع الجارية، مستكشف المقايسات، التقارير.
+- **المشتريات**: الموردين، تحليل العروض (AI).
+- **الموارد البشرية**: ملفي الوظيفي، سجل الموظفين، الإجازات، الرواتب.
+- **المحاسبة**: المطابقة البنكية.
+- **المخازن**: المستودعات.
+- **الإعدادات**: المستخدمين، هوية المنشأة، الدستور التشغيلي، الصلاحيات، مواعيد العمل.
 
-### المشتريات والمخازن
-- `/dashboard/procurement`: لوحة تحكم المشتريات.
-- `/dashboard/procurement/suppliers`: إدارة الموردين وتقييمهم.
-- `/dashboard/procurement/orders`: سجل أوامر الشراء (POs).
-- `/dashboard/procurement/orders/new`: إصدار أمر شراء ذكي (Linked to BOQ).
-- `/dashboard/inventory`: تتبع المخزون والعهد الميدانية.
+## 3. محركات الذكاء الاصطناعي (AI Flows)
 
-### المحاسبة والذكاء الاصطناعي
-- `/dashboard/accounting`: المطابقة البنكية الذكية.
-- `/dashboard/ai`: مركز ذكاء Nova (Accounting Assistant, Quote Analyzer).
+- `accounting-assistant-flow`: توليد قيود اليومية.
+- `analyze-supplier-quotes-flow`: مقارنة عروض الموردين.
+- `analyzeEmployeeDoc`: استخراج بيانات الوثائق.
+- `cash-flow-projection-flow`: توقعات التدفق المالي.
+- `fetch-holidays-flow`: جلب العطلات الرسمية.
+- `reconcile-bank-statement-flow`: المطابقة البنكية.
+- `translate-flow`: الترجمة الهندسية الاحترافية.
 
-### الإعدادات والتهيئة
-- `/dashboard/settings`: محطة الإعدادات المركزية.
-- `/dashboard/settings/company`: إدارة هوية المنشأة والبراندينج.
-- `/dashboard/settings/users`: إدارة مستخدمي النظام وكلمات المرور.
-- `/dashboard/settings/roles`: مصفوفة الصلاحيات (RBAC Matrix).
-- `/dashboard/settings/work-hours`: إدارة مواعيد العمل، الورديات، والعطلات.
-- `/dashboard/settings/checklists`: إدارة الدستور التشغيلي والقواميس المرجعية.
-- `/dashboard/settings/templates`: مكتبة القوالب (عروض، عقود، مقايسات).
+## 4. الخدمات البرمجية (Services)
 
-### الصفحات العامة والخدمية
-- `/apply/[companyId]`: بوابة التوظيف العامة للشركة.
-- `/join/[companyId]/[inviteId]`: بوابة تفعيل حساب الموظف.
-- `/login`: بوابة الدخول الموحدة.
-- `/register`: بوابة تسجيل الشركات الجديدة.
-- `/developer`: كونسول إدارة المنشآت (للمطورين).
+- `PayrollService`: محرك حساب الرواتب والخصومات.
+- `VariationService`: محرك الأوامر التغييرية وحقن المراحل.
+- `DocumentService`: إدارة المقايسات والعقود.
+- `HRService`: إدارة شؤون الموظفين والتدقيق.
+- `BOQExecutionService`: تتبع الإنجاز الميداني والكميات.
+- `EndOfServiceCalculator`: محرك قانون العمل الكويتي.
+- `WorkingDaysService`: حساب أيام العمل الفعلية.
+- `ReferenceListService`: إدارة القواميس القابلة للتوسعة.
 
-## 3. الميزات التقنية والتشغيلية
-### المحاسبة والمالية
-- محرك المطابقة البنكية (Smart Reconciliation).
-- المساعد المحاسبي التوليدي لتوليد القيود.
-- الربط الآلي بين الرواتب والقيود المحاسبية.
+## 5. هياكل البيانات (Types & Interfaces)
 
-### الموارد البشرية
-- محرك حساب أيام العمل الفعلية (استبعاد الجمعة والعطلات).
-- نظام شرائح الإجازات المرضية (المادة 69).
-- الرقابة على أرصدة الاستئذان (3 ساعات/طلب، 12 ساعة/شهر).
-- محرك توليد الرواتب بناءً على البصمة والغياب غير المبرر.
-- حاسبة نهاية الخدمة السيادية (قاعدة الـ 26 يوماً).
+- `Employee`: ملف الموظف والبيانات المالية.
+- `BOQItem`: بنود المقايسة والارتباطات الفنية.
+- `BOQVariation`: سجلات الأوامر التغييرية.
+- `StageInstance`: مراحل التنفيذ الميدانية.
+- `PurchaseOrder`: أوامر التوريد والمشتريات.
+- `RoleMatrix`: مصفوفة الصلاحيات المتقدمة.
 
-### المقاولات والعمليات
-- رادار المسار الفني (Field Pipeline) المعتمد على BOQ.
-- نظام الأوامر التغييرية (VO) مع بروتوكول المراجعة والاعتماد.
-- حقن المراحل الميدانية المستجدة في الرادار (Manual Injection).
-- دعم المراحل الموازية (Parallel Stages).
-- تسجيل الإنجاز الميداني بالكميات (Numeric Tracking).
+## 6. قواعد عدم التراجع (Non-Regression Rules)
 
-### المشتريات
-- محلل عروض الأسعار بالذكاء الاصطناعي (AI Quote Analyzer).
-- ربط أوامر الشراء ببنود المقايسة (Procurement-BOQ Link).
-- تحليل الانحراف المالي بين المصروف والمنفذ ميدانياً.
-
-## 4. قائمة عناصر الـ Sidebar (Navigation)
-1. **الرئيسية**: لوحة التحكم.
-2. **CRM**: الفرص البيعية، العملاء.
-3. **المشاريع**: المشاريع الجارية، مستكشف المقايسات، التقارير.
-4. **المشتريات**: الموردين، تحليل العروض (AI).
-5. **الموارد البشرية**: ملفي الوظيفي، سجل الموظفين، الإجازات، الرواتب.
-6. **المحاسبة**: المطابقة البنكية.
-7. **المخازن**: المستودعات.
-8. **الإعدادات**: المستخدمين، هوية المنشأة، الدستور التشغيلي، الصلاحيات، مواعيد العمل، الملف الشخصي.
-
-## 5. قواعد عدم التراجع (Non-Regression Rules)
-- **سياسة الحظر**: يمنع منعاً باتاً حذف أو إخفاء أي ميزة أو صفحة أو زر أو صلاحية مذكورة في هذه الخريطة أثناء أي عملية إصلاح أو ريفاكتورينج.
-- **سلامة الواجهة**: أي تعديل بصري يجب ألا يؤدي إلى "تبسيط" الوظيفة أو تقليل الخيارات المتاحة للمستخدم.
-- **التوثيق الإلزامي**: أي تغيير في أسماء الحقول أو هيكل البيانات المذكور أعلاه يتطلب تقرير موافقة صريح.
+**هام جداً:**
+1. لا يجوز حذف أي صفحة (Page) أو مكون (Component) أو عنصر قائمة (Sidebar Item) مذكور في هذه الخريطة.
+2. لا يجوز إخفاء أي ميزة باستخدام CSS أو تغيير شروط الظهور البرمجية إلا بموافقة صريحة.
+3. أي إصلاح تقني (Bug Fix) يجب أن يحافظ على كامل الوظيفة الأصلية للميزة.
+4. تعتبر هذه الخريطة هي "العهد الوظيفي" لنظام NovaFlow ERP.
 
 ---
-*تم توليد هذا الحصر آلياً لضمان السيادة الوظيفية لنظام NovaFlow ERP.*
+*تم توليد هذا الحصر آلياً لضمان السيادة الوظيفية للمشروع.*
