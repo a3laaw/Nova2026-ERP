@@ -25,6 +25,7 @@ import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
 import { AppointmentService } from '@/services/appointment-service';
+import { AppointmentType } from '@/types/appointment';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { SmartDateInput } from '@/components/ui/smart-date-input';
@@ -73,6 +74,7 @@ export default function NewAppointmentPage() {
 
       await service.createAppointment({
         ...formData,
+        type: formData.type as AppointmentType,
         start,
         clientName: selectedClient?.nameAr || '',
         projectNumber: selectedProject?.transactionNumber || '',

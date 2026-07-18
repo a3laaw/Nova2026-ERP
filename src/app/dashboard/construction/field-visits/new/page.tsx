@@ -20,7 +20,7 @@ import {
   Plus, CheckCircle2, Navigation, Trash2
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, where } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
@@ -263,7 +263,7 @@ export default function NewFieldVisitPage() {
                disabled={loading || !formData.projectId}
                className="w-full h-20 rounded-[2.5rem] bg-primary text-white font-black text-2xl shadow-2xl shadow-primary/20 hover:scale-[1.02] transition-all gap-4 border-b-8 border-orange-700 mt-4"
              >
-                {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : <CheckCircle2 className="h-8 w-8" />}
+                {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : <Save className="h-8 w-8" />}
                 {isRtl ? 'إرسال التقرير الميداني' : 'Submit Field Report'}
              </Button>
           </CardContent>
