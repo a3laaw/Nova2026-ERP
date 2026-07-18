@@ -61,10 +61,6 @@ export const paths = {
   subServices: (companyId: string, actId: string, srvId: string) => `${getTenantPath(companyId, 'activityTypes')}/${actId}/services/${srvId}/subServices`,
   technicalStages: (companyId: string, actId: string, srvId: string, subId: string) => `${getTenantPath(companyId, 'activityTypes')}/${actId}/services/${srvId}/subServices/${subId}/stages`,
 
-  // المشاريع (Operations & Projects)
-  projects: (companyId: string) => getTenantPath(companyId, 'transactions'), 
-  stageInstances: (companyId: string, projectId: string) => `${getTenantPath(companyId, 'transactions')}/${projectId}/stageInstances`,
-
   // المعاملات الفنية (Technical Transactions)
   transactions: (companyId: string) => getTenantPath(companyId, 'transactions'),
   transactionStages: (companyId: string, tId: string) => `${getTenantPath(companyId, 'transactions')}/${tId}/stageInstances`,

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -310,7 +309,15 @@ export default function TransactionBOQProgressPage() {
                <div className="p-6 bg-slate-50 rounded-2xl border-2 border-white shadow-inner"><h5 className="font-black text-xs text-slate-400 uppercase mb-2">Justification</h5><p className="text-sm font-bold text-slate-700 leading-relaxed">{reviewVO?.reason || '---'}</p></div>
                <div className="border rounded-2xl overflow-hidden shadow-sm">
                   <Table>
-                     <TableHeader className="bg-[#1e1b4b]"><TableRow><TableHead className="ps-6 text-white">Action</TableHead><TableHead className="text-white">Item</TableHead><TableHead className="text-center text-white">Delta</TableHead><TableHead className="text-end text-white">Rate</TableHead><TableHead className="text-end pe-6 text-white">Total</TableHead></TableRow></TableHeader>
+                     <TableHeader className="bg-[#1e1b4b]">
+                        <TableRow>
+                          <TableHead className="ps-6 text-white">Action</TableHead>
+                          <TableHead className="text-white">Item</TableHead>
+                          <TableHead className="text-center text-white">Delta</TableHead>
+                          <TableHead className="text-end text-white">Rate</TableHead>
+                          <TableHead className="text-end pe-6 text-white">Total</TableHead>
+                        </TableRow>
+                     </TableHeader>
                      <TableBody>
                         {loadingReview ? <TableRow><TableCell colSpan={5} className="text-center py-12"><Loader2 className="animate-spin mx-auto text-primary" /></TableCell></TableRow> : reviewItems.map((item, idx) => (
                           <TableRow key={idx}>

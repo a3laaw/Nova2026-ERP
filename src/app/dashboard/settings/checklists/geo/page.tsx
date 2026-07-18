@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -296,7 +295,7 @@ export default function GeoPage() {
                   else handleDeleteArea(deletingId);
                 }
               }}
-              className="rounded-xl h-11 font-black bg-rose-600 hover:bg-rose-700 text-white px-8"
+              className="rounded-xl h-11 bg-rose-600 hover:bg-rose-700 text-white px-8"
             >
               {isRtl ? 'نعم، احذف' : 'Delete'}
             </AlertDialogAction>

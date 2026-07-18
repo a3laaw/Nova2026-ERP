@@ -15,7 +15,7 @@ import {
   where
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
-import { BOQVariation, BOQVariationItem, BOQItem, BOQ } from '@/types/documents';
+import { BOQVariation, BOQVariationItem, BOQItem, BOQ, VOStageMode } from '@/types/documents';
 import { StageInstance } from '@/types/transaction';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';

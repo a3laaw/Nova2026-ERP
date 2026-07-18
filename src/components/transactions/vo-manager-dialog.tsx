@@ -334,7 +334,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
 
                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
                                          <div className="space-y-2">
-                                            <Label className="text-[10px] font-bold text-slate-500">{isRtl ? 'مكان الإدراج (بعد مرحلة:)' : 'Insert sequence after:'}</Label>
+                                            <Label className="text-[10px] font-bold text-slate-500">{isRtl ? 'مكان الإدرج (بعد مرحلة:)' : 'Insert sequence after:'}</Label>
                                             <Select value={item.insertAfterStageId} onValueChange={v => updateItem(idx, 'insertAfterStageId', v)}>
                                                <SelectTrigger className="h-10 rounded-lg border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
                                                <SelectContent className="rounded-xl border-2 shadow-2xl">
