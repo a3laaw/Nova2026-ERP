@@ -222,7 +222,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                        </CardContent>
                     </Card>
                   ))}
-                  <Button onClick={() => setFormData({...formData, items: [...(formData.items || []), { label: '', percentage: 0, unitPrice: 0 }]})} variant="outline" className="w-full h-16 rounded-[2.5rem] border-2 border-dashed border-primary/20 text-primary font-black gap-2 hover:bg-primary/5 transition-all"><Plus className="h-6 w-6" /> {t('addQuotationItem')}</Button>
+                  <Button onClick={() => setFormData({...formData, items: [...(formData.items || []), { label: '', description: '', percentage: 0, unitPrice: 0 }]})} variant="outline" className="w-full h-16 rounded-[2.5rem] border-2 border-dashed border-primary/20 text-primary font-black gap-2 hover:bg-primary/5 transition-all"><Plus className="h-6 w-6" /> {t('addQuotationItem')}</Button>
                </div>
 
                {/* صندوق التحقق الذكي (Validation Box) */}

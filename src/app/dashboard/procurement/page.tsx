@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { 
   Truck, ShoppingCart, FileSearch, Package, 
   ArrowUpRight, Sparkles, TrendingUp, BarChart3,
@@ -136,7 +137,7 @@ export default function ProcurementDashboard() {
             <CardContent className="p-20 text-center text-slate-300 italic font-bold">
                {isRtl ? 'سيتم عرض المخططات البيانية عند توفر البيانات.' : 'Charts will appear when data is available.'}
             </CardContent>
-         </Card>
+         </div>
       </div>
     </div>
   );

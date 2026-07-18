@@ -138,4 +138,6 @@ export interface BOQVariationItem extends BaseReference {
   localStageCode?: string;
   insertAfterStageId?: string;   
   isComplementary?: boolean; // NEW: flag for parallel manual stages
+  targetSectionId?: string | null;
+  technicalStageIds?: string[];
 }

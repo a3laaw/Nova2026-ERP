@@ -3,7 +3,7 @@
  * يقوم بالربط النهائي بين صلاحية الدور (Action) والسياق المكاني للموظف (Department ID).
  */
 
-import { RoleMatrix, Action, Scope, PermissionCode } from './types';
+import { RoleMatrix, Action, Scope } from './types';
 
 export interface AccessResult {
   can: boolean;
@@ -22,7 +22,7 @@ export function hasResourceAccess(
   if (!resourceId) return { can: false, scope: 'none' };
 
   // 1. حالة الأدمن (Master Key) - تجاوز كامل لكافة القيود
-  if (role?.code?.toUpperCase() === 'ADMIN' || role?.code?.toLowerCase() === 'system_admin' || role?.permissions?.includes('*')) {
+  if (role?.code?.toUpperCase() === 'ADMIN' || role?.code?.toLowerCase() === 'system_admin' || role?.matrix?.some(m => m.resourceId === '*')) {
     return { can: true, scope: 'all' };
   }
 

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -20,6 +19,20 @@ import { firebaseConfig } from '@/firebase/config';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { paths } from '@/firebase/multi-tenant';
+
+export interface Invitation {
+  id: string;
+  email: string;
+  companyId: string;
+  roleId?: string;
+  roleCode?: string;
+  employeeId?: string;
+  employeeName?: string;
+  departmentId?: string;
+  status: 'pending' | 'accepted' | 'expired';
+  createdAt?: any;
+  expiresAt?: any;
+}
 
 /**
  * خدمة إدارة المستخدمين المحدثة لدعم الإنشاء المباشر والتعديل الشامل.
@@ -137,6 +150,13 @@ export class UserService {
       }));
       throw err;
     }
+  }
+
+  async getInvitation(inviteId: string): Promise<Invitation | null> {
+    const ref = doc(this.db, paths.invitations(this.companyId), inviteId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return null;
+    return { id: snap.id, ...(snap.data() as Omit<Invitation, 'id'>) };
   }
 
   /**

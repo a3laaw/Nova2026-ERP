@@ -62,7 +62,7 @@ export default function ReferenceListsPage() {
 
   // Data Fetching
   const listQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths[activeTab](companyId)), orderBy('order')) : null, 
+    companyId && db ? query(collection(db, (paths[activeTab as keyof typeof paths] as (c: string) => string)(companyId)), orderBy('order')) : null, 
   [db, companyId, activeTab]);
 
   const { data: items, loading } = useCollection<BaseReferenceList>(listQuery);
@@ -325,7 +325,7 @@ export default function ReferenceListsPage() {
                </div>
 
                {activeTab === 'unitTypes' && (
-                 <div className="grid grid-cols-2 gap-6 p-6 bg-slate-50 rounded-[2rem] border-2 border-white shadow-inner animate-in slide-in-from-top-2">
+                 <div className="grid grid-cols-2 gap-6 p-6 bg-slate-50 rounded-[2rem] border-2 border-white shadow-inner animate-in slide-in-from-top-2 duration-300">
                     <div className="space-y-2">
                        <Label className="text-xs font-black uppercase text-slate-400">{t('symbol')}</Label>
                        <Input 

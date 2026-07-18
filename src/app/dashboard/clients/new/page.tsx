@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -28,7 +27,7 @@ export default function NewClientPage() {
     if (!db || !companyId || !user) return;
     setLoading(true);
     try {
-      const service = new ClientService(db, companyId, permissions); 
+      const service = new ClientService(db, companyId); 
       const clientId = await service.addClient(data, user.uid, user.displayName || user.email || 'User');
       toast({ title: t('saved'), description: isRtl ? 'تم إنشاء ملف العميل بنجاح.' : 'Client file created successfully.' });
       router.push(`/dashboard/clients/${clientId}`);

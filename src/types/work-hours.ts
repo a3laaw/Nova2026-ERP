@@ -42,6 +42,7 @@ export interface PublicHoliday {
 }
 
 export interface WorkHoursSettings {
+  general: DailySchedule; // الجدول العام الافتراضي
   architectural: DailySchedule; // المعماري (مكتبي)
   meetingRooms: DailySchedule;   // قاعات الاجتماعات
   fieldWork: DailySchedule;      // العمل الميداني

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -37,7 +36,7 @@ export default function EditClientPage() {
     if (!db || !companyId || !user) return;
     setSaving(true);
     try {
-      const service = new ClientService(db, companyId, permissions);
+      const service = new ClientService(db, companyId);
       await service.updateClient(clientId, data, user.uid, user.displayName || user.email || 'User');
       toast({ title: t('saved'), description: isRtl ? 'تم تحديث بيانات العميل بنجاح.' : 'Client data updated successfully.' });
       router.push(`/dashboard/clients/${clientId}`);
@@ -55,7 +54,7 @@ export default function EditClientPage() {
   };
 
   if (clientLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
-  if (!client) return <div className="p-20 text-center font-black text-2xl">{isRtl ? 'العميل غير موجود' : 'Client not found'}</div>;
+  if (!client) return <div className="p-20 text-center font-black">{isRtl ? 'العميل غير موجود' : 'Client not found'}</div>;
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto pb-20 animate-in fade-in duration-500" dir={dir}>

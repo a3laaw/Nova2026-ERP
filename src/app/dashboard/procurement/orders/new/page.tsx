@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { 
@@ -17,7 +18,7 @@ import {
   Plus, Trash2, Loader2, Save, ShoppingCart, 
   Truck, Boxes, Calculator, DollarSign,
   ArrowRight, CheckCircle2, Link as LinkIcon,
-  FileSpreadsheet
+  FileSpreadsheet, AlertTriangle
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, getDocs } from 'firebase/firestore';
@@ -53,7 +54,6 @@ export default function NewPurchaseOrderPage() {
     notes: ''
   });
   
-  // FIXED: unitPrice starts as empty string to avoid showing 0
   const [items, setItems] = useState<any[]>([{ itemName: '', quantity: 1, unitPrice: '', unit: 'pcs', boqItemId: '' }]);
 
   // جلب البيانات المرجعية
@@ -221,7 +221,6 @@ export default function NewPurchaseOrderPage() {
                           
                           <div className="md:col-span-3 space-y-1">
                              <Label className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'سعر الوحدة' : 'Unit Price'}</Label>
-                             {/* FIXED: Placeholder used instead of 0 */}
                              <Input type="number" step="0.001" value={item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', e.target.value === '' ? '' : Number(e.target.value))} className="h-11 border-2 font-black text-center rounded-xl text-emerald-600" placeholder="..." />
                           </div>
                           

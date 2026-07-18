@@ -79,8 +79,8 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
       type: 'increase_quantity', 
       stageMode: 'existing_stage',
       description: '', 
-      quantityDelta: "", 
-      rate: "",         
+      quantityDelta: 0, 
+      rate: 0,         
       total: 0,
       insertAfterStageId: '',
       isComplementary: false,
@@ -105,7 +105,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
         item.description = source.referenceTitle;
         item.unitName = source.unitName;
         item.unitSymbol = source.unitSymbol;
-        item.rate = source.estimatedRate ?? "";
+        item.rate = source.estimatedRate ?? 0;
         item.sourcePlannedQuantity = source.plannedQuantity || 0;
         item.technicalStageId = source.technicalStageId;
       }
@@ -117,7 +117,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
        item.description = node.title; 
        item.unitName = node.unitName;
        item.unitSymbol = node.unitSymbol;
-       item.rate = node.estimatedRate ?? "";
+       item.rate = node.estimatedRate ?? 0;
        item.technicalStageId = node.technicalStageId || '';
        item.technicalStageIds = node.technicalStageIds || [];
     }
@@ -164,6 +164,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
+      setLoadingAction(null);
       setLoading(false);
     }
   };
@@ -275,7 +276,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center text-start">
                                    <div className="space-y-2">
                                       <Label className="text-10px font-black uppercase text-primary tracking-widest">{isRtl ? 'القسم المالي المستهدف (بند رئيسي):' : 'Target Financial Section:'}</Label>
-                                      <Select value={item.targetSectionId} onValueChange={v => updateItem(idx, 'targetSectionId', v)}>
+                                      <Select value={item.targetSectionId || ''} onValueChange={v => updateItem(idx, 'targetSectionId', v)}>
                                          <SelectTrigger className="h-10 rounded-xl border-2 font-black text-xs bg-primary/5 border-primary/20"><SelectValue placeholder="..." /></SelectTrigger>
                                          <SelectContent className="rounded-xl">
                                             {boqSections.map(s => <SelectItem key={s.id} value={s.id} className="font-bold">{s.title}</SelectItem>)}

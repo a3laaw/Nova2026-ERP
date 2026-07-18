@@ -41,7 +41,12 @@ export async function useAccountingAssistant(input: AccountingAssistantInput): P
 const accountingAssistantPrompt = ai.definePrompt({
   name: 'accountingAssistantPrompt',
   model: 'googleai/gemini-1.5-flash',
-  input: { schema: AccountingAssistantInputSchema },
+  input: {
+    schema: z.object({
+      description: z.string(),
+      coaAsString: z.string(),
+    }),
+  },
   output: { schema: AccountingAssistantOutputSchema },
   prompt: `You are an expert accountant for Nova ERP. Your task is to assist users by either drafting balanced journal entries for transactions or providing clear accounting advice.
 

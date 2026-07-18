@@ -175,4 +175,10 @@ export interface BOQReferenceNode extends BaseReference {
   estimatedRate?: number;           // السعر المرجعي التقديري
   billingTriggerGroup?: string;
   allowedItemCategoryIds?: string[]; // تصنيف الأصناف (مخزني)
+
+  // حقول الربط المسموح (للفلترة والوراثة)
+  allowedServiceIds?: string[];
+  allowedServiceNames?: string[];
+  allowedActivityTypeIds?: string[];
+  allowedActivityTypeNames?: string[];
 }

@@ -87,6 +87,20 @@ export class ClientService {
     return clientRef.id;
   }
 
+  async updateClient(clientId: string, data: Partial<Client>, userId: string, userName: string) {
+    const clientRef = doc(this.db, paths.clients(this.companyId), clientId);
+    await updateDoc(clientRef, {
+      ...data,
+      updatedBy: userId,
+      updatedAt: serverTimestamp(),
+    }).catch((err) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: clientRef.path, operation: 'update', requestResourceData: data
+      }));
+      throw err;
+    });
+  }
+
   async logInteraction(clientId: string, content: string, userId: string, userName: string) {
     const clientRef = doc(this.db, paths.clients(this.companyId), clientId);
     const clientSnap = await getDoc(clientRef);

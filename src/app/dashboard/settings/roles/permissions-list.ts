@@ -16,7 +16,7 @@ export interface PermissionModule {
   };
 }
 
-export const MATRIX_MODULES = [
+export const MATRIX_MODULES: PermissionModule[] = [
   {
     id: 'dashboard',
     label: 'لوحة المعلومات',
@@ -102,3 +102,33 @@ export const MATRIX_MODULES = [
     }
   }
 ];
+
+export interface PermissionOption {
+  code: string;
+  label: string;
+  labelEn: string;
+}
+
+export interface PermissionGroup {
+  id: string;
+  label: string;
+  labelEn: string;
+  permissions: PermissionOption[];
+}
+
+const ACTION_LABELS_AR: Record<keyof PermissionModule['actions'], string> = {
+  view: 'عرض', create: 'إضافة', edit: 'تعديل', delete: 'حذف', advanced: 'متقدم',
+};
+
+const ACTION_LABELS_EN: Record<keyof PermissionModule['actions'], string> = {
+  view: 'View', create: 'Create', edit: 'Edit', delete: 'Delete', advanced: 'Advanced',
+};
+
+export const AVAILABLE_PERMISSIONS: PermissionGroup[] = MATRIX_MODULES.map((mod) => ({
+  id: mod.id,
+  label: mod.label,
+  labelEn: mod.labelEn,
+  permissions: (Object.keys(mod.actions) as (keyof PermissionModule['actions'])[])
+    .filter((k) => mod.actions[k] !== '')
+    .map((k) => ({ code: mod.actions[k], label: ACTION_LABELS_AR[k], labelEn: ACTION_LABELS_EN[k] })),
+}));

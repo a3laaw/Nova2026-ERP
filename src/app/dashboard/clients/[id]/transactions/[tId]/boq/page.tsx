@@ -22,6 +22,7 @@ import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { BOQ, BOQItem, BOQItemExecutionEntry, BOQVariation, BOQVariationItem } from '@/types/documents';
+import { BOQTemplateItem } from '@/types/templates';
 import { Transaction, StageInstance } from '@/types/transaction';
 import { transformToBOQTree } from '@/lib/boq-tree-utils';
 import { BOQTreeNode } from '@/types/templates';
@@ -102,7 +103,7 @@ export default function TransactionBOQProgressPage() {
     return metrics;
   }, [allExecutions, stages]);
 
-  const boqTree = useMemo(() => transformToBOQTree(items || []), [items]);
+  const boqTree = useMemo(() => transformToBOQTree((items || []) as BOQTemplateItem[]), [items]);
 
   const handleApproveBaseline = async () => {
     if (!db || !companyId || !user || !activeBoq) return;
@@ -192,12 +193,12 @@ export default function TransactionBOQProgressPage() {
       </TableRow>
       {node.items.map((item, iIdx) => {
         const itemPrefix = prefix + "." + (iIdx + 1);
-        const metrics = executionMetrics[item.id!] || { prev: 0, current: 0 };
+        const metrics = executionMetrics[item.boqReferenceNodeId!] || { prev: 0, current: 0 };
         const planned = item.plannedQuantity || 1;
         const totalPct = Math.round(((metrics.prev + metrics.current) / planned) * 100);
 
         return (
-          <TableRow key={item.id} className="hover:bg-primary/[0.02] border-b-slate-100">
+          <TableRow key={item.boqReferenceNodeId} className="hover:bg-primary/[0.02] border-b-slate-100">
             <TableCell className="font-mono text-[10px] font-bold text-slate-300 ps-8 text-start">{itemPrefix}</TableCell>
             <TableCell className="font-mono text-[10px] font-black text-primary/60 text-start">{item.referenceCode}</TableCell>
             <TableCell className="text-xs font-bold text-slate-700 text-start">{item.referenceTitle}</TableCell>

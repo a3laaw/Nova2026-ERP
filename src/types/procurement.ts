@@ -13,6 +13,7 @@ export interface PurchaseOrder extends BaseReference {
   deliveryDate?: string;
   status: POStatus;
   totalAmount: number;
+  currency?: string;
   notes?: string;
   createdBy: string;
   updatedBy: string;

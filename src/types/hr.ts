@@ -56,6 +56,7 @@ export interface LeaveRequest extends BaseReference {
   departureConfirmedAt?: any;
   returnRecordedAt?: any;
   actualReturnDate?: string;
+  actualDepartureDate?: string;
   commencementConfirmedAt?: any;
   comment?: string;
   sickLeaveTiers?: {

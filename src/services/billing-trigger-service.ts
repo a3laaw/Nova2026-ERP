@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -11,7 +10,16 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
-import { Contract, StageInstance } from '@/types/reference';
+import { Contract } from '@/types/documents';
+import { StageInstance } from '@/types/transaction';
+
+interface BillingMilestone {
+  linkedStageInstanceId?: string;
+  linkedMilestoneKey?: string;
+  milestoneKey?: string;
+  status?: string;
+  [key: string]: unknown;
+}
 
 /**
  * خدمة ذكاء الربط المالي (Billing Intelligence Service).
@@ -24,7 +32,7 @@ export class BillingTriggerService {
    * إكمال مرحلة تنفيذية والتحقق من التبعات المالية
    */
   async completeStageInstance(projectId: string, instanceId: string, userId: string) {
-    const instanceRef = doc(this.db, paths.stageInstances(this.companyId, projectId), instanceId);
+    const instanceRef = doc(this.db, paths.transactionStages(this.companyId, projectId), instanceId);
     
     try {
       // 1. تحديث حالة النسخة التنفيذية
@@ -47,7 +55,7 @@ export class BillingTriggerService {
    * فحص الأثر المالي لاكتمال النسخة التنفيذية
    */
   private async checkFinancialImpact(projectId: string, stageInstanceId: string) {
-    const contractsRef = collection(this.db, paths.projectContracts(this.companyId, projectId));
+    const contractsRef = collection(this.db, paths.contracts(this.companyId));
     const contractsSnap = await getDocs(contractsRef);
 
     const affectedContracts: string[] = [];
@@ -56,8 +64,10 @@ export class BillingTriggerService {
       const contract = contractDoc.data() as Contract;
       let hasChange = false;
 
+      const milestones = contract.milestones as BillingMilestone[];
+
       // تحديث الـ Milestones المرتبطة
-      const updatedMilestones = contract.milestones.map(milestone => {
+      const updatedMilestones = milestones.map(milestone => {
         // الربط يتم عبر معرف النسخة التنفيذية أو عبر مفتاح المرحلة (Milestone Key)
         if (milestone.linkedStageInstanceId === stageInstanceId || (milestone.linkedMilestoneKey && milestone.status === 'pending')) {
           hasChange = true;
@@ -83,12 +93,12 @@ export class BillingTriggerService {
    */
   async instantiateTechnicalStages(projectId: string, subServiceId: string, templateStages: any[]) {
     const batch = writeBatch(this.db);
-    const instancesRef = collection(this.db, paths.stageInstances(this.companyId, projectId));
+    const instancesRef = collection(this.db, paths.transactionStages(this.companyId, projectId));
 
     templateStages.forEach(template => {
       const newInstanceRef = doc(instancesRef);
-      const instanceData: StageInstance = {
-        projectId,
+      const instanceData = {
+        transactionId: projectId,
         templateStageId: template.id,
         subServiceId,
         name: template.name,
