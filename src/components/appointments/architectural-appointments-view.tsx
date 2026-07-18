@@ -11,7 +11,10 @@ import {
   isSameDay, 
   parseISO, 
   setHours, 
-  setMinutes 
+  setMinutes,
+  addDays,
+  subDays,
+  eachDayOfInterval
 } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import { 
@@ -103,19 +106,21 @@ function cardGradient(color: string) {
   return "bg-slate-50 border-slate-200 text-slate-900 shadow-slate-100/50";
 }
 
-function generateTimeSlots(s: string, e: string, dur: number, buf: number): string[] {
-  if (!s || !e || !dur || dur <= 0) return [];
+function generateTimeSlots(s: string, e: string, duration: number, rest: number): string[] {
+  if (!s || !e || !duration || duration <= 0) return [];
   const slots: string[] = [];
-  const st = parse(s, 'HH:mm', new Date());
-  const et = parse(e, 'HH:mm', new Date());
-  if (!isValid(st) || !isValid(et) || st >= et) return [];
-  let cur = st;
-  while (cur < et) {
-    const end = addMinutes(cur, dur);
-    if (end > et) break;
-    slots.push(format(cur, 'HH:mm'));
-    cur = addMinutes(end, buf);
-  }
+  try {
+    const st = parse(s, 'HH:mm', new Date());
+    const et = parse(e, 'HH:mm', new Date());
+    if (!isValid(st) || !isValid(et) || st >= et) return [];
+    let cur = st;
+    while (cur < et) {
+      const end = addMinutes(cur, duration);
+      if (end > et) break;
+      slots.push(format(cur, 'HH:mm'));
+      cur = addMinutes(end, rest);
+    }
+  } catch (e) { return []; }
   return slots;
 }
 
@@ -151,6 +156,14 @@ export function ArchitecturalAppointmentsView() {
   const [settings, setSettings] = useState<WorkHoursSettings | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogData, setDialogData] = useState<{ mode: 'create' | 'edit'; appointment?: Appointment; slot?: string; engineer?: Employee } | null>(null);
+
+  // توليد قائمة الأيام المعروضة في الشريط العلوي (3 أيام قبل و3 أيام بعد اليوم الحالي)
+  const visibleDates = useMemo(() => {
+    return eachDayOfInterval({
+      start: subDays(currentDate, 2),
+      end: addDays(currentDate, 2)
+    });
+  }, [currentDate]);
 
   const apptsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.appointments(companyId)), orderBy('start')) : null, 
@@ -209,7 +222,7 @@ export function ArchitecturalAppointmentsView() {
 
     const arch = settings.architectural;
     const dur = arch.slotDurationMinutes || 45;
-    const buf = arch.bufferMinutes || arch.restDurationMinutes || 0;
+    const buf = arch.restDurationMinutes || 0;
 
     let mEnd = arch.morningEndTime;
     let eStart = arch.eveningStartTime;
@@ -252,46 +265,54 @@ export function ArchitecturalAppointmentsView() {
   if (isLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700" dir={dir}>
-      <style>{`
-        @media print {
-          .no-print { display: none !important; }
-          #print-header { display: block !important; }
-          .A4 { width: 210mm; margin: 0 auto; }
-          body { background: white !important; }
-          .card-shadow { box-shadow: none !important; border: 1px solid #eee !important; }
-        }
-        #print-header { display: none; }
-      `}</style>
-
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 no-print">
-        <div className="flex items-center gap-6">
-           <div className="flex items-center bg-white rounded-2xl shadow-xl border-2 border-slate-50 p-1">
-              <Button variant="ghost" size="icon" onClick={() => setCurrentDate(new Date(currentDate.setDate(currentDate.getDate() - 1)))} className="h-10 w-10 rounded-xl hover:bg-primary/10 hover:text-primary transition-all">
-                <ChevronLeft className={cn("h-5 w-5", !isRtl && "rotate-0")} />
-              </Button>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" className="px-6 font-black text-slate-800 gap-2 h-10 hover:bg-slate-50">
-                    <CalendarIcon className="h-4 w-4 text-primary" />
-                    {format(currentDate, 'EEEE, d MMMM yyyy', { locale: isRtl ? ar : enUS })}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 rounded-3xl shadow-3xl border-0">
-                  <Calendar mode="single" selected={currentDate} onSelect={(d) => d && setCurrentDate(d)} locale={isRtl ? ar : enUS} />
-                </PopoverContent>
-              </Popover>
-              <Button variant="ghost" size="icon" onClick={() => setCurrentDate(new Date(currentDate.setDate(currentDate.getDate() + 1)))} className="h-10 w-10 rounded-xl hover:bg-primary/10 hover:text-primary transition-all">
-                <ChevronRight className={cn("h-5 w-5", !isRtl && "rotate-0")} />
-              </Button>
-           </div>
-           <Button variant="outline" onClick={() => setCurrentDate(new Date())} className="rounded-xl font-bold border-2 h-12 px-6 bg-white hover:bg-slate-50">
-             {isRtl ? 'اليوم' : 'Today'}
+    <div className="space-y-12 animate-in fade-in duration-700" dir={dir}>
+      
+      {/* Sovereign Date Slider Header */}
+      <div className="flex flex-col items-center gap-6 no-print">
+        <h2 className="text-xl font-black text-primary uppercase tracking-widest">{isRtl ? 'المواعيد' : 'Appointments'}</h2>
+        
+        <div className="flex items-center gap-6 w-full max-w-4xl justify-center">
+           <Button 
+             variant="ghost" 
+             size="icon" 
+             onClick={() => setCurrentDate(subDays(currentDate, 1))}
+             className="h-12 w-12 rounded-full hover:bg-slate-100 transition-all text-slate-400"
+           >
+              <ChevronLeft className={cn("h-6 w-6", !isRtl && "rotate-0")} />
            </Button>
-        </div>
-        <div className="flex gap-3">
-           <Button onClick={() => window.print()} className="rounded-xl h-12 px-8 font-black gap-2 bg-slate-900 text-white shadow-xl hover:bg-slate-800 transition-all">
-             <Printer className="h-4 w-4" /> {isRtl ? 'طباعة الجدول' : 'Print Grid'}
+
+           <div className="flex gap-4 overflow-hidden py-4 px-2">
+              {visibleDates.map((date) => {
+                const isSelected = isSameDay(date, currentDate);
+                return (
+                  <Card 
+                    key={date.toISOString()}
+                    onClick={() => setCurrentDate(date)}
+                    className={cn(
+                      "min-w-[100px] h-24 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 rounded-[1.5rem] border-2 shadow-sm",
+                      isSelected 
+                        ? "bg-primary border-primary text-white scale-110 shadow-orange-500/30 ring-4 ring-orange-500/10" 
+                        : "bg-white border-transparent text-slate-400 hover:border-slate-100 hover:bg-slate-50"
+                    )}
+                  >
+                     <span className={cn("text-[10px] font-black uppercase mb-1", isSelected ? "text-white/80" : "text-slate-400")}>
+                        {format(date, 'EEEE', { locale: isRtl ? ar : enUS })}
+                     </span>
+                     <span className="text-3xl font-black font-headline">
+                        {format(date, 'd')}
+                     </span>
+                  </Card>
+                );
+              })}
+           </div>
+
+           <Button 
+             variant="ghost" 
+             size="icon" 
+             onClick={() => setCurrentDate(addDays(currentDate, 1))}
+             className="h-12 w-12 rounded-full hover:bg-slate-100 transition-all text-slate-400"
+           >
+              <ChevronRight className={cn("h-6 w-6", !isRtl && "rotate-0")} />
            </Button>
         </div>
       </div>
@@ -462,7 +483,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, u
   const govsQuery = useMemo(() => companyId && db ? query(collection(db, paths.governorates(companyId)), orderBy('order')) : null, [db, companyId]);
   const { data: governorates } = useCollection<Governorate>(govsQuery);
 
-  // منطق العزل: المهندس يرى فقط العملاء المخصصين له
   const filteredClients = useMemo(() => {
     if (isAdmin) return clients;
     return clients.filter((c: any) => c.assignedEngineerId === userId);
@@ -489,7 +509,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, u
         const gov = governorates?.find(g => g.id === formData.newClientGovId);
         const nextFileNum = await clientService.getNextFileNumber();
         
-        // عند تسجيل عميل جديد من قبل مهندس، يتم تعيينه للمهندس آلياً
         targetClientId = await clientService.addClient({
           nameAr: formData.newClientName,
           mobile: formData.newClientPhone,
@@ -497,7 +516,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, u
           governorateName: gov ? (isRtl ? gov.name : gov.nameEn) : '',
           fileNumber: nextFileNum,
           status: 'new',
-          assignedEngineerId: userId, // الحاق العميل بالمهندس الحالي
+          assignedEngineerId: userId, 
           assignedEngineerName: userName
         }, userId, userName);
         
@@ -544,7 +563,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, u
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="rounded-[2rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
-        {/* Header - Light & Clean */}
         <div className="bg-primary/5 p-8 text-slate-900 text-start border-b">
            <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -569,7 +587,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, u
         </div>
 
         <div className="p-8 space-y-6 text-start max-h-[65vh] overflow-y-auto scrollbar-hide">
-           
            {isCreate && (
              <div className="flex items-center justify-between p-5 rounded-[1.5rem] bg-slate-50 border-2 border-white shadow-inner">
                 <div className="flex items-center gap-3">
@@ -655,13 +672,5 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, u
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function AvatarFallback({ className, children }: { className?: string, children: React.ReactNode }) {
-  return (
-    <div className={cn("flex items-center justify-center rounded-full bg-slate-100", className)}>
-      {children}
-    </div>
   );
 }
