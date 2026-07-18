@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -86,6 +85,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
       insertAfterStageId: '',
       isComplementary: false,
       localStageName: '',
+      localStageCode: '',
       targetSectionId: '',
       technicalStageId: ''
     } as any]);

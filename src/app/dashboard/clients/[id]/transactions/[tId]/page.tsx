@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -79,7 +78,7 @@ export default function TransactionDetailsPage() {
   const [stageProgressMap, setStageProgressMap] = useState<Record<string, StageProgressResult>>({});
   const [filterStageId, setFilterStageId] = useState<string | null>(null);
   
-  // States for Recording Progress - Numeric Sovereignty (Start Empty)
+  // States for Recording Progress - Numeric Sovereignty
   const [isRecordOpen, setIsRecordOpen] = useState(false);
   const [isComplementary, setIsComplementary] = useState(false);
   const [targetStage, setTargetStage] = useState<StageInstance | null>(null);
