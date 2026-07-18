@@ -38,7 +38,8 @@ import {
   UserPlus,
   Building2,
   Phone,
-  Sparkles
+  Sparkles,
+  X
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs } from 'firebase/firestore';
