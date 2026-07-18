@@ -37,7 +37,8 @@ import {
   Navigation,
   UserPlus,
   Building2,
-  Phone
+  Phone,
+  Sparkles
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs } from 'firebase/firestore';
@@ -66,30 +67,13 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { toast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -457,7 +441,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
 }
 
 function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, userId, userName, db }: any) {
-  const { lang, isRtl, t } = useLanguage();
+  const { lang, dir, isRtl, t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [isNewClient, setIsNewClient] = useState(false);
   
@@ -487,7 +471,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, u
       let targetClientId = formData.clientId;
       let targetClientName = formData.clientName;
 
-      // إذا كان عميلاً جديداً، نقوم بتسجيله أولاً في النظام
       if (isCreate && isNewClient) {
         if (!formData.newClientName || !formData.newClientPhone) {
           toast({ variant: "destructive", title: isRtl ? "بيانات العميل الجديد ناقصة" : "New client data missing" });
@@ -576,7 +559,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, u
 
         <div className="p-8 space-y-6 text-start max-h-[65vh] overflow-y-auto scrollbar-hide">
            
-           {/* New Client Toggle */}
            {isCreate && (
              <div className="flex items-center justify-between p-5 rounded-[1.5rem] bg-slate-50 border-2 border-white shadow-inner">
                 <div className="flex items-center gap-3">
@@ -634,7 +616,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, u
               <Input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="h-12 rounded-xl border-2 font-bold" placeholder={isRtl ? "مثلاً: معاينة موقع فيلا السالمية" : "e.g. Site Visit"} />
            </div>
 
-           {/* Date/Time only visible in EDIT mode or if specifically needed */}
            {!isCreate && (
               <div className="grid grid-cols-2 gap-4 animate-in fade-in">
                  <div className="space-y-2">
@@ -656,8 +637,8 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, u
 
         <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4">
            <Button variant="outline" onClick={onClose} className="flex-1 h-16 rounded-2xl border-2 font-bold bg-white">إلغاء</Button>
-           <Button onClick={handleSave} disabled={loading} className="flex-[2] h-16 rounded-2xl bg-primary text-white font-black shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-8 border-orange-700">
-              {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <CheckCircle2 className="h-6 w-6" />}
+           <Button onClick={handleSave} disabled={loading} className="flex-[2] h-16 rounded-2xl bg-primary text-white font-black shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-2 border-b-8 border-orange-700">
+              {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />}
               {isRtl ? 'تثبيت الموعد' : 'Confirm Booking'}
            </Button>
         </DialogFooter>
