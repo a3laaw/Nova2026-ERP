@@ -164,7 +164,6 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
-      setLoadingAction(null);
       setLoading(false);
     }
   };

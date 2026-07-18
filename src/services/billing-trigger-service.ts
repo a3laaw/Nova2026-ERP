@@ -64,7 +64,7 @@ export class BillingTriggerService {
       const contract = contractDoc.data() as Contract;
       let hasChange = false;
 
-      const milestones = contract.milestones as BillingMilestone[];
+      const milestones = contract.milestones as unknown as BillingMilestone[];
 
       // تحديث الـ Milestones المرتبطة
       const updatedMilestones = milestones.map(milestone => {

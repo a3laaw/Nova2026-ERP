@@ -67,6 +67,7 @@ export class WorkHoursService {
     };
 
     return {
+      general: { ...commonSchedule },
       architectural: { ...commonSchedule }, // افتراضي فترة واحدة للمكتب
       meetingRooms: { ...commonSchedule, slotDurationMinutes: 30, restDurationMinutes: 5 },
       fieldWork: { ...commonSchedule, mode: 'double', restDurationMinutes: 30 }, // افتراضي فترتين للميدان
