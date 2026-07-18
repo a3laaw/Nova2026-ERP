@@ -31,6 +31,9 @@ export const paths = {
   itemCategories: (companyId: string) => getTenantPath(companyId, 'itemCategories'),
   costTypeCategories: (companyId: string) => getTenantPath(companyId, 'costTypeCategories'),
 
+  // أنشطة الأعمال (Service Types)
+  serviceTypes: (companyId: string) => getTenantPath(companyId, 'serviceTypes'),
+
   // العملاء والفرص
   leads: (companyId: string) => getTenantPath(companyId, 'leads'),
   clients: (companyId: string) => getTenantPath(companyId, 'clients'),

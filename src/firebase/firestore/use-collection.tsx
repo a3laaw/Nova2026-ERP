@@ -7,17 +7,16 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
 
 /**
  * خطاف محسن لجلب المجموعات يعالج مشكلة "دائرة التحميل اللانهائية".
- * يقوم بتثبيت مرجع الاستعلام (Stabilization) لضمان عدم إعادة تشغيل Effect 
- * إلا إذا تغيرت محتويات الاستعلام فعلياً.
+ * تم تحديث الأنواع لتقبل مراجع الاستعلامات العامة (any) لضمان التوافق مع كافة المكونات.
  */
-export function useCollection<T = DocumentData>(query: Query<T> | null) {
+export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(!!query);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
   
   // تثبيت مرجع الاستعلام (Stabilization)
-  const memoQuery = useRef<Query<T> | null>(null);
-  if (query && (!memoQuery.current || !queryEqual(query, memoQuery.current))) {
+  const memoQuery = useRef<Query<any, any> | null>(null);
+  if (query && (!memoQuery.current || !queryEqual(query as any, memoQuery.current as any))) {
     memoQuery.current = query;
   } else if (!query) {
     memoQuery.current = null;
@@ -58,7 +57,7 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
     );
 
     return () => unsubscribe();
-  }, [stableQuery]); // الاعتماد الآن على المرجع المستقر فقط
+  }, [stableQuery]);
 
   return { data, loading, error };
 }

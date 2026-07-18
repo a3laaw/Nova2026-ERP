@@ -7,15 +7,16 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
 
 /**
  * خطاف محسن لجلب مستند واحد مع تثبيت المرجع لمنع تكرار الطلبات اللانهائي.
+ * يقبل مراجع المستندات العامة لضمان التوافق مع أنواع البيانات المختلفة.
  */
-export function useDoc<T = DocumentData>(docRef: DocumentReference<T> | null) {
+export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | null) {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(!!docRef);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
   
   // تثبيت مرجع المستند
-  const memoRef = useRef<DocumentReference<T> | null>(null);
-  if (docRef && (!memoRef.current || !refEqual(docRef, memoRef.current))) {
+  const memoRef = useRef<DocumentReference<any, any> | null>(null);
+  if (docRef && (!memoRef.current || !refEqual(docRef as any, memoRef.current as any))) {
     memoRef.current = docRef;
   } else if (!docRef) {
     memoRef.current = null;

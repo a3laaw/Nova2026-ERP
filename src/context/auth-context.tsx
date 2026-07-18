@@ -13,6 +13,7 @@ interface GlobalUserData {
   roleId?: string;
   roleCode?: string;
   departmentId?: string;
+  employeeId?: string; // مضاف لتمكين الوصول لملفات الموظفين
   isDeveloper?: boolean;
   username: string;
 }

@@ -36,6 +36,17 @@ export interface MilestoneTimingType extends BaseReferenceList {}
 export interface ItemCategory extends BaseReferenceList {}
 export interface CostTypeCategory extends BaseReferenceList {}
 
+export interface ServiceType extends BaseReference {
+  code: string;
+  name: string;
+  nameEn: string;
+  description?: string;
+  isActive: boolean;
+  order: number;
+  color?: string;
+  moduleScope?: string;
+}
+
 // الهياكل الهندسية الرباعية للمسارات الفنية
 export interface ActivityType extends BaseReference {
   code: string;
