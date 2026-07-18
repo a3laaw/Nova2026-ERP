@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -11,7 +12,8 @@ import {
   orderBy,
   getDocs,
   increment,
-  writeBatch
+  writeBatch,
+  deleteDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { Appointment, AppointmentStatus } from '@/types/appointment';
@@ -30,6 +32,14 @@ export class AppointmentService {
       updatedAt: serverTimestamp()
     };
     return addDoc(collRef, docData);
+  }
+
+  async updateAppointment(id: string, data: Partial<Appointment>): Promise<void> {
+    const ref = doc(this.db, paths.appointments(this.companyId), id);
+    await updateDoc(ref, { 
+      ...data, 
+      updatedAt: serverTimestamp() 
+    });
   }
 
   async updateStatus(appointmentId: string, status: AppointmentStatus, userId: string) {
@@ -57,5 +67,17 @@ export class AppointmentService {
     }
 
     return batch.commit();
+  }
+
+  async cancelAppointment(id: string): Promise<void> {
+    const ref = doc(this.db, paths.appointments(this.companyId), id);
+    await updateDoc(ref, { 
+      status: 'cancelled', 
+      updatedAt: serverTimestamp() 
+    });
+  }
+
+  async deleteAppointment(id: string): Promise<void> {
+    await deleteDoc(doc(this.db, paths.appointments(this.companyId), id));
   }
 }
