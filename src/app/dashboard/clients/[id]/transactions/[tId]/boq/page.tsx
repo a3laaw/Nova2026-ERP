@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -52,6 +53,8 @@ export default function TransactionBOQProgressPage() {
   const [processingVOId, setProcessingVOId] = useState<string | null>(null);
   const [isEditingBaseline, setIsEditingBaseline] = useState(false);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  
+  // States for VO Review
   const [reviewVO, setReviewVO] = useState<BOQVariation | null>(null);
   const [reviewItems, setReviewItems] = useState<BOQVariationItem[]>([]);
   const [loadingReview, setLoadingReview] = useState(false);
@@ -159,6 +162,21 @@ export default function TransactionBOQProgressPage() {
       const service = new VariationService(db, companyId, permissions);
       await service.approveVariation(activeBoq!.id, reviewVO.id!, transactionId, user.uid, globalUser?.username || 'Admin');
       toast({ title: isRtl ? "تم اعتماد التعديل بنجاح" : "Variation Approved" });
+      setReviewVO(null);
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('error'), description: e.message });
+    } finally {
+      setProcessingVOId(null);
+    }
+  };
+
+  const handleRejectVO = async () => {
+    if (!db || !companyId || !user || !reviewVO) return;
+    setProcessingVOId(reviewVO.id);
+    try {
+      const service = new VariationService(db, companyId, permissions);
+      await service.rejectVariation(activeBoq!.id, reviewVO.id!, transactionId, user.uid, globalUser?.username || 'Admin');
+      toast({ title: isRtl ? "تم رفض وإلغاء الطلب" : "Variation Rejected" });
       setReviewVO(null);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
@@ -279,6 +297,7 @@ export default function TransactionBOQProgressPage() {
          </Table>
       </div>
 
+      {/* Review Dialog for VO in BOQ Page */}
       <Dialog open={!!reviewVO} onOpenChange={(open) => !open && setReviewVO(null)}>
          <DialogContent className="max-w-5xl rounded-none p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
             <div className="bg-[#1e1b4b] p-8 text-white text-start flex justify-between items-center">
