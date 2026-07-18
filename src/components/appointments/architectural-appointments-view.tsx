@@ -32,7 +32,9 @@ import {
   Info,
   Calendar as CalendarIcon,
   Search,
-  HardHat
+  HardHat,
+  Save,
+  Navigation
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs } from 'firebase/firestore';
@@ -159,8 +161,6 @@ export function ArchitecturalAppointmentsView() {
   const [settings, setSettings] = useState<WorkHoursSettings | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogData, setDialogData] = useState<{ mode: 'create' | 'edit'; appointment?: Appointment; slot?: string; engineer?: Employee } | null>(null);
-  const [cancellingId, setCancellingId] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // --- Data Fetching ---
   const apptsQuery = useMemo(() => 
@@ -512,7 +512,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, u
       <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-xl">
         <div className="bg-[#1e1b4b] p-8 text-white text-start">
            <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3">
-              <Plus className="h-6 w-6 text-primary" />
+              <Navigation className="h-6 w-6 text-blue-600" />
               {data.mode === 'create' ? (isRtl ? 'حجز موعد معماري' : 'Book Appointment') : (isRtl ? 'تعديل بيانات الموعد' : 'Edit Appointment')}
            </DialogTitle>
            <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-widest">{data.engineer?.fullName || data.appointment?.engineerName}</p>
