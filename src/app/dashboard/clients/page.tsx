@@ -13,13 +13,15 @@ import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
+import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { Client } from '@/types/client';
 import { cn } from '@/lib/utils';
 
 export default function ClientsListPage() {
-  const { globalUser } = useAuthContext();
+  const { globalUser, user } = useAuthContext();
   const { lang, dir } = useLanguage();
+  const { isAdmin } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
@@ -30,12 +32,27 @@ export default function ClientsListPage() {
     companyId && db ? query(collection(db, paths.clients(companyId)), orderBy('createdAt', 'desc')) : null, 
   [db, companyId]);
 
-  const { data: clients, loading } = useCollection<Client>(clientsQuery);
+  const { data: rawClients, loading } = useCollection<Client>(clientsQuery);
 
-  const filtered = clients.filter(c => 
-    c.nameAr?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    c.fileNumber?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // منطق العزل السيادي: المهندس لا يرى إلا عملاءه
+  const filtered = useMemo(() => {
+    let list = rawClients || [];
+    
+    // إذا لم يكن مديراً، نطبق فلترة المهندس المسؤول
+    if (!isAdmin && user?.uid) {
+      list = list.filter(c => c.assignedEngineerId === user.uid);
+    }
+
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      list = list.filter(c => 
+        c.nameAr?.toLowerCase().includes(term) || 
+        c.fileNumber?.toLowerCase().includes(term)
+      );
+    }
+    
+    return list;
+  }, [rawClients, searchTerm, isAdmin, user?.uid]);
 
   return (
     <div className="space-y-4 animate-in fade-in duration-500" dir={dir}>
@@ -45,14 +62,19 @@ export default function ClientsListPage() {
              <Users className="h-8 w-8 text-primary" />
              {isRtl ? 'قاعدة العملاء' : 'Clients Database'}
            </h1>
+           {!isAdmin && (
+             <p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-1">
+                {isRtl ? 'عرض العملاء التابعين لك فقط' : 'Viewing your assigned clients only'}
+             </p>
+           )}
         </div>
         <Button onClick={() => router.push('/dashboard/clients/new')} variant="default" className="h-11 px-8">
           <UserPlus className="h-4 w-4 me-2" /> {isRtl ? 'تسجيل عميل' : 'New Client'}
         </Button>
       </div>
 
-      {/* Search Header Card with 16px Separation */}
-      <Card className="nano-edge bg-white mb-4">
+      {/* Search Header Card */}
+      <Card className="border-0 shadow-sm rounded-xl bg-white mb-4 overflow-hidden">
         <div className="p-5 flex flex-row items-center justify-between gap-4">
            <div className="relative w-full max-w-sm">
               <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary" />
@@ -70,7 +92,7 @@ export default function ClientsListPage() {
       </Card>
 
       {/* Main Data Table */}
-      <Card className="nano-edge bg-white overflow-hidden">
+      <Card className="border-0 shadow-xl rounded-xl bg-white overflow-hidden ring-1 ring-black/5">
         <CardContent className="p-0 overflow-x-auto">
           <Table>
             <TableHeader className="bg-[#F4F6F9] border-b">
@@ -85,7 +107,9 @@ export default function ClientsListPage() {
               {loading ? (
                 <TableRow><TableCell colSpan={4} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={4} className="text-center py-20 italic text-slate-400 font-bold">{isRtl ? 'لا يوجد عملاء.' : 'No clients found.'}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={4} className="text-center py-20 italic text-slate-400 font-bold">
+                  {isRtl ? 'لا يوجد عملاء مسجلين تحت مسؤوليتك حالياً.' : 'No clients assigned to you found.'}
+                </TableCell></TableRow>
               ) : filtered.map((client) => (
                 <TableRow key={client.id} className="cursor-pointer group hover:bg-[#FFF9F2]" onClick={() => router.push(`/dashboard/clients/${client.id}`)}>
                   <TableCell className="ps-8 py-5 text-start">

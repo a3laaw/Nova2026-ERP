@@ -46,6 +46,7 @@ import { collection, query, orderBy, where, doc, getDocs } from 'firebase/firest
 import { paths } from '@/firebase/multi-tenant';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
+import { usePermissions } from '@/hooks/use-permissions';
 import { WorkHoursService } from '@/services/work-hours-service';
 import { AppointmentService } from '@/services/appointment-service';
 import { ClientService } from '@/services/client-service';
@@ -60,7 +61,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
@@ -443,6 +443,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
 
 function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, userId, userName, db }: any) {
   const { lang, dir, isRtl, t } = useLanguage();
+  const { isAdmin } = usePermissions();
   const [loading, setLoading] = useState(false);
   const [isNewClient, setIsNewClient] = useState(false);
   
@@ -460,6 +461,12 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, u
 
   const govsQuery = useMemo(() => companyId && db ? query(collection(db, paths.governorates(companyId)), orderBy('order')) : null, [db, companyId]);
   const { data: governorates } = useCollection<Governorate>(govsQuery);
+
+  // منطق العزل: المهندس يرى فقط العملاء المخصصين له
+  const filteredClients = useMemo(() => {
+    if (isAdmin) return clients;
+    return clients.filter((c: any) => c.assignedEngineerId === userId);
+  }, [clients, isAdmin, userId]);
 
   const handleSave = async () => {
     const isCreate = data.mode === 'create';
@@ -482,18 +489,21 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, u
         const gov = governorates?.find(g => g.id === formData.newClientGovId);
         const nextFileNum = await clientService.getNextFileNumber();
         
+        // عند تسجيل عميل جديد من قبل مهندس، يتم تعيينه للمهندس آلياً
         targetClientId = await clientService.addClient({
           nameAr: formData.newClientName,
           mobile: formData.newClientPhone,
           governorateId: formData.newClientGovId,
           governorateName: gov ? (isRtl ? gov.name : gov.nameEn) : '',
           fileNumber: nextFileNum,
-          status: 'new'
+          status: 'new',
+          assignedEngineerId: userId, // الحاق العميل بالمهندس الحالي
+          assignedEngineerName: userName
         }, userId, userName);
         
         targetClientName = formData.newClientName;
       } else if (isCreate) {
-        const selected = clients.find((c: any) => c.id === targetClientId);
+        const selected = filteredClients.find((c: any) => c.id === targetClientId);
         targetClientName = selected?.nameAr || '';
       }
 
@@ -605,7 +615,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, u
                     <Select value={formData.clientId} onValueChange={v => setFormData({...formData, clientId: v})}>
                        <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/50"><SelectValue placeholder={isRtl ? "البحث في قاعدة العملاء..." : "Search clients..."} /></SelectTrigger>
                        <SelectContent className="rounded-xl border-0 shadow-2xl">
-                          {clients.map((c: any) => <SelectItem key={c.id} value={c.id!} className="font-bold py-3">{c.nameAr}</SelectItem>)}
+                          {filteredClients.map((c: any) => <SelectItem key={c.id} value={c.id!} className="font-bold py-3">{c.nameAr}</SelectItem>)}
                        </SelectContent>
                     </Select>
                  </div>
