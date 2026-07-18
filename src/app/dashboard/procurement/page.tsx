@@ -137,7 +137,7 @@ export default function ProcurementDashboard() {
             <CardContent className="p-20 text-center text-slate-300 italic font-bold">
                {isRtl ? 'سيتم عرض المخططات البيانية عند توفر البيانات.' : 'Charts will appear when data is available.'}
             </CardContent>
-         </div>
+         </Card>
       </div>
     </div>
   );
