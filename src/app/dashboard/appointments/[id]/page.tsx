@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   ArrowRight, Calendar, Clock, User, 
-  MapPin, MessageSquare, ShieldCheck, 
-  Loader2, Briefcase, Workflow, CheckCircle2,
-  AlertTriangle, Timer, Info, Hammer,
-  Check, PlayCircle, Layers, Activity
+  MessageSquare, ShieldCheck, 
+  Loader2, Workflow, CheckCircle2,
+  AlertTriangle, Timer, Hammer,
+  Check, Layers, Info, Pencil, FileText
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, where, orderBy } from 'firebase/firestore';
@@ -19,7 +19,7 @@ import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
 import { Appointment } from '@/types/appointment';
-import { Transaction, StageInstance } from '@/types/transaction';
+import { Transaction, StageInstance, TransactionComment } from '@/types/transaction';
 import { BOQItemExecutionEntry } from '@/types/documents';
 import { CommentSection } from '@/components/transactions/comment-section';
 import { cn } from '@/lib/utils';
@@ -47,28 +47,45 @@ export default function AppointmentDetailPage() {
   [db, companyId, appt?.transactionId]);
   const { data: transaction } = useDoc<Transaction>(transRef);
 
+  // تحديد طبيعة النشاط (مقاولات أم استشارات)
+  const isConsulting = useMemo(() => {
+    const name = transaction?.activityTypeName || '';
+    return name.includes('استشارات') || name.includes('Consulting') || name.includes('تصميم') || name.includes('Design');
+  }, [transaction]);
+
   // جلب مراحل المشروع (المسار الفني)
   const stagesQuery = useMemo(() => 
     companyId && db && appt?.transactionId ? query(collection(db, paths.transactionStages(companyId, appt.transactionId)), orderBy('order')) : null,
   [db, companyId, appt?.transactionId]);
   const { data: stages } = useCollection<StageInstance>(stagesQuery);
 
-  // جلب سجلات التنفيذ للتحقق من شرط الإغلاق
+  // جلب سجلات التنفيذ (للمقاولات)
   const execsQuery = useMemo(() => 
     companyId && db && appt?.transactionId ? query(collection(db, paths.executions(companyId)), where('transactionId', '==', appt.transactionId)) : null,
   [db, companyId, appt?.transactionId]);
   const { data: executions } = useCollection<BOQItemExecutionEntry>(execsQuery);
 
-  // فحص هل تم تسجيل إنجاز في المرحلة المربوطة بالموعد؟
+  // جلب سجلات التعليقات (للاستشارات)
+  const commentsQuery = useMemo(() => 
+    companyId && db && appt?.transactionId ? query(collection(db, paths.transactionComments(companyId, appt.transactionId)), where('stageInstanceId', '==', appt.stageId || '')) : null,
+  [db, companyId, appt?.transactionId, appt?.stageId]);
+  const { data: comments } = useCollection<TransactionComment>(commentsQuery);
+
+  // فحص شرط الإغلاق بناءً على نوع النشاط
   const hasAchievement = useMemo(() => {
-    if (!executions || !appt?.stageId) return false;
-    // نبحث عن أي سجل إنجاز مرتبط بهذه المرحلة المحددة في المشروع
-    // ملاحظة: نبحث عن سجلات الإنجاز التي تمت في المرحلة المربوطة بالموعد
-    const linkedStage = stages?.find(s => s.id === appt.stageId);
-    if (!linkedStage) return false;
-    
-    return executions.some(ex => ex.technicalStageId === linkedStage.technicalStageId && !ex.isArchived);
-  }, [executions, appt?.stageId, stages]);
+    if (!appt?.transactionId) return true; // موعد عام بدون مشروع
+
+    if (isConsulting) {
+      // للاستشارات: يجب وجود تعليق واحد على الأقل (محضر اجتماع) في هذه المرحلة
+      return (comments || []).length > 0;
+    } else {
+      // للمقاولات: يجب وجود سجل إنجاز كميات (Execution Log)
+      if (!executions || !appt?.stageId) return false;
+      const linkedStage = stages?.find(s => s.id === appt.stageId);
+      if (!linkedStage) return false;
+      return executions.some(ex => ex.technicalStageId === linkedStage.technicalStageId && !ex.isArchived);
+    }
+  }, [isConsulting, comments, executions, appt?.stageId, appt?.transactionId, stages]);
 
   const handleComplete = async () => {
     if (!db || !companyId || !user) return;
@@ -76,9 +93,9 @@ export default function AppointmentDetailPage() {
        toast({ 
          variant: "destructive", 
          title: isRtl ? "قفل الإنجاز مفعل" : "Execution Lock Active",
-         description: isRtl 
-           ? "لا يمكن إغلاق الموعد. يجب أولاً تسجيل إنجاز فني (Log Progress) في المسار الفني للمشروع." 
-           : "Cannot close appointment. You must first log progress in the technical path."
+         description: isConsulting 
+           ? (isRtl ? "لا يمكن إغلاق موعد استشاري بدون تدوين محضر اجتماع أو ملاحظات فنية في غرفة العمليات." : "Cannot close consulting appt without logging meeting minutes in the War Room.")
+           : (isRtl ? "لا يمكن إغلاق موعد مقاولات بدون تسجيل إنجاز ميداني للكميات في المشروع." : "Cannot close contracting appt without logging site quantity progress.")
        });
        return;
     }
@@ -105,7 +122,7 @@ export default function AppointmentDetailPage() {
            <div className="text-start">
              <h1 className="text-3xl font-black font-headline text-slate-900">{appt.title}</h1>
              <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-[0.2em] opacity-60">
-               {appt.clientName} | {appt.type}
+               {appt.clientName} | {isConsulting ? (isRtl ? 'مسار استشاري' : 'Consulting Path') : (isRtl ? 'مسار مقاولات' : 'Contracting Path')}
              </p>
            </div>
         </div>
@@ -115,12 +132,12 @@ export default function AppointmentDetailPage() {
              onClick={handleComplete} 
              className={cn(
                "h-14 px-10 rounded-2xl font-black text-lg transition-all gap-3 border-b-8 shadow-xl hover:scale-105",
-               hasAchievement || !appt.transactionId
-                 ? "bg-emerald-600 text-white border-emerald-800 shadow-emerald-100" 
+               hasAchievement
+                 ? (isConsulting ? "bg-blue-600 text-white border-blue-800 shadow-blue-100" : "bg-emerald-600 text-white border-emerald-800 shadow-emerald-100") 
                  : "bg-slate-200 text-slate-400 border-slate-300 shadow-none cursor-not-allowed"
              )}
            >
-              {hasAchievement || !appt.transactionId ? <CheckCircle2 className="h-6 w-6" /> : <AlertTriangle className="h-6 w-6" />}
+              {hasAchievement ? (isConsulting ? <CheckCircle2 className="h-6 w-6" /> : <CheckCircle2 className="h-6 w-6" />) : <AlertTriangle className="h-6 w-6" />}
               {isRtl ? 'إغلاق وإنجاز الموعد' : 'Complete Appointment'}
            </Button>
         )}
@@ -285,16 +302,20 @@ export default function AppointmentDetailPage() {
               </CardContent>
            </Card>
 
-           <div className="p-8 rounded-[2.5rem] bg-amber-50 border-2 border-dashed border-amber-200 flex items-start gap-4">
-              <AlertTriangle className="h-6 w-6 text-amber-600 shrink-0 mt-1" />
-              <p className="text-xs text-amber-800 font-bold leading-relaxed">
-                 {isRtl 
-                   ? 'بروتوكول الإغلاق: لا يمكنك إغلاق هذا الموعد إلا بعد تسجيل إنجاز فني (Hammer Log) في المشروع المربوط. يرجى الذهاب للمشروع وتسجيل التقدم الميداني أولاً.' 
-                   : 'Closure Protocol: You cannot complete this appointment without logging technical progress (Hammer Log) in the linked project. Please go to the project and record site progress first.'}
+           <div className={cn(
+             "p-8 rounded-[2.5rem] border-2 border-dashed flex items-start gap-4",
+             isConsulting ? "bg-blue-50 border-blue-200 text-blue-800" : "bg-amber-50 border-amber-200 text-amber-800"
+           )}>
+              {isConsulting ? <Pencil className="h-6 w-6 shrink-0 mt-1" /> : <AlertTriangle className="h-6 w-6 shrink-0 mt-1" />}
+              <p className="text-xs font-bold leading-relaxed">
+                 {isConsulting 
+                   ? (isRtl ? 'بروتوكول الاستشارات: لإكمال الموعد يجب تسجيل محضر اجتماع أو ملاحظات فنية في غرفة العمليات (War Room) أدناه.' : 'Consulting Protocol: To complete, you must log meeting minutes or technical notes in the War Room below.')
+                   : (isRtl ? 'بروتوكول المقاولات: لا يمكنك إغلاق هذا الموعد إلا بعد تسجيل إنجاز فني (Hammer Log) في المشروع المربوط.' : 'Contracting Protocol: You cannot complete this appt without logging technical progress (Hammer Log) in the linked project.')
+                 }
               </p>
            </div>
            
-           {!hasAchievement && appt.transactionId && (
+           {!hasAchievement && appt.transactionId && !isConsulting && (
               <Button 
                 onClick={() => router.push(`/dashboard/clients/${appt.clientId}/transactions/${appt.transactionId}`)}
                 className="w-full h-16 rounded-2xl bg-slate-900 text-white font-black text-sm shadow-2xl hover:scale-105 transition-all gap-3"
@@ -309,4 +330,3 @@ export default function AppointmentDetailPage() {
     </div>
   );
 }
-

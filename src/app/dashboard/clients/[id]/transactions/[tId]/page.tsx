@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -13,7 +14,8 @@ import {
   Hammer, Save, AlertTriangle,
   Zap, Workflow,
   PlusCircle, ArrowRight,
-  Info, Sparkles, FilePlus, ShieldCheck
+  Info, Sparkles, FilePlus, ShieldCheck,
+  Pencil, FileText, LayoutGrid
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, limit, doc, addDoc } from 'firebase/firestore';
@@ -103,6 +105,12 @@ export default function TransactionDetailsPage() {
   const transRef = useMemo(() => (companyId && db && transactionId) ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
   const { data: transaction, loading: transLoading } = useDoc<Transaction>(transRef);
 
+  // منطق فصل النشاط
+  const isConsulting = useMemo(() => {
+    const name = transaction?.activityTypeName || '';
+    return name.includes('استشارات') || name.includes('Consulting') || name.includes('تصميم') || name.includes('Design');
+  }, [transaction]);
+
   const stagesQuery = useMemo(() => 
     (companyId && db && transactionId) ? query(collection(db, paths.transactionStages(companyId, transactionId)), orderBy('order', 'asc')) : null, 
   [db, companyId, transactionId]);
@@ -150,7 +158,7 @@ export default function TransactionDetailsPage() {
   useEffect(() => {
     let active = true;
     async function fetchAllProgress() {
-      if (!executionService || !stages || stages.length === 0) return;
+      if (!executionService || !stages || stages.length === 0 || isConsulting) return;
       const results: Record<string, StageProgressResult> = {};
       const promises = stages.map(async (s) => {
         const res = await executionService.getTechnicalStageProgress(transactionId, s.technicalStageId);
@@ -162,7 +170,7 @@ export default function TransactionDetailsPage() {
     }
     fetchAllProgress();
     return () => { active = false; };
-  }, [executionService, stages, transactionId, allExecutions]);
+  }, [executionService, stages, transactionId, allExecutions, isConsulting]);
 
   const transactionService = useMemo(() => (db && companyId) ? new TransactionService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
@@ -185,6 +193,20 @@ export default function TransactionDetailsPage() {
       setIsBoqInitOpen(false);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  const handleActivateConsultingPath = async () => {
+    if (!db || !companyId || !user || !transaction) return;
+    setLoadingAction('activating');
+    try {
+      const service = new TransactionService(db, companyId, permissions);
+      await service.initializeTechnicalPath(transactionId, transaction.activityTypeId, transaction.serviceId, transaction.subServiceId, user.uid);
+      toast({ title: isRtl ? "تم تفعيل مسار التصميم" : "Design Path Activated" });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('error') });
     } finally {
       setLoadingAction(null);
     }
@@ -260,11 +282,14 @@ export default function TransactionDetailsPage() {
 
   const handleCompleteStage = async (stage: StageInstance, force: boolean = false) => {
     if (!transactionService || !user || !stage.id) return;
-    const progress = stageProgressMap[stage.technicalStageId];
     
-    if (!force && progress && !progress.canComplete) {
-      setIncompleteStage({ stage, progress });
-      return;
+    // فحص الإكمال فقط للمقاولات (BOQ Based)
+    if (!isConsulting && !force) {
+      const progress = stageProgressMap[stage.technicalStageId];
+      if (progress && !progress.canComplete) {
+        setIncompleteStage({ stage, progress });
+        return;
+      }
     }
 
     setProcessingId(stage.id);
@@ -293,23 +318,33 @@ export default function TransactionDetailsPage() {
               <div className="flex items-center gap-3 mt-0.5">
                  <Badge className={cn("font-black px-2 py-0.5 rounded-lg border-0 shadow-sm uppercase text-[8px]", transaction?.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600')}>{transaction?.status}</Badge>
                  <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1"><Activity className="h-2.5 w-2.5 text-primary" /> {transaction?.activityTypeName}</span>
+                 {isConsulting && <Badge className="bg-blue-50 text-blue-600 border-0 text-[8px] font-black uppercase h-5 px-2">CONSULTING</Badge>}
               </div>
            </div>
         </div>
         <div className="flex gap-2">
-           {activeBoq ? (
-             <>
-                <Button onClick={() => setIsVOOpen(true)} className="btn-gradient h-10 px-6 rounded-xl gap-2">
-                  <Calculator className="h-4 w-4" /> {isRtl ? 'أمر تغييري' : 'Variation Order'}
-                </Button>
-                <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="btn-gradient h-10 px-6 rounded-xl gap-2">
-                  <FileSpreadsheet className="h-4 w-4" /> {isRtl ? 'عرض المقايسة' : 'View BOQ'}
-                </Button>
-             </>
+           {!isConsulting ? (
+             activeBoq ? (
+               <>
+                  <Button onClick={() => setIsVOOpen(true)} className="btn-gradient h-10 px-6 rounded-xl gap-2">
+                    <Calculator className="h-4 w-4" /> {isRtl ? 'أمر تغييري' : 'Variation Order'}
+                  </Button>
+                  <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="btn-gradient h-10 px-6 rounded-xl gap-2">
+                    <FileSpreadsheet className="h-4 w-4" /> {isRtl ? 'عرض المقايسة' : 'View BOQ'}
+                  </Button>
+               </>
+             ) : (
+               <Button onClick={() => setIsBoqInitOpen(true)} className="btn-gradient h-12 px-8 rounded-xl gap-2 shadow-2xl">
+                 <FilePlus className="h-5 w-5" /> {isRtl ? 'بدء هندسة المقايسة' : 'Setup BOQ'}
+               </Button>
+             )
            ) : (
-             <Button onClick={() => setIsBoqInitOpen(true)} className="btn-gradient h-12 px-8 rounded-xl gap-2 shadow-2xl">
-               <FilePlus className="h-5 w-5" /> {isRtl ? 'بدء هندسة المقايسة' : 'Setup BOQ'}
-             </Button>
+             stages.length === 0 && (
+               <Button onClick={handleActivateConsultingPath} disabled={loadingAction === 'activating'} className="btn-gradient h-12 px-8 rounded-xl gap-2 shadow-2xl">
+                  {loadingAction === 'activating' ? <Loader2 className="animate-spin h-5 w-5" /> : <Sparkles className="h-5 w-5" />}
+                  {isRtl ? 'تفعيل مسار التصميم' : 'Activate Design Path'}
+               </Button>
+             )
            )}
         </div>
       </div>
@@ -325,18 +360,18 @@ export default function TransactionDetailsPage() {
                      <h3 className="text-2xl font-black text-slate-400">{isRtl ? 'بانتظار تفعيل المسار الفني' : 'Awaiting Pipeline Activation'}</h3>
                      <p className="text-xs font-bold text-slate-300 max-w-xs mx-auto">
                         {isRtl 
-                          ? 'لا يظهر رادار التنفيذ إلا بعد اعتماد ميزانية المشروع (BOQ Baseline). يرجى إنشاء المقايسة والضغط على "اعتماد" من داخلها.' 
-                          : 'Technical radar will appear once the project BOQ baseline is approved. Go to BOQ and click "Approve".'}
+                          ? (isConsulting ? 'هذا النشاط استشاري. يرجى الضغط على تفعيل مسار التصميم لبدء توثيق الاجتماعات والمخرجات.' : 'لا يظهر رادار التنفيذ إلا بعد اعتماد ميزانية المشروع (BOQ Baseline). يرجى إنشاء المقايسة والضغط على "اعتماد" من داخلها.') 
+                          : (isConsulting ? 'Consulting activity. Click activate design path to start logging meetings and deliverables.' : 'Technical radar will appear once the project BOQ baseline is approved.')}
                      </p>
                   </div>
-                  {!activeBoq && (
+                  {!isConsulting && !activeBoq && (
                     <Button onClick={() => setIsBoqInitOpen(true)} className="h-14 px-10 rounded-2xl gap-3">
                        <Sparkles className="h-5 w-5" /> {isRtl ? 'إنشاء مقايسة للمشروع الآن' : 'Create BOQ Now'}
                     </Button>
                   )}
-                  {activeBoq && activeBoq.status === 'draft' && (
-                     <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="h-14 px-10 rounded-2xl gap-3 bg-emerald-600 text-white">
-                        <CheckCircle2 className="h-5 w-5" /> {isRtl ? 'الذهاب لاعتماد المقايسة وتفعيل الرادار' : 'Go Approve BOQ'}
+                  {isConsulting && (
+                     <Button onClick={handleActivateConsultingPath} className="h-14 px-10 rounded-2xl gap-3">
+                        <CheckCircle2 className="h-5 w-5" /> {isRtl ? 'تفعيل المسار الاستشاري الآن' : 'Activate Path Now'}
                      </Button>
                   )}
                </div>
@@ -365,7 +400,7 @@ export default function TransactionDetailsPage() {
                                
                                {isOperationalFrontier && (
                                   <div className="flex gap-2 shrink-0 z-10" onClick={e => e.stopPropagation()}>
-                                     {stage.status === 'in-progress' && editAccess.can && (
+                                     {stage.status === 'in-progress' && editAccess.can && !isConsulting && (
                                        <Button onClick={() => { setTargetStage(stage); setIsRecordOpen(true); }} className="btn-gradient h-9 px-4 rounded-xl text-[10px] gap-2">
                                          <Hammer className="h-3.5 w-3.5" /> {isRtl ? 'تسجيل إنجاز' : 'Log'}
                                        </Button>
@@ -461,12 +496,12 @@ export default function TransactionDetailsPage() {
                   <div className="space-y-2">
                      <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'الكمية المنفذة حالياً' : 'Quantity Executed'}</Label>
                      <div className="relative">
-                       <Input 
+                       <input 
                          type="number" 
                          step="0.01" 
                          value={progressQty} 
                          onChange={e => setProgressQty(e.target.value === '' ? '' : Number(e.target.value))} 
-                         className="h-12 rounded-lg border-2 font-black text-xl text-center shadow-inner" 
+                         className="h-12 w-full rounded-lg border-2 font-black text-xl text-center shadow-inner" 
                          placeholder="..." 
                        />
                        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-300 uppercase">{selectedBOQItemMetrics?.unit}</div>
@@ -524,7 +559,7 @@ export default function TransactionDetailsPage() {
          </DialogContent>
       </Dialog>
 
-      <AlertDialog open={isOverExecutionOpen} onOpenChange={setIsOverExecutionOpen}>
+      <AlertDialog open={isOverExecutionOpen} onOpenChange={isOverExecutionOpen => setIsOverExecutionOpen(isOverExecutionOpen)}>
         <AlertDialogContent className="rounded-xl p-8 border-0 shadow-3xl bg-white" dir={dir}>
            <AlertDialogHeader><div className="mx-auto w-20 h-20 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mb-6 shadow-inner ring-4 ring-rose-50/50"><AlertTriangle className="h-8 w-8" /></div><AlertDialogTitle className="text-start font-black text-2xl font-headline text-slate-900">تحذير: تجاوز الكمية المخططة</AlertDialogTitle><AlertDialogDescription className="text-start font-bold text-slate-400 mt-2 text-base leading-relaxed">{isRtl ? `أنت تحاول تسجيل كمية تتجاوز المخطط. هل ترغب في الاستمرار؟ سيتم توثيق إقرارك بالموافقة باسمك في سجل التايم لاين.` : `You are recording an over-execution. Continue? Your approval will be logged.`}</AlertDialogDescription></AlertDialogHeader>
            <AlertDialogFooter className="mt-8 gap-3 flex flex-row"><AlertDialogCancel className="flex-1 h-12 rounded-lg font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel><AlertDialogAction onClick={() => handleRecordProgress(true)} className="flex-[2] h-12 rounded-lg font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200">{isRtl ? 'نعم، أقر بالتجاوز' : 'Confirm & Log'}</AlertDialogAction></AlertDialogFooter>
