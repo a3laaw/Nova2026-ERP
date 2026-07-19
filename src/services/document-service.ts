@@ -94,6 +94,16 @@ export class DocumentService {
     return quoteRef.id;
   }
 
+  async updateQuotation(id: string, data: Partial<Quotation>, userId: string) {
+    ensureActionPermission(this.permissions, 'projects:edit');
+    const docRef = doc(this.db, paths.quotations(this.companyId), id);
+    return updateDoc(docRef, {
+      ...data,
+      updatedBy: userId,
+      updatedAt: serverTimestamp()
+    });
+  }
+
   async instantiateContractFromTemplate(
     templateId: string,
     payload: { transactionId: string, clientId: string, clientName: string, name: string },
