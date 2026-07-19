@@ -72,6 +72,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SmartDateInput } from '@/components/ui/smart-date-input';
 
 // --- Helpers ---
 const weekDays: { id: DayOfWeek; labelAr: string; labelEn: string }[] = [
@@ -191,12 +192,7 @@ export function ArchitecturalAppointmentsView() {
   }, [db, companyId]);
 
   const engineers = useMemo(() => {
-    let list = (allEmployees || []).filter(e => e.departmentName?.includes('معماري') || e.departmentName?.includes('Arch'));
-    // السيادة المعلوماتية: إذا كان مهندس، لا يرى إلا عموده الخاص في الشبكة؟ 
-    // يفضل رؤية الجميع للتنسيق، لكن تصفية مواعيد الآخرين قد تكون مطلوبة.
-    // المطلب كان: "لازال الميل يظهر لكل المهندسين في جدول الزيارات".
-    // هذا يعني أننا يجب أن نفلتر filteredAppointments لتعرض فقط مواعيد المهندس الحالي.
-    return list;
+    return (allEmployees || []).filter(e => e.departmentName?.includes('معماري') || e.departmentName?.includes('Arch'));
   }, [allEmployees]);
 
   const clientsMap = useMemo(() => {
@@ -205,15 +201,11 @@ export function ArchitecturalAppointmentsView() {
     return m;
   }, [allClients]);
 
-  // بروتوكول العزل الميداني: تصفية المواعيد المعروضة في الشبكة
   const filteredAppointments = useMemo(() => {
     let list = (rawAppointments || []).filter(a => a.status !== 'cancelled' && isSameDay(parseISO(a.start), currentDate));
-    
-    // إذا لم يكن مديراً، يرى فقط مواعيده الخاصة
     if (!isAdmin && globalUser?.employeeId) {
       list = list.filter(a => a.engineerId === globalUser.employeeId);
     }
-    
     return list;
   }, [rawAppointments, currentDate, isAdmin, globalUser?.employeeId]);
 
@@ -280,8 +272,8 @@ export function ArchitecturalAppointmentsView() {
   return (
     <div className="space-y-12 animate-in fade-in duration-700" dir={dir}>
       
-      {/* Date Tiles Slider */}
-      <div className="flex flex-col items-center gap-6 no-print">
+      {/* Sovereign Date Slider */}
+      <div className="flex flex-col items-center gap-6 print:hidden">
         <h2 className="text-xl font-black text-primary uppercase tracking-widest">{isRtl ? 'رادار المواعيد' : 'Appointments Radar'}</h2>
         
         <div className="flex items-center gap-6 w-full max-w-4xl justify-center">
@@ -322,7 +314,7 @@ export function ArchitecturalAppointmentsView() {
            <Button 
              variant="ghost" 
              size="icon" 
-             onClick={() => addDays(currentDate, 1)}
+             onClick={() => setCurrentDate(addDays(currentDate, 1))}
              className="h-12 w-12 rounded-full hover:bg-slate-100 transition-all text-slate-400"
            >
               <ChevronRight className={cn("h-6 w-6", isRtl && "rotate-180")} />
@@ -330,7 +322,7 @@ export function ArchitecturalAppointmentsView() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 no-print">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 print:hidden">
          <Card className="border-0 shadow-lg rounded-3xl bg-white border-b-8 border-slate-900">
             <CardContent className="p-6 text-start">
                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إجمالي المواعيد' : 'Total Appts'}</p>
@@ -354,7 +346,6 @@ export function ArchitecturalAppointmentsView() {
                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'عملاء متعاقدون' : 'Contracted'}</p>
                <h3 className="text-3xl font-black text-blue-600">{stats.blue}</h3>
             </CardContent>
-         </Card>
       </div>
 
       <div className="space-y-12 pb-20">
@@ -404,8 +395,6 @@ export function ArchitecturalAppointmentsView() {
 
 function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, clients, isAdmin, currentEngineerId }: any) {
   if (slots.length === 0) return null;
-
-  // في حالة المهندس العادي، نظهر فقط عموده أو نترك الأعمدة الأخرى فارغة لعدم تشتيت الانتباه
   const visibleEngineers = isAdmin ? engineers : engineers.filter((e: any) => e.id === currentEngineerId);
 
   return (
@@ -483,7 +472,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
 }
 
 function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates, companyId, userId, userName, db, rawAppointments }: any) {
-  const { dir, isRtl, t } = useLanguage();
+  const { dir, lang, isRtl, t } = useLanguage();
   const { isAdmin } = usePermissions();
   
   const [loading, setLoading] = useState(false);
@@ -520,7 +509,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
   const filteredClients = useMemo(() => {
     if (isAdmin) return clients;
-    // بروتوكول العزل المعلوماتي: المهندس يرى عملاءه فقط
     return clients.filter((c: any) => c.assignedEngineerId === userId);
   }, [clients, isAdmin, userId]);
 
@@ -537,7 +525,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
       let targetClientId = formData.clientId;
       let targetClientName = formData.clientName;
 
-      // 1. معالجة العميل الجديد
       if (isCreate && isNewClient) {
         if (!formData.newClientName || !formData.newClientPhone) {
           toast({ variant: "destructive", title: isRtl ? "بيانات العميل الجديد ناقصة" : "New client data missing" });
@@ -565,8 +552,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         targetClientName = selected?.nameAr || '';
       }
 
-      // 2. بروتوكول منع الحجز المزدوج (Double Booking Prevention)
-      // التحقق مما إذا كان العميل لديه موعد آخر في نفس التوقيت بالضبط مع أي مهندس
       const isDoubleBooked = rawAppointments?.some((a: any) => 
         a.clientId === targetClientId && 
         a.start === start && 
@@ -712,6 +697,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'الوقت' : 'Time'}</Label>
                     <Input type="time" value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} className="h-11 rounded-xl border-2 font-bold" />
                  </div>
+              </div>
            )}
 
            <div className="space-y-2">
@@ -733,4 +719,3 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     </Dialog>
   );
 }
-
