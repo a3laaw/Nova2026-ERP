@@ -172,9 +172,14 @@ export function ArchitecturalAppointmentsView() {
     companyId && db ? query(collection(db, paths.clients(companyId))) : null, 
   [db, companyId]);
 
+  const govsQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.governorates(companyId)), orderBy('order')) : null, 
+  [db, companyId]);
+
   const { data: rawAppointments, loading: apptsLoading } = useCollection<Appointment>(apptsQuery);
   const { data: allEmployees, loading: empsLoading } = useCollection<Employee>(empsQuery);
   const { data: allClients, loading: clientsLoading } = useCollection<Client>(clientsQuery);
+  const { data: governorates } = useCollection<Governorate>(govsQuery);
 
   useEffect(() => {
     if (db && companyId) {
@@ -184,20 +189,20 @@ export function ArchitecturalAppointmentsView() {
   }, [db, companyId]);
 
   const engineers = useMemo(() => {
-    return allEmployees.filter(e => e.departmentName?.includes('معماري') || e.departmentName?.includes('Arch'));
+    return (allEmployees || []).filter(e => e.departmentName?.includes('معماري') || e.departmentName?.includes('Arch'));
   }, [allEmployees]);
 
   const clientsMap = useMemo(() => {
     const m = new Map<string, Client>();
-    allClients.forEach(c => { if (c.id) m.set(c.id, c); });
+    (allClients || []).forEach(c => { if (c.id) m.set(c.id, c); });
     return m;
   }, [allClients]);
 
   const filteredAppointments = useMemo(() => {
-    return rawAppointments.filter(a => a.status !== 'cancelled' && isSameDay(parseISO(a.start), currentDate));
+    return (rawAppointments || []).filter(a => a.status !== 'cancelled' && isSameDay(parseISO(a.start), currentDate));
   }, [rawAppointments, currentDate]);
 
-  const apptMeta = useMemo(() => computeMeta(rawAppointments, clientsMap), [rawAppointments, clientsMap]);
+  const apptMeta = useMemo(() => computeMeta(rawAppointments || [], clientsMap), [rawAppointments, clientsMap]);
 
   const stats = useMemo(() => {
     const res = { total: filteredAppointments.length, yellow: 0, green: 0, blue: 0 };
@@ -260,7 +265,7 @@ export function ArchitecturalAppointmentsView() {
   return (
     <div className="space-y-12 animate-in fade-in duration-700" dir={dir}>
       
-      {/* Date Tiles Slider - AS REQUESTED */}
+      {/* Date Tiles Slider */}
       <div className="flex flex-col items-center gap-6 no-print">
         <h2 className="text-xl font-black text-primary uppercase tracking-widest">{isRtl ? 'المواعيد' : 'Appointments'}</h2>
         
@@ -362,18 +367,17 @@ export function ArchitecturalAppointmentsView() {
          )}
       </div>
 
-      {dialogOpen && (
-        <AppointmentManagerDialog 
-          isOpen={dialogOpen} 
-          onClose={() => setDialogOpen(false)} 
-          data={dialogData!} 
-          clients={allClients}
-          companyId={companyId!}
-          userId={user!.uid}
-          userName={user!.displayName || 'User'}
-          db={db}
-        />
-      )}
+      <AppointmentManagerDialog 
+        isOpen={dialogOpen} 
+        onClose={() => setDialogOpen(false)} 
+        data={dialogData} 
+        clients={allClients || []}
+        governorates={governorates || []}
+        companyId={companyId!}
+        userId={user!.uid}
+        userName={user!.displayName || 'User'}
+        db={db}
+      />
     </div>
   );
 }
@@ -455,34 +459,50 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
   );
 }
 
-function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, userId, userName, db }: any) {
-  const { lang, dir, isRtl, t } = useLanguage();
+function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates, companyId, userId, userName, db }: any) {
+  const { dir, isRtl, t } = useLanguage();
   const { isAdmin } = usePermissions();
+  
   const [loading, setLoading] = useState(false);
   const [isNewClient, setIsNewClient] = useState(false);
   
   const [formData, setFormData] = useState({
-    title: data.appointment?.title || '',
-    clientId: data.appointment?.clientId || '',
-    clientName: data.appointment?.clientName || '',
+    title: '',
+    clientId: '',
+    clientName: '',
     newClientName: '',
     newClientPhone: '',
     newClientGovId: '',
-    date: data.appointment ? format(parseISO(data.appointment.start), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
-    time: data.slot || (data.appointment ? format(parseISO(data.appointment.start), 'HH:mm') : '08:00'),
-    notes: data.appointment?.notes || ''
+    date: '',
+    time: '',
+    notes: ''
   });
 
-  const govsQuery = useMemo(() => companyId && db ? query(collection(db, paths.governorates(companyId)), orderBy('order')) : null, [db, companyId]);
-  const { data: governorates } = useCollection<Governorate>(govsQuery);
+  // محرك إعادة ضبط الحالة عند الفتح/الإغلاق لضمان عدم حدوث جمود
+  useEffect(() => {
+    if (isOpen && data) {
+      setFormData({
+        title: data.appointment?.title || '',
+        clientId: data.appointment?.clientId || '',
+        clientName: data.appointment?.clientName || '',
+        newClientName: '',
+        newClientPhone: '',
+        newClientGovId: '',
+        date: data.appointment ? format(parseISO(data.appointment.start), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+        time: data.slot || (data.appointment ? format(parseISO(data.appointment.start), 'HH:mm') : '08:00'),
+        notes: data.appointment?.notes || ''
+      });
+      setIsNewClient(false);
+    }
+  }, [isOpen, data]);
 
-  // الفلترة السيادية: المهندس لا يرى إلا عملاءه في القائمة
   const filteredClients = useMemo(() => {
     if (isAdmin) return clients;
     return clients.filter((c: any) => c.assignedEngineerId === userId);
   }, [clients, isAdmin, userId]);
 
   const handleSave = async () => {
+    if (!data) return;
     const isCreate = data.mode === 'create';
     const finalTitle = formData.title || (isNewClient ? `زيارة أولى: ${formData.newClientName}` : 'اجتماع عميل');
     
@@ -500,10 +520,9 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, u
           return;
         }
 
-        const gov = governorates?.find(g => g.id === formData.newClientGovId);
+        const gov = governorates?.find((g: any) => g.id === formData.newClientGovId);
         const nextFileNum = await clientService.getNextFileNumber();
         
-        // تسجيل العميل الجديد وربطه بالمهندس الحالي فوراً
         targetClientId = await clientService.addClient({
           nameAr: formData.newClientName,
           mobile: formData.newClientPhone,
@@ -511,7 +530,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, u
           governorateName: gov ? (isRtl ? gov.name : gov.nameEn) : '',
           fileNumber: nextFileNum,
           status: 'new',
-          assignedEngineerId: userId, // ربط سيادي فوري
+          assignedEngineerId: userId,
           assignedEngineerName: userName
         }, userId, userName);
         
@@ -533,7 +552,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, u
           type: 'client_meeting',
           start,
           status: 'scheduled',
-          notes: formData.notes
+          companyId
         }, userId);
       } else if (data.appointment?.id) {
         await appService.updateAppointment(data.appointment.id, {
@@ -553,12 +572,16 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, u
     }
   };
 
-  const isCreate = data.mode === 'create';
+  const isCreate = data?.mode === 'create';
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="rounded-[2rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
-        {/* Header - Light & Clean */}
+      <DialogContent 
+        className="rounded-[2rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" 
+        dir={dir}
+        // حماية سيادية ضد جمود الشاشة: منعRadix من حظر الأحداث بشكل خاطئ
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <div className="bg-primary/5 p-8 text-slate-900 text-start border-b">
            <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -570,7 +593,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, u
                        {isCreate ? (isRtl ? 'حجز موعد جديد' : 'New Appointment') : (isRtl ? 'تعديل الموعد' : 'Edit Appointment')}
                     </DialogTitle>
                     <p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-0.5">
-                       {data.engineer?.fullName || data.appointment?.engineerName}
+                       {data?.engineer?.fullName || data?.appointment?.engineerName}
                     </p>
                  </div>
               </div>
@@ -616,7 +639,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, u
                           <Select value={formData.newClientGovId} onValueChange={v => setFormData({...formData, newClientGovId: v})}>
                              <SelectTrigger className="h-11 border-2 font-bold bg-white rounded-xl"><SelectValue placeholder="..." /></SelectTrigger>
                              <SelectContent className="rounded-xl border-0 shadow-2xl">
-                                {governorates?.map(g => <SelectItem key={g.id} value={g.id!} className="font-bold">{isRtl ? g.name : g.nameEn}</SelectItem>)}
+                                {governorates?.map((g: any) => <SelectItem key={g.id} value={g.id!} className="font-bold">{isRtl ? g.name : g.nameEn}</SelectItem>)}
                              </SelectContent>
                           </Select>
                        </div>
