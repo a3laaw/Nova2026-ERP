@@ -9,7 +9,7 @@ import {
   ArrowRight, Calendar, Clock, User, 
   MapPin, MessageSquare, ShieldCheck, 
   Loader2, Briefcase, Workflow, CheckCircle2,
-  AlertTriangle, Timer
+  AlertTriangle, Timer, Info
 } from "lucide-react";
 import { useFirestore, useDoc } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -87,7 +87,7 @@ export default function AppointmentDetailPage() {
                     </CardTitle>
                     <Badge className={cn(
                       "font-black px-4 py-1.5 rounded-xl uppercase text-[10px]",
-                      appt.status === 'completed' ? "bg-emerald-500 text-white" : "bg-blue-500 text-white shadow-lg"
+                      appt.status === 'completed' ? "bg-emerald-50 text-white" : "bg-blue-50 text-blue-600 shadow-lg"
                     )}>{appt.status}</Badge>
                  </div>
               </CardHeader>
