@@ -9,7 +9,7 @@ import {
   Edit3, MapPin, Phone, 
   History, Loader2, Activity, PlayCircle, 
   Compass, Map as MapIcon, Target, Layers,
-  Trash2, AlertTriangle, ArrowRight
+  Trash2, AlertTriangle, ArrowRight, FileText, Gavel
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, where } from 'firebase/firestore';
@@ -32,10 +32,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { TransactionDocumentsDialog } from '@/components/transactions/document-manager-dialog';
 
 import dynamic from 'next/dynamic';
 
-// تحميل الخريطة بشكل ديناميكي مع تعطيل SSR لمنع أخطاء الـ Chunks
 const StaticMapView = dynamic(() => import('@/components/clients/static-map-view'), { 
   ssr: false,
   loading: () => (
@@ -57,6 +57,7 @@ export default function ClientDetailsPage() {
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [docModal, setDocModal] = useState<{ type: 'quotation' | 'contract', transaction: Transaction } | null>(null);
 
   const clientRef = useMemo(() => companyId && db ? doc(db, paths.clients(companyId), clientId) : null, [db, companyId, clientId]);
   const historyQuery = useMemo(() => companyId && db ? query(collection(db, paths.clientHistory(companyId, clientId))) : null, [db, companyId, clientId]);
@@ -120,7 +121,7 @@ export default function ClientDetailsPage() {
               <CardHeader className="bg-slate-50/50 border-b p-4 text-start flex flex-row items-center justify-between">
                  <div className="flex items-center gap-3">
                     <Layers className="h-4 w-4 text-primary" />
-                    <CardTitle className="text-xs font-black uppercase tracking-widest">{isRtl ? 'المعاملات الفنية' : 'Technical Transactions'}</CardTitle>
+                    <CardTitle className="text-xs font-black uppercase tracking-widest">{isRtl ? 'المعاملات الفنية والتعاقدية' : 'Technical & Contractual Pipeline'}</CardTitle>
                  </div>
                  <Badge className="bg-slate-900 text-white font-black rounded-full h-5 px-2.5 flex items-center justify-center text-[9px]">
                     {transactions?.length || 0}
@@ -128,8 +129,8 @@ export default function ClientDetailsPage() {
               </CardHeader>
               <CardContent className="p-3 space-y-2">
                  {transactions?.map((t) => (
-                    <div key={t.id} className="p-3 rounded-xl border border-slate-100 hover:border-primary/20 hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-between group">
-                       <div className="flex items-center gap-3 flex-1" onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${t.id}`)}>
+                    <div key={t.id} className="p-3 rounded-xl border border-slate-100 hover:border-primary/20 hover:bg-primary/5 transition-all cursor-pointer flex flex-col sm:flex-row items-center justify-between group gap-4">
+                       <div className="flex items-center gap-3 flex-1 w-full" onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${t.id}`)}>
                           <div className={cn("h-9 w-9 rounded-lg flex items-center justify-center shadow-sm", t.status === 'completed' ? "bg-emerald-50 text-emerald-600" : "bg-blue-50 text-blue-600")}>
                              <PlayCircle className="h-5 w-5" />
                           </div>
@@ -140,25 +141,49 @@ export default function ClientDetailsPage() {
                           </div>
                        </div>
                        
-                       <div className="flex gap-2">
-                          {isAdmin && (
+                       <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                          <div className="flex items-center bg-white rounded-lg border border-slate-100 p-1 shadow-sm opacity-0 group-hover:opacity-100 transition-all">
+                             <Button 
+                               variant="ghost" 
+                               size="sm" 
+                               className="h-8 px-2 rounded-md text-[9px] font-black gap-1 text-blue-600 hover:bg-blue-50"
+                               onClick={(e) => { e.stopPropagation(); setDocModal({ type: 'quotation', transaction: t }); }}
+                             >
+                                <FileText className="h-3 w-3" />
+                                {isRtl ? 'عرض سعر' : 'Quote'}
+                             </Button>
+                             <div className="w-[1px] h-4 bg-slate-100 mx-1" />
+                             <Button 
+                               variant="ghost" 
+                               size="sm" 
+                               className="h-8 px-2 rounded-md text-[9px] font-black gap-1 text-indigo-600 hover:bg-indigo-50"
+                               onClick={(e) => { e.stopPropagation(); setDocModal({ type: 'contract', transaction: t }); }}
+                             >
+                                <Gavel className="h-3 w-3" />
+                                {isRtl ? 'عقد' : 'Contract'}
+                             </Button>
+                          </div>
+
+                          <div className="flex gap-1">
+                             {isAdmin && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-8 w-8 text-rose-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                                  onClick={(e) => { e.stopPropagation(); setDeletingId(t.id); }}
+                                >
+                                   <Trash2 className="h-4 w-4" />
+                                </Button>
+                             )}
                              <Button 
                                variant="ghost" 
                                size="icon" 
-                               className="h-8 w-8 text-rose-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-                               onClick={(e) => { e.stopPropagation(); setDeletingId(t.id); }}
+                               className="h-8 w-8 rounded-lg"
+                               onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${t.id}`)}
                              >
-                                <Trash2 className="h-4 w-4" />
+                                <ArrowRight className={cn("h-4 w-4 text-slate-300", isRtl && "rotate-180")} />
                              </Button>
-                          )}
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 rounded-lg"
-                            onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${t.id}`)}
-                          >
-                             <ArrowRight className={cn("h-4 w-4 text-slate-300", isRtl && "rotate-180")} />
-                          </Button>
+                          </div>
                        </div>
                     </div>
                  ))}
@@ -187,7 +212,7 @@ export default function ClientDetailsPage() {
         <Card className="border-0 shadow-lg rounded-2xl bg-white overflow-hidden flex flex-col min-h-[400px]">
            <CardHeader className="bg-slate-50/50 border-b p-4 flex items-center gap-2">
               <History className="h-4 w-4 text-primary" />
-              <CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-500">{isRtl ? 'سجل الأحداث' : 'History Log'}</CardTitle>
+              <CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-500">{isRtl ? 'سجل الأحداث الموحد' : 'Central History Log'}</CardTitle>
            </CardHeader>
            <CardContent className="p-0 flex-1 overflow-y-auto max-h-[500px] scrollbar-hide text-start">
               <div className="relative p-5">
@@ -195,7 +220,7 @@ export default function ClientDetailsPage() {
                  <div className="space-y-5">
                     {history?.sort((a,b)=>b.createdAt?.toMillis()-a.createdAt?.toMillis()).map((e)=>(
                        <div key={e.id} className="relative ps-8">
-                          <div className={cn("absolute top-1 h-2.5 w-2.5 rounded-full border-2 border-white shadow-sm z-10", e.type === 'status_change' ? "bg-blue-500" : "bg-amber-500", isRtl ? "right-0" : "left-0")} />
+                          <div className={cn("absolute top-1 h-2.5 w-2.5 rounded-full border-2 border-white shadow-sm z-10", e.type === 'status_change' ? "bg-blue-500" : e.type === 'system_log' ? "bg-primary" : "bg-amber-500", isRtl ? "right-0" : "left-0")} />
                           <div className="space-y-0.5">
                              <div className="flex justify-between items-center"><span className="text-[7px] font-black text-slate-400 uppercase">{e.type}</span><span className="text-[7px] font-mono text-slate-300 font-bold">{e.createdAt?.toDate().toLocaleDateString()}</span></div>
                              <p className="text-[11px] font-bold text-slate-700 leading-tight">{e.content}</p>
@@ -209,6 +234,17 @@ export default function ClientDetailsPage() {
            </CardContent>
         </Card>
       </div>
+
+      {docModal && (
+        <TransactionDocumentsDialog 
+          isOpen={!!docModal}
+          onClose={() => setDocModal(null)}
+          type={docModal.type}
+          transaction={docModal.transaction}
+          clientId={clientId}
+          clientName={client.nameAr}
+        />
+      )}
 
       <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
         <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white z-[100]" dir={dir}>

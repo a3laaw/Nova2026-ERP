@@ -25,6 +25,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { ensureActionPermission } from '@/lib/permissions';
 import { TransactionService } from './transaction-service';
 import { BOQReferenceNode } from '@/types/reference';
+import { ClientService } from './client-service';
 
 export class DocumentService {
   constructor(
@@ -55,6 +56,82 @@ export class DocumentService {
     }
   }
 
+  async instantiateQuotationFromTemplate(
+    templateId: string,
+    payload: { transactionId: string, clientId: string, clientName: string, name: string },
+    userId: string,
+    userName: string
+  ) {
+    ensureActionPermission(this.permissions, 'projects:create');
+    const templateRef = doc(this.db, paths.quotationTemplates(this.companyId), templateId);
+    const templateSnap = await getDoc(templateRef);
+    if (!templateSnap.exists()) throw new Error('TEMPLATE_NOT_FOUND');
+    const template = templateSnap.data() as QuotationTemplate;
+
+    const quoteRef = doc(collection(this.db, paths.quotations(this.companyId)));
+    const quoteData: Quotation = {
+      ...template,
+      ...payload,
+      id: quoteRef.id,
+      status: 'draft',
+      version: 1,
+      companyId: this.companyId,
+      createdBy: userId,
+      updatedBy: userId,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    } as any;
+
+    await setDoc(quoteRef, quoteData);
+
+    const clientService = new ClientService(this.db, this.companyId);
+    await clientService.addHistory(payload.clientId, {
+      type: 'system_log',
+      content: `تم إصدار مسودة عرض سعر جديدة للمعاملة ${payload.name}`,
+      userId, userName, companyId: this.companyId
+    });
+
+    return quoteRef.id;
+  }
+
+  async instantiateContractFromTemplate(
+    templateId: string,
+    payload: { transactionId: string, clientId: string, clientName: string, name: string },
+    userId: string,
+    userName: string
+  ) {
+    ensureActionPermission(this.permissions, 'projects:create');
+    const templateRef = doc(this.db, paths.contractTemplates(this.companyId), templateId);
+    const templateSnap = await getDoc(templateRef);
+    if (!templateSnap.exists()) throw new Error('TEMPLATE_NOT_FOUND');
+    const template = templateSnap.data() as ContractTemplate;
+
+    const contractRef = doc(collection(this.db, paths.contracts(this.companyId)));
+    const contractData: Contract = {
+      ...template,
+      ...payload,
+      id: contractRef.id,
+      status: 'draft',
+      version: 1,
+      companyId: this.companyId,
+      createdBy: userId,
+      updatedBy: userId,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    } as any;
+
+    await setDoc(contractRef, contractData);
+
+    const clientService = new ClientService(this.db, this.companyId);
+    await clientService.addHistory(payload.clientId, {
+      type: 'system_log',
+      content: `تم إنشاء مسودة عقد رسمي للمعاملة ${payload.name}`,
+      userId, userName, companyId: this.companyId
+    });
+
+    return contractRef.id;
+  }
+
   async instantiateBoqFromTemplate(
     templateId: string, 
     payload: { 
@@ -82,7 +159,6 @@ export class DocumentService {
     const boqRef = doc(collection(this.db, paths.boqs(this.companyId)));
     const boqId = boqRef.id;
 
-    // البدء كحالة APPROVED تلقائياً كما تم الاتفاق عليه، ولكن للسماح بالتعديل نتركها DRAFT حتى يضغط "اعتماد"
     const boqData: BOQ = {
       id: boqId,
       boqNumber,
@@ -137,9 +213,6 @@ export class DocumentService {
     return boqId;
   }
 
-  /**
-   * إضافة بند مستجد يدوياً للمقايسة (في مرحلة المسودة)
-   */
   async addBOQItemFromNode(boqId: string, transactionId: string, node: BOQReferenceNode, userId: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
     const itemRef = doc(collection(this.db, paths.boqItems(this.companyId, boqId)));
@@ -179,9 +252,6 @@ export class DocumentService {
     await updateDoc(itemRef, { plannedQuantity: qty, estimatedRate: rate, updatedAt: serverTimestamp() });
   }
 
-  /**
-   * الاعتماد السيادي: قفل المقايسة وتوليد المسار الفني للمعاملة
-   */
   async approveBOQ(boqId: string, totalAmount: number, transactionId: string, userId: string, userName: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
     
@@ -190,7 +260,6 @@ export class DocumentService {
     if (!boqSnap.exists()) return;
     const boq = boqSnap.data() as BOQ;
 
-    // 1. تحديث حالة المقايسة
     await updateDoc(boqRef, {
       status: 'approved',
       totalAmount,
@@ -198,11 +267,9 @@ export class DocumentService {
       updatedAt: serverTimestamp()
     });
 
-    // 2. حقن المسار الفني للمعاملة فوراً
     const transService = new TransactionService(this.db, this.companyId, this.permissions);
     await transService.initializeTechnicalPath(transactionId, boq.activityTypeId!, boq.serviceId!, boq.subServiceId!, userId);
 
-    // 3. توثيق الاعتماد
     const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
     await addDoc(timelineRef, {
       transactionId,
@@ -212,9 +279,6 @@ export class DocumentService {
     });
   }
 
-  /**
-   * حذف المقايسة وتطهير المسار الفني المرتبط بها تماماً للسماح بإعادة التهيئة بدون تكرار (Duplicates)
-   */
   async deleteBOQ(boqId: string, transactionId?: string, userId?: string, userName?: string) {
     ensureActionPermission(this.permissions, 'projects:delete');
     
@@ -222,16 +286,13 @@ export class DocumentService {
     const itemsSnap = await getDocs(collection(this.db, paths.boqItems(this.companyId, boqId)));
     const batch = writeBatch(this.db);
     
-    // 1. حذف بنود المقايسة والمقايسة نفسها
     itemsSnap.docs.forEach(d => batch.delete(d.ref));
     batch.delete(boqRef);
     
-    // 2. إذا كانت مرتبطة بمعاملة، نقوم بـ "تطهير" مراحل التنفيذ الميدانية لمنع التكرار (Duplicates)
     if (transactionId) {
        const stagesSnap = await getDocs(collection(this.db, paths.transactionStages(this.companyId, transactionId)));
        stagesSnap.docs.forEach(d => batch.delete(d.ref));
 
-       // توثيق عملية التطهير في التايم لاين
        const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
        batch.set(timelineRef, {
          transactionId, 
