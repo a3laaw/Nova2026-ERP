@@ -10,7 +10,9 @@ import {
   ShieldCheck, 
   DollarSign, Gavel, Loader2, Save,
   Edit3, X, Plus, Trash2, Calculator,
-  Layers, Percent, Target
+  Layers, Percent, Target,
+  FileSearch,
+  CheckCircle2
 } from "lucide-react";
 import { useFirestore, useDoc } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -42,14 +44,6 @@ export default function QuotationViewPage() {
   const [saving, setSaving] = useState(false);
   const [editData, setEditForm] = useState<Partial<Quotation>>({});
 
-  // Sovereign Thaw: Ensure interaction is possible
-  useEffect(() => {
-    if (typeof document !== 'undefined') {
-      document.body.style.pointerEvents = 'auto';
-      document.body.style.overflow = 'auto';
-    }
-  }, []);
-
   const quoteRef = useMemo(() => 
     companyId && db ? doc(db, paths.quotations(companyId), quotationId) : null, 
   [db, companyId, quotationId]);
@@ -62,38 +56,30 @@ export default function QuotationViewPage() {
     }
   }, [quote]);
 
-  const expiryDate = useMemo(() => {
-    const q = isEditing ? editData : quote;
-    if (!q?.createdAt || !q.validDays) return null;
-    const createdDate = q.createdAt.toDate ? q.createdAt.toDate() : new Date(q.createdAt);
-    return format(addDays(createdDate, q.validDays), 'yyyy-MM-dd');
-  }, [quote, editData, isEditing]);
-
-  // محرك الحسابات الذكي السيادي
+  // محرك الحساب الموحد (نفس منطق القالب تماماً)
   const stats = useMemo(() => {
     const items = editData.items || [];
     const mode = editData.pricingMode || 'itemized';
-    const totalBaseline = Number(editData.totalAmount || 0);
+    const totalPercentage = items.reduce((acc, item) => acc + (item.percentage || 0), 0);
+    const totalItemizedAmount = items.reduce((acc, item) => acc + ((item.unitPrice || 0) * (item.quantity || 1)), 0);
     
-    const totalItemsValue = items.reduce((acc, item) => acc + (Number(item.unitPrice || 0) * Number(item.quantity || 1)), 0);
-    const totalPercentage = items.reduce((acc, item) => acc + (Number(item.percentage || 0)), 0);
-    
+    const isPercentageMode = mode === 'percentage';
+    const isValid = isPercentageMode ? Math.abs(totalPercentage - 100) < 0.1 : true;
+
     return {
-      totalItemsValue,
       totalPercentage,
-      totalBaseline,
-      isValid: mode === 'percentage' ? Math.abs(totalPercentage - 100) < 0.1 : true
+      totalItemizedAmount,
+      isValid
     };
-  }, [editData.items, editData.pricingMode, editData.totalAmount]);
+  }, [editData.items, editData.pricingMode]);
 
   const handleSave = async () => {
     if (!db || !companyId || !user) return;
-    
     if (editData.pricingMode === 'percentage' && !stats.isValid) {
       toast({ 
         variant: "destructive", 
-        title: isRtl ? "خطأ في توزيع الحصص" : "Percentage Mismatch", 
-        description: isRtl ? `يجب أن يكون مجموع النسب 100% (الحالي: ${stats.totalPercentage}%)` : `Total must be 100% (Current: ${stats.totalPercentage}%)` 
+        title: isRtl ? "خطأ في الميزانية" : "Budget Mismatch", 
+        description: isRtl ? `يجب أن يكون مجموع الحصص 100% (الحالي: ${stats.totalPercentage}%)` : `Total percentage must be 100%` 
       });
       return;
     }
@@ -101,15 +87,15 @@ export default function QuotationViewPage() {
     setSaving(true);
     try {
       const service = new DocumentService(db, companyId);
-      // في حالة البنود، الإجمالي هو مجموع البنود. في حالة النسب/المقطوع، الإجمالي هو الرقم المدخل يدوياً.
-      const finalTotal = editData.pricingMode === 'itemized' ? stats.totalItemsValue : stats.totalBaseline;
+      // في وضع البنود، الإجمالي يُحسب تلقائياً. في الأنماط الأخرى يُؤخذ من المبلغ الأساسي.
+      const finalAmount = editData.pricingMode === 'itemized' ? stats.totalItemizedAmount : (editData.totalAmount || 0);
       
       await service.updateQuotation(quotationId, {
         ...editData,
-        totalAmount: finalTotal
+        totalAmount: finalAmount
       }, user.uid);
       
-      toast({ title: isRtl ? "تم حفظ التعديلات بنجاح" : "Quotation Saved" });
+      toast({ title: isRtl ? "تم تحديث العرض بنجاح" : "Quotation Updated" });
       setIsEditing(false);
     } catch (e) {
       toast({ variant: "destructive", title: t('error') });
@@ -124,16 +110,11 @@ export default function QuotationViewPage() {
     setEditForm({ ...editData, items: newItems });
   };
 
-  const removeItem = (idx: number) => {
-    const newItems = (editData.items || []).filter((_, i) => i !== idx);
-    setEditForm({ ...editData, items: newItems });
-  };
-
   if (loading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
   if (!quote) return <div className="p-20 text-center font-black">{isRtl ? 'المستند غير موجود' : 'Quotation not found'}</div>;
 
-  const currentTotal = isEditing 
-    ? (editData.pricingMode === 'itemized' ? stats.totalItemsValue : stats.totalBaseline)
+  const currentDisplayAmount = isEditing 
+    ? (editData.pricingMode === 'itemized' ? stats.totalItemizedAmount : (editData.totalAmount || 0))
     : (quote.totalAmount || 0);
 
   return (
@@ -156,7 +137,7 @@ export default function QuotationViewPage() {
                 </Button>
                 <Button onClick={handleSave} disabled={saving} className="rounded-2xl h-14 px-10 font-black gap-2 bg-emerald-600 text-white shadow-xl shadow-emerald-100 hover:scale-105 transition-all">
                    {saving ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
-                   {isRtl ? 'حفظ التعديلات' : 'Save Changes'}
+                   {isRtl ? 'اعتماد التغييرات' : 'Save Changes'}
                 </Button>
               </>
            ) : (
@@ -212,13 +193,49 @@ export default function QuotationViewPage() {
                               <span>{isRtl ? 'يوم' : 'Days'}</span>
                            </div>
                         </div>
-                        <div className="pt-2 border-t border-dashed border-slate-200">
-                           <p className="text-[10px] font-bold text-slate-400 italic text-center">{expiryDate || '---'}</p>
-                        </div>
                      </div>
                   </div>
                </div>
             </div>
+
+            {/* Pricing Logic Mirror (Edit Only) */}
+            {isEditing && (
+              <div className="p-8 bg-[#1e1b4b] rounded-[2.5rem] text-white flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl animate-in slide-in-from-top-4">
+                 <div className="flex items-center gap-6 text-start">
+                    <div className="h-14 w-14 bg-primary rounded-2xl flex items-center justify-center text-white shadow-xl rotate-3"><Calculator className="h-8 w-8" /></div>
+                    <div className="text-start">
+                       <p className="text-[10px] font-black text-primary uppercase tracking-widest">Unified Pricing Engine</p>
+                       <h4 className="font-black text-lg">تعديل الميزانية ونمط الحساب</h4>
+                    </div>
+                 </div>
+                 
+                 <div className="flex flex-col md:flex-row gap-6 w-full md:w-auto items-end">
+                    <div className="space-y-2 text-start w-full md:w-48">
+                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'نمط الحساب' : 'Pricing Mode'}</Label>
+                        <Select value={editData.pricingMode} onValueChange={(v: PricingMode) => setEditForm({...editData, pricingMode: v})}>
+                            <SelectTrigger className="h-12 rounded-xl bg-white/10 border-white/20 text-white font-black"><SelectValue /></SelectTrigger>
+                            <SelectContent className="rounded-xl">
+                                <SelectItem value="itemized" className="font-bold">{t('itemized')}</SelectItem>
+                                <SelectItem value="fixed" className="font-bold">{t('fixed')}</SelectItem>
+                                <SelectItem value="percentage" className="font-bold">{t('percentage')}</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {(editData.pricingMode === 'percentage' || editData.pricingMode === 'fixed') && (
+                       <div className="space-y-2 text-start w-full md:w-64 animate-in zoom-in-95">
+                          <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'الميزانية المستهدفة' : 'Target Budget'}</Label>
+                          <Input 
+                            type="number" 
+                            value={editData.totalAmount || 0} 
+                            onChange={e => setEditForm({...editData, totalAmount: Number(e.target.value)})}
+                            className="h-12 rounded-xl bg-white text-slate-900 font-black text-xl text-center shadow-2xl"
+                          />
+                       </div>
+                    )}
+                 </div>
+              </div>
+            )}
 
             {/* Introduction */}
             <div className="text-start space-y-4">
@@ -238,32 +255,11 @@ export default function QuotationViewPage() {
                )}
             </div>
 
-            {/* Pricing Mode Selector (Edit Only) */}
-            {isEditing && (
-              <div className="p-6 bg-[#1e1b4b] rounded-3xl text-white flex items-center justify-between shadow-2xl animate-in slide-in-from-top-4">
-                 <div className="flex items-center gap-4 text-start">
-                    <div className="h-10 w-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary"><Layers className="h-6 w-6" /></div>
-                    <div className="text-start">
-                       <p className="text-[10px] font-black text-primary uppercase tracking-widest">Pricing Strategy</p>
-                       <h4 className="font-black text-sm">تغيير منطق التسعير للعرض</h4>
-                    </div>
-                 </div>
-                 <Select value={editData.pricingMode} onValueChange={(v: PricingMode) => setEditForm({...editData, pricingMode: v})}>
-                    <SelectTrigger className="w-64 h-11 rounded-xl bg-white/10 border-white/20 text-white font-black"><SelectValue /></SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                       <SelectItem value="itemized" className="font-bold">حسب البنود (Qty x Rate)</SelectItem>
-                       <SelectItem value="fixed" className="font-bold">مبلغ مقطوع (Fixed Total)</SelectItem>
-                       <SelectItem value="percentage" className="font-bold">نسب مئوية (Percentage of Total)</SelectItem>
-                    </SelectContent>
-                 </Select>
-              </div>
-            )}
-
             {/* Items Table */}
             <div className="space-y-6 text-start">
                <div className="flex justify-between items-center">
                   <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                     <Calculator className="h-4 w-4 text-primary" /> {isRtl ? 'جدول بنود التسعير والدفعات' : 'Pricing & Payment Milestones'}
+                     <Layers className="h-4 w-4 text-primary" /> {isRtl ? 'جدول بنود التسعير والدفعات' : 'Pricing & Payment Schedule'}
                   </h4>
                   {isEditing && (
                     <Button 
@@ -272,7 +268,7 @@ export default function QuotationViewPage() {
                       onClick={() => setEditForm({...editData, items: [...(editData.items || []), { label: '', unitPrice: 0, percentage: 0, quantity: 1, description: '' }]})}
                       className="rounded-xl font-black text-[10px] border-2 h-9 px-4 gap-2"
                     >
-                       <Plus className="h-3.5 w-3.5" /> {isRtl ? 'إضافة بند' : 'Add Line'}
+                       <Plus className="h-3.5 w-3.5" /> {isRtl ? 'إضافة دفعة' : 'Add Milestone'}
                     </Button>
                   )}
                </div>
@@ -283,7 +279,6 @@ export default function QuotationViewPage() {
                         <tr className="font-black uppercase text-[10px] tracking-widest">
                            <th className="p-8 text-start w-16">#</th>
                            <th className="p-8 text-start">{isRtl ? 'توصيف البند / الدفعة' : 'Item Description'}</th>
-                           {editData.pricingMode === 'itemized' && <th className="p-8 text-center w-24">{isRtl ? 'الكمية' : 'Qty'}</th>}
                            {editData.pricingMode === 'percentage' && <th className="p-8 text-center w-32">{isRtl ? 'الحصة' : 'Share'}</th>}
                            <th className="p-8 text-end pe-12 w-48">{isRtl ? 'القيمة' : 'Amount'}</th>
                            {isEditing && <th className="p-8 w-16"></th>}
@@ -291,46 +286,33 @@ export default function QuotationViewPage() {
                      </thead>
                      <tbody className="divide-y-2 divide-slate-50">
                         {editData.items?.map((item, idx) => {
-                           // حساب القيمة بناءً على النمط
                            const lineAmount = editData.pricingMode === 'percentage' 
-                             ? (stats.totalBaseline * (item.percentage || 0)) / 100 
-                             : (editData.pricingMode === 'itemized' 
-                                ? (item.unitPrice || 0) * (item.quantity || 1) 
-                                : (item.unitPrice || 0));
+                             ? ((editData.totalAmount || 0) * (item.percentage || 0)) / 100 
+                             : (item.unitPrice || 0);
                            
                            return (
-                             <tr key={idx} className="hover:bg-slate-50 transition-colors group">
+                             <tr key={idx} className="hover:bg-slate-50 transition-colors">
                                 <td className="p-8 font-black text-slate-300 text-start">{idx + 1}</td>
                                 <td className="p-8 text-start">
                                    {isEditing ? (
-                                      <div className="space-y-3">
-                                         <Input value={item.label} onChange={e => updateItem(idx, 'label', e.target.value)} className="font-black border-2 h-11" placeholder="اسم البند..." />
-                                         <Textarea value={item.description} onChange={e => updateItem(idx, 'description', e.target.value)} className="text-xs h-20" placeholder="وصف فني..." />
+                                      <div className="space-y-2">
+                                         <Input value={item.label} onChange={e => updateItem(idx, 'label', e.target.value)} className="font-black border-2 h-11" placeholder="اسم الدفعة..." />
+                                         <Textarea value={item.description} onChange={e => updateItem(idx, 'description', e.target.value)} className="text-[10px] h-16" placeholder="وصف إضافي..." />
                                       </div>
                                    ) : (
-                                      <div className="space-y-2">
-                                         <p className="font-black text-slate-900 text-xl tracking-tight">{item.label}</p>
-                                         <p className="text-xs font-bold text-slate-500 leading-relaxed max-w-lg">{item.description}</p>
+                                      <div className="space-y-1">
+                                         <p className="font-black text-slate-900 text-lg">{item.label}</p>
+                                         <p className="text-xs font-bold text-slate-400 max-w-lg">{item.description}</p>
                                       </div>
                                    )}
                                 </td>
                                 
-                                {editData.pricingMode === 'itemized' && (
-                                   <td className="p-8 text-center bg-slate-50/50">
-                                      {isEditing ? (
-                                         <Input type="number" value={item.quantity} onChange={e => updateItem(idx, 'quantity', Number(e.target.value))} className="font-black text-center border-2 h-12 w-20 mx-auto" />
-                                      ) : (
-                                         <span className="font-black text-slate-600">{item.quantity}</span>
-                                      )}
-                                   </td>
-                                )}
-
                                 {editData.pricingMode === 'percentage' && (
                                    <td className="p-8 text-center bg-slate-50/50">
                                       {isEditing ? (
                                          <div className="relative w-24 mx-auto">
                                             <Input type="number" value={item.percentage} onChange={e => updateItem(idx, 'percentage', Number(e.target.value))} className="font-black text-center border-2 h-12 pe-8" />
-                                            <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-3 w-3 text-primary" />
+                                            <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-300" />
                                          </div>
                                       ) : (
                                          <Badge className="bg-slate-900 text-white font-black text-lg h-10 px-4 rounded-xl">{item.percentage}%</Badge>
@@ -340,21 +322,17 @@ export default function QuotationViewPage() {
 
                                 <td className="p-8 text-end pe-12">
                                    {isEditing && editData.pricingMode !== 'percentage' ? (
-                                      <div className="space-y-2">
-                                         <Input type="number" step="0.001" value={item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', Number(e.target.value))} className="font-black text-center border-2 h-12 text-emerald-600 text-xl" />
-                                         {editData.pricingMode === 'itemized' && <p className="text-[9px] font-black text-slate-400 text-center uppercase">Per Unit Rate</p>}
-                                      </div>
+                                      <Input type="number" step="0.001" value={item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', Number(e.target.value))} className="font-black text-center border-2 h-12 text-emerald-600 text-xl" />
                                    ) : (
                                       <div className="space-y-1">
-                                         <p className="font-mono font-black text-emerald-600 text-2xl tracking-tighter">{(lineAmount || 0).toLocaleString()} <span className="text-xs opacity-40">KWD</span></p>
-                                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'صافي القيمة' : 'Net Amount'}</span>
+                                         <p className="font-mono font-black text-emerald-600 text-2xl">{(lineAmount || 0).toLocaleString()} <span className="text-xs opacity-40">KWD</span></p>
                                       </div>
                                    )}
                                 </td>
 
                                 {isEditing && (
                                    <td className="p-8">
-                                      <Button variant="ghost" size="icon" onClick={() => removeItem(idx)} className="text-rose-300 hover:text-rose-600">
+                                      <Button variant="ghost" size="icon" onClick={() => updateItem(idx, 'deleted', true)} className="text-rose-300 hover:text-rose-600">
                                          <Trash2 className="h-5 w-5" />
                                       </Button>
                                    </td>
@@ -366,38 +344,24 @@ export default function QuotationViewPage() {
                      <tfoot className="bg-slate-900 text-white">
                         <tr>
                            <td colSpan={2} className="p-10 text-start">
-                              <h3 className="text-2xl font-black font-headline uppercase tracking-tighter">{isRtl ? 'إجمالي قيمة العرض' : 'Total Quotation Value'}</h3>
+                              <h3 className="text-2xl font-black font-headline uppercase tracking-tighter">{isRtl ? 'إجمالي قيمة العرض' : 'Total Quote Value'}</h3>
                               {editData.pricingMode === 'percentage' && (
                                  <div className={cn(
                                    "mt-4 flex items-center gap-2 px-4 py-2 rounded-xl border-2 w-fit",
                                    stats.isValid ? "bg-emerald-500/10 border-emerald-500 text-emerald-400" : "bg-rose-500/10 border-rose-500 text-rose-400 animate-pulse"
                                  )}>
                                     <Target className="h-4 w-4" />
-                                    <span className="text-xs font-black uppercase">Percentage Total: {stats.totalPercentage}%</span>
+                                    <span className="text-[10px] font-black uppercase">Percentage Balance: {stats.totalPercentage}%</span>
                                  </div>
                               )}
                            </td>
-                           <td colSpan={isEditing ? (editData.pricingMode === 'fixed' || editData.pricingMode === 'percentage' ? 2 : 3) : (editData.pricingMode === 'fixed' || editData.pricingMode === 'percentage' ? 1 : 2)} className="p-10 text-end pe-12">
-                              {isEditing && (editData.pricingMode === 'fixed' || editData.pricingMode === 'percentage') ? (
-                                <div className="space-y-2 animate-in zoom-in-95">
-                                   <Label className="text-white/40 text-[10px] uppercase font-black tracking-widest">
-                                      {editData.pricingMode === 'percentage' ? (isRtl ? 'أدخل المبلغ الإجمالي للاحتساب' : 'Set Total Baseline Amount') : (isRtl ? 'أدخل القيمة الإجمالية' : 'Set Fixed Total')}
-                                   </Label>
-                                   <Input 
-                                      type="number" 
-                                      value={editData.totalAmount || 0} 
-                                      onChange={e => setEditForm({...editData, totalAmount: Number(e.target.value)})}
-                                      className="bg-white/10 border-0 text-white font-black text-5xl h-24 rounded-3xl text-center shadow-inner focus:ring-primary"
-                                   />
-                                </div>
-                              ) : (
-                                <div className="space-y-1">
-                                   <h2 className="text-7xl font-black font-headline text-primary">
-                                      {(currentTotal || 0).toLocaleString()}
-                                   </h2>
-                                   <p className="text-xl font-black text-white/30 uppercase tracking-[0.3em]">Kuwaiti Dinars</p>
-                                </div>
-                              )}
+                           <td className="p-10 text-end pe-12">
+                              <div className="space-y-1">
+                                 <h2 className="text-7xl font-black font-headline text-primary">
+                                    {(currentDisplayAmount || 0).toLocaleString()}
+                                 </h2>
+                                 <p className="text-xl font-black text-white/30 uppercase tracking-[0.3em]">Kuwaiti Dinars</p>
+                              </div>
                            </td>
                         </tr>
                      </tfoot>
@@ -415,11 +379,10 @@ export default function QuotationViewPage() {
                     value={editData.defaultTerms} 
                     onChange={e => setEditForm({...editData, defaultTerms: e.target.value})} 
                     className="min-h-[250px] rounded-[2.5rem] border-2 p-8 font-medium bg-slate-50/30 shadow-inner"
-                    placeholder="اكتب الشروط هنا..."
                   />
                ) : (
                   <div className="p-12 bg-slate-50/50 rounded-[3.5rem] border-2 border-white shadow-inner">
-                     <div className="text-sm font-bold text-slate-600 leading-loose columns-1 md:columns-2 gap-16 whitespace-pre-wrap">
+                     <div className="text-sm font-bold text-slate-600 leading-loose whitespace-pre-wrap">
                         {quote.defaultTerms}
                      </div>
                   </div>
@@ -438,7 +401,7 @@ export default function QuotationViewPage() {
                <div className="text-end space-y-8 flex flex-col items-end">
                   <div className="space-y-4 w-full max-w-[280px]">
                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{isRtl ? 'ختم الشركة الرسمي' : 'Official Company Stamp'}</p>
-                     <div className="h-32 w-32 rounded-[2.5rem] border-4 border-slate-50 flex items-center justify-center ms-auto bg-white shadow-xl rotate-6 transition-transform hover:rotate-0 duration-500">
+                     <div className="h-32 w-32 rounded-[2.5rem] border-4 border-slate-50 flex items-center justify-center ms-auto bg-white shadow-xl rotate-6">
                         <ShieldCheck className="h-14 w-14 text-slate-100" />
                      </div>
                      <p className="text-[8px] font-black text-primary uppercase mt-4">Authorized ERP Copy</p>
