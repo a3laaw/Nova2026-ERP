@@ -10,12 +10,14 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { 
   FileText, Gavel, Plus, Loader2, 
   ArrowRight, ShieldCheck, Clock,
   Wallet, Landmark, Receipt, 
   ChevronRight, Sparkles, CheckCircle2,
-  ExternalLink
+  ExternalLink,
+  Info
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
@@ -114,7 +116,6 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
     if (type === 'quotation') {
       router.push(`/dashboard/clients/${clientId}/quotations/${id}`);
     } else {
-      // Contracts redirection logic...
       router.push('/dashboard/procurement');
     }
   };
@@ -151,7 +152,7 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
                        <SelectTrigger className="h-14 rounded-2xl border-2 bg-white font-bold">
                           <SelectValue placeholder="..." />
                        </SelectTrigger>
-                       <SelectContent className="rounded-2xl border-0 shadow-2xl">
+                       <SelectContent className="rounded-xl border-0 shadow-2xl">
                           {templates?.map(temp => (
                             <SelectItem key={temp.id} value={temp.id!} className="font-bold py-3">{temp.name}</SelectItem>
                           ))}
@@ -241,11 +242,5 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function Info({ className }: { className?: string }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
   );
 }
