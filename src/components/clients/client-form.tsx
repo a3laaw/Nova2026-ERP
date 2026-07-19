@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -15,23 +16,25 @@ import {
 } from "@/components/ui/select";
 import { 
   UserPlus, MapPin, Save, Loader2, 
-  RefreshCw, Link as LinkIcon, Mail, 
-  Fingerprint, MapPinned, Building2,
-  Navigation, Search, Globe
+  RefreshCw, Mail, Fingerprint, MapPinned,
+  Search, Globe, Briefcase, ShieldCheck
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, where } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
+import { usePermissions } from '@/hooks/use-permissions';
 import { ClientService } from '@/services/client-service';
 import { paths } from '@/firebase/multi-tenant';
 import { Governorate, Area } from '@/types/reference';
+import { Employee } from '@/types/hr';
 import { LocationPickerDialog } from './location-picker-dialog';
 import { cn } from '@/lib/utils';
 
 export function ClientForm({ initialData, onSubmit, loading }: { initialData?: any, onSubmit: (data: any) => void, loading?: boolean }) {
   const { dir, lang, t } = useLanguage();
   const { globalUser } = useAuthContext();
+  const { isAdmin } = usePermissions();
   const db = useFirestore();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
@@ -51,19 +54,31 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
       block: '',
       street: '',
       houseNumber: '',
-      locationUrl: '' 
+      locationUrl: '',
+      assignedEngineerId: globalUser?.employeeId || '',
+      assignedEngineerName: globalUser?.username || ''
     }
   });
 
   const [generating, setGenerating] = useState(false);
   const [isMapOpen, setIsMapOpen] = useState(false);
+  
   const selectedGovId = form.watch('governorateId');
+  const selectedAreaId = form.watch('areaId');
+  const assignedEngineerId = form.watch('assignedEngineerId');
 
   const govsQuery = useMemo(() => companyId && db ? query(collection(db, paths.governorates(companyId)), orderBy('order')) : null, [db, companyId]);
   const areasQuery = useMemo(() => companyId && db && selectedGovId ? query(collection(db, paths.areas(companyId, selectedGovId)), orderBy('order')) : null, [db, companyId, selectedGovId]);
+  const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId)), where('isActive', '==', true)) : null, [db, companyId]);
 
   const { data: governorates } = useCollection<Governorate>(govsQuery);
   const { data: areas } = useCollection<Area>(areasQuery);
+  const { data: employees } = useCollection<Employee>(empsQuery);
+
+  // حصر قائمة الموظفين في "المهندسين" فقط لغرض التعيين
+  const engineers = useMemo(() => {
+    return (employees || []).filter(e => e.departmentName?.includes('معماري') || e.departmentName?.includes('Arch'));
+  }, [employees]);
 
   useEffect(() => {
     if (!initialData && db && companyId && !form.getValues('fileNumber')) {
@@ -83,13 +98,12 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
     }
   }, [selectedGovId, governorates, isRtl, form]);
 
-  const selectedAreaId = form.watch('areaId');
   useEffect(() => {
-    if (selectedAreaId && areas) {
-      const area = areas.find(a => a.id === selectedAreaId);
-      if (area) form.setValue('areaName', isRtl ? area.name : area.nameEn);
+    if (assignedEngineerId && engineers) {
+      const eng = engineers.find(e => e.id === assignedEngineerId);
+      if (eng) form.setValue('assignedEngineerName', eng.fullName);
     }
-  }, [selectedAreaId, areas, isRtl, form]);
+  }, [assignedEngineerId, engineers, form]);
 
   const handleLocationSelect = (url: string) => {
     form.setValue('locationUrl', url);
@@ -143,25 +157,62 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
               </div>
             </div>
           </div>
+
+          {/* التعيين السيادي: يظهر للمدير فقط أو عند تسجيل موظف لعميل */}
+          <div className="pt-6 border-t border-slate-50">
+             <div className="bg-orange-50/50 p-6 rounded-3xl border-2 border-orange-100 flex flex-col md:flex-row items-center gap-6">
+                <div className="flex items-center gap-4 shrink-0">
+                   <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center text-[#e87c24] shadow-sm border border-orange-100">
+                      <Briefcase className="h-6 w-6" />
+                   </div>
+                   <div className="text-start">
+                      <h4 className="font-black text-sm text-slate-800">{isRtl ? 'المهندس المختص' : 'Assigned Engineer'}</h4>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase">{isRtl ? 'تحديد المسؤولية المعلوماتية للعميل' : 'Client Access Scope Assignment'}</p>
+                   </div>
+                </div>
+                
+                <div className="flex-1 w-full">
+                   <Select 
+                     disabled={!isAdmin} 
+                     value={assignedEngineerId} 
+                     onValueChange={(v) => form.setValue('assignedEngineerId', v)}
+                   >
+                      <SelectTrigger className="h-12 rounded-xl border-2 bg-white font-bold">
+                         <SelectValue placeholder={isRtl ? "اختر المهندس المسؤول..." : "Assign responsible engineer..."} />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-2xl border-0 shadow-2xl">
+                         {engineers.map(eng => (
+                           <SelectItem key={eng.id} value={eng.id!} className="font-bold py-3">
+                              {eng.fullName}
+                           </SelectItem>
+                         ))}
+                      </SelectContent>
+                   </Select>
+                </div>
+
+                {!isAdmin && (
+                  <Badge className="bg-[#1e1b4b] text-white border-0 font-black text-[9px] px-4 py-2 rounded-xl uppercase shrink-0 gap-2">
+                     <ShieldCheck className="h-3 w-3 text-primary" />
+                     {isRtl ? 'ربط تلقائي بالمسؤول' : 'Auto-Assigned'}
+                  </Badge>
+                )}
+             </div>
+          </div>
         </CardContent>
       </Card>
 
-      {/* القسم الثاني: الموقع الجغرافي المطور (مطابق للصورة) */}
+      {/* القسم الثاني: الموقع الجغرافي المطور */}
       <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/[0.02]">
         <div className="bg-blue-50/30 p-6 border-b flex items-center justify-between">
            <h3 className="text-base font-black font-headline text-slate-800">{isRtl ? 'رادار الموقع والعنوان الذكي' : 'Smart Location Radar'}</h3>
            <MapPinned className="h-5 w-5 text-blue-600" />
         </div>
         <CardContent className="p-8 space-y-10">
-           
-           {/* المنطقة الخاصة برابط جوجل ماب - مطابقة للصورة */}
            <div className="p-10 bg-slate-50/50 rounded-[3rem] border-2 border-dashed border-blue-100 relative">
               <Label className="absolute top-4 right-10 text-[10px] font-black uppercase text-blue-400 tracking-[0.1em]">
                 {isRtl ? 'رابط الموقع (GOOGLE MAPS)' : 'Google Maps Link'}
               </Label>
-              
               <div className={cn("flex items-center gap-4 pt-4", isRtl ? "flex-row-reverse" : "flex-row")}>
-                 {/* زر البحث المظلم */}
                  <Button 
                    type="button"
                    onClick={() => setIsMapOpen(true)}
@@ -170,8 +221,6 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
                     <Search className="h-5 w-5 text-[#e87c24]" />
                     {isRtl ? 'فتح الخريطة والبحث' : 'Open Map & Search'}
                  </Button>
-
-                 {/* حقل الرابط الأنيق */}
                  <div className="relative flex-1">
                     <Input 
                       {...form.register('locationUrl')} 
@@ -184,9 +233,8 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
               </div>
            </div>
 
-           {/* تفاصيل العنوان المرجعي */}
            <div className="grid grid-cols-1 md:grid-cols-4 gap-8 pt-4">
-              <div className="space-y-2">
+              <div className="space-y-2 text-start">
                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">المحافظة</Label>
                 <Select value={selectedGovId} onValueChange={(v) => { form.setValue('governorateId', v); form.setValue('areaId', ''); }}>
                    <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/30"><SelectValue placeholder="..." /></SelectTrigger>
@@ -195,7 +243,7 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
                    </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 text-start">
                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">المنطقة</Label>
                 <Select disabled={!selectedGovId} value={selectedAreaId} onValueChange={(v) => form.setValue('areaId', v)}>
                    <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/30"><SelectValue placeholder="..." /></SelectTrigger>
@@ -205,15 +253,15 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
                 </Select>
               </div>
               <div className="grid grid-cols-3 md:col-span-2 gap-4">
-                 <div className="space-y-2">
+                 <div className="space-y-2 text-start">
                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">القطعة</Label>
                     <Input {...form.register('block')} className="h-12 rounded-xl border-2 font-bold text-center bg-slate-50/30" />
                  </div>
-                 <div className="space-y-2">
+                 <div className="space-y-2 text-start">
                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">الشارع</Label>
                     <Input {...form.register('street')} className="h-12 rounded-xl border-2 font-bold text-center bg-slate-50/30" />
                  </div>
-                 <div className="space-y-2">
+                 <div className="space-y-2 text-start">
                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">المنزل</Label>
                     <Input {...form.register('houseNumber')} className="h-12 rounded-xl border-2 font-bold text-center bg-slate-50/30" />
                  </div>
@@ -226,14 +274,13 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
         <Button 
           type="submit" 
           disabled={loading || generating} 
-          className="h-20 rounded-[2.5rem] px-20 bg-primary text-white font-black text-2xl shadow-2xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all gap-4 border-b-8 border-orange-700"
+          className="h-20 rounded-[2.5rem] px-16 bg-primary text-white font-black text-2xl shadow-2xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all gap-4 border-b-8 border-orange-700"
         >
           {loading ? <Loader2 className="animate-spin h-8 w-8" /> : <Save className="h-8 w-8" />}
-          {initialData ? (isRtl ? 'تحديث الملف' : 'Update File') : (isRtl ? 'حفظ ملف العميل' : 'Save Client')}
+          {initialData ? (isRtl ? 'تحديث السجل المرجعي' : 'Update Global Record') : (isRtl ? 'حفظ ملف العميل' : 'Confirm Registration')}
         </Button>
       </div>
 
-      {/* مودال الخريطة الذكي */}
       <LocationPickerDialog 
         isOpen={isMapOpen} 
         onClose={() => setIsMapOpen(false)}

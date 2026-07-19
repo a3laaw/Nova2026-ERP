@@ -1,3 +1,4 @@
+
 import { BaseReference } from './reference';
 
 export type ClientStatus = 'new' | 'prospective' | 'contracted' | 'inactive';
@@ -17,8 +18,8 @@ export interface Client extends BaseReference {
   street?: string;            // الشارع
   houseNumber?: string;       // رقم المنزل
   locationUrl?: string;       // رابط Google Maps المستخرج منه الإحداثيات
-  assignedEngineerId?: string;   // المهندس المسؤول (اختياري عند التسجيل)
-  assignedEngineerName?: string; 
+  assignedEngineerId?: string;   // المهندس المسؤول (المسؤول عن العزل المعلوماتي)
+  assignedEngineerName?: string; // اسم المهندس لسرعة العرض
   status: ClientStatus;       // حالة العميل (new -> prospective -> contracted)
   transactionCounter: number; // عداد المعاملات لإنشاء أرقام متسلسلة
   isActive: boolean;
@@ -29,7 +30,7 @@ export interface Client extends BaseReference {
 export interface ClientHistory extends BaseReference {
   clientId: string;
   type: 'status_change' | 'note_added' | 'engineer_assigned' | 'system_log' | 'transaction_created' | 'visit_logged';
-  content: string;            // وصف الحدث (رقم معاملة مهني بدلاً من ID تقني)
+  content: string;            // وصف الحدث
   userId?: string;            
   userName?: string;
 }
