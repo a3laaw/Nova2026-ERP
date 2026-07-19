@@ -47,7 +47,8 @@ import {
   RotateCcw,
   MessageSquare,
   Link as LinkIcon,
-  Workflow
+  Workflow,
+  Briefcase
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs, updateDoc, deleteDoc, serverTimestamp, addDoc } from 'firebase/firestore';
@@ -88,6 +89,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useRouter } from 'next/navigation';
+import { BOQReferenceSelector } from '@/components/settings/checklists/boq-reference/boq-reference-selector';
 
 // --- Helpers ---
 function getVisitColor(visitCount: number, status?: string, apptType?: string): string {
@@ -971,4 +973,3 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     </Dialog>
   );
 }
-
