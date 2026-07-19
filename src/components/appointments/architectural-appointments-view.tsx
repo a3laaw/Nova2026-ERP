@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -10,8 +9,6 @@ import {
   startOfDay, 
   isSameDay, 
   parseISO, 
-  setHours, 
-  setMinutes,
   addDays,
   eachDayOfInterval,
   subDays
@@ -20,31 +17,23 @@ import { ar, enUS } from 'date-fns/locale';
 import { 
   CalendarDays, 
   Clock, 
-  UserCircle, 
   Plus, 
   ChevronLeft, 
   ChevronRight, 
-  Printer, 
   Edit3,
   Loader2,
   CheckCircle2,
   MapPin,
-  Navigation,
-  UserPlus,
   Phone,
   Sparkles,
   X,
   Save,
   Trash2,
-  XCircle,
-  MoreVertical,
-  Globe,
   Search,
-  Calendar as CalendarIcon,
   Target
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, where, doc, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, where, doc, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
@@ -52,7 +41,7 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { WorkHoursService } from '@/services/work-hours-service';
 import { AppointmentService } from '@/services/appointment-service';
 import { ClientService } from '@/services/client-service';
-import { Appointment, AppointmentStatus } from '@/types/appointment';
+import { Appointment } from '@/types/appointment';
 import { Client } from '@/types/client';
 import { Employee } from '@/types/hr';
 import { DayOfWeek, WorkHoursSettings } from '@/types/work-hours';
@@ -206,7 +195,6 @@ export function ArchitecturalAppointmentsView() {
   const filteredAppointments = useMemo(() => {
     let list = (rawAppointments || []).filter(a => a.status !== 'cancelled' && isSameDay(parseISO(a.start), currentDate));
     
-    // بروتوكول العزل: المهندس يرى مواعيده فقط
     if (!isAdmin && globalUser?.employeeId) {
       list = list.filter(a => a.engineerId === globalUser.employeeId);
     }
@@ -401,7 +389,6 @@ export function ArchitecturalAppointmentsView() {
 function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, clients, isAdmin, currentEngineerId }: any) {
   if (slots.length === 0) return null;
   
-  // تصفية الأعمدة: المهندس لا يرى إلا عموده الخاص
   const visibleEngineers = isAdmin ? engineers : engineers.filter((e: any) => e.id === currentEngineerId);
 
   return (
@@ -628,7 +615,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
            <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                  <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center text-primary shadow-xl border-2 border-primary/10">
-                    {isCreate ? <UserPlus className="h-6 w-6" /> : <Edit3 className="h-6 w-6" />}
+                    {isCreate ? <Plus className="h-6 w-6" /> : <Edit3 className="h-6 w-6" />}
                  </div>
                  <div>
                     <DialogTitle className="text-xl font-black font-headline">
@@ -701,7 +688,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                        <SelectContent className="rounded-xl border-0 shadow-2xl p-0 overflow-hidden">
                           <div className="p-3 border-b bg-slate-50">
                              <div className="relative">
-                                <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                                 <Input value={clientSearch} onChange={e => setClientSearch(e.target.value)} placeholder={isRtl ? "ابحث بالاسم أو رقم الملف..." : "Search by name or file..."} className="h-10 rounded-lg text-xs ps-10 border-0 bg-white shadow-inner" />
                              </div>
                           </div>
@@ -759,83 +746,3 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     </Dialog>
   );
 }
-
-function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, clients, isAdmin, currentEngineerId }: any) {
-  if (slots.length === 0) return null;
-  
-  const visibleEngineers = isAdmin ? engineers : engineers.filter((e: any) => e.id === currentEngineerId);
-
-  return (
-    <div className="space-y-6">
-       <div className="flex items-center gap-4 px-2">
-          <Badge className="bg-slate-900 text-white font-black px-6 py-2 rounded-full text-xs shadow-lg uppercase tracking-widest">{title}</Badge>
-          <div className="h-[1px] flex-1 bg-slate-200" />
-       </div>
-
-       <div className="overflow-x-auto rounded-[2.5rem] shadow-2xl border-4 border-white bg-white ring-1 ring-black/5">
-          <table className="w-full border-collapse">
-             <thead>
-                <tr className="bg-slate-50/80">
-                   <th className="w-24 p-6 border-b-2 border-white font-black text-[10px] text-slate-400 uppercase tracking-[0.2em]">{isRtl ? 'الوقت' : 'Time'}</th>
-                   {visibleEngineers.map((eng: Employee) => (
-                     <th key={eng.id} className="p-6 border-b-2 border-white border-s-2 text-start">
-                        <div className="flex items-center gap-3">
-                           <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-xs uppercase shadow-inner">{eng.fullName.charAt(0)}</div>
-                           <div className="flex flex-col">
-                              <span className="font-black text-slate-800 text-sm">{eng.fullName}</span>
-                              <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">{eng.jobTitle}</span>
-                           </div>
-                        </div>
-                     </th>
-                   ))}
-                </tr>
-             </thead>
-             <tbody>
-                {slots.map((slot: string) => (
-                  <tr key={slot} className="group/row">
-                     <td className="p-6 text-center border-b-2 border-white font-mono font-black text-slate-400 bg-slate-50/30 text-xs">{slot}</td>
-                     {visibleEngineers.map((eng: Employee) => {
-                        const appt = grid.get(eng.id)?.get(slot);
-                        if (appt) {
-                           const m = meta.get(appt.id);
-                           const client = clients.get(appt.clientId);
-                           return (
-                             <td key={eng.id} className="p-2 border-b-2 border-white border-s-2 align-top">
-                                <Card 
-                                  onClick={() => onAction('edit', eng, slot, appt)}
-                                  className={cn("border-2 p-4 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] rounded-2xl h-full", cardGradient(m?.color || ''))}
-                                >
-                                   <div className="flex justify-between items-start mb-2">
-                                      <div className="text-start">
-                                         <p className="font-black text-sm leading-tight mb-1">{appt.clientName || client?.nameAr}</p>
-                                         <div className="flex items-center gap-1.5 text-[8px] font-black uppercase opacity-60">
-                                            <MapPin className="h-2 w-2" /> {client?.governorateName || '---'}
-                                         </div>
-                                      </div>
-                                      <Badge className="bg-white/40 text-inherit border-0 font-black text-[8px] h-5 px-1.5 rounded-lg">VISIT {m?.visitCount}</Badge>
-                                   </div>
-                                </Card>
-                             </td>
-                           );
-                        }
-                        return (
-                          <td 
-                            key={eng.id} 
-                            onClick={() => onAction('create', eng, slot)}
-                            className="p-2 border-b-2 border-white border-s-2 group-hover/row:bg-slate-50/50 transition-colors cursor-pointer"
-                          >
-                             <div className="h-16 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
-                                <Plus className="h-6 w-6 text-slate-200" />
-                             </div>
-                          </td>
-                        );
-                     })}
-                  </tr>
-                ))}
-             </tbody>
-          </table>
-       </div>
-    </div>
-  );
-}
-
