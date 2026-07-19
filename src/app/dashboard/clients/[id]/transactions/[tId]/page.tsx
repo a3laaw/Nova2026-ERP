@@ -91,21 +91,12 @@ export default function TransactionDetailsPage() {
   const [isVOOpen, setIsVOOpen] = useState(false);
   const [isOverExecutionOpen, setIsOverExecutionOpen] = useState(false);
 
-  useEffect(() => {
-    const isAnyModalOpen = isRecordOpen || isOverExecutionOpen || !!incompleteStage || isVOOpen || isBoqInitOpen;
-    if (!isAnyModalOpen && typeof document !== 'undefined') {
-       document.body.style.pointerEvents = 'auto';
-       document.body.style.overflow = 'auto';
-    }
-  }, [isRecordOpen, isOverExecutionOpen, incompleteStage, isVOOpen, isBoqInitOpen]);
-
   const editAccess = check('projects', 'edit');
   const currentUserName = useMemo(() => globalUser?.username || user?.displayName || 'Admin', [globalUser, user]);
 
   const transRef = useMemo(() => (companyId && db && transactionId) ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
   const { data: transaction, loading: transLoading } = useDoc<Transaction>(transRef);
 
-  // منطق فصل النشاط
   const isConsulting = useMemo(() => {
     const name = transaction?.activityTypeName || '';
     return name.includes('استشارات') || name.includes('Consulting') || name.includes('تصميم') || name.includes('Design');
@@ -155,6 +146,26 @@ export default function TransactionDetailsPage() {
 
   const executionService = useMemo(() => (db && companyId) ? new BOQExecutionService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
+  // --- محرك الحقن التلقائي للمسار الاستشاري ---
+  useEffect(() => {
+    async function autoInitConsultingPath() {
+      if (!db || !companyId || !user || !transaction || !isConsulting || stagesLoading) return;
+      if (stages.length === 0 && !loadingAction && transaction.status !== 'completed') {
+        setLoadingAction('activating');
+        try {
+          const service = new TransactionService(db, companyId, permissions);
+          await service.initializeTechnicalPath(transactionId, transaction.activityTypeId, transaction.serviceId, transaction.subServiceId, user.uid);
+          toast({ title: isRtl ? "تم تفعيل مسار التصميم آلياً" : "Design Path Auto-Activated" });
+        } catch (e) {
+          console.error("Auto-init failed", e);
+        } finally {
+          setLoadingAction(null);
+        }
+      }
+    }
+    autoInitConsultingPath();
+  }, [db, companyId, user, transaction, isConsulting, stages.length, stagesLoading, loadingAction, isRtl, transactionId, permissions]);
+
   useEffect(() => {
     let active = true;
     async function fetchAllProgress() {
@@ -193,20 +204,6 @@ export default function TransactionDetailsPage() {
       setIsBoqInitOpen(false);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
-    } finally {
-      setLoadingAction(null);
-    }
-  };
-
-  const handleActivateConsultingPath = async () => {
-    if (!db || !companyId || !user || !transaction) return;
-    setLoadingAction('activating');
-    try {
-      const service = new TransactionService(db, companyId, permissions);
-      await service.initializeTechnicalPath(transactionId, transaction.activityTypeId, transaction.serviceId, transaction.subServiceId, user.uid);
-      toast({ title: isRtl ? "تم تفعيل مسار التصميم" : "Design Path Activated" });
-    } catch (e: any) {
-      toast({ variant: "destructive", title: t('error') });
     } finally {
       setLoadingAction(null);
     }
@@ -283,7 +280,6 @@ export default function TransactionDetailsPage() {
   const handleCompleteStage = async (stage: StageInstance, force: boolean = false) => {
     if (!transactionService || !user || !stage.id) return;
     
-    // فحص الإكمال فقط للمقاولات (BOQ Based)
     if (!isConsulting && !force) {
       const progress = stageProgressMap[stage.technicalStageId];
       if (progress && !progress.canComplete) {
@@ -306,7 +302,7 @@ export default function TransactionDetailsPage() {
     }
   };
 
-  if (transLoading || stagesLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>;
+  if (transLoading || stagesLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-20" dir={dir}>
@@ -338,14 +334,7 @@ export default function TransactionDetailsPage() {
                  <FilePlus className="h-5 w-5" /> {isRtl ? 'بدء هندسة المقايسة' : 'Setup BOQ'}
                </Button>
              )
-           ) : (
-             stages.length === 0 && (
-               <Button onClick={handleActivateConsultingPath} disabled={loadingAction === 'activating'} className="btn-gradient h-12 px-8 rounded-xl gap-2 shadow-2xl">
-                  {loadingAction === 'activating' ? <Loader2 className="animate-spin h-5 w-5" /> : <Sparkles className="h-5 w-5" />}
-                  {isRtl ? 'تفعيل مسار التصميم' : 'Activate Design Path'}
-               </Button>
-             )
-           )}
+           ) : null}
         </div>
       </div>
 
@@ -360,19 +349,14 @@ export default function TransactionDetailsPage() {
                      <h3 className="text-2xl font-black text-slate-400">{isRtl ? 'بانتظار تفعيل المسار الفني' : 'Awaiting Pipeline Activation'}</h3>
                      <p className="text-xs font-bold text-slate-300 max-w-xs mx-auto">
                         {isRtl 
-                          ? (isConsulting ? 'هذا النشاط استشاري. يرجى الضغط على تفعيل مسار التصميم لبدء توثيق الاجتماعات والمخرجات.' : 'لا يظهر رادار التنفيذ إلا بعد اعتماد ميزانية المشروع (BOQ Baseline). يرجى إنشاء المقايسة والضغط على "اعتماد" من داخلها.') 
-                          : (isConsulting ? 'Consulting activity. Click activate design path to start logging meetings and deliverables.' : 'Technical radar will appear once the project BOQ baseline is approved.')}
+                          ? (isConsulting ? 'جاري تحضير مراحل التصميم من القاموس السيادي...' : 'لا يظهر رادار التنفيذ إلا بعد اعتماد ميزانية المشروع (BOQ Baseline). يرجى إنشاء المقايسة والضغط على "اعتماد" من داخلها.') 
+                          : (isConsulting ? 'Preparing design stages from Sovereign Registry...' : 'Technical radar will appear once the project BOQ baseline is approved.')}
                      </p>
                   </div>
                   {!isConsulting && !activeBoq && (
                     <Button onClick={() => setIsBoqInitOpen(true)} className="h-14 px-10 rounded-2xl gap-3">
                        <Sparkles className="h-5 w-5" /> {isRtl ? 'إنشاء مقايسة للمشروع الآن' : 'Create BOQ Now'}
                     </Button>
-                  )}
-                  {isConsulting && (
-                     <Button onClick={handleActivateConsultingPath} className="h-14 px-10 rounded-2xl gap-3">
-                        <CheckCircle2 className="h-5 w-5" /> {isRtl ? 'تفعيل المسار الاستشاري الآن' : 'Activate Path Now'}
-                     </Button>
                   )}
                </div>
              ) : (
