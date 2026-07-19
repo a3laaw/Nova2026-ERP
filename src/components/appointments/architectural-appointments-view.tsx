@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -20,6 +21,7 @@ import {
   Plus, 
   ChevronLeft, 
   ChevronRight, 
+  ChevronDown, 
   Edit3,
   Loader2,
   CheckCircle2,
@@ -189,7 +191,6 @@ export function ArchitecturalAppointmentsView() {
     }
   }, [db, companyId]);
 
-  // --- السـيادة: فـلترة المـهندسين المعروضين في الجدول ---
   const visibleEngineers = useMemo(() => {
     const archEmps = (allEmployees || []).filter(e => e.departmentName?.includes('معماري') || e.departmentName?.includes('Arch'));
     if (isAdmin) return archEmps;
@@ -204,8 +205,6 @@ export function ArchitecturalAppointmentsView() {
 
   const filteredAppointments = useMemo(() => {
     let list = (rawAppointments || []).filter(a => a.status !== 'cancelled' && isSameDay(parseISO(a.start), currentDate));
-    
-    // فلترة المواعيد بحيث لا يظهر للمهندس إلا عملائه
     if (!isAdmin && globalUser?.employeeId) {
       list = list.filter(a => a.engineerId === globalUser.employeeId);
     }
@@ -362,6 +361,8 @@ export function ArchitecturalAppointmentsView() {
            onAction={handleAction}
            isRtl={isRtl}
            clients={clientsMap}
+           isAdmin={isAdmin}
+           currentEngineerId={globalUser?.employeeId}
          />
          {timeSlots.evening.length > 0 && (
            <GridSection 
@@ -373,6 +374,8 @@ export function ArchitecturalAppointmentsView() {
              onAction={handleAction}
              isRtl={isRtl}
              clients={clientsMap}
+             isAdmin={isAdmin}
+             currentEngineerId={globalUser?.employeeId}
            />
          )}
       </div>
@@ -393,9 +396,11 @@ export function ArchitecturalAppointmentsView() {
   );
 }
 
-function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, clients }: any) {
+function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, clients, isAdmin, currentEngineerId }: any) {
   if (slots.length === 0) return null;
   
+  const visibleEngineers = isAdmin ? engineers : engineers.filter((e: any) => e.id === currentEngineerId);
+
   return (
     <div className="space-y-6">
        <div className="flex items-center gap-4 px-2">
@@ -408,7 +413,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
              <thead>
                 <tr className="bg-slate-50/80">
                    <th className="w-24 p-6 border-b-2 border-white font-black text-[10px] text-slate-400 uppercase tracking-[0.2em]">{isRtl ? 'الوقت' : 'Time'}</th>
-                   {engineers.map((eng: Employee) => (
+                   {visibleEngineers.map((eng: Employee) => (
                      <th key={eng.id} className="p-6 border-b-2 border-white border-s-2 text-start">
                         <div className="flex items-center gap-3">
                            <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-xs uppercase shadow-inner">{eng.fullName.charAt(0)}</div>
@@ -425,7 +430,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                 {slots.map((slot: string) => (
                   <tr key={slot} className="group/row">
                      <td className="p-6 text-center border-b-2 border-white font-mono font-black text-slate-400 bg-slate-50/30 text-xs">{slot}</td>
-                     {engineers.map((eng: Employee) => {
+                     {visibleEngineers.map((eng: Employee) => {
                         const appt = grid.get(eng.id)?.get(slot);
                         if (appt) {
                            const m = meta.get(appt.id);
@@ -479,7 +484,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
   const [clientSearch, setClientSearch] = useState("");
   const [govSearch, setGovSearch] = useState("");
   
-  // Popover States for Searchable Selection
   const [clientPopoverOpen, setClientPopoverOpen] = useState(false);
   const [govPopoverOpen, setGovPopoverOpen] = useState(false);
 
@@ -582,7 +586,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         targetClientName = formData.newClientName;
       }
 
-      // التحقق من التضارب (Conflict Check)
       const isConflict = rawAppointments?.some((a: any) => 
         a.clientId === targetClientId && a.start === start && a.status !== 'cancelled' && a.id !== data.appointment?.id
       );
@@ -687,7 +690,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                                    <ChevronDown className="h-4 w-4 opacity-30" />
                                 </Button>
                              </PopoverTrigger>
-                             <PopoverContent className="w-[300px] p-0 rounded-2xl border-2 shadow-2xl" align="start">
+                             <PopoverContent onOpenAutoFocus={(e) => e.preventDefault()} className="w-[300px] p-0 rounded-2xl border-2 shadow-2xl" align="start">
                                 <div className="p-3 border-b bg-slate-50">
                                    <div className="relative">
                                       <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300" />
@@ -722,7 +725,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                              <ChevronDown className="h-5 w-5 opacity-30" />
                           </Button>
                        </PopoverTrigger>
-                       <PopoverContent className="w-[400px] p-0 rounded-[2rem] border-2 shadow-3xl bg-white" align="start">
+                       <PopoverContent onOpenAutoFocus={(e) => e.preventDefault()} className="w-[400px] p-0 rounded-[2rem] border-2 shadow-3xl bg-white" align="start">
                           <div className="p-4 border-b bg-slate-50 rounded-t-[2rem]">
                              <div className="relative">
                                 <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
