@@ -69,10 +69,11 @@ export default function QuotationViewPage() {
     return format(addDays(createdDate, q.validDays), 'yyyy-MM-dd');
   }, [quote, editData, isEditing]);
 
-  // محرك الحسابات الذكي
+  // محرك الحسابات الذكي السيادي
   const stats = useMemo(() => {
     const items = editData.items || [];
     const mode = editData.pricingMode || 'itemized';
+    const totalBaseline = Number(editData.totalAmount || 0);
     
     const totalItemsValue = items.reduce((acc, item) => acc + (Number(item.unitPrice || 0) * Number(item.quantity || 1)), 0);
     const totalPercentage = items.reduce((acc, item) => acc + (Number(item.percentage || 0)), 0);
@@ -80,22 +81,28 @@ export default function QuotationViewPage() {
     return {
       totalItemsValue,
       totalPercentage,
-      isValid: mode === 'percentage' ? totalPercentage === 100 : (mode === 'itemized' ? true : true)
+      totalBaseline,
+      isValid: mode === 'percentage' ? Math.abs(totalPercentage - 100) < 0.1 : true
     };
-  }, [editData.items, editData.pricingMode]);
+  }, [editData.items, editData.pricingMode, editData.totalAmount]);
 
   const handleSave = async () => {
     if (!db || !companyId || !user) return;
     
-    if (editData.pricingMode === 'percentage' && stats.totalPercentage !== 100) {
-      toast({ variant: "destructive", title: isRtl ? "خطأ في النسب" : "Percentage Error", description: isRtl ? "يجب أن يكون مجموع النسب 100%" : "Total percentage must be 100%" });
+    if (editData.pricingMode === 'percentage' && !stats.isValid) {
+      toast({ 
+        variant: "destructive", 
+        title: isRtl ? "خطأ في توزيع الحصص" : "Percentage Mismatch", 
+        description: isRtl ? `يجب أن يكون مجموع النسب 100% (الحالي: ${stats.totalPercentage}%)` : `Total must be 100% (Current: ${stats.totalPercentage}%)` 
+      });
       return;
     }
 
     setSaving(true);
     try {
       const service = new DocumentService(db, companyId);
-      const finalTotal = editData.pricingMode === 'itemized' ? stats.totalItemsValue : (editData.totalAmount || 0);
+      // في حالة البنود، الإجمالي هو مجموع البنود. في حالة النسب/المقطوع، الإجمالي هو الرقم المدخل يدوياً.
+      const finalTotal = editData.pricingMode === 'itemized' ? stats.totalItemsValue : stats.totalBaseline;
       
       await service.updateQuotation(quotationId, {
         ...editData,
@@ -117,8 +124,17 @@ export default function QuotationViewPage() {
     setEditForm({ ...editData, items: newItems });
   };
 
+  const removeItem = (idx: number) => {
+    const newItems = (editData.items || []).filter((_, i) => i !== idx);
+    setEditForm({ ...editData, items: newItems });
+  };
+
   if (loading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
   if (!quote) return <div className="p-20 text-center font-black">{isRtl ? 'المستند غير موجود' : 'Quotation not found'}</div>;
+
+  const currentTotal = isEditing 
+    ? (editData.pricingMode === 'itemized' ? stats.totalItemsValue : stats.totalBaseline)
+    : (quote.totalAmount || 0);
 
   return (
     <div className="space-y-8 pb-20 animate-in fade-in duration-700" dir={dir}>
@@ -180,7 +196,7 @@ export default function QuotationViewPage() {
                      <div className="space-y-3">
                         <div className="flex justify-between items-center text-[10px] font-black uppercase">
                            <span className="text-slate-400">{isRtl ? 'تاريخ الإصدار' : 'Issue Date'}</span>
-                           <span className="text-slate-900 font-mono">{quote.createdAt?.toDate ? quote.createdAt.toDate().toLocaleDateString() : '---'}</span>
+                           <span className="text-slate-900 font-mono">{(quote.createdAt?.toDate ? quote.createdAt.toDate() : new Date()).toLocaleDateString()}</span>
                         </div>
                         <div className="flex justify-between items-center text-[10px] font-black uppercase text-primary">
                            <span>{isRtl ? 'صلاحية العرض' : 'Valid Until'}</span>
@@ -224,8 +240,8 @@ export default function QuotationViewPage() {
 
             {/* Pricing Mode Selector (Edit Only) */}
             {isEditing && (
-              <div className="p-6 bg-[#1e1b4b] rounded-3xl text-white flex items-center justify-between shadow-2xl">
-                 <div className="flex items-center gap-4">
+              <div className="p-6 bg-[#1e1b4b] rounded-3xl text-white flex items-center justify-between shadow-2xl animate-in slide-in-from-top-4">
+                 <div className="flex items-center gap-4 text-start">
                     <div className="h-10 w-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary"><Layers className="h-6 w-6" /></div>
                     <div className="text-start">
                        <p className="text-[10px] font-black text-primary uppercase tracking-widest">Pricing Strategy</p>
@@ -233,11 +249,11 @@ export default function QuotationViewPage() {
                     </div>
                  </div>
                  <Select value={editData.pricingMode} onValueChange={(v: PricingMode) => setEditForm({...editData, pricingMode: v})}>
-                    <SelectTrigger className="w-48 h-11 rounded-xl bg-white/10 border-white/20 text-white font-black"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="w-64 h-11 rounded-xl bg-white/10 border-white/20 text-white font-black"><SelectValue /></SelectTrigger>
                     <SelectContent className="rounded-xl">
                        <SelectItem value="itemized" className="font-bold">حسب البنود (Qty x Rate)</SelectItem>
                        <SelectItem value="fixed" className="font-bold">مبلغ مقطوع (Fixed Total)</SelectItem>
-                       <SelectItem value="percentage" className="font-bold">نسب مئوية (Percentage)</SelectItem>
+                       <SelectItem value="percentage" className="font-bold">نسب مئوية (Percentage of Total)</SelectItem>
                     </SelectContent>
                  </Select>
               </div>
@@ -277,7 +293,7 @@ export default function QuotationViewPage() {
                         {editData.items?.map((item, idx) => {
                            // حساب القيمة بناءً على النمط
                            const lineAmount = editData.pricingMode === 'percentage' 
-                             ? ((editData.totalAmount || 0) * (item.percentage || 0)) / 100 
+                             ? (stats.totalBaseline * (item.percentage || 0)) / 100 
                              : (editData.pricingMode === 'itemized' 
                                 ? (item.unitPrice || 0) * (item.quantity || 1) 
                                 : (item.unitPrice || 0));
@@ -326,7 +342,7 @@ export default function QuotationViewPage() {
                                    {isEditing && editData.pricingMode !== 'percentage' ? (
                                       <div className="space-y-2">
                                          <Input type="number" step="0.001" value={item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', Number(e.target.value))} className="font-black text-center border-2 h-12 text-emerald-600 text-xl" />
-                                         {editData.pricingMode === 'itemized' && <p className="text-[9px] font-black text-slate-400 text-center">PER UNIT RATE</p>}
+                                         {editData.pricingMode === 'itemized' && <p className="text-[9px] font-black text-slate-400 text-center uppercase">Per Unit Rate</p>}
                                       </div>
                                    ) : (
                                       <div className="space-y-1">
@@ -361,10 +377,12 @@ export default function QuotationViewPage() {
                                  </div>
                               )}
                            </td>
-                           <td colSpan={isEditing ? (editData.pricingMode === 'fixed' ? 2 : 3) : (editData.pricingMode === 'fixed' ? 1 : 2)} className="p-10 text-end pe-12">
-                              {isEditing && editData.pricingMode !== 'itemized' ? (
-                                <div className="space-y-2">
-                                   <Label className="text-white/40 text-[10px] uppercase font-black tracking-widest">{isRtl ? 'أدخل القيمة الإجمالية' : 'Set Total Baseline'}</Label>
+                           <td colSpan={isEditing ? (editData.pricingMode === 'fixed' || editData.pricingMode === 'percentage' ? 2 : 3) : (editData.pricingMode === 'fixed' || editData.pricingMode === 'percentage' ? 1 : 2)} className="p-10 text-end pe-12">
+                              {isEditing && (editData.pricingMode === 'fixed' || editData.pricingMode === 'percentage') ? (
+                                <div className="space-y-2 animate-in zoom-in-95">
+                                   <Label className="text-white/40 text-[10px] uppercase font-black tracking-widest">
+                                      {editData.pricingMode === 'percentage' ? (isRtl ? 'أدخل المبلغ الإجمالي للاحتساب' : 'Set Total Baseline Amount') : (isRtl ? 'أدخل القيمة الإجمالية' : 'Set Fixed Total')}
+                                   </Label>
                                    <Input 
                                       type="number" 
                                       value={editData.totalAmount || 0} 
@@ -375,7 +393,7 @@ export default function QuotationViewPage() {
                               ) : (
                                 <div className="space-y-1">
                                    <h2 className="text-7xl font-black font-headline text-primary">
-                                      {((editData.pricingMode === 'itemized' ? stats.totalItemsValue : (editData.totalAmount || quote.totalAmount)) || 0).toLocaleString()}
+                                      {(currentTotal || 0).toLocaleString()}
                                    </h2>
                                    <p className="text-xl font-black text-white/30 uppercase tracking-[0.3em]">Kuwaiti Dinars</p>
                                 </div>
