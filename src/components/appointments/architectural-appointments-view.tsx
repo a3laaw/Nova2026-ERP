@@ -36,7 +36,10 @@ import {
   ArrowRight,
   MoreVertical,
   Calendar as CalendarIcon,
-  Globe
+  Globe,
+  Hammer,
+  User as UserIcon,
+  ShieldCheck
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs, addDoc, serverTimestamp, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
@@ -478,6 +481,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
 function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates, companyId, userId, userName, db, rawAppointments }: any) {
   const { dir, lang, isRtl, t } = useLanguage();
   const { isAdmin } = usePermissions();
+  const { globalUser } = useAuthContext();
   
   const [loading, setLoading] = useState(false);
   const [isNewClient, setIsNewClient] = useState(false);
@@ -499,6 +503,34 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     time: '',
     notes: ''
   });
+
+  // Sovereign Filter Protocol: Show only clients assigned to THIS engineer in the dropdown
+  const filteredClients = useMemo(() => {
+    let list = clients || [];
+    
+    if (!isAdmin) {
+       // Only clients belonging to the logged-in engineer (employeeId)
+       list = list.filter((c: any) => c.assignedEngineerId === globalUser?.employeeId);
+    }
+
+    if (clientSearch.trim()) {
+      const q = clientSearch.toLowerCase();
+      list = list.filter((c: any) => 
+        c.nameAr?.toLowerCase().includes(q) || 
+        c.fileNumber?.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [clients, isAdmin, globalUser?.employeeId, clientSearch]);
+
+  const filteredGovs = useMemo(() => {
+    if (!govSearch.trim()) return governorates;
+    const q = govSearch.toLowerCase();
+    return governorates.filter((g: any) => 
+      g.name?.toLowerCase().includes(q) || 
+      g.nameEn?.toLowerCase().includes(q)
+    );
+  }, [governorates, govSearch]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -528,30 +560,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     }
   }, [isOpen, data]);
 
-  const filteredClients = useMemo(() => {
-    let list = clients;
-    if (!isAdmin) {
-      list = clients.filter((c: any) => c.assignedEngineerId === userId);
-    }
-    if (clientSearch.trim()) {
-      const q = clientSearch.toLowerCase();
-      list = list.filter((c: any) => 
-        c.nameAr?.toLowerCase().includes(q) || 
-        c.fileNumber?.toLowerCase().includes(q)
-      );
-    }
-    return list;
-  }, [clients, isAdmin, userId, clientSearch]);
-
-  const filteredGovs = useMemo(() => {
-    if (!govSearch.trim()) return governorates;
-    const q = govSearch.toLowerCase();
-    return governorates.filter((g: any) => 
-      g.name?.toLowerCase().includes(q) || 
-      g.nameEn?.toLowerCase().includes(q)
-    );
-  }, [governorates, govSearch]);
-
   const handleSave = async () => {
     if (!data) return;
     const isCreate = data.mode === 'create';
@@ -573,6 +581,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         }
         const gov = governorates?.find((g: any) => g.id === formData.newClientGovId);
         const nextFileNum = await clientService.getNextFileNumber();
+        // Registering client with assigned engineer automatically
         targetClientId = await clientService.addClient({
           nameAr: formData.newClientName,
           mobile: formData.newClientPhone,
@@ -580,8 +589,8 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
           governorateName: gov ? (isRtl ? gov.name : gov.nameEn) : '',
           fileNumber: nextFileNum,
           status: 'new',
-          assignedEngineerId: userId,
-          assignedEngineerName: userName
+          assignedEngineerId: globalUser?.employeeId,
+          assignedEngineerName: globalUser?.username || userName
         }, userId, userName);
         targetClientName = formData.newClientName;
       }
@@ -690,7 +699,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                                    <ChevronDown className="h-4 w-4 opacity-30" />
                                 </Button>
                              </PopoverTrigger>
-                             <PopoverContent onOpenAutoFocus={(e) => e.preventDefault()} className="w-[300px] p-0 rounded-2xl border-2 shadow-2xl" align="start">
+                             <PopoverContent onOpenAutoFocus={(e) => e.preventDefault()} className="w-[300px] p-0 rounded-2xl border-2 shadow-2xl bg-white" align="start">
                                 <div className="p-3 border-b bg-slate-50">
                                    <div className="relative">
                                       <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300" />
@@ -725,11 +734,21 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                              <ChevronDown className="h-5 w-5 opacity-30" />
                           </Button>
                        </PopoverTrigger>
-                       <PopoverContent onOpenAutoFocus={(e) => e.preventDefault()} className="w-[400px] p-0 rounded-[2rem] border-2 shadow-3xl bg-white" align="start">
+                       <PopoverContent 
+                         onOpenAutoFocus={(e) => e.preventDefault()} 
+                         className="w-[400px] p-0 rounded-[2rem] border-2 shadow-3xl bg-white z-[9999]" 
+                         align="start"
+                       >
                           <div className="p-4 border-b bg-slate-50 rounded-t-[2rem]">
                              <div className="relative">
                                 <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                                <Input value={clientSearch} onChange={e => setClientSearch(e.target.value)} placeholder={isRtl ? "ابحث بالاسم أو رقم الملف..." : "Search by name or file..."} className="h-12 rounded-xl text-sm ps-11 border-2 bg-white shadow-inner" />
+                                <Input 
+                                  value={clientSearch} 
+                                  onChange={e => setClientSearch(e.target.value)} 
+                                  placeholder={isRtl ? "ابحث بالاسم أو رقم الملف..." : "Search by name or file..."} 
+                                  className="h-12 rounded-xl text-sm ps-11 border-2 bg-white shadow-inner"
+                                  autoFocus 
+                                />
                              </div>
                           </div>
                           <ScrollArea className="h-64">
@@ -737,7 +756,10 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                                 {filteredClients.map((c: any) => (
                                   <div 
                                     key={c.id} 
-                                    onClick={() => { setFormData({...formData, clientId: c.id!, clientName: c.nameAr}); setClientPopoverOpen(false); }}
+                                    onClick={() => { 
+                                      setFormData({...formData, clientId: c.id!, clientName: c.nameAr}); 
+                                      setClientPopoverOpen(false); 
+                                    }}
                                     className="p-4 rounded-2xl hover:bg-primary/5 cursor-pointer transition-all border-b last:border-0 border-slate-50 group flex flex-col text-start"
                                   >
                                      <span className="text-xs font-black text-slate-800 group-hover:text-primary transition-colors">{c.nameAr}</span>
@@ -768,7 +790,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
            <Button variant="outline" onClick={onClose} className="flex-1 h-16 rounded-[1.5rem] border-2 font-black text-lg bg-white shadow-sm">
               {isRtl ? 'إلغاء' : 'Cancel'}
            </Button>
-           <Button onClick={handleSave} disabled={loading} className="flex-[2] h-16 rounded-[1.5rem] bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-2 border-b-8 border-orange-700">
+           <Button onClick={handleSave} disabled={loading} className="flex-[2] h-16 rounded-[1.5rem] bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-8 border-orange-700">
               {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />}
               {isRtl ? 'تثبيت الموعد' : 'Confirm Booking'}
            </Button>
