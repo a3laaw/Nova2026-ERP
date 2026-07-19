@@ -7,7 +7,6 @@ import {
   format, 
   isValid, 
   addMinutes, 
-  startOfDay, 
   isSameDay, 
   parseISO, 
   addDays,
@@ -34,15 +33,15 @@ import {
   Search,
   Target,
   ArrowRight,
-  MoreVertical,
   Calendar as CalendarIcon,
   Globe,
   Hammer,
   User as UserIcon,
-  ShieldCheck
+  ShieldCheck,
+  Building2
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, where, doc, getDocs, addDoc, serverTimestamp, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, orderBy, where, doc, getDocs, setDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
@@ -69,11 +68,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { 
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { toast } from '@/hooks/use-toast';
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -194,7 +188,6 @@ export function ArchitecturalAppointmentsView() {
     }
   }, [db, companyId]);
 
-  // الفلترة السيادية للأعمدة
   const visibleEngineers = useMemo(() => {
     const archEmps = (allEmployees || []).filter(e => e.departmentName?.includes('معماري') || e.departmentName?.includes('Arch'));
     if (isAdmin) return archEmps;
@@ -475,16 +468,14 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
 
 function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates, companyId, userId, userName, db, rawAppointments }: any) {
   const { dir, lang, isRtl, t } = useLanguage();
-  const { isAdmin } = usePermissions();
-  const { globalUser } = useAuthContext();
   
   const [loading, setLoading] = useState(false);
   const [isNewClient, setIsNewClient] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
-  const [govSearch, setGovSearch] = useState("");
+  const [clientSearchOpen, setClientSearchOpen] = useState(false);
   
-  const [clientPopoverOpen, setClientPopoverOpen] = useState(false);
-  const [govPopoverOpen, setGovPopoverOpen] = useState(false);
+  const [govSearch, setGovSearch] = useState("");
+  const [govSearchOpen, setGovSearchOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -500,13 +491,12 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
   });
 
   // Sovereign Isolation Protocol: 
-  // الحصر التام للعملاء بناءً على "المهندس المنشود" (الذي تم النقر على عموده)
+  // حصر العملاء بناءً على "المهندس المنشود" حصراً
   const filteredClients = useMemo(() => {
     let list = clients || [];
     const targetEngineerId = data?.engineer?.id || data?.appointment?.engineerId;
 
     if (targetEngineerId) {
-      // حصر العملاء المنسوبين لهذا المهندس تحديداً
       list = list.filter((c: any) => c.assignedEngineerId === targetEngineerId);
     }
 
@@ -536,7 +526,9 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
        });
        setIsNewClient(false);
        setClientSearch("");
+       setClientSearchOpen(false);
        setGovSearch("");
+       setGovSearchOpen(false);
     }
   }, [isOpen]);
 
@@ -579,7 +571,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         const gov = governorates?.find((g: any) => g.id === formData.newClientGovId);
         const nextFileNum = await clientService.getNextFileNumber();
         
-        // ربط العميل الجديد بالمهندس المختار في الشبكة آلياً
         targetClientId = await clientService.addClient({
           nameAr: formData.newClientName,
           mobile: formData.newClientPhone,
@@ -688,87 +679,69 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                              <Input value={formData.newClientPhone} onChange={e => setFormData({...formData, newClientPhone: e.target.value})} className="h-11 rounded-xl border-2 font-bold ps-9 bg-white" placeholder="+965" />
                           </div>
                        </div>
-                       <div className="space-y-2">
+                       <div className="space-y-2 relative">
                           <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'المحافظة' : 'Gov'}</Label>
-                          <Popover open={govPopoverOpen} onOpenChange={setGovPopoverOpen}>
-                             <PopoverTrigger asChild>
-                                <Button variant="outline" className="w-full h-11 justify-between border-2 bg-white font-bold rounded-xl px-4">
-                                   <span className="truncate">{formData.newClientGovName || "..."}</span>
-                                   <ChevronDown className="h-4 w-4 opacity-30" />
-                                </Button>
-                             </PopoverTrigger>
-                             <PopoverContent onOpenAutoFocus={(e) => e.preventDefault()} className="w-[300px] p-0 rounded-2xl border-2 shadow-2xl bg-white" align="start">
-                                <div className="p-3 border-b bg-slate-50">
-                                   <div className="relative">
-                                      <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300" />
-                                      <Input value={govSearch} onChange={e => setGovSearch(e.target.value)} placeholder={isRtl ? "ابحث..." : "Search..."} className="h-9 rounded-lg text-xs ps-9 border-2" />
-                                   </div>
-                                </div>
-                                <ScrollArea className="h-48">
-                                   <div className="p-2 space-y-1">
-                                      {filteredGovs?.map((g: any) => (
-                                        <div 
-                                          key={g.id} 
-                                          onClick={() => { setFormData({...formData, newClientGovId: g.id!, newClientGovName: isRtl ? g.name : g.nameEn}); setGovPopoverOpen(false); }}
-                                          className="p-3 rounded-lg hover:bg-primary/5 cursor-pointer text-xs font-black text-slate-700 transition-colors border-b last:border-0 border-slate-50"
-                                        >
-                                           {isRtl ? g.name : g.nameEn}
-                                        </div>
-                                      ))}
-                                   </div>
-                                </ScrollArea>
-                             </PopoverContent>
-                          </Popover>
+                          <div className="relative">
+                            <Input 
+                              value={formData.newClientGovName || govSearch} 
+                              onChange={e => { setGovSearch(e.target.value); setGovSearchOpen(true); }}
+                              onFocus={() => setGovSearchOpen(true)}
+                              className="h-11 rounded-xl border-2 font-bold bg-white" 
+                              placeholder={isRtl ? "ابحث..." : "Search..."}
+                            />
+                            {govSearchOpen && (
+                              <div className="absolute z-[100] w-full mt-1 bg-white border-2 shadow-2xl rounded-xl overflow-hidden animate-in fade-in zoom-in-95">
+                                 <ScrollArea className="h-48">
+                                    {filteredGovs.map((g: any) => (
+                                      <div key={g.id} onClick={() => { setFormData({...formData, newClientGovId: g.id!, newClientGovName: isRtl ? g.name : g.nameEn}); setGovSearch(""); setGovSearchOpen(false); }} className="p-3 text-xs font-black text-slate-700 hover:bg-primary/5 cursor-pointer border-b last:border-0">{isRtl ? g.name : g.nameEn}</div>
+                                    ))}
+                                 </ScrollArea>
+                              </div>
+                            )}
+                          </div>
                        </div>
                     </div>
                  </div>
               ) : (
-                 <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اختر العميل المسجل' : 'Registered Client'}</Label>
-                    <Popover open={clientPopoverOpen} onOpenChange={setClientPopoverOpen}>
-                       <PopoverTrigger asChild>
-                          <Button variant="outline" className="w-full h-14 justify-between border-2 bg-slate-50/50 font-black rounded-xl px-6 text-sm">
-                             <span className="truncate">{formData.clientName || (isRtl ? "البحث في قائمة المهندس المنشود..." : "Search assigned clients...")}</span>
-                             <ChevronDown className="h-5 w-5 opacity-30" />
-                          </Button>
-                       </PopoverTrigger>
-                       <PopoverContent 
-                         onOpenAutoFocus={(e) => e.preventDefault()} 
-                         className="w-[400px] p-0 rounded-[2rem] border-2 shadow-3xl bg-white z-[9999]" 
-                         align="start"
-                       >
-                          <div className="p-4 border-b bg-slate-50 rounded-t-[2rem]">
-                             <div className="relative">
-                                <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                                <Input 
-                                  value={clientSearch} 
-                                  onChange={e => setClientSearch(e.target.value)} 
-                                  placeholder={isRtl ? "ابحث بالاسم أو رقم الملف..." : "Search by name or file..."} 
-                                  className="h-12 rounded-xl text-sm ps-11 border-2 bg-white shadow-inner"
-                                  autoFocus 
-                                />
-                             </div>
-                          </div>
-                          <ScrollArea className="h-64">
-                             <div className="p-3 space-y-1">
-                                {filteredClients.map((c: any) => (
-                                  <div 
-                                    key={c.id} 
-                                    onClick={() => { 
-                                      setFormData({...formData, clientId: c.id!, clientName: c.nameAr}); 
-                                      setClientPopoverOpen(false); 
-                                    }}
-                                    className="p-4 rounded-2xl hover:bg-primary/5 cursor-pointer transition-all border-b last:border-0 border-slate-50 group flex flex-col text-start"
-                                  >
-                                     <span className="text-xs font-black text-slate-800 group-hover:text-primary transition-colors">{c.nameAr}</span>
-                                     <span className="text-[9px] text-slate-400 font-mono mt-1">#{c.fileNumber}</span>
-                                  </div>
-                                ))}
-                                {filteredClients.length === 0 && <div className="p-12 text-center text-[10px] text-slate-400 italic font-bold">لا يوجد عملاء منسوبين لهذا المهندس</div>}
-                             </div>
-                          </ScrollArea>
-                       </PopoverContent>
-                    </Popover>
+                 <div className="space-y-2 relative">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اختيار العميل (المسؤول عنه المهندس المنشود)' : 'Registered Client (Assigned to target eng)'}</Label>
+                    <div className="relative">
+                       <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
+                       <Input 
+                         value={clientSearch}
+                         onChange={e => { setClientSearch(e.target.value); setClientSearchOpen(true); }}
+                         onFocus={() => setClientSearchOpen(true)}
+                         placeholder={formData.clientName || (isRtl ? "ابحث بالاسم أو رقم الملف..." : "Search clients...")}
+                         className="h-14 rounded-2xl border-2 ps-12 font-black text-sm bg-slate-50/50 shadow-inner focus:bg-white transition-all"
+                       />
+                       
+                       {clientSearchOpen && (
+                         <div className="absolute z-[100] w-full mt-2 bg-white border-2 shadow-2xl rounded-[1.5rem] overflow-hidden animate-in fade-in zoom-in-95">
+                            <ScrollArea className="h-64">
+                               <div className="p-2 space-y-1">
+                                  {filteredClients.map((c: any) => (
+                                    <div 
+                                      key={c.id} 
+                                      onClick={() => { 
+                                        setFormData({...formData, clientId: c.id!, clientName: c.nameAr}); 
+                                        setClientSearch("");
+                                        setClientSearchOpen(false); 
+                                      }}
+                                      className="p-4 rounded-xl hover:bg-primary/5 cursor-pointer transition-all border-b last:border-0 border-slate-50 group flex flex-col text-start"
+                                    >
+                                       <span className="text-xs font-black text-slate-800 group-hover:text-primary transition-colors">{c.nameAr}</span>
+                                       <span className="text-[9px] text-slate-400 font-mono mt-1">#{c.fileNumber}</span>
+                                    </div>
+                                  ))}
+                                  {filteredClients.length === 0 && <div className="p-12 text-center text-[10px] text-slate-400 italic font-bold">لا يوجد عملاء منسوبين لهذا المهندس</div>}
+                               </div>
+                            </ScrollArea>
+                            <div className="p-3 bg-slate-50 border-t flex justify-end">
+                               <Button variant="ghost" size="sm" onClick={() => setClientSearchOpen(false)} className="h-8 rounded-lg text-[9px] font-black uppercase">إغلاق القائمة</Button>
+                            </div>
+                         </div>
+                       )}
+                    </div>
                  </div>
               )}
            </div>
