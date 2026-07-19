@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -15,7 +14,8 @@ import {
   Zap, Workflow,
   PlusCircle, ArrowRight,
   Info, Sparkles, FilePlus, ShieldCheck,
-  Pencil, FileText, LayoutGrid
+  Pencil, FileText, LayoutGrid, Lock, Wallet,
+  Gavel
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, limit, doc, addDoc } from 'firebase/firestore';
@@ -26,7 +26,7 @@ import { paths } from '@/firebase/multi-tenant';
 import { Transaction, StageInstance } from '@/types/transaction';
 import { TransactionService } from '@/services/transaction-service';
 import { BOQExecutionService, StageProgressResult } from '@/services/boq-execution-service';
-import { BOQ, BOQItem, BOQItemExecutionEntry } from '@/types/documents';
+import { BOQ, BOQItem, BOQItemExecutionEntry, Contract } from '@/types/documents';
 import { BOQTemplate } from '@/types/templates';
 import { CommentSection } from '@/components/transactions/comment-section';
 import { DocumentService } from '@/services/document-service';
@@ -97,6 +97,15 @@ export default function TransactionDetailsPage() {
   const transRef = useMemo(() => (companyId && db && transactionId) ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
   const { data: transaction, loading: transLoading } = useDoc<Transaction>(transRef);
 
+  // --- ربط العقد المالي والتحقق من الدفع (Financial Link Lock) ---
+  const contractsQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.contracts(companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
+  const { data: contracts, loading: contractsLoading } = useCollection<Contract>(contractsQuery);
+  const activeContract = contracts?.[0];
+  const isFinancialLockActive = useMemo(() => {
+    if (!activeContract) return true; // لا يوجد عقد
+    return activeContract.status !== 'paid' && !activeContract.isPaid; // العقد موجود لكن غير مدفوع
+  }, [activeContract]);
+
   const isConsulting = useMemo(() => {
     const name = transaction?.activityTypeName || '';
     return name.includes('استشارات') || name.includes('Consulting') || name.includes('تصميم') || name.includes('Design');
@@ -146,10 +155,10 @@ export default function TransactionDetailsPage() {
 
   const executionService = useMemo(() => (db && companyId) ? new BOQExecutionService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
-  // --- محرك الحقن التلقائي للمسار الاستشاري ---
+  // --- محرك الحقن التلقائي للمسار الاستشاري بشرط الدفع ---
   useEffect(() => {
     async function autoInitConsultingPath() {
-      if (!db || !companyId || !user || !transaction || !isConsulting || stagesLoading) return;
+      if (!db || !companyId || !user || !transaction || !isConsulting || stagesLoading || isFinancialLockActive) return;
       if (stages.length === 0 && !loadingAction && transaction.status !== 'completed') {
         setLoadingAction('activating');
         try {
@@ -164,7 +173,7 @@ export default function TransactionDetailsPage() {
       }
     }
     autoInitConsultingPath();
-  }, [db, companyId, user, transaction, isConsulting, stages.length, stagesLoading, loadingAction, isRtl, transactionId, permissions]);
+  }, [db, companyId, user, transaction, isConsulting, stages.length, stagesLoading, loadingAction, isRtl, transactionId, permissions, isFinancialLockActive]);
 
   useEffect(() => {
     let active = true;
@@ -302,7 +311,7 @@ export default function TransactionDetailsPage() {
     }
   };
 
-  if (transLoading || stagesLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
+  if (transLoading || stagesLoading || contractsLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-20" dir={dir}>
@@ -330,7 +339,7 @@ export default function TransactionDetailsPage() {
                   </Button>
                </>
              ) : (
-               <Button onClick={() => setIsBoqInitOpen(true)} className="btn-gradient h-12 px-8 rounded-xl gap-2 shadow-2xl">
+               <Button onClick={() => setIsBoqInitOpen(true)} disabled={isFinancialLockActive} className="btn-gradient h-12 px-8 rounded-xl gap-2 shadow-2xl">
                  <FilePlus className="h-5 w-5" /> {isRtl ? 'بدء هندسة المقايسة' : 'Setup BOQ'}
                </Button>
              )
@@ -340,7 +349,39 @@ export default function TransactionDetailsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-8 space-y-6">
-             {stages.length === 0 ? (
+             {/* حظر المسار الفني بناءً على الحالة المالية */}
+             {isFinancialLockActive ? (
+                <Card className="border-4 border-dashed border-rose-100 rounded-[3rem] bg-rose-50/30 p-20 text-center animate-in zoom-in-95 duration-500">
+                   <div className="w-24 h-24 bg-white rounded-[2rem] flex items-center justify-center mx-auto text-rose-500 shadow-xl mb-8 ring-8 ring-rose-50/50">
+                      <Lock className="h-12 w-12" />
+                   </div>
+                   <div className="space-y-4">
+                      <h3 className="text-3xl font-black text-rose-900 font-headline">{isRtl ? 'المسار الفني مغلق مالياً' : 'Technical Path Locked'}</h3>
+                      <p className="text-slate-500 font-bold max-w-sm mx-auto leading-relaxed">
+                         {isRtl 
+                           ? 'لا يمكن بدء التنفيذ الميداني أو فتح مراحل العمل إلا بعد ربط عقد رسمي بالمعاملة وتوثيق حالة "تم الدفع".' 
+                           : 'Work stages cannot be initialized until a formal contract is linked and marked as "Paid".'}
+                      </p>
+                      <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-6">
+                         <div className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white border-2 border-rose-100 shadow-sm">
+                            <Gavel className="h-4 w-4 text-rose-400" />
+                            <span className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'العقد المربوط:' : 'Linked Contract:'}</span>
+                            <span className="text-xs font-black text-rose-600">{activeContract ? activeContract.name : (isRtl ? 'غير متوفر' : 'NOT FOUND')}</span>
+                         </div>
+                         <div className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white border-2 border-rose-100 shadow-sm">
+                            <Wallet className="h-4 w-4 text-rose-400" />
+                            <span className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'حالة الدفع:' : 'Payment Status:'}</span>
+                            <span className="text-xs font-black text-rose-600 uppercase">{activeContract?.status || 'PENDING'}</span>
+                         </div>
+                      </div>
+                      <div className="pt-8 flex justify-center">
+                         <Button variant="outline" onClick={() => router.push('/dashboard/procurement')} className="rounded-xl border-2 font-bold px-8 h-12">
+                            {isRtl ? 'الذهاب لإدارة العقود' : 'Go to Contracts'}
+                         </Button>
+                      </div>
+                   </div>
+                </Card>
+             ) : stages.length === 0 ? (
                <div className="py-24 text-center bg-white rounded-[3rem] border-4 border-dashed border-slate-100 space-y-6 animate-pulse">
                   <div className="w-24 h-24 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto text-slate-200">
                      <Workflow className="h-12 w-12" />

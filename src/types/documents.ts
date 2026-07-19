@@ -5,7 +5,7 @@
 import { BaseReference } from './reference';
 import { PricingMode, MeasurementMode, QuotationItem, ContractMilestone } from './templates';
 
-export type DocumentStatus = 'draft' | 'sent' | 'approved' | 'rejected' | 'active' | 'completed' | 'cancelled';
+export type DocumentStatus = 'draft' | 'sent' | 'approved' | 'rejected' | 'active' | 'completed' | 'cancelled' | 'paid';
 
 export interface BaseDocument extends BaseReference {
   id: string;
@@ -38,6 +38,7 @@ export interface Contract extends BaseDocument {
   clauses: string[];
   milestones: ContractMilestone[];
   contractType?: string;
+  isPaid?: boolean; // New flag to explicitly mark as paid
 }
 
 export interface BOQItem extends BaseReference {
