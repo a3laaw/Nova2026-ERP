@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -220,6 +221,7 @@ export function ArchitecturalAppointmentsView() {
 
   const archEngineers = useMemo(() => {
     const list = (allEmployees || []).filter(e => e.departmentName?.includes('معماري') || e.departmentName?.includes('Arch'));
+    // تطبيق الفلترة السيادية لغير المدراء
     if (!isAdmin && globalUser?.employeeId) {
        return list.filter(e => e.id === globalUser.employeeId);
     }
@@ -234,6 +236,7 @@ export function ArchitecturalAppointmentsView() {
 
   const filteredAppointments = useMemo(() => {
     let list = (rawAppointments || []).filter(a => a.status !== 'cancelled' && isSameDay(parseISO(a.start), currentDate));
+    // عرض مواعيد المهندسين المرئيين فقط في الشبكة لغير المدراء
     if (!isAdmin && globalUser?.employeeId) {
       list = list.filter(a => a.engineerId === globalUser.employeeId);
     }
@@ -525,7 +528,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                                    {block.type === 'absent' && <Ban className="h-3 w-3" />}
                                    {block.label}
                                 </div>
-                             </td>
+                           </td>
                            );
                         }
 
@@ -644,6 +647,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
   
   const filteredClients = useMemo(() => {
     let list = clients || [];
+    // حصر الاختيار فقط في عملاء المهندس المنشود كما في طلب العميل
     if (targetEngineerId) {
       list = list.filter((c: any) => c.assignedEngineerId === targetEngineerId);
     }
@@ -718,6 +722,24 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     const isCreate = data.mode === 'create';
     const start = new Date(`${formData.date}T${formData.time}:00`).toISOString();
     
+    // فحص تضارب سيادي للعميل عبر كافة المهندسين
+    if (!isBusyBlock && !isNewClient && formData.clientId) {
+       const conflict = rawAppointments.find((a: any) => 
+         a.clientId === formData.clientId && 
+         a.start === start && 
+         a.id !== data.appointment?.id &&
+         a.status !== 'cancelled'
+       );
+       if (conflict) {
+          toast({ 
+            variant: "destructive", 
+            title: isRtl ? "تضارب سيادي للعميل" : "Client Conflict", 
+            description: isRtl ? `العميل لديه موعد آخر في نفس الساعة مع المهندس: ${conflict.engineerName}` : `Client already has an appointment with ${conflict.engineerName}`
+          });
+          return;
+       }
+    }
+
     setLoading(true);
     try {
       const appService = new AppointmentService(db, companyId);
@@ -847,42 +869,40 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                 ) : (
                    <div className="space-y-2">
                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اختيار العميل من محفظتك' : 'Select Assigned Client'}</Label>
-                      <div className="relative">
-                        <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
-                        <Input 
-                          value={clientSearch}
-                          onFocus={() => setShowClientList(true)}
-                          onChange={e => { setClientSearch(e.target.value); setShowClientList(true); }}
-                          placeholder={isRtl ? "ابحث بالاسم أو رقم الملف..." : "Search by name or file..."}
-                          className="h-14 rounded-2xl border-2 ps-12 font-black text-sm bg-white shadow-inner"
-                        />
-                      </div>
                       
-                      {showClientList && (
-                        <div className="mt-2 p-2 bg-white rounded-2xl border-2 border-slate-100 shadow-2xl animate-in zoom-in-95 duration-200 z-50 relative">
-                           <ScrollArea className="h-40">
-                              <div className="space-y-1 p-1">
-                                 {filteredClients.map((c: any) => (
-                                   <div 
-                                     key={c.id} 
-                                     onClick={() => { setFormData({...formData, clientId: c.id!, clientName: c.nameAr}); setClientSearch(c.nameAr); setShowClientList(false); }}
-                                     className={cn(
-                                       "p-3 rounded-xl cursor-pointer transition-all flex items-center justify-between border-2",
-                                       formData.clientId === c.id ? "bg-primary border-primary text-white shadow-lg" : "bg-white border-slate-50 hover:border-primary/20"
-                                     )}
-                                   >
-                                      <div className="text-start">
-                                         <p className="font-black text-xs">{c.nameAr}</p>
-                                         <p className={cn("text-[8px] font-mono font-bold uppercase", formData.clientId === c.id ? "text-white/60" : "text-slate-400")}>#{c.fileNumber}</p>
-                                      </div>
-                                      {formData.clientId === c.id && <CheckCircle2 className="h-4 w-4 text-white" />}
-                                   </div>
-                                 ))}
-                                 {filteredClients.length === 0 && <div className="p-8 text-center text-[10px] text-slate-300 italic font-bold">لا يوجد نتائج</div>}
-                              </div>
-                           </ScrollArea>
-                        </div>
-                      )}
+                      <div className="p-4 rounded-2xl bg-white border-2 border-slate-100 shadow-inner space-y-4">
+                         <div className="relative">
+                           <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+                           <Input 
+                             value={clientSearch}
+                             onChange={e => setClientSearch(e.target.value)}
+                             placeholder={isRtl ? "ابحث بالاسم أو رقم الملف..." : "Search by name or file..."}
+                             className="h-10 rounded-lg border-2 ps-10 font-bold text-xs bg-slate-50 focus:bg-white"
+                           />
+                         </div>
+                         
+                         <ScrollArea className="h-40 rounded-xl bg-slate-50/30 p-2">
+                            <div className="space-y-1">
+                               {filteredClients.map((c: any) => (
+                                 <div 
+                                   key={c.id} 
+                                   onClick={() => setFormData({...formData, clientId: c.id!, clientName: c.nameAr})}
+                                   className={cn(
+                                     "p-3 rounded-xl cursor-pointer transition-all flex items-center justify-between border-2",
+                                     formData.clientId === c.id ? "bg-primary border-primary text-white shadow-lg" : "bg-white border-slate-50 hover:border-primary/20"
+                                   )}
+                                 >
+                                    <div className="text-start">
+                                       <p className="font-black text-xs">{c.nameAr}</p>
+                                       <p className={cn("text-[8px] font-mono font-bold uppercase", formData.clientId === c.id ? "text-white/60" : "text-slate-400")}>#{c.fileNumber}</p>
+                                    </div>
+                                    {formData.clientId === c.id && <CheckCircle2 className="h-4 w-4 text-white" />}
+                                 </div>
+                               ))}
+                               {filteredClients.length === 0 && <div className="p-8 text-center text-[10px] text-slate-300 italic font-bold">لا يوجد نتائج</div>}
+                            </div>
+                         </ScrollArea>
+                      </div>
                    </div>
                 )}
 
@@ -951,3 +971,4 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     </Dialog>
   );
 }
+
