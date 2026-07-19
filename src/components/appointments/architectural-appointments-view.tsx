@@ -10,8 +10,7 @@ import {
   parseISO, 
   addDays,
   eachDayOfInterval,
-  subDays,
-  isWithinInterval
+  subDays
 } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import { 
@@ -25,15 +24,12 @@ import {
   Loader2,
   CheckCircle2,
   MapPin,
-  Phone,
-  Sparkles,
   X,
   Save,
   Trash2,
   Search,
   Target,
   ArrowRight,
-  Calendar as CalendarIcon,
   Globe,
   Hammer,
   User as UserIcon,
@@ -64,7 +60,7 @@ import { DayOfWeek, WorkHoursSettings } from '@/types/work-hours';
 import { Governorate } from '@/types/reference';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -198,7 +194,6 @@ export function ArchitecturalAppointmentsView() {
     companyId && db ? query(collection(db, paths.governorates(companyId)), orderBy('order')) : null, 
   [db, companyId]);
 
-  // HR Queries for Blocking Logic
   const leavesQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.leaveRequests(companyId)), where('status', 'in', ['approved', 'on-leave', 'commenced'])) : null, 
   [db, companyId]);
@@ -312,7 +307,6 @@ export function ArchitecturalAppointmentsView() {
   return (
     <div className="space-y-12 animate-in fade-in duration-700" dir={dir}>
       
-      {/* Sovereign Date Slider */}
       <div className="flex flex-col items-center gap-6 print:hidden">
         <h2 className="text-xl font-black text-primary uppercase tracking-widest">{isRtl ? 'رادار المواعيد المعماري' : 'Architectural Radar'}</h2>
         
@@ -354,7 +348,7 @@ export function ArchitecturalAppointmentsView() {
            <Button 
              variant="ghost" 
              size="icon" 
-             onClick={() => setCurrentDate(addDays(currentDate, 1))}
+             onClick={() => addDays(currentDate, 1)}
              className="h-12 w-12 rounded-full hover:bg-slate-100 transition-all text-slate-400"
            >
               <ChevronRight className={cn("h-6 w-6", isRtl && "rotate-180")} />
@@ -451,7 +445,6 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
   
   const visibleEngineers = isAdmin ? engineers : engineers.filter((e: any) => e.id === currentEngineerId);
 
-  // منطق فحص قفل الخانة بناءً على بيانات الـ HR
   const getBlockedReason = (engId: string, slotTime: string) => {
      const leave = leaves?.find((l: any) => l.employeeId === engId && dateStr >= l.startDate && dateStr <= l.endDate);
      if (leave) return { type: 'leave', label: isRtl ? 'في إجازة' : 'On Leave' };
@@ -558,27 +551,27 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                                       
                                       <DropdownMenu>
                                          <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg opacity-0 group-card:hover:opacity-100 transition-opacity z-20">
-                                               <MoreVertical className="h-4 w-4" />
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg bg-white/60 backdrop-blur-sm border border-black/5 shadow-sm transition-all z-20">
+                                               <MoreVertical className="h-4 w-4 text-slate-900" />
                                             </Button>
                                          </DropdownMenuTrigger>
-                                         <DropdownMenuContent align="end" className="rounded-xl border-2 shadow-2xl z-[100]">
+                                         <DropdownMenuContent align="end" className="rounded-xl border-2 shadow-2xl z-[100] bg-white">
                                             <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'إجراءات الموعد' : 'Actions'}</DropdownMenuLabel>
                                             <DropdownMenuSeparator />
                                             <DropdownMenuItem onClick={() => onAction('edit', eng, slot, appt)} className="font-bold gap-2 cursor-pointer">
                                                <Edit3 className="h-3.5 w-3.5 text-blue-500" /> {isRtl ? 'تعديل / إعادة جدولة' : 'Reschedule'}
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => handleCancelAppt(appt.id)} className="font-bold gap-2 cursor-pointer">
+                                            <DropdownMenuItem onClick={() => handleCancelAppt(appt.id!)} className="font-bold gap-2 cursor-pointer">
                                                <CalendarX className="h-3.5 w-3.5 text-orange-500" /> {isRtl ? 'إلغاء الموعد' : 'Cancel'}
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator />
-                                            <DropdownMenuItem onClick={() => handleDeleteAppt(appt.id)} className="font-bold gap-2 cursor-pointer text-rose-600 focus:text-rose-600 focus:bg-rose-50">
+                                            <DropdownMenuItem onClick={() => handleDeleteAppt(appt.id!)} className="font-bold gap-2 cursor-pointer text-rose-600 focus:text-rose-600 focus:bg-rose-50">
                                                <Trash2 className="h-3.5 w-3.5" /> {isRtl ? 'حذف نهائي' : 'Delete'}
                                             </DropdownMenuItem>
                                          </DropdownMenuContent>
                                       </DropdownMenu>
                                    </div>
-                                   {!isBusy && <Badge className="bg-white/60 text-inherit border-0 font-black text-[8px] h-5 px-1.5 rounded-lg shadow-sm">VISIT {m?.visitCount}</Badge>}
+                                   {!isBusy && <Badge className="bg-white/60 text-inherit border-0 font-black text-[8px] h-5 px-1.5 rounded-lg shadow-sm mt-auto">VISIT {m?.visitCount}</Badge>}
                                 </Card>
                              </td>
                            );
@@ -613,7 +606,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
   const [isNewClient, setIsNewClient] = useState(false);
   const [isBusyBlock, setIsBusyBlock] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
-  const [showClientResults, setShowClientResults] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -653,7 +645,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
        setIsNewClient(false);
        setIsBusyBlock(false);
        setClientSearch("");
-       setShowClientResults(false);
     }
   }, [isOpen]);
 
@@ -680,17 +671,18 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     const isCreate = data.mode === 'create';
     const start = new Date(`${formData.date}T${formData.time}:00`).toISOString();
     
-    // فحص التضارب السيادي
+    // فحص التضارب السيادي الشامل للعميل (عبر كافة المهندسين)
+    const targetIdForConflict = isNewClient ? 'NEW_CLIENT' : formData.clientId;
     const hasConflict = rawAppointments?.some((a: Appointment) => 
       a.id !== data.appointment?.id && 
       a.status !== 'cancelled' && 
-      a.clientId === (isNewClient ? '' : formData.clientId) && 
+      a.clientId === targetIdForConflict && 
       a.clientId !== 'SYSTEM_BLOCK' &&
       a.start === start
     );
 
-    if (hasConflict) {
-       toast({ variant: "destructive", title: isRtl ? "تضارب مواعيد" : "Appointment Clash", description: isRtl ? "هذا العميل لديه موعد آخر محجوز في نفس هذا الوقت." : "This client already has another appointment at this time." });
+    if (hasConflict && !isNewClient) {
+       toast({ variant: "destructive", title: isRtl ? "تضارب سيادي للعميل" : "Sovereign Client Conflict", description: isRtl ? "هذا العميل لديه موعد محجوز مسبقاً في نفس اللحظة عند مهندس آخر." : "This client already has another appointment at this exact time with another engineer." });
        return;
     }
 
@@ -706,7 +698,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
       if (isBusyBlock) {
          apptType = 'busy_blocked';
          targetClientId = 'SYSTEM_BLOCK';
-         targetClientName = isRtl ? 'مشغول' : 'BUSY';
+         targetClientName = isRtl ? 'مشغول / داخلي' : 'BUSY / INTERNAL';
       } else if (isCreate && isNewClient) {
         if (!formData.newClientName || !formData.newClientPhone) {
           toast({ variant: "destructive", title: isRtl ? "بيانات العميل الجديد ناقصة" : "New client data missing" });
@@ -785,7 +777,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         </div>
 
         <div className="p-8 space-y-6 text-start max-h-[65vh] overflow-y-auto scrollbar-hide">
-           
            {data?.mode === 'create' && (
              <div className="grid grid-cols-2 gap-4">
                 <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 border-2 border-white shadow-inner">
@@ -831,39 +822,40 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                       </div>
                    </div>
                 ) : (
-                   <div className="space-y-2 relative">
+                   <div className="space-y-2">
                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'البحث في قاعدة عملائك المنسوبين' : 'Search your assigned clients'}</Label>
                       <div className="relative">
                         <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
                         <Input 
-                          value={formData.clientName || clientSearch}
-                          onChange={e => { setClientSearch(e.target.value); setShowClientResults(true); if(formData.clientId) setFormData({...formData, clientId: '', clientName: ''}); }}
-                          onFocus={() => setShowClientResults(true)}
+                          value={clientSearch}
+                          onChange={e => { setClientSearch(e.target.value); if(formData.clientId) setFormData({...formData, clientId: '', clientName: ''}); }}
                           placeholder={isRtl ? "ابحث بالاسم أو رقم الملف..." : "Search by name or file..."}
                           className="h-14 rounded-2xl border-2 ps-12 font-black text-sm bg-white shadow-inner focus:bg-white transition-all"
                         />
-                        {showClientResults && (
-                           <div className="absolute z-[100] w-full mt-2 bg-white border-2 shadow-2xl rounded-2xl overflow-hidden animate-in fade-in zoom-in-95">
-                              <ScrollArea className="h-48">
-                                 <div className="p-2 space-y-1">
-                                    {filteredClients.map((c: any) => (
-                                      <div 
-                                        key={c.id} 
-                                        onClick={() => { setFormData({...formData, clientId: c.id!, clientName: c.nameAr}); setClientSearch(""); setShowClientResults(false); }}
-                                        className="p-3 rounded-xl cursor-pointer transition-all flex items-center justify-between border-2 border-transparent hover:bg-primary/5 hover:border-primary/10"
-                                      >
-                                         <div className="text-start">
-                                            <p className="font-black text-xs text-slate-800">{c.nameAr}</p>
-                                            <p className="text-[8px] text-slate-400 font-mono">#{c.fileNumber}</p>
-                                         </div>
-                                         <ArrowRight className={cn("h-3 w-3 text-slate-200", isRtl && "rotate-180")} />
-                                      </div>
-                                    ))}
-                                    {filteredClients.length === 0 && <div className="p-8 text-center text-[10px] text-slate-300 italic font-bold">لا يوجد نتائج</div>}
+                      </div>
+                      
+                      <div className="mt-3 p-2 bg-slate-50 rounded-2xl border-2 border-white shadow-inner overflow-hidden">
+                         <ScrollArea className="h-40">
+                            <div className="space-y-1 p-1">
+                               {filteredClients.map((c: any) => (
+                                 <div 
+                                   key={c.id} 
+                                   onClick={() => { setFormData({...formData, clientId: c.id!, clientName: c.nameAr}); setClientSearch(c.nameAr); }}
+                                   className={cn(
+                                     "p-3 rounded-xl cursor-pointer transition-all flex items-center justify-between border-2",
+                                     formData.clientId === c.id ? "bg-primary border-primary text-white shadow-lg" : "bg-white border-slate-100 hover:border-primary/20"
+                                   )}
+                                 >
+                                    <div className="text-start">
+                                       <p className="font-black text-xs">{c.nameAr}</p>
+                                       <p className={cn("text-[8px] font-mono font-bold uppercase", formData.clientId === c.id ? "text-white/60" : "text-slate-400")}>#{c.fileNumber}</p>
+                                    </div>
+                                    <CheckCircle2 className={cn("h-4 w-4", formData.clientId === c.id ? "text-white" : "opacity-0")} />
                                  </div>
-                              </ScrollArea>
-                           </div>
-                        )}
+                               ))}
+                               {filteredClients.length === 0 && <div className="p-8 text-center text-[10px] text-slate-300 italic font-bold">لا يوجد نتائج</div>}
+                            </div>
+                         </ScrollArea>
                       </div>
                    </div>
                 )}
@@ -887,7 +879,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
            </Button>
            <Button onClick={handleSave} disabled={loading || (!isBusyBlock && !formData.clientId)} className="flex-[2] h-16 rounded-[1.5rem] bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-8 border-orange-700">
               {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />}
-              {isRtl ? 'تثبيت الإجراء' : 'Confirm Booking'}
+              {isRtl ? 'تثبيت الحجز' : 'Confirm Booking'}
            </Button>
         </DialogFooter>
       </DialogContent>
