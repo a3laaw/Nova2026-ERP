@@ -92,10 +92,10 @@ function getVisitColor(visitCount: number, status?: string): string {
 }
 
 function cardGradient(color: string) {
-  if (color === '#facc15') return "bg-yellow-50 border-yellow-200 text-yellow-900 shadow-yellow-100/50";
-  if (color === '#22c55e') return "bg-emerald-50 border-emerald-200 text-emerald-900 shadow-emerald-100/50";
-  if (color === '#3b82f6') return "bg-blue-50 border-blue-200 text-blue-900 shadow-blue-100/50";
-  return "bg-slate-50 border-slate-200 text-slate-900 shadow-slate-100/50";
+  if (color === '#facc15') return "bg-yellow-50 border-yellow-200 text-yellow-900 shadow-xl shadow-yellow-100/50";
+  if (color === '#22c55e') return "bg-emerald-50 border-emerald-200 text-emerald-900 shadow-xl shadow-emerald-100/50";
+  if (color === '#3b82f6') return "bg-blue-50 border-blue-200 text-blue-900 shadow-xl shadow-blue-100/50";
+  return "bg-slate-50 border-slate-200 text-slate-900 shadow-xl shadow-slate-100/50";
 }
 
 function generateTimeSlots(s: string, e: string, duration: number, rest: number): string[] {
@@ -191,8 +191,12 @@ export function ArchitecturalAppointmentsView() {
   }, [db, companyId]);
 
   const archEngineers = useMemo(() => {
-    return (allEmployees || []).filter(e => e.departmentName?.includes('معماري') || e.departmentName?.includes('Arch'));
-  }, [allEmployees]);
+    const list = (allEmployees || []).filter(e => e.departmentName?.includes('معماري') || e.departmentName?.includes('Arch'));
+    if (!isAdmin && globalUser?.employeeId) {
+       return list.filter(e => e.id === globalUser.employeeId);
+    }
+    return list;
+  }, [allEmployees, isAdmin, globalUser]);
 
   const clientsMap = useMemo(() => {
     const m = new Map<string, Client>();
@@ -396,8 +400,6 @@ export function ArchitecturalAppointmentsView() {
 function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, clients, isAdmin, currentEngineerId }: any) {
   if (slots.length === 0) return null;
   
-  const visibleEngineers = isAdmin ? engineers : engineers.filter((e: any) => e.id === currentEngineerId);
-
   return (
     <div className="space-y-6">
        <div className="flex items-center gap-4 px-2">
@@ -408,15 +410,15 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
        <div className="overflow-x-auto rounded-[2.5rem] shadow-2xl border-4 border-white bg-white ring-1 ring-black/5">
           <table className="w-full border-collapse">
              <thead>
-                <tr className="bg-slate-50/80">
-                   <th className="w-24 p-6 border-b-2 border-white font-black text-[10px] text-slate-400 uppercase tracking-[0.2em]">{isRtl ? 'الوقت' : 'Time'}</th>
-                   {visibleEngineers.map((eng: Employee) => (
-                     <th key={eng.id} className="p-6 border-b-2 border-white border-s-2 text-start">
+                <tr className="bg-slate-100/80">
+                   <th className="w-24 p-6 border-b-2 border-slate-200 font-black text-[10px] text-slate-500 uppercase tracking-[0.2em]">{isRtl ? 'الوقت' : 'Time'}</th>
+                   {engineers.map((eng: Employee) => (
+                     <th key={eng.id} className="p-6 border-b-2 border-slate-200 border-s-2 border-s-slate-100 text-start bg-slate-50/50">
                         <div className="flex items-center gap-3">
-                           <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-xs uppercase shadow-inner">{eng.fullName.charAt(0)}</div>
+                           <div className="h-10 w-10 rounded-xl bg-primary/20 text-primary flex items-center justify-center font-black text-xs uppercase shadow-md border-2 border-white">{eng.fullName.charAt(0)}</div>
                            <div className="flex flex-col">
-                              <span className="font-black text-slate-800 text-sm">{eng.fullName}</span>
-                              <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">{eng.jobTitle}</span>
+                              <span className="font-black text-slate-900 text-sm leading-none">{eng.fullName}</span>
+                              <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter mt-1">{eng.jobTitle}</span>
                            </div>
                         </div>
                      </th>
@@ -424,19 +426,19 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                 </tr>
              </thead>
              <tbody>
-                {slots.map((slot: string) => (
-                  <tr key={slot} className="group/row">
-                     <td className="p-6 text-center border-b-2 border-white font-mono font-black text-slate-400 bg-slate-50/30 text-xs">{slot}</td>
-                     {visibleEngineers.map((eng: Employee) => {
+                {slots.map((slot: string, sIdx: number) => (
+                  <tr key={slot} className={cn("group/row", sIdx % 2 === 0 ? "bg-white" : "bg-slate-50/20")}>
+                     <td className="p-6 text-center border-b-2 border-slate-200 font-mono font-black text-slate-500 bg-slate-100/50 text-xs">{slot}</td>
+                     {engineers.map((eng: Employee) => {
                         const appt = grid.get(eng.id)?.get(slot);
                         if (appt) {
                            const m = meta.get(appt.id);
                            const client = clients.get(appt.clientId);
                            return (
-                             <td key={eng.id} className="p-2 border-b-2 border-white border-s-2 align-top">
+                             <td key={eng.id} className="p-2 border-b-2 border-slate-200 border-s-2 border-s-slate-100 align-top relative">
                                 <Card 
                                   onClick={() => onAction('edit', eng, slot, appt)}
-                                  className={cn("border-2 p-4 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] rounded-2xl h-full", cardGradient(m?.color || ''))}
+                                  className={cn("border-2 p-4 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] rounded-2xl h-full shadow-lg", cardGradient(m?.color || ''))}
                                 >
                                    <div className="flex justify-between items-start mb-2">
                                       <div className="text-start">
@@ -445,7 +447,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                                             <MapPin className="h-2 w-2" /> {client?.governorateName || '---'}
                                          </div>
                                       </div>
-                                      <Badge className="bg-white/40 text-inherit border-0 font-black text-[8px] h-5 px-1.5 rounded-lg">VISIT {m?.visitCount}</Badge>
+                                      <Badge className="bg-white/60 text-inherit border-0 font-black text-[8px] h-5 px-1.5 rounded-lg shadow-sm">VISIT {m?.visitCount}</Badge>
                                    </div>
                                 </Card>
                              </td>
@@ -455,10 +457,12 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                           <td 
                             key={eng.id} 
                             onClick={() => onAction('create', eng, slot)}
-                            className="p-2 border-b-2 border-white border-s-2 group-hover/row:bg-slate-50/50 transition-colors cursor-pointer"
+                            className="p-2 border-b-2 border-slate-200 border-s-2 border-s-slate-100 group-hover/row:bg-primary/[0.03] transition-colors cursor-pointer"
                           >
                              <div className="h-16 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
-                                <Plus className="h-6 w-6 text-slate-200" />
+                                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                   <Plus className="h-4 w-4" />
+                                </div>
                              </div>
                           </td>
                         );
@@ -478,7 +482,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
   const [loading, setLoading] = useState(false);
   const [isNewClient, setIsNewClient] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
-  const [clientSearchOpen, setClientSearchOpen] = useState(false);
   
   const [govSearch, setGovSearch] = useState("");
   const [govSearchOpen, setGovSearchOpen] = useState(false);
@@ -497,12 +500,13 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
   });
 
   // Sovereign Isolation Protocol: 
-  // حصر العملاء بناءً على "المهندس المنشود" حصراً
+  // حصر العملاء بناءً على "المهندس المنشود" حصراً لضمان عدم تداخل المحافظ
   const targetEngineerId = data?.engineer?.id || data?.appointment?.engineerId;
   
   const filteredClients = useMemo(() => {
     let list = clients || [];
 
+    // إجبار الفلترة على المهندس المنشود فقط
     if (targetEngineerId) {
       list = list.filter((c: any) => c.assignedEngineerId === targetEngineerId);
     }
@@ -533,7 +537,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
        });
        setIsNewClient(false);
        setClientSearch("");
-       setClientSearchOpen(false);
        setGovSearch("");
        setGovSearchOpen(false);
     }
@@ -636,8 +639,8 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="rounded-[2rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
-        <div className="bg-primary/5 p-8 text-slate-900 text-start border-b shrink-0">
+      <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
+        <div className="bg-slate-50 p-8 text-slate-900 text-start border-b shrink-0">
            <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                  <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center text-primary shadow-xl border-2 border-primary/10">
@@ -711,44 +714,40 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                     </div>
                  </div>
               ) : (
-                 <div className="space-y-2 relative">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اختيار العميل (المنسوب لهذا المهندس)' : 'Client Selection (Assigned to this engineer)'}</Label>
-                    <div className="relative">
-                       <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
-                       <Input 
-                         value={clientSearch}
-                         onChange={e => { setClientSearch(e.target.value); setClientSearchOpen(true); }}
-                         onFocus={() => setClientSearchOpen(true)}
-                         placeholder={formData.clientName || (isRtl ? "ابحث بالاسم أو رقم الملف..." : "Search clients...")}
-                         className="h-14 rounded-2xl border-2 ps-12 font-black text-sm bg-slate-50/50 shadow-inner focus:bg-white transition-all"
-                       />
+                 <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'البحث في قاعدة عملائك المنسوبين' : 'Search your assigned clients'}</Label>
+                    <div className="p-6 rounded-[2rem] border-2 border-slate-100 bg-slate-50/30 space-y-4">
+                       <div className="relative">
+                          <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
+                          <Input 
+                            value={clientSearch}
+                            onChange={e => setClientSearch(e.target.value)}
+                            placeholder={isRtl ? "ابحث بالاسم أو رقم الملف..." : "Search by name or file..."}
+                            className="h-14 rounded-2xl border-2 ps-12 font-black text-sm bg-white shadow-inner focus:bg-white transition-all"
+                          />
+                       </div>
                        
-                       {clientSearchOpen && (
-                         <div className="absolute z-[100] w-full mt-2 bg-white border-2 shadow-2xl rounded-[1.5rem] overflow-hidden animate-in fade-in zoom-in-95">
-                            <ScrollArea className="h-64">
-                               <div className="p-2 space-y-1">
-                                  {filteredClients.map((c: any) => (
-                                    <div 
-                                      key={c.id} 
-                                      onClick={() => { 
-                                        setFormData({...formData, clientId: c.id!, clientName: c.nameAr}); 
-                                        setClientSearch("");
-                                        setClientSearchOpen(false); 
-                                      }}
-                                      className="p-4 rounded-xl hover:bg-primary/5 cursor-pointer transition-all border-b last:border-0 border-slate-50 group flex flex-col text-start"
-                                    >
-                                       <span className="text-xs font-black text-slate-800 group-hover:text-primary transition-colors">{c.nameAr}</span>
-                                       <span className="text-[9px] text-slate-400 font-mono mt-1">#{c.fileNumber}</span>
-                                    </div>
-                                  ))}
-                                  {filteredClients.length === 0 && <div className="p-12 text-center text-[10px] text-slate-400 italic font-bold">لا يوجد عملاء متاحين لهذا المهندس</div>}
+                       <ScrollArea className="h-48 rounded-xl border bg-white">
+                          <div className="p-2 space-y-1">
+                             {filteredClients.map((c: any) => (
+                               <div 
+                                 key={c.id} 
+                                 onClick={() => setFormData({...formData, clientId: c.id!, clientName: c.nameAr})}
+                                 className={cn(
+                                   "p-3 rounded-lg cursor-pointer transition-all flex items-center justify-between border-2",
+                                   formData.clientId === c.id ? "bg-primary/10 border-primary" : "bg-white border-transparent hover:bg-slate-50"
+                                 )}
+                               >
+                                  <div className="text-start">
+                                     <p className="font-black text-xs text-slate-800">{c.nameAr}</p>
+                                     <p className="text-[8px] text-slate-400 font-mono">#{c.fileNumber}</p>
+                                  </div>
+                                  {formData.clientId === c.id && <CheckCircle2 className="h-4 w-4 text-primary" />}
                                </div>
-                            </ScrollArea>
-                            <div className="p-3 bg-slate-50 border-t flex justify-end">
-                               <Button variant="ghost" size="sm" onClick={() => setClientSearchOpen(false)} className="h-8 rounded-lg text-[9px] font-black uppercase">إغلاق القائمة</Button>
-                            </div>
-                         </div>
-                       )}
+                             ))}
+                             {filteredClients.length === 0 && <div className="p-8 text-center text-[10px] text-slate-300 italic font-bold">لا يوجد عملاء متاحين لهذا المهندس</div>}
+                          </div>
+                       </ScrollArea>
                     </div>
                  </div>
               )}
