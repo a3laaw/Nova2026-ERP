@@ -37,7 +37,7 @@ export default function AppointmentsListPage() {
 
   const { data: appointments, loading } = useCollection<Appointment>(appQuery);
 
-  const filtered = appointments.filter(a => 
+  const filtered = (appointments || []).filter(a => 
     a.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
     a.clientName?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -54,9 +54,6 @@ export default function AppointmentsListPage() {
               {isRtl ? 'جدولة اللقاءات مع العملاء والزيارات الميدانية الاستشارية.' : 'Schedule client meetings and consulting site visits.'}
            </p>
         </div>
-        <Button onClick={() => router.push('/dashboard/appointments/new')} className="h-12 px-8 rounded-xl shadow-xl shadow-primary/20 gap-2">
-          <Plus className="h-5 w-5" /> {isRtl ? 'موعد جديد' : 'New Appointment'}
-        </Button>
       </div>
 
       <Tabs defaultValue="calendar" className="w-full">

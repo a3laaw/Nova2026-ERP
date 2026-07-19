@@ -13,8 +13,8 @@ import {
   setHours, 
   setMinutes,
   addDays,
-  subDays,
-  eachDayOfInterval
+  eachDayOfInterval,
+  subDays
 } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import { 
@@ -25,24 +25,19 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Printer, 
-  MoreVertical,
   Edit3,
-  Trash2,
-  XCircle,
   Loader2,
   CheckCircle2,
   MapPin,
-  Info,
-  Calendar as CalendarIcon,
-  Search,
-  HardHat,
-  Save,
   Navigation,
   UserPlus,
-  Building2,
   Phone,
   Sparkles,
-  X
+  X,
+  Save,
+  Trash2,
+  XCircle,
+  MoreVertical
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs } from 'firebase/firestore';
@@ -152,12 +147,17 @@ export function ArchitecturalAppointmentsView() {
   const db = useFirestore();
   const companyId = globalUser?.companyId;
 
+  // Hydration Stability
+  const [mounted, setMounted] = useState(false);
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [settings, setSettings] = useState<WorkHoursSettings | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogData, setDialogData] = useState<{ mode: 'create' | 'edit'; appointment?: Appointment; slot?: string; engineer?: Employee } | null>(null);
 
-  // توليد قائمة الأيام المعروضة في الشريط العلوي (3 أيام قبل و3 أيام بعد اليوم الحالي)
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const visibleDates = useMemo(() => {
     return eachDayOfInterval({
       start: subDays(currentDate, 2),
@@ -260,14 +260,14 @@ export function ArchitecturalAppointmentsView() {
     setDialogOpen(true);
   };
 
-  const isLoading = apptsLoading || empsLoading || clientsLoading || !settings;
+  const isLoading = apptsLoading || empsLoading || clientsLoading || !settings || !mounted;
 
-  if (isLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
+  if (isLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
   return (
     <div className="space-y-12 animate-in fade-in duration-700" dir={dir}>
       
-      {/* Sovereign Date Slider Header */}
+      {/* Date Slider Header */}
       <div className="flex flex-col items-center gap-6 no-print">
         <h2 className="text-xl font-black text-primary uppercase tracking-widest">{isRtl ? 'المواعيد' : 'Appointments'}</h2>
         
@@ -278,7 +278,7 @@ export function ArchitecturalAppointmentsView() {
              onClick={() => setCurrentDate(subDays(currentDate, 1))}
              className="h-12 w-12 rounded-full hover:bg-slate-100 transition-all text-slate-400"
            >
-              <ChevronLeft className={cn("h-6 w-6", !isRtl && "rotate-0")} />
+              <ChevronLeft className={cn("h-6 w-6", !isRtl && "rotate-180")} />
            </Button>
 
            <div className="flex gap-4 overflow-hidden py-4 px-2">
@@ -312,7 +312,7 @@ export function ArchitecturalAppointmentsView() {
              onClick={() => setCurrentDate(addDays(currentDate, 1))}
              className="h-12 w-12 rounded-full hover:bg-slate-100 transition-all text-slate-400"
            >
-              <ChevronRight className={cn("h-6 w-6", !isRtl && "rotate-0")} />
+              <ChevronRight className={cn("h-6 w-6", isRtl && "rotate-180")} />
            </Button>
         </div>
       </div>
@@ -664,8 +664,10 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, u
         </div>
 
         <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4">
-           <Button variant="outline" onClick={onClose} className="flex-1 h-16 rounded-2xl border-2 font-bold bg-white">إلغاء</Button>
-           <Button onClick={handleSave} disabled={loading} className="flex-[2] h-16 rounded-2xl bg-primary text-white font-black shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-2 border-b-8 border-orange-700">
+           <Button variant="outline" onClick={onClose} className="flex-1 h-16 rounded-[1.5rem] border-2 font-black text-lg bg-white shadow-sm">
+              {isRtl ? 'إلغاء' : 'Cancel'}
+           </Button>
+           <Button onClick={handleSave} disabled={loading} className="flex-[2] h-16 rounded-[1.5rem] bg-primary text-white font-black shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-2 border-b-8 border-orange-700">
               {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />}
               {isRtl ? 'تثبيت الموعد' : 'Confirm Booking'}
            </Button>
