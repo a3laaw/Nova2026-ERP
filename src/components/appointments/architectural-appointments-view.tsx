@@ -203,6 +203,8 @@ export function ArchitecturalAppointmentsView() {
 
   const filteredAppointments = useMemo(() => {
     let list = (rawAppointments || []).filter(a => a.status !== 'cancelled' && isSameDay(parseISO(a.start), currentDate));
+    
+    // بروتوكول العزل: إذا كان المستخدم مهندساً يرى عموده الخاص فقط
     if (!isAdmin && globalUser?.employeeId) {
       list = list.filter(a => a.engineerId === globalUser.employeeId);
     }
@@ -346,6 +348,7 @@ export function ArchitecturalAppointmentsView() {
                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'عملاء متعاقدون' : 'Contracted'}</p>
                <h3 className="text-3xl font-black text-blue-600">{stats.blue}</h3>
             </CardContent>
+         </Card>
       </div>
 
       <div className="space-y-12 pb-20">
@@ -395,6 +398,8 @@ export function ArchitecturalAppointmentsView() {
 
 function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, clients, isAdmin, currentEngineerId }: any) {
   if (slots.length === 0) return null;
+  
+  // في وضع المهندس العادي: لا نظهر إلا عمود المهندس الحالي
   const visibleEngineers = isAdmin ? engineers : engineers.filter((e: any) => e.id === currentEngineerId);
 
   return (
@@ -490,6 +495,16 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     notes: ''
   });
 
+  // إعادة تعيين النموذج عند إغلاق النافذة لضمان عدم حدوث تجميد أو بقاء بيانات قديمة
+  useEffect(() => {
+    if (!isOpen) {
+       setFormData({
+         title: '', clientId: '', clientName: '', newClientName: '', newClientPhone: '', newClientGovId: '', date: '', time: '', notes: ''
+       });
+       setIsNewClient(false);
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     if (isOpen && data) {
       setFormData({
@@ -503,10 +518,10 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         time: data.slot || (data.appointment ? format(parseISO(data.appointment.start), 'HH:mm') : '08:00'),
         notes: data.appointment?.notes || ''
       });
-      setIsNewClient(false);
     }
   }, [isOpen, data]);
 
+  // فلترة قائمة العملاء بناءً على بروتوكول العزل المعلوماتي
   const filteredClients = useMemo(() => {
     if (isAdmin) return clients;
     return clients.filter((c: any) => c.assignedEngineerId === userId);
@@ -525,6 +540,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
       let targetClientId = formData.clientId;
       let targetClientName = formData.clientName;
 
+      // معالجة "العميل الجديد" (تسجيله فوراً في القاعدة)
       if (isCreate && isNewClient) {
         if (!formData.newClientName || !formData.newClientPhone) {
           toast({ variant: "destructive", title: isRtl ? "بيانات العميل الجديد ناقصة" : "New client data missing" });
@@ -552,14 +568,15 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         targetClientName = selected?.nameAr || '';
       }
 
-      const isDoubleBooked = rawAppointments?.some((a: any) => 
+      // فحص التعارض السيادي: منع العميل من حجز موعدين في نفس الوقت عند أي مهندس
+      const isConflict = rawAppointments?.some((a: any) => 
         a.clientId === targetClientId && 
         a.start === start && 
         a.status !== 'cancelled' &&
         a.id !== data.appointment?.id
       );
 
-      if (isDoubleBooked) {
+      if (isConflict) {
         toast({ 
           variant: "destructive", 
           title: isRtl ? "تنبيه: تعارض في المواعيد" : "Schedule Conflict", 
@@ -608,6 +625,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         dir={dir}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
+        {/* Header - Light & Clean */}
         <div className="bg-primary/5 p-8 text-slate-900 text-start border-b">
            <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -630,6 +648,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         </div>
 
         <div className="p-8 space-y-6 text-start max-h-[65vh] overflow-y-auto scrollbar-hide">
+           {/* خيار "عميل جديد" يظهر فقط في وضع الإضافة */}
            {isCreate && (
              <div className="flex items-center justify-between p-5 rounded-[1.5rem] bg-slate-50 border-2 border-white shadow-inner">
                 <div className="flex items-center gap-3">
@@ -687,6 +706,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
               <Input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="h-12 rounded-xl border-2 font-bold" placeholder={isRtl ? "مثلاً: معاينة موقع فيلا السالمية" : "e.g. Site Visit"} />
            </div>
 
+           {/* في وضع التعديل فقط نسمح بتغيير التاريخ والوقت يدوياً */}
            {!isCreate && (
               <div className="grid grid-cols-2 gap-4 animate-in fade-in">
                  <div className="space-y-2">
@@ -694,7 +714,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                     <SmartDateInput value={formData.date} onChange={v => setFormData({...formData, date: v})} />
                  </div>
                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'الوقت' : 'Time'}</Label>
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'وقت الموعد' : 'Time'}</Label>
                     <Input type="time" value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} className="h-11 rounded-xl border-2 font-bold" />
                  </div>
               </div>
