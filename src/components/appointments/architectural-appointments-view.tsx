@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -38,7 +37,10 @@ import {
   Hammer,
   User as UserIcon,
   ShieldCheck,
-  Building2
+  Building2,
+  Filter,
+  Eye,
+  AlertTriangle
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs, setDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
@@ -188,11 +190,9 @@ export function ArchitecturalAppointmentsView() {
     }
   }, [db, companyId]);
 
-  const visibleEngineers = useMemo(() => {
-    const archEmps = (allEmployees || []).filter(e => e.departmentName?.includes('معماري') || e.departmentName?.includes('Arch'));
-    if (isAdmin) return archEmps;
-    return archEmps.filter(e => e.id === globalUser?.employeeId);
-  }, [allEmployees, isAdmin, globalUser?.employeeId]);
+  const archEngineers = useMemo(() => {
+    return (allEmployees || []).filter(e => e.departmentName?.includes('معماري') || e.departmentName?.includes('Arch'));
+  }, [allEmployees]);
 
   const clientsMap = useMemo(() => {
     const m = new Map<string, Client>();
@@ -250,7 +250,7 @@ export function ArchitecturalAppointmentsView() {
 
   const grid = useMemo(() => {
     const map = new Map<string, Map<string, Appointment>>();
-    visibleEngineers.forEach(eng => {
+    archEngineers.forEach(eng => {
       const engMap = new Map<string, Appointment>();
       filteredAppointments.filter(a => a.engineerId === eng.id).forEach(a => {
         const time = format(parseISO(a.start), 'HH:mm');
@@ -259,7 +259,7 @@ export function ArchitecturalAppointmentsView() {
       map.set(eng.id!, engMap);
     });
     return map;
-  }, [visibleEngineers, filteredAppointments]);
+  }, [archEngineers, filteredAppointments]);
 
   const handleAction = (mode: 'create' | 'edit', eng?: Employee, slot?: string, appt?: Appointment) => {
     setDialogData({ mode, engineer: eng, slot, appointment: appt });
@@ -352,23 +352,27 @@ export function ArchitecturalAppointmentsView() {
          <GridSection 
            title={isRtl ? "الفترة الصباحية ☀️" : "Morning Session"} 
            slots={timeSlots.morning} 
-           engineers={visibleEngineers} 
+           engineers={archEngineers} 
            grid={grid} 
            meta={apptMeta} 
            onAction={handleAction}
            isRtl={isRtl}
            clients={clientsMap}
+           isAdmin={isAdmin}
+           currentEngineerId={globalUser?.employeeId}
          />
          {timeSlots.evening.length > 0 && (
            <GridSection 
              title={isRtl ? "الفترة المسائية 🌆" : "Evening Session"} 
              slots={timeSlots.evening} 
-             engineers={visibleEngineers} 
+             engineers={archEngineers} 
              grid={grid} 
              meta={apptMeta} 
              onAction={handleAction}
              isRtl={isRtl}
              clients={clientsMap}
+             isAdmin={isAdmin}
+             currentEngineerId={globalUser?.employeeId}
            />
          )}
       </div>
@@ -389,9 +393,11 @@ export function ArchitecturalAppointmentsView() {
   );
 }
 
-function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, clients }: any) {
+function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, clients, isAdmin, currentEngineerId }: any) {
   if (slots.length === 0) return null;
   
+  const visibleEngineers = isAdmin ? engineers : engineers.filter((e: any) => e.id === currentEngineerId);
+
   return (
     <div className="space-y-6">
        <div className="flex items-center gap-4 px-2">
@@ -404,7 +410,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
              <thead>
                 <tr className="bg-slate-50/80">
                    <th className="w-24 p-6 border-b-2 border-white font-black text-[10px] text-slate-400 uppercase tracking-[0.2em]">{isRtl ? 'الوقت' : 'Time'}</th>
-                   {engineers.map((eng: Employee) => (
+                   {visibleEngineers.map((eng: Employee) => (
                      <th key={eng.id} className="p-6 border-b-2 border-white border-s-2 text-start">
                         <div className="flex items-center gap-3">
                            <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-xs uppercase shadow-inner">{eng.fullName.charAt(0)}</div>
@@ -421,7 +427,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                 {slots.map((slot: string) => (
                   <tr key={slot} className="group/row">
                      <td className="p-6 text-center border-b-2 border-white font-mono font-black text-slate-400 bg-slate-50/30 text-xs">{slot}</td>
-                     {engineers.map((eng: Employee) => {
+                     {visibleEngineers.map((eng: Employee) => {
                         const appt = grid.get(eng.id)?.get(slot);
                         if (appt) {
                            const m = meta.get(appt.id);
@@ -492,9 +498,10 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
   // Sovereign Isolation Protocol: 
   // حصر العملاء بناءً على "المهندس المنشود" حصراً
+  const targetEngineerId = data?.engineer?.id || data?.appointment?.engineerId;
+  
   const filteredClients = useMemo(() => {
     let list = clients || [];
-    const targetEngineerId = data?.engineer?.id || data?.appointment?.engineerId;
 
     if (targetEngineerId) {
       list = list.filter((c: any) => c.assignedEngineerId === targetEngineerId);
@@ -508,7 +515,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
       );
     }
     return list;
-  }, [clients, data, clientSearch]);
+  }, [clients, targetEngineerId, clientSearch]);
 
   const filteredGovs = useMemo(() => {
     if (!govSearch.trim()) return governorates;
@@ -584,6 +591,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         targetClientName = formData.newClientName;
       }
 
+      // فحص تعارض المواعيد للعميل (Anti-Clash Logic)
       const isConflict = rawAppointments?.some((a: any) => 
         a.clientId === targetClientId && a.start === start && a.status !== 'cancelled' && a.id !== data.appointment?.id
       );
@@ -704,7 +712,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                  </div>
               ) : (
                  <div className="space-y-2 relative">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اختيار العميل (المسؤول عنه المهندس المنشود)' : 'Registered Client (Assigned to target eng)'}</Label>
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اختيار العميل (المنسوب لهذا المهندس)' : 'Client Selection (Assigned to this engineer)'}</Label>
                     <div className="relative">
                        <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
                        <Input 
@@ -733,7 +741,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                                        <span className="text-[9px] text-slate-400 font-mono mt-1">#{c.fileNumber}</span>
                                     </div>
                                   ))}
-                                  {filteredClients.length === 0 && <div className="p-12 text-center text-[10px] text-slate-400 italic font-bold">لا يوجد عملاء منسوبين لهذا المهندس</div>}
+                                  {filteredClients.length === 0 && <div className="p-12 text-center text-[10px] text-slate-400 italic font-bold">لا يوجد عملاء متاحين لهذا المهندس</div>}
                                </div>
                             </ScrollArea>
                             <div className="p-3 bg-slate-50 border-t flex justify-end">
