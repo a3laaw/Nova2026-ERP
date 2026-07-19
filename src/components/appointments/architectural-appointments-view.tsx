@@ -40,7 +40,8 @@ import {
   MoreVertical,
   Globe,
   Search,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon,
+  Target
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs } from 'firebase/firestore';
@@ -73,6 +74,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SmartDateInput } from '@/components/ui/smart-date-input';
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 // --- Helpers ---
 const weekDays: { id: DayOfWeek; labelAr: string; labelEn: string }[] = [
@@ -204,7 +206,7 @@ export function ArchitecturalAppointmentsView() {
   const filteredAppointments = useMemo(() => {
     let list = (rawAppointments || []).filter(a => a.status !== 'cancelled' && isSameDay(parseISO(a.start), currentDate));
     
-    // بروتوكول العزل: إذا كان المستخدم مهندساً يرى عموده الخاص فقط
+    // بروتوكول العزل: المهندس يرى مواعيده فقط
     if (!isAdmin && globalUser?.employeeId) {
       list = list.filter(a => a.engineerId === globalUser.employeeId);
     }
@@ -399,7 +401,7 @@ export function ArchitecturalAppointmentsView() {
 function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, clients, isAdmin, currentEngineerId }: any) {
   if (slots.length === 0) return null;
   
-  // في وضع المهندس العادي: لا نظهر إلا عمود المهندس الحالي
+  // تصفية الأعمدة: المهندس لا يرى إلا عموده الخاص
   const visibleEngineers = isAdmin ? engineers : engineers.filter((e: any) => e.id === currentEngineerId);
 
   return (
@@ -482,6 +484,8 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
   
   const [loading, setLoading] = useState(false);
   const [isNewClient, setIsNewClient] = useState(false);
+  const [clientSearch, setClientSearch] = useState("");
+  const [govSearch, setGovSearch] = useState("");
   
   const [formData, setFormData] = useState({
     title: '',
@@ -495,13 +499,14 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     notes: ''
   });
 
-  // إعادة تعيين النموذج عند إغلاق النافذة لضمان عدم حدوث تجميد أو بقاء بيانات قديمة
   useEffect(() => {
     if (!isOpen) {
        setFormData({
          title: '', clientId: '', clientName: '', newClientName: '', newClientPhone: '', newClientGovId: '', date: '', time: '', notes: ''
        });
        setIsNewClient(false);
+       setClientSearch("");
+       setGovSearch("");
     }
   }, [isOpen]);
 
@@ -521,11 +526,21 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     }
   }, [isOpen, data]);
 
-  // فلترة قائمة العملاء بناءً على بروتوكول العزل المعلوماتي
   const filteredClients = useMemo(() => {
-    if (isAdmin) return clients;
-    return clients.filter((c: any) => c.assignedEngineerId === userId);
-  }, [clients, isAdmin, userId]);
+    let list = clients;
+    if (!isAdmin) {
+      list = clients.filter((c: any) => c.assignedEngineerId === userId);
+    }
+    if (clientSearch.trim()) {
+      list = list.filter((c: any) => c.nameAr?.includes(clientSearch) || c.fileNumber?.includes(clientSearch));
+    }
+    return list;
+  }, [clients, isAdmin, userId, clientSearch]);
+
+  const filteredGovs = useMemo(() => {
+    if (!govSearch.trim()) return governorates;
+    return governorates.filter((g: any) => g.name?.includes(govSearch) || g.nameEn?.toLowerCase().includes(govSearch.toLowerCase()));
+  }, [governorates, govSearch]);
 
   const handleSave = async () => {
     if (!data) return;
@@ -540,17 +555,14 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
       let targetClientId = formData.clientId;
       let targetClientName = formData.clientName;
 
-      // معالجة "العميل الجديد" (تسجيله فوراً في القاعدة)
       if (isCreate && isNewClient) {
         if (!formData.newClientName || !formData.newClientPhone) {
           toast({ variant: "destructive", title: isRtl ? "بيانات العميل الجديد ناقصة" : "New client data missing" });
           setLoading(false);
           return;
         }
-
         const gov = governorates?.find((g: any) => g.id === formData.newClientGovId);
         const nextFileNum = await clientService.getNextFileNumber();
-        
         targetClientId = await clientService.addClient({
           nameAr: formData.newClientName,
           mobile: formData.newClientPhone,
@@ -561,27 +573,18 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
           assignedEngineerId: userId,
           assignedEngineerName: userName
         }, userId, userName);
-        
         targetClientName = formData.newClientName;
       } else if (isCreate) {
         const selected = filteredClients.find((c: any) => c.id === targetClientId);
         targetClientName = selected?.nameAr || '';
       }
 
-      // فحص التعارض السيادي: منع العميل من حجز موعدين في نفس الوقت عند أي مهندس
       const isConflict = rawAppointments?.some((a: any) => 
-        a.clientId === targetClientId && 
-        a.start === start && 
-        a.status !== 'cancelled' &&
-        a.id !== data.appointment?.id
+        a.clientId === targetClientId && a.start === start && a.status !== 'cancelled' && a.id !== data.appointment?.id
       );
 
       if (isConflict) {
-        toast({ 
-          variant: "destructive", 
-          title: isRtl ? "تنبيه: تعارض في المواعيد" : "Schedule Conflict", 
-          description: isRtl ? "هذا العميل لديه موعد آخر مسجل في نفس التوقيت بالضبط." : "Client already has an appointment at this specific time."
-        });
+        toast({ variant: "destructive", title: isRtl ? "تنبيه: تعارض في المواعيد" : "Schedule Conflict", description: isRtl ? "هذا العميل لديه موعد آخر مسجل في نفس التوقيت بالضبط." : "Client already has an appointment at this specific time." });
         setLoading(false);
         return;
       }
@@ -620,12 +623,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent 
-        className="rounded-[2rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" 
-        dir={dir}
-        onOpenAutoFocus={(e) => e.preventDefault()}
-      >
-        {/* Header - Light & Clean */}
+      <DialogContent className="rounded-[2rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
         <div className="bg-primary/5 p-8 text-slate-900 text-start border-b">
            <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -648,7 +646,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         </div>
 
         <div className="p-8 space-y-6 text-start max-h-[65vh] overflow-y-auto scrollbar-hide">
-           {/* خيار "عميل جديد" يظهر فقط في وضع الإضافة */}
            {isCreate && (
              <div className="flex items-center justify-between p-5 rounded-[1.5rem] bg-slate-50 border-2 border-white shadow-inner">
                 <div className="flex items-center gap-3">
@@ -681,8 +678,16 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                           <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'المحافظة' : 'Gov'}</Label>
                           <Select value={formData.newClientGovId} onValueChange={v => setFormData({...formData, newClientGovId: v})}>
                              <SelectTrigger className="h-11 border-2 font-bold bg-white rounded-xl"><SelectValue placeholder="..." /></SelectTrigger>
-                             <SelectContent className="rounded-xl border-0 shadow-2xl">
-                                {governorates?.map((g: any) => <SelectItem key={g.id} value={g.id!} className="font-bold">{isRtl ? g.name : g.nameEn}</SelectItem>)}
+                             <SelectContent className="rounded-xl border-0 shadow-2xl p-0 overflow-hidden">
+                                <div className="p-2 border-b bg-slate-50">
+                                   <div className="relative">
+                                      <Search className="absolute start-2 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400" />
+                                      <Input value={govSearch} onChange={e => setGovSearch(e.target.value)} placeholder={isRtl ? "بحث..." : "Search..."} className="h-8 rounded-md text-[10px] ps-7 border-0 bg-white" />
+                                   </div>
+                                </div>
+                                <ScrollArea className="h-48">
+                                  {filteredGovs?.map((g: any) => <SelectItem key={g.id} value={g.id!} className="font-bold py-2">{isRtl ? g.name : g.nameEn}</SelectItem>)}
+                                </ScrollArea>
                              </SelectContent>
                           </Select>
                        </div>
@@ -693,8 +698,24 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اختر العميل المسجل' : 'Registered Client'}</Label>
                     <Select value={formData.clientId} onValueChange={v => setFormData({...formData, clientId: v})}>
                        <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/50"><SelectValue placeholder={isRtl ? "البحث في قاعدة عملائك..." : "Search your clients..."} /></SelectTrigger>
-                       <SelectContent className="rounded-xl border-0 shadow-2xl">
-                          {filteredClients.map((c: any) => <SelectItem key={c.id} value={c.id!} className="font-bold py-3 border-b last:border-0 border-slate-50">{c.nameAr}</SelectItem>)}
+                       <SelectContent className="rounded-xl border-0 shadow-2xl p-0 overflow-hidden">
+                          <div className="p-3 border-b bg-slate-50">
+                             <div className="relative">
+                                <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                <Input value={clientSearch} onChange={e => setClientSearch(e.target.value)} placeholder={isRtl ? "ابحث بالاسم أو رقم الملف..." : "Search by name or file..."} className="h-10 rounded-lg text-xs ps-10 border-0 bg-white shadow-inner" />
+                             </div>
+                          </div>
+                          <ScrollArea className="h-64">
+                             {filteredClients.map((c: any) => (
+                               <SelectItem key={c.id} value={c.id!} className="font-bold py-3 border-b last:border-0 border-slate-50">
+                                 <div className="flex flex-col text-start">
+                                    <span className="text-xs">{c.nameAr}</span>
+                                    <span className="text-[9px] text-slate-400 font-mono">{c.fileNumber}</span>
+                                 </div>
+                               </SelectItem>
+                             ))}
+                             {filteredClients.length === 0 && <div className="p-8 text-center text-[10px] text-slate-400 italic">لا توجد نتائج</div>}
+                          </ScrollArea>
                        </SelectContent>
                     </Select>
                  </div>
@@ -706,7 +727,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
               <Input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="h-12 rounded-xl border-2 font-bold" placeholder={isRtl ? "مثلاً: معاينة موقع فيلا السالمية" : "e.g. Site Visit"} />
            </div>
 
-           {/* في وضع التعديل فقط نسمح بتغيير التاريخ والوقت يدوياً */}
            {!isCreate && (
               <div className="grid grid-cols-2 gap-4 animate-in fade-in">
                  <div className="space-y-2">
@@ -739,3 +759,83 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     </Dialog>
   );
 }
+
+function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, clients, isAdmin, currentEngineerId }: any) {
+  if (slots.length === 0) return null;
+  
+  const visibleEngineers = isAdmin ? engineers : engineers.filter((e: any) => e.id === currentEngineerId);
+
+  return (
+    <div className="space-y-6">
+       <div className="flex items-center gap-4 px-2">
+          <Badge className="bg-slate-900 text-white font-black px-6 py-2 rounded-full text-xs shadow-lg uppercase tracking-widest">{title}</Badge>
+          <div className="h-[1px] flex-1 bg-slate-200" />
+       </div>
+
+       <div className="overflow-x-auto rounded-[2.5rem] shadow-2xl border-4 border-white bg-white ring-1 ring-black/5">
+          <table className="w-full border-collapse">
+             <thead>
+                <tr className="bg-slate-50/80">
+                   <th className="w-24 p-6 border-b-2 border-white font-black text-[10px] text-slate-400 uppercase tracking-[0.2em]">{isRtl ? 'الوقت' : 'Time'}</th>
+                   {visibleEngineers.map((eng: Employee) => (
+                     <th key={eng.id} className="p-6 border-b-2 border-white border-s-2 text-start">
+                        <div className="flex items-center gap-3">
+                           <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-xs uppercase shadow-inner">{eng.fullName.charAt(0)}</div>
+                           <div className="flex flex-col">
+                              <span className="font-black text-slate-800 text-sm">{eng.fullName}</span>
+                              <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">{eng.jobTitle}</span>
+                           </div>
+                        </div>
+                     </th>
+                   ))}
+                </tr>
+             </thead>
+             <tbody>
+                {slots.map((slot: string) => (
+                  <tr key={slot} className="group/row">
+                     <td className="p-6 text-center border-b-2 border-white font-mono font-black text-slate-400 bg-slate-50/30 text-xs">{slot}</td>
+                     {visibleEngineers.map((eng: Employee) => {
+                        const appt = grid.get(eng.id)?.get(slot);
+                        if (appt) {
+                           const m = meta.get(appt.id);
+                           const client = clients.get(appt.clientId);
+                           return (
+                             <td key={eng.id} className="p-2 border-b-2 border-white border-s-2 align-top">
+                                <Card 
+                                  onClick={() => onAction('edit', eng, slot, appt)}
+                                  className={cn("border-2 p-4 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] rounded-2xl h-full", cardGradient(m?.color || ''))}
+                                >
+                                   <div className="flex justify-between items-start mb-2">
+                                      <div className="text-start">
+                                         <p className="font-black text-sm leading-tight mb-1">{appt.clientName || client?.nameAr}</p>
+                                         <div className="flex items-center gap-1.5 text-[8px] font-black uppercase opacity-60">
+                                            <MapPin className="h-2 w-2" /> {client?.governorateName || '---'}
+                                         </div>
+                                      </div>
+                                      <Badge className="bg-white/40 text-inherit border-0 font-black text-[8px] h-5 px-1.5 rounded-lg">VISIT {m?.visitCount}</Badge>
+                                   </div>
+                                </Card>
+                             </td>
+                           );
+                        }
+                        return (
+                          <td 
+                            key={eng.id} 
+                            onClick={() => onAction('create', eng, slot)}
+                            className="p-2 border-b-2 border-white border-s-2 group-hover/row:bg-slate-50/50 transition-colors cursor-pointer"
+                          >
+                             <div className="h-16 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
+                                <Plus className="h-6 w-6 text-slate-200" />
+                             </div>
+                          </td>
+                        );
+                     })}
+                  </tr>
+                ))}
+             </tbody>
+          </table>
+       </div>
+    </div>
+  );
+}
+
