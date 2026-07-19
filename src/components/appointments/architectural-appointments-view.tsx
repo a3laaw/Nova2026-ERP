@@ -156,9 +156,10 @@ function computeMeta(list: Appointment[], clients: Map<string, Client>): Map<str
 
 export function ArchitecturalAppointmentsView() {
   const { globalUser, user } = useAuthContext();
-  const { lang, dir, isRtl, t } = useLanguage();
+  const { lang, dir, t } = useLanguage();
   const { isAdmin } = usePermissions();
   const db = useFirestore();
+  const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
   const [mounted, setMounted] = useState(false);
@@ -197,7 +198,7 @@ export function ArchitecturalAppointmentsView() {
     companyId && db ? query(collection(db, paths.governorates(companyId)), orderBy('order')) : null, 
   [db, companyId]);
 
-  // استعلامات الـ HR للأتمتة (قفل المواعيد التلقائي)
+  // HR Queries for Blocking Logic
   const leavesQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.leaveRequests(companyId)), where('status', 'in', ['approved', 'on-leave', 'commenced'])) : null, 
   [db, companyId]);
@@ -313,7 +314,7 @@ export function ArchitecturalAppointmentsView() {
       
       {/* Sovereign Date Slider */}
       <div className="flex flex-col items-center gap-6 print:hidden">
-        <h2 className="text-xl font-black text-primary uppercase tracking-widest">{isRtl ? 'رادار المواعيد' : 'Appointments Radar'}</h2>
+        <h2 className="text-xl font-black text-primary uppercase tracking-widest">{isRtl ? 'رادار المواعيد المعماري' : 'Architectural Radar'}</h2>
         
         <div className="flex items-center gap-6 w-full max-w-4xl justify-center">
            <Button 
@@ -452,18 +453,14 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
 
   // منطق فحص قفل الخانة بناءً على بيانات الـ HR
   const getBlockedReason = (engId: string, slotTime: string) => {
-     // 1. فحص الإجازات
      const leave = leaves?.find((l: any) => l.employeeId === engId && dateStr >= l.startDate && dateStr <= l.endDate);
      if (leave) return { type: 'leave', label: isRtl ? 'في إجازة' : 'On Leave' };
 
-     // 2. فحص الغياب الفعلي (البصمة)
      const absence = absences?.find((a: any) => a.employeeId === engId);
      if (absence) return { type: 'absent', label: isRtl ? 'غائب اليوم' : 'Absent' };
 
-     // 3. فحص الاستئذانات (بالتوقيت)
      const perm = permissions?.find((p: any) => {
         if (p.userId !== engId) return false;
-        // تحويل الأوقات لمقارنتها
         const slot = parse(slotTime, 'HH:mm', new Date());
         const pStart = parse(p.startTime, 'HH:mm', new Date());
         const pEnd = parse(p.endTime, 'HH:mm', new Date());
@@ -488,7 +485,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
   const handleCancelAppt = async (id: string) => {
      try {
         const service = new AppointmentService(db, companyId);
-        await service.cancelAppointment(id);
+        await service.updateStatus(id, 'cancelled', 'SYSTEM');
         toast({ title: isRtl ? "تم إلغاء الموعد" : "Appointment cancelled" });
      } catch (e) {
         toast({ variant: "destructive", title: isRtl ? "خطأ" : "Error" });
@@ -508,7 +505,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                 <tr className="bg-slate-100/80">
                    <th className="w-24 p-6 border-b-2 border-slate-200 font-black text-[10px] text-slate-500 uppercase tracking-[0.2em] bg-slate-100/50">{isRtl ? 'الوقت' : 'Time'}</th>
                    {visibleEngineers.map((eng: Employee) => (
-                     <th key={eng.id} className="p-6 border-b-2 border-slate-200 border-s-2 border-s-slate-100 text-start bg-white">
+                     <th key={eng.id} className="p-6 border-b-2 border-slate-200 border-s-2 border-s-slate-100 text-start bg-white min-w-[200px]">
                         <div className="flex items-center gap-3">
                            <div className="h-10 w-10 rounded-xl bg-primary text-white flex items-center justify-center font-black text-xs uppercase shadow-md border-2 border-white">{eng.fullName.charAt(0)}</div>
                            <div className="flex flex-col text-start">
@@ -561,11 +558,11 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                                       
                                       <DropdownMenu>
                                          <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-6 w-6 rounded-lg opacity-0 group-card:opacity-100 transition-opacity">
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg opacity-0 group-card:hover:opacity-100 transition-opacity z-20">
                                                <MoreVertical className="h-4 w-4" />
                                             </Button>
                                          </DropdownMenuTrigger>
-                                         <DropdownMenuContent align="end" className="rounded-xl border-2 shadow-2xl">
+                                         <DropdownMenuContent align="end" className="rounded-xl border-2 shadow-2xl z-[100]">
                                             <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'إجراءات الموعد' : 'Actions'}</DropdownMenuLabel>
                                             <DropdownMenuSeparator />
                                             <DropdownMenuItem onClick={() => onAction('edit', eng, slot, appt)} className="font-bold gap-2 cursor-pointer">
@@ -610,13 +607,13 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
 }
 
 function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates, companyId, userId, userName, db, rawAppointments }: any) {
-  const { dir, lang, isRtl, t } = useLanguage();
+  const { dir, isRtl, t } = useLanguage();
   
   const [loading, setLoading] = useState(false);
   const [isNewClient, setIsNewClient] = useState(false);
   const [isBusyBlock, setIsBusyBlock] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
-  const [showClientResults, setShowClientSearch] = useState(false);
+  const [showClientResults, setShowClientResults] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -656,7 +653,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
        setIsNewClient(false);
        setIsBusyBlock(false);
        setClientSearch("");
-       setShowClientSearch(false);
+       setShowClientResults(false);
     }
   }, [isOpen]);
 
@@ -683,6 +680,20 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     const isCreate = data.mode === 'create';
     const start = new Date(`${formData.date}T${formData.time}:00`).toISOString();
     
+    // فحص التضارب السيادي
+    const hasConflict = rawAppointments?.some((a: Appointment) => 
+      a.id !== data.appointment?.id && 
+      a.status !== 'cancelled' && 
+      a.clientId === (isNewClient ? '' : formData.clientId) && 
+      a.clientId !== 'SYSTEM_BLOCK' &&
+      a.start === start
+    );
+
+    if (hasConflict) {
+       toast({ variant: "destructive", title: isRtl ? "تضارب مواعيد" : "Appointment Clash", description: isRtl ? "هذا العميل لديه موعد آخر محجوز في نفس هذا الوقت." : "This client already has another appointment at this time." });
+       return;
+    }
+
     setLoading(true);
     try {
       const appService = new AppointmentService(db, companyId);
@@ -695,7 +706,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
       if (isBusyBlock) {
          apptType = 'busy_blocked';
          targetClientId = 'SYSTEM_BLOCK';
-         targetClientName = 'BUSY';
+         targetClientName = isRtl ? 'مشغول' : 'BUSY';
       } else if (isCreate && isNewClient) {
         if (!formData.newClientName || !formData.newClientPhone) {
           toast({ variant: "destructive", title: isRtl ? "بيانات العميل الجديد ناقصة" : "New client data missing" });
@@ -720,7 +731,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
       if (isCreate) {
         await appService.createAppointment({
-          title: formData.title || (isBusyBlock ? 'مشغول' : 'موعد فني'),
+          title: formData.title || (isBusyBlock ? (isRtl ? 'مشغول' : 'BUSY') : (isRtl ? 'موعد فني' : 'Appt')),
           clientId: targetClientId,
           clientName: targetClientName,
           engineerId: data.engineer.id,
@@ -749,8 +760,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     }
   };
 
-  const isCreate = data?.mode === 'create';
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
@@ -758,11 +767,11 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
            <div className="flex items-center justify-between">
               <div className="flex items-center gap-4 text-start">
                  <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center text-primary shadow-xl border-2 border-primary/10">
-                    {isCreate ? <Plus className="h-6 w-6" /> : <Edit3 className="h-6 w-6" />}
+                    {data?.mode === 'create' ? <Plus className="h-6 w-6" /> : <Edit3 className="h-6 w-6" />}
                  </div>
                  <div>
                     <DialogTitle className="text-xl font-black font-headline">
-                       {isCreate ? (isRtl ? 'حجز موعد جديد' : 'New Appointment') : (isRtl ? 'تعديل الموعد' : 'Edit Appointment')}
+                       {data?.mode === 'create' ? (isRtl ? 'حجز موعد جديد' : 'New Appointment') : (isRtl ? 'تعديل الموعد' : 'Edit Appointment')}
                     </DialogTitle>
                     <p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-0.5">
                        {data?.engineer?.fullName || data?.appointment?.engineerName}
@@ -777,7 +786,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
         <div className="p-8 space-y-6 text-start max-h-[65vh] overflow-y-auto scrollbar-hide">
            
-           {isCreate && (
+           {data?.mode === 'create' && (
              <div className="grid grid-cols-2 gap-4">
                 <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 border-2 border-white shadow-inner">
                    <div className="text-start">
@@ -828,8 +837,8 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                         <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
                         <Input 
                           value={formData.clientName || clientSearch}
-                          onChange={e => { setClientSearch(e.target.value); setShowClientSearch(true); if(formData.clientId) setFormData({...formData, clientId: '', clientName: ''}); }}
-                          onFocus={() => setShowClientSearch(true)}
+                          onChange={e => { setClientSearch(e.target.value); setShowClientResults(true); if(formData.clientId) setFormData({...formData, clientId: '', clientName: ''}); }}
+                          onFocus={() => setShowClientResults(true)}
                           placeholder={isRtl ? "ابحث بالاسم أو رقم الملف..." : "Search by name or file..."}
                           className="h-14 rounded-2xl border-2 ps-12 font-black text-sm bg-white shadow-inner focus:bg-white transition-all"
                         />
@@ -840,7 +849,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                                     {filteredClients.map((c: any) => (
                                       <div 
                                         key={c.id} 
-                                        onClick={() => { setFormData({...formData, clientId: c.id!, clientName: c.nameAr}); setClientSearch(""); setShowClientSearch(false); }}
+                                        onClick={() => { setFormData({...formData, clientId: c.id!, clientName: c.nameAr}); setClientSearch(""); setShowClientResults(false); }}
                                         className="p-3 rounded-xl cursor-pointer transition-all flex items-center justify-between border-2 border-transparent hover:bg-primary/5 hover:border-primary/10"
                                       >
                                          <div className="text-start">
@@ -885,4 +894,3 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     </Dialog>
   );
 }
-
