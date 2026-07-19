@@ -43,7 +43,10 @@ import {
   Plane,
   Timer,
   Ban,
-  RotateCcw
+  RotateCcw,
+  MessageSquare,
+  Link as LinkIcon,
+  Workflow
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs, updateDoc, deleteDoc, serverTimestamp, addDoc } from 'firebase/firestore';
@@ -83,18 +86,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from '@/hooks/use-toast';
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useRouter } from 'next/navigation';
 
 // --- Helpers ---
-const weekDays: { id: DayOfWeek; labelAr: string; labelEn: string }[] = [
-  { id: 'Sunday', labelAr: 'الأحد', labelEn: 'Sunday' },
-  { id: 'Monday', labelAr: 'الاثنين', labelEn: 'Monday' },
-  { id: 'Tuesday', labelAr: 'الثلاثاء', labelEn: 'Tuesday' },
-  { id: 'Wednesday', labelAr: 'الأربعاء', labelEn: 'Wednesday' },
-  { id: 'Thursday', labelAr: 'الخميس', labelEn: 'Thursday' },
-  { id: 'Friday', labelAr: 'الجمعة', labelEn: 'Friday' },
-  { id: 'Saturday', labelAr: 'السبت', labelEn: 'Saturday' },
-];
-
 function getVisitColor(visitCount: number, status?: string, apptType?: string): string {
   if (apptType === 'busy_blocked') return '#475569'; // Slate-600
   if (visitCount === 1) return '#facc15'; 
@@ -156,6 +150,7 @@ export function ArchitecturalAppointmentsView() {
   const { lang, dir, t } = useLanguage();
   const { isAdmin } = usePermissions();
   const db = useFirestore();
+  const router = useRouter();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
@@ -260,7 +255,7 @@ export function ArchitecturalAppointmentsView() {
 
   const timeSlots = useMemo(() => {
     if (!settings) return { morning: [], evening: [] };
-    const dow = format(currentDate, 'EEEE') as DayOfWeek;
+    const dow = format(currentDate, 'EEEE') as any;
     if (settings.holidays.includes(dow)) return { morning: [], evening: [] };
 
     const arch = settings.architectural;
@@ -402,6 +397,7 @@ export function ArchitecturalAppointmentsView() {
            dateStr={dateStr}
            db={db}
            companyId={companyId}
+           router={router}
          />
          {timeSlots.evening.length > 0 && (
            <GridSection 
@@ -421,6 +417,7 @@ export function ArchitecturalAppointmentsView() {
              dateStr={dateStr}
              db={db}
              companyId={companyId}
+             router={router}
            />
          )}
       </div>
@@ -441,7 +438,7 @@ export function ArchitecturalAppointmentsView() {
   );
 }
 
-function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, clients, isAdmin, currentEngineerId, leaves, permissions, absences, dateStr, db, companyId }: any) {
+function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, clients, isAdmin, currentEngineerId, leaves, permissions, absences, dateStr, db, companyId, router }: any) {
   if (slots.length === 0) return null;
   
   const visibleEngineers = isAdmin ? engineers : engineers.filter((e: any) => e.id === currentEngineerId);
@@ -499,7 +496,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                 <tr className="bg-slate-100/80">
                    <th className="w-24 p-6 border-b-2 border-slate-200 font-black text-[10px] text-slate-500 uppercase tracking-[0.2em] bg-slate-100/50">{isRtl ? 'الوقت' : 'Time'}</th>
                    {visibleEngineers.map((eng: Employee) => (
-                     <th key={eng.id} className="p-6 border-b-2 border-slate-200 border-s-2 border-s-slate-100 text-start bg-white min-w-[200px]">
+                     <th key={eng.id} className="p-6 border-b-2 border-slate-200 border-s-2 border-s-slate-100 text-start bg-white min-w-[220px]">
                         <div className="flex items-center gap-3">
                            <div className="h-10 w-10 rounded-xl bg-primary text-white flex items-center justify-center font-black text-xs uppercase shadow-md border-2 border-white">{eng.fullName.charAt(0)}</div>
                            <div className="flex flex-col text-start">
@@ -539,7 +536,10 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
 
                            return (
                              <td key={eng.id} className="p-2 border-b-2 border-slate-200 border-s-2 border-s-slate-100 align-top relative">
-                                <Card className={cn("border-2 p-4 rounded-2xl h-full shadow-lg relative group/card", cardGradient(m?.color || ''))}>
+                                <Card 
+                                  onClick={() => !isBusy && router.push(`/dashboard/appointments/${appt.id}`)}
+                                  className={cn("border-2 p-4 rounded-2xl h-full shadow-lg relative group/card cursor-pointer transition-all hover:ring-4 hover:ring-primary/5", cardGradient(m?.color || ''))}
+                                >
                                    <div className="flex justify-between items-start mb-2">
                                       <div className="text-start">
                                          <p className="font-black text-sm leading-tight mb-1">{isBusy ? (isRtl ? 'مشغول / مهام مكتبية' : 'Busy / Internal') : (appt.clientName || client?.nameAr)}</p>
@@ -552,27 +552,35 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                                       
                                       <DropdownMenu>
                                          <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg bg-white shadow-md border border-slate-200 hover:bg-slate-50 transition-all z-20">
+                                            <Button variant="ghost" size="icon" onClick={e => e.stopPropagation()} className="h-8 w-8 rounded-lg bg-white shadow-md border border-slate-200 hover:bg-slate-50 transition-all z-20">
                                                <MoreVertical className="h-4 w-4 text-slate-900" />
                                             </Button>
                                          </DropdownMenuTrigger>
                                          <DropdownMenuContent align="end" className="rounded-xl border-2 shadow-2xl z-[100] bg-white min-w-[180px]">
                                             <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'إجراءات الموعد' : 'Actions'}</DropdownMenuLabel>
                                             <DropdownMenuSeparator />
-                                            <DropdownMenuItem onClick={() => onAction('edit', eng, slot, appt)} className="font-bold gap-3 py-3 cursor-pointer">
+                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/appointments/${appt.id}`); }} className="font-bold gap-3 py-3 cursor-pointer">
+                                               <MessageSquare className="h-4 w-4 text-primary" /> {isRtl ? 'غرفة العمليات (دردشة)' : 'War Room'}
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAction('edit', eng, slot, appt); }} className="font-bold gap-3 py-3 cursor-pointer">
                                                <Edit3 className="h-4 w-4 text-blue-500" /> {isRtl ? 'تعديل / إعادة جدولة' : 'Reschedule'}
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => handleCancelAppt(appt.id!)} className="font-bold gap-3 py-3 cursor-pointer">
+                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleCancelAppt(appt.id!); }} className="font-bold gap-3 py-3 cursor-pointer">
                                                <CalendarX className="h-4 w-4 text-orange-500" /> {isRtl ? 'إلغاء الموعد' : 'Cancel'}
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator />
-                                            <DropdownMenuItem onClick={() => handleDeleteAppt(appt.id!)} className="font-bold gap-3 py-3 cursor-pointer text-rose-600 focus:text-rose-600 focus:bg-rose-50">
+                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDeleteAppt(appt.id!); }} className="font-bold gap-3 py-3 cursor-pointer text-rose-600 focus:text-rose-600 focus:bg-rose-50">
                                                <Trash2 className="h-4 w-4" /> {isRtl ? 'حذف نهائي' : 'Delete'}
                                             </DropdownMenuItem>
                                          </DropdownMenuContent>
                                       </DropdownMenu>
                                    </div>
-                                   {!isBusy && <Badge className="bg-white/60 text-inherit border-0 font-black text-[8px] h-5 px-1.5 rounded-lg shadow-sm mt-auto">VISIT {m?.visitCount}</Badge>}
+                                   {!isBusy && (
+                                     <div className="mt-auto flex items-center justify-between">
+                                        <Badge className="bg-white/60 text-inherit border-0 font-black text-[8px] h-5 px-1.5 rounded-lg shadow-sm">VISIT {m?.visitCount}</Badge>
+                                        {appt.transactionId && <LinkIcon className="h-3 w-3 opacity-30 text-inherit" />}
+                                     </div>
+                                   )}
                                 </Card>
                              </td>
                            );
@@ -607,11 +615,22 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
   const [isNewClient, setIsNewClient] = useState(false);
   const [isBusyBlock, setIsBusyBlock] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
+  const [showClientList, setShowClientList] = useState(false);
+
+  // حالات الربط الفني
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [stages, setStages] = useState<any[]>([]);
+  const [loadingTrans, setLoadingTrans] = useState(false);
+  const [loadingStages, setLoadingStages] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '',
     clientId: '',
     clientName: '',
+    transactionId: '',
+    transactionNumber: '',
+    stageId: '',
+    stageName: '',
     newClientName: '',
     newClientPhone: '',
     newClientGovId: '',
@@ -623,7 +642,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
   const targetEngineerId = data?.engineer?.id || data?.appointment?.engineerId;
   
-  // الفلترة السيادية: المهندس يرى عملاءه فقط عند اختيار عميل مسجل
   const filteredClients = useMemo(() => {
     let list = clients || [];
     if (targetEngineerId) {
@@ -639,31 +657,58 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     return list;
   }, [clients, targetEngineerId, clientSearch]);
 
+  // جلب المشاريع عند اختيار العميل
+  useEffect(() => {
+    if (formData.clientId && db && companyId) {
+      setLoadingTrans(true);
+      getDocs(query(collection(db, paths.transactions(companyId)), where('clientId', '==', formData.clientId)))
+        .then(snap => setTransactions(snap.docs.map(d => ({id: d.id, ...d.data()}))))
+        .finally(() => setLoadingTrans(false));
+    } else {
+      setTransactions([]);
+    }
+  }, [formData.clientId, db, companyId]);
+
+  // جلب المراحل عند اختيار المشروع
+  useEffect(() => {
+    if (formData.transactionId && db && companyId) {
+      setLoadingStages(true);
+      getDocs(query(collection(db, paths.transactionStages(companyId, formData.transactionId)), orderBy('order')))
+        .then(snap => setStages(snap.docs.map(d => ({id: d.id, ...d.data()}))))
+        .finally(() => setLoadingStages(false));
+    } else {
+      setStages([]);
+    }
+  }, [formData.transactionId, db, companyId]);
+
   useEffect(() => {
     if (!isOpen) {
        setFormData({
-         title: '', clientId: '', clientName: '', newClientName: '', newClientPhone: '', newClientGovId: '', newClientGovName: '', date: '', time: '', notes: ''
+         title: '', clientId: '', clientName: '', transactionId: '', transactionNumber: '', stageId: '', stageName: '',
+         newClientName: '', newClientPhone: '', newClientGovId: '', newClientGovName: '', date: '', time: '', notes: ''
        });
        setIsNewClient(false);
        setIsBusyBlock(false);
        setClientSearch("");
+       setShowClientList(false);
     }
   }, [isOpen]);
 
   useEffect(() => {
     if (isOpen && data) {
-      setFormData({
+      setFormData(prev => ({
+        ...prev,
         title: data.appointment?.title || '',
         clientId: data.appointment?.clientId || '',
         clientName: data.appointment?.clientName || '',
-        newClientName: '',
-        newClientPhone: '',
-        newClientGovId: '',
-        newClientGovName: '',
+        transactionId: data.appointment?.transactionId || '',
+        transactionNumber: data.appointment?.transactionNumber || '',
+        stageId: data.appointment?.stageId || '',
+        stageName: data.appointment?.stageName || '',
         date: data.appointment ? format(parseISO(data.appointment.start), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
         time: data.slot || (data.appointment ? format(parseISO(data.appointment.start), 'HH:mm') : '08:00'),
         notes: data.appointment?.notes || ''
-      });
+      }));
       setIsBusyBlock(data.appointment?.type === 'busy_blocked');
     }
   }, [isOpen, data]);
@@ -673,21 +718,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     const isCreate = data.mode === 'create';
     const start = new Date(`${formData.date}T${formData.time}:00`).toISOString();
     
-    // فحص التضارب السيادي الشامل للعميل (عبر كافة المهندسين)
-    const targetIdForConflict = isNewClient ? 'NEW_CLIENT' : formData.clientId;
-    const hasConflict = rawAppointments?.some((a: Appointment) => 
-      a.id !== data.appointment?.id && 
-      a.status !== 'cancelled' && 
-      a.clientId === targetIdForConflict && 
-      a.clientId !== 'SYSTEM_BLOCK' &&
-      a.start === start
-    );
-
-    if (hasConflict && !isNewClient) {
-       toast({ variant: "destructive", title: isRtl ? "تضارب سيادي للعميل" : "Sovereign Client Conflict", description: isRtl ? "هذا العميل لديه موعد محجوز مسبقاً في نفس اللحظة عند مهندس آخر." : "This client already has another appointment at this exact time with another engineer." });
-       return;
-    }
-
     setLoading(true);
     try {
       const appService = new AppointmentService(db, companyId);
@@ -702,11 +732,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
          targetClientId = 'SYSTEM_BLOCK';
          targetClientName = isRtl ? 'مشغول / داخلي' : 'BUSY / INTERNAL';
       } else if (isCreate && isNewClient) {
-        if (!formData.newClientName || !formData.newClientPhone) {
-          toast({ variant: "destructive", title: isRtl ? "بيانات العميل الجديد ناقصة" : "New client data missing" });
-          setLoading(false);
-          return;
-        }
         const gov = governorates?.find((g: any) => g.id === formData.newClientGovId);
         const nextFileNum = await clientService.getNextFileNumber();
         
@@ -723,27 +748,27 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         targetClientName = formData.newClientName;
       }
 
+      const savePayload = {
+        title: formData.title || (isBusyBlock ? (isRtl ? 'مشغول' : 'BUSY') : (isRtl ? 'موعد فني' : 'Appt')),
+        clientId: targetClientId,
+        clientName: targetClientName,
+        transactionId: formData.transactionId,
+        transactionNumber: formData.transactionNumber,
+        stageId: formData.stageId,
+        stageName: formData.stageName,
+        engineerId: data.engineer?.id || data.appointment?.engineerId,
+        engineerName: data.engineer?.fullName || data.appointment?.engineerName,
+        type: apptType,
+        start,
+        status: 'scheduled' as AppointmentStatus,
+        companyId,
+        notes: formData.notes
+      };
+
       if (isCreate) {
-        await appService.createAppointment({
-          title: formData.title || (isBusyBlock ? (isRtl ? 'مشغول' : 'BUSY') : (isRtl ? 'موعد فني' : 'Appt')),
-          clientId: targetClientId,
-          clientName: targetClientName,
-          engineerId: data.engineer.id,
-          engineerName: data.engineer.fullName,
-          type: apptType,
-          start,
-          status: 'scheduled',
-          companyId
-        }, userId);
+        await appService.createAppointment(savePayload, userId);
       } else if (data.appointment?.id) {
-        await appService.updateAppointment(data.appointment.id, {
-          title: formData.title,
-          clientId: targetClientId,
-          clientName: targetClientName,
-          type: apptType,
-          start,
-          notes: formData.notes
-        });
+        await appService.updateAppointment(data.appointment.id, savePayload);
       }
       toast({ title: t('saved') });
       onClose();
@@ -756,16 +781,16 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
+      <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-2xl" dir={dir}>
         <div className="bg-slate-50 p-8 text-slate-900 text-start border-b shrink-0">
            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4 text-start">
+              <div className="flex items-center gap-4">
                  <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center text-primary shadow-xl border-2 border-primary/10">
                     {data?.mode === 'create' ? <Plus className="h-6 w-6" /> : <Edit3 className="h-6 w-6" />}
                  </div>
                  <div>
                     <DialogTitle className="text-xl font-black font-headline">
-                       {data?.mode === 'create' ? (isRtl ? 'حجز موعد جديد' : 'New Appointment') : (isRtl ? 'تعديل الموعد' : 'Edit Appointment')}
+                       {data?.mode === 'create' ? (isRtl ? 'حجز موعد ميداني' : 'New Site Appointment') : (isRtl ? 'إعادة جدولة الموعد' : 'Reschedule')}
                     </DialogTitle>
                     <p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-0.5">
                        {data?.engineer?.fullName || data?.appointment?.engineerName}
@@ -778,28 +803,24 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
            </div>
         </div>
 
-        <div className="p-8 space-y-6 text-start max-h-[65vh] overflow-y-auto scrollbar-hide">
+        <div className="p-8 space-y-8 text-start max-h-[70vh] overflow-y-auto scrollbar-hide">
            {data?.mode === 'create' && (
              <div className="grid grid-cols-2 gap-4">
                 <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 border-2 border-white shadow-inner">
-                   <div className="text-start">
-                      <Label className="font-black text-[10px] uppercase text-slate-500">{isRtl ? 'عميل جديد؟' : 'New Client?'}</Label>
-                   </div>
+                   <Label className="font-black text-[10px] uppercase text-slate-500">{isRtl ? 'عميل جديد؟' : 'New Client?'}</Label>
                    <Switch checked={isNewClient} onCheckedChange={v => { setIsNewClient(v); if(v) setIsBusyBlock(false); }} />
                 </div>
                 <div className="flex items-center justify-between p-4 rounded-xl bg-slate-900 text-white shadow-xl">
-                   <div className="text-start">
-                      <Label className="font-black text-[10px] uppercase text-primary">{isRtl ? 'غلق الخانة (Busy)' : 'Block Slot'}</Label>
-                   </div>
+                   <Label className="font-black text-[10px] uppercase text-primary">{isRtl ? 'غلق الخانة (Busy)' : 'Block Slot'}</Label>
                    <Switch checked={isBusyBlock} onCheckedChange={v => { setIsBusyBlock(v); if(v) setIsNewClient(false); }} />
                 </div>
              </div>
            )}
 
            {!isBusyBlock && (
-             <div className="space-y-4 animate-in fade-in duration-300">
+             <div className="space-y-6">
                 {isNewClient ? (
-                   <div className="space-y-4 p-6 rounded-[2rem] border-2 border-primary/10 bg-primary/5">
+                   <div className="space-y-4 p-6 rounded-[2rem] border-2 border-primary/10 bg-primary/5 animate-in fade-in">
                       <div className="space-y-2">
                          <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اسم العميل الكامل' : 'Client Full Name'}</Label>
                          <Input value={formData.newClientName} onChange={e => setFormData({...formData, newClientName: e.target.value})} className="h-11 rounded-xl border-2 font-bold bg-white" placeholder="..." />
@@ -825,39 +846,81 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                    </div>
                 ) : (
                    <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'البحث في قاعدة عملائك المنسوبين' : 'Search your assigned clients'}</Label>
+                      <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اختيار العميل من محفظتك' : 'Select Assigned Client'}</Label>
                       <div className="relative">
                         <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
                         <Input 
                           value={clientSearch}
-                          onChange={e => { setClientSearch(e.target.value); if(formData.clientId) setFormData({...formData, clientId: '', clientName: ''}); }}
+                          onFocus={() => setShowClientList(true)}
+                          onChange={e => { setClientSearch(e.target.value); setShowClientList(true); }}
                           placeholder={isRtl ? "ابحث بالاسم أو رقم الملف..." : "Search by name or file..."}
-                          className="h-14 rounded-2xl border-2 ps-12 font-black text-sm bg-white shadow-inner focus:bg-white transition-all"
+                          className="h-14 rounded-2xl border-2 ps-12 font-black text-sm bg-white shadow-inner"
                         />
                       </div>
                       
-                      <div className="mt-3 p-2 bg-slate-50 rounded-2xl border-2 border-white shadow-inner overflow-hidden">
-                         <ScrollArea className="h-40">
-                            <div className="space-y-1 p-1">
-                               {filteredClients.map((c: any) => (
-                                 <div 
-                                   key={c.id} 
-                                   onClick={() => { setFormData({...formData, clientId: c.id!, clientName: c.nameAr}); setClientSearch(c.nameAr); }}
-                                   className={cn(
-                                     "p-3 rounded-xl cursor-pointer transition-all flex items-center justify-between border-2",
-                                     formData.clientId === c.id ? "bg-primary border-primary text-white shadow-lg" : "bg-white border-slate-100 hover:border-primary/20"
-                                   )}
-                                 >
-                                    <div className="text-start">
-                                       <p className="font-black text-xs">{c.nameAr}</p>
-                                       <p className={cn("text-[8px] font-mono font-bold uppercase", formData.clientId === c.id ? "text-white/60" : "text-slate-400")}>#{c.fileNumber}</p>
-                                    </div>
-                                    <CheckCircle2 className={cn("h-4 w-4", formData.clientId === c.id ? "text-white" : "opacity-0")} />
-                                 </div>
-                               ))}
-                               {filteredClients.length === 0 && <div className="p-8 text-center text-[10px] text-slate-300 italic font-bold">لا يوجد نتائج</div>}
-                            </div>
-                         </ScrollArea>
+                      {showClientList && (
+                        <div className="mt-2 p-2 bg-white rounded-2xl border-2 border-slate-100 shadow-2xl animate-in zoom-in-95 duration-200 z-50 relative">
+                           <ScrollArea className="h-40">
+                              <div className="space-y-1 p-1">
+                                 {filteredClients.map((c: any) => (
+                                   <div 
+                                     key={c.id} 
+                                     onClick={() => { setFormData({...formData, clientId: c.id!, clientName: c.nameAr}); setClientSearch(c.nameAr); setShowClientList(false); }}
+                                     className={cn(
+                                       "p-3 rounded-xl cursor-pointer transition-all flex items-center justify-between border-2",
+                                       formData.clientId === c.id ? "bg-primary border-primary text-white shadow-lg" : "bg-white border-slate-50 hover:border-primary/20"
+                                     )}
+                                   >
+                                      <div className="text-start">
+                                         <p className="font-black text-xs">{c.nameAr}</p>
+                                         <p className={cn("text-[8px] font-mono font-bold uppercase", formData.clientId === c.id ? "text-white/60" : "text-slate-400")}>#{c.fileNumber}</p>
+                                      </div>
+                                      {formData.clientId === c.id && <CheckCircle2 className="h-4 w-4 text-white" />}
+                                   </div>
+                                 ))}
+                                 {filteredClients.length === 0 && <div className="p-8 text-center text-[10px] text-slate-300 italic font-bold">لا يوجد نتائج</div>}
+                              </div>
+                           </ScrollArea>
+                        </div>
+                      )}
+                   </div>
+                )}
+
+                {/* الربط الفني بالمشروع (The Pivot Link) */}
+                {formData.clientId && !isNewClient && (
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-slate-50 rounded-[2rem] border-2 border-white shadow-inner animate-in slide-in-from-top-2">
+                      <div className="space-y-2">
+                         <Label className="text-[10px] font-black uppercase text-blue-600 tracking-widest flex items-center gap-2">
+                            <Briefcase className="h-3 w-3" /> {isRtl ? 'ربط الموعد بمشروع' : 'Link to Project'}
+                         </Label>
+                         <Select value={formData.transactionId} onValueChange={v => {
+                            const t = transactions.find(x => x.id === v);
+                            setFormData({...formData, transactionId: v, transactionNumber: t?.transactionNumber || '', stageId: '', stageName: ''});
+                         }}>
+                            <SelectTrigger className="h-11 rounded-xl border-2 font-bold bg-white shadow-sm">
+                               {loadingTrans ? <Loader2 className="h-4 w-4 animate-spin" /> : <SelectValue placeholder="..." />}
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-0 shadow-2xl">
+                               {transactions.map(t => <SelectItem key={t.id} value={t.id!} className="font-bold text-xs">{t.subServiceName} - {t.transactionNumber}</SelectItem>)}
+                            </SelectContent>
+                         </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                         <Label className="text-[10px] font-black uppercase text-blue-600 tracking-widest flex items-center gap-2">
+                            <Workflow className="h-3 w-3" /> {isRtl ? 'المرحلة الفنية المستهدفة' : 'Technical Stage'}
+                         </Label>
+                         <Select disabled={!formData.transactionId} value={formData.stageId} onValueChange={v => {
+                            const s = stages.find(x => x.id === v);
+                            setFormData({...formData, stageId: v, stageName: s?.name || ''});
+                         }}>
+                            <SelectTrigger className="h-11 rounded-xl border-2 font-bold bg-white shadow-sm">
+                               {loadingStages ? <Loader2 className="h-4 w-4 animate-spin" /> : <SelectValue placeholder="..." />}
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-0 shadow-2xl">
+                               {stages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs py-3 border-b last:border-0">{s.name}</SelectItem>)}
+                            </SelectContent>
+                         </Select>
                       </div>
                    </div>
                 )}
@@ -865,13 +928,13 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
            )}
 
            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'عنوان الموعد / ملاحظات سريعة' : 'Title / Purpose'}</Label>
-              <Input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="h-12 rounded-xl border-2 font-bold" placeholder="..." />
+              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'مسمى الموعد / الغرض' : 'Appointment Title'}</Label>
+              <Input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="h-12 rounded-xl border-2 font-black text-lg bg-slate-50/30 shadow-inner" placeholder={isRtl ? "مثلاً: معاينة رفع عداد..." : "e.g. Site Measurement..."} />
            </div>
 
            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'ملاحظات إضافية' : 'Notes'}</Label>
-              <textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="w-full h-24 rounded-2xl border-2 bg-slate-50/50 p-4 text-xs font-bold resize-none shadow-inner" placeholder="..." />
+              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'ملاحظات وتوجيهات' : 'Notes'}</Label>
+              <textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="w-full h-24 rounded-2xl border-2 bg-slate-50/30 p-4 text-xs font-bold resize-none shadow-inner" placeholder="..." />
            </div>
         </div>
 
@@ -881,7 +944,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
            </Button>
            <Button onClick={handleSave} disabled={loading || (!isBusyBlock && !formData.clientId)} className="flex-[2] h-16 rounded-[1.5rem] bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-8 border-orange-700">
               {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />}
-              {isRtl ? 'تثبيت الحجز' : 'Confirm Booking'}
+              {isRtl ? 'تثبيت وحفظ الموعد' : 'Confirm & Save'}
            </Button>
         </DialogFooter>
       </DialogContent>
