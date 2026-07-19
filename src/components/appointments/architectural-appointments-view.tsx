@@ -30,10 +30,14 @@ import {
   Save,
   Trash2,
   Search,
-  Target
+  Target,
+  ArrowRight,
+  MoreVertical,
+  Calendar as CalendarIcon,
+  Globe
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, where, doc, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, where, doc, getDocs, addDoc, serverTimestamp, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
@@ -41,7 +45,7 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { WorkHoursService } from '@/services/work-hours-service';
 import { AppointmentService } from '@/services/appointment-service';
 import { ClientService } from '@/services/client-service';
-import { Appointment } from '@/types/appointment';
+import { Appointment, AppointmentStatus } from '@/types/appointment';
 import { Client } from '@/types/client';
 import { Employee } from '@/types/hr';
 import { DayOfWeek, WorkHoursSettings } from '@/types/work-hours';
@@ -60,9 +64,12 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { 
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { toast } from '@/hooks/use-toast';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SmartDateInput } from '@/components/ui/smart-date-input';
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 // --- Helpers ---
@@ -182,9 +189,12 @@ export function ArchitecturalAppointmentsView() {
     }
   }, [db, companyId]);
 
-  const engineers = useMemo(() => {
-    return (allEmployees || []).filter(e => e.departmentName?.includes('معماري') || e.departmentName?.includes('Arch'));
-  }, [allEmployees]);
+  // --- السـيادة: فـلترة المـهندسين المعروضين في الجدول ---
+  const visibleEngineers = useMemo(() => {
+    const archEmps = (allEmployees || []).filter(e => e.departmentName?.includes('معماري') || e.departmentName?.includes('Arch'));
+    if (isAdmin) return archEmps;
+    return archEmps.filter(e => e.id === globalUser?.employeeId);
+  }, [allEmployees, isAdmin, globalUser?.employeeId]);
 
   const clientsMap = useMemo(() => {
     const m = new Map<string, Client>();
@@ -195,6 +205,7 @@ export function ArchitecturalAppointmentsView() {
   const filteredAppointments = useMemo(() => {
     let list = (rawAppointments || []).filter(a => a.status !== 'cancelled' && isSameDay(parseISO(a.start), currentDate));
     
+    // فلترة المواعيد بحيث لا يظهر للمهندس إلا عملائه
     if (!isAdmin && globalUser?.employeeId) {
       list = list.filter(a => a.engineerId === globalUser.employeeId);
     }
@@ -243,7 +254,7 @@ export function ArchitecturalAppointmentsView() {
 
   const grid = useMemo(() => {
     const map = new Map<string, Map<string, Appointment>>();
-    engineers.forEach(eng => {
+    visibleEngineers.forEach(eng => {
       const engMap = new Map<string, Appointment>();
       filteredAppointments.filter(a => a.engineerId === eng.id).forEach(a => {
         const time = format(parseISO(a.start), 'HH:mm');
@@ -252,7 +263,7 @@ export function ArchitecturalAppointmentsView() {
       map.set(eng.id!, engMap);
     });
     return map;
-  }, [engineers, filteredAppointments]);
+  }, [visibleEngineers, filteredAppointments]);
 
   const handleAction = (mode: 'create' | 'edit', eng?: Employee, slot?: string, appt?: Appointment) => {
     setDialogData({ mode, engineer: eng, slot, appointment: appt });
@@ -345,27 +356,23 @@ export function ArchitecturalAppointmentsView() {
          <GridSection 
            title={isRtl ? "الفترة الصباحية ☀️" : "Morning Session"} 
            slots={timeSlots.morning} 
-           engineers={engineers} 
+           engineers={visibleEngineers} 
            grid={grid} 
            meta={apptMeta} 
            onAction={handleAction}
            isRtl={isRtl}
            clients={clientsMap}
-           isAdmin={isAdmin}
-           currentEngineerId={globalUser?.employeeId}
          />
          {timeSlots.evening.length > 0 && (
            <GridSection 
              title={isRtl ? "الفترة المسائية 🌆" : "Evening Session"} 
              slots={timeSlots.evening} 
-             engineers={engineers} 
+             engineers={visibleEngineers} 
              grid={grid} 
              meta={apptMeta} 
              onAction={handleAction}
              isRtl={isRtl}
              clients={clientsMap}
-             isAdmin={isAdmin}
-             currentEngineerId={globalUser?.employeeId}
            />
          )}
       </div>
@@ -386,11 +393,9 @@ export function ArchitecturalAppointmentsView() {
   );
 }
 
-function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, clients, isAdmin, currentEngineerId }: any) {
+function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, clients }: any) {
   if (slots.length === 0) return null;
   
-  const visibleEngineers = isAdmin ? engineers : engineers.filter((e: any) => e.id === currentEngineerId);
-
   return (
     <div className="space-y-6">
        <div className="flex items-center gap-4 px-2">
@@ -403,7 +408,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
              <thead>
                 <tr className="bg-slate-50/80">
                    <th className="w-24 p-6 border-b-2 border-white font-black text-[10px] text-slate-400 uppercase tracking-[0.2em]">{isRtl ? 'الوقت' : 'Time'}</th>
-                   {visibleEngineers.map((eng: Employee) => (
+                   {engineers.map((eng: Employee) => (
                      <th key={eng.id} className="p-6 border-b-2 border-white border-s-2 text-start">
                         <div className="flex items-center gap-3">
                            <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-xs uppercase shadow-inner">{eng.fullName.charAt(0)}</div>
@@ -420,7 +425,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                 {slots.map((slot: string) => (
                   <tr key={slot} className="group/row">
                      <td className="p-6 text-center border-b-2 border-white font-mono font-black text-slate-400 bg-slate-50/30 text-xs">{slot}</td>
-                     {visibleEngineers.map((eng: Employee) => {
+                     {engineers.map((eng: Employee) => {
                         const appt = grid.get(eng.id)?.get(slot);
                         if (appt) {
                            const m = meta.get(appt.id);
@@ -474,6 +479,10 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
   const [clientSearch, setClientSearch] = useState("");
   const [govSearch, setGovSearch] = useState("");
   
+  // Popover States for Searchable Selection
+  const [clientPopoverOpen, setClientPopoverOpen] = useState(false);
+  const [govPopoverOpen, setGovPopoverOpen] = useState(false);
+
   const [formData, setFormData] = useState({
     title: '',
     clientId: '',
@@ -481,6 +490,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     newClientName: '',
     newClientPhone: '',
     newClientGovId: '',
+    newClientGovName: '',
     date: '',
     time: '',
     notes: ''
@@ -489,7 +499,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
   useEffect(() => {
     if (!isOpen) {
        setFormData({
-         title: '', clientId: '', clientName: '', newClientName: '', newClientPhone: '', newClientGovId: '', date: '', time: '', notes: ''
+         title: '', clientId: '', clientName: '', newClientName: '', newClientPhone: '', newClientGovId: '', newClientGovName: '', date: '', time: '', notes: ''
        });
        setIsNewClient(false);
        setClientSearch("");
@@ -506,6 +516,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         newClientName: '',
         newClientPhone: '',
         newClientGovId: '',
+        newClientGovName: '',
         date: data.appointment ? format(parseISO(data.appointment.start), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
         time: data.slot || (data.appointment ? format(parseISO(data.appointment.start), 'HH:mm') : '08:00'),
         notes: data.appointment?.notes || ''
@@ -519,14 +530,22 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
       list = clients.filter((c: any) => c.assignedEngineerId === userId);
     }
     if (clientSearch.trim()) {
-      list = list.filter((c: any) => c.nameAr?.includes(clientSearch) || c.fileNumber?.includes(clientSearch));
+      const q = clientSearch.toLowerCase();
+      list = list.filter((c: any) => 
+        c.nameAr?.toLowerCase().includes(q) || 
+        c.fileNumber?.toLowerCase().includes(q)
+      );
     }
     return list;
   }, [clients, isAdmin, userId, clientSearch]);
 
   const filteredGovs = useMemo(() => {
     if (!govSearch.trim()) return governorates;
-    return governorates.filter((g: any) => g.name?.includes(govSearch) || g.nameEn?.toLowerCase().includes(govSearch.toLowerCase()));
+    const q = govSearch.toLowerCase();
+    return governorates.filter((g: any) => 
+      g.name?.toLowerCase().includes(q) || 
+      g.nameEn?.toLowerCase().includes(q)
+    );
   }, [governorates, govSearch]);
 
   const handleSave = async () => {
@@ -561,11 +580,9 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
           assignedEngineerName: userName
         }, userId, userName);
         targetClientName = formData.newClientName;
-      } else if (isCreate) {
-        const selected = filteredClients.find((c: any) => c.id === targetClientId);
-        targetClientName = selected?.nameAr || '';
       }
 
+      // التحقق من التضارب (Conflict Check)
       const isConflict = rawAppointments?.some((a: any) => 
         a.clientId === targetClientId && a.start === start && a.status !== 'cancelled' && a.id !== data.appointment?.id
       );
@@ -663,48 +680,72 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                        </div>
                        <div className="space-y-2">
                           <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'المحافظة' : 'Gov'}</Label>
-                          <Select value={formData.newClientGovId} onValueChange={v => setFormData({...formData, newClientGovId: v})}>
-                             <SelectTrigger className="h-11 border-2 font-bold bg-white rounded-xl"><SelectValue placeholder="..." /></SelectTrigger>
-                             <SelectContent className="rounded-xl border-0 shadow-2xl p-0 overflow-hidden">
-                                <div className="p-2 border-b bg-slate-50">
+                          <Popover open={govPopoverOpen} onOpenChange={setGovPopoverOpen}>
+                             <PopoverTrigger asChild>
+                                <Button variant="outline" className="w-full h-11 justify-between border-2 bg-white font-bold rounded-xl px-4">
+                                   <span className="truncate">{formData.newClientGovName || "..."}</span>
+                                   <ChevronDown className="h-4 w-4 opacity-30" />
+                                </Button>
+                             </PopoverTrigger>
+                             <PopoverContent className="w-[300px] p-0 rounded-2xl border-2 shadow-2xl" align="start">
+                                <div className="p-3 border-b bg-slate-50">
                                    <div className="relative">
-                                      <Search className="absolute start-2 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400" />
-                                      <Input value={govSearch} onChange={e => setGovSearch(e.target.value)} placeholder={isRtl ? "بحث..." : "Search..."} className="h-8 rounded-md text-[10px] ps-7 border-0 bg-white" />
+                                      <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300" />
+                                      <Input value={govSearch} onChange={e => setGovSearch(e.target.value)} placeholder={isRtl ? "ابحث..." : "Search..."} className="h-9 rounded-lg text-xs ps-9 border-2" />
                                    </div>
                                 </div>
                                 <ScrollArea className="h-48">
-                                  {filteredGovs?.map((g: any) => <SelectItem key={g.id} value={g.id!} className="font-bold py-2">{isRtl ? g.name : g.nameEn}</SelectItem>)}
+                                   <div className="p-2 space-y-1">
+                                      {filteredGovs?.map((g: any) => (
+                                        <div 
+                                          key={g.id} 
+                                          onClick={() => { setFormData({...formData, newClientGovId: g.id!, newClientGovName: isRtl ? g.name : g.nameEn}); setGovPopoverOpen(false); }}
+                                          className="p-3 rounded-lg hover:bg-primary/5 cursor-pointer text-xs font-black text-slate-700 transition-colors border-b last:border-0 border-slate-50"
+                                        >
+                                           {isRtl ? g.name : g.nameEn}
+                                        </div>
+                                      ))}
+                                   </div>
                                 </ScrollArea>
-                             </SelectContent>
-                          </Select>
+                             </PopoverContent>
+                          </Popover>
                        </div>
                     </div>
                  </div>
               ) : (
                  <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اختر العميل المسجل' : 'Registered Client'}</Label>
-                    <Select value={formData.clientId} onValueChange={v => setFormData({...formData, clientId: v})}>
-                       <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/50"><SelectValue placeholder={isRtl ? "البحث في قاعدة عملائك..." : "Search your clients..."} /></SelectTrigger>
-                       <SelectContent className="rounded-xl border-0 shadow-2xl p-0 overflow-hidden">
-                          <div className="p-3 border-b bg-slate-50">
+                    <Popover open={clientPopoverOpen} onOpenChange={setClientPopoverOpen}>
+                       <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full h-14 justify-between border-2 bg-slate-50/50 font-black rounded-xl px-6 text-sm">
+                             <span className="truncate">{formData.clientName || (isRtl ? "البحث في قاعدة عملائك..." : "Search your clients...")}</span>
+                             <ChevronDown className="h-5 w-5 opacity-30" />
+                          </Button>
+                       </PopoverTrigger>
+                       <PopoverContent className="w-[400px] p-0 rounded-[2rem] border-2 shadow-3xl bg-white" align="start">
+                          <div className="p-4 border-b bg-slate-50 rounded-t-[2rem]">
                              <div className="relative">
-                                <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                <Input value={clientSearch} onChange={e => setClientSearch(e.target.value)} placeholder={isRtl ? "ابحث بالاسم أو رقم الملف..." : "Search by name or file..."} className="h-10 rounded-lg text-xs ps-10 border-0 bg-white shadow-inner" />
+                                <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                                <Input value={clientSearch} onChange={e => setClientSearch(e.target.value)} placeholder={isRtl ? "ابحث بالاسم أو رقم الملف..." : "Search by name or file..."} className="h-12 rounded-xl text-sm ps-11 border-2 bg-white shadow-inner" />
                              </div>
                           </div>
                           <ScrollArea className="h-64">
-                             {filteredClients.map((c: any) => (
-                               <SelectItem key={c.id} value={c.id!} className="font-bold py-3 border-b last:border-0 border-slate-50">
-                                 <div className="flex flex-col text-start">
-                                    <span className="text-xs">{c.nameAr}</span>
-                                    <span className="text-[9px] text-slate-400 font-mono">{c.fileNumber}</span>
-                                 </div>
-                               </SelectItem>
-                             ))}
-                             {filteredClients.length === 0 && <div className="p-8 text-center text-[10px] text-slate-400 italic">لا توجد نتائج</div>}
+                             <div className="p-3 space-y-1">
+                                {filteredClients.map((c: any) => (
+                                  <div 
+                                    key={c.id} 
+                                    onClick={() => { setFormData({...formData, clientId: c.id!, clientName: c.nameAr}); setClientPopoverOpen(false); }}
+                                    className="p-4 rounded-2xl hover:bg-primary/5 cursor-pointer transition-all border-b last:border-0 border-slate-50 group flex flex-col text-start"
+                                  >
+                                     <span className="text-xs font-black text-slate-800 group-hover:text-primary transition-colors">{c.nameAr}</span>
+                                     <span className="text-[9px] text-slate-400 font-mono mt-1">#{c.fileNumber}</span>
+                                  </div>
+                                ))}
+                                {filteredClients.length === 0 && <div className="p-12 text-center text-[10px] text-slate-400 italic">لا توجد نتائج مطابقة</div>}
+                             </div>
                           </ScrollArea>
-                       </SelectContent>
-                    </Select>
+                       </PopoverContent>
+                    </Popover>
                  </div>
               )}
            </div>
@@ -714,26 +755,13 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
               <Input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="h-12 rounded-xl border-2 font-bold" placeholder={isRtl ? "مثلاً: معاينة موقع فيلا السالمية" : "e.g. Site Visit"} />
            </div>
 
-           {!isCreate && (
-              <div className="grid grid-cols-2 gap-4 animate-in fade-in">
-                 <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'التاريخ' : 'Date'}</Label>
-                    <SmartDateInput value={formData.date} onChange={v => setFormData({...formData, date: v})} />
-                 </div>
-                 <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'وقت الموعد' : 'Time'}</Label>
-                    <Input type="time" value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} className="h-11 rounded-xl border-2 font-bold" />
-                 </div>
-              </div>
-           )}
-
            <div className="space-y-2">
               <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'ملاحظات إضافية' : 'Notes'}</Label>
               <textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="w-full h-24 rounded-2xl border-2 bg-slate-50/50 p-4 text-xs font-bold resize-none shadow-inner" placeholder="..." />
            </div>
         </div>
 
-        <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4">
+        <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4 shrink-0">
            <Button variant="outline" onClick={onClose} className="flex-1 h-16 rounded-[1.5rem] border-2 font-black text-lg bg-white shadow-sm">
               {isRtl ? 'إلغاء' : 'Cancel'}
            </Button>
