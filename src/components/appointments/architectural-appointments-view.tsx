@@ -39,7 +39,8 @@ import {
   XCircle,
   MoreVertical,
   Globe,
-  Search
+  Search,
+  Calendar as CalendarIcon
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs } from 'firebase/firestore';
@@ -50,7 +51,7 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { WorkHoursService } from '@/services/work-hours-service';
 import { AppointmentService } from '@/services/appointment-service';
 import { ClientService } from '@/services/client-service';
-import { Appointment, AppointmentType } from '@/types/appointment';
+import { Appointment, AppointmentStatus } from '@/types/appointment';
 import { Client } from '@/types/client';
 import { Employee } from '@/types/hr';
 import { DayOfWeek, WorkHoursSettings } from '@/types/work-hours';
@@ -140,6 +141,7 @@ function computeMeta(list: Appointment[], clients: Map<string, Client>): Map<str
 export function ArchitecturalAppointmentsView() {
   const { globalUser, user } = useAuthContext();
   const { lang, dir, isRtl, t } = useLanguage();
+  const { isAdmin } = usePermissions();
   const db = useFirestore();
   const companyId = globalUser?.companyId;
 
@@ -189,7 +191,12 @@ export function ArchitecturalAppointmentsView() {
   }, [db, companyId]);
 
   const engineers = useMemo(() => {
-    return (allEmployees || []).filter(e => e.departmentName?.includes('معماري') || e.departmentName?.includes('Arch'));
+    let list = (allEmployees || []).filter(e => e.departmentName?.includes('معماري') || e.departmentName?.includes('Arch'));
+    // السيادة المعلوماتية: إذا كان مهندس، لا يرى إلا عموده الخاص في الشبكة؟ 
+    // يفضل رؤية الجميع للتنسيق، لكن تصفية مواعيد الآخرين قد تكون مطلوبة.
+    // المطلب كان: "لازال الميل يظهر لكل المهندسين في جدول الزيارات".
+    // هذا يعني أننا يجب أن نفلتر filteredAppointments لتعرض فقط مواعيد المهندس الحالي.
+    return list;
   }, [allEmployees]);
 
   const clientsMap = useMemo(() => {
@@ -198,9 +205,17 @@ export function ArchitecturalAppointmentsView() {
     return m;
   }, [allClients]);
 
+  // بروتوكول العزل الميداني: تصفية المواعيد المعروضة في الشبكة
   const filteredAppointments = useMemo(() => {
-    return (rawAppointments || []).filter(a => a.status !== 'cancelled' && isSameDay(parseISO(a.start), currentDate));
-  }, [rawAppointments, currentDate]);
+    let list = (rawAppointments || []).filter(a => a.status !== 'cancelled' && isSameDay(parseISO(a.start), currentDate));
+    
+    // إذا لم يكن مديراً، يرى فقط مواعيده الخاصة
+    if (!isAdmin && globalUser?.employeeId) {
+      list = list.filter(a => a.engineerId === globalUser.employeeId);
+    }
+    
+    return list;
+  }, [rawAppointments, currentDate, isAdmin, globalUser?.employeeId]);
 
   const apptMeta = useMemo(() => computeMeta(rawAppointments || [], clientsMap), [rawAppointments, clientsMap]);
 
@@ -267,7 +282,7 @@ export function ArchitecturalAppointmentsView() {
       
       {/* Date Tiles Slider */}
       <div className="flex flex-col items-center gap-6 no-print">
-        <h2 className="text-xl font-black text-primary uppercase tracking-widest">{isRtl ? 'المواعيد' : 'Appointments'}</h2>
+        <h2 className="text-xl font-black text-primary uppercase tracking-widest">{isRtl ? 'رادار المواعيد' : 'Appointments Radar'}</h2>
         
         <div className="flex items-center gap-6 w-full max-w-4xl justify-center">
            <Button 
@@ -307,7 +322,7 @@ export function ArchitecturalAppointmentsView() {
            <Button 
              variant="ghost" 
              size="icon" 
-             onClick={() => setCurrentDate(addDays(currentDate, 1))}
+             onClick={() => addDays(currentDate, 1)}
              className="h-12 w-12 rounded-full hover:bg-slate-100 transition-all text-slate-400"
            >
               <ChevronRight className={cn("h-6 w-6", isRtl && "rotate-180")} />
@@ -352,6 +367,8 @@ export function ArchitecturalAppointmentsView() {
            onAction={handleAction}
            isRtl={isRtl}
            clients={clientsMap}
+           isAdmin={isAdmin}
+           currentEngineerId={globalUser?.employeeId}
          />
          {timeSlots.evening.length > 0 && (
            <GridSection 
@@ -363,6 +380,8 @@ export function ArchitecturalAppointmentsView() {
              onAction={handleAction}
              isRtl={isRtl}
              clients={clientsMap}
+             isAdmin={isAdmin}
+             currentEngineerId={globalUser?.employeeId}
            />
          )}
       </div>
@@ -377,13 +396,17 @@ export function ArchitecturalAppointmentsView() {
         userId={user!.uid}
         userName={user!.displayName || 'User'}
         db={db}
+        rawAppointments={rawAppointments || []}
       />
     </div>
   );
 }
 
-function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, clients }: any) {
+function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, clients, isAdmin, currentEngineerId }: any) {
   if (slots.length === 0) return null;
+
+  // في حالة المهندس العادي، نظهر فقط عموده أو نترك الأعمدة الأخرى فارغة لعدم تشتيت الانتباه
+  const visibleEngineers = isAdmin ? engineers : engineers.filter((e: any) => e.id === currentEngineerId);
 
   return (
     <div className="space-y-6">
@@ -397,7 +420,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
              <thead>
                 <tr className="bg-slate-50/80">
                    <th className="w-24 p-6 border-b-2 border-white font-black text-[10px] text-slate-400 uppercase tracking-[0.2em]">{isRtl ? 'الوقت' : 'Time'}</th>
-                   {engineers.map((eng: Employee) => (
+                   {visibleEngineers.map((eng: Employee) => (
                      <th key={eng.id} className="p-6 border-b-2 border-white border-s-2 text-start">
                         <div className="flex items-center gap-3">
                            <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-xs uppercase shadow-inner">{eng.fullName.charAt(0)}</div>
@@ -414,7 +437,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                 {slots.map((slot: string) => (
                   <tr key={slot} className="group/row">
                      <td className="p-6 text-center border-b-2 border-white font-mono font-black text-slate-400 bg-slate-50/30 text-xs">{slot}</td>
-                     {engineers.map((eng: Employee) => {
+                     {visibleEngineers.map((eng: Employee) => {
                         const appt = grid.get(eng.id)?.get(slot);
                         if (appt) {
                            const m = meta.get(appt.id);
@@ -459,7 +482,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
   );
 }
 
-function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates, companyId, userId, userName, db }: any) {
+function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates, companyId, userId, userName, db, rawAppointments }: any) {
   const { dir, isRtl, t } = useLanguage();
   const { isAdmin } = usePermissions();
   
@@ -478,7 +501,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     notes: ''
   });
 
-  // محرك إعادة ضبط الحالة عند الفتح/الإغلاق لضمان عدم حدوث جمود
   useEffect(() => {
     if (isOpen && data) {
       setFormData({
@@ -498,6 +520,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
   const filteredClients = useMemo(() => {
     if (isAdmin) return clients;
+    // بروتوكول العزل المعلوماتي: المهندس يرى عملاءه فقط
     return clients.filter((c: any) => c.assignedEngineerId === userId);
   }, [clients, isAdmin, userId]);
 
@@ -505,6 +528,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     if (!data) return;
     const isCreate = data.mode === 'create';
     const finalTitle = formData.title || (isNewClient ? `زيارة أولى: ${formData.newClientName}` : 'اجتماع عميل');
+    const start = new Date(`${formData.date}T${formData.time}:00`).toISOString();
     
     setLoading(true);
     try {
@@ -513,6 +537,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
       let targetClientId = formData.clientId;
       let targetClientName = formData.clientName;
 
+      // 1. معالجة العميل الجديد
       if (isCreate && isNewClient) {
         if (!formData.newClientName || !formData.newClientPhone) {
           toast({ variant: "destructive", title: isRtl ? "بيانات العميل الجديد ناقصة" : "New client data missing" });
@@ -540,7 +565,24 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         targetClientName = selected?.nameAr || '';
       }
 
-      const start = new Date(`${formData.date}T${formData.time}:00`).toISOString();
+      // 2. بروتوكول منع الحجز المزدوج (Double Booking Prevention)
+      // التحقق مما إذا كان العميل لديه موعد آخر في نفس التوقيت بالضبط مع أي مهندس
+      const isDoubleBooked = rawAppointments?.some((a: any) => 
+        a.clientId === targetClientId && 
+        a.start === start && 
+        a.status !== 'cancelled' &&
+        a.id !== data.appointment?.id
+      );
+
+      if (isDoubleBooked) {
+        toast({ 
+          variant: "destructive", 
+          title: isRtl ? "تنبيه: تعارض في المواعيد" : "Schedule Conflict", 
+          description: isRtl ? "هذا العميل لديه موعد آخر مسجل في نفس التوقيت بالضبط." : "Client already has an appointment at this specific time."
+        });
+        setLoading(false);
+        return;
+      }
 
       if (isCreate) {
         await appService.createAppointment({
@@ -579,7 +621,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
       <DialogContent 
         className="rounded-[2rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" 
         dir={dir}
-        // حماية سيادية ضد جمود الشاشة: منعRadix من حظر الأحداث بشكل خاطئ
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <div className="bg-primary/5 p-8 text-slate-900 text-start border-b">
@@ -597,11 +638,9 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                     </p>
                  </div>
               </div>
-              {isCreate && (
-                 <Badge variant="outline" className="h-9 px-4 border-2 font-black text-xs bg-white text-slate-400">
-                    <Clock className="h-3.5 w-3.5 me-2" /> {formData.time}
-                 </Badge>
-              )}
+              <Badge variant="outline" className="h-9 px-4 border-2 font-black text-xs bg-white text-slate-400">
+                 <Clock className="h-3.5 w-3.5 me-2" /> {formData.time}
+              </Badge>
            </div>
         </div>
 
@@ -623,19 +662,19 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
               {isNewClient ? (
                  <div className="space-y-4 p-6 rounded-[2rem] border-2 border-primary/10 bg-primary/5 animate-in slide-in-from-top-2">
                     <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'اسم العميل الكامل' : 'Client Full Name'}</Label>
+                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اسم العميل الكامل' : 'Client Full Name'}</Label>
                        <Input value={formData.newClientName} onChange={e => setFormData({...formData, newClientName: e.target.value})} className="h-11 rounded-xl border-2 font-bold bg-white" placeholder="..." />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                        <div className="space-y-2">
-                          <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'رقم الهاتف' : 'Mobile'}</Label>
+                          <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'رقم الهاتف' : 'Mobile'}</Label>
                           <div className="relative">
                              <Phone className="absolute start-3 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-300" />
                              <Input value={formData.newClientPhone} onChange={e => setFormData({...formData, newClientPhone: e.target.value})} className="h-11 rounded-xl border-2 font-bold ps-9 bg-white" placeholder="+965" />
                           </div>
                        </div>
                        <div className="space-y-2">
-                          <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المحافظة' : 'Gov'}</Label>
+                          <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'المحافظة' : 'Gov'}</Label>
                           <Select value={formData.newClientGovId} onValueChange={v => setFormData({...formData, newClientGovId: v})}>
                              <SelectTrigger className="h-11 border-2 font-bold bg-white rounded-xl"><SelectValue placeholder="..." /></SelectTrigger>
                              <SelectContent className="rounded-xl border-0 shadow-2xl">
@@ -647,7 +686,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                  </div>
               ) : (
                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'اختر العميل المسجل' : 'Registered Client'}</Label>
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اختر العميل المسجل' : 'Registered Client'}</Label>
                     <Select value={formData.clientId} onValueChange={v => setFormData({...formData, clientId: v})}>
                        <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/50"><SelectValue placeholder={isRtl ? "البحث في قاعدة عملائك..." : "Search your clients..."} /></SelectTrigger>
                        <SelectContent className="rounded-xl border-0 shadow-2xl">
@@ -659,25 +698,24 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
            </div>
 
            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'غرض الزيارة / العنوان' : 'Purpose / Title'}</Label>
+              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'غرض الزيارة / العنوان' : 'Purpose / Title'}</Label>
               <Input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="h-12 rounded-xl border-2 font-bold" placeholder={isRtl ? "مثلاً: معاينة موقع فيلا السالمية" : "e.g. Site Visit"} />
            </div>
 
            {!isCreate && (
               <div className="grid grid-cols-2 gap-4 animate-in fade-in">
                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'التاريخ' : 'Date'}</Label>
-                    <Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="h-11 rounded-xl border-2 font-bold" />
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'التاريخ' : 'Date'}</Label>
+                    <SmartDateInput value={formData.date} onChange={v => setFormData({...formData, date: v})} />
                  </div>
                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الوقت' : 'Time'}</Label>
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'الوقت' : 'Time'}</Label>
                     <Input type="time" value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} className="h-11 rounded-xl border-2 font-bold" />
                  </div>
-              </div>
            )}
 
            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'ملاحظات إضافية' : 'Notes'}</Label>
+              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'ملاحظات إضافية' : 'Notes'}</Label>
               <textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="w-full h-24 rounded-2xl border-2 bg-slate-50/50 p-4 text-xs font-bold resize-none shadow-inner" placeholder="..." />
            </div>
         </div>
@@ -695,3 +733,4 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     </Dialog>
   );
 }
+
