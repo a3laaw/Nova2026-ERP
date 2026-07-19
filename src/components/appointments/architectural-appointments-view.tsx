@@ -171,7 +171,7 @@ export function ArchitecturalAppointmentsView() {
   [db, companyId]);
 
   const empsQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.employees(companyId)), where('isActive', '==', true)) : null, 
+    companyId && db ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active')) : null, 
   [db, companyId]);
 
   const clientsQuery = useMemo(() => 
@@ -194,6 +194,7 @@ export function ArchitecturalAppointmentsView() {
     }
   }, [db, companyId]);
 
+  // الفلترة السيادية للأعمدة
   const visibleEngineers = useMemo(() => {
     const archEmps = (allEmployees || []).filter(e => e.departmentName?.includes('معماري') || e.departmentName?.includes('Arch'));
     if (isAdmin) return archEmps;
@@ -364,8 +365,6 @@ export function ArchitecturalAppointmentsView() {
            onAction={handleAction}
            isRtl={isRtl}
            clients={clientsMap}
-           isAdmin={isAdmin}
-           currentEngineerId={globalUser?.employeeId}
          />
          {timeSlots.evening.length > 0 && (
            <GridSection 
@@ -377,8 +376,6 @@ export function ArchitecturalAppointmentsView() {
              onAction={handleAction}
              isRtl={isRtl}
              clients={clientsMap}
-             isAdmin={isAdmin}
-             currentEngineerId={globalUser?.employeeId}
            />
          )}
       </div>
@@ -399,11 +396,9 @@ export function ArchitecturalAppointmentsView() {
   );
 }
 
-function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, clients, isAdmin, currentEngineerId }: any) {
+function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, clients }: any) {
   if (slots.length === 0) return null;
   
-  const visibleEngineers = isAdmin ? engineers : engineers.filter((e: any) => e.id === currentEngineerId);
-
   return (
     <div className="space-y-6">
        <div className="flex items-center gap-4 px-2">
@@ -416,7 +411,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
              <thead>
                 <tr className="bg-slate-50/80">
                    <th className="w-24 p-6 border-b-2 border-white font-black text-[10px] text-slate-400 uppercase tracking-[0.2em]">{isRtl ? 'الوقت' : 'Time'}</th>
-                   {visibleEngineers.map((eng: Employee) => (
+                   {engineers.map((eng: Employee) => (
                      <th key={eng.id} className="p-6 border-b-2 border-white border-s-2 text-start">
                         <div className="flex items-center gap-3">
                            <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-xs uppercase shadow-inner">{eng.fullName.charAt(0)}</div>
@@ -433,7 +428,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                 {slots.map((slot: string) => (
                   <tr key={slot} className="group/row">
                      <td className="p-6 text-center border-b-2 border-white font-mono font-black text-slate-400 bg-slate-50/30 text-xs">{slot}</td>
-                     {visibleEngineers.map((eng: Employee) => {
+                     {engineers.map((eng: Employee) => {
                         const appt = grid.get(eng.id)?.get(slot);
                         if (appt) {
                            const m = meta.get(appt.id);
@@ -504,13 +499,15 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     notes: ''
   });
 
-  // Sovereign Filter Protocol: Show only clients assigned to THIS engineer in the dropdown
+  // Sovereign Isolation Protocol: 
+  // الحصر التام للعملاء بناءً على "المهندس المنشود" (الذي تم النقر على عموده)
   const filteredClients = useMemo(() => {
     let list = clients || [];
-    
-    if (!isAdmin) {
-       // Only clients belonging to the logged-in engineer (employeeId)
-       list = list.filter((c: any) => c.assignedEngineerId === globalUser?.employeeId);
+    const targetEngineerId = data?.engineer?.id || data?.appointment?.engineerId;
+
+    if (targetEngineerId) {
+      // حصر العملاء المنسوبين لهذا المهندس تحديداً
+      list = list.filter((c: any) => c.assignedEngineerId === targetEngineerId);
     }
 
     if (clientSearch.trim()) {
@@ -521,7 +518,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
       );
     }
     return list;
-  }, [clients, isAdmin, globalUser?.employeeId, clientSearch]);
+  }, [clients, data, clientSearch]);
 
   const filteredGovs = useMemo(() => {
     if (!govSearch.trim()) return governorates;
@@ -581,7 +578,8 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         }
         const gov = governorates?.find((g: any) => g.id === formData.newClientGovId);
         const nextFileNum = await clientService.getNextFileNumber();
-        // Registering client with assigned engineer automatically
+        
+        // ربط العميل الجديد بالمهندس المختار في الشبكة آلياً
         targetClientId = await clientService.addClient({
           nameAr: formData.newClientName,
           mobile: formData.newClientPhone,
@@ -589,8 +587,8 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
           governorateName: gov ? (isRtl ? gov.name : gov.nameEn) : '',
           fileNumber: nextFileNum,
           status: 'new',
-          assignedEngineerId: globalUser?.employeeId,
-          assignedEngineerName: globalUser?.username || userName
+          assignedEngineerId: data.engineer.id,
+          assignedEngineerName: data.engineer.fullName
         }, userId, userName);
         targetClientName = formData.newClientName;
       }
@@ -640,7 +638,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="rounded-[2rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
-        <div className="bg-primary/5 p-8 text-slate-900 text-start border-b">
+        <div className="bg-primary/5 p-8 text-slate-900 text-start border-b shrink-0">
            <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                  <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center text-primary shadow-xl border-2 border-primary/10">
@@ -730,7 +728,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                     <Popover open={clientPopoverOpen} onOpenChange={setClientPopoverOpen}>
                        <PopoverTrigger asChild>
                           <Button variant="outline" className="w-full h-14 justify-between border-2 bg-slate-50/50 font-black rounded-xl px-6 text-sm">
-                             <span className="truncate">{formData.clientName || (isRtl ? "البحث في قاعدة عملائك..." : "Search your clients...")}</span>
+                             <span className="truncate">{formData.clientName || (isRtl ? "البحث في قائمة المهندس المنشود..." : "Search assigned clients...")}</span>
                              <ChevronDown className="h-5 w-5 opacity-30" />
                           </Button>
                        </PopoverTrigger>
@@ -766,7 +764,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                                      <span className="text-[9px] text-slate-400 font-mono mt-1">#{c.fileNumber}</span>
                                   </div>
                                 ))}
-                                {filteredClients.length === 0 && <div className="p-12 text-center text-[10px] text-slate-400 italic">لا توجد نتائج مطابقة</div>}
+                                {filteredClients.length === 0 && <div className="p-12 text-center text-[10px] text-slate-400 italic font-bold">لا يوجد عملاء منسوبين لهذا المهندس</div>}
                              </div>
                           </ScrollArea>
                        </PopoverContent>
