@@ -133,7 +133,6 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                </CardContent>
             </Card>
 
-            {/* صندوق القيمة الزمردي المعتمد (Emerald UI) */}
             <div className="p-12 bg-emerald-50/50 rounded-[3.5rem] border-2 border-emerald-100 text-center relative overflow-hidden group shadow-xl">
                <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform"><DollarSign className="h-40 w-40" /></div>
                <div className="max-w-md mx-auto space-y-4 relative z-10">
@@ -142,8 +141,8 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                   </Label>
                   <Input 
                      type="number" 
-                     value={formData.baseAmount || 0} 
-                     onChange={e => setFormData({...formData, baseAmount: Number(e.target.value)})} 
+                     value={formData.baseAmount === 0 ? "" : formData.baseAmount} 
+                     onChange={e => setFormData({...formData, baseAmount: e.target.value === "" ? 0 : Number(e.target.value)})} 
                      className="h-20 rounded-[2.5rem] border-4 border-emerald-200 font-black text-4xl text-emerald-700 bg-white shadow-2xl text-center focus:ring-emerald-200"
                   />
                </div>
@@ -162,7 +161,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                           </div>
                           <div className="md:col-span-2 space-y-1 text-start">
                              <Label className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'الحصة (%)' : 'Share (%)'}</Label>
-                             <Input type="number" value={m.percentage || 0} onChange={e => updateMilestone(idx, 'percentage', Number(e.target.value))} className="h-11 border-2 font-black text-emerald-600 rounded-xl text-center" />
+                             <Input type="number" value={m.percentage === 0 ? "" : m.percentage} onChange={e => updateMilestone(idx, 'percentage', e.target.value === "" ? 0 : Number(e.target.value))} className="h-11 border-2 font-black text-emerald-600 rounded-xl text-center" />
                           </div>
                           <div className="md:col-span-3 space-y-1 text-start">
                              <Label className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'المرحلة الفنية' : 'Linked Stage'}</Label>
@@ -181,7 +180,6 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                   <Button onClick={() => setFormData({...formData, defaultMilestones: [...(formData.defaultMilestones || []), { name: '', percentage: 0, timing: 'at' }]})} variant="outline" className="w-full h-16 rounded-[2.5rem] border-2 border-dashed border-primary/20 text-primary font-black gap-2 hover:bg-primary/5 transition-all"><Plus className="h-6 w-6" /> {t('addMilestone')}</Button>
                </div>
 
-               {/* صندوق التحقق المئوي (Odoo Style) */}
                <div className={cn(
                  "p-10 rounded-[3rem] border-4 border-dashed flex items-center justify-between shadow-xl transition-all",
                  isMathValid ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-rose-50 border-rose-200 text-rose-800"

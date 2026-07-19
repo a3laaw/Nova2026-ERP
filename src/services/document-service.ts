@@ -80,11 +80,10 @@ export class DocumentService {
       updatedBy: userId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-      isHistoryRecorded: false // حقل داخلي لتتبع التسجيل في التاريخ
+      isHistoryRecorded: false 
     } as any;
 
     await setDoc(quoteRef, quoteData);
-    // تم حذف إضافة التاريخ من هنا؛ سيتم الإضافة عند أول حفظ ناجح
     return quoteRef.id;
   }
 
@@ -101,7 +100,6 @@ export class DocumentService {
       updatedAt: serverTimestamp()
     });
 
-    // تسجيل التاريخ للعميل فقط إذا لم يتم تسجيله مسبقاً لهذا المستند
     if (currentData && !currentData.isHistoryRecorded) {
       const clientService = new ClientService(this.db, this.companyId);
       await clientService.addHistory(currentData.clientId, {
@@ -143,6 +141,31 @@ export class DocumentService {
 
     await setDoc(contractRef, contractData);
     return contractRef.id;
+  }
+
+  async updateContract(id: string, data: Partial<Contract>, userId: string) {
+    ensureActionPermission(this.permissions, 'projects:edit');
+    const docRef = doc(this.db, paths.contracts(this.companyId), id);
+    const snap = await getDoc(docRef);
+    const currentData = snap.data();
+
+    await updateDoc(docRef, {
+      ...data,
+      isHistoryRecorded: true,
+      updatedBy: userId,
+      updatedAt: serverTimestamp()
+    });
+
+    if (currentData && !currentData.isHistoryRecorded) {
+      const clientService = new ClientService(this.db, this.companyId);
+      await clientService.addHistory(currentData.clientId, {
+        type: 'system_log',
+        content: `تم اعتماد وحفظ عقد رسمي جديد للمعاملة: ${currentData.name}`,
+        userId, 
+        userName: data.updatedBy || 'User', 
+        companyId: this.companyId
+      });
+    }
   }
 
   async instantiateBoqFromTemplate(
@@ -285,7 +308,7 @@ export class DocumentService {
 
     const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
     await addDoc(timelineRef, {
-      transactionId: payload.transactionId,
+      transactionId,
       type: 'system',
       content: `تم اعتماد الميزانية المرجعية بقيمة ${totalAmount.toLocaleString()} KWD. تم تفعيل المسار الفني وبدء التنفيذ الميداني.`,
       userId, userName, companyId: this.companyId, createdAt: serverTimestamp()

@@ -117,7 +117,7 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
     if (type === 'quotation') {
       router.push(`/dashboard/clients/${clientId}/quotations/${id}`);
     } else {
-      router.push('/dashboard/procurement');
+      router.push(`/dashboard/clients/${clientId}/contracts/${id}`);
     }
   };
 
