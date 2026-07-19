@@ -263,7 +263,7 @@ export default function QuotationViewPage() {
                                       <Input type="number" value={item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', Number(e.target.value))} className="font-black text-center border-2 h-12 text-emerald-600 text-xl" />
                                    ) : (
                                       <div className="space-y-1">
-                                         <p className="font-mono font-black text-emerald-600 text-2xl tracking-tighter">{amount.toLocaleString()}</p>
+                                         <p className="font-mono font-black text-emerald-600 text-2xl tracking-tighter">{(amount || 0).toLocaleString()}</p>
                                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">KWD Only</span>
                                       </div>
                                    )}
@@ -288,17 +288,17 @@ export default function QuotationViewPage() {
                            <td colSpan={isEditing ? 3 : 2} className="p-10 text-end pe-12">
                               {isEditing && quote.pricingMode !== 'percentage' ? (
                                 <div className="space-y-2">
-                                   <Label className="text-white/60 text-[10px] uppercase font-black">Sum of Items: {totalItemsValue.toLocaleString()} KWD</Label>
+                                   <Label className="text-white/60 text-[10px] uppercase font-black">Sum of Items: {(totalItemsValue || 0).toLocaleString()} KWD</Label>
                                    <Input 
                                       type="number" 
-                                      value={editData.totalAmount} 
+                                      value={editData.totalAmount || 0} 
                                       onChange={e => setEditForm({...editData, totalAmount: Number(e.target.value)})}
                                       className="bg-white/10 border-0 text-white font-black text-4xl h-20 rounded-3xl text-center shadow-inner"
                                    />
                                 </div>
                               ) : (
                                 <div className="space-y-1">
-                                   <h2 className="text-6xl font-black font-headline text-primary">{(editData.totalAmount || quote.totalAmount).toLocaleString()}</h2>
+                                   <h2 className="text-6xl font-black font-headline text-primary">{((editData.totalAmount || quote.totalAmount) || 0).toLocaleString()}</h2>
                                    <p className="text-xl font-black text-white/30 uppercase tracking-widest">Kuwaiti Dinars</p>
                                 </div>
                               )}
