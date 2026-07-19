@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
 import { 
   FileText, Gavel, Plus, Loader2, 
   ArrowRight, ShieldCheck, Clock,
@@ -26,7 +27,6 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, where, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
-import { Quotation, Contract } from '@/types/documents';
 import { DocumentService } from '@/services/document-service';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
@@ -75,7 +75,7 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
     setLoading(true);
     try {
       const service = new DocumentService(db, companyId, permissions);
-      const name = `${type === 'quotation' ? 'عرض سعر' : 'عقد'} - ${transaction.subServiceName}`;
+      const name = `${type === 'quotation' ? (isRtl ? 'عرض سعر' : 'Quotation') : (isRtl ? 'عقد' : 'Contract')} - ${transaction.subServiceName}`;
       const payload = { transactionId: transaction.id, clientId, clientName, name };
       
       let docId = "";
