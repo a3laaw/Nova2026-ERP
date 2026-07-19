@@ -79,29 +79,39 @@ export class DocumentService {
       createdBy: userId,
       updatedBy: userId,
       createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
+      isHistoryRecorded: false // حقل داخلي لتتبع التسجيل في التاريخ
     } as any;
 
     await setDoc(quoteRef, quoteData);
-
-    const clientService = new ClientService(this.db, this.companyId);
-    await clientService.addHistory(payload.clientId, {
-      type: 'system_log',
-      content: `تم إصدار مسودة عرض سعر جديدة للمعاملة ${payload.name}`,
-      userId, userName, companyId: this.companyId
-    });
-
+    // تم حذف إضافة التاريخ من هنا؛ سيتم الإضافة عند أول حفظ ناجح
     return quoteRef.id;
   }
 
   async updateQuotation(id: string, data: Partial<Quotation>, userId: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
     const docRef = doc(this.db, paths.quotations(this.companyId), id);
-    return updateDoc(docRef, {
+    const snap = await getDoc(docRef);
+    const currentData = snap.data();
+
+    await updateDoc(docRef, {
       ...data,
+      isHistoryRecorded: true,
       updatedBy: userId,
       updatedAt: serverTimestamp()
     });
+
+    // تسجيل التاريخ للعميل فقط إذا لم يتم تسجيله مسبقاً لهذا المستند
+    if (currentData && !currentData.isHistoryRecorded) {
+      const clientService = new ClientService(this.db, this.companyId);
+      await clientService.addHistory(currentData.clientId, {
+        type: 'system_log',
+        content: `تم اعتماد وحفظ عرض سعر جديد للمعاملة: ${currentData.name}`,
+        userId, 
+        userName: data.updatedByName || 'User', 
+        companyId: this.companyId
+      });
+    }
   }
 
   async instantiateContractFromTemplate(
@@ -127,18 +137,11 @@ export class DocumentService {
       createdBy: userId,
       updatedBy: userId,
       createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
+      isHistoryRecorded: false
     } as any;
 
     await setDoc(contractRef, contractData);
-
-    const clientService = new ClientService(this.db, this.companyId);
-    await clientService.addHistory(payload.clientId, {
-      type: 'system_log',
-      content: `تم إنشاء مسودة عقد رسمي للمعاملة ${payload.name}`,
-      userId, userName, companyId: this.companyId
-    });
-
     return contractRef.id;
   }
 
@@ -282,7 +285,7 @@ export class DocumentService {
 
     const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
     await addDoc(timelineRef, {
-      transactionId,
+      transactionId: payload.transactionId,
       type: 'system',
       content: `تم اعتماد الميزانية المرجعية بقيمة ${totalAmount.toLocaleString()} KWD. تم تفعيل المسار الفني وبدء التنفيذ الميداني.`,
       userId, userName, companyId: this.companyId, createdAt: serverTimestamp()

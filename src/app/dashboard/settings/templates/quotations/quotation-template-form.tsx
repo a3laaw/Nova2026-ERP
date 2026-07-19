@@ -137,13 +137,14 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
           </Button>
           <h1 className="text-lg font-black">{isRtl ? 'تصميم قالب عروض الأسعار' : 'Quotation Template Design'}</h1>
         </div>
-        <Button onClick={handleSave} disabled={loading} size="sm" className="h-9 px-8 rounded-lg shadow-lg gap-2">
-           {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
-           {isRtl ? 'حفظ القالب' : 'Save Template'}
-        </Button>
+        <div className="flex items-center gap-2">
+           <Button onClick={handleSave} disabled={loading} size="sm" className="h-9 px-8 rounded-lg shadow-lg gap-2">
+              {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
+              {isRtl ? 'حفظ القالب' : 'Save Template'}
+           </Button>
+        </div>
       </header>
 
-      {/* الرادار المالي وشريط الإدوات */}
       <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-12 gap-6">
          <div className="md:col-span-8 space-y-6">
             <Card className="border-0 shadow-sm rounded-xl bg-white ring-1 ring-black/5">
@@ -164,7 +165,6 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
             </Card>
 
             <PrintWrapper className="mt-4 overflow-hidden">
-               {/* تكرار منطق العرض الحي هنا لضمان التوافق */}
                <div className="space-y-6">
                   <div className="p-4 bg-[#1e1b4b] rounded-xl text-white flex items-center justify-between gap-4">
                       <div className="flex items-center gap-3 text-start">
@@ -185,12 +185,17 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                       {(formData.pricingMode === 'percentage' || formData.pricingMode === 'fixed') && (
                         <div className="space-y-1 text-start w-32">
                            <Label className="text-[7px] font-black uppercase text-primary">{isRtl ? 'الميزانية' : 'Target'}</Label>
-                           <Input type="number" value={formData.baseAmount || 0} onChange={e => setFormData({...formData, baseAmount: Number(e.target.value)})} className="h-6 rounded-md bg-white text-slate-900 font-black text-xs text-center" />
+                           <Input 
+                             type="number" 
+                             value={formData.baseAmount === 0 ? "" : formData.baseAmount} 
+                             onChange={e => setFormData({...formData, baseAmount: e.target.value === "" ? 0 : Number(e.target.value)})} 
+                             className="h-6 rounded-md bg-white text-slate-900 font-black text-xs text-center" 
+                           />
                         </div>
                       )}
                   </div>
 
-                  <div className="border-2 border-slate-900 rounded-xl overflow-hidden">
+                  <div className="border-2 border-slate-900 rounded-xl overflow-hidden bg-white">
                      <table className="w-full text-[10px] text-start">
                         <thead className="bg-slate-900 text-white font-black uppercase">
                            <tr>
@@ -205,18 +210,22 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                            {(formData.items || []).map((item, idx) => (
                              <tr key={idx} className="hover:bg-slate-50 transition-colors">
                                 <td className="p-2 text-slate-300 font-bold">{idx + 1}</td>
-                                <td className="p-2">
+                                <td className="p-2 text-start">
                                    <Input value={item.label} onChange={e => updateItem(idx, 'label', e.target.value)} className="h-7 text-[10px] font-bold" />
                                 </td>
                                 {formData.pricingMode === 'percentage' && (
                                   <td className="p-2 text-center">
-                                     <Input type="number" value={item.percentage} onChange={e => updateItem(idx, 'percentage', Number(e.target.value))} className="h-7 w-12 mx-auto text-center font-black text-[10px]" />
+                                     <Input type="number" value={item.percentage === 0 ? "" : item.percentage} onChange={e => updateItem(idx, 'percentage', e.target.value === "" ? 0 : Number(e.target.value))} className="h-7 w-12 mx-auto text-center font-black text-[10px]" />
                                   </td>
                                 )}
                                 <td className="p-2 text-end pe-6">
-                                   <Input type="number" step="0.001" value={item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', Number(e.target.value))} disabled={formData.pricingMode === 'percentage'} className="h-7 w-20 ms-auto text-end font-mono font-black text-emerald-600 text-[10px]" />
+                                   <Input type="number" step="0.001" value={item.unitPrice === 0 ? "" : item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', e.target.value === "" ? 0 : Number(e.target.value))} disabled={formData.pricingMode === 'percentage'} className="h-7 w-20 ms-auto text-end font-mono font-black text-emerald-600 text-[10px]" />
                                 </td>
-                                <td className="p-2 text-center"><Trash2 className="h-3 w-3 text-rose-300 cursor-pointer hover:text-rose-500" onClick={() => updateItem(idx, 'deleted', true)} /></td>
+                                <td className="p-2 text-center">
+                                  <button type="button" onClick={() => updateItem(idx, 'deleted', true)} className="text-rose-300 hover:text-rose-600">
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </td>
                              </tr>
                            ))}
                         </tbody>

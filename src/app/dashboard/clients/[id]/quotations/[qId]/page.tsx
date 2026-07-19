@@ -13,7 +13,8 @@ import {
   Layers, Percent, Target,
   FileSearch,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  History
 } from "lucide-react";
 import { useFirestore, useDoc } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -61,7 +62,6 @@ export default function QuotationViewPage() {
   // محرك الحساب اللحظي
   const stats = useMemo(() => {
     const items = editData.items || [];
-    // تصفية المحذوف من الحساب
     const activeItems = items.filter((i: any) => !i.deleted);
     
     const totalPercentage = activeItems.reduce((acc, item) => acc + (item.percentage || 0), 0);
@@ -91,17 +91,14 @@ export default function QuotationViewPage() {
 
     setSaving(true);
     try {
-      // تمرير الصلاحيات للخدمة لضمان تجاوز الفحص الأمني
       const service = new DocumentService(db, companyId, permissions);
       
       const finalAmount = editData.pricingMode === 'itemized' 
         ? stats.totalItemizedAmount 
         : (editData.totalAmount || quote?.totalAmount || 0);
       
-      // تطهير الكائن المرسل
       const { id, createdAt, updatedAt, ...sanitizedData } = editData as any;
       
-      // تصفية البنود المحذوفة نهائياً قبل الحفظ
       const finalItems = (editData.items || [])
         .filter((i: any) => !i.deleted)
         .map(i => {
@@ -112,7 +109,8 @@ export default function QuotationViewPage() {
       await service.updateQuotation(quotationId, {
         ...sanitizedData,
         items: finalItems,
-        totalAmount: finalAmount
+        totalAmount: finalAmount,
+        updatedByName: globalUser?.username || user.displayName || 'Admin'
       }, user.uid);
       
       toast({ title: isRtl ? "تم تحديث العرض بنجاح" : "Quotation Updated" });
@@ -145,7 +143,6 @@ export default function QuotationViewPage() {
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-700 bg-slate-50" dir={dir}>
       
-      {/* Toolbar - Paper-on-Desk Style */}
       <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 print:hidden px-6 pt-6">
         <div className="text-start">
           <div className="flex items-center gap-2">
@@ -206,7 +203,7 @@ export default function QuotationViewPage() {
                            <span>{isRtl ? 'صلاحية العرض' : 'Valid For'}</span>
                            <div className="flex items-center gap-2">
                               {isEditing ? (
-                                <input type="number" value={editData.validDays} onChange={e => setEditForm({...editData, validDays: Number(e.target.value)})} className="w-8 h-5 border rounded text-center bg-white text-[10px]" />
+                                <input type="number" value={editData.validDays === 0 ? "" : editData.validDays} onChange={e => setEditForm({...editData, validDays: e.target.value === "" ? 0 : Number(e.target.value)})} className="w-8 h-5 border rounded text-center bg-white text-[10px]" />
                               ) : <span>{quote.validDays}</span>}
                               <span>{isRtl ? 'يوم' : 'Days'}</span>
                            </div>
@@ -239,8 +236,8 @@ export default function QuotationViewPage() {
                           <Label className="text-[8px] font-black uppercase text-primary tracking-widest">{isRtl ? 'الميزانية المستهدفة' : 'Target Budget'}</Label>
                           <Input 
                             type="number" 
-                            value={editData.totalAmount || 0} 
-                            onChange={e => setEditForm({...editData, totalAmount: Number(e.target.value)})}
+                            value={editData.totalAmount === 0 ? "" : editData.totalAmount} 
+                            onChange={e => setEditForm({...editData, totalAmount: e.target.value === "" ? 0 : Number(e.target.value)})}
                             className="h-8 rounded-md bg-white text-slate-900 font-black text-sm text-center"
                           />
                        </div>
@@ -312,7 +309,7 @@ export default function QuotationViewPage() {
                                    <td className="p-3 text-center">
                                       {isEditing ? (
                                          <div className="relative w-14 mx-auto">
-                                            <Input type="number" value={item.percentage} onChange={e => updateItem(originalIdx, 'percentage', Number(e.target.value))} className="h-7 rounded-md border-2 font-black text-center pe-5 text-[9px]" />
+                                            <Input type="number" value={item.percentage === 0 ? "" : item.percentage} onChange={e => updateItem(originalIdx, 'percentage', e.target.value === "" ? 0 : Number(e.target.value))} className="h-7 rounded-md border-2 font-black text-center pe-5 text-[9px]" />
                                             <Percent className="absolute right-1 top-1/2 -translate-y-1/2 h-2 w-2 text-slate-300" />
                                          </div>
                                       ) : <Badge className="bg-slate-900 text-white font-black text-[9px] px-2 h-5 rounded-md">{item.percentage}%</Badge>}
@@ -320,7 +317,7 @@ export default function QuotationViewPage() {
                                 )}
                                 <td className="p-3 text-end pe-6">
                                    {isEditing && editData.pricingMode !== 'percentage' ? (
-                                      <Input type="number" step="0.001" value={item.unitPrice} onChange={e => updateItem(originalIdx, 'unitPrice', Number(e.target.value))} className="h-7 rounded-md border-2 font-black text-center text-emerald-600 text-[10px] w-24 ms-auto" />
+                                      <Input type="number" step="0.001" value={item.unitPrice === 0 ? "" : item.unitPrice} onChange={e => updateItem(originalIdx, 'unitPrice', e.target.value === "" ? 0 : Number(e.target.value))} className="h-7 w-24 ms-auto text-end font-black text-emerald-600 text-[10px]" />
                                    ) : (
                                       <p className="font-mono font-black text-emerald-600 text-sm">{(lineAmount || 0).toLocaleString()} <span className="text-[8px] opacity-40">KWD</span></p>
                                    )}
