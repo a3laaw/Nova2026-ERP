@@ -10,7 +10,8 @@ import {
   parseISO, 
   addDays,
   eachDayOfInterval,
-  subDays
+  subDays,
+  isWithinInterval
 } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import { 
@@ -40,7 +41,12 @@ import {
   Building2,
   Filter,
   Eye,
-  AlertTriangle
+  AlertTriangle,
+  MoreVertical,
+  CalendarX,
+  Plane,
+  Timer,
+  Ban
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs, setDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
@@ -53,7 +59,7 @@ import { AppointmentService } from '@/services/appointment-service';
 import { ClientService } from '@/services/client-service';
 import { Appointment, AppointmentStatus } from '@/types/appointment';
 import { Client } from '@/types/client';
-import { Employee } from '@/types/hr';
+import { Employee, LeaveRequest, PermissionRequest, AttendanceRecord } from '@/types/hr';
 import { DayOfWeek, WorkHoursSettings } from '@/types/work-hours';
 import { Governorate } from '@/types/reference';
 import { cn } from '@/lib/utils';
@@ -70,6 +76,14 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from '@/hooks/use-toast';
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -84,7 +98,8 @@ const weekDays: { id: DayOfWeek; labelAr: string; labelEn: string }[] = [
   { id: 'Saturday', labelAr: 'السبت', labelEn: 'Saturday' },
 ];
 
-function getVisitColor(visitCount: number, status?: string): string {
+function getVisitColor(visitCount: number, status?: string, apptType?: string): string {
+  if (apptType === 'busy_blocked') return '#475569'; // Slate-600
   if (visitCount === 1) return '#facc15'; 
   if (visitCount > 1 && status !== 'contracted') return '#22c55e'; 
   if (visitCount > 1 && status === 'contracted') return '#3b82f6'; 
@@ -95,6 +110,7 @@ function cardGradient(color: string) {
   if (color === '#facc15') return "bg-yellow-50 border-yellow-200 text-yellow-900 shadow-xl shadow-yellow-100/50";
   if (color === '#22c55e') return "bg-emerald-50 border-emerald-200 text-emerald-900 shadow-xl shadow-emerald-100/50";
   if (color === '#3b82f6') return "bg-blue-50 border-blue-200 text-blue-900 shadow-xl shadow-blue-100/50";
+  if (color === '#475569') return "bg-slate-100 border-slate-300 text-slate-600 grayscale opacity-80";
   return "bg-slate-50 border-slate-200 text-slate-900 shadow-xl shadow-slate-100/50";
 }
 
@@ -132,7 +148,7 @@ function computeMeta(list: Appointment[], clients: Map<string, Client>): Map<str
     const clientStatus = clients.get(cid)?.status || 'new';
     sorted.forEach((a, i) => {
       const vc = i + 1;
-      out.set(a.id!, { visitCount: vc, status: clientStatus, color: getVisitColor(vc, clientStatus) });
+      out.set(a.id!, { visitCount: vc, status: clientStatus, color: getVisitColor(vc, clientStatus, a.type) });
     });
   });
   return out;
@@ -155,6 +171,8 @@ export function ArchitecturalAppointmentsView() {
     setMounted(true);
   }, []);
 
+  const dateStr = useMemo(() => format(currentDate, 'yyyy-MM-dd'), [currentDate]);
+
   const visibleDates = useMemo(() => {
     return eachDayOfInterval({
       start: subDays(currentDate, 2),
@@ -162,6 +180,7 @@ export function ArchitecturalAppointmentsView() {
     });
   }, [currentDate]);
 
+  // --- Data Queries ---
   const apptsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.appointments(companyId)), orderBy('start')) : null, 
   [db, companyId]);
@@ -178,10 +197,27 @@ export function ArchitecturalAppointmentsView() {
     companyId && db ? query(collection(db, paths.governorates(companyId)), orderBy('order')) : null, 
   [db, companyId]);
 
+  // استعلامات الـ HR للأتمتة (قفل المواعيد التلقائي)
+  const leavesQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.leaveRequests(companyId)), where('status', 'in', ['approved', 'on-leave', 'commenced'])) : null, 
+  [db, companyId]);
+
+  const permsQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.permissionRequests(companyId)), where('date', '==', dateStr), where('status', '==', 'approved')) : null, 
+  [db, companyId, dateStr]);
+
+  const attendanceQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.attendance(companyId)), where('date', '==', dateStr), where('status', '==', 'absent')) : null, 
+  [db, companyId, dateStr]);
+
   const { data: rawAppointments, loading: apptsLoading } = useCollection<Appointment>(apptsQuery);
   const { data: allEmployees, loading: empsLoading } = useCollection<Employee>(empsQuery);
   const { data: allClients, loading: clientsLoading } = useCollection<Client>(clientsQuery);
   const { data: governorates } = useCollection<Governorate>(govsQuery);
+  
+  const { data: approvedLeaves } = useCollection<LeaveRequest>(leavesQuery);
+  const { data: approvedPermissions } = useCollection<PermissionRequest>(permsQuery);
+  const { data: dailyAbsences } = useCollection<AttendanceRecord>(attendanceQuery);
 
   useEffect(() => {
     if (db && companyId) {
@@ -364,6 +400,12 @@ export function ArchitecturalAppointmentsView() {
            clients={clientsMap}
            isAdmin={isAdmin}
            currentEngineerId={globalUser?.employeeId}
+           leaves={approvedLeaves}
+           permissions={approvedPermissions}
+           absences={dailyAbsences}
+           dateStr={dateStr}
+           db={db}
+           companyId={companyId}
          />
          {timeSlots.evening.length > 0 && (
            <GridSection 
@@ -377,6 +419,12 @@ export function ArchitecturalAppointmentsView() {
              clients={clientsMap}
              isAdmin={isAdmin}
              currentEngineerId={globalUser?.employeeId}
+             leaves={approvedLeaves}
+             permissions={approvedPermissions}
+             absences={dailyAbsences}
+             dateStr={dateStr}
+             db={db}
+             companyId={companyId}
            />
          )}
       </div>
@@ -397,26 +445,73 @@ export function ArchitecturalAppointmentsView() {
   );
 }
 
-function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, clients, isAdmin, currentEngineerId }: any) {
+function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, clients, isAdmin, currentEngineerId, leaves, permissions, absences, dateStr, db, companyId }: any) {
   if (slots.length === 0) return null;
   
+  const visibleEngineers = isAdmin ? engineers : engineers.filter((e: any) => e.id === currentEngineerId);
+
+  // منطق فحص قفل الخانة بناءً على بيانات الـ HR
+  const getBlockedReason = (engId: string, slotTime: string) => {
+     // 1. فحص الإجازات
+     const leave = leaves?.find((l: any) => l.employeeId === engId && dateStr >= l.startDate && dateStr <= l.endDate);
+     if (leave) return { type: 'leave', label: isRtl ? 'في إجازة' : 'On Leave' };
+
+     // 2. فحص الغياب الفعلي (البصمة)
+     const absence = absences?.find((a: any) => a.employeeId === engId);
+     if (absence) return { type: 'absent', label: isRtl ? 'غائب اليوم' : 'Absent' };
+
+     // 3. فحص الاستئذانات (بالتوقيت)
+     const perm = permissions?.find((p: any) => {
+        if (p.userId !== engId) return false;
+        // تحويل الأوقات لمقارنتها
+        const slot = parse(slotTime, 'HH:mm', new Date());
+        const pStart = parse(p.startTime, 'HH:mm', new Date());
+        const pEnd = parse(p.endTime, 'HH:mm', new Date());
+        return slot >= pStart && slot < pEnd;
+     });
+     if (perm) return { type: 'permission', label: isRtl ? 'استئذان' : 'Permission' };
+
+     return null;
+  };
+
+  const handleDeleteAppt = async (id: string) => {
+     if (!confirm(isRtl ? "هل أنت متأكد من حذف الموعد نهائياً؟" : "Confirm permanent deletion?")) return;
+     try {
+        const service = new AppointmentService(db, companyId);
+        await service.deleteAppointment(id);
+        toast({ title: isRtl ? "تم الحذف بنجاح" : "Deleted successfully" });
+     } catch (e) {
+        toast({ variant: "destructive", title: isRtl ? "خطأ" : "Error" });
+     }
+  };
+
+  const handleCancelAppt = async (id: string) => {
+     try {
+        const service = new AppointmentService(db, companyId);
+        await service.cancelAppointment(id);
+        toast({ title: isRtl ? "تم إلغاء الموعد" : "Appointment cancelled" });
+     } catch (e) {
+        toast({ variant: "destructive", title: isRtl ? "خطأ" : "Error" });
+     }
+  };
+
   return (
     <div className="space-y-6">
        <div className="flex items-center gap-4 px-2">
           <Badge className="bg-slate-900 text-white font-black px-6 py-2 rounded-full text-xs shadow-lg uppercase tracking-widest">{title}</Badge>
-          <div className="h-[1px] flex-1 bg-slate-200" />
+          <div className="h-[1.5px] flex-1 bg-slate-200" />
        </div>
 
        <div className="overflow-x-auto rounded-[2.5rem] shadow-2xl border-4 border-white bg-white ring-1 ring-black/5">
           <table className="w-full border-collapse">
              <thead>
                 <tr className="bg-slate-100/80">
-                   <th className="w-24 p-6 border-b-2 border-slate-200 font-black text-[10px] text-slate-500 uppercase tracking-[0.2em]">{isRtl ? 'الوقت' : 'Time'}</th>
-                   {engineers.map((eng: Employee) => (
-                     <th key={eng.id} className="p-6 border-b-2 border-slate-200 border-s-2 border-s-slate-100 text-start bg-slate-50/50">
+                   <th className="w-24 p-6 border-b-2 border-slate-200 font-black text-[10px] text-slate-500 uppercase tracking-[0.2em] bg-slate-100/50">{isRtl ? 'الوقت' : 'Time'}</th>
+                   {visibleEngineers.map((eng: Employee) => (
+                     <th key={eng.id} className="p-6 border-b-2 border-slate-200 border-s-2 border-s-slate-100 text-start bg-white">
                         <div className="flex items-center gap-3">
-                           <div className="h-10 w-10 rounded-xl bg-primary/20 text-primary flex items-center justify-center font-black text-xs uppercase shadow-md border-2 border-white">{eng.fullName.charAt(0)}</div>
-                           <div className="flex flex-col">
+                           <div className="h-10 w-10 rounded-xl bg-primary text-white flex items-center justify-center font-black text-xs uppercase shadow-md border-2 border-white">{eng.fullName.charAt(0)}</div>
+                           <div className="flex flex-col text-start">
                               <span className="font-black text-slate-900 text-sm leading-none">{eng.fullName}</span>
                               <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter mt-1">{eng.jobTitle}</span>
                            </div>
@@ -427,28 +522,66 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
              </thead>
              <tbody>
                 {slots.map((slot: string, sIdx: number) => (
-                  <tr key={slot} className={cn("group/row", sIdx % 2 === 0 ? "bg-white" : "bg-slate-50/20")}>
-                     <td className="p-6 text-center border-b-2 border-slate-200 font-mono font-black text-slate-500 bg-slate-100/50 text-xs">{slot}</td>
-                     {engineers.map((eng: Employee) => {
+                  <tr key={slot} className={cn("group/row", sIdx % 2 === 0 ? "bg-white" : "bg-slate-50/10")}>
+                     <td className="p-6 text-center border-b-2 border-slate-200 border-e-2 border-e-slate-200 font-mono font-black text-slate-500 bg-slate-100/50 text-xs">{slot}</td>
+                     {visibleEngineers.map((eng: Employee) => {
                         const appt = grid.get(eng.id)?.get(slot);
+                        const block = getBlockedReason(eng.id!, slot);
+
+                        if (block) {
+                           return (
+                             <td key={eng.id} className="p-2 border-b-2 border-slate-200 border-s-2 border-s-slate-100 bg-slate-50/50">
+                                <div className="h-full flex items-center justify-center gap-2 text-[9px] font-black text-slate-300 uppercase italic opacity-60">
+                                   {block.type === 'leave' && <Plane className="h-3 w-3" />}
+                                   {block.type === 'permission' && <Timer className="h-3 w-3" />}
+                                   {block.type === 'absent' && <Ban className="h-3 w-3" />}
+                                   {block.label}
+                                </div>
+                             </td>
+                           );
+                        }
+
                         if (appt) {
                            const m = meta.get(appt.id);
                            const client = clients.get(appt.clientId);
+                           const isBusy = appt.type === 'busy_blocked';
+
                            return (
                              <td key={eng.id} className="p-2 border-b-2 border-slate-200 border-s-2 border-s-slate-100 align-top relative">
-                                <Card 
-                                  onClick={() => onAction('edit', eng, slot, appt)}
-                                  className={cn("border-2 p-4 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] rounded-2xl h-full shadow-lg", cardGradient(m?.color || ''))}
-                                >
+                                <Card className={cn("border-2 p-4 rounded-2xl h-full shadow-lg relative group/card", cardGradient(m?.color || ''))}>
                                    <div className="flex justify-between items-start mb-2">
                                       <div className="text-start">
-                                         <p className="font-black text-sm leading-tight mb-1">{appt.clientName || client?.nameAr}</p>
-                                         <div className="flex items-center gap-1.5 text-[8px] font-black uppercase opacity-60">
-                                            <MapPin className="h-2 w-2" /> {client?.governorateName || '---'}
-                                         </div>
+                                         <p className="font-black text-sm leading-tight mb-1">{isBusy ? (isRtl ? 'مشغول / مهام مكتبية' : 'Busy / Internal') : (appt.clientName || client?.nameAr)}</p>
+                                         {!isBusy && (
+                                           <div className="flex items-center gap-1.5 text-[8px] font-black uppercase opacity-60">
+                                              <MapPin className="h-2 w-2" /> {client?.governorateName || '---'}
+                                           </div>
+                                         )}
                                       </div>
-                                      <Badge className="bg-white/60 text-inherit border-0 font-black text-[8px] h-5 px-1.5 rounded-lg shadow-sm">VISIT {m?.visitCount}</Badge>
+                                      
+                                      <DropdownMenu>
+                                         <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-6 w-6 rounded-lg opacity-0 group-card:opacity-100 transition-opacity">
+                                               <MoreVertical className="h-4 w-4" />
+                                            </Button>
+                                         </DropdownMenuTrigger>
+                                         <DropdownMenuContent align="end" className="rounded-xl border-2 shadow-2xl">
+                                            <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'إجراءات الموعد' : 'Actions'}</DropdownMenuLabel>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem onClick={() => onAction('edit', eng, slot, appt)} className="font-bold gap-2 cursor-pointer">
+                                               <Edit3 className="h-3.5 w-3.5 text-blue-500" /> {isRtl ? 'تعديل / إعادة جدولة' : 'Reschedule'}
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleCancelAppt(appt.id)} className="font-bold gap-2 cursor-pointer">
+                                               <CalendarX className="h-3.5 w-3.5 text-orange-500" /> {isRtl ? 'إلغاء الموعد' : 'Cancel'}
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem onClick={() => handleDeleteAppt(appt.id)} className="font-bold gap-2 cursor-pointer text-rose-600 focus:text-rose-600 focus:bg-rose-50">
+                                               <Trash2 className="h-3.5 w-3.5" /> {isRtl ? 'حذف نهائي' : 'Delete'}
+                                            </DropdownMenuItem>
+                                         </DropdownMenuContent>
+                                      </DropdownMenu>
                                    </div>
+                                   {!isBusy && <Badge className="bg-white/60 text-inherit border-0 font-black text-[8px] h-5 px-1.5 rounded-lg shadow-sm">VISIT {m?.visitCount}</Badge>}
                                 </Card>
                              </td>
                            );
@@ -481,10 +614,9 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
   
   const [loading, setLoading] = useState(false);
   const [isNewClient, setIsNewClient] = useState(false);
+  const [isBusyBlock, setIsBusyBlock] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
-  
-  const [govSearch, setGovSearch] = useState("");
-  const [govSearchOpen, setGovSearchOpen] = useState(false);
+  const [showClientResults, setShowClientSearch] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -499,18 +631,13 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     notes: ''
   });
 
-  // Sovereign Isolation Protocol: 
-  // حصر العملاء بناءً على "المهندس المنشود" حصراً لضمان عدم تداخل المحافظ
   const targetEngineerId = data?.engineer?.id || data?.appointment?.engineerId;
   
   const filteredClients = useMemo(() => {
     let list = clients || [];
-
-    // إجبار الفلترة على المهندس المنشود فقط
     if (targetEngineerId) {
       list = list.filter((c: any) => c.assignedEngineerId === targetEngineerId);
     }
-
     if (clientSearch.trim()) {
       const q = clientSearch.toLowerCase();
       list = list.filter((c: any) => 
@@ -521,24 +648,15 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     return list;
   }, [clients, targetEngineerId, clientSearch]);
 
-  const filteredGovs = useMemo(() => {
-    if (!govSearch.trim()) return governorates;
-    const q = govSearch.toLowerCase();
-    return governorates.filter((g: any) => 
-      g.name?.toLowerCase().includes(q) || 
-      g.nameEn?.toLowerCase().includes(q)
-    );
-  }, [governorates, govSearch]);
-
   useEffect(() => {
     if (!isOpen) {
        setFormData({
          title: '', clientId: '', clientName: '', newClientName: '', newClientPhone: '', newClientGovId: '', newClientGovName: '', date: '', time: '', notes: ''
        });
        setIsNewClient(false);
+       setIsBusyBlock(false);
        setClientSearch("");
-       setGovSearch("");
-       setGovSearchOpen(false);
+       setShowClientSearch(false);
     }
   }, [isOpen]);
 
@@ -556,23 +674,29 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         time: data.slot || (data.appointment ? format(parseISO(data.appointment.start), 'HH:mm') : '08:00'),
         notes: data.appointment?.notes || ''
       });
+      setIsBusyBlock(data.appointment?.type === 'busy_blocked');
     }
   }, [isOpen, data]);
 
   const handleSave = async () => {
     if (!data) return;
     const isCreate = data.mode === 'create';
-    const finalTitle = formData.title || (isNewClient ? `زيارة أولى: ${formData.newClientName}` : 'اجتماع عميل');
     const start = new Date(`${formData.date}T${formData.time}:00`).toISOString();
     
     setLoading(true);
     try {
       const appService = new AppointmentService(db, companyId);
       const clientService = new ClientService(db, companyId);
+      
       let targetClientId = formData.clientId;
       let targetClientName = formData.clientName;
+      let apptType: any = 'client_meeting';
 
-      if (isCreate && isNewClient) {
+      if (isBusyBlock) {
+         apptType = 'busy_blocked';
+         targetClientId = 'SYSTEM_BLOCK';
+         targetClientName = 'BUSY';
+      } else if (isCreate && isNewClient) {
         if (!formData.newClientName || !formData.newClientPhone) {
           toast({ variant: "destructive", title: isRtl ? "بيانات العميل الجديد ناقصة" : "New client data missing" });
           setLoading(false);
@@ -594,25 +718,14 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         targetClientName = formData.newClientName;
       }
 
-      // فحص تعارض المواعيد للعميل (Anti-Clash Logic)
-      const isConflict = rawAppointments?.some((a: any) => 
-        a.clientId === targetClientId && a.start === start && a.status !== 'cancelled' && a.id !== data.appointment?.id
-      );
-
-      if (isConflict) {
-        toast({ variant: "destructive", title: isRtl ? "تنبيه: تعارض في المواعيد" : "Schedule Conflict", description: isRtl ? "هذا العميل لديه موعد آخر مسجل في نفس التوقيت بالضبط." : "Client already has an appointment at this specific time." });
-        setLoading(false);
-        return;
-      }
-
       if (isCreate) {
         await appService.createAppointment({
-          title: finalTitle,
+          title: formData.title || (isBusyBlock ? 'مشغول' : 'موعد فني'),
           clientId: targetClientId,
           clientName: targetClientName,
           engineerId: data.engineer.id,
           engineerName: data.engineer.fullName,
-          type: 'client_meeting',
+          type: apptType,
           start,
           status: 'scheduled',
           companyId
@@ -622,6 +735,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
           title: formData.title,
           clientId: targetClientId,
           clientName: targetClientName,
+          type: apptType,
           start,
           notes: formData.notes
         });
@@ -642,7 +756,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
       <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
         <div className="bg-slate-50 p-8 text-slate-900 text-start border-b shrink-0">
            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 text-start">
                  <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center text-primary shadow-xl border-2 border-primary/10">
                     {isCreate ? <Plus className="h-6 w-6" /> : <Edit3 className="h-6 w-6" />}
                  </div>
@@ -662,100 +776,94 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         </div>
 
         <div className="p-8 space-y-6 text-start max-h-[65vh] overflow-y-auto scrollbar-hide">
+           
            {isCreate && (
-             <div className="flex items-center justify-between p-5 rounded-[1.5rem] bg-slate-50 border-2 border-white shadow-inner">
-                <div className="flex items-center gap-3">
-                   <div className="h-8 w-8 rounded-lg bg-white flex items-center justify-center text-primary shadow-sm border"><Sparkles className="h-4 w-4" /></div>
+             <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 border-2 border-white shadow-inner">
                    <div className="text-start">
-                      <Label className="font-black text-xs">{isRtl ? 'عميل جديد (أول زيارة)' : 'New Client?'}</Label>
-                      <p className="text-[8px] text-slate-400 font-bold uppercase">{isRtl ? 'سيتم فتح ملف مالي وتجاري تلقائياً' : 'Automated file provisioning'}</p>
+                      <Label className="font-black text-[10px] uppercase text-slate-500">{isRtl ? 'عميل جديد؟' : 'New Client?'}</Label>
                    </div>
+                   <Switch checked={isNewClient} onCheckedChange={v => { setIsNewClient(v); if(v) setIsBusyBlock(false); }} />
                 </div>
-                <Switch checked={isNewClient} onCheckedChange={setIsNewClient} />
+                <div className="flex items-center justify-between p-4 rounded-xl bg-slate-900 text-white shadow-xl">
+                   <div className="text-start">
+                      <Label className="font-black text-[10px] uppercase text-primary">{isRtl ? 'غلق الخانة (Busy)' : 'Block Slot'}</Label>
+                   </div>
+                   <Switch checked={isBusyBlock} onCheckedChange={v => { setIsBusyBlock(v); if(v) setIsNewClient(false); }} />
+                </div>
              </div>
            )}
 
-           <div className="space-y-4 animate-in fade-in duration-300">
-              {isNewClient ? (
-                 <div className="space-y-4 p-6 rounded-[2rem] border-2 border-primary/10 bg-primary/5 animate-in slide-in-from-top-2">
-                    <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اسم العميل الكامل' : 'Client Full Name'}</Label>
-                       <Input value={formData.newClientName} onChange={e => setFormData({...formData, newClientName: e.target.value})} className="h-11 rounded-xl border-2 font-bold bg-white" placeholder="..." />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                       <div className="space-y-2">
-                          <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'رقم الهاتف' : 'Mobile'}</Label>
-                          <div className="relative">
-                             <Phone className="absolute start-3 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-300" />
-                             <Input value={formData.newClientPhone} onChange={e => setFormData({...formData, newClientPhone: e.target.value})} className="h-11 rounded-xl border-2 font-bold ps-9 bg-white" placeholder="+965" />
-                          </div>
-                       </div>
-                       <div className="space-y-2 relative">
-                          <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'المحافظة' : 'Gov'}</Label>
-                          <div className="relative">
-                            <Input 
-                              value={formData.newClientGovName || govSearch} 
-                              onChange={e => { setGovSearch(e.target.value); setGovSearchOpen(true); }}
-                              onFocus={() => setGovSearchOpen(true)}
-                              className="h-11 rounded-xl border-2 font-bold bg-white" 
-                              placeholder={isRtl ? "ابحث..." : "Search..."}
-                            />
-                            {govSearchOpen && (
-                              <div className="absolute z-[100] w-full mt-1 bg-white border-2 shadow-2xl rounded-xl overflow-hidden animate-in fade-in zoom-in-95">
-                                 <ScrollArea className="h-48">
-                                    {filteredGovs.map((g: any) => (
-                                      <div key={g.id} onClick={() => { setFormData({...formData, newClientGovId: g.id!, newClientGovName: isRtl ? g.name : g.nameEn}); setGovSearch(""); setGovSearchOpen(false); }} className="p-3 text-xs font-black text-slate-700 hover:bg-primary/5 cursor-pointer border-b last:border-0">{isRtl ? g.name : g.nameEn}</div>
+           {!isBusyBlock && (
+             <div className="space-y-4 animate-in fade-in duration-300">
+                {isNewClient ? (
+                   <div className="space-y-4 p-6 rounded-[2rem] border-2 border-primary/10 bg-primary/5">
+                      <div className="space-y-2">
+                         <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اسم العميل الكامل' : 'Client Full Name'}</Label>
+                         <Input value={formData.newClientName} onChange={e => setFormData({...formData, newClientName: e.target.value})} className="h-11 rounded-xl border-2 font-bold bg-white" placeholder="..." />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                         <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'رقم الهاتف' : 'Mobile'}</Label>
+                            <Input value={formData.newClientPhone} onChange={e => setFormData({...formData, newClientPhone: e.target.value})} className="h-11 rounded-xl border-2 font-bold bg-white" placeholder="+965" />
+                         </div>
+                         <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'المحافظة' : 'Gov'}</Label>
+                            <Select value={formData.newClientGovId} onValueChange={v => {
+                               const g = governorates?.find((x:any)=>x.id===v);
+                               setFormData({...formData, newClientGovId: v, newClientGovName: isRtl?g.name:g.nameEn});
+                            }}>
+                               <SelectTrigger className="h-11 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
+                               <SelectContent className="rounded-xl border-0 shadow-2xl">
+                                  {governorates?.map((g: any) => <SelectItem key={g.id} value={g.id} className="font-bold text-xs">{isRtl ? g.name : g.nameEn}</SelectItem>)}
+                               </SelectContent>
+                            </Select>
+                         </div>
+                      </div>
+                   </div>
+                ) : (
+                   <div className="space-y-2 relative">
+                      <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'البحث في قاعدة عملائك المنسوبين' : 'Search your assigned clients'}</Label>
+                      <div className="relative">
+                        <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
+                        <Input 
+                          value={formData.clientName || clientSearch}
+                          onChange={e => { setClientSearch(e.target.value); setShowClientSearch(true); if(formData.clientId) setFormData({...formData, clientId: '', clientName: ''}); }}
+                          onFocus={() => setShowClientSearch(true)}
+                          placeholder={isRtl ? "ابحث بالاسم أو رقم الملف..." : "Search by name or file..."}
+                          className="h-14 rounded-2xl border-2 ps-12 font-black text-sm bg-white shadow-inner focus:bg-white transition-all"
+                        />
+                        {showClientResults && (
+                           <div className="absolute z-[100] w-full mt-2 bg-white border-2 shadow-2xl rounded-2xl overflow-hidden animate-in fade-in zoom-in-95">
+                              <ScrollArea className="h-48">
+                                 <div className="p-2 space-y-1">
+                                    {filteredClients.map((c: any) => (
+                                      <div 
+                                        key={c.id} 
+                                        onClick={() => { setFormData({...formData, clientId: c.id!, clientName: c.nameAr}); setClientSearch(""); setShowClientSearch(false); }}
+                                        className="p-3 rounded-xl cursor-pointer transition-all flex items-center justify-between border-2 border-transparent hover:bg-primary/5 hover:border-primary/10"
+                                      >
+                                         <div className="text-start">
+                                            <p className="font-black text-xs text-slate-800">{c.nameAr}</p>
+                                            <p className="text-[8px] text-slate-400 font-mono">#{c.fileNumber}</p>
+                                         </div>
+                                         <ArrowRight className={cn("h-3 w-3 text-slate-200", isRtl && "rotate-180")} />
+                                      </div>
                                     ))}
-                                 </ScrollArea>
-                              </div>
-                            )}
-                          </div>
-                       </div>
-                    </div>
-                 </div>
-              ) : (
-                 <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'البحث في قاعدة عملائك المنسوبين' : 'Search your assigned clients'}</Label>
-                    <div className="p-6 rounded-[2rem] border-2 border-slate-100 bg-slate-50/30 space-y-4">
-                       <div className="relative">
-                          <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
-                          <Input 
-                            value={clientSearch}
-                            onChange={e => setClientSearch(e.target.value)}
-                            placeholder={isRtl ? "ابحث بالاسم أو رقم الملف..." : "Search by name or file..."}
-                            className="h-14 rounded-2xl border-2 ps-12 font-black text-sm bg-white shadow-inner focus:bg-white transition-all"
-                          />
-                       </div>
-                       
-                       <ScrollArea className="h-48 rounded-xl border bg-white">
-                          <div className="p-2 space-y-1">
-                             {filteredClients.map((c: any) => (
-                               <div 
-                                 key={c.id} 
-                                 onClick={() => setFormData({...formData, clientId: c.id!, clientName: c.nameAr})}
-                                 className={cn(
-                                   "p-3 rounded-lg cursor-pointer transition-all flex items-center justify-between border-2",
-                                   formData.clientId === c.id ? "bg-primary/10 border-primary" : "bg-white border-transparent hover:bg-slate-50"
-                                 )}
-                               >
-                                  <div className="text-start">
-                                     <p className="font-black text-xs text-slate-800">{c.nameAr}</p>
-                                     <p className="text-[8px] text-slate-400 font-mono">#{c.fileNumber}</p>
-                                  </div>
-                                  {formData.clientId === c.id && <CheckCircle2 className="h-4 w-4 text-primary" />}
-                               </div>
-                             ))}
-                             {filteredClients.length === 0 && <div className="p-8 text-center text-[10px] text-slate-300 italic font-bold">لا يوجد عملاء متاحين لهذا المهندس</div>}
-                          </div>
-                       </ScrollArea>
-                    </div>
-                 </div>
-              )}
-           </div>
+                                    {filteredClients.length === 0 && <div className="p-8 text-center text-[10px] text-slate-300 italic font-bold">لا يوجد نتائج</div>}
+                                 </div>
+                              </ScrollArea>
+                           </div>
+                        )}
+                      </div>
+                   </div>
+                )}
+             </div>
+           )}
 
            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'غرض الزيارة / العنوان' : 'Purpose / Title'}</Label>
-              <Input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="h-12 rounded-xl border-2 font-bold" placeholder={isRtl ? "مثلاً: معاينة موقع فيلا السالمية" : "e.g. Site Visit"} />
+              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'عنوان الموعد / ملاحظات سريعة' : 'Title / Purpose'}</Label>
+              <Input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="h-12 rounded-xl border-2 font-bold" placeholder="..." />
            </div>
 
            <div className="space-y-2">
@@ -768,12 +876,13 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
            <Button variant="outline" onClick={onClose} className="flex-1 h-16 rounded-[1.5rem] border-2 font-black text-lg bg-white shadow-sm">
               {isRtl ? 'إلغاء' : 'Cancel'}
            </Button>
-           <Button onClick={handleSave} disabled={loading} className="flex-[2] h-16 rounded-[1.5rem] bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-8 border-orange-700">
+           <Button onClick={handleSave} disabled={loading || (!isBusyBlock && !formData.clientId)} className="flex-[2] h-16 rounded-[1.5rem] bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-8 border-orange-700">
               {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />}
-              {isRtl ? 'تثبيت الموعد' : 'Confirm Booking'}
+              {isRtl ? 'تثبيت الإجراء' : 'Confirm Booking'}
            </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
+
