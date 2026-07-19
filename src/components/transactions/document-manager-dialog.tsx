@@ -17,7 +17,8 @@ import {
   Wallet, Landmark, Receipt, 
   ChevronRight, Sparkles, CheckCircle2,
   ExternalLink,
-  Info
+  Info,
+  History
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
