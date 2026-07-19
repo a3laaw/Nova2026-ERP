@@ -37,7 +37,9 @@ import {
   Save,
   Trash2,
   XCircle,
-  MoreVertical
+  MoreVertical,
+  Globe,
+  Search
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs } from 'firebase/firestore';
@@ -67,12 +69,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
 import { toast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -147,7 +143,6 @@ export function ArchitecturalAppointmentsView() {
   const db = useFirestore();
   const companyId = globalUser?.companyId;
 
-  // Hydration Stability
   const [mounted, setMounted] = useState(false);
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [settings, setSettings] = useState<WorkHoursSettings | null>(null);
@@ -260,14 +255,12 @@ export function ArchitecturalAppointmentsView() {
     setDialogOpen(true);
   };
 
-  const isLoading = apptsLoading || empsLoading || clientsLoading || !settings || !mounted;
-
-  if (isLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
+  if (!mounted || apptsLoading || empsLoading || clientsLoading || !settings) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
   return (
     <div className="space-y-12 animate-in fade-in duration-700" dir={dir}>
       
-      {/* Date Slider Header */}
+      {/* Date Tiles Slider - AS REQUESTED */}
       <div className="flex flex-col items-center gap-6 no-print">
         <h2 className="text-xl font-black text-primary uppercase tracking-widest">{isRtl ? 'المواعيد' : 'Appointments'}</h2>
         
@@ -483,6 +476,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, u
   const govsQuery = useMemo(() => companyId && db ? query(collection(db, paths.governorates(companyId)), orderBy('order')) : null, [db, companyId]);
   const { data: governorates } = useCollection<Governorate>(govsQuery);
 
+  // الفلترة السيادية: المهندس لا يرى إلا عملاءه في القائمة
   const filteredClients = useMemo(() => {
     if (isAdmin) return clients;
     return clients.filter((c: any) => c.assignedEngineerId === userId);
@@ -509,6 +503,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, u
         const gov = governorates?.find(g => g.id === formData.newClientGovId);
         const nextFileNum = await clientService.getNextFileNumber();
         
+        // تسجيل العميل الجديد وربطه بالمهندس الحالي فوراً
         targetClientId = await clientService.addClient({
           nameAr: formData.newClientName,
           mobile: formData.newClientPhone,
@@ -516,7 +511,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, u
           governorateName: gov ? (isRtl ? gov.name : gov.nameEn) : '',
           fileNumber: nextFileNum,
           status: 'new',
-          assignedEngineerId: userId, 
+          assignedEngineerId: userId, // ربط سيادي فوري
           assignedEngineerName: userName
         }, userId, userName);
         
@@ -563,6 +558,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, u
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="rounded-[2rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
+        {/* Header - Light & Clean */}
         <div className="bg-primary/5 p-8 text-slate-900 text-start border-b">
            <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -630,9 +626,9 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, u
                  <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'اختر العميل المسجل' : 'Registered Client'}</Label>
                     <Select value={formData.clientId} onValueChange={v => setFormData({...formData, clientId: v})}>
-                       <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/50"><SelectValue placeholder={isRtl ? "البحث في قاعدة العملاء..." : "Search clients..."} /></SelectTrigger>
+                       <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/50"><SelectValue placeholder={isRtl ? "البحث في قاعدة عملائك..." : "Search your clients..."} /></SelectTrigger>
                        <SelectContent className="rounded-xl border-0 shadow-2xl">
-                          {filteredClients.map((c: any) => <SelectItem key={c.id} value={c.id!} className="font-bold py-3">{c.nameAr}</SelectItem>)}
+                          {filteredClients.map((c: any) => <SelectItem key={c.id} value={c.id!} className="font-bold py-3 border-b last:border-0 border-slate-50">{c.nameAr}</SelectItem>)}
                        </SelectContent>
                     </Select>
                  </div>
@@ -667,7 +663,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, companyId, u
            <Button variant="outline" onClick={onClose} className="flex-1 h-16 rounded-[1.5rem] border-2 font-black text-lg bg-white shadow-sm">
               {isRtl ? 'إلغاء' : 'Cancel'}
            </Button>
-           <Button onClick={handleSave} disabled={loading} className="flex-[2] h-16 rounded-[1.5rem] bg-primary text-white font-black shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-2 border-b-8 border-orange-700">
+           <Button onClick={handleSave} disabled={loading} className="flex-[2] h-16 rounded-[1.5rem] bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-2 border-b-8 border-orange-700">
               {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />}
               {isRtl ? 'تثبيت الموعد' : 'Confirm Booking'}
            </Button>
