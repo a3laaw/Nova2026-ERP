@@ -42,10 +42,11 @@ import {
   CalendarX,
   Plane,
   Timer,
-  Ban
+  Ban,
+  RotateCcw
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, where, doc, getDocs, setDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, where, doc, getDocs, updateDoc, deleteDoc, serverTimestamp, addDoc } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
@@ -348,7 +349,7 @@ export function ArchitecturalAppointmentsView() {
            <Button 
              variant="ghost" 
              size="icon" 
-             onClick={() => addDays(currentDate, 1)}
+             onClick={() => setCurrentDate(addDays(currentDate, 1))}
              className="h-12 w-12 rounded-full hover:bg-slate-100 transition-all text-slate-400"
            >
               <ChevronRight className={cn("h-6 w-6", isRtl && "rotate-180")} />
@@ -544,29 +545,29 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                                          <p className="font-black text-sm leading-tight mb-1">{isBusy ? (isRtl ? 'مشغول / مهام مكتبية' : 'Busy / Internal') : (appt.clientName || client?.nameAr)}</p>
                                          {!isBusy && (
                                            <div className="flex items-center gap-1.5 text-[8px] font-black uppercase opacity-60">
-                                              <MapPin className="h-2 w-2" /> {client?.governorateName || '---'}
+                                              <MapPin className="h-2.5 w-2.5" /> {client?.governorateName || '---'}
                                            </div>
                                          )}
                                       </div>
                                       
                                       <DropdownMenu>
                                          <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg bg-white/60 backdrop-blur-sm border border-black/5 shadow-sm transition-all z-20">
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg bg-white shadow-md border border-slate-200 hover:bg-slate-50 transition-all z-20">
                                                <MoreVertical className="h-4 w-4 text-slate-900" />
                                             </Button>
                                          </DropdownMenuTrigger>
-                                         <DropdownMenuContent align="end" className="rounded-xl border-2 shadow-2xl z-[100] bg-white">
+                                         <DropdownMenuContent align="end" className="rounded-xl border-2 shadow-2xl z-[100] bg-white min-w-[180px]">
                                             <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'إجراءات الموعد' : 'Actions'}</DropdownMenuLabel>
                                             <DropdownMenuSeparator />
-                                            <DropdownMenuItem onClick={() => onAction('edit', eng, slot, appt)} className="font-bold gap-2 cursor-pointer">
-                                               <Edit3 className="h-3.5 w-3.5 text-blue-500" /> {isRtl ? 'تعديل / إعادة جدولة' : 'Reschedule'}
+                                            <DropdownMenuItem onClick={() => onAction('edit', eng, slot, appt)} className="font-bold gap-3 py-3 cursor-pointer">
+                                               <Edit3 className="h-4 w-4 text-blue-500" /> {isRtl ? 'تعديل / إعادة جدولة' : 'Reschedule'}
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => handleCancelAppt(appt.id!)} className="font-bold gap-2 cursor-pointer">
-                                               <CalendarX className="h-3.5 w-3.5 text-orange-500" /> {isRtl ? 'إلغاء الموعد' : 'Cancel'}
+                                            <DropdownMenuItem onClick={() => handleCancelAppt(appt.id!)} className="font-bold gap-3 py-3 cursor-pointer">
+                                               <CalendarX className="h-4 w-4 text-orange-500" /> {isRtl ? 'إلغاء الموعد' : 'Cancel'}
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator />
-                                            <DropdownMenuItem onClick={() => handleDeleteAppt(appt.id!)} className="font-bold gap-2 cursor-pointer text-rose-600 focus:text-rose-600 focus:bg-rose-50">
-                                               <Trash2 className="h-3.5 w-3.5" /> {isRtl ? 'حذف نهائي' : 'Delete'}
+                                            <DropdownMenuItem onClick={() => handleDeleteAppt(appt.id!)} className="font-bold gap-3 py-3 cursor-pointer text-rose-600 focus:text-rose-600 focus:bg-rose-50">
+                                               <Trash2 className="h-4 w-4" /> {isRtl ? 'حذف نهائي' : 'Delete'}
                                             </DropdownMenuItem>
                                          </DropdownMenuContent>
                                       </DropdownMenu>
@@ -622,6 +623,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
   const targetEngineerId = data?.engineer?.id || data?.appointment?.engineerId;
   
+  // الفلترة السيادية: المهندس يرى عملاءه فقط عند اختيار عميل مسجل
   const filteredClients = useMemo(() => {
     let list = clients || [];
     if (targetEngineerId) {
