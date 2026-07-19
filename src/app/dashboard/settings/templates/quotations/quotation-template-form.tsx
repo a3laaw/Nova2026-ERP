@@ -31,6 +31,7 @@ import { TemplateService } from '@/services/template-service';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
+import { PrintWrapper } from '@/components/layout/print-wrapper';
 
 interface Props {
   template: QuotationTemplate | null;
@@ -128,177 +129,135 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-10 text-start" dir={dir}>
-      <header className="flex items-center justify-between border-b pb-4 shrink-0">
+    <div className="space-y-6 pb-20 animate-in fade-in duration-500" dir={dir}>
+      <header className="flex items-center justify-between border-b pb-4 shrink-0 max-w-6xl mx-auto w-full px-4">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={onClose} className="h-9 w-9 border rounded-lg">
             <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
           </Button>
-          <h1 className="text-xl font-black">{isRtl ? 'إعداد قالب عرض السعر' : 'Setup Quote Template'}</h1>
+          <h1 className="text-lg font-black">{isRtl ? 'تصميم قالب عروض الأسعار' : 'Quotation Template Design'}</h1>
         </div>
-        <div className="flex gap-2">
-           <Button variant="outline" size="sm" onClick={onClose} className="h-9 px-4 rounded-lg font-bold">إلغاء</Button>
-           <Button onClick={handleSave} disabled={loading} size="sm" className="h-9 px-6 rounded-lg shadow-lg gap-2">
-             {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
-             {t('save')}
-           </Button>
-        </div>
+        <Button onClick={handleSave} disabled={loading} size="sm" className="h-9 px-8 rounded-lg shadow-lg gap-2">
+           {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
+           {isRtl ? 'حفظ القالب' : 'Save Template'}
+        </Button>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-         <div className="lg:col-span-8 space-y-6">
-            <Card className="border-0 shadow-sm rounded-2xl bg-white ring-1 ring-black/5">
-               <CardContent className="p-5 grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* الرادار المالي وشريط الإدوات */}
+      <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-12 gap-6">
+         <div className="md:col-span-8 space-y-6">
+            <Card className="border-0 shadow-sm rounded-xl bg-white ring-1 ring-black/5">
+               <CardContent className="p-5 grid grid-cols-1 md:grid-cols-3 gap-4 text-start">
                   <div className="space-y-1">
-                     <Label className="text-[10px] font-black uppercase text-slate-400">{t('name')}</Label>
-                     <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-9 rounded-lg font-bold" />
+                     <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{t('name')}</Label>
+                     <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-9 rounded-lg font-bold text-xs" />
                   </div>
                   <div className="space-y-1">
-                     <Label className="text-[10px] font-black uppercase text-slate-400">Code</Label>
+                     <Label className="text-[9px] font-black uppercase text-slate-400">Code</Label>
                      <Input value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value.toUpperCase()})} className="h-9 rounded-lg font-mono text-xs" />
                   </div>
                   <div className="flex items-center justify-between p-2 mt-4 bg-slate-50 rounded-lg border">
-                     <Label className="text-[9px] font-black uppercase text-slate-500">{isRtl ? 'افتراضي' : 'Default'}</Label>
+                     <Label className="text-[8px] font-black uppercase text-slate-500">Default</Label>
                      <Switch checked={formData.isDefault || false} onCheckedChange={v => setFormData({...formData, isDefault: v})} />
                   </div>
                </CardContent>
             </Card>
 
-            <Card className={cn(
-              "border-0 shadow-md rounded-2xl p-6 transition-all ring-1 ring-black/5",
-              stats.isValid ? "bg-emerald-50/50" : "bg-slate-50"
-            )}>
-               <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                  <div className="text-start space-y-1 flex-1">
-                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'الميزانية المستهدفة (KWD)' : 'Target Budget'}</Label>
-                     <Input 
-                        type="number" 
-                        value={formData.baseAmount || 0} 
-                        onChange={e => setFormData({...formData, baseAmount: Number(e.target.value)})} 
-                        className="h-10 rounded-xl border-2 font-black text-xl text-primary bg-white text-center"
-                     />
+            <PrintWrapper className="mt-4 overflow-hidden">
+               {/* تكرار منطق العرض الحي هنا لضمان التوافق */}
+               <div className="space-y-6">
+                  <div className="p-4 bg-[#1e1b4b] rounded-xl text-white flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3 text-start">
+                        <Calculator className="h-4 w-4 text-primary" />
+                        <div>
+                          <p className="text-[7px] font-black uppercase text-primary">Pricing Mode</p>
+                          <Select value={formData.pricingMode} onValueChange={(v: PricingMode) => setFormData({...formData, pricingMode: v})}>
+                             <SelectTrigger className="h-6 w-32 rounded-md bg-white/10 border-0 text-white font-black text-[9px]"><SelectValue /></SelectTrigger>
+                             <SelectContent className="rounded-xl">
+                                <SelectItem value="itemized" className="font-bold text-xs">{t('itemized')}</SelectItem>
+                                <SelectItem value="fixed" className="font-bold text-xs">{t('fixed')}</SelectItem>
+                                <SelectItem value="percentage" className="font-bold text-xs">{t('percentage')}</SelectItem>
+                             </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      
+                      {(formData.pricingMode === 'percentage' || formData.pricingMode === 'fixed') && (
+                        <div className="space-y-1 text-start w-32">
+                           <Label className="text-[7px] font-black uppercase text-primary">{isRtl ? 'الميزانية' : 'Target'}</Label>
+                           <Input type="number" value={formData.baseAmount || 0} onChange={e => setFormData({...formData, baseAmount: Number(e.target.value)})} className="h-6 rounded-md bg-white text-slate-900 font-black text-xs text-center" />
+                        </div>
+                      )}
                   </div>
-                  <div className="flex items-center gap-4 bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-                     <div className="text-start">
-                        <p className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'إجمالي البنود' : 'Items Sum'}</p>
-                        <p className="text-lg font-black text-slate-800">{totalItemsValue.toLocaleString()}</p>
-                     </div>
-                     <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center", stats.isValid ? "bg-emerald-500 text-white" : "bg-rose-100 text-rose-500")}>
-                        {stats.isValid ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
-                     </div>
-                  </div>
-               </div>
-            </Card>
 
-            <div className="space-y-4">
-               <div className="flex justify-between items-center px-2">
-                  <h3 className="text-sm font-black flex items-center gap-2 text-slate-700"><Calculator className="h-4 w-4" /> {isRtl ? 'هيكلة بنود التسعير' : 'Pricing Matrix'}</h3>
-                  <Select value={formData.pricingMode || 'itemized'} onValueChange={(v: PricingMode) => setFormData({...formData, pricingMode: v})}>
-                     <SelectTrigger className="h-8 w-36 rounded-lg border-2 font-black text-[10px] bg-white"><SelectValue /></SelectTrigger>
-                     <SelectContent className="rounded-xl">
-                        <SelectItem value="itemized" className="font-bold text-xs">{t('itemized')}</SelectItem>
-                        <SelectItem value="fixed" className="font-bold text-xs">{t('fixed')}</SelectItem>
-                        <SelectItem value="percentage" className="font-bold text-xs">{t('percentage')}</SelectItem>
-                     </SelectContent>
-                  </Select>
-               </div>
-
-               <div className="space-y-3">
-                  {formData.items?.map((item, idx) => {
-                    const lineAmount = formData.pricingMode === 'percentage' 
-                      ? ((formData.baseAmount || 0) * (item.percentage || 0)) / 100 
-                      : (item.unitPrice || 0);
-
-                    return (
-                      <Card key={idx} className="border-0 shadow-sm rounded-xl bg-white group hover:shadow-md transition-all">
-                        <CardContent className="p-4 grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-                            <div className="md:col-span-1 flex justify-center"><Badge variant="outline" className="h-7 w-7 rounded-md font-black">#{idx + 1}</Badge></div>
-                            <div className="md:col-span-6 space-y-1 text-start">
-                              <Input value={item.label || ''} onChange={e => updateItem(idx, 'label', e.target.value)} className="h-8 rounded-lg border-transparent hover:border-slate-200 bg-slate-50 font-bold text-xs" placeholder="اسم الدفعة..." />
-                              <Textarea value={item.description || ''} onChange={e => updateItem(idx, 'description', e.target.value)} className="min-h-[40px] text-[10px] py-1 border-transparent hover:border-slate-200 bg-transparent resize-none" placeholder="وصف فني مختصر..." />
-                            </div>
-                            <div className="md:col-span-5 flex items-center gap-3 text-start">
-                              {formData.pricingMode === 'percentage' && (
-                                <div className="space-y-1 flex-1">
-                                  <Label className="text-[9px] font-black text-slate-400">الحصة %</Label>
-                                  <div className="relative">
-                                    <Input type="number" value={item.percentage} onChange={e => updateItem(idx, 'percentage', Number(e.target.value))} className="h-8 rounded-lg border-2 font-black text-xs text-center pe-6" />
-                                    <Percent className="absolute right-2 top-1/2 -translate-y-1/2 h-2.5 w-2.5 text-slate-300" />
-                                  </div>
-                                </div>
-                              )}
-                              <div className="space-y-1 flex-1">
-                                  <Label className="text-[9px] font-black text-slate-400">{formData.pricingMode === 'percentage' ? 'المبلغ' : 'السعر'}</Label>
-                                  <Input 
-                                    type="number" 
-                                    readOnly={formData.pricingMode === 'percentage'}
-                                    value={formData.pricingMode === 'percentage' ? lineAmount : item.unitPrice} 
-                                    onChange={e => updateItem(idx, 'unitPrice', Number(e.target.value))}
-                                    className={cn("h-8 rounded-lg border-2 font-black text-xs text-center", formData.pricingMode === 'percentage' ? "bg-slate-50 border-transparent" : "bg-white")} 
-                                  />
-                              </div>
-                              <Button variant="ghost" size="icon" onClick={() => setFormData({...formData, items: formData.items?.filter((_, i) => i !== idx)})} className="h-8 w-8 text-rose-300 hover:text-rose-600 shrink-0"><Trash2 className="h-3.5 w-3.5" /></Button>
-                            </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                  <Button onClick={() => setFormData({...formData, items: [...(formData.items || []), { label: '', percentage: 0, unitPrice: 0, quantity: 1 }]})} variant="outline" size="sm" className="w-full h-10 rounded-xl border-dashed border-primary/40 text-primary font-black gap-2 hover:bg-primary/5 transition-all text-xs"><Plus className="h-4 w-4" /> {t('addQuotationItem')}</Button>
-               </div>
-
-               <div className={cn(
-                 "p-4 rounded-2xl border-2 flex items-center justify-between shadow-sm transition-all",
-                 stats.isValid ? "bg-emerald-50 border-emerald-100 text-emerald-800" : "bg-rose-50 border-rose-100 text-rose-800"
-               )}>
-                  <div className="text-start">
-                     <p className="text-[8px] font-black uppercase opacity-60 tracking-widest">{isRtl ? 'إجمالي الحصص الموزعة' : 'Total Distribution'}</p>
-                     <p className="text-lg font-black">{formData.pricingMode === 'percentage' ? `${stats.totalPercentage}%` : `${stats.totalItemizedAmount.toLocaleString()} KWD`}</p>
-                  </div>
-                  <div className="text-end">
-                     <Badge className={cn("font-black text-[9px] uppercase", stats.isValid ? "bg-emerald-500 text-white" : "bg-rose-500 text-white")}>
-                        {stats.isValid ? 'BALANCED' : 'MISMATCH'}
-                     </Badge>
+                  <div className="border-2 border-slate-900 rounded-xl overflow-hidden">
+                     <table className="w-full text-[10px] text-start">
+                        <thead className="bg-slate-900 text-white font-black uppercase">
+                           <tr>
+                              <th className="p-3 w-8">#</th>
+                              <th className="p-3 text-start">{isRtl ? 'وصف الدفعة' : 'Item Description'}</th>
+                              {formData.pricingMode === 'percentage' && <th className="p-3 text-center w-20">%</th>}
+                              <th className="p-3 text-end pe-6 w-24">{isRtl ? 'القيمة' : 'Amount'}</th>
+                              <th className="p-3 w-8"></th>
+                           </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                           {(formData.items || []).map((item, idx) => (
+                             <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                                <td className="p-2 text-slate-300 font-bold">{idx + 1}</td>
+                                <td className="p-2">
+                                   <Input value={item.label} onChange={e => updateItem(idx, 'label', e.target.value)} className="h-7 text-[10px] font-bold" />
+                                </td>
+                                {formData.pricingMode === 'percentage' && (
+                                  <td className="p-2 text-center">
+                                     <Input type="number" value={item.percentage} onChange={e => updateItem(idx, 'percentage', Number(e.target.value))} className="h-7 w-12 mx-auto text-center font-black text-[10px]" />
+                                  </td>
+                                )}
+                                <td className="p-2 text-end pe-6">
+                                   <Input type="number" step="0.001" value={item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', Number(e.target.value))} disabled={formData.pricingMode === 'percentage'} className="h-7 w-20 ms-auto text-end font-mono font-black text-emerald-600 text-[10px]" />
+                                </td>
+                                <td className="p-2 text-center"><Trash2 className="h-3 w-3 text-rose-300 cursor-pointer hover:text-rose-500" onClick={() => updateItem(idx, 'deleted', true)} /></td>
+                             </tr>
+                           ))}
+                        </tbody>
+                     </table>
+                     <Button variant="ghost" size="sm" onClick={() => setFormData({...formData, items: [...(formData.items || []), { label: '', percentage: 0, unitPrice: 0, quantity: 1 }]})} className="w-full h-8 rounded-none border-t border-dashed font-black text-[9px] gap-2"><Plus className="h-3 w-3" /> {isRtl ? 'إضافة دفعة' : 'Add Item'}</Button>
                   </div>
                </div>
-            </div>
+            </PrintWrapper>
          </div>
 
-         <div className="lg:col-span-4 space-y-6">
-            <Card className="border-0 shadow-md rounded-2xl bg-white ring-1 ring-black/5 overflow-hidden">
-               <CardHeader className="bg-slate-50 border-b p-4 text-start"><CardTitle className="text-xs font-black flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> {t('introText')}</CardTitle></CardHeader>
-               <CardContent className="p-4"><Textarea value={formData.introText || ''} onChange={e => setFormData({...formData, introText: e.target.value})} className="min-h-[100px] rounded-lg bg-slate-50/30 p-3 text-[11px] font-bold leading-relaxed border-2" /></CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-md rounded-2xl bg-white ring-1 ring-black/5 overflow-hidden">
-               <CardHeader className="bg-slate-50 border-b p-4 text-start"><CardTitle className="text-xs font-black flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> {t('defaultTerms')}</CardTitle></CardHeader>
-               <CardContent className="p-4"><Textarea value={formData.defaultTerms || ''} onChange={e => setFormData({...formData, defaultTerms: e.target.value})} className="min-h-[150px] rounded-lg bg-slate-50/30 p-3 text-[11px] font-bold leading-relaxed border-2" /></CardContent>
-            </Card>
-
-            <div className="p-5 bg-[#1e1b4b] rounded-2xl text-white space-y-4 text-start">
-               <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest border-b border-white/10 pb-2">
-                  <Target className="h-3 w-3" /> {isRtl ? 'المطابقة والربط' : 'Context'}
-               </div>
-               <div className="space-y-3">
+         <aside className="md:col-span-4 space-y-6 text-start">
+            <Card className="border-0 shadow-sm rounded-xl bg-white ring-1 ring-black/5 overflow-hidden">
+               <CardHeader className="bg-slate-50 p-4 border-b">
+                  <CardTitle className="text-xs font-black flex items-center gap-2 uppercase text-slate-400">
+                     <Target className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'الارتباط التشغيلي' : 'Matching Context'}
+                  </CardTitle>
+               </CardHeader>
+               <CardContent className="p-4 space-y-4">
                   <div className="space-y-1">
-                     <Label className="text-[8px] text-white/50 uppercase">Activity</Label>
+                     <Label className="text-[9px] font-black uppercase text-slate-400">Activity</Label>
                      <Select value={formData.activityTypeId} onValueChange={v => setFormData({...formData, activityTypeId: v})}>
-                        <SelectTrigger className="h-8 text-[10px] font-bold bg-white/5 border-white/10"><SelectValue placeholder="..." /></SelectTrigger>
-                        <SelectContent>{activities?.map(a => <SelectItem key={a.id} value={a.id!} className="text-xs font-bold">{a.name}</SelectItem>)}</SelectContent>
+                        <SelectTrigger className="h-8 text-[10px] font-bold"><SelectValue placeholder="..." /></SelectTrigger>
+                        <SelectContent>{activities?.map(a => <SelectItem key={a.id} value={a.id!} className="text-[10px] font-bold">{a.name}</SelectItem>)}</SelectContent>
                      </Select>
                   </div>
                   <div className="space-y-1">
-                     <Label className="text-[8px] text-white/50 uppercase">Technical Path</Label>
+                     <Label className="text-[9px] font-black uppercase text-slate-400">Service Link</Label>
                      <Select value={formData.subServiceId} onValueChange={v => setFormData({...formData, subServiceId: v})}>
-                        <SelectTrigger className="h-8 text-[10px] font-bold bg-white/5 border-white/10"><SelectValue placeholder="..." /></SelectTrigger>
-                        <SelectContent>{subServices?.map(s => <SelectItem key={s.id} value={s.id!} className="text-xs font-bold">{s.name}</SelectItem>)}</SelectContent>
+                        <SelectTrigger className="h-8 text-[10px] font-bold"><SelectValue placeholder="..." /></SelectTrigger>
+                        <SelectContent>{subServices?.map(s => <SelectItem key={s.id} value={s.id!} className="text-[10px] font-bold">{s.name}</SelectItem>)}</SelectContent>
                      </Select>
                   </div>
-               </div>
-            </div>
-         </div>
+               </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-sm rounded-xl bg-white ring-1 ring-black/5 overflow-hidden">
+               <CardHeader className="bg-slate-50 p-4 border-b"><CardTitle className="text-xs font-black uppercase text-slate-400">{t('defaultTerms')}</CardTitle></CardHeader>
+               <CardContent className="p-4"><Textarea value={formData.defaultTerms} onChange={e => setFormData({...formData, defaultTerms: e.target.value})} className="min-h-[200px] text-[10px] p-4 bg-slate-50/50 border-0" /></CardContent>
+            </Card>
+         </aside>
       </div>
     </div>
   );
 }
-
-const totalItemsValue = 0; // Placeholder to avoid compilation error in sample
