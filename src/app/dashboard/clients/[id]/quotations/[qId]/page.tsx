@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,6 +29,14 @@ export default function QuotationViewPage() {
   const db = useFirestore();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
+
+  // Sovereign Thaw Protocol: Ensure screen is interactable on mount
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.overflow = 'auto';
+    }
+  }, []);
 
   const quoteRef = useMemo(() => 
     companyId && db ? doc(db, paths.quotations(companyId), quotationId) : null, 

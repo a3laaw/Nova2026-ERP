@@ -3,7 +3,7 @@
 import { useAuthContext } from '@/context/auth-context';
 import { useCompanyContext } from '@/context/company-context';
 import { useLanguage } from '@/context/language-context';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar"
@@ -23,6 +23,7 @@ export default function DashboardLayout({
   const { company, loading: companyLoading } = useCompanyContext();
   const { lang, setLang, t, dir } = useLanguage();
   const router = useRouter();
+  const pathname = usePathname();
   const isRtl = lang === 'ar';
 
   useEffect(() => {
@@ -31,11 +32,19 @@ export default function DashboardLayout({
     }
   }, [user, authLoading, router]);
 
-  // واجهة التحميل المركزية (The Spinner in your screenshot)
+  // Sovereign Thaw Protocol: Force reset body styles on every route change
+  // This prevents screen freezes caused by lingering modal overlays or pointer-events: none
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.overflow = 'auto';
+    }
+  }, [pathname]);
+
   if (authLoading || companyLoading) {
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#F8F9FA] gap-4">
-        <Loader2 className="h-12 w-12 animate-spin text-[#FFA000]" />
+        <Loader2 className="h-12 w-12 animate-spin text-[#e87c24]" />
         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] animate-pulse">
            Authenticating Sovereign Session...
         </p>
@@ -46,7 +55,6 @@ export default function DashboardLayout({
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-[#F8F9FA] overflow-x-hidden" dir={dir}>
-        {/* RIGHT SIDEBAR */}
         <div className="print:hidden">
           <DashboardSidebar />
         </div>
