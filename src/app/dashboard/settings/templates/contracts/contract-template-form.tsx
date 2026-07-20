@@ -18,7 +18,7 @@ import {
   Save, X, Plus, Trash2, Loader2, ArrowRight,
   Gavel, Calculator, DollarSign, ShieldCheck,
   AlertTriangle, Target, Percent, Workflow,
-  FileText
+  FileText, LayoutGrid
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
@@ -26,7 +26,7 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, getDocs } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
-import { ContractTemplate, ContractMilestone } from '@/types/templates';
+import { ContractTemplate, ContractMilestone, PricingMode } from '@/types/templates';
 import { ActivityType, Service, SubService, TechnicalStage } from '@/types/reference';
 import { TemplateService } from '@/services/template-service';
 import { toast } from '@/hooks/use-toast';
@@ -58,8 +58,9 @@ export function ContractTemplateForm({ template, onClose }: Props) {
       subServiceId: '',
       introText: '',
       legalText: '',
+      pricingMode: 'percentage',
       defaultMilestones: [
-        { name: isRtl ? 'الدفعة المقدمة' : 'Advance Payment', percentage: 10, timing: 'at', contractualEvent: 'SIGNING' }
+        { name: isRtl ? 'الدفعة المقدمة' : 'Advance Payment', percentage: 10, timing: 'at', contractualEvent: 'SIGNING', amount: 0 }
       ],
       isDefault: false,
       isActive: true
@@ -70,7 +71,6 @@ export function ContractTemplateForm({ template, onClose }: Props) {
   const [loadingStages, setLoadingStages] = useState(false);
   const [activeSubs, setActiveSubs] = useState<SubService[]>([]);
 
-  // جلب البيانات المرجعية الأساسية للمطابقة
   const actQuery = useMemo(() => companyId && db ? query(collection(db, paths.activityTypes(companyId)), orderBy('order')) : null, [db, companyId]);
   const srvQuery = useMemo(() => {
     if (!companyId || !db || !formData.activityTypeId) return null;
@@ -80,7 +80,6 @@ export function ContractTemplateForm({ template, onClose }: Props) {
   const { data: activities } = useCollection<ActivityType>(actQuery);
   const { data: services, loading: servicesLoading } = useCollection<Service>(srvQuery);
 
-  // جلب المسارات الفنية عند تغيير الخدمة
   useEffect(() => {
     if (db && companyId && formData.activityTypeId && formData.serviceId) {
       getDocs(query(collection(db, paths.subServices(companyId, formData.activityTypeId, formData.serviceId)), orderBy('order')))
@@ -89,7 +88,6 @@ export function ContractTemplateForm({ template, onClose }: Props) {
     }
   }, [db, companyId, formData.activityTypeId, formData.serviceId]);
 
-  // جلب مراحل المسار الفني للربط
   useEffect(() => {
     if (db && companyId && formData.activityTypeId && formData.serviceId && formData.subServiceId) {
       setLoadingStages(true);
@@ -103,28 +101,49 @@ export function ContractTemplateForm({ template, onClose }: Props) {
     }
   }, [db, companyId, formData.subServiceId, formData.activityTypeId, formData.serviceId]);
 
-  // محرك الحساب اللحظي (يتطابق مع عرض السعر)
-  const totalPercentage = useMemo(() => 
-    formData.defaultMilestones?.reduce((acc, m) => acc + (m.percentage || 0), 0) || 0, 
-  [formData.defaultMilestones]);
-  
-  const isMathValid = Math.abs(totalPercentage - 100) < 0.1;
+  // محرك الحساب الموحد
+  const stats = useMemo(() => {
+    const milestones = formData.defaultMilestones || [];
+    const totalPercentage = milestones.reduce((acc, m) => acc + (m.percentage || 0), 0);
+    const totalItemizedAmount = milestones.reduce((acc, m) => acc + (m.amount || 0), 0);
+    
+    const isPercentageMode = formData.pricingMode === 'percentage';
+    const isValid = isPercentageMode ? Math.abs(totalPercentage - 100) < 0.1 : true;
+
+    return {
+      totalPercentage,
+      totalItemizedAmount,
+      isValid
+    };
+  }, [formData.defaultMilestones, formData.pricingMode]);
 
   const handleSave = async () => {
     if (!db || !companyId || !user) return;
-    if (!isMathValid) {
+    if (formData.pricingMode === 'percentage' && !stats.isValid) {
       toast({ 
         variant: "destructive", 
-        title: isRtl ? "خطأ في توزيع الدفعات" : "Milestone Mismatch", 
-        description: isRtl ? `يجب أن يكون مجموع الحصص 100% (الحالي: ${totalPercentage}%)` : `Total percentage must be 100%` 
+        title: isRtl ? "خطأ في الميزانية" : "Budget Mismatch", 
+        description: isRtl ? `يجب أن يكون مجموع الحصص 100% (الحالي: ${stats.totalPercentage}%)` : `Total percentage must be 100%` 
       });
       return;
     }
+
     setLoading(true);
     try {
       const service = new TemplateService(db, companyId, permissions);
-      if (template?.id) await service.updateTemplate('contract', template.id, formData, user.uid);
-      else await service.addTemplate('contract', formData, user.uid);
+      
+      const finalAmount = formData.pricingMode === 'itemized' 
+        ? stats.totalItemizedAmount 
+        : (formData.baseAmount || 0);
+
+      const payload = {
+        ...formData,
+        baseAmount: finalAmount
+      };
+
+      if (template?.id) await service.updateTemplate('contract', template.id, payload, user.uid);
+      else await service.addTemplate('contract', payload, user.uid);
+      
       toast({ title: t('saved') });
       onClose();
     } catch (e: any) {
@@ -140,6 +159,10 @@ export function ContractTemplateForm({ template, onClose }: Props) {
     setFormData({...formData, defaultMilestones: newM});
   };
 
+  const currentDisplayAmount = formData.pricingMode === 'itemized' 
+    ? stats.totalItemizedAmount 
+    : (formData.baseAmount || 0);
+
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-500 bg-[#fdfaf3]" dir={dir}>
       <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-white/80 backdrop-blur-md px-6 shadow-sm">
@@ -148,15 +171,15 @@ export function ContractTemplateForm({ template, onClose }: Props) {
             <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
           </Button>
           <div className="text-start">
-             <h1 className="text-lg font-black text-slate-900 leading-none">{isRtl ? 'هندسة قوالب العقود' : 'Contract Template Engineering'}</h1>
+             <h1 className="text-lg font-black text-slate-900 leading-none">{isRtl ? 'هندسة قوالب العقود السيادية' : 'Sovereign Contract Engineering'}</h1>
              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{formData.name || 'Draft Contract Template'}</p>
           </div>
         </div>
         <div className="flex items-center gap-4">
            <div className="flex flex-col text-end">
               <span className="text-[9px] font-black text-slate-400 uppercase">Balance Status</span>
-              <Badge variant="outline" className={cn("h-6 border-2 font-black text-[9px]", isMathValid ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")}>
-                 {isMathValid ? 'BALANCED: 100%' : `MISMATCH: ${totalPercentage}%`}
+              <Badge variant="outline" className={cn("h-6 border-2 font-black text-[9px]", stats.isValid ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")}>
+                 {stats.isValid ? `BALANCED: ${formData.pricingMode === 'percentage' ? '100%' : 'OK'}` : `MISMATCH: ${stats.totalPercentage}%`}
               </Badge>
            </div>
            <Button onClick={handleSave} disabled={loading} size="sm" className="h-9 px-8 rounded-lg shadow-lg gap-2 border-b-4 border-orange-700 hover:scale-[1.02] transition-all">
@@ -186,105 +209,139 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                </CardContent>
             </Card>
 
-            <div className={cn(
-              "p-8 rounded-[2.5rem] text-center relative overflow-hidden transition-all shadow-xl ring-1 ring-black/5",
-              isMathValid ? "bg-emerald-600 text-white" : "bg-[#1e1b4b] text-white"
-            )}>
-               <div className="absolute top-0 right-0 p-6 opacity-10"><Calculator className="h-32 w-32" /></div>
-               <div className="relative z-10 space-y-3">
-                  <p className="text-[10px] font-black uppercase opacity-60 tracking-[0.2em]">{isRtl ? 'الميزانية المرجعية المعتمدة (KWD)' : 'Approved Reference Budget (KWD)'}</p>
-                  <div className="max-w-xs mx-auto">
-                    <Input 
-                      type="number" 
-                      value={formData.baseAmount === 0 ? "" : formData.baseAmount} 
-                      onChange={e => setFormData({...formData, baseAmount: e.target.value === "" ? 0 : Number(e.target.value)})} 
-                      className="h-14 rounded-2xl border-0 bg-white/20 text-white font-black text-3xl text-center shadow-inner focus:ring-4 focus:ring-white/30"
-                    />
-                  </div>
-               </div>
-            </div>
-
             <PrintWrapper className="mt-4 overflow-hidden border-0 shadow-2xl">
                <div className="space-y-8 text-start">
-                  <div className="flex justify-between items-center px-2">
-                     <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                        <Calculator className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'جدول الدفعات والربط الفني' : 'Payment Milestones & Technical Links'}
-                     </h4>
-                     <Button variant="outline" size="sm" onClick={() => setFormData({...formData, defaultMilestones: [...(formData.defaultMilestones || []), { name: '', percentage: 0, timing: 'at', contractualEvent: 'MANUAL' }]})} className="rounded-lg font-black text-[9px] border-2 h-7 px-4 gap-2 hover:bg-slate-50 transition-all shadow-sm">
-                        <Plus className="h-3 w-3" /> {isRtl ? 'إضافة دفعة' : 'Add Payment'}
-                     </Button>
+                  
+                  {/* Pricing Engine Toolbar (Matched with Quotation) */}
+                  <div className="p-4 bg-[#1e1b4b] rounded-xl text-white flex items-center justify-between gap-4 shadow-xl">
+                      <div className="flex items-center gap-3 text-start">
+                        <Calculator className="h-4 w-4 text-primary" />
+                        <div>
+                          <p className="text-[7px] font-black uppercase text-primary">Pricing Mode</p>
+                          <Select value={formData.pricingMode} onValueChange={(v: PricingMode) => setFormData({...formData, pricingMode: v})}>
+                             <SelectTrigger className="h-6 w-32 rounded-md bg-white/10 border-0 text-white font-black text-[9px] mt-0.5"><SelectValue /></SelectTrigger>
+                             <SelectContent className="rounded-xl">
+                                <SelectItem value="itemized" className="font-bold text-xs">{t('itemized')}</SelectItem>
+                                <SelectItem value="fixed" className="font-bold text-xs">{t('fixed')}</SelectItem>
+                                <SelectItem value="percentage" className="font-bold text-xs">{t('percentage')}</SelectItem>
+                             </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      
+                      {(formData.pricingMode === 'percentage' || formData.pricingMode === 'fixed') && (
+                        <div className="space-y-1 text-start w-32">
+                           <Label className="text-[7px] font-black uppercase text-primary">{isRtl ? 'الميزانية المستهدفة' : 'Target Budget'}</Label>
+                           <Input 
+                             type="number" 
+                             value={formData.baseAmount === 0 ? "" : formData.baseAmount} 
+                             onChange={e => setFormData({...formData, baseAmount: e.target.value === "" ? 0 : Number(e.target.value)})} 
+                             className="h-7 rounded-md bg-white text-slate-900 font-black text-sm text-center shadow-inner" 
+                           />
+                        </div>
+                      )}
                   </div>
 
-                  <div className="border-2 border-slate-900 rounded-xl overflow-hidden bg-white shadow-xl">
-                     <table className="w-full text-[10px] text-start">
-                        <thead className="bg-slate-900 text-white">
-                           <tr className="font-black uppercase tracking-widest text-[9px]">
-                              <th className="p-3 w-10">#</th>
-                              <th className="p-3 text-start">{isRtl ? 'مسمى الدفعة' : 'Milestone Name'}</th>
-                              <th className="p-3 text-center w-24">{isRtl ? 'الحصة %' : 'Share %'}</th>
-                              <th className="p-3 text-start w-32">{isRtl ? 'الربط الفني' : 'Technical Link'}</th>
-                              <th className="p-3 text-end pe-6 w-32">{isRtl ? 'القيمة' : 'Amount'}</th>
-                              <th className="p-3 w-10"></th>
-                           </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                           {(formData.defaultMilestones || []).map((m, idx) => {
-                              const lineAmount = ((formData.baseAmount || 0) * (m.percentage || 0)) / 100;
-                              return (
-                                <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                                   <td className="p-3 font-black text-slate-300">{idx + 1}</td>
-                                   <td className="p-2">
-                                      <Input value={m.name} onChange={e => updateMilestone(idx, 'name', e.target.value)} className="h-8 rounded-lg font-bold text-[10px] bg-slate-50/50" />
-                                   </td>
-                                   <td className="p-2">
-                                      <div className="relative w-16 mx-auto">
-                                         <Input type="number" value={m.percentage === 0 ? "" : m.percentage} onChange={e => updateMilestone(idx, 'percentage', e.target.value === "" ? 0 : Number(e.target.value))} className="h-8 rounded-lg border-2 font-black text-center pe-5 text-[10px]" />
-                                         <Percent className="absolute right-1 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-300" />
-                                      </div>
-                                   </td>
-                                   <td className="p-2">
-                                      <Select value={m.technicalStageId || 'SIGNING'} onValueChange={v => updateMilestone(idx, 'technicalStageId', v)}>
-                                         <SelectTrigger className="h-8 rounded-lg border-2 font-bold text-[9px] bg-white"><SelectValue /></SelectTrigger>
-                                         <SelectContent className="rounded-xl border-2 shadow-2xl">
-                                            <SelectItem value="SIGNING" className="font-bold text-[10px]">توقيع العقد</SelectItem>
-                                            {pathStages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-[10px] py-2">
-                                               <span className="flex items-center gap-1"><Workflow className="h-2.5 w-2.5 text-primary" /> {s.name}</span>
-                                            </SelectItem>)}
-                                         </SelectContent>
-                                      </Select>
-                                   </td>
-                                   <td className="p-3 text-end pe-6">
-                                      <span className="font-mono font-black text-emerald-600">{(lineAmount || 0).toLocaleString()} <span className="text-[8px] opacity-40">KWD</span></span>
-                                   </td>
-                                   <td className="p-3 text-center">
-                                      <button type="button" onClick={() => setFormData({...formData, defaultMilestones: formData.defaultMilestones?.filter((_, i) => i !== idx)})} className="text-rose-300 hover:text-rose-600 transition-colors"><Trash2 className="h-4 w-4" /></button>
-                                   </td>
-                                </tr>
-                              );
-                           })}
-                        </tbody>
-                        <tfoot className="bg-slate-900 text-white">
-                           <tr>
-                              <td colSpan={3} className="p-4 text-start">
-                                 <h3 className="text-xs font-black font-headline uppercase tracking-tighter">{isRtl ? 'إجمالي حصص القالب' : 'Total Template Share'}</h3>
-                                 <Badge className={cn("mt-1 border-0 text-[7px] font-black h-4 px-3 shadow-sm", isMathValid ? "bg-emerald-500 text-white" : "bg-rose-500 text-white animate-pulse")}>
-                                    {isMathValid ? 'BALANCED: 100%' : `MISMATCH: ${totalPercentage}%`}
-                                 </Badge>
-                              </td>
-                              <td colSpan={3} className="p-4 text-end pe-6">
-                                 <div className="space-y-0.5">
-                                    <h2 className="text-2xl font-black font-headline text-primary">{(formData.baseAmount || 0).toLocaleString()}</h2>
-                                    <p className="text-[8px] font-black text-white/30 uppercase tracking-[0.3em]">Kuwaiti Dinars</p>
-                                 </div>
-                              </td>
-                           </tr>
-                        </tfoot>
-                     </table>
+                  <div className="space-y-2 text-start">
+                     <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                        <FileText className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'المقدمة التعاقدية (الديباجة)' : 'Contract Preamble'}
+                     </h4>
+                     <Textarea value={formData.introText || ''} onChange={e => setFormData({...formData, introText: e.target.value})} className="min-h-[80px] rounded-xl border-2 p-3 text-[10px] font-bold bg-slate-50/30" />
+                  </div>
+
+                  <div className="space-y-4 text-start">
+                     <div className="flex justify-between items-center">
+                        <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                           <LayoutGrid className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'جدول الدفعات والربط الفني' : 'Payment Milestones & Pipeline'}
+                        </h4>
+                        <Button variant="outline" size="sm" onClick={() => setFormData({...formData, defaultMilestones: [...(formData.defaultMilestones || []), { name: '', percentage: 0, amount: 0, timing: 'at', contractualEvent: 'MANUAL' }]})} className="rounded-lg font-black text-[9px] border-2 h-7 px-4 gap-2 hover:bg-slate-50 transition-all shadow-sm">
+                           <Plus className="h-3 w-3" /> {isRtl ? 'إضافة دفعة' : 'Add Payment'}
+                        </Button>
+                     </div>
+
+                     <div className="border-2 border-slate-900 rounded-xl overflow-hidden bg-white shadow-lg">
+                        <table className="w-full text-[10px] text-start">
+                           <thead className="bg-slate-900 text-white">
+                              <tr className="font-black uppercase tracking-widest text-[9px]">
+                                 <th className="p-3 w-10">#</th>
+                                 <th className="p-3 text-start">{isRtl ? 'مسمى الدفعة' : 'Milestone Name'}</th>
+                                 {formData.pricingMode === 'percentage' && <th className="p-3 text-center w-20">%</th>}
+                                 <th className="p-3 text-start w-32">{isRtl ? 'الارتباط الميداني' : 'Technical Link'}</th>
+                                 <th className="p-3 text-end pe-6 w-32">{isRtl ? 'القيمة' : 'Amount'}</th>
+                                 <th className="p-3 w-10"></th>
+                              </tr>
+                           </thead>
+                           <tbody className="divide-y divide-slate-100">
+                              {(formData.defaultMilestones || []).map((m, idx) => {
+                                 const lineAmount = formData.pricingMode === 'percentage' 
+                                   ? ((formData.baseAmount || 0) * (m.percentage || 0)) / 100 
+                                   : (m.amount || 0);
+                                 
+                                 return (
+                                   <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                                      <td className="p-3 font-black text-slate-300">{idx + 1}</td>
+                                      <td className="p-2">
+                                         <Input value={m.name} onChange={e => updateMilestone(idx, 'name', e.target.value)} className="h-8 rounded-lg font-bold text-[10px] bg-slate-50/50" />
+                                      </td>
+                                      {formData.pricingMode === 'percentage' && (
+                                        <td className="p-2">
+                                           <div className="relative w-16 mx-auto">
+                                              <Input type="number" value={m.percentage === 0 ? "" : m.percentage} onChange={e => updateMilestone(idx, 'percentage', e.target.value === "" ? 0 : Number(e.target.value))} className="h-8 rounded-lg border-2 font-black text-center pe-5 text-[10px]" />
+                                              <Percent className="absolute right-1 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-300" />
+                                           </div>
+                                        </td>
+                                      )}
+                                      <td className="p-2">
+                                         <Select value={m.technicalStageId || 'SIGNING'} onValueChange={v => updateMilestone(idx, 'technicalStageId', v)}>
+                                            <SelectTrigger className="h-8 rounded-lg border-2 font-bold text-[9px] bg-white"><SelectValue /></SelectTrigger>
+                                            <SelectContent className="rounded-xl border-2 shadow-2xl">
+                                               <SelectItem value="SIGNING" className="font-bold text-[10px]">توقيع العقد</SelectItem>
+                                               {pathStages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-[10px] py-2">
+                                                  <span className="flex items-center gap-1"><Workflow className="h-2.5 w-2.5 text-primary" /> {s.name}</span>
+                                               </SelectItem>)}
+                                            </SelectContent>
+                                         </Select>
+                                      </td>
+                                      <td className="p-2 text-end pe-6">
+                                         {formData.pricingMode === 'itemized' ? (
+                                            <Input type="number" step="0.001" value={m.amount === 0 ? "" : m.amount} onChange={e => updateMilestone(idx, 'amount', e.target.value === "" ? 0 : Number(e.target.value))} className="h-8 w-24 ms-auto text-end font-black text-emerald-600 text-[10px]" />
+                                         ) : (
+                                            <span className="font-mono font-black text-emerald-600">{(lineAmount || 0).toLocaleString()} <span className="text-[8px] opacity-40">KWD</span></span>
+                                         )}
+                                      </td>
+                                      <td className="p-3 text-center">
+                                         <button type="button" onClick={() => setFormData({...formData, defaultMilestones: formData.defaultMilestones?.filter((_, i) => i !== idx)})} className="text-rose-300 hover:text-rose-600 transition-colors"><Trash2 className="h-4 w-4" /></button>
+                                      </td>
+                                   </tr>
+                                 );
+                              })}
+                           </tbody>
+                           <tfoot className="bg-slate-900 text-white">
+                              <tr>
+                                 <td colSpan={formData.pricingMode === 'percentage' ? 3 : 2} className="p-5 text-start">
+                                    <h3 className="text-xs font-black font-headline uppercase tracking-tighter">{isRtl ? 'إجمالي قيمة العقد' : 'Total Contract Value'}</h3>
+                                    {formData.pricingMode === 'percentage' && (
+                                       <Badge className={cn("mt-1 border-0 text-[7px] font-black h-4 px-3 shadow-sm", stats.isValid ? "bg-emerald-500 text-white" : "bg-rose-500 text-white animate-pulse")}>
+                                          {stats.isValid ? `BALANCED: 100%` : `MISMATCH: ${stats.totalPercentage}%`}
+                                       </Badge>
+                                    )}
+                                 </td>
+                                 <td colSpan={2} className="p-5 text-end pe-8">
+                                    <div className="space-y-0.5">
+                                       <h2 className="text-2xl font-black font-headline text-primary">{(currentDisplayAmount || 0).toLocaleString()}</h2>
+                                       <p className="text-[8px] font-black text-white/30 uppercase tracking-[0.3em]">Kuwaiti Dinars</p>
+                                    </div>
+                                 </td>
+                                 <td></td>
+                              </tr>
+                           </tfoot>
+                        </table>
+                     </div>
                   </div>
 
                   <div className="space-y-4 pt-4 text-start">
                      <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 border-b-2 border-slate-900 pb-2">
-                        <Gavel className="h-4 w-4 text-primary" /> {isRtl ? 'البنود والالتزامات القانونية الافتراضية' : 'Default Legal Clauses'}
+                        <Gavel className="h-4 w-4 text-primary" /> {isRtl ? 'البنود والالتزامات القانونية' : 'Legal Clauses & Conditions'}
                      </h4>
                      <Textarea value={formData.legalText || ''} onChange={e => setFormData({...formData, legalText: e.target.value})} className="min-h-[250px] rounded-2xl border-2 p-5 text-xs font-bold leading-relaxed bg-slate-50/30 focus:bg-white transition-all shadow-inner" placeholder="..." />
                   </div>
