@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -60,7 +61,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
       legalText: '',
       pricingMode: 'percentage',
       defaultMilestones: [
-        { name: isRtl ? 'الدفعة المقدمة' : 'Advance Payment', percentage: 10, timing: 'at', contractualEvent: 'SIGNING', amount: 0 }
+        { name: isRtl ? 'الدفعة الأولى' : '1st Installment', percentage: 10, timing: 'at', contractualEvent: 'SIGNING', amount: 0 }
       ],
       isDefault: false,
       isActive: true
@@ -79,6 +80,14 @@ export function ContractTemplateForm({ template, onClose }: Props) {
   
   const { data: activities } = useCollection<ActivityType>(actQuery);
   const { data: services, loading: servicesLoading } = useCollection<Service>(srvQuery);
+
+  const getOrdinalLabel = (index: number) => {
+    const arOrdinals = ["الأولى", "الثانية", "الثالثة", "الرابعة", "الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"];
+    const enOrdinals = ["First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth"];
+    const base = isRtl ? "الدفعة" : "Installment";
+    const ordinal = isRtl ? (arOrdinals[index] || `#${index + 1}`) : (enOrdinals[index] || `#${index + 1}`);
+    return `${base} ${ordinal}`;
+  };
 
   useEffect(() => {
     if (db && companyId && formData.activityTypeId && formData.serviceId) {
@@ -101,7 +110,6 @@ export function ContractTemplateForm({ template, onClose }: Props) {
     }
   }, [db, companyId, formData.subServiceId, formData.activityTypeId, formData.serviceId]);
 
-  // محرك الحساب الموحد
   const stats = useMemo(() => {
     const milestones = formData.defaultMilestones || [];
     const totalPercentage = milestones.reduce((acc, m) => acc + (m.percentage || 0), 0);
@@ -131,16 +139,11 @@ export function ContractTemplateForm({ template, onClose }: Props) {
     setLoading(true);
     try {
       const service = new TemplateService(db, companyId, permissions);
-      
       const finalAmount = formData.pricingMode === 'itemized' 
         ? stats.totalItemizedAmount 
         : (formData.baseAmount || 0);
 
-      const payload = {
-        ...formData,
-        baseAmount: finalAmount
-      };
-
+      const payload = { ...formData, baseAmount: finalAmount };
       if (template?.id) await service.updateTemplate('contract', template.id, payload, user.uid);
       else await service.addTemplate('contract', payload, user.uid);
       
@@ -157,6 +160,20 @@ export function ContractTemplateForm({ template, onClose }: Props) {
     const newM = [...(formData.defaultMilestones || [])];
     newM[idx] = { ...newM[idx], [field]: value };
     setFormData({...formData, defaultMilestones: newM});
+  };
+
+  const addMilestone = () => {
+    const nextIdx = (formData.defaultMilestones || []).length;
+    setFormData({
+      ...formData, 
+      defaultMilestones: [...(formData.defaultMilestones || []), { 
+        name: getOrdinalLabel(nextIdx), 
+        percentage: 0, 
+        amount: 0, 
+        timing: 'at', 
+        contractualEvent: 'MANUAL' 
+      }]
+    });
   };
 
   const currentDisplayAmount = formData.pricingMode === 'itemized' 
@@ -190,7 +207,6 @@ export function ContractTemplateForm({ template, onClose }: Props) {
       </header>
 
       <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-         
          <div className="lg:col-span-8 space-y-6">
             <Card className="border-0 shadow-sm rounded-xl bg-white ring-1 ring-black/5">
                <CardContent className="p-5 grid grid-cols-1 md:grid-cols-3 gap-4 text-start">
@@ -202,18 +218,16 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                      <Label className="text-[9px] font-black uppercase text-slate-400">Code</Label>
                      <Input value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value.toUpperCase()})} className="h-9 rounded-lg font-mono text-xs border-2" />
                   </div>
-                  <div className="flex items-center justify-between p-2 mt-4 bg-slate-50 rounded-lg border-2">
+                  <div className="flex items-center justify-between p-2 mt-4 bg-slate-50 rounded-lg border">
                      <Label className="text-[8px] font-black uppercase text-slate-500">Default Template</Label>
                      <Switch checked={formData.isDefault || false} onCheckedChange={v => setFormData({...formData, isDefault: v})} />
                   </div>
                </CardContent>
             </Card>
 
-            <PrintWrapper className="mt-4 overflow-hidden border-0 shadow-2xl">
+            <PrintWrapper className="mt-4 overflow-hidden">
                <div className="space-y-8 text-start">
-                  
-                  {/* Pricing Engine Toolbar (Matched with Quotation) */}
-                  <div className="p-4 bg-[#1e1b4b] rounded-xl text-white flex items-center justify-between gap-4 shadow-xl">
+                  <div className="p-4 bg-[#1e1b4b] rounded-xl text-white flex items-center justify-between gap-4 shadow-xl print:hidden">
                       <div className="flex items-center gap-3 text-start">
                         <Calculator className="h-4 w-4 text-primary" />
                         <div>
@@ -228,7 +242,6 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                           </Select>
                         </div>
                       </div>
-                      
                       {(formData.pricingMode === 'percentage' || formData.pricingMode === 'fixed') && (
                         <div className="space-y-1 text-start w-32">
                            <Label className="text-[7px] font-black uppercase text-primary">{isRtl ? 'الميزانية المستهدفة' : 'Target Budget'}</Label>
@@ -236,7 +249,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                              type="number" 
                              value={formData.baseAmount === 0 ? "" : formData.baseAmount} 
                              onChange={e => setFormData({...formData, baseAmount: e.target.value === "" ? 0 : Number(e.target.value)})} 
-                             className="h-7 rounded-md bg-white text-slate-900 font-black text-sm text-center shadow-inner" 
+                             className="h-7 rounded-md bg-white text-slate-900 font-black text-xs text-center shadow-inner" 
                            />
                         </div>
                       )}
@@ -254,7 +267,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                         <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                            <LayoutGrid className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'جدول الدفعات والربط الفني' : 'Payment Milestones & Pipeline'}
                         </h4>
-                        <Button variant="outline" size="sm" onClick={() => setFormData({...formData, defaultMilestones: [...(formData.defaultMilestones || []), { name: '', percentage: 0, amount: 0, timing: 'at', contractualEvent: 'MANUAL' }]})} className="rounded-lg font-black text-[9px] border-2 h-7 px-4 gap-2 hover:bg-slate-50 transition-all shadow-sm">
+                        <Button variant="outline" size="sm" onClick={addMilestone} className="rounded-lg font-black text-[9px] border-2 h-7 px-4 gap-2 hover:bg-slate-50 transition-all shadow-sm">
                            <Plus className="h-3 w-3" /> {isRtl ? 'إضافة دفعة' : 'Add Payment'}
                         </Button>
                      </div>
@@ -321,7 +334,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                  <td colSpan={formData.pricingMode === 'percentage' ? 3 : 2} className="p-5 text-start">
                                     <h3 className="text-xs font-black font-headline uppercase tracking-tighter">{isRtl ? 'إجمالي قيمة العقد' : 'Total Contract Value'}</h3>
                                     {formData.pricingMode === 'percentage' && (
-                                       <Badge className={cn("mt-1 border-0 text-[7px] font-black h-4 px-3 shadow-sm", stats.isValid ? "bg-emerald-500 text-white" : "bg-rose-500 text-white animate-pulse")}>
+                                       <Badge className={cn("mt-1 border-0 text-[7px] font-black h-4 px-3 shadow-sm", stats.isValid ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")}>
                                           {stats.isValid ? `BALANCED: 100%` : `MISMATCH: ${stats.totalPercentage}%`}
                                        </Badge>
                                     )}

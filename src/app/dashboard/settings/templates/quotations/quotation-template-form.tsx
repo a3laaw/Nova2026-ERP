@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -82,6 +83,14 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
   const { data: services } = useCollection<Service>(srvQuery);
   const { data: subServices } = useCollection<SubService>(subQuery);
 
+  const getOrdinalLabel = (index: number) => {
+    const arOrdinals = ["الأولى", "الثانية", "الثالثة", "الرابعة", "الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"];
+    const enOrdinals = ["First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth"];
+    const base = isRtl ? "الدفعة" : "Installment";
+    const ordinal = isRtl ? (arOrdinals[index] || `#${index + 1}`) : (enOrdinals[index] || `#${index + 1}`);
+    return `${base} ${ordinal}`;
+  };
+
   const stats = useMemo(() => {
     const items = formData.items || [];
     const totalPercentage = items.reduce((acc, item) => acc + (item.percentage || 0), 0);
@@ -128,6 +137,19 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
     setFormData({ ...formData, items: newItems });
   };
 
+  const addItem = () => {
+    const nextIdx = (formData.items || []).length;
+    setFormData({
+      ...formData, 
+      items: [...(formData.items || []), { 
+        label: getOrdinalLabel(nextIdx), 
+        percentage: 0, 
+        unitPrice: 0, 
+        quantity: 1 
+      }]
+    });
+  };
+
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-500" dir={dir}>
       <header className="flex items-center justify-between border-b pb-4 shrink-0 max-w-6xl mx-auto w-full px-4">
@@ -151,7 +173,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                <CardContent className="p-5 grid grid-cols-1 md:grid-cols-3 gap-4 text-start">
                   <div className="space-y-1">
                      <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{t('name')}</Label>
-                     <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-9 rounded-lg font-bold text-xs" />
+                     <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-9 rounded-lg border-2 font-bold text-xs" />
                   </div>
                   <div className="space-y-1">
                      <Label className="text-[9px] font-black uppercase text-slate-400">Code</Label>
@@ -189,7 +211,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                              type="number" 
                              value={formData.baseAmount === 0 ? "" : formData.baseAmount} 
                              onChange={e => setFormData({...formData, baseAmount: e.target.value === "" ? 0 : Number(e.target.value)})} 
-                             className="h-6 rounded-md bg-white text-slate-900 font-black text-xs text-center" 
+                             className="h-6 rounded-md bg-white text-slate-900 font-black text-xs text-center shadow-inner" 
                            />
                         </div>
                       )}
@@ -230,7 +252,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                            ))}
                         </tbody>
                      </table>
-                     <Button variant="ghost" size="sm" onClick={() => setFormData({...formData, items: [...(formData.items || []), { label: '', percentage: 0, unitPrice: 0, quantity: 1 }]})} className="w-full h-8 rounded-none border-t border-dashed font-black text-[9px] gap-2"><Plus className="h-3 w-3" /> {isRtl ? 'إضافة دفعة' : 'Add Item'}</Button>
+                     <Button variant="ghost" size="sm" onClick={addItem} className="w-full h-8 rounded-none border-t border-dashed font-black text-[9px] gap-2"><Plus className="h-3 w-3" /> {isRtl ? 'إضافة دفعة' : 'Add Item'}</Button>
                   </div>
                </div>
             </PrintWrapper>

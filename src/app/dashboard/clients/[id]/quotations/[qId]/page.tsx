@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useEffect, useState } from 'react';
@@ -59,27 +60,27 @@ export default function QuotationViewPage() {
     }
   }, [quote]);
 
-  // محرك الحساب اللحظي
+  const getOrdinalLabel = (index: number) => {
+    const arOrdinals = ["الأولى", "الثانية", "الثالثة", "الرابعة", "الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"];
+    const enOrdinals = ["First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth"];
+    const base = isRtl ? "الدفعة" : "Installment";
+    const ordinal = isRtl ? (arOrdinals[index] || `#${index + 1}`) : (enOrdinals[index] || `#${index + 1}`);
+    return `${base} ${ordinal}`;
+  };
+
   const stats = useMemo(() => {
     const items = editData.items || [];
     const activeItems = items.filter((i: any) => !i.deleted);
-    
     const totalPercentage = activeItems.reduce((acc, item) => acc + (item.percentage || 0), 0);
     const totalItemizedAmount = activeItems.reduce((acc, item) => acc + ((item.unitPrice || 0) * (item.quantity || 1)), 0);
-    
     const isPercentageMode = editData.pricingMode === 'percentage';
     const isValid = isPercentageMode ? Math.abs(totalPercentage - 100) < 0.1 : true;
 
-    return {
-      totalPercentage,
-      totalItemizedAmount,
-      isValid
-    };
+    return { totalPercentage, totalItemizedAmount, isValid };
   }, [editData.items, editData.pricingMode]);
 
   const handleSave = async () => {
     if (!db || !companyId || !user) return;
-    
     if (editData.pricingMode === 'percentage' && !stats.isValid) {
       toast({ 
         variant: "destructive", 
@@ -92,13 +93,11 @@ export default function QuotationViewPage() {
     setSaving(true);
     try {
       const service = new DocumentService(db, companyId, permissions);
-      
       const finalAmount = editData.pricingMode === 'itemized' 
         ? stats.totalItemizedAmount 
         : (editData.totalAmount || quote?.totalAmount || 0);
       
       const { id, createdAt, updatedAt, ...sanitizedData } = editData as any;
-      
       const finalItems = (editData.items || [])
         .filter((i: any) => !i.deleted)
         .map(i => {
@@ -116,11 +115,7 @@ export default function QuotationViewPage() {
       toast({ title: isRtl ? "تم تحديث العرض بنجاح" : "Quotation Updated" });
       setIsEditing(false);
     } catch (e: any) {
-      toast({ 
-        variant: "destructive", 
-        title: t('error'),
-        description: e.message || (isRtl ? "حدث خطأ أثناء الحفظ" : "Save failed")
-      });
+      toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
       setSaving(false);
     }
@@ -130,6 +125,21 @@ export default function QuotationViewPage() {
     const newItems = [...(editData.items || [])];
     (newItems[idx] as any)[field] = val;
     setEditForm({ ...editData, items: newItems });
+  };
+
+  const addItem = () => {
+    const activeItems = (editData.items || []).filter((i: any) => !i.deleted);
+    const nextIdx = activeItems.length;
+    setEditForm({
+      ...editData,
+      items: [...(editData.items || []), { 
+        label: getOrdinalLabel(nextIdx), 
+        percentage: 0, 
+        unitPrice: 0, 
+        quantity: 1, 
+        description: '' 
+      }]
+    });
   };
 
   if (loading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
@@ -142,7 +152,6 @@ export default function QuotationViewPage() {
 
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-700 bg-slate-50" dir={dir}>
-      
       <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 print:hidden px-6 pt-6">
         <div className="text-start">
           <div className="flex items-center gap-2">
@@ -265,8 +274,8 @@ export default function QuotationViewPage() {
                      <Layers className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'جدول بنود التسعير والدفعات' : 'Pricing & Payments'}
                   </h4>
                   {isEditing && (
-                    <Button variant="outline" size="sm" onClick={() => setEditForm({...editData, items: [...(editData.items || []), { label: '', unitPrice: 0, percentage: 0, quantity: 1, description: '' }]})} className="rounded-lg font-black text-[8px] border-2 h-6 px-3 gap-1">
-                       <Plus className="h-2.5 w-2.5" /> {isRtl ? 'إضافة بند' : 'Add Item'}
+                    <Button variant="outline" size="sm" onClick={addItem} className="rounded-lg font-black text-[8px] border-2 h-6 px-3 gap-1">
+                       <Plus className="h-2.5 w-2.5" /> {isRtl ? 'إضافة دفعة' : 'Add Item'}
                     </Button>
                   )}
                </div>
@@ -332,7 +341,7 @@ export default function QuotationViewPage() {
                            <td colSpan={editData.pricingMode === 'percentage' ? 3 : 2} className="p-4 text-start">
                               <h3 className="text-sm font-black font-headline uppercase tracking-tighter">{isRtl ? 'إجمالي قيمة العرض' : 'Total Quote Value'}</h3>
                               {editData.pricingMode === 'percentage' && (
-                                 <Badge className={cn("mt-1 border-0 text-[7px] font-black h-4", stats.isValid ? "bg-emerald-500 text-white" : "bg-rose-500 text-white animate-pulse")}>
+                                 <Badge className={cn("mt-1 border-0 text-[7px] font-black h-4", stats.isValid ? "bg-emerald-50 text-white" : "bg-rose-50 text-white animate-pulse")}>
                                     {stats.isValid ? `BALANCED: ${stats.totalPercentage}%` : `MISMATCH: ${stats.totalPercentage}% / 100%`}
                                  </Badge>
                               )}
@@ -340,7 +349,7 @@ export default function QuotationViewPage() {
                            <td className="p-4 text-end pe-6">
                               <div className="space-y-0.5">
                                  <h2 className="text-2xl font-black font-headline text-primary">{(currentDisplayAmount || 0).toLocaleString()}</h2>
-                                 <p className="text-[8px] font-black text-white/30 uppercase tracking-[0.2em]">Kuwaiti Dinars</p>
+                                 <p className="text-[8px] font-black text-white/30 uppercase tracking-[0.3em]">Kuwaiti Dinars</p>
                               </div>
                            </td>
                            {isEditing && <td></td>}
