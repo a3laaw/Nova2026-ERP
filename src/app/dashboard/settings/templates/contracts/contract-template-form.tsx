@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -18,7 +17,8 @@ import {
 import { 
   Save, X, Plus, Trash2, Loader2, ArrowRight,
   Gavel, Calculator, DollarSign, ShieldCheck,
-  AlertTriangle, Target, Percent, Workflow
+  AlertTriangle, Target, Percent, Workflow,
+  FileText
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
@@ -58,7 +58,9 @@ export function ContractTemplateForm({ template, onClose }: Props) {
       subServiceId: '',
       introText: '',
       legalText: '',
-      defaultMilestones: [{ name: isRtl ? 'الدفعة المقدمة' : 'Advance Payment', percentage: 10, timing: 'at', contractualEvent: 'SIGNING' }],
+      defaultMilestones: [
+        { name: isRtl ? 'الدفعة المقدمة' : 'Advance Payment', percentage: 10, timing: 'at', contractualEvent: 'SIGNING' }
+      ],
       isDefault: false,
       isActive: true
     }
@@ -68,9 +70,12 @@ export function ContractTemplateForm({ template, onClose }: Props) {
   const [loadingStages, setLoadingStages] = useState(false);
   const [activeSubs, setActiveSubs] = useState<SubService[]>([]);
 
-  // جلب البيانات المرجعية
+  // جلب البيانات المرجعية الأساسية للمطابقة
   const actQuery = useMemo(() => companyId && db ? query(collection(db, paths.activityTypes(companyId)), orderBy('order')) : null, [db, companyId]);
-  const srvQuery = useMemo(() => companyId && db && formData.activityTypeId ? query(collection(db, paths.services(companyId, formData.activityTypeId)), orderBy('order')) : null, [db, companyId, formData.activityTypeId]);
+  const srvQuery = useMemo(() => {
+    if (!companyId || !db || !formData.activityTypeId) return null;
+    return query(collection(db, paths.services(companyId, formData.activityTypeId)), orderBy('order'));
+  }, [db, companyId, formData.activityTypeId]);
   
   const { data: activities } = useCollection<ActivityType>(actQuery);
   const { data: services, loading: servicesLoading } = useCollection<Service>(srvQuery);
@@ -98,7 +103,11 @@ export function ContractTemplateForm({ template, onClose }: Props) {
     }
   }, [db, companyId, formData.subServiceId, formData.activityTypeId, formData.serviceId]);
 
-  const totalPercentage = useMemo(() => formData.defaultMilestones?.reduce((acc, m) => acc + (m.percentage || 0), 0) || 0, [formData.defaultMilestones]);
+  // محرك الحساب اللحظي (يتطابق مع عرض السعر)
+  const totalPercentage = useMemo(() => 
+    formData.defaultMilestones?.reduce((acc, m) => acc + (m.percentage || 0), 0) || 0, 
+  [formData.defaultMilestones]);
+  
   const isMathValid = Math.abs(totalPercentage - 100) < 0.1;
 
   const handleSave = async () => {
@@ -135,7 +144,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
     <div className="space-y-6 pb-20 animate-in fade-in duration-500 bg-[#fdfaf3]" dir={dir}>
       <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-white/80 backdrop-blur-md px-6 shadow-sm">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={onClose} className="h-9 w-9 border rounded-lg hover:bg-slate-50">
+          <Button variant="ghost" size="icon" onClick={onClose} className="h-9 w-9 border rounded-lg hover:bg-slate-50 transition-all">
             <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
           </Button>
           <div className="text-start">
@@ -144,10 +153,13 @@ export function ContractTemplateForm({ template, onClose }: Props) {
           </div>
         </div>
         <div className="flex items-center gap-4">
-           <Badge variant="outline" className={cn("h-6 border-2 font-black text-[9px]", isMathValid ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")}>
-              {isMathValid ? 'BALANCED: 100%' : `MISMATCH: ${totalPercentage}%`}
-           </Badge>
-           <Button onClick={handleSave} disabled={loading} size="sm" className="h-9 px-8 rounded-lg shadow-lg gap-2 border-b-4 border-orange-700">
+           <div className="flex flex-col text-end">
+              <span className="text-[9px] font-black text-slate-400 uppercase">Balance Status</span>
+              <Badge variant="outline" className={cn("h-6 border-2 font-black text-[9px]", isMathValid ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")}>
+                 {isMathValid ? 'BALANCED: 100%' : `MISMATCH: ${totalPercentage}%`}
+              </Badge>
+           </div>
+           <Button onClick={handleSave} disabled={loading} size="sm" className="h-9 px-8 rounded-lg shadow-lg gap-2 border-b-4 border-orange-700 hover:scale-[1.02] transition-all">
               {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
               {t('save')}
            </Button>
@@ -168,7 +180,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                      <Input value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value.toUpperCase()})} className="h-9 rounded-lg font-mono text-xs border-2" />
                   </div>
                   <div className="flex items-center justify-between p-2 mt-4 bg-slate-50 rounded-lg border-2">
-                     <Label className="text-[8px] font-black uppercase text-slate-500">Default</Label>
+                     <Label className="text-[8px] font-black uppercase text-slate-500">Default Template</Label>
                      <Switch checked={formData.isDefault || false} onCheckedChange={v => setFormData({...formData, isDefault: v})} />
                   </div>
                </CardContent>
@@ -192,13 +204,13 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                </div>
             </div>
 
-            <PrintWrapper className="mt-4 overflow-hidden border-0">
+            <PrintWrapper className="mt-4 overflow-hidden border-0 shadow-2xl">
                <div className="space-y-8 text-start">
                   <div className="flex justify-between items-center px-2">
                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                         <Calculator className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'جدول الدفعات والربط الفني' : 'Payment Milestones & Technical Links'}
                      </h4>
-                     <Button variant="outline" size="sm" onClick={() => setFormData({...formData, defaultMilestones: [...(formData.defaultMilestones || []), { name: '', percentage: 0, timing: 'at', contractualEvent: 'MANUAL' }]})} className="rounded-lg font-black text-[9px] border-2 h-7 px-4 gap-2 hover:bg-slate-50 transition-all">
+                     <Button variant="outline" size="sm" onClick={() => setFormData({...formData, defaultMilestones: [...(formData.defaultMilestones || []), { name: '', percentage: 0, timing: 'at', contractualEvent: 'MANUAL' }]})} className="rounded-lg font-black text-[9px] border-2 h-7 px-4 gap-2 hover:bg-slate-50 transition-all shadow-sm">
                         <Plus className="h-3 w-3" /> {isRtl ? 'إضافة دفعة' : 'Add Payment'}
                      </Button>
                   </div>
@@ -209,7 +221,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                            <tr className="font-black uppercase tracking-widest text-[9px]">
                               <th className="p-3 w-10">#</th>
                               <th className="p-3 text-start">{isRtl ? 'مسمى الدفعة' : 'Milestone Name'}</th>
-                              <th className="p-3 text-center w-24">{isRtl ? 'الحصة' : 'Share'}</th>
+                              <th className="p-3 text-center w-24">{isRtl ? 'الحصة %' : 'Share %'}</th>
                               <th className="p-3 text-start w-32">{isRtl ? 'الربط الفني' : 'Technical Link'}</th>
                               <th className="p-3 text-end pe-6 w-32">{isRtl ? 'القيمة' : 'Amount'}</th>
                               <th className="p-3 w-10"></th>
@@ -255,7 +267,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                            <tr>
                               <td colSpan={3} className="p-4 text-start">
                                  <h3 className="text-xs font-black font-headline uppercase tracking-tighter">{isRtl ? 'إجمالي حصص القالب' : 'Total Template Share'}</h3>
-                                 <Badge className={cn("mt-1 border-0 text-[7px] font-black h-4 px-3", isMathValid ? "bg-emerald-500 text-white" : "bg-rose-500 text-white animate-pulse")}>
+                                 <Badge className={cn("mt-1 border-0 text-[7px] font-black h-4 px-3 shadow-sm", isMathValid ? "bg-emerald-500 text-white" : "bg-rose-500 text-white animate-pulse")}>
                                     {isMathValid ? 'BALANCED: 100%' : `MISMATCH: ${totalPercentage}%`}
                                  </Badge>
                               </td>
@@ -323,7 +335,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                </CardContent>
             </Card>
 
-            <div className="p-8 rounded-[2.5rem] bg-slate-900 text-white space-y-4 shadow-2xl relative overflow-hidden">
+            <div className="p-8 rounded-[2.5rem] bg-slate-900 text-white space-y-4 shadow-2xl relative overflow-hidden ring-1 ring-white/10">
                <div className="absolute top-0 right-0 p-4 opacity-10"><ShieldCheck className="h-12 w-12 text-primary" /></div>
                <h5 className="font-black text-xs uppercase tracking-widest text-primary">{isRtl ? 'حالة القالب' : 'Template Status'}</h5>
                <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10">
