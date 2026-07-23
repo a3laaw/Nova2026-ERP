@@ -225,10 +225,6 @@ export class TransactionService {
     });
   }
 
-  /**
-   * إعادة فتح مرحلة مكتملة (التراجع السيادي)
-   * الآن يقوم آلياً بتعطيل وتجميد كافة المراحل اللاحقة لضمان سلامة المسار الفني.
-   */
   async reopenStage(transactionId: string, stageId: string, userId: string, userName: string, clearLogs: boolean = false) {
     ensureActionPermission(this.permissions, 'projects:edit');
     
@@ -236,9 +232,6 @@ export class TransactionService {
     const stageSnap = await getDoc(stageRef);
     if (!stageSnap.exists()) return;
     const stageData = stageSnap.data() as StageInstance;
-
-    const previousStart = stageData.startedAt;
-    const previousEnd = stageData.completedAt;
 
     const batch = writeBatch(this.db);
     
@@ -251,8 +244,7 @@ export class TransactionService {
       updatedBy: userId
     });
 
-    // 2. بروتوكول التصحيح التلقائي المتسلسل:
-    // أي مرحلة ترتيبها أكبر من المرحلة الحالية، يتم تجميدها وإعادتها لـ Pending
+    // 2. تجميد المراحل اللاحقة
     const allStagesSnap = await getDocs(collection(this.db, paths.transactionStages(this.companyId, transactionId)));
     allStagesSnap.docs.forEach(d => {
        const s = d.data() as StageInstance;
@@ -267,16 +259,13 @@ export class TransactionService {
        }
     });
 
-    // 3. توثيق الحدث السيادي في التايم لاين
     const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
     batch.set(timelineRef, {
       transactionId,
       stageId,
       technicalStageId: stageData.technicalStageId,
       type: 'stage_reopen',
-      content: `إجراء إداري: إعادة فتح مرحلة "${stageData.name}" للمراجعة. تم تجميد كافة المراحل اللاحقة لضمان سلامة المسار الفني.`,
-      previousStart,
-      previousEnd,
+      content: `إجراء إداري: إعادة فتح مرحلة "${stageData.name}" للمراجعة. تم تجميد كافة المراحل اللاحقة.`,
       userId,
       userName,
       isArchived: false,
@@ -284,27 +273,18 @@ export class TransactionService {
       createdAt: serverTimestamp()
     });
 
-    // 4. أرشفة سجلات التايم لاين المرتبطة بهذه المرحلة إذا طلب المستخدم "تطهير"
-    if (clearLogs) {
-      const timelineColl = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
-      const timelineSnap = await getDocs(query(timelineColl, where('stageId', '==', stageId)));
-      timelineSnap.docs.forEach(d => {
-        if (d.data().isArchived !== true) {
-          batch.update(d.ref, { isArchived: true, archivedAt: serverTimestamp() });
-        }
-      });
-    }
-
     await batch.commit();
 
-    // 5. أرشفة سجلات الإنجاز والتعليقات إذا طلب "التطهير"
     if (clearLogs) {
       const boqExecService = new BOQExecutionService(this.db, this.companyId, this.permissions);
       await boqExecService.archiveStageExecutions(transactionId, stageData.technicalStageId, true);
-      
-      const commentService = new CommentService(this.db, this.companyId, this.permissions);
-      await commentService.archiveStageComments(transactionId, stageId);
     }
+  }
+
+  async deleteStageInstance(transactionId: string, stageId: string) {
+    ensureActionPermission(this.permissions, 'projects:delete');
+    const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
+    return deleteDoc(stageRef);
   }
 
   async deleteTransaction(transactionId: string) {
