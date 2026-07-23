@@ -131,13 +131,10 @@ export default function QuotationViewPage() {
   };
 
   /**
-   * بروتوكول الإلغاء الذكي:
-   * إذا كانت مسودة جديدة تماماً -> نعود لشاشة المعاملة.
-   * إذا كانت موجودة مسبقاً -> نغلق وضع التعديل فقط.
+   * بروتوكول الإلغاء الذكي
    */
   const handleCancel = () => {
     if (quote && !quote.isHistoryRecorded) {
-      // العودة لرادار المعاملة
       router.push(`/dashboard/clients/${clientId}/transactions/${quote.transactionId}`);
     } else {
       setIsEditing(false);
@@ -186,12 +183,23 @@ export default function QuotationViewPage() {
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-700 bg-slate-50" dir={dir}>
       <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 print:hidden px-6 pt-6 text-start">
-        <div className="text-start">
-          <div className="flex items-center gap-2">
-             <h1 className="text-xl font-black text-slate-900">{isRtl ? 'عرض سعر رسمي' : 'Official Quotation'}</h1>
-             <Badge variant="outline" className="h-5 px-2 font-black text-[8px] uppercase bg-white">{editData.status || quote.status}</Badge>
-          </div>
-          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">REF: {quote.id.slice(-8).toUpperCase()} | {editData.pricingMode}</p>
+        <div className="flex items-center gap-4">
+           {/* زر الرجوع في الأعلى - تصميم رشيق */}
+           <Button 
+             variant="ghost" 
+             onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${quote.transactionId}`)} 
+             className="h-10 w-10 p-0 rounded-xl border-2 bg-white text-slate-400 hover:text-slate-900 transition-all shadow-sm shrink-0"
+             title={isRtl ? 'الرجوع لرادار المعاملة' : 'Back to Project'}
+           >
+              <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
+           </Button>
+           <div className="text-start">
+              <div className="flex items-center gap-2">
+                 <h1 className="text-xl font-black text-slate-900">{isRtl ? 'عرض سعر رسمي' : 'Official Quotation'}</h1>
+                 <Badge variant="outline" className="h-5 px-2 font-black text-[8px] uppercase bg-white">{editData.status || quote.status}</Badge>
+              </div>
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">REF: {quote.id.slice(-8).toUpperCase()} | {editData.pricingMode}</p>
+           </div>
         </div>
         <div className="flex gap-2">
            {isEditing ? (
@@ -254,39 +262,6 @@ export default function QuotationViewPage() {
                   </div>
                </div>
             </div>
-
-            {isEditing && (
-              <div className="p-4 bg-[#1e1b4b] rounded-xl text-white flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl animate-in slide-in-from-top-2">
-                 <div className="flex items-center gap-3 text-start">
-                    <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center text-white shadow-md"><Calculator className="h-4 w-4" /></div>
-                    <div className="text-start">
-                       <p className="text-[7px] font-black text-primary uppercase tracking-widest">Pricing Engine</p>
-                       <Select value={editData.pricingMode} onValueChange={(v: PricingMode) => setEditForm({...editData, pricingMode: v})}>
-                            <SelectTrigger className="h-6 w-32 rounded-md bg-white/10 border-0 text-white font-black text-[9px] mt-1"><SelectValue /></SelectTrigger>
-                            <SelectContent className="rounded-xl">
-                                <SelectItem value="itemized" className="font-bold text-xs">{t('itemized')}</SelectItem>
-                                <SelectItem value="fixed" className="font-bold text-xs">{t('fixed')}</SelectItem>
-                                <SelectItem value="percentage" className="font-bold text-xs">{t('percentage')}</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                 </div>
-                 
-                 <div className="flex items-center gap-4">
-                    {(editData.pricingMode === 'percentage' || editData.pricingMode === 'fixed') && (
-                       <div className="space-y-1 text-start w-40">
-                          <Label className="text-[8px] font-black uppercase text-primary tracking-widest">{isRtl ? 'الميزانية المستهدفة' : 'Target Budget'}</Label>
-                          <Input 
-                            type="number" 
-                            value={editData.totalAmount === 0 ? "" : editData.totalAmount} 
-                            onChange={e => setEditForm({...editData, totalAmount: e.target.value === "" ? 0 : Number(e.target.value)})}
-                            className="h-8 rounded-md bg-white text-slate-900 font-black text-sm text-center"
-                          />
-                       </div>
-                    )}
-                 </div>
-              </div>
-            )}
 
             <div className="text-start space-y-2">
                <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
@@ -453,13 +428,6 @@ export default function QuotationViewPage() {
             </div>
          </div>
       </PrintWrapper>
-      <div className="max-w-5xl mx-auto px-6 pt-4 flex justify-start print:hidden">
-         <Button variant="ghost" onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${quote.transactionId}`)} className="h-10 px-6 rounded-xl border-2 font-bold bg-white text-slate-400 hover:text-slate-900 transition-all gap-2">
-            <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
-            {isRtl ? 'الرجوع لرادار المعاملة' : 'Back to Project'}
-         </Button>
-      </div>
     </div>
   );
 }
-

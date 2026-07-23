@@ -183,17 +183,28 @@ export default function ContractViewPage() {
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-700 bg-slate-50" dir={dir}>
       <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 print:hidden px-6 pt-6 text-start">
-        <div className="text-start">
-          <div className="flex items-center gap-2">
-             <h1 className="text-xl font-black text-slate-900">{isRtl ? 'عقد خدمات هندسية رسمي' : 'Official Engineering Contract'}</h1>
-             <Badge className={cn(
-               "font-black px-4 py-1 rounded-xl shadow-sm uppercase text-[9px]",
-               (editData.status || contract.status) === 'paid' ? 'bg-emerald-500 text-white' : 'bg-blue-50 text-white'
-             )}>
-                {editData.status || contract.status}
-             </Badge>
-          </div>
-          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">REF: {contract.id.slice(-8).toUpperCase()} | {editData.pricingMode}</p>
+        <div className="flex items-center gap-4">
+           {/* زر الرجوع في الأعلى - تصميم رشيق */}
+           <Button 
+             variant="ghost" 
+             onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${contract.transactionId}`)} 
+             className="h-10 w-10 p-0 rounded-xl border-2 bg-white text-slate-400 hover:text-slate-900 transition-all shadow-sm shrink-0"
+             title={isRtl ? 'الرجوع لرادار المعاملة' : 'Back to Project'}
+           >
+              <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
+           </Button>
+           <div className="text-start">
+              <div className="flex items-center gap-2">
+                 <h1 className="text-xl font-black text-slate-900">{isRtl ? 'عقد خدمات هندسية رسمي' : 'Official Engineering Contract'}</h1>
+                 <Badge className={cn(
+                   "font-black px-4 py-1 rounded-xl shadow-sm uppercase text-[9px]",
+                   (editData.status || contract.status) === 'paid' ? 'bg-emerald-500 text-white' : 'bg-blue-50 text-white'
+                 )}>
+                    {editData.status || contract.status}
+                 </Badge>
+              </div>
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">REF: {contract.id.slice(-8).toUpperCase()} | {editData.pricingMode}</p>
+           </div>
         </div>
         <div className="flex gap-2">
            {!isEditing && contract.status !== 'paid' && isAdmin && (
@@ -413,13 +424,6 @@ export default function ContractViewPage() {
             </div>
          </div>
       </PrintWrapper>
-      <div className="max-w-5xl mx-auto px-6 pt-4 flex justify-start print:hidden">
-         <Button variant="ghost" onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${contract.transactionId}`)} className="h-10 px-6 rounded-xl border-2 font-bold bg-white text-slate-400 hover:text-slate-900 transition-all gap-2">
-            <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
-            {isRtl ? 'الرجوع لرادار المعاملة' : 'Back to Project'}
-         </Button>
-      </div>
     </div>
   );
 }
-
