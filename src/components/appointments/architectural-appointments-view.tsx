@@ -739,8 +739,8 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
           governorateName: gov ? (isRtl ? gov.name : gov.nameEn) : '',
           fileNumber: nextFileNum,
           status: 'new',
-          assignedEngineerId: data.engineer.id,
-          assignedEngineerName: data.engineer.fullName
+          assignedEngineerId: targetEngineerId,
+          assignedEngineerName: data.engineer?.fullName || data.appointment?.engineerName
         }, userId, userName);
         targetClientName = formData.newClientName;
       }
@@ -942,3 +942,4 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     </Dialog>
   );
 }
+

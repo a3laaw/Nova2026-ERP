@@ -13,7 +13,7 @@ import {
   Loader2, Workflow, CheckCircle2,
   AlertTriangle, Timer, Hammer,
   Check, Layers, Info, Pencil, FileText,
-  Target, Zap, Receipt, Save
+  Target, Zap, Receipt, Save, X
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, where, orderBy, limit } from 'firebase/firestore';
@@ -187,7 +187,7 @@ export default function AppointmentDetailPage() {
     <div className="space-y-8 animate-in fade-in duration-700 pb-20 text-start" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-6">
         <div className="flex items-center gap-4">
-           <button onClick={() => router.back()} className="h-12 w-12 border-2 rounded-2xl bg-white shadow-sm flex items-center justify-center hover:bg-slate-50 transition-all">
+           <button onClick={() => router.back()} className="h-12 w-12 border-2 rounded-2xl bg-white shadow-sm flex items-center justify-center hover:bg-slate-50 transition-all text-slate-400">
              <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-180")} />
            </button>
            <div className="text-start">
@@ -278,7 +278,7 @@ export default function AppointmentDetailPage() {
                           </div>
                        )}
 
-                       {hasAchievement && (
+                       {hasAchievement && !isConsulting && (
                           <div className="p-8 rounded-[2.5rem] bg-emerald-50 border-2 border-emerald-100 text-emerald-800 flex items-center gap-6 text-start">
                              <CheckCircle2 className="h-10 w-10 shrink-0" />
                              <div className="text-start">
@@ -456,3 +456,4 @@ export default function AppointmentDetailPage() {
     </div>
   );
 }
+
