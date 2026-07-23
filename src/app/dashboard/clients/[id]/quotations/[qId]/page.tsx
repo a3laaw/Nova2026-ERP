@@ -339,16 +339,19 @@ export default function QuotationViewPage() {
                                 <td className="p-3 text-start">
                                    {isEditing ? (
                                       <Select 
-                                        value={item.technicalStageId || 'NONE'} 
-                                        onValueChange={v => updateItem(originalIdx, 'technicalStageId', v === 'NONE' ? '' : v)}
+                                        value={item.technicalStageId || 'SIGNING'} 
+                                        onValueChange={v => updateItem(originalIdx, 'technicalStageId', v)}
                                       >
                                          <SelectTrigger className={cn(
                                            "h-7 rounded-md border-2 font-black text-[9px]",
-                                           item.technicalStageId ? "bg-primary/5 text-primary border-primary/20" : "bg-white"
+                                           (item.technicalStageId && item.technicalStageId !== 'NONE') ? "bg-primary/5 text-primary border-primary/20" : "bg-white"
                                          )}>
                                             <SelectValue placeholder={stagesLoading ? "..." : (isRtl ? "ربط ميداني..." : "Link Stage...")} />
                                          </SelectTrigger>
                                          <SelectContent className="rounded-xl border-2 shadow-2xl">
+                                            <SelectItem value="SIGNING" className="font-black text-[9px] py-2">
+                                               <span className="flex items-center gap-1"><ShieldCheck className="h-2.5 w-2.5 text-emerald-500" /> {isRtl ? 'عند توقيع العقد (حر)' : 'At Signing (Free Link)'}</span>
+                                            </SelectItem>
                                             <SelectItem value="NONE" className="font-bold text-[9px] text-slate-400 italic">--- {isRtl ? 'بدون ربط' : 'No Link'} ---</SelectItem>
                                             {stages?.map(s => (
                                               <SelectItem key={s.id} value={s.id!} className="font-bold text-[9px] py-2">
@@ -360,9 +363,9 @@ export default function QuotationViewPage() {
                                    ) : (
                                       <Badge variant="outline" className={cn(
                                         "font-black text-[8px] border-0 px-2 h-5",
-                                        item.technicalStageId ? "bg-primary/5 text-primary" : "bg-slate-50 text-slate-300"
+                                        item.technicalStageId === 'SIGNING' ? "bg-emerald-50 text-emerald-600" : (item.technicalStageId ? "bg-primary/5 text-primary" : "bg-slate-50 text-slate-300")
                                       )}>
-                                         {item.technicalStageId ? (stages?.find(s => s.id === item.technicalStageId)?.name || 'Linked') : '---'}
+                                         {item.technicalStageId === 'SIGNING' ? (isRtl ? 'عند التوقيع' : 'Signing') : (item.technicalStageId ? (stages?.find(s => s.id === item.technicalStageId)?.name || 'Linked') : '---')}
                                       </Badge>
                                    )}
                                 </td>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -72,7 +73,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
           quantity: 1, 
           unitPrice: 0, 
           percentage: 0,
-          technicalStageId: ''
+          technicalStageId: 'SIGNING' // افتراضية عند التوقيع
         }
       ],
       isDefault: false,
@@ -305,14 +306,17 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                         </td>
                                       )}
                                       <td className="p-2">
-                                         <Select value={m.technicalStageId || 'NONE'} onValueChange={v => updateItem(idx, 'technicalStageId', v === 'NONE' ? '' : v)}>
+                                         <Select value={m.technicalStageId || 'SIGNING'} onValueChange={v => updateItem(idx, 'technicalStageId', v)}>
                                             <SelectTrigger className={cn(
                                               "h-8 rounded-lg border-2 font-bold text-[9px]",
-                                              m.technicalStageId ? "bg-primary/5 text-primary border-primary/20" : "bg-white"
+                                              (m.technicalStageId && m.technicalStageId !== 'NONE') ? "bg-primary/5 text-primary border-primary/20" : "bg-white"
                                             )}>
                                               <SelectValue placeholder={isRtl ? "ربط فني..." : "Link Stage..."} />
                                             </SelectTrigger>
                                             <SelectContent className="rounded-xl border-2 shadow-2xl">
+                                               <SelectItem value="SIGNING" className="font-black text-[10px] py-2">
+                                                  <span className="flex items-center gap-1"><ShieldCheck className="h-2.5 w-2.5 text-emerald-500" /> {isRtl ? 'عند توقيع العقد (حر)' : 'At Signing (Free Link)'}</span>
+                                               </SelectItem>
                                                <SelectItem value="NONE" className="font-bold text-[10px] text-slate-400 italic">--- {isRtl ? 'بدون ربط' : 'No Link'} ---</SelectItem>
                                                {pathStages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-[10px] py-2">
                                                   <span className="flex items-center gap-1"><Workflow className="h-2.5 w-2.5 text-primary" /> {s.name}</span>
@@ -414,8 +418,8 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                <p className="text-[10px] text-amber-800 font-bold leading-relaxed">
                   {isRtl 
-                    ? 'ربط بنود التسعير بالمراحل الفنية يضمن انتقال البيانات بدقة عند تحويل العرض إلى عقد رسمي، ويسمح بتتبع التحصيل المالي الميداني لاحقاً.' 
-                    : 'Linking pricing items to technical stages ensures data accuracy when converting quotes to contracts and enables field billing tracking.'}
+                    ? 'ربط بنود التسعير بالمراحل الفنية يضمن انتقال البيانات بدقة عند تحويل العرض إلى عقد رسمي، ويسمح بتتبع التحصيل المالي الميداني لاحقاً. الدفعة الأولى عند التوقيع هي دفعة حرة لا تتطلب اكتمال مرحلة ميدانية.' 
+                    : 'Linking pricing items to technical stages ensures data accuracy when converting quotes to contracts and enables field billing tracking. The first installment is a free trigger.'}
                </p>
             </div>
          </aside>
