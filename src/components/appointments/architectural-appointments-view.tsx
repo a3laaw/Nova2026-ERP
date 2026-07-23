@@ -86,6 +86,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 import {
   Select,
@@ -559,34 +560,36 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                                          )}
                                       </div>
                                       
-                                      <div className="relative z-20" onClick={e => e.stopPropagation()}>
+                                      <div className="absolute top-2 right-2 z-50" onClick={e => e.stopPropagation()}>
                                         <DropdownMenu>
                                            <DropdownMenuTrigger asChild>
                                               <Button 
                                                 variant="ghost" 
                                                 size="icon" 
-                                                className="h-8 w-8 rounded-full bg-white/60 hover:bg-white text-slate-900 shadow-sm border border-black/5"
+                                                className="h-8 w-8 rounded-full bg-white shadow-md hover:bg-slate-50 text-slate-900 border border-slate-100"
                                               >
                                                  <MoreVertical className="h-4 w-4" />
                                               </Button>
                                            </DropdownMenuTrigger>
-                                           <DropdownMenuContent align="end" className="rounded-xl border-2 shadow-2xl z-[120] bg-white min-w-[160px]">
-                                              <DropdownMenuLabel className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'الإجراءات' : 'Actions'}</DropdownMenuLabel>
-                                              <DropdownMenuSeparator />
-                                              <DropdownMenuItem onClick={() => router.push(`/dashboard/appointments/${appt.id}`)} className="font-bold gap-2 py-2 cursor-pointer text-[11px]">
-                                                 <MessageSquare className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'غرفة العمليات' : 'War Room'}
-                                              </DropdownMenuItem>
-                                              <DropdownMenuItem onClick={() => onAction('edit', eng, slot, appt)} className="font-bold gap-2 py-2 cursor-pointer text-[11px]">
-                                                 <Edit3 className="h-3.5 w-3.5 text-blue-500" /> {isRtl ? 'تعديل' : 'Edit'}
-                                              </DropdownMenuItem>
-                                              <DropdownMenuItem onClick={() => handleCancelAppt(appt.id!)} className="font-bold gap-2 py-2 cursor-pointer text-[11px]">
-                                                 <CalendarX className="h-3.5 w-3.5 text-orange-500" /> {isRtl ? 'إلغاء' : 'Cancel'}
-                                              </DropdownMenuItem>
-                                              <DropdownMenuSeparator />
-                                              <DropdownMenuItem onClick={() => handleDeleteAppt(appt.id!)} className="font-bold gap-2 py-2 cursor-pointer text-[11px] text-rose-600 focus:text-rose-600 focus:bg-rose-50">
-                                                 <Trash2 className="h-3.5 w-3.5" /> {isRtl ? 'حذف نهائي' : 'Delete'}
-                                              </DropdownMenuItem>
-                                           </DropdownMenuContent>
+                                           <DropdownMenuPortal>
+                                              <DropdownMenuContent align="end" className="rounded-xl border-2 shadow-2xl z-[150] bg-white min-w-[160px]">
+                                                 <DropdownMenuLabel className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'الإجراءات' : 'Actions'}</DropdownMenuLabel>
+                                                 <DropdownMenuSeparator />
+                                                 <DropdownMenuItem onClick={() => router.push(`/dashboard/appointments/${appt.id}`)} className="font-bold gap-2 py-2 cursor-pointer text-[11px]">
+                                                    <MessageSquare className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'غرفة العمليات' : 'War Room'}
+                                                 </DropdownMenuItem>
+                                                 <DropdownMenuItem onClick={() => onAction('edit', eng, slot, appt)} className="font-bold gap-2 py-2 cursor-pointer text-[11px]">
+                                                    <Edit3 className="h-3.5 w-3.5 text-blue-500" /> {isRtl ? 'تعديل' : 'Edit'}
+                                                 </DropdownMenuItem>
+                                                 <DropdownMenuItem onClick={() => handleCancelAppt(appt.id!)} className="font-bold gap-2 py-2 cursor-pointer text-[11px]">
+                                                    <CalendarX className="h-3.5 w-3.5 text-orange-500" /> {isRtl ? 'إلغاء' : 'Cancel'}
+                                                 </DropdownMenuItem>
+                                                 <DropdownMenuSeparator />
+                                                 <DropdownMenuItem onClick={() => handleDeleteAppt(appt.id!)} className="font-bold gap-2 py-2 cursor-pointer text-[11px] text-rose-600 focus:text-rose-600 focus:bg-rose-50">
+                                                    <Trash2 className="h-3.5 w-3.5" /> {isRtl ? 'حذف نهائي' : 'Delete'}
+                                                 </DropdownMenuItem>
+                                              </DropdownMenuContent>
+                                           </DropdownMenuPortal>
                                         </DropdownMenu>
                                       </div>
                                    </div>
@@ -755,10 +758,10 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-xl flex flex-col h-fit max-h-[85vh] z-[101]" dir={dir}>
+      <DialogContent className="rounded-[2rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-xl flex flex-col h-fit max-h-[85vh] z-[110]" dir={dir}>
         
         <div className="bg-slate-50 p-6 text-slate-900 text-start border-b shrink-0 relative">
-           <div className="flex items-center gap-4 pr-14">
+           <div className="flex items-center gap-4 pr-16">
               <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-primary shadow-md border-2 border-primary/10 shrink-0">
                  {data?.mode === 'create' ? <PlusCircle className="h-5 w-5" /> : <Edit3 className="h-5 w-5" />}
               </div>
@@ -815,7 +818,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                                setFormData({...formData, newClientGovId: v, newClientGovName: isRtl?g.name:g.nameEn});
                             }}>
                                <SelectTrigger className="h-10 rounded-lg border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                               <SelectContent className="rounded-xl border-0 shadow-2xl z-[130]">
+                               <SelectContent className="rounded-xl border-0 shadow-2xl z-[150]">
                                   {governorates?.map((g: any) => <SelectItem key={g.id} value={g.id} className="font-bold text-xs">{isRtl ? g.name : g.nameEn}</SelectItem>)}
                                </SelectContent>
                             </Select>
@@ -834,7 +837,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                          <SelectTrigger className="h-11 rounded-xl border-2 font-black bg-white shadow-sm">
                             <SelectValue placeholder={isRtl ? "تحديد العميل من القائمة..." : "Choose client..."} />
                          </SelectTrigger>
-                         <SelectContent className="rounded-xl border-0 shadow-3xl max-h-[250px] z-[130]">
+                         <SelectContent className="rounded-xl border-0 shadow-3xl max-h-[250px] z-[150]">
                             {filteredClients.map((c: any) => (
                               <SelectItem key={c.id} value={c.id!} className="font-black text-[11px] py-2">
                                  {c.nameAr} <span className="text-[8px] opacity-30 ms-2">#{c.fileNumber}</span>
@@ -854,11 +857,11 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
            <div className="space-y-1.5">
               <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">توجيهات فنية للمهندس</Label>
-              <Textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="min-h-[100px] rounded-xl border-2 bg-slate-50/30 p-4 text-xs font-bold resize-none shadow-inner focus:bg-white transition-all" placeholder="..." />
+              <Textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="min-h-[120px] rounded-2xl border-2 bg-slate-50/30 p-4 text-xs font-bold resize-none shadow-inner focus:bg-white transition-all" placeholder="..." />
            </div>
         </div>
 
-        <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-4 shrink-0 shadow-[0_-10px_20px_-5px_rgba(0,0,0,0.05)]">
+        <DialogFooter className="sticky bottom-0 p-6 bg-slate-50 border-t flex flex-row gap-4 shrink-0 shadow-[0_-10px_20px_-5px_rgba(0,0,0,0.05)]">
            <Button variant="outline" onClick={onClose} className="flex-1 h-11 rounded-xl font-bold border-2 text-xs bg-white">
               {isRtl ? 'إلغاء' : 'Cancel'}
            </Button>
