@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -565,7 +564,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                                                <MoreVertical className="h-4 w-4 text-slate-900" />
                                             </Button>
                                          </DropdownMenuTrigger>
-                                         <DropdownMenuContent align="end" className="rounded-xl border-2 shadow-2xl z-[100] bg-white min-w-[180px]">
+                                         <DropdownMenuContent align="end" className="rounded-xl border-2 shadow-2xl z-[110] bg-white min-w-[180px]">
                                             <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'إجراءات الموعد' : 'Actions'}</DropdownMenuLabel>
                                             <DropdownMenuSeparator />
                                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/appointments/${appt.id}`); }} className="font-bold gap-3 py-3 cursor-pointer">
@@ -799,24 +798,27 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="rounded-3xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-2xl flex flex-col h-fit max-h-[90vh]" dir={dir}>
+      <DialogContent className="rounded-3xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-2xl flex flex-col h-fit max-h-[90vh] z-[101]" dir={dir}>
         
-        {/* Header - Fixed & Layout-Corrected */}
+        {/* Header - Optimized layout to avoid X overlap */}
         <div className="bg-slate-50 p-8 text-slate-900 text-start border-b shrink-0 relative">
-           <div className="flex items-center gap-4">
-              <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center text-primary shadow-lg border-2 border-primary/10 shrink-0">
-                 {data?.mode === 'create' ? <Plus className="h-6 w-6" /> : <Edit3 className="h-6 w-6" />}
+           <div className="flex items-center gap-6 pr-10">
+              <div className="h-14 w-14 bg-white rounded-2xl flex items-center justify-center text-primary shadow-lg border-2 border-primary/10 shrink-0">
+                 {data?.mode === 'create' ? <PlusCircle className="h-8 w-8" /> : <Edit3 className="h-8 w-8" />}
               </div>
-              <div className="flex-1 min-w-0 pr-8"> {/* Padding to avoid overlap with X button */}
-                 <DialogTitle className="text-xl font-black font-headline truncate">
+              <div className="flex-1 min-w-0">
+                 <DialogTitle className="text-2xl font-black font-headline truncate">
                     {data?.mode === 'create' ? (isRtl ? 'حجز موعد ميداني' : 'New Site Appointment') : (isRtl ? 'إعادة جدولة الموعد' : 'Reschedule')}
                  </DialogTitle>
-                 <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[10px] font-bold text-primary uppercase tracking-widest truncate">
-                       {data?.engineer?.fullName || data?.appointment?.engineerName}
-                    </span>
-                    <Badge variant="outline" className="h-5 px-2 border font-mono font-black text-[9px] bg-white text-slate-400">
-                       {formData.time}
+                 <div className="flex items-center gap-3 mt-1.5">
+                    <div className="flex items-center gap-1.5 bg-primary/10 px-3 py-1 rounded-full border border-primary/5">
+                       <UserIcon className="h-3 w-3 text-primary" />
+                       <span className="text-[10px] font-black text-primary uppercase tracking-widest truncate max-w-[150px]">
+                          {data?.engineer?.fullName || data?.appointment?.engineerName}
+                       </span>
+                    </div>
+                    <Badge variant="outline" className="h-6 px-3 border-2 font-mono font-black text-[10px] bg-white text-slate-500 shadow-sm">
+                       <Clock className="h-3 w-3 me-1.5 opacity-40" /> {formData.time}
                     </Badge>
                  </div>
               </div>
@@ -827,17 +829,23 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         <div className="flex-1 overflow-y-auto p-8 space-y-8 text-start scrollbar-hide">
            {data?.mode === 'create' && (
              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 border-2 border-white shadow-inner">
+                <div className={cn(
+                  "flex items-center justify-between p-5 rounded-2xl transition-all border-2",
+                  isNewClient ? "bg-primary/5 border-primary/20 shadow-lg" : "bg-slate-50 border-white shadow-inner"
+                )}>
                    <div className="text-start">
-                      <Label className="font-black text-[10px] uppercase text-slate-500 block">{isRtl ? 'عميل جديد؟' : 'New Client?'}</Label>
-                      <p className="text-[8px] text-slate-400 font-bold">{isRtl ? 'إنشاء ملف فوري' : 'Create quick file'}</p>
+                      <Label className="font-black text-[10px] uppercase text-slate-500 block mb-1">عميل جديد؟</Label>
+                      <p className="text-[9px] text-slate-400 font-bold">إنشاء ملف فوري للعميل</p>
                    </div>
                    <Switch checked={isNewClient} onCheckedChange={v => { setIsNewClient(v); if(v) setIsBusyBlock(false); }} />
                 </div>
-                <div className="flex items-center justify-between p-4 rounded-xl bg-slate-900 text-white shadow-xl">
+                <div className={cn(
+                  "flex items-center justify-between p-5 rounded-2xl transition-all border-2 shadow-xl",
+                  isBusyBlock ? "bg-slate-900 text-white border-primary" : "bg-slate-800/80 text-white border-transparent opacity-60"
+                )}>
                    <div className="text-start">
-                      <Label className="font-black text-[10px] uppercase text-primary block">{isRtl ? 'غلق الخانة (Busy)' : 'Block Slot'}</Label>
-                      <p className="text-[8px] text-slate-500 font-bold">{isRtl ? 'مهام مكتبية/داخلية' : 'Internal task'}</p>
+                      <Label className="font-black text-[10px] uppercase text-primary block mb-1">غلق الخانة (Busy)</Label>
+                      <p className="text-[9px] text-slate-400 font-bold">مهام مكتبية/داخلية</p>
                    </div>
                    <Switch checked={isBusyBlock} onCheckedChange={v => { setIsBusyBlock(v); if(v) setIsNewClient(false); }} />
                 </div>
@@ -847,24 +855,24 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
            {!isBusyBlock && (
              <div className="space-y-6">
                 {isNewClient ? (
-                   <div className="space-y-4 p-6 rounded-[2rem] border-2 border-primary/10 bg-primary/5 animate-in fade-in zoom-in-95">
+                   <div className="space-y-6 p-8 rounded-[2.5rem] border-2 border-primary/10 bg-primary/5 animate-in fade-in zoom-in-95">
                       <div className="space-y-2">
-                         <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اسم العميل الكامل' : 'Client Full Name'}</Label>
-                         <Input value={formData.newClientName} onChange={e => setFormData({...formData, newClientName: e.target.value})} className="h-11 rounded-xl border-2 font-bold bg-white" placeholder="..." />
+                         <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">اسم العميل الكامل</Label>
+                         <Input value={formData.newClientName} onChange={e => setFormData({...formData, newClientName: e.target.value})} className="h-12 rounded-xl border-2 font-bold bg-white" placeholder="أدخل اسم العميل كما في الهوية..." />
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                          <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'رقم الهاتف' : 'Mobile'}</Label>
-                            <Input value={formData.newClientPhone} onChange={e => setFormData({...formData, newClientPhone: e.target.value})} className="h-11 rounded-xl border-2 font-bold bg-white" placeholder="+965" />
+                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">رقم الهاتف</Label>
+                            <Input value={formData.newClientPhone} onChange={e => setFormData({...formData, newClientPhone: e.target.value})} className="h-12 rounded-xl border-2 font-bold bg-white" placeholder="+965" />
                          </div>
                          <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'المحافظة' : 'Gov'}</Label>
+                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">المحافظة</Label>
                             <Select value={formData.newClientGovId} onValueChange={v => {
                                const g = governorates?.find((x:any)=>x.id===v);
                                setFormData({...formData, newClientGovId: v, newClientGovName: isRtl?g.name:g.nameEn});
                             }}>
-                               <SelectTrigger className="h-11 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
-                               <SelectContent className="rounded-xl border-2 shadow-2xl">
+                               <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
+                               <SelectContent className="rounded-xl border-2 shadow-2xl z-[120]">
                                   {governorates?.map((g: any) => <SelectItem key={g.id} value={g.id} className="font-bold text-xs">{isRtl ? g.name : g.nameEn}</SelectItem>)}
                                </SelectContent>
                             </Select>
@@ -872,25 +880,38 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                       </div>
                    </div>
                 ) : (
-                   <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اختيار العميل من محفظة المهندس' : 'Select Client from Portfolio'}</Label>
+                   <div className="space-y-3">
+                      <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                         <Search className="h-3.5 w-3.5" /> اختيار العميل من المحفظة السيادية
+                      </Label>
                       <Select value={formData.clientId} onValueChange={v => {
                         const c = filteredClients.find((x:any) => x.id === v);
                         setFormData({...formData, clientId: v, clientName: c?.nameAr || '', transactionId: '', stageId: ''});
                       }}>
-                         <SelectTrigger className="h-14 rounded-2xl border-2 font-black bg-white shadow-sm hover:border-primary/40 transition-all">
+                         <SelectTrigger className="h-16 rounded-2xl border-2 font-black bg-white shadow-md hover:border-primary/40 transition-all">
                             <SelectValue placeholder={isRtl ? "تحديد العميل..." : "Choose client..."} />
                          </SelectTrigger>
-                         <SelectContent className="rounded-2xl border-0 shadow-3xl max-h-60">
+                         <SelectContent className="rounded-2xl border-0 shadow-3xl max-h-[300px] z-[120]">
+                            <div className="p-3 bg-slate-50 border-b">
+                               <p className="text-[9px] font-black text-slate-400 uppercase">Portfolio: {data?.engineer?.fullName || 'Selected Staff'}</p>
+                            </div>
                             {filteredClients.map((c: any) => (
-                              <SelectItem key={c.id} value={c.id!} className="font-black text-xs py-4 border-b last:border-0 border-slate-50">
-                                 <div className="flex flex-col text-start gap-0.5">
-                                    <span>{c.nameAr}</span>
-                                    <span className="text-[8px] font-mono font-bold text-slate-400 uppercase tracking-tighter">#{c.fileNumber}</span>
+                              <SelectItem key={c.id} value={c.id!} className="font-black text-xs py-4 border-b last:border-0 border-slate-50 cursor-pointer">
+                                 <div className="flex flex-col text-start gap-1">
+                                    <span className="text-slate-800 text-sm">{c.nameAr}</span>
+                                    <div className="flex items-center gap-2">
+                                       <span className="text-[9px] font-mono font-black text-primary px-1.5 py-0.5 bg-primary/5 rounded border border-primary/10">#{c.fileNumber}</span>
+                                       <span className="text-[9px] text-slate-400 font-bold uppercase">{c.status}</span>
+                                    </div>
                                  </div>
                               </SelectItem>
                             ))}
-                            {filteredClients.length === 0 && <div className="p-10 text-center text-[10px] text-slate-300 font-bold italic">لا يوجد عملاء منسوبين</div>}
+                            {filteredClients.length === 0 && (
+                               <div className="p-10 text-center flex flex-col items-center gap-3">
+                                  <AlertTriangle className="h-8 w-8 text-amber-200" />
+                                  <p className="text-[11px] text-slate-400 font-black italic uppercase">لا يوجد عملاء منسوبين لهذا الملف</p>
+                               </div>
+                            )}
                          </SelectContent>
                       </Select>
                    </div>
@@ -901,7 +922,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-6 bg-slate-50 rounded-[2rem] border-2 border-white shadow-inner animate-in slide-in-from-top-2">
                       <div className="space-y-2">
                          <Label className="text-[10px] font-black uppercase text-blue-600 tracking-widest flex items-center gap-2">
-                            <Briefcase className="h-3 w-3" /> {isRtl ? 'ربط بمشروع قائم' : 'Link to Project'}
+                            <Briefcase className="h-3 w-3" /> ربط بمشروع قائم
                          </Label>
                          <Select value={formData.transactionId} onValueChange={v => {
                             const t = transactions.find(x => x.id === v);
@@ -910,15 +931,22 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                             <SelectTrigger className="h-11 rounded-xl border-2 font-bold bg-white">
                                {loadingTrans ? <Loader2 className="h-3 w-3 animate-spin" /> : <SelectValue placeholder="..." />}
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-0 shadow-2xl">
-                               {transactions.map(t => <SelectItem key={t.id} value={t.id!} className="font-bold text-xs">{t.subServiceName} - {t.transactionNumber}</SelectItem>)}
+                            <SelectContent className="rounded-xl border-0 shadow-2xl z-[120]">
+                               {transactions.map(t => (
+                                 <SelectItem key={t.id} value={t.id!} className="font-bold text-xs py-3 border-b last:border-0">
+                                    <div className="flex flex-col text-start">
+                                       <span className="text-slate-800">{t.subServiceName}</span>
+                                       <span className="text-[8px] font-mono text-blue-400">#{t.transactionNumber}</span>
+                                    </div>
+                                 </SelectItem>
+                               ))}
                             </SelectContent>
                          </Select>
                       </div>
 
                       <div className="space-y-2">
                          <Label className="text-[10px] font-black uppercase text-blue-600 tracking-widest flex items-center gap-2">
-                            <Workflow className="h-3 w-3" /> {isRtl ? 'المرحلة الفنية' : 'Target Stage'}
+                            <Workflow className="h-3 w-3" /> المرحلة الميدانية
                          </Label>
                          <Select disabled={!formData.transactionId} value={formData.stageId} onValueChange={v => {
                             const s = stages.find(x => x.id === v);
@@ -927,7 +955,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                             <SelectTrigger className="h-11 rounded-xl border-2 font-bold bg-white">
                                {loadingStages ? <Loader2 className="h-3 w-3 animate-spin" /> : <SelectValue placeholder="..." />}
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-0 shadow-2xl">
+                            <SelectContent className="rounded-xl border-0 shadow-2xl z-[120]">
                                {stages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs py-2 border-b last:border-0">{s.name}</SelectItem>)}
                             </SelectContent>
                          </Select>
@@ -938,23 +966,23 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
            )}
 
            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'مسمى الموعد / الغرض' : 'Appointment Title'}</Label>
-              <Input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="h-12 rounded-xl border-2 font-black text-lg bg-slate-50/30" placeholder={isRtl ? "مثلاً: معاينة رفع عداد..." : "e.g. Site Measurement..."} />
+              <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">مسمى الموعد / الغرض</Label>
+              <Input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="h-14 rounded-2xl border-2 font-black text-lg bg-slate-50/30 focus:bg-white transition-all shadow-inner" placeholder={isRtl ? "مثلاً: معاينة رفع عداد..." : "e.g. Site Measurement..."} />
            </div>
 
            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'ملاحظات وتوجيهات' : 'Notes'}</Label>
-              <textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="w-full h-24 rounded-2xl border-2 bg-slate-50/30 p-4 text-xs font-bold resize-none shadow-inner" placeholder="..." />
+              <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">توجيهات فنية للمهندس</Label>
+              <Textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="min-h-[120px] rounded-[2rem] border-2 bg-slate-50/30 p-6 text-sm font-bold resize-none shadow-inner focus:bg-white transition-all" placeholder="..." />
            </div>
         </div>
 
-        {/* Footer - Fixed & Always Visible */}
-        <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4 shrink-0 shadow-2xl relative z-10">
-           <Button variant="outline" onClick={onClose} className="flex-1 h-16 rounded-2xl border-2 font-black text-lg bg-white shadow-sm">
+        {/* Footer - Sticky with elevated Z and visual separation */}
+        <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4 shrink-0 shadow-[0_-10px_30px_rgba(0,0,0,0.03)] relative z-10">
+           <Button variant="outline" onClick={onClose} className="flex-1 h-16 rounded-2xl border-2 font-black text-lg bg-white shadow-sm hover:bg-slate-100 transition-all">
               {isRtl ? 'إلغاء' : 'Cancel'}
            </Button>
-           <Button onClick={handleSave} disabled={loading || (!isBusyBlock && !formData.clientId)} className="flex-[2] h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-8 border-orange-700">
-              {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />}
+           <Button onClick={handleSave} disabled={loading || (!isBusyBlock && !formData.clientId)} className="flex-[2] h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all gap-3 border-b-8 border-orange-700">
+              {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
               {isRtl ? 'حفظ وتثبيت' : 'Confirm & Save'}
            </Button>
         </DialogFooter>
