@@ -550,8 +550,8 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                                   onClick={() => !isBusy && router.push(`/dashboard/appointments/${appt.id}`)}
                                   className={cn("border-2 p-3 rounded-xl h-full shadow-md relative group/card cursor-pointer transition-all hover:ring-4 hover:ring-primary/5", cardGradient(m?.color || ''))}
                                 >
-                                   <div className="flex justify-between items-start mb-1">
-                                      <div className="text-start">
+                                   <div className="flex justify-between items-start mb-1 relative">
+                                      <div className="text-start pr-8">
                                          <p className="font-black text-[11px] leading-tight mb-0.5">{isBusy ? (isRtl ? 'مشغول' : 'Busy') : (appt.clientName || client?.nameAr)}</p>
                                          {!isBusy && (
                                            <div className="flex items-center gap-1 text-[7px] font-black uppercase opacity-60">
@@ -560,13 +560,14 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                                          )}
                                       </div>
                                       
-                                      <div className="absolute top-2 right-2 z-50" onClick={e => e.stopPropagation()}>
+                                      {/* FIXED ACTION BUTTON - SUPERIOR POSITIONING */}
+                                      <div className="absolute top-0 right-0 z-[60]" onClick={e => e.stopPropagation()}>
                                         <DropdownMenu>
                                            <DropdownMenuTrigger asChild>
                                               <Button 
                                                 variant="ghost" 
                                                 size="icon" 
-                                                className="h-8 w-8 rounded-full bg-white shadow-md hover:bg-slate-50 text-slate-900 border border-slate-100"
+                                                className="h-8 w-8 rounded-full bg-white shadow-xl hover:bg-slate-50 text-slate-900 border-2 border-primary/20 ring-4 ring-black/5"
                                               >
                                                  <MoreVertical className="h-4 w-4" />
                                               </Button>
@@ -758,10 +759,11 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="rounded-[2rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-xl flex flex-col h-fit max-h-[85vh] z-[110]" dir={dir}>
+      <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-xl flex flex-col h-fit max-h-[90vh] z-[101]" dir={dir}>
         
+        {/* HEADER WITH SAFETY PADDING */}
         <div className="bg-slate-50 p-6 text-slate-900 text-start border-b shrink-0 relative">
-           <div className="flex items-center gap-4 pr-16">
+           <div className="flex items-center gap-4 px-12">
               <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-primary shadow-md border-2 border-primary/10 shrink-0">
                  {data?.mode === 'create' ? <PlusCircle className="h-5 w-5" /> : <Edit3 className="h-5 w-5" />}
               </div>
@@ -818,7 +820,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                                setFormData({...formData, newClientGovId: v, newClientGovName: isRtl?g.name:g.nameEn});
                             }}>
                                <SelectTrigger className="h-10 rounded-lg border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                               <SelectContent className="rounded-xl border-0 shadow-2xl z-[150]">
+                               <SelectContent className="rounded-xl border-2 shadow-2xl z-[150]">
                                   {governorates?.map((g: any) => <SelectItem key={g.id} value={g.id} className="font-bold text-xs">{isRtl ? g.name : g.nameEn}</SelectItem>)}
                                </SelectContent>
                             </Select>
@@ -837,9 +839,9 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                          <SelectTrigger className="h-11 rounded-xl border-2 font-black bg-white shadow-sm">
                             <SelectValue placeholder={isRtl ? "تحديد العميل من القائمة..." : "Choose client..."} />
                          </SelectTrigger>
-                         <SelectContent className="rounded-xl border-0 shadow-3xl max-h-[250px] z-[150]">
+                         <SelectContent className="rounded-xl border-2 shadow-3xl max-h-[300px] z-[150]">
                             {filteredClients.map((c: any) => (
-                              <SelectItem key={c.id} value={c.id!} className="font-black text-[11px] py-2">
+                              <SelectItem key={c.id} value={c.id!} className="font-black text-[11px] py-2 border-b last:border-0 border-slate-50">
                                  {c.nameAr} <span className="text-[8px] opacity-30 ms-2">#{c.fileNumber}</span>
                               </SelectItem>
                             ))}
@@ -861,6 +863,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
            </div>
         </div>
 
+        {/* STICKY FOOTER WITH SLIM BUTTONS */}
         <DialogFooter className="sticky bottom-0 p-6 bg-slate-50 border-t flex flex-row gap-4 shrink-0 shadow-[0_-10px_20px_-5px_rgba(0,0,0,0.05)]">
            <Button variant="outline" onClick={onClose} className="flex-1 h-11 rounded-xl font-bold border-2 text-xs bg-white">
               {isRtl ? 'إلغاء' : 'Cancel'}
@@ -874,3 +877,4 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     </Dialog>
   );
 }
+
