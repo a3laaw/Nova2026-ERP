@@ -13,31 +13,50 @@ import {
   Loader2, Workflow, CheckCircle2,
   AlertTriangle, Timer, Hammer,
   Check, Layers, Info, Pencil, FileText,
-  Target, Zap, Receipt
+  Target, Zap, Receipt, Save
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
-import { doc, collection, query, where, orderBy } from 'firebase/firestore';
+import { doc, collection, query, where, orderBy, limit } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
+import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { Appointment } from '@/types/appointment';
-import { Transaction, StageInstance, TransactionComment } from '@/types/transaction';
-import { BOQItemExecutionEntry, BOQItem } from '@/types/documents';
+import { Transaction, StageInstance } from '@/types/transaction';
+import { BOQ, BOQItem, BOQItemExecutionEntry } from '@/types/documents';
 import { CommentSection } from '@/components/transactions/comment-section';
+import { BOQExecutionService } from '@/services/boq-execution-service';
+import { AppointmentService } from '@/services/appointment-service';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
-import { AppointmentService } from '@/services/appointment-service';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function AppointmentDetailPage() {
   const apptId = useParams().id as string;
   const { globalUser, user } = useAuthContext();
   const { lang, dir, t } = useLanguage();
+  const { permissions, check } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
+  // الحالات والتحكم
   const [activeTab, setActiveTab] = useState('pipeline');
+  const [isRecordOpen, setIsRecordOpen] = useState(false);
+  const [selectedItemId, setSelectedItemId] = useState("");
+  const [progressQty, setProgressQty] = useState<number | "">(""); 
+  const [progressNotes, setProgressNotes] = useState("");
+  const [loadingAction, setLoadingAction] = useState<string | null>(null);
 
   const apptRef = useMemo(() => 
     companyId && db ? doc(db, paths.appointments(companyId), apptId) : null, 
@@ -57,18 +76,23 @@ export default function AppointmentDetailPage() {
   [db, companyId, appt?.transactionId]);
   const { data: stages } = useCollection<StageInstance>(stagesQuery);
 
-  // جلب سجلات التنفيذ
+  // جلب المقايسة والبنود لتفعيل ميزة "تسجيل الإنجاز"
+  const boqQuery = useMemo(() => 
+    companyId && db && appt?.transactionId ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', appt.transactionId), limit(1)) : null,
+  [db, companyId, appt?.transactionId]);
+  const { data: boqs } = useCollection<BOQ>(boqQuery);
+  const activeBoq = boqs?.[0];
+
+  const itemsQuery = useMemo(() => 
+    companyId && db && activeBoq?.id ? query(collection(db, paths.boqItems(companyId, activeBoq.id))) : null,
+  [db, companyId, activeBoq]);
+  const { data: boqItems } = useCollection<BOQItem>(itemsQuery);
+
+  // جلب سجلات التنفيذ للتحقق من شرط الإغلاق
   const execsQuery = useMemo(() => 
     companyId && db && appt?.transactionId ? query(collection(db, paths.executions(companyId)), where('transactionId', '==', appt.transactionId)) : null,
   [db, companyId, appt?.transactionId]);
-  const { data: executions } = useCollection<BOQItemExecutionEntry>(execsQuery);
-
-  // جلب بنود المقايسة للتعرف عليها في غرفة العمليات
-  const boqItemsQuery = useMemo(() => {
-    if (!companyId || !db || !appt?.transactionId) return null;
-    return query(collection(db, paths.executions(companyId)), where('transactionId', '==', appt.transactionId));
-  }, [db, companyId, appt?.transactionId]);
-  const { data: allExecs } = useCollection<any>(boqItemsQuery);
+  const { data: allExecutions } = useCollection<BOQItemExecutionEntry>(execsQuery);
 
   // تحديد طبيعة النشاط
   const isConsulting = useMemo(() => {
@@ -76,14 +100,48 @@ export default function AppointmentDetailPage() {
     return name.includes('استشارات') || name.includes('Consulting') || name.includes('تصميم') || name.includes('Design');
   }, [transaction]);
 
+  // الشرط السيادي: هل تم تسجيل إنجاز لهذه المرحلة في هذا الموعد؟
   const hasAchievement = useMemo(() => {
-    if (!appt?.transactionId) return true; 
-    const currentStageExecutions = (executions || []).filter(ex => ex.technicalStageId === appt.stageId && !ex.isArchived);
+    if (!appt?.transactionId || isConsulting) return true; 
+    // نبحث عن أي سجل إنجاز غير مؤرشف ينتمي لهذه المرحلة الفنية
+    const currentStageExecutions = (allExecutions || []).filter(ex => ex.technicalStageId === appt.stageId && !ex.isArchived);
     return currentStageExecutions.length > 0;
-  }, [executions, appt?.stageId, appt?.transactionId]);
+  }, [allExecutions, appt?.stageId, appt?.transactionId, isConsulting]);
+
+  const handleRecordProgress = async () => {
+    if (!db || !companyId || !user || !activeBoq || !selectedItemId) return;
+    const qtyInput = progressQty === "" ? 0 : Number(progressQty);
+    
+    setLoadingAction('recording');
+    try {
+      const service = new BOQExecutionService(db, companyId, permissions);
+      const currentUserName = globalUser?.username || user.displayName || 'Engineer';
+      
+      await service.recordBOQItemExecution(
+        activeBoq.id, 
+        selectedItemId, 
+        appt!.stageId!, 
+        qtyInput, 
+        user.uid, 
+        currentUserName, 
+        progressNotes, 
+        appt!.stageId! // الربط المباشر بطلب الزيارة
+      );
+
+      toast({ title: isRtl ? "تم تسجيل الإنجاز في الميدان" : "Field Progress Logged" });
+      setIsRecordOpen(false);
+      setProgressQty("");
+      setProgressNotes("");
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('error'), description: e.message });
+    } finally {
+      setLoadingAction(null);
+    }
+  };
 
   const handleComplete = async () => {
     if (!db || !companyId || !user) return;
+
     if (!hasAchievement && appt?.transactionId && !isConsulting) {
        toast({ 
          variant: "destructive", 
@@ -96,16 +154,24 @@ export default function AppointmentDetailPage() {
     try {
       const service = new AppointmentService(db, companyId);
       await service.updateStatus(apptId, 'completed', user.uid);
-      toast({ title: isRtl ? "تم إنجاز الموعد" : "Appointment Completed" });
+      toast({ title: isRtl ? "تم إنجاز الموعد والمهمة" : "Appointment Completed" });
+      router.push('/dashboard/appointments');
     } catch (e) {
       toast({ variant: "destructive", title: t('error') });
     }
   };
 
+  const selectedBOQItemMetrics = useMemo(() => {
+    if (!selectedItemId || !boqItems) return null;
+    const item = boqItems.find(i => i.id === selectedItemId);
+    if (!item) return null;
+    const executed = (allExecutions || []).filter(e => e.boqItemId === selectedItemId && !e.isArchived).reduce((sum, e) => sum + (e.quantity || 0), 0);
+    return { planned: item.plannedQuantity || 0, executed, remaining: Math.max(0, (item.plannedQuantity || 0) - executed), unit: item.unitSymbol || item.unitName };
+  }, [selectedItemId, boqItems, allExecutions]);
+
   if (apptLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
   if (!appt) return <div className="p-20 text-center font-black">{isRtl ? 'الموعد غير موجود' : 'Appointment not found'}</div>;
 
-  // تنسيق الأرقام والتواريخ بنظام Latn (123) لضمان الوضوح
   const displayDate = new Date(appt.start).toLocaleDateString(isRtl ? 'ar-KW' : 'en-US', { 
     dateStyle: 'full',
     numberingSystem: 'latn' 
@@ -136,7 +202,7 @@ export default function AppointmentDetailPage() {
              onClick={handleComplete} 
              className={cn(
                "h-14 px-10 rounded-2xl font-black text-lg transition-all gap-3 border-b-8 shadow-xl hover:scale-105",
-               "bg-emerald-600 text-white border-emerald-800 shadow-emerald-100"
+               hasAchievement ? "bg-emerald-600 text-white border-emerald-800 shadow-emerald-100" : "bg-slate-200 text-slate-400 border-slate-400 cursor-not-allowed"
              )}
            >
               <CheckCircle2 className="h-6 w-6" />
@@ -147,96 +213,95 @@ export default function AppointmentDetailPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
-        <div className="lg:col-span-8 space-y-8">
-           <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
-              <CardHeader className="bg-primary/5 p-8 border-b">
-                 <div className="flex justify-between items-center">
-                    <CardTitle className="text-xl font-black flex items-center gap-3 text-slate-800">
-                       <ShieldCheck className="h-6 w-6 text-primary" />
-                       {isRtl ? 'تفاصيل الارتباط الميداني' : 'Field Link Details'}
-                    </CardTitle>
-                    <Badge className={cn(
-                      "font-black px-4 py-1.5 rounded-xl uppercase text-[10px] shadow-sm",
-                      appt.status === 'completed' ? "bg-emerald-50 text-emerald-600" : "bg-blue-50 text-blue-600"
-                    )}>{appt.status}</Badge>
-                 </div>
-              </CardHeader>
-              <CardContent className="p-10 space-y-10">
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                    <div className="space-y-10">
-                       <div className="flex items-start gap-4">
-                          <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 border"><Calendar className="h-5 w-5" /></div>
-                          <div className="text-start">
-                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'التاريخ المجدول' : 'Scheduled Date'}</p>
-                             <p className="font-black text-slate-800 text-lg">{displayDate}</p>
-                          </div>
-                       </div>
-                       <div className="flex items-start gap-4">
-                          <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 border"><Clock className="h-5 w-5" /></div>
-                          <div className="text-start">
-                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'الوقت' : 'Time'}</p>
-                             <p className="font-black text-slate-800 text-lg">{displayTime}</p>
-                          </div>
-                       </div>
-                    </div>
+        <div className="lg:col-span-8">
+           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="bg-white border-2 border-slate-100 p-1 rounded-xl h-14 w-full md:w-fit gap-2 shadow-sm mb-6">
+                 <TabsTrigger value="pipeline" className="rounded-lg font-black text-xs px-8 data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2 h-full">
+                    <Workflow className="h-4 w-4" /> {isRtl ? 'رادار الموعد' : 'Field Mission'}
+                 </TabsTrigger>
+                 <TabsTrigger value="warroom" className="rounded-lg font-black text-xs px-8 data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2 h-full">
+                    <MessageSquare className="h-4 w-4" /> {isRtl ? 'غرفة العمليات' : 'War Room'}
+                 </TabsTrigger>
+              </TabsList>
 
-                    <div className="space-y-10">
-                       <div className="flex items-start gap-4">
-                          <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20"><User className="h-5 w-5" /></div>
-                          <div className="text-start">
-                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'المهندس المسؤول' : 'Assigned Engineer'}</p>
-                             <p className="font-black text-slate-800 text-lg">{appt.engineerName}</p>
-                          </div>
-                       </div>
-                       
-                       {appt.transactionId && (
-                         <div className="p-6 rounded-[2rem] bg-blue-50/50 border-2 border-blue-100 space-y-4 animate-in slide-in-from-top-2 shadow-sm">
-                            <div className="flex items-center gap-3">
-                               <div className="h-8 w-8 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 shadow-inner"><Workflow className="h-4 w-4" /></div>
-                               <div className="text-start">
-                                  <p className="text-[8px] font-black text-blue-400 uppercase tracking-widest">{isRtl ? 'المشروع المربوط' : 'Linked Project'}</p>
-                                  <p className="font-black text-slate-800 text-xs">{appt.transactionNumber}</p>
-                               </div>
-                            </div>
-                            <div className="pt-2 border-t border-blue-100/50">
-                               <p className="text-[8px] font-black text-slate-400 uppercase">{isRtl ? 'المرحلة الفنية المستهدفة' : 'Linked Stage'}</p>
-                               <Badge className="bg-blue-600 text-white border-0 font-black text-[10px] px-4 h-6 mt-1 rounded-lg shadow-sm">
-                                  {appt.stageName || 'General Meeting'}
-                               </Badge>
-                            </div>
-                         </div>
-                       )}
-                    </div>
-                 </div>
-              </CardContent>
-           </Card>
-
-           <div className="pt-4">
-              <div className="bg-white rounded-[3rem] shadow-2xl border border-primary/10 overflow-hidden min-h-[600px]">
-                 <div className="bg-slate-900 p-8 text-white flex justify-between items-center">
-                    <div className="flex items-center gap-4">
-                       <div className="h-12 w-12 rounded-2xl bg-primary/20 flex items-center justify-center text-primary shadow-lg border border-primary/20">
-                          <Timer className="h-6 w-6 animate-pulse" />
-                       </div>
+              <TabsContent value="pipeline" className="space-y-8 animate-in fade-in slide-in-from-bottom-2">
+                 <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
+                    <CardHeader className="bg-slate-900 p-8 text-white flex flex-row justify-between items-center">
                        <div className="text-start">
-                          <h3 className="text-xl font-black font-headline">{isRtl ? 'غرفة عمليات المعاملة المدمجة' : 'Unified Project War Room'}</h3>
-                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Global Field Interaction Log</p>
+                          <CardTitle className="text-xl font-black flex items-center gap-3">
+                             <Target className="h-6 w-6 text-primary" />
+                             {isRtl ? 'مهمة الزيارة المستهدفة' : 'Site Mission Details'}
+                          </CardTitle>
+                          <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-widest">{appt.stageName || 'Meeting'}</p>
                        </div>
-                    </div>
-                    <Badge className="bg-primary text-white border-0 font-black px-4 h-7 rounded-full text-[10px] shadow-lg shadow-orange-500/20">LIVE SYNC</Badge>
-                 </div>
-                 <div className="p-2 h-[700px]">
+                       {appt.status !== 'completed' && !isConsulting && (
+                          <Button onClick={() => setIsRecordOpen(true)} className="btn-gradient h-12 px-8 rounded-xl gap-2">
+                             <Hammer className="h-4 w-4" /> {isRtl ? 'تسجيل إنجاز فني' : 'Log Progress'}
+                          </Button>
+                       )}
+                    </CardHeader>
+                    <CardContent className="p-10 space-y-10">
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                          <div className="flex items-start gap-4">
+                             <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 border"><Calendar className="h-5 w-5" /></div>
+                             <div className="text-start">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'التاريخ المجدول' : 'Scheduled Date'}</p>
+                                <p className="font-black text-slate-800 text-lg">{displayDate}</p>
+                             </div>
+                          </div>
+                          <div className="flex items-start gap-4">
+                             <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 border"><Clock className="h-5 w-5" /></div>
+                             <div className="text-start">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'الوقت' : 'Time'}</p>
+                                <p className="font-black text-slate-800 text-lg">{displayTime}</p>
+                             </div>
+                          </div>
+                       </div>
+
+                       <div className="p-8 rounded-[2rem] bg-slate-50/50 border-2 border-slate-100 flex items-start gap-4 text-start">
+                          <Info className="h-6 w-6 text-primary mt-1" />
+                          <div className="space-y-1">
+                             <h5 className="font-black text-xs uppercase">{isRtl ? 'توجيهات العمل' : 'Work Instructions'}</h5>
+                             <p className="text-sm font-bold text-slate-600 italic">"{appt.notes || (isRtl ? 'لا يوجد ملاحظات إضافية.' : 'No special notes.')}"</p>
+                          </div>
+                       </div>
+
+                       {!hasAchievement && !isConsulting && (
+                          <div className="p-8 rounded-[2.5rem] bg-rose-50 border-2 border-rose-100 text-rose-800 flex items-center gap-6 animate-pulse">
+                             <AlertTriangle className="h-10 w-10 shrink-0" />
+                             <div className="text-start">
+                                <h4 className="font-black text-lg">{isRtl ? 'مطلوب تسجيل إنجاز' : 'Progress Log Required'}</h4>
+                                <p className="text-xs font-bold leading-relaxed">{isRtl ? 'تنفيذاً لسياسة Nova ERP، يجب تسجيل كميات الإنجاز الميداني قبل أن تتمكن من إغلاق الموعد بنجاح.' : 'Per Nova ERP policy, site quantities must be logged before closing this mission.'}</p>
+                             </div>
+                          </div>
+                       )}
+
+                       {hasAchievement && (
+                          <div className="p-8 rounded-[2.5rem] bg-emerald-50 border-2 border-emerald-100 text-emerald-800 flex items-center gap-6">
+                             <CheckCircle2 className="h-10 w-10 shrink-0" />
+                             <div className="text-start">
+                                <h4 className="font-black text-lg">{isRtl ? 'الشرط الفني مكتمل' : 'Technical Condition Met'}</h4>
+                                <p className="text-xs font-bold leading-relaxed">{isRtl ? 'تم توثيق إنجاز ميداني لهذه المرحلة. يمكنك الآن إغلاق الموعد.' : 'Field progress has been documented. You can now complete the appointment.'}</p>
+                             </div>
+                          </div>
+                       )}
+                    </CardContent>
+                 </Card>
+              </TabsContent>
+
+              <TabsContent value="warroom" className="h-[700px] animate-in fade-in">
+                 <div className="bg-white rounded-[3rem] shadow-2xl border border-primary/10 overflow-hidden h-full">
                     <CommentSection 
                        transactionId={appt.transactionId || apptId} 
                        path={appt.transactionId ? paths.transactionComments(companyId!, appt.transactionId) : `companies/${companyId}/appointments/${apptId}/comments`} 
-                       title={isRtl ? 'سجل نقاش المعاملة' : 'Project Interaction Log'}
+                       title={isRtl ? 'غرفة عمليات الزيارة' : 'Mission War Room'}
                        filterStageId={appt.stageId}
                        selectedStageName={appt.stageName}
                        stages={stages}
                     />
                  </div>
-              </div>
-           </div>
+              </TabsContent>
+           </Tabs>
         </div>
 
         <div className="lg:col-span-4 space-y-6 text-start">
@@ -273,7 +338,7 @@ export default function AppointmentDetailPage() {
                                 </div>
                              </div>
                              {isTarget && (
-                                <Badge className="bg-primary text-white border-0 text-[7px] font-black h-4 px-2">CURRENT MISSION</Badge>
+                                <Badge className="bg-primary text-white border-0 text-[7px] font-black h-4 px-2">TARGET STAGE</Badge>
                              )}
                           </div>
                        );
@@ -291,7 +356,7 @@ export default function AppointmentDetailPage() {
                     <div className="h-14 w-14 rounded-2xl bg-primary flex items-center justify-center text-white font-black text-xl shadow-lg border-2 border-white">{appt.clientName.charAt(0)}</div>
                     <div className="text-start">
                        <h4 className="font-black text-slate-900 leading-tight">{appt.clientName}</h4>
-                       <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase">Verified Sovereign Client</p>
+                       <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase">Sovereign Client</p>
                     </div>
                  </div>
                  <Button onClick={() => router.push(`/dashboard/clients/${appt.clientId}`)} variant="outline" className="w-full rounded-xl font-black text-[10px] h-11 gap-2 border-2 border-primary/20 text-primary hover:bg-primary hover:text-white transition-all shadow-sm">
@@ -300,25 +365,88 @@ export default function AppointmentDetailPage() {
                  </Button>
               </CardContent>
            </Card>
-
-           <div className={cn(
-             "p-8 rounded-[2.5rem] border-2 border-dashed flex items-start gap-4",
-             isConsulting ? "bg-blue-50 border-blue-200 text-blue-800" : "bg-emerald-50 border-emerald-200 text-emerald-800"
-           )}>
-              {isConsulting ? <Pencil className="h-6 w-6 shrink-0 mt-1" /> : <Hammer className="h-6 w-6 shrink-0 mt-1" />}
-              <div className="text-start space-y-1">
-                 <h5 className="font-black text-xs uppercase">{isRtl ? 'بروتوكول التنفيذ' : 'Field Protocol'}</h5>
-                 <p className="text-[10px] font-bold leading-relaxed opacity-70">
-                    {isConsulting 
-                      ? (isRtl ? 'لإكمال الموعد يجب تسجيل ملاحظات فنية في غرفة العمليات.' : 'Log technical notes in the War Room to complete.')
-                      : (isRtl ? 'سيتم ربط أي إنجاز تسجله في الموعد بالمقايسة الرسمية للمشروع آلياً.' : 'Any progress logged will sync with the official project BOQ.')
-                    }
-                 </p>
-              </div>
-           </div>
         </div>
 
       </div>
+
+      {/* مودال تسجيل الإنجاز - منقول من شاشة المعاملة لضمان وحدة الوظيفة */}
+      <Dialog open={isRecordOpen} onOpenChange={setIsRecordOpen}>
+         <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-md" dir={dir}>
+            <div className="bg-slate-900 p-6 text-white text-start flex justify-between items-center">
+               <DialogTitle className="text-lg font-black flex items-center gap-3">
+                  <Hammer className="h-5 w-5 text-primary" />
+                  {isRtl ? 'تسجيل إنجاز فني (ميداني)' : 'Log Site Achievement'}
+               </DialogTitle>
+               <Badge className="bg-primary text-white border-0 font-black text-[9px] uppercase">{appt.stageName}</Badge>
+            </div>
+            <div className="p-6 space-y-6 text-start bg-white">
+               <div className="space-y-1.5">
+                  <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'بند العمل الميداني المستهدف' : 'Target BOQ Item'}</Label>
+                  <Select value={selectedItemId} onValueChange={setSelectedItemId}>
+                     <SelectTrigger className="h-10 rounded-lg border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
+                     <SelectContent className="rounded-xl border-2 shadow-2xl">
+                        {boqItems?.filter(i => (i.plannedQuantity || 0) > 0 && (i.technicalStageIds?.includes(appt.stageId!) || i.technicalStageId === appt.stageId)).map(i => (
+                          <SelectItem key={i.id} value={i.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
+                             <div className="flex flex-col text-start">
+                                <span className="font-black text-slate-800">{i.referenceTitle}</span>
+                                <span className="text-[8px] text-slate-400 font-mono">#{i.referenceCode}</span>
+                             </div>
+                          </SelectItem>
+                        ))}
+                        {!boqItems?.some(i => i.technicalStageIds?.includes(appt.stageId!) || i.technicalStageId === appt.stageId) && (
+                           <div className="p-4 text-center text-[10px] font-bold text-rose-500">{isRtl ? 'لا يوجد بنود مربوطة بهذه المرحلة' : 'No items linked to this stage'}</div>
+                        )}
+                     </SelectContent>
+                  </Select>
+               </div>
+
+               {selectedBOQItemMetrics && (
+                 <div className="grid grid-cols-3 gap-2 p-4 bg-slate-50 rounded-xl border-2 border-white shadow-inner text-center animate-in slide-in-from-top-2">
+                    <div className="text-center">
+                       <p className="text-[8px] font-black text-slate-400 uppercase">Planned</p>
+                       <p className="text-sm font-black text-slate-900">{selectedBOQItemMetrics.planned}</p>
+                    </div>
+                    <div className="text-center border-x-2 border-white">
+                       <p className="text-[8px] font-black text-slate-400 uppercase">Executed</p>
+                       <p className="text-sm font-black text-blue-600">{selectedBOQItemMetrics.executed}</p>
+                    </div>
+                    <div className="text-center">
+                       <p className="text-[8px] font-black text-slate-400 uppercase">Remaining</p>
+                       <p className={cn("text-sm font-black", selectedBOQItemMetrics.remaining <= 0 ? "text-rose-500" : "text-emerald-600")}>{selectedBOQItemMetrics.remaining}</p>
+                    </div>
+                 </div>
+               )}
+
+               <div className="space-y-4 pt-2">
+                  <div className="space-y-2">
+                     <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'الكمية المنفذة حالياً' : 'Quantity Executed'}</Label>
+                     <div className="relative">
+                        <input 
+                           type="number" 
+                           step="0.01" 
+                           value={progressQty} 
+                           onChange={e => setProgressQty(e.target.value === '' ? '' : Number(e.target.value))} 
+                           className="h-12 w-full rounded-lg border-2 font-black text-2xl text-center shadow-inner focus:border-primary transition-all" 
+                        />
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-300 uppercase">{selectedBOQItemMetrics?.unit}</div>
+                     </div>
+                  </div>
+                  <div className="space-y-1.5">
+                     <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'ملاحظات المهندس الميدانية' : 'Engineer Field Notes'}</Label>
+                     <Textarea value={progressNotes} onChange={e => setProgressNotes(e.target.value)} className="min-h-[100px] rounded-lg bg-slate-50/50 border-2 text-xs font-bold" />
+                  </div>
+               </div>
+            </div>
+            <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-3">
+               <Button variant="outline" onClick={() => setIsRecordOpen(false)} className="flex-1 h-12 rounded-xl font-bold">إلغاء</Button>
+               <Button onClick={handleRecordProgress} disabled={!!loadingAction || !selectedItemId} className="flex-[2] btn-gradient h-12 rounded-xl text-lg gap-2 shadow-xl shadow-orange-500/20">
+                  {loadingAction === 'recording' ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
+                  {isRtl ? 'حفظ وإرسال التقرير' : 'Confirm & Send'}
+               </Button>
+            </DialogFooter>
+         </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
