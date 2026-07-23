@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -43,7 +42,8 @@ import {
   RotateCcw,
   Workflow,
   Target,
-  LayoutGrid
+  LayoutGrid,
+  Calendar
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs, updateDoc, deleteDoc, serverTimestamp, addDoc, setDoc } from 'firebase/firestore';
@@ -358,25 +358,25 @@ export function ArchitecturalAppointmentsView() {
          <Card className="border-0 shadow-lg rounded-2xl bg-white border-b-4 border-slate-900">
             <CardContent className="p-4 text-start">
                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إجمالي المواعيد' : 'Total Appts'}</p>
-               <h3 className="text-2xl font-black text-slate-900">{stats.total.toLocaleString('en-US')}</h3>
+               <h3 className="text-2xl font-black text-slate-900">{stats.total}</h3>
             </CardContent>
          </Card>
          <Card className="border-0 shadow-lg rounded-2xl bg-white border-b-4 border-yellow-400">
             <CardContent className="p-4 text-start">
                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'زيارة أولى (جديد)' : '1st Visits'}</p>
-               <h3 className="text-2xl font-black text-yellow-500">{stats.yellow.toLocaleString('en-US')}</h3>
+               <h3 className="text-2xl font-black text-yellow-500">{stats.yellow}</h3>
             </CardContent>
          </Card>
          <Card className="border-0 shadow-lg rounded-2xl bg-white border-b-4 border-emerald-500">
             <CardContent className="p-4 text-start">
                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'متابعة (تحت الدراسة)' : 'Follow-ups'}</p>
-               <h3 className="text-2xl font-black text-emerald-600">{stats.green.toLocaleString('en-US')}</h3>
+               <h3 className="text-2xl font-black text-emerald-600">{stats.green}</h3>
             </CardContent>
          </Card>
          <Card className="border-0 shadow-lg rounded-2xl bg-white border-b-4 border-blue-500">
             <CardContent className="p-4 text-start">
                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'عملاء متعاقدون' : 'Contracted'}</p>
-               <h3 className="text-2xl font-black text-blue-600">{stats.blue.toLocaleString('en-US')}</h3>
+               <h3 className="text-2xl font-black text-blue-600">{stats.blue}</h3>
             </CardContent>
          </Card>
       </div>
@@ -475,16 +475,6 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
      }
   };
 
-  const handleCancelAppt = async (id: string) => {
-     try {
-        const service = new AppointmentService(db, companyId);
-        await service.updateStatus(id, 'cancelled', 'SYSTEM');
-        toast({ title: isRtl ? "تم إلغاء الموعد" : "Appointment cancelled" });
-     } catch (e) {
-        toast({ variant: "destructive", title: isRtl ? "خطأ" : "Error" });
-     }
-  };
-
   return (
     <div className="space-y-6">
        <div className="flex items-center gap-4 px-2">
@@ -561,14 +551,11 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                                                   <MessageSquare className="h-3 w-3 text-primary" /> {isRtl ? 'غرفة العمليات' : 'War Room'}
                                                </DropdownMenuItem>
                                                <DropdownMenuItem onClick={() => onAction('edit', eng, slot, appt)} className="font-bold gap-2 py-2 text-[10px]">
-                                                  <Edit3 className="h-3 w-3 text-blue-500" /> {isRtl ? 'تعديل' : 'Edit'}
-                                               </DropdownMenuItem>
-                                               <DropdownMenuItem onClick={() => handleCancelAppt(appt.id!)} className="font-bold gap-2 py-2 text-[10px]">
-                                                  <CalendarX className="h-3 w-3 text-orange-500" /> {isRtl ? 'إلغاء' : 'Cancel'}
+                                                  <Edit3 className="h-3 w-3 text-blue-500" /> {isRtl ? 'تعديل (إعادة جدولة)' : 'Edit / Reschedule'}
                                                </DropdownMenuItem>
                                                <DropdownMenuSeparator />
                                                <DropdownMenuItem onClick={() => handleDeleteAppt(appt.id!)} className="font-bold gap-2 py-2 text-[10px] text-rose-600">
-                                                  <Trash2 className="h-3 w-3" /> {isRtl ? 'حذف' : 'Delete'}
+                                                  <Trash2 className="h-3 w-3" /> {isRtl ? 'حذف الموعد نهائياً' : 'Delete Permanent'}
                                                </DropdownMenuItem>
                                             </DropdownMenuContent>
                                          </DropdownMenuPortal>
@@ -779,11 +766,24 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         <div className="bg-slate-50 p-6 text-slate-900 text-start border-b shrink-0 relative pr-12 pl-12">
            <DialogTitle className="text-lg font-black font-headline truncate flex items-center gap-3">
               {data?.mode === 'create' ? <PlusCircle className="h-5 w-5 text-primary" /> : <Edit3 className="h-5 w-5 text-primary" />}
-              {data?.mode === 'create' ? (isRtl ? 'حجز موعد تصميم' : 'Book Design Appt') : (isRtl ? 'تعديل موعد' : 'Edit')}
+              {data?.mode === 'create' ? (isRtl ? 'حجز موعد جديد' : 'New Appointment') : (isRtl ? 'إعادة جدولة الموعد' : 'Reschedule')}
            </DialogTitle>
         </div>
 
         <div className="flex-1 overflow-y-auto p-8 space-y-6 text-start scrollbar-hide">
+           
+           <div className="grid grid-cols-2 gap-4 p-6 bg-slate-900 text-white rounded-[2rem] shadow-2xl relative overflow-hidden ring-4 ring-slate-100">
+              <div className="absolute top-0 right-0 p-4 opacity-10"><Clock className="h-20 w-20" /></div>
+              <div className="space-y-2 relative z-10">
+                 <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'التاريخ المجدول' : 'New Date'}</Label>
+                 <Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="h-11 rounded-xl bg-white/10 border-0 text-white font-black text-lg focus:ring-2 focus:ring-primary" />
+              </div>
+              <div className="space-y-2 relative z-10">
+                 <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'الوقت' : 'New Time'}</Label>
+                 <Input type="time" value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} className="h-11 rounded-xl bg-white/10 border-0 text-white font-black text-lg focus:ring-2 focus:ring-primary" />
+              </div>
+           </div>
+
            {data?.mode === 'create' && (
              <div className="grid grid-cols-2 gap-4">
                 <div className={cn(
@@ -803,7 +803,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
              </div>
            )}
 
-           {!isBusyBlock && (
+           {!isBusyBlock && data?.mode === 'create' && (
              <div className="space-y-4">
                 {isNewClient ? (
                    <div className="space-y-4 p-5 rounded-2xl border bg-slate-50/50 animate-in fade-in">
@@ -901,7 +901,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
            </Button>
            <Button onClick={handleSave} disabled={loading || (!isBusyBlock && !formData.clientId)} className="flex-[2] h-12 rounded-xl font-black gap-2">
               {loading ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
-              {isRtl ? 'حفظ وإرسال التنبيه' : 'Confirm & Notify'}
+              {isRtl ? 'حفظ التغييرات' : 'Confirm & Save'}
            </Button>
         </DialogFooter>
       </DialogContent>

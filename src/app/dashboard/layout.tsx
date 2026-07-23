@@ -32,8 +32,11 @@ export default function DashboardLayout({
     }
   }, [user, authLoading, router]);
 
-  // Sovereign Thaw Protocol: Force reset body styles on every route change and every mount
-  // This prevents screen freezes caused by lingering modal overlays or pointer-events: none
+  /**
+   * Sovereign Thaw Protocol: 
+   * Force reset body styles and pointer events to prevent UI freezing 
+   * caused by stuck modal overlays.
+   */
   useEffect(() => {
     if (typeof document !== 'undefined') {
       const resetStyles = () => {
@@ -43,9 +46,13 @@ export default function DashboardLayout({
       };
       
       resetStyles();
-      // Small timeout to catch late cleanup from Radix/Shadcn
-      const timer = setTimeout(resetStyles, 200);
-      return () => clearTimeout(timer);
+      // Execute twice to catch late Radix cleanups
+      const timer = setTimeout(resetStyles, 100);
+      const timer2 = setTimeout(resetStyles, 300);
+      return () => {
+        clearTimeout(timer);
+        clearTimeout(timer2);
+      };
     }
   }, [pathname]);
 
