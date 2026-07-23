@@ -86,10 +86,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from '@/hooks/use-toast';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useRouter } from 'next/navigation';
-import { BOQReferenceSelector } from '@/components/settings/checklists/boq-reference/boq-reference-selector';
 
 // --- Helpers ---
 function getVisitColor(visitCount: number, status?: string, apptType?: string): string {
@@ -861,7 +867,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                                setFormData({...formData, newClientGovId: v, newClientGovName: isRtl?g.name:g.nameEn});
                             }}>
                                <SelectTrigger className="h-11 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
-                               <SelectContent className="rounded-xl border-0 shadow-2xl">
+                               <SelectContent className="rounded-xl border-2 shadow-2xl">
                                   {governorates?.map((g: any) => <SelectItem key={g.id} value={g.id} className="font-bold text-xs">{isRtl ? g.name : g.nameEn}</SelectItem>)}
                                </SelectContent>
                             </Select>
@@ -922,7 +928,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                             <SelectTrigger className="h-11 rounded-xl border-2 font-bold bg-white shadow-sm">
                                {loadingTrans ? <Loader2 className="h-4 w-4 animate-spin" /> : <SelectValue placeholder="..." />}
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-0 shadow-2xl">
+                            <SelectContent className="rounded-xl border-2 shadow-2xl">
                                {transactions.map(t => <SelectItem key={t.id} value={t.id!} className="font-bold text-xs">{t.subServiceName} - {t.transactionNumber}</SelectItem>)}
                             </SelectContent>
                          </Select>
@@ -939,7 +945,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                             <SelectTrigger className="h-11 rounded-xl border-2 font-bold bg-white shadow-sm">
                                {loadingStages ? <Loader2 className="h-4 w-4 animate-spin" /> : <SelectValue placeholder="..." />}
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-0 shadow-2xl">
+                            <SelectContent className="rounded-xl border-2 shadow-2xl">
                                {stages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs py-3 border-b last:border-0">{s.name}</SelectItem>)}
                             </SelectContent>
                          </Select>
@@ -973,3 +979,4 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     </Dialog>
   );
 }
+
