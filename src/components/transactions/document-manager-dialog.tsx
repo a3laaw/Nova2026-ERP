@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { 
   Dialog, 
   DialogContent, 
@@ -85,8 +85,16 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
         docId = await service.instantiateContractFromTemplate(selectedTemplateId, payload, user.uid, globalUser?.username || 'User');
       }
 
-      toast({ title: isRtl ? "تم إنشاء المستند بنجاح" : "Document Created" });
-      setSelectedTemplateId("");
+      toast({ title: isRtl ? "تم تجهيز المسودة - جاري الانتقال للتعديل" : "Draft Ready - Redirecting to Edit" });
+      
+      // التوجيه الفوري لصفحة التعديل لتطبيق دورة العمل (تعديل قبل حفظ نهائي)
+      onClose();
+      if (type === 'quotation') {
+        router.push(`/dashboard/clients/${clientId}/quotations/${docId}`);
+      } else {
+        router.push(`/dashboard/clients/${clientId}/contracts/${docId}`);
+      }
+
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
@@ -167,7 +175,7 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
                    className="w-full h-14 rounded-2xl bg-[#1e1b4b] text-white font-black shadow-xl hover:scale-105 transition-all gap-2"
                  >
                     {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Sparkles className="h-5 w-5 text-primary" />}
-                    {isRtl ? 'توليد المستند المربوط' : 'Generate Linked Doc'}
+                    {isRtl ? 'توليد ومراجعة المسودة' : 'Generate & Review'}
                  </Button>
               </div>
 
@@ -175,8 +183,8 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
                  <Info className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
                  <p className="text-[10px] text-blue-700/70 font-bold leading-relaxed">
                     {isRtl 
-                      ? 'بمجرد توليد المستند من القالب، سيتم ربطه تلقائياً بهذه المعاملة وتسجيله في سجل التاريخ للعميل.' 
-                      : 'Generated documents are automatically linked to this transaction and logged in client history.'}
+                      ? 'سيتم توجيهك فوراً لشاشة التعديل لمراجعة البنود قبل الحفظ النهائي والاعتماد.' 
+                      : 'You will be redirected to edit mode to review items before final saving.'}
                  </p>
               </div>
            </div>

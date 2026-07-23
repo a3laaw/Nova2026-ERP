@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useEffect, useState } from 'react';
@@ -59,6 +58,10 @@ export default function QuotationViewPage() {
   useEffect(() => {
     if (quote) {
       setEditForm(quote);
+      // دورة العمل الذكية: إذا كان المستند مسودة (جديد)، ادخل وضع التعديل تلقائياً
+      if (quote.status === 'draft' && !quote.isHistoryRecorded) {
+        setIsEditing(true);
+      }
     }
   }, [quote]);
 
@@ -122,7 +125,7 @@ export default function QuotationViewPage() {
         updatedByName: globalUser?.username || user.displayName || 'Admin'
       }, user.uid);
       
-      toast({ title: isRtl ? "تم تحديث العرض بنجاح" : "Quotation Updated" });
+      toast({ title: isRtl ? "تم اعتماد وحفظ العرض بنجاح" : "Quotation Saved & Committed" });
       setIsEditing(false);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
@@ -174,12 +177,12 @@ export default function QuotationViewPage() {
         <div className="flex gap-2">
            {isEditing ? (
               <>
-                <Button onClick={() => setIsEditing(false)} variant="outline" size="sm" className="rounded-xl h-10 px-6 font-bold bg-white border-2">
+                <Button onClick={() => setIsEditing(false)} variant="outline" size="sm" className="h-10 px-6 font-bold bg-white border-2 rounded-xl">
                    {isRtl ? 'إلغاء' : 'Cancel'}
                 </Button>
-                <Button onClick={handleSave} disabled={saving} size="sm" className="rounded-xl h-10 px-8 font-black gap-2 shadow-xl">
+                <Button onClick={handleSave} disabled={saving} size="sm" className="h-10 px-8 font-black gap-2 shadow-xl rounded-xl">
                    {saving ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
-                   {isRtl ? 'حفظ التعديلات' : 'Save'}
+                   {quote.status === 'draft' ? (isRtl ? 'اعتماد وحفظ العرض' : 'Commit & Save') : (isRtl ? 'حفظ التعديلات' : 'Save Changes')}
                 </Button>
               </>
            ) : (
@@ -386,7 +389,7 @@ export default function QuotationViewPage() {
                            <td colSpan={editData.pricingMode === 'percentage' ? 4 : 3} className="p-4 text-start">
                               <h3 className="text-sm font-black font-headline uppercase tracking-tighter">{isRtl ? 'إجمالي قيمة العرض' : 'Total Quote Value'}</h3>
                               {editData.pricingMode === 'percentage' && (
-                                 <Badge className={cn("mt-1 border-0 text-[7px] font-black h-4", stats.isValid ? "bg-emerald-50 text-white" : "bg-rose-50 text-white animate-pulse")}>
+                                 <Badge className={cn("mt-1 border-0 text-[7px] font-black h-4 px-3 shadow-sm", stats.isValid ? "bg-emerald-50 text-white" : "bg-rose-50 text-white animate-pulse")}>
                                     {stats.isValid ? `BALANCED: ${stats.totalPercentage}%` : `MISMATCH: ${stats.totalPercentage}% / 100%`}
                                  </Badge>
                               )}

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useEffect, useState } from 'react';
@@ -61,6 +60,10 @@ export default function ContractViewPage() {
   useEffect(() => {
     if (contract) {
       setEditForm(contract);
+      // دورة العمل الذكية: إذا كان المستند مسودة (جديد)، ادخل وضع التعديل تلقائياً
+      if (contract.status === 'draft' && !contract.isHistoryRecorded) {
+        setIsEditing(true);
+      }
     }
   }, [contract]);
 
@@ -113,7 +116,7 @@ export default function ContractViewPage() {
         updatedBy: globalUser?.username || user.displayName || 'Admin'
       }, user.uid);
       
-      toast({ title: isRtl ? "تم تحديث العقد بنجاح" : "Contract Updated" });
+      toast({ title: isRtl ? "تم اعتماد وحفظ العقد بنجاح" : "Contract Approved & Saved" });
       setIsEditing(false);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
@@ -191,7 +194,7 @@ export default function ContractViewPage() {
                 </Button>
                 <Button onClick={handleSave} disabled={saving} size="sm" className="rounded-xl h-10 px-8 font-black gap-2 shadow-xl">
                    {saving ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
-                   {isRtl ? 'حفظ النسخة النهائية' : 'Save Final'}
+                   {contract.status === 'draft' ? (isRtl ? 'اعتماد وحفظ العقد' : 'Commit & Save') : (isRtl ? 'حفظ التعديلات' : 'Save Changes')}
                 </Button>
               </>
            ) : (
@@ -350,7 +353,7 @@ export default function ContractViewPage() {
                            <td colSpan={editData.pricingMode === 'percentage' ? 3 : 2} className="p-5 text-start">
                               <h3 className="text-sm font-black font-headline uppercase tracking-widest">{isRtl ? 'إجمالي قيمة العقد النهائية' : 'Total Contract Value'}</h3>
                               {editData.pricingMode === 'percentage' && (
-                                 <Badge className={cn("mt-2 border-0 text-[8px] font-black h-5 px-3", stats.isValid ? "bg-emerald-500 text-white" : "bg-rose-500 text-white animate-pulse")}>
+                                 <Badge className={cn("mt-2 border-0 text-[8px] font-black h-5 px-3", stats.isValid ? "bg-emerald-50 text-white" : "bg-rose-50 text-white animate-pulse")}>
                                     {stats.isValid ? `BALANCED: 100%` : `MISMATCH: ${stats.totalPercentage}%`}
                                  </Badge>
                               )}
