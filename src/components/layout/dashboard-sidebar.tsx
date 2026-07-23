@@ -14,7 +14,7 @@ import {
   Calendar, FileText, Package,
   Layers, FileSearch, Truck,
   Building2, ChevronLeft, Settings2, ChevronDown,
-  Database, FileSpreadsheet, CalendarDays
+  Database, FileSpreadsheet, CalendarDays, Gavel
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
@@ -74,6 +74,7 @@ export function DashboardSidebar() {
       resource: 'procurement',
       subItems: [
         { title: t('suppliers'), url: "/dashboard/procurement/suppliers", icon: Truck },
+        { title: t('contracts'), url: "/dashboard/procurement/contracts", icon: Gavel },
         { title: t('quoteAnalysis'), url: "/dashboard/ai", icon: FileSearch },
       ]
     },

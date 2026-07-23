@@ -375,7 +375,7 @@ export default function TransactionDetailsPage() {
                          </div>
                       </div>
                       <div className="pt-8 flex justify-center">
-                         <Button variant="outline" onClick={() => router.push('/dashboard/procurement')} className="rounded-xl border-2 font-bold px-8 h-12">
+                         <Button variant="outline" onClick={() => router.push('/dashboard/procurement/contracts')} className="rounded-xl border-2 font-bold px-8 h-12">
                             {isRtl ? 'الذهاب لإدارة العقود' : 'Go to Contracts'}
                          </Button>
                       </div>
