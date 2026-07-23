@@ -76,6 +76,7 @@ export class DocumentService {
       id: quoteRef.id,
       status: 'draft',
       version: 1,
+      totalAmount: template.baseAmount || 0, // Mapping baseAmount to totalAmount
       companyId: this.companyId,
       createdBy: userId,
       updatedBy: userId,
@@ -147,7 +148,6 @@ export class DocumentService {
       status: 'draft',
       totalAmount: quote.totalAmount,
       pricingMode: quote.pricingMode,
-      // نسخ السياق التشغيلي لضمان عمل رادار المراحل في العقد
       activityTypeId: quote.activityTypeId || '',
       serviceId: quote.serviceId || '',
       subServiceId: quote.subServiceId || '',
@@ -199,12 +199,16 @@ export class DocumentService {
     const template = templateSnap.data() as ContractTemplate;
 
     const contractRef = doc(collection(this.db, paths.contracts(this.companyId)));
+    
+    // Mapping template fields to document fields
     const contractData: Contract = {
       ...template,
       ...payload,
       id: contractRef.id,
       status: 'draft',
       version: 1,
+      totalAmount: template.baseAmount || 0,
+      milestones: template.defaultMilestones || [], // Critical Mapping
       companyId: this.companyId,
       createdBy: userId,
       updatedBy: userId,

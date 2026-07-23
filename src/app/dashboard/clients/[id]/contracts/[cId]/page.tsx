@@ -60,7 +60,18 @@ export default function ContractViewPage() {
 
   useEffect(() => {
     if (contract && !hasAutoOpened) {
-      setEditForm(contract);
+      // Fix for empty display: Map legacy template fields if they exist in document
+      const baseMilestones = (contract as any).milestones || (contract as any).defaultMilestones || [];
+      const baseAmount = contract.totalAmount || (contract as any).baseAmount || 0;
+
+      const initializedData = {
+        ...contract,
+        milestones: baseMilestones,
+        totalAmount: baseAmount
+      };
+
+      setEditForm(initializedData);
+      
       if (contract.status === 'draft' && !contract.isHistoryRecorded) {
         setIsEditing(true);
       }
@@ -140,10 +151,15 @@ export default function ContractViewPage() {
 
   const addMilestone = () => {
     const nextIdx = (editData.milestones || []).length;
+    const arOrdinals = ["الأولى", "الثانية", "الثالثة", "الرابعة", "الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"];
+    const enOrdinals = ["First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth"];
+    const base = isRtl ? "الدفعة" : "Installment";
+    const label = `${base} ${isRtl ? (arOrdinals[nextIdx] || `#${nextIdx + 1}`) : (enOrdinals[nextIdx] || `#${nextIdx + 1}`)}`;
+
     setEditForm({
       ...editData,
       milestones: [...(editData.milestones || []), { 
-        name: getOrdinalLabel(nextIdx), 
+        name: label, 
         percentage: 0, 
         amount: 0, 
         timing: 'at', 
@@ -190,7 +206,7 @@ export default function ContractViewPage() {
                  <h1 className="text-xl font-black text-slate-900">{isRtl ? 'عقد خدمات هندسية رسمي' : 'Official Engineering Contract'}</h1>
                  <Badge className={cn(
                    "font-black px-4 py-1 rounded-xl shadow-sm uppercase text-[9px]",
-                   (editData.status || contract.status) === 'paid' ? 'bg-emerald-500 text-white' : 'bg-blue-50 text-white'
+                   (editData.status || contract.status) === 'paid' ? 'bg-emerald-500 text-white' : 'bg-blue-500 text-white'
                  )}>
                     {editData.status || contract.status}
                  </Badge>
