@@ -15,16 +15,18 @@ import {
   FileSearch,
   CheckCircle2,
   AlertTriangle,
-  History
+  History,
+  Workflow
 } from "lucide-react";
-import { useFirestore, useDoc } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { useFirestore, useDoc, useCollection } from '@/firebase';
+import { doc, collection, query, orderBy } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { Quotation } from '@/types/documents';
-import { PricingMode } from '@/types/templates';
+import { TechnicalStage } from '@/types/reference';
+import { PricingMode, QuotationItem } from '@/types/templates';
 import { cn } from '@/lib/utils';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
 import { DocumentService } from '@/services/document-service';
@@ -59,6 +61,14 @@ export default function QuotationViewPage() {
       setEditForm(quote);
     }
   }, [quote]);
+
+  // جلب مراحل المسار الفني للمطابقة
+  const stagesQuery = useMemo(() => {
+    if (!companyId || !db || !editData.activityTypeId || !editData.serviceId || !editData.subServiceId) return null;
+    return query(collection(db, paths.technicalStages(companyId, editData.activityTypeId!, editData.serviceId!, editData.subServiceId!)), orderBy('order'));
+  }, [db, companyId, editData.activityTypeId, editData.serviceId, editData.subServiceId]);
+  
+  const { data: stages, loading: stagesLoading } = useCollection<TechnicalStage>(stagesQuery);
 
   const getOrdinalLabel = (index: number) => {
     const arOrdinals = ["الأولى", "الثانية", "الثالثة", "الرابعة", "الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"];
@@ -121,7 +131,7 @@ export default function QuotationViewPage() {
     }
   };
 
-  const updateItem = (idx: number, field: string, val: any) => {
+  const updateItem = (idx: number, field: keyof QuotationItem, val: any) => {
     const newItems = [...(editData.items || [])];
     (newItems[idx] as any)[field] = val;
     setEditForm({ ...editData, items: newItems });
@@ -137,7 +147,8 @@ export default function QuotationViewPage() {
         percentage: 0, 
         unitPrice: 0, 
         quantity: 1, 
-        description: '' 
+        description: '',
+        technicalStageId: ''
       }]
     });
   };
@@ -185,7 +196,7 @@ export default function QuotationViewPage() {
       </div>
 
       <PrintWrapper title={isRtl ? "عرض سعر فني ومالي" : "Technical & Financial Proposal"} className="mt-2">
-         <div className="space-y-8">
+         <div className="space-y-8 text-start">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-b-2 border-slate-900 pb-6">
                <div className="text-start space-y-4">
                   <div className="space-y-0.5">
@@ -275,7 +286,7 @@ export default function QuotationViewPage() {
                   </h4>
                   {isEditing && (
                     <Button variant="outline" size="sm" onClick={addItem} className="rounded-lg font-black text-[8px] border-2 h-6 px-3 gap-1">
-                       <Plus className="h-2.5 w-2.5" /> {isRtl ? 'إضافة دفعة' : 'Add Item'}
+                       <Plus className="h-2.5 w-2.5" /> {isRtl ? 'إضافة بند' : 'Add Item'}
                     </Button>
                   )}
                </div>
@@ -287,6 +298,7 @@ export default function QuotationViewPage() {
                            <th className="p-3 text-start w-10">#</th>
                            <th className="p-3 text-start">{isRtl ? 'توصيف البند / الدفعة' : 'Description'}</th>
                            {editData.pricingMode === 'percentage' && <th className="p-3 text-center w-20">{isRtl ? 'الحصة' : 'Share'}</th>}
+                           <th className="p-3 text-start w-40">{isRtl ? 'الارتباط الفني' : 'Technical Link'}</th>
                            <th className="p-3 text-end pe-6 w-32">{isRtl ? 'القيمة' : 'Amount'}</th>
                            {isEditing && <th className="p-3 w-10"></th>}
                         </tr>
@@ -324,6 +336,36 @@ export default function QuotationViewPage() {
                                       ) : <Badge className="bg-slate-900 text-white font-black text-[9px] px-2 h-5 rounded-md">{item.percentage}%</Badge>}
                                    </td>
                                 )}
+                                <td className="p-3 text-start">
+                                   {isEditing ? (
+                                      <Select 
+                                        value={item.technicalStageId || 'NONE'} 
+                                        onValueChange={v => updateItem(originalIdx, 'technicalStageId', v === 'NONE' ? '' : v)}
+                                      >
+                                         <SelectTrigger className={cn(
+                                           "h-7 rounded-md border-2 font-black text-[9px]",
+                                           item.technicalStageId ? "bg-primary/5 text-primary border-primary/20" : "bg-white"
+                                         )}>
+                                            <SelectValue placeholder={stagesLoading ? "..." : (isRtl ? "ربط ميداني..." : "Link Stage...")} />
+                                         </SelectTrigger>
+                                         <SelectContent className="rounded-xl border-2 shadow-2xl">
+                                            <SelectItem value="NONE" className="font-bold text-[9px] text-slate-400 italic">--- {isRtl ? 'بدون ربط' : 'No Link'} ---</SelectItem>
+                                            {stages?.map(s => (
+                                              <SelectItem key={s.id} value={s.id!} className="font-bold text-[9px] py-2">
+                                                 <span className="flex items-center gap-1"><Workflow className="h-2.5 w-2.5 text-primary" /> {s.name}</span>
+                                              </SelectItem>
+                                            ))}
+                                         </SelectContent>
+                                      </Select>
+                                   ) : (
+                                      <Badge variant="outline" className={cn(
+                                        "font-black text-[8px] border-0 px-2 h-5",
+                                        item.technicalStageId ? "bg-primary/5 text-primary" : "bg-slate-50 text-slate-300"
+                                      )}>
+                                         {item.technicalStageId ? (stages?.find(s => s.id === item.technicalStageId)?.name || 'Linked') : '---'}
+                                      </Badge>
+                                   )}
+                                </td>
                                 <td className="p-3 text-end pe-6">
                                    {isEditing && editData.pricingMode !== 'percentage' ? (
                                       <Input type="number" step="0.001" value={item.unitPrice === 0 ? "" : item.unitPrice} onChange={e => updateItem(originalIdx, 'unitPrice', e.target.value === "" ? 0 : Number(e.target.value))} className="h-7 w-24 ms-auto text-end font-black text-emerald-600 text-[10px]" />
@@ -338,7 +380,7 @@ export default function QuotationViewPage() {
                      </tbody>
                      <tfoot className="bg-slate-900 text-white">
                         <tr>
-                           <td colSpan={editData.pricingMode === 'percentage' ? 3 : 2} className="p-4 text-start">
+                           <td colSpan={editData.pricingMode === 'percentage' ? 4 : 3} className="p-4 text-start">
                               <h3 className="text-sm font-black font-headline uppercase tracking-tighter">{isRtl ? 'إجمالي قيمة العرض' : 'Total Quote Value'}</h3>
                               {editData.pricingMode === 'percentage' && (
                                  <Badge className={cn("mt-1 border-0 text-[7px] font-black h-4", stats.isValid ? "bg-emerald-50 text-white" : "bg-rose-50 text-white animate-pulse")}>
