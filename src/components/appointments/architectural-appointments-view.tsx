@@ -41,7 +41,9 @@ import {
   MoreVertical,
   Zap,
   RotateCcw,
-  Workflow
+  Workflow,
+  Target,
+  LayoutGrid
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs, updateDoc, deleteDoc, serverTimestamp, addDoc, setDoc } from 'firebase/firestore';
@@ -581,8 +583,13 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                                         </div>
                                       )}
                                       {appt.transactionNumber && (
-                                        <div className="flex items-center gap-1 text-[6px] font-black text-primary mt-1 uppercase">
-                                           <Workflow className="h-2 w-2" /> {appt.transactionNumber}
+                                        <div className="flex items-center gap-1 text-[7px] font-black text-primary mt-1 uppercase tracking-tighter">
+                                           <Workflow className="h-2.5 w-2.5" /> {appt.transactionNumber}
+                                        </div>
+                                      )}
+                                      {appt.stageName && (
+                                        <div className="text-[6px] font-bold text-slate-400 mt-0.5 truncate">
+                                           {appt.stageName}
                                         </div>
                                       )}
                                    </div>
@@ -771,7 +778,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg flex flex-col h-fit max-h-[85vh] z-[101]" dir={dir}>
+      <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg flex flex-col h-fit max-h-[90vh] z-[101]" dir={dir}>
         
         <div className="bg-slate-50 p-6 text-slate-900 text-start border-b shrink-0 relative pr-12 pl-12">
            <DialogTitle className="text-lg font-black font-headline truncate flex items-center gap-3">
@@ -806,12 +813,12 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                    <div className="space-y-4 p-5 rounded-2xl border bg-slate-50/50 animate-in fade-in">
                       <div className="space-y-1.5">
                          <Label className="text-[10px] font-black uppercase text-slate-400">اسم العميل</Label>
-                         <Input value={formData.newClientName} onChange={e => setFormData({...formData, newClientName: e.target.value})} className="h-10 rounded-lg border-2" />
+                         <Input value={formData.newClientName} onChange={e => setFormData({...formData, newClientName: e.target.value})} className="h-10 rounded-lg border-2 font-bold" />
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                          <div className="space-y-1.5">
                             <Label className="text-[10px] font-black uppercase text-slate-400">الهاتف</Label>
-                            <Input value={formData.newClientPhone} onChange={e => setFormData({...formData, newClientPhone: e.target.value})} className="h-10 rounded-lg border-2" />
+                            <Input value={formData.newClientPhone} onChange={e => setFormData({...formData, newClientPhone: e.target.value})} className="h-10 rounded-lg border-2 font-bold" />
                          </div>
                          <div className="space-y-1.5">
                             <Label className="text-[10px] font-black uppercase text-slate-400">المحافظة</Label>
@@ -847,32 +854,63 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                       </div>
 
                       {formData.clientId && (
-                        <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-2">
+                        <div className="space-y-4 p-5 bg-slate-50/50 rounded-2xl border-2 border-slate-100 animate-in slide-in-from-top-2">
                            <div className="space-y-1.5">
-                              <Label className="text-[9px] font-black uppercase text-primary flex items-center gap-1"><Workflow className="h-2.5 w-2.5" /> ربط بالمشروع</Label>
+                              <Label className="text-[9px] font-black uppercase text-primary flex items-center gap-1">
+                                 <Workflow className="h-3 w-3" /> {isRtl ? 'ربط بالمسار الفني (المشروع)' : 'Link to Technical Path'}
+                              </Label>
                               <Select value={formData.transactionId} onValueChange={v => {
                                  const t = clientTransactions.find(x => x.id === v);
                                  setFormData({...formData, transactionId: v, transactionNumber: t?.transactionNumber || '', stageId: '', stageName: ''});
                                  if (v) fetchTransactionStages(v);
                               }}>
-                                 <SelectTrigger className="h-10 rounded-lg border-2 font-bold text-[10px] bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
+                                 <SelectTrigger className="h-12 rounded-xl border-2 font-black text-xs bg-white shadow-sm">
+                                    <SelectValue placeholder={isRtl ? "اختر المشروع المفتوح..." : "Select Project..."} />
+                                 </SelectTrigger>
                                  <SelectContent className="rounded-xl z-[151]">
-                                    {clientTransactions.map(t => <SelectItem key={t.id} value={t.id} className="font-bold text-[10px]">{t.subServiceName} ({t.transactionNumber})</SelectItem>)}
+                                    {clientTransactions.map(t => (
+                                       <SelectItem key={t.id} value={t.id} className="font-bold text-[11px] py-3">
+                                          <div className="flex flex-col text-start">
+                                             <span>{t.subServiceName}</span>
+                                             <span className="text-[8px] text-slate-400 uppercase">#{t.transactionNumber}</span>
+                                          </div>
+                                       </SelectItem>
+                                    ))}
+                                    {clientTransactions.length === 0 && (
+                                       <div className="p-4 text-center text-[10px] font-bold text-slate-400 italic">لا يوجد مشاريع جارية</div>
+                                    )}
                                  </SelectContent>
                               </Select>
                            </div>
-                           <div className="space-y-1.5">
-                              <Label className="text-[9px] font-black uppercase text-emerald-600 flex items-center gap-1"><CheckCircle2 className="h-2.5 w-2.5" /> المرحلة الفنية</Label>
-                              <Select disabled={!formData.transactionId} value={formData.stageId} onValueChange={v => {
-                                 const s = transactionStages.find(x => x.id === v);
-                                 setFormData({...formData, stageId: v, stageName: s?.name || ''});
-                              }}>
-                                 <SelectTrigger className="h-10 rounded-lg border-2 font-bold text-[10px] bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
-                                 <SelectContent className="rounded-xl z-[151]">
-                                    {transactionStages.map(s => <SelectItem key={s.id} value={s.id} className="font-bold text-[10px]">{s.name}</SelectItem>)}
-                                 </SelectContent>
-                              </Select>
-                           </div>
+
+                           {formData.transactionId && (
+                              <div className="space-y-3 pt-2 border-t animate-in fade-in">
+                                 <Label className="text-[9px] font-black uppercase text-emerald-600 flex items-center gap-1">
+                                    <Target className="h-3 w-3" /> {isRtl ? 'تحديد المرحلة المستهدفة من الزيارة' : 'Target Execution Stage'}
+                                 </Label>
+                                 <div className="grid grid-cols-1 gap-2">
+                                    {transactionStages.map((s, idx) => {
+                                       const isSelected = formData.stageId === s.id;
+                                       return (
+                                          <div 
+                                             key={s.id}
+                                             onClick={() => setFormData({...formData, stageId: s.id, stageName: s.name})}
+                                             className={cn(
+                                                "p-3 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between",
+                                                isSelected ? "bg-emerald-50 border-emerald-500 shadow-md scale-[1.02]" : "bg-white border-slate-100 hover:border-slate-200"
+                                             )}
+                                          >
+                                             <div className="flex items-center gap-3">
+                                                <Badge variant="outline" className="h-5 w-5 p-0 flex items-center justify-center rounded-lg font-black text-[8px] bg-slate-50">{idx + 1}</Badge>
+                                                <span className={cn("text-[10px] font-black", isSelected ? "text-emerald-900" : "text-slate-600")}>{s.name}</span>
+                                             </div>
+                                             {isSelected && <CheckCircle2 className="h-4 w-4 text-emerald-600" />}
+                                          </div>
+                                       );
+                                    })}
+                                 </div>
+                              </div>
+                           )}
                         </div>
                       )}
                    </div>
@@ -886,22 +924,21 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
            </div>
 
            <div className="space-y-1.5">
-              <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">توجيهات فنية</Label>
+              <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">توجيهات فنية للمهندس</Label>
               <Textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="min-h-[100px] rounded-xl border-2 bg-slate-50/30 p-4 text-xs font-bold" />
            </div>
         </div>
 
         <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-3 shrink-0 shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.05)]">
-           <Button variant="outline" onClick={onClose} className="flex-1 h-10 rounded-lg font-bold border-2 bg-white">
+           <Button variant="outline" onClick={onClose} className="flex-1 h-12 rounded-xl font-bold border-2 bg-white">
               {isRtl ? 'إلغاء' : 'Cancel'}
            </Button>
-           <Button onClick={handleSave} disabled={loading || (!isBusyBlock && !formData.clientId)} className="flex-[2] h-10 rounded-lg font-black gap-2">
+           <Button onClick={handleSave} disabled={loading || (!isBusyBlock && !formData.clientId)} className="flex-[2] h-12 rounded-xl font-black gap-2">
               {loading ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
-              {isRtl ? 'حفظ الموعد' : 'Confirm'}
+              {isRtl ? 'حفظ وإرسال التنبيه' : 'Confirm & Notify'}
            </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
-
