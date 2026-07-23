@@ -33,25 +33,33 @@ export default function DashboardLayout({
   }, [user, authLoading, router]);
 
   /**
-   * Sovereign Thaw Protocol: 
-   * Force reset body styles and pointer events to prevent UI freezing 
-   * caused by stuck modal overlays.
+   * Sovereign Absolute Thaw Protocol: 
+   * Aggressively forces the removal of any CSS locks (pointer-events/overflow)
+   * that Radix UI might leave behind on Dialog/Dropdown closure.
    */
   useEffect(() => {
     if (typeof document !== 'undefined') {
-      const resetStyles = () => {
+      const thaw = () => {
         document.body.style.pointerEvents = 'auto';
         document.body.style.overflow = 'auto';
         document.body.removeAttribute('data-scroll-locked');
+        
+        // Target specific Radix overlays that might hang
+        const overlays = document.querySelectorAll('[data-radix-focus-guard], [style*="pointer-events: none"]');
+        overlays.forEach(el => {
+          if (el === document.body) {
+             el.style.pointerEvents = 'auto';
+          }
+        });
       };
+
+      thaw();
+      const interval = setInterval(thaw, 500); // Check every 500ms during path changes
+      const timeout = setTimeout(thaw, 100);
       
-      resetStyles();
-      // Execute twice to catch late Radix cleanups
-      const timer = setTimeout(resetStyles, 100);
-      const timer2 = setTimeout(resetStyles, 300);
       return () => {
-        clearTimeout(timer);
-        clearTimeout(timer2);
+        clearInterval(interval);
+        clearTimeout(timeout);
       };
     }
   }, [pathname]);

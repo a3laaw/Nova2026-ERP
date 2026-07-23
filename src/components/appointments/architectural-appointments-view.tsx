@@ -42,8 +42,7 @@ import {
   RotateCcw,
   Workflow,
   Target,
-  LayoutGrid,
-  Calendar
+  LayoutGrid
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs, updateDoc, deleteDoc, serverTimestamp, addDoc, setDoc } from 'firebase/firestore';
@@ -464,15 +463,12 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
      return null;
   };
 
-  const handleDeleteAppt = async (id: string) => {
+  const handleDeleteAppt = (id: string) => {
      if (!confirm(isRtl ? "هل أنت متأكد من حذف الموعد نهائياً؟" : "Confirm permanent deletion?")) return;
-     try {
-        const service = new AppointmentService(db, companyId);
-        await service.deleteAppointment(id);
-        toast({ title: isRtl ? "تم الحذف بنجاح" : "Deleted successfully" });
-     } catch (e) {
-        toast({ variant: "destructive", title: isRtl ? "خطأ" : "Error" });
-     }
+     
+     const service = new AppointmentService(db, companyId);
+     service.deleteAppointment(id);
+     toast({ title: isRtl ? "تم إرسال طلب الحذف" : "Delete request sent" });
   };
 
   return (
@@ -626,7 +622,10 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
   const [clientTransactions, setClientTransactions] = useState<any[]>([]);
 
-  // --- بروتوكول الإذابة السيادي (Sovereign Thaw Protocol) ---
+  /**
+   * Sovereign Thaw Protocol:
+   * Explicitly ensures the body and pointer-events are unlocked when any modal closes.
+   */
   const forceThaw = useCallback(() => {
     if (typeof document !== 'undefined') {
       document.body.style.pointerEvents = 'auto';

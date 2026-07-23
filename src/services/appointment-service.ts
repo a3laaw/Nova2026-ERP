@@ -16,6 +16,8 @@ import {
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { Appointment, AppointmentStatus } from '@/types/appointment';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export class AppointmentService {
   constructor(private db: Firestore, private companyId: string) {}
@@ -35,9 +37,15 @@ export class AppointmentService {
 
   async updateAppointment(id: string, data: Partial<Appointment>): Promise<void> {
     const ref = doc(this.db, paths.appointments(this.companyId), id);
-    await updateDoc(ref, { 
+    updateDoc(ref, { 
       ...data, 
       updatedAt: serverTimestamp() 
+    }).catch(async (err) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: ref.path,
+        operation: 'update',
+        requestResourceData: data
+      }));
     });
   }
 
@@ -51,7 +59,6 @@ export class AppointmentService {
       updatedAt: serverTimestamp()
     });
 
-    // إذا كانت زيارة ميدانية مكتملة، ارفع عداد الزيارات للعميل
     if (status === 'completed') {
       const snap = await getDocs(query(collection(this.db, paths.appointments(this.companyId))));
       const appData = snap.docs.find(d => d.id === appointmentId)?.data() as Appointment;
@@ -68,15 +75,16 @@ export class AppointmentService {
     return batch.commit();
   }
 
-  async cancelAppointment(id: string): Promise<void> {
-    const ref = doc(this.db, paths.appointments(this.companyId), id);
-    await updateDoc(ref, { 
-      status: 'cancelled', 
-      updatedAt: serverTimestamp() 
-    });
-  }
-
+  /**
+   * حذف الموعد نهائياً من قاعدة البيانات (حذف سيادي)
+   */
   async deleteAppointment(id: string): Promise<void> {
-    await deleteDoc(doc(this.db, paths.appointments(this.companyId), id));
+    const ref = doc(this.db, paths.appointments(this.companyId), id);
+    deleteDoc(ref).catch(async (err) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: ref.path,
+        operation: 'delete'
+      }));
+    });
   }
 }
