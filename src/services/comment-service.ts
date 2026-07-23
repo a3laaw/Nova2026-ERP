@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -11,13 +12,15 @@ import {
   getDocs,
   writeBatch,
   query,
-  where
+  where,
+  getDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { TransactionComment, CommentType } from '@/types/transaction';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { ensureActionPermission } from '@/lib/permissions';
+import { ClientService } from './client-service';
 
 export class CommentService {
   constructor(
@@ -52,17 +55,34 @@ export class CommentService {
       updatedAt: serverTimestamp()
     };
 
-    return addDoc(collection(this.db, path), commentData).catch(err => {
+    const commentRef = await addDoc(collection(this.db, path), commentData).catch(err => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path, operation: 'create', requestResourceData: commentData
       }));
       throw err;
     });
+
+    // مزامنة التعليق مع سجل تاريخ العميل لضمان الظهور في ملفه الشامل
+    try {
+       const transSnap = await getDoc(doc(this.db, paths.transactions(this.companyId), transactionId));
+       if (transSnap.exists()) {
+          const clientId = transSnap.data().clientId;
+          const clientService = new ClientService(this.db, this.companyId);
+          await clientService.addHistory(clientId, {
+             type: 'visit_logged',
+             content: `[ملاحظة فنية] ${content}`,
+             userId,
+             userName,
+             companyId: this.companyId
+          });
+       }
+    } catch (e) {
+       console.warn("Client history sync skipped:", e);
+    }
+
+    return commentRef;
   }
 
-  /**
-   * أرشفة تعليقات مرحلة محددة عند التراجع السيادي
-   */
   async archiveStageComments(transactionId: string, stageInstanceId: string) {
     const path = paths.transactionComments(this.companyId, transactionId);
     const q = query(collection(this.db, path), where('stageInstanceId', '==', stageInstanceId));

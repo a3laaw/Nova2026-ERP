@@ -47,39 +47,35 @@ export default function AppointmentDetailPage() {
   [db, companyId, appt?.transactionId]);
   const { data: transaction } = useDoc<Transaction>(transRef);
 
-  // تحديد طبيعة النشاط (مقاولات أم استشارات)
+  // تحديد طبيعة النشاط
   const isConsulting = useMemo(() => {
     const name = transaction?.activityTypeName || '';
     return name.includes('استشارات') || name.includes('Consulting') || name.includes('تصميم') || name.includes('Design');
   }, [transaction]);
 
-  // جلب مراحل المشروع (المسار الفني)
+  // جلب مراحل المشروع
   const stagesQuery = useMemo(() => 
     companyId && db && appt?.transactionId ? query(collection(db, paths.transactionStages(companyId, appt.transactionId)), orderBy('order')) : null,
   [db, companyId, appt?.transactionId]);
   const { data: stages } = useCollection<StageInstance>(stagesQuery);
 
-  // جلب سجلات التنفيذ (للمقاولات)
+  // جلب سجلات التنفيذ
   const execsQuery = useMemo(() => 
     companyId && db && appt?.transactionId ? query(collection(db, paths.executions(companyId)), where('transactionId', '==', appt.transactionId)) : null,
   [db, companyId, appt?.transactionId]);
   const { data: executions } = useCollection<BOQItemExecutionEntry>(execsQuery);
 
-  // جلب سجلات التعليقات (للاستشارات)
+  // جلب سجلات التعليقات
   const commentsQuery = useMemo(() => 
     companyId && db && appt?.transactionId ? query(collection(db, paths.transactionComments(companyId, appt.transactionId)), where('stageInstanceId', '==', appt.stageId || '')) : null,
   [db, companyId, appt?.transactionId, appt?.stageId]);
   const { data: comments } = useCollection<TransactionComment>(commentsQuery);
 
-  // فحص شرط الإغلاق بناءً على نوع النشاط
   const hasAchievement = useMemo(() => {
-    if (!appt?.transactionId) return true; // موعد عام بدون مشروع
-
+    if (!appt?.transactionId) return true; 
     if (isConsulting) {
-      // للاستشارات: يجب وجود تعليق واحد على الأقل (محضر اجتماع) في هذه المرحلة
       return (comments || []).length > 0;
     } else {
-      // للمقاولات: يجب وجود سجل إنجاز كميات (Execution Log)
       if (!executions || !appt?.stageId) return false;
       const linkedStage = stages?.find(s => s.id === appt.stageId);
       if (!linkedStage) return false;
@@ -94,8 +90,8 @@ export default function AppointmentDetailPage() {
          variant: "destructive", 
          title: isRtl ? "قفل الإنجاز مفعل" : "Execution Lock Active",
          description: isConsulting 
-           ? (isRtl ? "لا يمكن إغلاق موعد استشاري بدون تدوين محضر اجتماع أو ملاحظات فنية في غرفة العمليات." : "Cannot close consulting appt without logging meeting minutes in the War Room.")
-           : (isRtl ? "لا يمكن إغلاق موعد مقاولات بدون تسجيل إنجاز ميداني للكميات في المشروع." : "Cannot close contracting appt without logging site quantity progress.")
+           ? (isRtl ? "لا يمكن إغلاق موعد استشاري بدون تدوين ملاحظات فنية." : "Log meeting minutes in the War Room first.")
+           : (isRtl ? "لا يمكن إغلاق موعد مقاولات بدون تسجيل إنجاز ميداني للكميات." : "Log site quantity progress first.")
        });
        return;
     }
@@ -122,7 +118,7 @@ export default function AppointmentDetailPage() {
            <div className="text-start">
              <h1 className="text-3xl font-black font-headline text-slate-900">{appt.title}</h1>
              <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-[0.2em] opacity-60">
-               {appt.clientName} | {isConsulting ? (isRtl ? 'مسار استشاري' : 'Consulting Path') : (isRtl ? 'مسار مقاولات' : 'Contracting Path')}
+               {appt.clientName} | {transaction?.subServiceName || (isRtl ? 'مشروع مجهول' : 'Unknown Project')}
              </p>
            </div>
         </div>
@@ -137,7 +133,7 @@ export default function AppointmentDetailPage() {
                  : "bg-slate-200 text-slate-400 border-slate-300 shadow-none cursor-not-allowed"
              )}
            >
-              {hasAchievement ? (isConsulting ? <CheckCircle2 className="h-6 w-6" /> : <CheckCircle2 className="h-6 w-6" />) : <AlertTriangle className="h-6 w-6" />}
+              {hasAchievement ? <CheckCircle2 className="h-6 w-6" /> : <AlertTriangle className="h-6 w-6" />}
               {isRtl ? 'إغلاق وإنجاز الموعد' : 'Complete Appointment'}
            </Button>
         )}
@@ -149,7 +145,7 @@ export default function AppointmentDetailPage() {
            <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
               <CardHeader className="bg-primary/5 p-8 border-b">
                  <div className="flex justify-between items-center">
-                    <CardTitle className="text-xl font-black flex items-center gap-3">
+                    <CardTitle className="text-xl font-black flex items-center gap-3 text-slate-800">
                        <ShieldCheck className="h-6 w-6 text-primary" />
                        {isRtl ? 'تفاصيل الارتباط الفني' : 'Technical Link Details'}
                     </CardTitle>
@@ -161,7 +157,7 @@ export default function AppointmentDetailPage() {
               </CardHeader>
               <CardContent className="p-10 space-y-10">
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                    <div className="space-y-6">
+                    <div className="space-y-10">
                        <div className="flex items-start gap-4">
                           <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 border"><Calendar className="h-5 w-5" /></div>
                           <div className="text-start">
@@ -178,7 +174,7 @@ export default function AppointmentDetailPage() {
                        </div>
                     </div>
 
-                    <div className="space-y-6">
+                    <div className="space-y-10">
                        <div className="flex items-start gap-4">
                           <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20"><User className="h-5 w-5" /></div>
                           <div className="text-start">
@@ -186,17 +182,21 @@ export default function AppointmentDetailPage() {
                              <p className="font-black text-slate-800 text-lg">{appt.engineerName}</p>
                           </div>
                        </div>
+                       
                        {appt.transactionId && (
-                         <div className="flex items-start gap-4 p-4 rounded-2xl bg-blue-50/50 border-2 border-blue-100 animate-in slide-in-from-top-2">
-                            <div className="h-10 w-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 shadow-inner"><Workflow className="h-5 w-5" /></div>
-                            <div className="text-start">
-                               <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">{isRtl ? 'المشروع المربوط' : 'Linked Project'}</p>
-                               <p className="font-black text-slate-800 text-sm">{appt.transactionNumber}</p>
-                               <div className="mt-2">
-                                  <Badge className="bg-blue-600 text-white border-0 font-black text-[9px] px-3 h-5 rounded-lg shadow-sm">
-                                     {appt.stageName || 'Linked Stage'}
-                                  </Badge>
+                         <div className="p-6 rounded-[2rem] bg-blue-50/50 border-2 border-blue-100 space-y-4 animate-in slide-in-from-top-2">
+                            <div className="flex items-center gap-3">
+                               <div className="h-8 w-8 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 shadow-inner"><Workflow className="h-4 w-4" /></div>
+                               <div className="text-start">
+                                  <p className="text-[8px] font-black text-blue-400 uppercase tracking-widest">{isRtl ? 'المشروع المربوط' : 'Linked Project'}</p>
+                                  <p className="font-black text-slate-800 text-xs">{appt.transactionNumber}</p>
                                </div>
+                            </div>
+                            <div className="pt-2 border-t border-blue-100/50">
+                               <p className="text-[8px] font-black text-slate-400 uppercase">{isRtl ? 'المرحلة الفنية المستهدفة' : 'Linked Stage'}</p>
+                               <Badge className="bg-blue-600 text-white border-0 font-black text-[10px] px-4 h-6 mt-1 rounded-lg shadow-sm">
+                                  {appt.stageName || 'General Meeting'}
+                               </Badge>
                             </div>
                          </div>
                        )}
@@ -240,7 +240,6 @@ export default function AppointmentDetailPage() {
         </div>
 
         <div className="lg:col-span-4 space-y-6 text-start">
-           {/* رادار المسار الفني للمشروع */}
            {appt.transactionId && stages && (
               <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
                  <CardHeader className="bg-slate-900 p-6 text-white text-start">
@@ -274,7 +273,7 @@ export default function AppointmentDetailPage() {
                                 </div>
                              </div>
                              {isTarget && (
-                                <Badge className="bg-primary text-white border-0 text-[7px] font-black h-4">CURRENT APPT</Badge>
+                                <Badge className="bg-primary text-white border-0 text-[7px] font-black h-4">TARGET</Badge>
                              )}
                           </div>
                        );
@@ -309,24 +308,15 @@ export default function AppointmentDetailPage() {
               {isConsulting ? <Pencil className="h-6 w-6 shrink-0 mt-1" /> : <AlertTriangle className="h-6 w-6 shrink-0 mt-1" />}
               <p className="text-xs font-bold leading-relaxed">
                  {isConsulting 
-                   ? (isRtl ? 'بروتوكول الاستشارات: لإكمال الموعد يجب تسجيل محضر اجتماع أو ملاحظات فنية في غرفة العمليات (War Room) أدناه.' : 'Consulting Protocol: To complete, you must log meeting minutes or technical notes in the War Room below.')
-                   : (isRtl ? 'بروتوكول المقاولات: لا يمكنك إغلاق هذا الموعد إلا بعد تسجيل إنجاز فني (Hammer Log) في المشروع المربوط.' : 'Contracting Protocol: You cannot complete this appt without logging technical progress (Hammer Log) in the linked project.')
+                   ? (isRtl ? 'بروتوكول الاستشارات: لإكمال الموعد يجب تسجيل ملاحظات فنية في غرفة العمليات أدناه.' : 'Consulting Protocol: Log technical notes in the War Room to complete.')
+                   : (isRtl ? 'بروتوكول المقاولات: لا يمكنك إغلاق هذا الموعد إلا بعد تسجيل إنجاز فني في المشروع المربوط.' : 'Contracting Protocol: Log technical progress (Hammer Log) in the project to complete.')
                  }
               </p>
            </div>
-           
-           {!hasAchievement && appt.transactionId && !isConsulting && (
-              <Button 
-                onClick={() => router.push(`/dashboard/clients/${appt.clientId}/transactions/${appt.transactionId}`)}
-                className="w-full h-16 rounded-2xl bg-slate-900 text-white font-black text-sm shadow-2xl hover:scale-105 transition-all gap-3"
-              >
-                 <Hammer className="h-5 w-5 text-primary" />
-                 {isRtl ? 'الذهاب لتسجيل إنجاز فني الآن' : 'Go Log Progress Now'}
-              </Button>
-           )}
         </div>
 
       </div>
     </div>
   );
 }
+

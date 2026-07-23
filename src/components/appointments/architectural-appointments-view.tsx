@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -39,7 +40,8 @@ import {
   PlusCircle,
   MoreVertical,
   Zap,
-  RotateCcw
+  RotateCcw,
+  Workflow
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs, updateDoc, deleteDoc, serverTimestamp, addDoc, setDoc } from 'firebase/firestore';
@@ -354,25 +356,25 @@ export function ArchitecturalAppointmentsView() {
          <Card className="border-0 shadow-lg rounded-2xl bg-white border-b-4 border-slate-900">
             <CardContent className="p-4 text-start">
                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إجمالي المواعيد' : 'Total Appts'}</p>
-               <h3 className="text-2xl font-black text-slate-900">{stats.total}</h3>
+               <h3 className="text-2xl font-black text-slate-900">{stats.total.toLocaleString(isRtl ? 'ar-KW' : 'en-US')}</h3>
             </CardContent>
          </Card>
          <Card className="border-0 shadow-lg rounded-2xl bg-white border-b-4 border-yellow-400">
             <CardContent className="p-4 text-start">
                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'زيارة أولى (جديد)' : '1st Visits'}</p>
-               <h3 className="text-2xl font-black text-yellow-500">{stats.yellow}</h3>
+               <h3 className="text-2xl font-black text-yellow-500">{stats.yellow.toLocaleString(isRtl ? 'ar-KW' : 'en-US')}</h3>
             </CardContent>
          </Card>
          <Card className="border-0 shadow-lg rounded-2xl bg-white border-b-4 border-emerald-500">
             <CardContent className="p-4 text-start">
                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'متابعة (تحت الدراسة)' : 'Follow-ups'}</p>
-               <h3 className="text-2xl font-black text-emerald-600">{stats.green}</h3>
+               <h3 className="text-2xl font-black text-emerald-600">{stats.green.toLocaleString(isRtl ? 'ar-KW' : 'en-US')}</h3>
             </CardContent>
          </Card>
          <Card className="border-0 shadow-lg rounded-2xl bg-white border-b-4 border-blue-500">
             <CardContent className="p-4 text-start">
                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'عملاء متعاقدون' : 'Contracted'}</p>
-               <h3 className="text-2xl font-black text-blue-600">{stats.blue}</h3>
+               <h3 className="text-2xl font-black text-blue-600">{stats.blue.toLocaleString(isRtl ? 'ar-KW' : 'en-US')}</h3>
             </CardContent>
          </Card>
       </div>
@@ -540,7 +542,6 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                                     cardGradient(m?.color || '')
                                   )}
                                 >
-                                   {/* زر النقاط الثلاث المصغر والأنيق */}
                                    <div className={cn("absolute top-1 z-10", isRtl ? "left-1" : "right-1")} onClick={e => e.stopPropagation()}>
                                       <DropdownMenu>
                                          <DropdownMenuTrigger asChild>
@@ -577,6 +578,11 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                                       {!isBusy && (
                                         <div className="flex items-center gap-1 text-[7px] font-black uppercase opacity-60">
                                            <MapPin className="h-2 w-2" /> {appt.governorateName || '---'}
+                                        </div>
+                                      )}
+                                      {appt.transactionNumber && (
+                                        <div className="flex items-center gap-1 text-[6px] font-black text-primary mt-1 uppercase">
+                                           <Workflow className="h-2 w-2" /> {appt.transactionNumber}
                                         </div>
                                       )}
                                    </div>
@@ -625,8 +631,12 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
   const [formData, setFormData] = useState({
     title: '', clientId: '', clientName: '', 
     newClientName: '', newClientPhone: '', newClientGovId: '', newClientGovName: '', 
+    transactionId: '', transactionNumber: '', stageId: '', stageName: '',
     date: '', time: '', notes: ''
   });
+
+  const [clientTransactions, setClientTransactions] = useState<any[]>([]);
+  const [transactionStages, setTransactionStages] = useState<any[]>([]);
 
   const targetEngineerId = data?.engineer?.id || data?.appointment?.engineerId;
   
@@ -643,10 +653,13 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
        setFormData({
          title: '', clientId: '', clientName: '', 
          newClientName: '', newClientPhone: '', newClientGovId: '', newClientGovName: '', 
+         transactionId: '', transactionNumber: '', stageId: '', stageName: '',
          date: '', time: '', notes: ''
        });
        setIsNewClient(false);
        setIsBusyBlock(false);
+       setClientTransactions([]);
+       setTransactionStages([]);
     }
   }, [isOpen]);
 
@@ -657,36 +670,44 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         title: data.appointment?.title || '',
         clientId: data.appointment?.clientId || '',
         clientName: data.appointment?.clientName || '',
+        transactionId: data.appointment?.transactionId || '',
+        transactionNumber: data.appointment?.transactionNumber || '',
+        stageId: data.appointment?.stageId || '',
+        stageName: data.appointment?.stageName || '',
         date: data.appointment ? format(parseISO(data.appointment.start), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
         time: data.slot || (data.appointment ? format(parseISO(data.appointment.start), 'HH:mm') : '08:00'),
         notes: data.appointment?.notes || ''
       }));
       setIsBusyBlock(data.appointment?.type === 'busy_blocked');
+      
+      if (data.appointment?.clientId) {
+         fetchClientTransactions(data.appointment.clientId);
+      }
+      if (data.appointment?.transactionId) {
+         fetchTransactionStages(data.appointment.transactionId);
+      }
     }
   }, [isOpen, data]);
+
+  const fetchClientTransactions = async (cid: string) => {
+    if (!db || !companyId) return;
+    const q = query(collection(db, paths.transactions(companyId)), where('clientId', '==', cid));
+    const snap = await getDocs(q);
+    setClientTransactions(snap.docs.map(d => ({id: d.id, ...d.data()})));
+  };
+
+  const fetchTransactionStages = async (tid: string) => {
+    if (!db || !companyId) return;
+    const q = query(collection(db, paths.transactionStages(companyId, tid)), orderBy('order', 'asc'));
+    const snap = await getDocs(q);
+    setTransactionStages(snap.docs.map(d => ({id: d.id, ...d.data()})));
+  };
 
   const handleSave = async () => {
     if (!data) return;
     const isCreate = data.mode === 'create';
     const start = new Date(`${formData.date}T${formData.time}:00`).toISOString();
     
-    if (!isBusyBlock && !isNewClient && formData.clientId) {
-       const conflict = rawAppointments.find((a: any) => 
-         a.clientId === formData.clientId && 
-         a.start === start && 
-         a.id !== data.appointment?.id &&
-         a.status !== 'cancelled'
-       );
-       if (conflict) {
-          toast({ 
-            variant: "destructive", 
-            title: isRtl ? "تضارب للعميل" : "Client Conflict", 
-            description: isRtl ? `العميل لديه موعد آخر في نفس الساعة.` : `Client already has an appointment`
-          });
-          return;
-       }
-    }
-
     setLoading(true);
     try {
       const appService = new AppointmentService(db, companyId);
@@ -721,6 +742,10 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         title: formData.title || (isBusyBlock ? (isRtl ? 'مشغول' : 'BUSY') : (isRtl ? 'موعد فني' : 'Appt')),
         clientId: targetClientId,
         clientName: targetClientName,
+        transactionId: formData.transactionId,
+        transactionNumber: formData.transactionNumber,
+        stageId: formData.stageId,
+        stageName: formData.stageName,
         engineerId: data.engineer?.id || data.appointment?.engineerId,
         engineerName: data.engineer?.fullName || data.appointment?.engineerName,
         type: apptType,
@@ -800,23 +825,56 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                       </div>
                    </div>
                 ) : (
-                   <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">اختيار العميل</Label>
-                      <Select value={formData.clientId} onValueChange={v => {
-                        const c = filteredClients.find((x:any) => x.id === v);
-                        setFormData({...formData, clientId: v, clientName: c?.nameAr || ''});
-                      }}>
-                         <SelectTrigger className="h-11 rounded-xl border-2 font-bold bg-white">
-                            <SelectValue placeholder={isRtl ? "تحديد العميل من القائمة..." : "Choose client..."} />
-                         </SelectTrigger>
-                         <SelectContent className="rounded-xl border shadow-3xl max-h-[300px] z-[150]">
-                            {filteredClients.map((c: any) => (
-                              <SelectItem key={c.id} value={c.id!} className="font-bold text-[11px] py-2">
-                                 {c.nameAr}
-                              </SelectItem>
-                            ))}
-                         </SelectContent>
-                      </Select>
+                   <div className="space-y-4">
+                      <div className="space-y-1.5">
+                         <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">اختيار العميل</Label>
+                         <Select value={formData.clientId} onValueChange={v => {
+                           const c = filteredClients.find((x:any) => x.id === v);
+                           setFormData({...formData, clientId: v, clientName: c?.nameAr || '', transactionId: '', transactionNumber: '', stageId: '', stageName: ''});
+                           if (v) fetchClientTransactions(v);
+                         }}>
+                            <SelectTrigger className="h-11 rounded-xl border-2 font-bold bg-white">
+                               <SelectValue placeholder={isRtl ? "تحديد العميل من القائمة..." : "Choose client..."} />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border shadow-3xl max-h-[300px] z-[150]">
+                               {filteredClients.map((c: any) => (
+                                 <SelectItem key={c.id} value={c.id!} className="font-bold text-[11px] py-2">
+                                    {c.nameAr}
+                                 </SelectItem>
+                               ))}
+                            </SelectContent>
+                         </Select>
+                      </div>
+
+                      {formData.clientId && (
+                        <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-2">
+                           <div className="space-y-1.5">
+                              <Label className="text-[9px] font-black uppercase text-primary flex items-center gap-1"><Workflow className="h-2.5 w-2.5" /> ربط بالمشروع</Label>
+                              <Select value={formData.transactionId} onValueChange={v => {
+                                 const t = clientTransactions.find(x => x.id === v);
+                                 setFormData({...formData, transactionId: v, transactionNumber: t?.transactionNumber || '', stageId: '', stageName: ''});
+                                 if (v) fetchTransactionStages(v);
+                              }}>
+                                 <SelectTrigger className="h-10 rounded-lg border-2 font-bold text-[10px] bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
+                                 <SelectContent className="rounded-xl z-[151]">
+                                    {clientTransactions.map(t => <SelectItem key={t.id} value={t.id} className="font-bold text-[10px]">{t.subServiceName} ({t.transactionNumber})</SelectItem>)}
+                                 </SelectContent>
+                              </Select>
+                           </div>
+                           <div className="space-y-1.5">
+                              <Label className="text-[9px] font-black uppercase text-emerald-600 flex items-center gap-1"><CheckCircle2 className="h-2.5 w-2.5" /> المرحلة الفنية</Label>
+                              <Select disabled={!formData.transactionId} value={formData.stageId} onValueChange={v => {
+                                 const s = transactionStages.find(x => x.id === v);
+                                 setFormData({...formData, stageId: v, stageName: s?.name || ''});
+                              }}>
+                                 <SelectTrigger className="h-10 rounded-lg border-2 font-bold text-[10px] bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
+                                 <SelectContent className="rounded-xl z-[151]">
+                                    {transactionStages.map(s => <SelectItem key={s.id} value={s.id} className="font-bold text-[10px]">{s.name}</SelectItem>)}
+                                 </SelectContent>
+                              </Select>
+                           </div>
+                        </div>
+                      )}
                    </div>
                 )}
              </div>
@@ -846,3 +904,4 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     </Dialog>
   );
 }
+
