@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { 
   format, 
   isValid, 
@@ -639,6 +639,22 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
   const [clientTransactions, setClientTransactions] = useState<any[]>([]);
 
+  // --- بروتوكول الإذابة السيادي (Sovereign Thaw Protocol) ---
+  const forceThaw = useCallback(() => {
+    if (typeof document !== 'undefined') {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.overflow = 'auto';
+      document.body.removeAttribute('data-scroll-locked');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) {
+       const timer = setTimeout(forceThaw, 150);
+       return () => clearTimeout(timer);
+    }
+  }, [isOpen, forceThaw]);
+
   const targetEngineerId = data?.engineer?.id || data?.appointment?.engineerId;
   
   const filteredClients = useMemo(() => {
@@ -748,6 +764,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
       }
       toast({ title: t('saved') });
       onClose();
+      forceThaw();
     } catch (e) {
       toast({ variant: "destructive", title: t('error') });
     } finally {
@@ -756,7 +773,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(v) => { if(!v) { onClose(); forceThaw(); } }}>
       <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg flex flex-col h-fit max-h-[90vh] z-[101]" dir={dir}>
         
         <div className="bg-slate-50 p-6 text-slate-900 text-start border-b shrink-0 relative pr-12 pl-12">
@@ -879,7 +896,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         </div>
 
         <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-3 shrink-0 shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.05)]">
-           <Button variant="outline" onClick={onClose} className="flex-1 h-12 rounded-xl font-bold border-2 bg-white">
+           <Button variant="outline" onClick={() => { onClose(); forceThaw(); }} className="flex-1 h-12 rounded-xl font-bold border-2 bg-white">
               {isRtl ? 'إلغاء' : 'Cancel'}
            </Button>
            <Button onClick={handleSave} disabled={loading || (!isBusyBlock && !formData.clientId)} className="flex-[2] h-12 rounded-xl font-black gap-2">
