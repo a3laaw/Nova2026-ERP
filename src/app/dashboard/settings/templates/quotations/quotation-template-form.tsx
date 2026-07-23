@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -19,7 +18,7 @@ import {
   Save, X, Plus, Trash2, Loader2, ArrowRight,
   Calculator, ShieldCheck, FileText,
   DollarSign, AlertTriangle, Target, Percent,
-  Workflow
+  Workflow, LayoutGrid
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
@@ -199,7 +198,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                  {stats.isValid ? 'VALID' : 'MISMATCH'}
               </Badge>
            </div>
-           <Button onClick={handleSave} disabled={loading} className="h-10 px-8 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 gap-2 border-b-4 border-orange-700 hover:scale-[1.02] transition-all">
+           <Button onClick={handleSave} disabled={loading} size="sm" className="h-10 px-8 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 gap-2 border-b-4 border-orange-700 hover:scale-[1.02] transition-all">
               {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
               {t('save')}
            </Button>
@@ -411,7 +410,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                </CardContent>
             </Card>
 
-            <div className="p-8 rounded-[2.5rem] bg-amber-50 rounded-[2rem] border-2 border-dashed border-amber-200 flex items-start gap-4 text-start">
+            <div className="p-8 rounded-[2.5rem] bg-amber-50 border-2 border-dashed border-amber-200 flex items-start gap-4 text-start">
                <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                <p className="text-[10px] text-amber-800 font-bold leading-relaxed">
                   {isRtl 
