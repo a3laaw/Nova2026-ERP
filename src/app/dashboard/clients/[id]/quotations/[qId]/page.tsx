@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useEffect, useState } from 'react';
@@ -8,13 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { 
   Printer, FileText, 
   ShieldCheck, 
-  DollarSign, Gavel, Loader2, Save,
-  Edit3, X, Plus, Trash2, Calculator,
-  Layers, Percent, Target,
-  FileSearch,
+  Loader2, Save,
+  Edit3, Trash2, Calculator,
+  Percent,
   CheckCircle2,
-  AlertTriangle,
-  History,
   Workflow
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
@@ -46,6 +44,7 @@ export default function QuotationViewPage() {
   const companyId = globalUser?.companyId;
 
   const [isEditing, setIsEditing] = useState(false);
+  const [hasAutoOpened, setHasAutoOpened] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editData, setEditForm] = useState<Partial<Quotation>>({});
 
@@ -55,31 +54,23 @@ export default function QuotationViewPage() {
 
   const { data: quote, loading } = useDoc<Quotation>(quoteRef);
 
+  // دورة العمل الذكية: التعديل قبل الحفظ الرسمي
   useEffect(() => {
-    if (quote) {
+    if (quote && !hasAutoOpened) {
       setEditForm(quote);
-      // دورة العمل الذكية: إذا كان المستند مسودة (جديد)، ادخل وضع التعديل تلقائياً
       if (quote.status === 'draft' && !quote.isHistoryRecorded) {
         setIsEditing(true);
       }
+      setHasAutoOpened(true);
     }
-  }, [quote]);
+  }, [quote, hasAutoOpened]);
 
-  // جلب مراحل المسار الفني للمطابقة
   const stagesQuery = useMemo(() => {
     if (!companyId || !db || !editData.activityTypeId || !editData.serviceId || !editData.subServiceId) return null;
     return query(collection(db, paths.technicalStages(companyId, editData.activityTypeId!, editData.serviceId!, editData.subServiceId!)), orderBy('order'));
   }, [db, companyId, editData.activityTypeId, editData.serviceId, editData.subServiceId]);
   
   const { data: stages, loading: stagesLoading } = useCollection<TechnicalStage>(stagesQuery);
-
-  const getOrdinalLabel = (index: number) => {
-    const arOrdinals = ["الأولى", "الثانية", "الثالثة", "الرابعة", "الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"];
-    const enOrdinals = ["First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth"];
-    const base = isRtl ? "الدفعة" : "Installment";
-    const ordinal = isRtl ? (arOrdinals[index] || `#${index + 1}`) : (enOrdinals[index] || `#${index + 1}`);
-    return `${base} ${ordinal}`;
-  };
 
   const stats = useMemo(() => {
     const items = editData.items || [];
@@ -88,7 +79,6 @@ export default function QuotationViewPage() {
     const totalItemizedAmount = activeItems.reduce((acc, item) => acc + ((item.unitPrice || 0) * (item.quantity || 1)), 0);
     const isPercentageMode = editData.pricingMode === 'percentage';
     const isValid = isPercentageMode ? Math.abs(totalPercentage - 100) < 0.1 : true;
-
     return { totalPercentage, totalItemizedAmount, isValid };
   }, [editData.items, editData.pricingMode]);
 
@@ -146,7 +136,7 @@ export default function QuotationViewPage() {
     setEditForm({
       ...editData,
       items: [...(editData.items || []), { 
-        label: getOrdinalLabel(nextIdx), 
+        label: `Item ${nextIdx + 1}`, 
         percentage: 0, 
         unitPrice: 0, 
         quantity: 1, 
@@ -166,7 +156,7 @@ export default function QuotationViewPage() {
 
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-700 bg-slate-50" dir={dir}>
-      <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 print:hidden px-6 pt-6">
+      <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 print:hidden px-6 pt-6 text-start">
         <div className="text-start">
           <div className="flex items-center gap-2">
              <h1 className="text-xl font-black text-slate-900">{isRtl ? 'عرض سعر رسمي' : 'Official Quotation'}</h1>
@@ -180,7 +170,7 @@ export default function QuotationViewPage() {
                 <Button onClick={() => setIsEditing(false)} variant="outline" size="sm" className="h-10 px-6 font-bold bg-white border-2 rounded-xl">
                    {isRtl ? 'إلغاء' : 'Cancel'}
                 </Button>
-                <Button onClick={handleSave} disabled={saving} size="sm" className="h-10 px-8 font-black gap-2 shadow-xl rounded-xl">
+                <Button onClick={handleSave} disabled={saving} size="sm" className="h-10 px-8 rounded-xl font-black gap-2 shadow-xl">
                    {saving ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
                    {quote.status === 'draft' ? (isRtl ? 'اعتماد وحفظ العرض' : 'Commit & Save') : (isRtl ? 'حفظ التعديلات' : 'Save Changes')}
                 </Button>
@@ -285,7 +275,7 @@ export default function QuotationViewPage() {
             <div className="space-y-4 text-start">
                <div className="flex justify-between items-center">
                   <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                     <Layers className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'جدول بنود التسعير والدفعات' : 'Pricing & Payments'}
+                     <LayoutGrid className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'جدول بنود التسعير والدفعات' : 'Pricing & Payments'}
                   </h4>
                   {isEditing && (
                     <Button variant="outline" size="sm" onClick={addItem} className="rounded-lg font-black text-[8px] border-2 h-6 px-3 gap-1">
@@ -349,7 +339,7 @@ export default function QuotationViewPage() {
                                            "h-7 rounded-md border-2 font-black text-[9px]",
                                            (item.technicalStageId && item.technicalStageId !== 'NONE') ? "bg-primary/5 text-primary border-primary/20" : "bg-white"
                                          )}>
-                                            <SelectValue placeholder={stagesLoading ? "..." : (isRtl ? "ربط ميداني..." : "Link Stage...")} />
+                                            <SelectValue placeholder={isRtl ? "ربط فني..." : "Link Stage..."} />
                                          </SelectTrigger>
                                          <SelectContent className="rounded-xl border-2 shadow-2xl">
                                             <SelectItem value="SIGNING" className="font-black text-[9px] py-2">
@@ -409,7 +399,7 @@ export default function QuotationViewPage() {
 
             <div className="text-start space-y-3 pt-4">
                <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 border-b-2 border-slate-50 pb-1">
-                  <Gavel className="h-3 w-3 text-primary" /> {isRtl ? 'الشروط العامة والالتزامات' : 'Terms & Conditions'}
+                  <ShieldCheck className="h-3 w-3 text-primary" /> {isRtl ? 'الشروط العامة والالتزامات' : 'Terms & Conditions'}
                </h4>
                {isEditing ? (
                   <Textarea value={editData.defaultTerms} onChange={e => setEditForm({...editData, defaultTerms: e.target.value})} className="min-h-[100px] rounded-xl border-2 p-3 text-[9px] font-medium bg-slate-50/30" />

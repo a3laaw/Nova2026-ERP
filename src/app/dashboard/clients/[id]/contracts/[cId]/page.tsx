@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useEffect, useState } from 'react';
@@ -8,15 +9,12 @@ import { Badge } from "@/components/ui/badge";
 import { 
   Printer, Gavel, 
   ShieldCheck, 
-  DollarSign, Loader2, Save,
-  Edit3, X, Plus, Trash2, Calculator,
-  Layers, Percent, Target,
-  CheckCircle2,
-  AlertTriangle,
+  Loader2, Save,
+  Edit3, Trash2, Calculator,
+  Layers, Percent,
   History,
   Wallet,
-  ArrowRight,
-  FileText
+  ArrowRight
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, where, orderBy } from 'firebase/firestore';
@@ -48,6 +46,7 @@ export default function ContractViewPage() {
   const companyId = globalUser?.companyId;
 
   const [isEditing, setIsEditing] = useState(false);
+  const [hasAutoOpened, setHasAutoOpened] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editData, setEditForm] = useState<Partial<Contract>>({});
 
@@ -58,14 +57,14 @@ export default function ContractViewPage() {
   const { data: contract, loading } = useDoc<Contract>(contractRef);
 
   useEffect(() => {
-    if (contract) {
+    if (contract && !hasAutoOpened) {
       setEditForm(contract);
-      // دورة العمل الذكية: إذا كان المستند مسودة (جديد)، ادخل وضع التعديل تلقائياً
       if (contract.status === 'draft' && !contract.isHistoryRecorded) {
         setIsEditing(true);
       }
+      setHasAutoOpened(true);
     }
-  }, [contract]);
+  }, [contract, hasAutoOpened]);
 
   const getOrdinalLabel = (index: number) => {
     const arOrdinals = ["الأولى", "الثانية", "الثالثة", "الرابعة", "الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"];
@@ -168,7 +167,7 @@ export default function ContractViewPage() {
 
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-700 bg-slate-50" dir={dir}>
-      <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 print:hidden px-6 pt-6">
+      <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 print:hidden px-6 pt-6 text-start">
         <div className="text-start">
           <div className="flex items-center gap-2">
              <h1 className="text-xl font-black text-slate-900">{isRtl ? 'عقد خدمات هندسية رسمي' : 'Official Engineering Contract'}</h1>
@@ -211,7 +210,7 @@ export default function ContractViewPage() {
       </div>
 
       <PrintWrapper title={isRtl ? "عقد اتفاق خدمات هندسية" : "Engineering Services Agreement"} className="mt-2">
-         <div className="space-y-10">
+         <div className="space-y-10 text-start">
             <div className="p-4 bg-[#1e1b4b] rounded-xl text-white flex items-center justify-between gap-4 shadow-xl print:hidden">
                 <div className="flex items-center gap-3 text-start">
                   <Calculator className="h-4 w-4 text-primary" />

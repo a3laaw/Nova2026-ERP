@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -14,15 +15,14 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { 
   FileText, Gavel, Plus, Loader2, 
-  ArrowRight, ShieldCheck, Clock,
-  Wallet, Landmark, Receipt, 
-  ChevronRight, Sparkles, CheckCircle2,
+  ShieldCheck, Clock,
+  Wallet, Receipt, 
+  Sparkles, CheckCircle2,
   ExternalLink,
   Info,
   History,
   Trash2,
-  AlertTriangle,
-  X
+  AlertTriangle
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
@@ -70,16 +70,18 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
 
   // Sovereign Thaw: Force cleanup pointer-events to prevent screen freeze
   useEffect(() => {
-    if (!isOpen || !deletingId) {
-      const timer = setTimeout(() => {
-        if (typeof document !== 'undefined') {
-          document.body.style.pointerEvents = 'auto';
-          document.body.style.overflow = 'auto';
-        }
-      }, 100);
+    const thaw = () => {
+      if (typeof document !== 'undefined') {
+        document.body.style.pointerEvents = 'auto';
+        document.body.style.overflow = 'auto';
+      }
+    };
+
+    if (!isOpen) {
+      const timer = setTimeout(thaw, 200);
       return () => clearTimeout(timer);
     }
-  }, [isOpen, deletingId]);
+  }, [isOpen]);
 
   const docsQuery = useMemo(() => {
     if (!companyId || !db || !transaction.id) return null;
@@ -115,7 +117,7 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
       toast({ title: isRtl ? "تم تجهيز المسودة - جاري الانتقال للتعديل" : "Draft Ready - Redirecting to Edit" });
       
       onClose();
-      // التوجيه الفوري للتعديل قبل الحفظ
+      // التوجيه الفوري للتعديل قبل الحفظ الرسمي
       if (type === 'quotation') {
         router.push(`/dashboard/clients/${clientId}/quotations/${docId}`);
       } else {
@@ -145,6 +147,10 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
       toast({ variant: "destructive", title: t('error') });
     } finally {
       setLoading(false);
+      // التحقق من فك التجمد بعد الحذف
+      if (typeof document !== 'undefined') {
+        document.body.style.pointerEvents = 'auto';
+      }
     }
   };
 
@@ -225,15 +231,6 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
                       {isRtl ? 'توليد ومراجعة المسودة' : 'Generate & Review'}
                    </Button>
                 </div>
-
-                <div className="p-5 rounded-xl bg-blue-50/50 border border-blue-100 flex items-start gap-3">
-                   <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
-                   <p className="text-[10px] text-blue-700/70 font-bold leading-relaxed">
-                      {isRtl 
-                        ? 'سيتم توجيهك فوراً لشاشة التعديل لمراجعة البنود قبل الحفظ النهائي والاعتماد.' 
-                        : 'You will be redirected to edit mode to review items before final saving.'}
-                   </p>
-                </div>
              </div>
 
              <div className="space-y-6">
@@ -304,12 +301,12 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
           </div>
 
           <DialogFooter className="p-6 bg-slate-50 border-t shrink-0">
-             <Button variant="outline" onClick={onClose} className="rounded-xl font-bold h-10 px-8 bg-white border-2">إغلاق</Button>
+             <Button variant="outline" onClick={onClose} className="rounded-xl font-bold h-11 px-8 bg-white border-2">إغلاق</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
+      <AlertDialog open={!!deletingId} onOpenChange={open => !open && setDeletingId(null)}>
         <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white z-[200]" dir={dir}>
           <AlertDialogHeader>
              <div className="mx-auto w-20 h-20 bg-rose-50 text-rose-600 rounded-[1.5rem] flex items-center justify-center mb-6 shadow-inner ring-8 ring-rose-50/50">
@@ -323,7 +320,7 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
              </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-10 gap-3 flex flex-row items-center justify-center">
-            <AlertDialogCancel className="flex-1 h-12 rounded-xl font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel>
+            <AlertDialogCancel className="flex-1 h-12 rounded-xl font-bold border-2 bg-white text-slate-600" onClick={() => setDeletingId(null)}>إلغاء</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleDelete} 
               className="flex-[2] h-12 rounded-xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200"
