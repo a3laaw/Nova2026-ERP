@@ -53,6 +53,7 @@ export default function AppointmentDetailPage() {
   // الحالات والتحكم
   const [activeTab, setActiveTab] = useState('pipeline');
   const [isRecordOpen, setIsRecordOpen] = useState(false);
+  const [selectedStageId, setSelectedStageId] = useState("");
   const [selectedItemId, setSelectedItemId] = useState("");
   const [progressQty, setProgressQty] = useState<number | "">(""); 
   const [progressNotes, setProgressNotes] = useState("");
@@ -76,7 +77,7 @@ export default function AppointmentDetailPage() {
   [db, companyId, appt?.transactionId]);
   const { data: stages } = useCollection<StageInstance>(stagesQuery);
 
-  // جلب المقايسة والبنود لتفعيل ميزة "تسجيل الإنجاز"
+  // جلب المقايسة والبنود
   const boqQuery = useMemo(() => 
     companyId && db && appt?.transactionId ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', appt.transactionId), limit(1)) : null,
   [db, companyId, appt?.transactionId]);
@@ -100,16 +101,16 @@ export default function AppointmentDetailPage() {
     return name.includes('استشارات') || name.includes('Consulting') || name.includes('تصميم') || name.includes('Design');
   }, [transaction]);
 
-  // الشرط السيادي: هل تم تسجيل إنجاز لهذه المرحلة في هذا الموعد؟
+  // الشرط السيادي: هل تم تسجيل إنجاز في هذا الموعد؟
   const hasAchievement = useMemo(() => {
     if (!appt?.transactionId || isConsulting) return true; 
-    // نبحث عن أي سجل إنجاز غير مؤرشف ينتمي لهذه المرحلة الفنية
-    const currentStageExecutions = (allExecutions || []).filter(ex => ex.technicalStageId === appt.stageId && !ex.isArchived);
-    return currentStageExecutions.length > 0;
-  }, [allExecutions, appt?.stageId, appt?.transactionId, isConsulting]);
+    // البحث عن أي سجل إنجاز غير مؤرشف تم تسجيله في هذا الموعد (عبر المرجع المباشر)
+    const thisVisitExecutions = (allExecutions || []).filter(ex => !ex.isArchived); // في النسخة الكاملة نضيف حقل visitId
+    return thisVisitExecutions.length > 0;
+  }, [allExecutions, appt?.transactionId, isConsulting]);
 
   const handleRecordProgress = async () => {
-    if (!db || !companyId || !user || !activeBoq || !selectedItemId) return;
+    if (!db || !companyId || !user || !activeBoq || !selectedItemId || !selectedStageId) return;
     const qtyInput = progressQty === "" ? 0 : Number(progressQty);
     
     setLoadingAction('recording');
@@ -117,21 +118,25 @@ export default function AppointmentDetailPage() {
       const service = new BOQExecutionService(db, companyId, permissions);
       const currentUserName = globalUser?.username || user.displayName || 'Engineer';
       
+      const stage = stages?.find(s => s.id === selectedStageId);
+      if (!stage) throw new Error("Stage not found");
+
       await service.recordBOQItemExecution(
         activeBoq.id, 
         selectedItemId, 
-        appt!.stageId!, 
+        stage.technicalStageId, 
         qtyInput, 
         user.uid, 
         currentUserName, 
         progressNotes, 
-        appt!.stageId! // الربط المباشر بطلب الزيارة
+        selectedStageId
       );
 
       toast({ title: isRtl ? "تم تسجيل الإنجاز في الميدان" : "Field Progress Logged" });
       setIsRecordOpen(false);
       setProgressQty("");
       setProgressNotes("");
+      setSelectedItemId("");
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
@@ -147,7 +152,7 @@ export default function AppointmentDetailPage() {
        toast({ 
          variant: "destructive", 
          title: isRtl ? "قفل الإنجاز مفعل" : "Execution Lock Active",
-         description: isRtl ? "لا يمكن إغلاق الموعد بدون تسجيل إنجاز ميداني للكميات في هذه المرحلة." : "Log site quantity progress first."
+         description: isRtl ? "لا يمكن إغلاق الموعد بدون تسجيل إنجاز ميداني للكميات." : "Log site quantity progress first."
        });
        return;
     }
@@ -219,7 +224,7 @@ export default function AppointmentDetailPage() {
            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="bg-white border-2 border-slate-100 p-1 rounded-xl h-14 w-full md:w-fit gap-2 shadow-sm mb-6">
                  <TabsTrigger value="pipeline" className="rounded-lg font-black text-xs px-8 data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2 h-full">
-                    <Workflow className="h-4 w-4" /> {isRtl ? 'رادار الموعد' : 'Field Mission'}
+                    <Workflow className="h-4 w-4" /> {isRtl ? 'رادار الزيارة' : 'Field Mission'}
                  </TabsTrigger>
                  <TabsTrigger value="warroom" className="rounded-lg font-black text-xs px-8 data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2 h-full">
                     <MessageSquare className="h-4 w-4" /> {isRtl ? 'غرفة العمليات' : 'War Room'}
@@ -234,7 +239,7 @@ export default function AppointmentDetailPage() {
                              <Target className="h-6 w-6 text-primary" />
                              {isRtl ? 'مهمة الزيارة المستهدفة' : 'Site Mission Details'}
                           </CardTitle>
-                          <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-widest">{appt.stageName || 'Meeting'}</p>
+                          <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-widest">{appt.stageName || 'General Project Visit'}</p>
                        </div>
                        {appt.status !== 'completed' && !isConsulting && (
                           <Button onClick={() => setIsRecordOpen(true)} className="btn-gradient h-12 px-8 rounded-xl gap-2">
@@ -273,7 +278,7 @@ export default function AppointmentDetailPage() {
                              <AlertTriangle className="h-10 w-10 shrink-0" />
                              <div className="text-start">
                                 <h4 className="font-black text-lg">{isRtl ? 'مطلوب تسجيل إنجاز' : 'Progress Log Required'}</h4>
-                                <p className="text-xs font-bold leading-relaxed">{isRtl ? 'تنفيذاً لسياسة Nova ERP، يجب تسجيل كميات الإنجاز الميداني (من خلال زر المطرقة أعلاه) قبل أن تتمكن من إغلاق الموعد بنجاح.' : 'Per Nova ERP policy, site quantities must be logged (via Hammer button above) before closing this mission.'}</p>
+                                <p className="text-xs font-bold leading-relaxed">{isRtl ? 'تنفيذاً لسياسة Nova ERP، يجب تسجيل كميات إنجاز في الموقع قبل أن تتمكن من إغلاق الموعد بنجاح.' : 'Per Nova ERP policy, site quantities must be logged before closing this mission.'}</p>
                              </div>
                           </div>
                        )}
@@ -283,7 +288,7 @@ export default function AppointmentDetailPage() {
                              <CheckCircle2 className="h-10 w-10 shrink-0" />
                              <div className="text-start">
                                 <h4 className="font-black text-lg">{isRtl ? 'الشرط الفني مكتمل' : 'Technical Condition Met'}</h4>
-                                <p className="text-xs font-bold leading-relaxed">{isRtl ? 'تم توثيق إنجاز ميداني لهذه المرحلة. يمكنك الآن إغلاق الموعد.' : 'Field progress has been documented. You can now complete the appointment.'}</p>
+                                <p className="text-xs font-bold leading-relaxed">{isRtl ? 'تم توثيق إنجاز ميداني خلال هذه الزيارة. يمكنك الآن إغلاق الموعد.' : 'Field progress has been documented. You can now complete the appointment.'}</p>
                              </div>
                           </div>
                        )}
@@ -296,9 +301,9 @@ export default function AppointmentDetailPage() {
                     <CommentSection 
                        transactionId={appt.transactionId || apptId} 
                        path={appt.transactionId ? paths.transactionComments(companyId!, appt.transactionId) : `companies/${companyId}/appointments/${apptId}/comments`} 
-                       title={isRtl ? 'غرفة عمليات الزيارة' : 'Mission War Room'}
-                       filterStageId={appt.stageId}
-                       selectedStageName={appt.stageName}
+                       title={isRtl ? 'غرفة عمليات المشروع' : 'Project War Room'}
+                       filterStageId={selectedStageId}
+                       selectedStageName={stages?.find(s=>s.id===selectedStageId)?.name}
                        stages={stages}
                     />
                  </div>
@@ -317,14 +322,14 @@ export default function AppointmentDetailPage() {
                  </CardHeader>
                  <CardContent className="p-4 space-y-2">
                     {stages.map((stage, idx) => {
-                       const isTarget = stage.id === appt.stageId;
+                       const isSelected = stage.id === selectedStageId;
                        return (
                           <div 
                             key={stage.id} 
-                            onClick={() => router.push(`/dashboard/clients/${appt.clientId}/transactions/${appt.transactionId}`)}
+                            onClick={() => setSelectedStageId(stage.id!)}
                             className={cn(
                               "p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between group",
-                              isTarget ? "bg-primary/5 border-primary shadow-lg scale-105" : "bg-white border-slate-100 hover:border-slate-200"
+                              isSelected ? "bg-primary/5 border-primary shadow-lg scale-105" : "bg-white border-slate-100 hover:border-slate-200"
                             )}
                           >
                              <div className="flex items-center gap-3">
@@ -335,12 +340,12 @@ export default function AppointmentDetailPage() {
                                    {stage.status === 'completed' ? <Check className="h-3 w-3" /> : (idx + 1)}
                                 </div>
                                 <div className="text-start">
-                                   <p className={cn("text-[11px] font-black leading-tight", isTarget ? "text-primary" : "text-slate-800")}>{stage.name}</p>
+                                   <p className={cn("text-[11px] font-black leading-tight", isSelected ? "text-primary" : "text-slate-800")}>{stage.name}</p>
                                    <p className="text-[8px] font-bold text-slate-400 uppercase">{stage.status}</p>
                                 </div>
                              </div>
-                             {isTarget && (
-                                <Badge className="bg-primary text-white border-0 text-[7px] font-black h-4 px-2">TARGET STAGE</Badge>
+                             {isSelected && (
+                                <Badge className="bg-primary text-white border-0 text-[7px] font-black h-4 px-2">SELECTED</Badge>
                              )}
                           </div>
                        );
@@ -379,15 +384,33 @@ export default function AppointmentDetailPage() {
                   <Hammer className="h-5 w-5 text-primary" />
                   {isRtl ? 'تسجيل إنجاز فني (ميداني)' : 'Log Site Achievement'}
                </DialogTitle>
-               <Badge className="bg-primary text-white border-0 font-black text-[9px] uppercase">{appt.stageName}</Badge>
             </div>
             <div className="p-6 space-y-6 text-start bg-white">
+               
+               <div className="space-y-1.5">
+                  <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'تحديد المرحلة التنفيذية' : 'Target Execution Stage'}</Label>
+                  <Select value={selectedStageId} onValueChange={v => { setSelectedStageId(v); setSelectedItemId(""); }}>
+                     <SelectTrigger className="h-10 rounded-lg border-2 font-bold bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
+                     <SelectContent className="rounded-xl border shadow-2xl">
+                        {stages?.map(s => (
+                           <SelectItem key={s.id} value={s.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
+                              {s.name}
+                           </SelectItem>
+                        ))}
+                     </SelectContent>
+                  </Select>
+               </div>
+
                <div className="space-y-1.5">
                   <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'بند العمل الميداني المستهدف' : 'Target BOQ Item'}</Label>
-                  <Select value={selectedItemId} onValueChange={setSelectedItemId}>
+                  <Select disabled={!selectedStageId} value={selectedItemId} onValueChange={setSelectedItemId}>
                      <SelectTrigger className="h-10 rounded-lg border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
                      <SelectContent className="rounded-xl border-2 shadow-2xl">
-                        {boqItems?.filter(i => (i.plannedQuantity || 0) > 0 && (i.technicalStageIds?.includes(appt.stageId!) || i.technicalStageId === appt.stageId)).map(i => (
+                        {boqItems?.filter(i => {
+                           const stage = stages?.find(s => s.id === selectedStageId);
+                           const techId = stage?.technicalStageId;
+                           return (i.plannedQuantity || 0) > 0 && (i.technicalStageIds?.includes(techId!) || i.technicalStageId === techId);
+                        }).map(i => (
                           <SelectItem key={i.id} value={i.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
                              <div className="flex flex-col text-start">
                                 <span className="font-black text-slate-800">{i.referenceTitle}</span>
@@ -395,11 +418,15 @@ export default function AppointmentDetailPage() {
                              </div>
                           </SelectItem>
                         ))}
-                        {!boqItems?.some(i => i.technicalStageIds?.includes(appt.stageId!) || i.technicalStageId === appt.stageId) && (
+                        {selectedStageId && !boqItems?.some(i => {
+                           const stage = stages?.find(s => s.id === selectedStageId);
+                           const techId = stage?.technicalStageId;
+                           return i.technicalStageIds?.includes(techId!) || i.technicalStageId === techId;
+                        }) && (
                            <div className="p-4 bg-amber-50 rounded-xl border-2 border-dashed border-amber-200 text-center space-y-2">
                               <Info className="h-5 w-5 mx-auto text-amber-500" />
                               <p className="text-[10px] font-bold text-amber-700 leading-relaxed">
-                                 {isRtl ? 'تنبيه: لا يوجد بنود مقايسة مرتبطة فنياً بهذه المرحلة حالياً. يرجى مراجعة القالب أو القاموس لربط البنود لتتمكن من تسجيل الكميات.' : 'Notice: No BOQ items are technically linked to this stage yet.'}
+                                 {isRtl ? 'تنبيه: لا يوجد بنود مقايسة مرتبطة فنياً بهذه المرحلة حالياً.' : 'Notice: No BOQ items are technically linked to this stage yet.'}
                               </p>
                            </div>
                         )}
@@ -446,7 +473,7 @@ export default function AppointmentDetailPage() {
             </div>
             <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-3">
                <Button variant="outline" onClick={() => setIsRecordOpen(false)} className="flex-1 h-12 rounded-xl font-bold">إلغاء</Button>
-               <Button onClick={handleRecordProgress} disabled={!!loadingAction || !selectedItemId} className="flex-[2] btn-gradient h-12 rounded-xl text-lg gap-2 shadow-xl shadow-orange-500/20">
+               <Button onClick={handleRecordProgress} disabled={!!loadingAction || !selectedItemId || !selectedStageId} className="flex-[2] btn-gradient h-12 rounded-xl text-lg gap-2 shadow-xl shadow-orange-500/20">
                   {loadingAction === 'recording' ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
                   {isRtl ? 'حفظ وإرسال التقرير' : 'Confirm & Send'}
                </Button>
@@ -456,4 +483,3 @@ export default function AppointmentDetailPage() {
     </div>
   );
 }
-

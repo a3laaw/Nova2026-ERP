@@ -587,11 +587,6 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                                            <Workflow className="h-2.5 w-2.5" /> {appt.transactionNumber}
                                         </div>
                                       )}
-                                      {appt.stageName && (
-                                        <div className="text-[6px] font-bold text-slate-400 mt-0.5 truncate">
-                                           {appt.stageName}
-                                        </div>
-                                      )}
                                    </div>
                                    
                                    {!isBusy && (
@@ -638,12 +633,11 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
   const [formData, setFormData] = useState({
     title: '', clientId: '', clientName: '', 
     newClientName: '', newClientPhone: '', newClientGovId: '', newClientGovName: '', 
-    transactionId: '', transactionNumber: '', stageId: '', stageName: '',
+    transactionId: '', transactionNumber: '',
     date: '', time: '', notes: ''
   });
 
   const [clientTransactions, setClientTransactions] = useState<any[]>([]);
-  const [transactionStages, setTransactionStages] = useState<any[]>([]);
 
   const targetEngineerId = data?.engineer?.id || data?.appointment?.engineerId;
   
@@ -660,13 +654,12 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
        setFormData({
          title: '', clientId: '', clientName: '', 
          newClientName: '', newClientPhone: '', newClientGovId: '', newClientGovName: '', 
-         transactionId: '', transactionNumber: '', stageId: '', stageName: '',
+         transactionId: '', transactionNumber: '',
          date: '', time: '', notes: ''
        });
        setIsNewClient(false);
        setIsBusyBlock(false);
        setClientTransactions([]);
-       setTransactionStages([]);
     }
   }, [isOpen]);
 
@@ -679,8 +672,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         clientName: data.appointment?.clientName || '',
         transactionId: data.appointment?.transactionId || '',
         transactionNumber: data.appointment?.transactionNumber || '',
-        stageId: data.appointment?.stageId || '',
-        stageName: data.appointment?.stageName || '',
         date: data.appointment ? format(parseISO(data.appointment.start), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
         time: data.slot || (data.appointment ? format(parseISO(data.appointment.start), 'HH:mm') : '08:00'),
         notes: data.appointment?.notes || ''
@@ -690,9 +681,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
       if (data.appointment?.clientId) {
          fetchClientTransactions(data.appointment.clientId);
       }
-      if (data.appointment?.transactionId) {
-         fetchTransactionStages(data.appointment.transactionId);
-      }
     }
   }, [isOpen, data]);
 
@@ -701,13 +689,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     const q = query(collection(db, paths.transactions(companyId)), where('clientId', '==', cid));
     const snap = await getDocs(q);
     setClientTransactions(snap.docs.map(d => ({id: d.id, ...d.data()})));
-  };
-
-  const fetchTransactionStages = async (tid: string) => {
-    if (!db || !companyId) return;
-    const q = query(collection(db, paths.transactionStages(companyId, tid)), orderBy('order', 'asc'));
-    const snap = await getDocs(q);
-    setTransactionStages(snap.docs.map(d => ({id: d.id, ...d.data()})));
   };
 
   const handleSave = async () => {
@@ -751,8 +732,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         clientName: targetClientName,
         transactionId: formData.transactionId,
         transactionNumber: formData.transactionNumber,
-        stageId: formData.stageId,
-        stageName: formData.stageName,
         engineerId: data.engineer?.id || data.appointment?.engineerId,
         engineerName: data.engineer?.fullName || data.appointment?.engineerName,
         type: apptType,
@@ -837,7 +816,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                          <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">اختيار العميل</Label>
                          <Select value={formData.clientId} onValueChange={v => {
                            const c = filteredClients.find((x:any) => x.id === v);
-                           setFormData({...formData, clientId: v, clientName: c?.nameAr || '', transactionId: '', transactionNumber: '', stageId: '', stageName: ''});
+                           setFormData({...formData, clientId: v, clientName: c?.nameAr || '', transactionId: '', transactionNumber: ''});
                            if (v) fetchClientTransactions(v);
                          }}>
                             <SelectTrigger className="h-11 rounded-xl border-2 font-bold bg-white">
@@ -861,8 +840,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                               </Label>
                               <Select value={formData.transactionId} onValueChange={v => {
                                  const t = clientTransactions.find(x => x.id === v);
-                                 setFormData({...formData, transactionId: v, transactionNumber: t?.transactionNumber || '', stageId: '', stageName: ''});
-                                 if (v) fetchTransactionStages(v);
+                                 setFormData({...formData, transactionId: v, transactionNumber: t?.transactionNumber || ''});
                               }}>
                                  <SelectTrigger className="h-12 rounded-xl border-2 font-black text-xs bg-white shadow-sm">
                                     <SelectValue placeholder={isRtl ? "اختر المشروع المفتوح..." : "Select Project..."} />
@@ -882,35 +860,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                                  </SelectContent>
                               </Select>
                            </div>
-
-                           {formData.transactionId && (
-                              <div className="space-y-3 pt-2 border-t animate-in fade-in">
-                                 <Label className="text-[9px] font-black uppercase text-emerald-600 flex items-center gap-1">
-                                    <Target className="h-3 w-3" /> {isRtl ? 'تحديد المرحلة المستهدفة من الزيارة' : 'Target Execution Stage'}
-                                 </Label>
-                                 <div className="grid grid-cols-1 gap-2">
-                                    {transactionStages.map((s, idx) => {
-                                       const isSelected = formData.stageId === s.id;
-                                       return (
-                                          <div 
-                                             key={s.id}
-                                             onClick={() => setFormData({...formData, stageId: s.id, stageName: s.name})}
-                                             className={cn(
-                                                "p-3 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between",
-                                                isSelected ? "bg-emerald-50 border-emerald-500 shadow-md scale-[1.02]" : "bg-white border-slate-100 hover:border-slate-200"
-                                             )}
-                                          >
-                                             <div className="flex items-center gap-3">
-                                                <Badge variant="outline" className="h-5 w-5 p-0 flex items-center justify-center rounded-lg font-black text-[8px] bg-slate-50">{idx + 1}</Badge>
-                                                <span className={cn("text-[10px] font-black", isSelected ? "text-emerald-900" : "text-slate-600")}>{s.name}</span>
-                                             </div>
-                                             {isSelected && <CheckCircle2 className="h-4 w-4 text-emerald-600" />}
-                                          </div>
-                                       );
-                                    })}
-                                 </div>
-                              </div>
-                           )}
                         </div>
                       )}
                    </div>
@@ -942,4 +891,3 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     </Dialog>
   );
 }
-
