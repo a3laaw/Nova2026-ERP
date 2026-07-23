@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -542,7 +541,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                                     cardGradient(m?.color || '')
                                   )}
                                 >
-                                   {/* ACTIONS DROPDOWN */}
+                                   {/* ACTIONS MENU TRIGGER - HIGH VISIBILITY FIXED */}
                                    <div 
                                       className={cn("absolute top-1 z-[70]", isRtl ? "left-1" : "right-1")} 
                                       onClick={e => e.stopPropagation()}
