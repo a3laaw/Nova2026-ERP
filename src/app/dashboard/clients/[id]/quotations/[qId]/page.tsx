@@ -14,7 +14,8 @@ import {
   Percent,
   CheckCircle2,
   Workflow,
-  LayoutGrid
+  LayoutGrid,
+  Plus
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy } from 'firebase/firestore';
