@@ -13,7 +13,8 @@ import {
   Edit3, Trash2, Calculator,
   Percent,
   CheckCircle2,
-  Workflow
+  Workflow,
+  LayoutGrid
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy } from 'firebase/firestore';
@@ -54,7 +55,7 @@ export default function QuotationViewPage() {
 
   const { data: quote, loading } = useDoc<Quotation>(quoteRef);
 
-  // دورة العمل الذكية: التعديل قبل الحفظ الرسمي
+  // دورة العمل الذكية: التعديل التلقائي يفتح مرة واحدة فقط للمسودات الجديدة
   useEffect(() => {
     if (quote && !hasAutoOpened) {
       setEditForm(quote);
@@ -70,7 +71,7 @@ export default function QuotationViewPage() {
     return query(collection(db, paths.technicalStages(companyId, editData.activityTypeId!, editData.serviceId!, editData.subServiceId!)), orderBy('order'));
   }, [db, companyId, editData.activityTypeId, editData.serviceId, editData.subServiceId]);
   
-  const { data: stages, loading: stagesLoading } = useCollection<TechnicalStage>(stagesQuery);
+  const { data: stages } = useCollection<TechnicalStage>(stagesQuery);
 
   const stats = useMemo(() => {
     const items = editData.items || [];
@@ -136,7 +137,7 @@ export default function QuotationViewPage() {
     setEditForm({
       ...editData,
       items: [...(editData.items || []), { 
-        label: `Item ${nextIdx + 1}`, 
+        label: getOrdinalLabel(nextIdx), 
         percentage: 0, 
         unitPrice: 0, 
         quantity: 1, 
@@ -144,6 +145,14 @@ export default function QuotationViewPage() {
         technicalStageId: ''
       }]
     });
+  };
+
+  const getOrdinalLabel = (index: number) => {
+    const arOrdinals = ["الأولى", "الثانية", "الثالثة", "الرابعة", "الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"];
+    const enOrdinals = ["First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth"];
+    const base = isRtl ? "الدفعة" : "Installment";
+    const ordinal = isRtl ? (arOrdinals[index] || `#${index + 1}`) : (enOrdinals[index] || `#${index + 1}`);
+    return `${base} ${ordinal}`;
   };
 
   if (loading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
