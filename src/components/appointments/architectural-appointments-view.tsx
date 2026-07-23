@@ -625,14 +625,10 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
   const [isNewClient, setIsNewClient] = useState(false);
   const [isBusyBlock, setIsBusyBlock] = useState(false);
 
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [stages, setStages] = useState<any[]>([]);
-  const [loadingTrans, setLoadingTrans] = useState(false);
-  const [loadingStages, setLoadingStages] = useState(false);
-
   const [formData, setFormData] = useState({
-    title: '', clientId: '', clientName: '', transactionId: '', transactionNumber: '', stageId: '', stageName: '',
-    newClientName: '', newClientPhone: '', newClientGovId: '', newClientGovName: '', date: '', time: '', notes: ''
+    title: '', clientId: '', clientName: '', 
+    newClientName: '', newClientPhone: '', newClientGovId: '', newClientGovName: '', 
+    date: '', time: '', notes: ''
   });
 
   const targetEngineerId = data?.engineer?.id || data?.appointment?.engineerId;
@@ -646,32 +642,11 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
   }, [clients, targetEngineerId]);
 
   useEffect(() => {
-    if (formData.clientId && db && companyId && formData.clientId !== 'SYSTEM_BLOCK') {
-      setLoadingTrans(true);
-      getDocs(query(collection(db, paths.transactions(companyId)), where('clientId', '==', formData.clientId)))
-        .then(snap => setTransactions(snap.docs.map(d => ({id: d.id, ...d.data()}))))
-        .finally(() => setLoadingTrans(false));
-    } else {
-      setTransactions([]);
-    }
-  }, [formData.clientId, db, companyId]);
-
-  useEffect(() => {
-    if (formData.transactionId && db && companyId) {
-      setLoadingStages(true);
-      getDocs(query(collection(db, paths.transactionStages(companyId, formData.transactionId)), orderBy('order', 'asc')))
-        .then(snap => setStages(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
-        .finally(() => setLoadingStages(false));
-    } else {
-      setStages([]);
-    }
-  }, [formData.transactionId, db, companyId]);
-
-  useEffect(() => {
     if (!isOpen) {
        setFormData({
-         title: '', clientId: '', clientName: '', transactionId: '', transactionNumber: '', stageId: '', stageName: '',
-         newClientName: '', newClientPhone: '', newClientGovId: '', newClientGovName: '', date: '', time: '', notes: ''
+         title: '', clientId: '', clientName: '', 
+         newClientName: '', newClientPhone: '', newClientGovId: '', newClientGovName: '', 
+         date: '', time: '', notes: ''
        });
        setIsNewClient(false);
        setIsBusyBlock(false);
@@ -685,10 +660,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         title: data.appointment?.title || '',
         clientId: data.appointment?.clientId || '',
         clientName: data.appointment?.clientName || '',
-        transactionId: data.appointment?.transactionId || '',
-        transactionNumber: data.appointment?.transactionNumber || '',
-        stageId: data.appointment?.stageId || '',
-        stageName: data.appointment?.stageName || '',
         date: data.appointment ? format(parseISO(data.appointment.start), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
         time: data.slot || (data.appointment ? format(parseISO(data.appointment.start), 'HH:mm') : '08:00'),
         notes: data.appointment?.notes || ''
@@ -753,10 +724,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         title: formData.title || (isBusyBlock ? (isRtl ? 'مشغول' : 'BUSY') : (isRtl ? 'موعد فني' : 'Appt')),
         clientId: targetClientId,
         clientName: targetClientName,
-        transactionId: formData.transactionId,
-        transactionNumber: formData.transactionNumber,
-        stageId: formData.stageId,
-        stageName: formData.stageName,
         engineerId: data.engineer?.id || data.appointment?.engineerId,
         engineerName: data.engineer?.fullName || data.appointment?.engineerName,
         type: apptType,
@@ -782,7 +749,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="rounded-[1.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-xl flex flex-col h-fit max-h-[85vh] z-[101]" dir={dir}>
+      <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-xl flex flex-col h-fit max-h-[85vh] z-[101]" dir={dir}>
         
         <div className="bg-slate-50 p-6 text-slate-900 text-start border-b shrink-0 relative">
            <div className="flex items-center gap-4 pr-10">
@@ -791,7 +758,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
               </div>
               <div className="flex-1 min-w-0">
                  <DialogTitle className="text-lg font-black font-headline truncate">
-                    {data?.mode === 'create' ? (isRtl ? 'حجز موعد' : 'Book Appt') : (isRtl ? 'تعديل موعد' : 'Edit')}
+                    {data?.mode === 'create' ? (isRtl ? 'حجز موعد تصميم' : 'Book Design Appt') : (isRtl ? 'تعديل موعد' : 'Edit')}
                  </DialogTitle>
                  <div className="flex items-center gap-2 mt-1">
                     <Badge variant="outline" className="h-5 px-2 border-2 font-mono font-black text-[9px] bg-white text-slate-500 shadow-sm">
@@ -846,7 +813,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                                setFormData({...formData, newClientGovId: v, newClientGovName: isRtl?g.name:g.nameEn});
                             }}>
                                <SelectTrigger className="h-10 rounded-lg border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                               <SelectContent className="rounded-xl border-2 z-[120]">
+                               <SelectContent className="rounded-xl border-0 shadow-2xl z-[120]">
                                   {governorates?.map((g: any) => <SelectItem key={g.id} value={g.id} className="font-bold text-xs">{isRtl ? g.name : g.nameEn}</SelectItem>)}
                                </SelectContent>
                             </Select>
@@ -860,7 +827,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                       </Label>
                       <Select value={formData.clientId} onValueChange={v => {
                         const c = filteredClients.find((x:any) => x.id === v);
-                        setFormData({...formData, clientId: v, clientName: c?.nameAr || '', transactionId: '', stageId: ''});
+                        setFormData({...formData, clientId: v, clientName: c?.nameAr || ''});
                       }}>
                          <SelectTrigger className="h-12 rounded-xl border-2 font-black bg-white shadow-sm">
                             <SelectValue placeholder={isRtl ? "تحديد العميل..." : "Choose client..."} />
@@ -875,65 +842,25 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                       </Select>
                    </div>
                 )}
-
-                {formData.clientId && !isNewClient && (
-                   <div className="grid grid-cols-2 gap-3 p-4 bg-slate-50 rounded-xl border-2 border-white shadow-inner animate-in slide-in-from-top-1">
-                      <div className="space-y-1.5">
-                         <Label className="text-[9px] font-black uppercase text-blue-600 flex items-center gap-1.5">
-                            <Briefcase className="h-2.5 w-2.5" /> ربط بمشروع
-                         </Label>
-                         <Select value={formData.transactionId} onValueChange={v => {
-                            const t = transactions.find(x => x.id === v);
-                            setFormData({...formData, transactionId: v, transactionNumber: t?.transactionNumber || '', stageId: ''});
-                         }}>
-                            <SelectTrigger className="h-9 rounded-lg border-2 font-bold bg-white text-[10px]">
-                               {loadingTrans ? <Loader2 className="h-3 w-3 animate-spin" /> : <SelectValue placeholder="..." />}
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl border-0 shadow-2xl z-[120]">
-                               {transactions.map(t => (
-                                 <SelectItem key={t.id} value={t.id!} className="font-bold text-[10px]">{t.subServiceName}</SelectItem>
-                               ))}
-                            </SelectContent>
-                         </Select>
-                      </div>
-
-                      <div className="space-y-1.5">
-                         <Label className="text-[9px] font-black uppercase text-blue-600 flex items-center gap-1.5">
-                            <Workflow className="h-2.5 w-2.5" /> المرحلة
-                         </Label>
-                         <Select disabled={!formData.transactionId} value={formData.stageId} onValueChange={v => {
-                            const s = stages.find(x => x.id === v);
-                            setFormData({...formData, stageId: v, stageName: s?.name || ''});
-                         }}>
-                            <SelectTrigger className="h-9 rounded-lg border-2 font-bold bg-white text-[10px]">
-                               {loadingStages ? <Loader2 className="h-3 w-3 animate-spin" /> : <SelectValue placeholder="..." />}
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl border-0 shadow-2xl z-[120]">
-                               {stages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-[10px]">{s.name}</SelectItem>)}
-                            </SelectContent>
-                         </Select>
-                      </div>
-                   </div>
-                )}
              </div>
            )}
 
            <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400">الغرض من الموعد</Label>
-              <Input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="h-10 rounded-lg border-2 font-bold" />
+              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">الغرض من الموعد</Label>
+              <Input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="h-12 rounded-xl border-2 font-bold shadow-inner" placeholder={isRtl ? "مثلاً: مراجعة المخطط الابتدائي" : "e.g. Layout Review"} />
            </div>
 
            <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400">توجيهات فنية</Label>
-              <Textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="min-h-[80px] rounded-lg border-2 p-3 text-xs font-bold" />
+              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">توجيهات فنية للمهندس</Label>
+              <Textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="min-h-[120px] rounded-2xl border-2 bg-slate-50/30 p-4 text-sm font-bold resize-none shadow-inner focus:bg-white transition-all" placeholder="..." />
            </div>
         </div>
 
-        <DialogFooter className="p-5 bg-slate-50 border-t flex flex-row gap-3 shrink-0">
-           <Button variant="outline" onClick={onClose} className="flex-1 h-10 rounded-lg font-bold border-2 text-xs">
+        <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-4 shrink-0 shadow-inner">
+           <Button variant="outline" onClick={onClose} className="flex-1 h-11 rounded-xl font-bold border-2 text-xs bg-white">
               {isRtl ? 'إلغاء' : 'Cancel'}
            </Button>
-           <Button onClick={handleSave} disabled={loading || (!isBusyBlock && !formData.clientId)} className="flex-[2] h-10 rounded-lg font-black text-xs shadow-lg gap-2">
+           <Button onClick={handleSave} disabled={loading || (!isBusyBlock && !formData.clientId)} className="flex-[2] h-11 rounded-xl font-black text-xs shadow-lg gap-2">
               {loading ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
               {isRtl ? 'حفظ وتثبيت' : 'Confirm'}
            </Button>
