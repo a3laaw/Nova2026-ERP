@@ -8,7 +8,6 @@ import {
   updateDoc, 
   serverTimestamp,
   query,
-  orderBy,
   getDocs,
   increment,
   writeBatch,
@@ -77,8 +76,10 @@ export class AppointmentService {
 
   /**
    * حذف الموعد نهائياً من قاعدة البيانات (حذف سيادي)
+   * تم تحسينه لضمان الدقة والسرعة
    */
   async deleteAppointment(id: string): Promise<void> {
+    if (!id) return;
     const ref = doc(this.db, paths.appointments(this.companyId), id);
     deleteDoc(ref).catch(async (err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({

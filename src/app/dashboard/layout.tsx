@@ -33,34 +33,34 @@ export default function DashboardLayout({
   }, [user, authLoading, router]);
 
   /**
-   * Sovereign Absolute Thaw Protocol: 
+   * Sovereign Absolute Thaw Protocol V3: 
    * Aggressively forces the removal of any CSS locks (pointer-events/overflow)
-   * that Radix UI might leave behind on Dialog/Dropdown closure.
+   * that Radix UI or any modal might leave behind.
    */
   useEffect(() => {
     if (typeof document !== 'undefined') {
       const thaw = () => {
-        document.body.style.pointerEvents = 'auto';
-        document.body.style.overflow = 'auto';
+        // Force unlock pointer events on body
+        if (document.body.style.pointerEvents === 'none') {
+          document.body.style.pointerEvents = 'auto';
+        }
+        
+        // Force unlock overflow
+        if (document.body.style.overflow === 'hidden') {
+           document.body.style.overflow = 'auto';
+        }
+
         document.body.removeAttribute('data-scroll-locked');
         
-        // Target specific Radix overlays that might hang
-        const overlays = document.querySelectorAll('[data-radix-focus-guard], [style*="pointer-events: none"]');
-        overlays.forEach(el => {
-          if (el === document.body) {
-             el.style.pointerEvents = 'auto';
-          }
-        });
+        // Clean up focus guards that might be hanging
+        const focusGuards = document.querySelectorAll('[data-radix-focus-guard]');
+        focusGuards.forEach(el => el.remove());
       };
 
       thaw();
-      const interval = setInterval(thaw, 500); // Check every 500ms during path changes
-      const timeout = setTimeout(thaw, 100);
+      const interval = setInterval(thaw, 300); // Check every 300ms
       
-      return () => {
-        clearInterval(interval);
-        clearTimeout(timeout);
-      };
+      return () => clearInterval(interval);
     }
   }, [pathname]);
 

@@ -468,7 +468,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
      
      const service = new AppointmentService(db, companyId);
      service.deleteAppointment(id);
-     toast({ title: isRtl ? "تم إرسال طلب الحذف" : "Delete request sent" });
+     toast({ title: isRtl ? "تم حذف الموعد" : "Appointment Deleted" });
   };
 
   return (
@@ -547,7 +547,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                                                   <MessageSquare className="h-3 w-3 text-primary" /> {isRtl ? 'غرفة العمليات' : 'War Room'}
                                                </DropdownMenuItem>
                                                <DropdownMenuItem onClick={() => onAction('edit', eng, slot, appt)} className="font-bold gap-2 py-2 text-[10px]">
-                                                  <Edit3 className="h-3 w-3 text-blue-500" /> {isRtl ? 'تعديل (إعادة جدولة)' : 'Edit / Reschedule'}
+                                                  <Edit3 className="h-3 w-3 text-blue-500" /> {isRtl ? 'تعديل البيانات' : 'Edit Details'}
                                                </DropdownMenuItem>
                                                <DropdownMenuSeparator />
                                                <DropdownMenuItem onClick={() => handleDeleteAppt(appt.id!)} className="font-bold gap-2 py-2 text-[10px] text-rose-600">
@@ -622,10 +622,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
   const [clientTransactions, setClientTransactions] = useState<any[]>([]);
 
-  /**
-   * Sovereign Thaw Protocol:
-   * Explicitly ensures the body and pointer-events are unlocked when any modal closes.
-   */
   const forceThaw = useCallback(() => {
     if (typeof document !== 'undefined') {
       document.body.style.pointerEvents = 'auto';
@@ -758,32 +754,36 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     }
   };
 
+  const isEdit = data?.mode === 'edit';
+
   return (
     <Dialog open={isOpen} onOpenChange={(v) => { if(!v) { onClose(); forceThaw(); } }}>
       <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg flex flex-col h-fit max-h-[90vh] z-[101]" dir={dir}>
         
         <div className="bg-slate-50 p-6 text-slate-900 text-start border-b shrink-0 relative pr-12 pl-12">
            <DialogTitle className="text-lg font-black font-headline truncate flex items-center gap-3">
-              {data?.mode === 'create' ? <PlusCircle className="h-5 w-5 text-primary" /> : <Edit3 className="h-5 w-5 text-primary" />}
-              {data?.mode === 'create' ? (isRtl ? 'حجز موعد جديد' : 'New Appointment') : (isRtl ? 'إعادة جدولة الموعد' : 'Reschedule')}
+              {isEdit ? <Edit3 className="h-5 w-5 text-primary" /> : <PlusCircle className="h-5 w-5 text-primary" />}
+              {isEdit ? (isRtl ? 'تعديل بيانات الموعد' : 'Edit Appointment') : (isRtl ? 'حجز موعد جديد' : 'New Appointment')}
            </DialogTitle>
         </div>
 
         <div className="flex-1 overflow-y-auto p-8 space-y-6 text-start scrollbar-hide">
            
-           <div className="grid grid-cols-2 gap-4 p-6 bg-slate-900 text-white rounded-[2rem] shadow-2xl relative overflow-hidden ring-4 ring-slate-100">
-              <div className="absolute top-0 right-0 p-4 opacity-10"><Clock className="h-20 w-20" /></div>
-              <div className="space-y-2 relative z-10">
-                 <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'التاريخ المجدول' : 'New Date'}</Label>
-                 <Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="h-11 rounded-xl bg-white/10 border-0 text-white font-black text-lg focus:ring-2 focus:ring-primary" />
-              </div>
-              <div className="space-y-2 relative z-10">
-                 <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'الوقت' : 'New Time'}</Label>
-                 <Input type="time" value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} className="h-11 rounded-xl bg-white/10 border-0 text-white font-black text-lg focus:ring-2 focus:ring-primary" />
-              </div>
-           </div>
+           {!isEdit && (
+             <div className="grid grid-cols-2 gap-4 p-6 bg-slate-900 text-white rounded-[2rem] shadow-2xl relative overflow-hidden ring-4 ring-slate-100">
+                <div className="absolute top-0 right-0 p-4 opacity-10"><Clock className="h-20 w-20" /></div>
+                <div className="space-y-2 relative z-10">
+                   <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'التاريخ المجدول' : 'New Date'}</Label>
+                   <Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="h-11 rounded-xl bg-white/10 border-0 text-white font-black text-lg focus:ring-2 focus:ring-primary" />
+                </div>
+                <div className="space-y-2 relative z-10">
+                   <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'الوقت' : 'New Time'}</Label>
+                   <Input type="time" value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} className="h-11 rounded-xl bg-white/10 border-0 text-white font-black text-lg focus:ring-2 focus:ring-primary" />
+                </div>
+             </div>
+           )}
 
-           {data?.mode === 'create' && (
+           {!isEdit && (
              <div className="grid grid-cols-2 gap-4">
                 <div className={cn(
                   "flex items-center justify-between p-3 rounded-xl border-2 transition-all",
@@ -802,7 +802,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
              </div>
            )}
 
-           {!isBusyBlock && data?.mode === 'create' && (
+           {!isBusyBlock && (
              <div className="space-y-4">
                 {isNewClient ? (
                    <div className="space-y-4 p-5 rounded-2xl border bg-slate-50/50 animate-in fade-in">
