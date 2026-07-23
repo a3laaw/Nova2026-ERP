@@ -15,7 +15,8 @@ import {
   History,
   Wallet,
   ArrowRight,
-  Plus
+  Plus,
+  X
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, where, orderBy } from 'firebase/firestore';
@@ -38,6 +39,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 export default function ContractViewPage() {
   const params = useParams();
   const contractId = params.cId as string;
+  const clientId = params.id as string;
   const { globalUser, user } = useAuthContext();
   const { lang, dir, t } = useLanguage();
   const { permissions, isAdmin } = usePermissions();
@@ -125,6 +127,18 @@ export default function ContractViewPage() {
     }
   };
 
+  /**
+   * بروتوكول الإلغاء الذكي للعقود
+   */
+  const handleCancel = () => {
+    if (contract && !contract.isHistoryRecorded) {
+      router.push(`/dashboard/clients/${clientId}/transactions/${contract.transactionId}`);
+    } else {
+      setIsEditing(false);
+      setEditForm(contract || {});
+    }
+  };
+
   const updateMilestone = (idx: number, field: keyof ContractMilestone, value: any) => {
     const newM = [...(editData.milestones || [])];
     newM[idx] = { ...newM[idx], [field]: value };
@@ -189,12 +203,12 @@ export default function ContractViewPage() {
            )}
            {isEditing ? (
               <>
-                <Button onClick={() => setIsEditing(false)} variant="outline" size="sm" className="rounded-xl h-10 px-6 font-bold bg-white border-2">
+                <Button onClick={handleCancel} variant="outline" size="sm" className="rounded-xl h-10 px-6 font-bold bg-white border-2">
                    {isRtl ? 'إلغاء' : 'Cancel'}
                 </Button>
                 <Button onClick={handleSave} disabled={saving} size="sm" className="rounded-xl h-10 px-8 font-black gap-2 shadow-xl">
                    {saving ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
-                   {contract.status === 'draft' ? (isRtl ? 'اعتماد وحفظ العقد' : 'Commit & Save') : (isRtl ? 'حفظ التعديلات' : 'Save Changes')}
+                   {contract.status === 'draft' && !contract.isHistoryRecorded ? (isRtl ? 'اعتماد وحفظ العقد' : 'Commit & Save') : (isRtl ? 'حفظ التعديلات' : 'Save Changes')}
                 </Button>
               </>
            ) : (
@@ -400,11 +414,12 @@ export default function ContractViewPage() {
          </div>
       </PrintWrapper>
       <div className="max-w-5xl mx-auto px-6 pt-4 flex justify-start print:hidden">
-         <Button variant="ghost" onClick={() => router.back()} className="h-10 px-6 rounded-xl border-2 font-bold bg-white text-slate-400 hover:text-slate-900 transition-all gap-2">
+         <Button variant="ghost" onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${contract.transactionId}`)} className="h-10 px-6 rounded-xl border-2 font-bold bg-white text-slate-400 hover:text-slate-900 transition-all gap-2">
             <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
-            {isRtl ? 'الرجوع لملف العميل' : 'Back to Client'}
+            {isRtl ? 'الرجوع لرادار المعاملة' : 'Back to Project'}
          </Button>
       </div>
     </div>
   );
 }
+

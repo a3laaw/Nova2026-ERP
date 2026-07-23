@@ -16,7 +16,8 @@ import {
   Workflow,
   LayoutGrid,
   Plus,
-  ArrowRight
+  ArrowRight,
+  X
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy } from 'firebase/firestore';
@@ -39,10 +40,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 export default function QuotationViewPage() {
   const params = useParams();
   const quotationId = params.qId as string;
+  const clientId = params.id as string;
   const { globalUser, user } = useAuthContext();
   const { lang, dir, t } = useLanguage();
   const { permissions } = usePermissions();
   const db = useFirestore();
+  const router = useRouter();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
@@ -127,6 +130,21 @@ export default function QuotationViewPage() {
     }
   };
 
+  /**
+   * بروتوكول الإلغاء الذكي:
+   * إذا كانت مسودة جديدة تماماً -> نعود لشاشة المعاملة.
+   * إذا كانت موجودة مسبقاً -> نغلق وضع التعديل فقط.
+   */
+  const handleCancel = () => {
+    if (quote && !quote.isHistoryRecorded) {
+      // العودة لرادار المعاملة
+      router.push(`/dashboard/clients/${clientId}/transactions/${quote.transactionId}`);
+    } else {
+      setIsEditing(false);
+      setEditForm(quote || {});
+    }
+  };
+
   const updateItem = (idx: number, field: keyof QuotationItem, val: any) => {
     const newItems = [...(editData.items || [])];
     (newItems[idx] as any)[field] = val;
@@ -178,12 +196,12 @@ export default function QuotationViewPage() {
         <div className="flex gap-2">
            {isEditing ? (
               <>
-                <Button onClick={() => setIsEditing(false)} variant="outline" size="sm" className="h-10 px-6 font-bold bg-white border-2 rounded-xl">
+                <Button onClick={handleCancel} variant="outline" size="sm" className="h-10 px-6 font-bold bg-white border-2 rounded-xl">
                    {isRtl ? 'إلغاء' : 'Cancel'}
                 </Button>
                 <Button onClick={handleSave} disabled={saving} size="sm" className="h-10 px-8 rounded-xl font-black gap-2 shadow-xl">
                    {saving ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
-                   {quote.status === 'draft' ? (isRtl ? 'اعتماد وحفظ عرض السعر' : 'Commit & Save') : (isRtl ? 'حفظ التعديلات' : 'Save Changes')}
+                   {quote.status === 'draft' && !quote.isHistoryRecorded ? (isRtl ? 'اعتماد وحفظ عرض السعر' : 'Commit & Save') : (isRtl ? 'حفظ التعديلات' : 'Save Changes')}
                 </Button>
               </>
            ) : (
@@ -436,11 +454,12 @@ export default function QuotationViewPage() {
          </div>
       </PrintWrapper>
       <div className="max-w-5xl mx-auto px-6 pt-4 flex justify-start print:hidden">
-         <Button variant="ghost" onClick={() => router.back()} className="h-10 px-6 rounded-xl border-2 font-bold bg-white text-slate-400 hover:text-slate-900 transition-all gap-2">
+         <Button variant="ghost" onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${quote.transactionId}`)} className="h-10 px-6 rounded-xl border-2 font-bold bg-white text-slate-400 hover:text-slate-900 transition-all gap-2">
             <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
-            {isRtl ? 'الرجوع لملف العميل' : 'Back to Client'}
+            {isRtl ? 'الرجوع لرادار المعاملة' : 'Back to Project'}
          </Button>
       </div>
     </div>
   );
 }
+
