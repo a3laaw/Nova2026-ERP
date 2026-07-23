@@ -1,5 +1,6 @@
 /**
  * @fileOverview القائمة الجانبية (Sidebar) بتصميم الكبسولات البرتقالية كاملة الاستدارة مع تلميحات وقوائم منبثقة باللون الكحلي السيادي.
+ * تم تحسين القوائم المنبثقة لضمان عدم التداخل واستجابة الزوم.
  */
 
 "use client"
@@ -126,13 +127,14 @@ export function DashboardSidebar() {
     return menuItems.filter(item => {
       if (!canAccess(item.resource)) return false;
       if (item.subItems) {
-        item.subItems = item.subItems.filter(sub => {
+        const filteredSubs = item.subItems.filter(sub => {
           const access = check(item.resource, (sub as any).requiredAction || 'view');
           if (!access.can) return false;
           if ((sub as any).hideIfOwnScope && access.scope === 'own') return false;
           return true;
         });
-        if (item.subItems.length === 0 && item.resource !== 'dashboard') return false;
+        if (filteredSubs.length === 0 && item.resource !== 'dashboard') return false;
+        return { ...item, subItems: filteredSubs };
       }
       return true;
     });
@@ -214,30 +216,32 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                   <button className={collapsedStyle}>
                     <item.icon className="h-6 w-6" />
                   </button>
-                  {/* Floating Popover - Deep Navy Theme */}
+                  {/* Floating Popover - Deep Navy Theme Optimized for Zoom */}
                   <div className={cn(
                     "absolute top-0 z-[999] hidden group-hover:block animate-in fade-in zoom-in-95 duration-200",
-                    isRtl ? "right-full mr-2" : "left-full ml-2"
+                    isRtl ? "right-full mr-3" : "left-full ml-3"
                   )}>
-                    <div className="bg-white border-2 border-slate-100 shadow-2xl rounded-2xl min-w-[200px] overflow-hidden">
-                      <div className="px-4 py-3 bg-[#1e1b4b] border-b border-white/5 flex items-center justify-between">
+                    <div className="bg-white border-2 border-slate-100 shadow-3xl rounded-[1.5rem] min-w-[220px] overflow-hidden ring-4 ring-black/[0.02]">
+                      <div className="px-5 py-4 bg-[#1e1b4b] border-b border-white/5 flex items-center justify-between">
                         <p className="text-[10px] font-black text-white uppercase tracking-widest">{item.title}</p>
-                        <item.icon className="h-3 w-3 text-[#e87c24]" />
+                        <div className="h-6 w-6 rounded-lg bg-primary/20 flex items-center justify-center">
+                          <item.icon className="h-3.5 w-3.5 text-primary" />
+                        </div>
                       </div>
-                      <div className="p-3 space-y-2 bg-[#F8F9FA]/50">
+                      <div className="p-3 space-y-1.5 bg-[#F8F9FA]/50 max-h-[60vh] overflow-y-auto scrollbar-hide">
                         {item.subItems.map((sub: any) => (
                           <Link 
                             key={sub.title} 
                             href={sub.url}
                             className={cn(
-                              "flex items-center justify-between h-10 px-4 rounded-xl text-[11px] font-black transition-all shadow-sm border border-slate-100 bg-white",
+                              "flex items-center justify-between h-11 px-4 rounded-xl text-[11px] font-black transition-all shadow-sm border border-slate-100 bg-white group/sub",
                               pathname === sub.url 
-                                ? "bg-[#FFFDE7] text-[#e87c24] border-primary/20" 
-                                : "text-slate-700 hover:bg-gradient-to-r hover:from-[#FFF3E0] hover:to-[#FFFDE7] hover:text-[#e87c24] hover:-translate-y-0.5"
+                                ? "bg-primary text-white border-primary shadow-primary/20" 
+                                : "text-slate-700 hover:bg-primary/5 hover:text-primary hover:border-primary/20 hover:-translate-y-0.5"
                             )}
                           >
-                            <span>{sub.title}</span>
-                            <sub.icon className={cn("h-3.5 w-3.5 transition-colors", pathname === sub.url ? "text-[#e87c24]" : "opacity-30")} />
+                            <span className="truncate">{sub.title}</span>
+                            <sub.icon className={cn("h-3.5 w-3.5 transition-all", pathname === sub.url ? "text-white" : "opacity-30 group-hover/sub:opacity-100 group-hover/sub:scale-110")} />
                           </Link>
                         ))}
                       </div>
@@ -245,7 +249,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                   </div>
                 </div>
               </TooltipTrigger>
-              <TooltipContent side={isRtl ? "left" : "right"} className="bg-[#1e1b4b] text-white font-black text-[10px] rounded-none border-0 shadow-2xl py-2 px-4">
+              <TooltipContent side={isRtl ? "left" : "right"} className="bg-[#1e1b4b] text-white font-black text-[10px] rounded-lg border-0 shadow-2xl py-2 px-4">
                 {item.title}
               </TooltipContent>
             </Tooltip>
@@ -258,7 +262,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                   <item.icon className="h-6 w-6" />
                 </Link>
               </TooltipTrigger>
-              <TooltipContent side={isRtl ? "left" : "right"} className="bg-[#1e1b4b] text-white font-black text-[10px] rounded-none border-0 shadow-2xl py-2 px-4">
+              <TooltipContent side={isRtl ? "left" : "right"} className="bg-[#1e1b4b] text-white font-black text-[10px] rounded-lg border-0 shadow-2xl py-2 px-4">
                 {item.title}
               </TooltipContent>
             </Tooltip>
