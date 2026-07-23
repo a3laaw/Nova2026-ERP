@@ -14,7 +14,8 @@ import {
   limit,
   writeBatch,
   updateDoc,
-  addDoc
+  addDoc,
+  deleteDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { BOQTemplate, BOQTemplateItem, QuotationTemplate, ContractTemplate } from '@/types/templates';
@@ -106,10 +107,16 @@ export class DocumentService {
         type: 'system_log',
         content: `تم اعتماد وحفظ عرض سعر جديد للمعاملة: ${currentData.name}`,
         userId, 
-        userName: data.updatedByName || 'User', 
+        userName: (data as any).updatedByName || 'User', 
         companyId: this.companyId
       });
     }
+  }
+
+  async deleteQuotation(id: string) {
+    ensureActionPermission(this.permissions, 'projects:delete');
+    const docRef = doc(this.db, paths.quotations(this.companyId), id);
+    return deleteDoc(docRef);
   }
 
   async instantiateContractFromTemplate(
@@ -166,6 +173,12 @@ export class DocumentService {
         companyId: this.companyId
       });
     }
+  }
+
+  async deleteContract(id: string) {
+    ensureActionPermission(this.permissions, 'projects:delete');
+    const docRef = doc(this.db, paths.contracts(this.companyId), id);
+    return deleteDoc(docRef);
   }
 
   async instantiateBoqFromTemplate(

@@ -19,7 +19,9 @@ import {
   ChevronRight, Sparkles, CheckCircle2,
   ExternalLink,
   Info,
-  History
+  History,
+  Trash2,
+  AlertTriangle
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
@@ -32,6 +34,16 @@ import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useRouter } from 'next/navigation';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Props {
   isOpen: boolean;
@@ -45,7 +57,7 @@ interface Props {
 export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction, clientId, clientName }: Props) {
   const { lang, dir, t } = useLanguage();
   const { globalUser, user } = useAuthContext();
-  const { permissions } = usePermissions();
+  const { permissions, isAdmin } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
@@ -53,6 +65,7 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
 
   const [loading, setLoading] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const docsQuery = useMemo(() => {
     if (!companyId || !db || !transaction.id) return null;
@@ -87,7 +100,6 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
 
       toast({ title: isRtl ? "تم تجهيز المسودة - جاري الانتقال للتعديل" : "Draft Ready - Redirecting to Edit" });
       
-      // التوجيه الفوري لصفحة التعديل لتطبيق دورة العمل (تعديل قبل حفظ نهائي)
       onClose();
       if (type === 'quotation') {
         router.push(`/dashboard/clients/${clientId}/quotations/${docId}`);
@@ -97,6 +109,25 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
 
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!db || !companyId || !deletingId) return;
+    setLoading(true);
+    try {
+      const service = new DocumentService(db, companyId, permissions);
+      if (type === 'quotation') {
+        await service.deleteQuotation(deletingId);
+      } else {
+        await service.deleteContract(deletingId);
+      }
+      toast({ title: isRtl ? "تم حذف المستند بنجاح" : "Document deleted" });
+      setDeletingId(null);
+    } catch (e) {
+      toast({ variant: "destructive", title: t('error') });
     } finally {
       setLoading(false);
     }
@@ -158,7 +189,7 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
                  <div className="space-y-3">
                     <Label className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'اختر القالب المعتمد' : 'Select Template'}</Label>
                     <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-                       <SelectTrigger className="h-14 rounded-2xl border-2 bg-white font-bold">
+                       <SelectTrigger className="h-14 rounded-2xl border-2 bg-white font-black">
                           <SelectValue placeholder="..." />
                        </SelectTrigger>
                        <SelectContent className="rounded-xl border-0 shadow-2xl">
@@ -219,7 +250,7 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
                            </div>
                            
                            <div className="flex items-center gap-2">
-                              {type === 'contract' && doc.status !== 'paid' && (
+                              {type === 'contract' && doc.status !== 'paid' && isAdmin && (
                                 <Button 
                                   onClick={() => handleMarkAsPaid(doc.id)}
                                   disabled={loading}
@@ -237,6 +268,16 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
                               >
                                  <ExternalLink className="h-4 w-4" />
                               </Button>
+                              {isAdmin && (
+                                <Button 
+                                  onClick={() => setDeletingId(doc.id)}
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-9 w-9 rounded-xl bg-slate-50 text-rose-300 hover:bg-rose-50 hover:text-rose-600 transition-all"
+                                >
+                                   <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
                            </div>
                         </CardContent>
                      </Card>
@@ -250,6 +291,31 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
            <Button variant="outline" onClick={onClose} className="rounded-xl font-black h-12 px-8">إغلاق</Button>
         </DialogFooter>
       </DialogContent>
+
+      <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
+        <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white z-[200]" dir={dir}>
+          <AlertDialogHeader>
+             <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50">
+                <AlertTriangle className="h-10 w-10" />
+             </div>
+             <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900 leading-tight">{t('confirmDelete')}</AlertDialogTitle>
+             <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">
+                {isRtl 
+                  ? 'هل أنت متأكد؟ سيتم حذف هذا المستند نهائياً من أرشيف المعاملة. لا يمكن التراجع عن هذا الإجراء.' 
+                  : 'Are you sure? This document will be permanently removed from the transaction archive.'}
+             </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-12 gap-4 flex flex-row items-center justify-center">
+            <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete} 
+              className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200"
+            >
+               {isRtl ? 'نعم، احذف المستند' : 'Confirm Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
