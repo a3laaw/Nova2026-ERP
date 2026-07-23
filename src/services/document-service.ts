@@ -128,7 +128,6 @@ export class DocumentService {
     
     const quote = quoteSnap.data() as Quotation;
     
-    // 1. البحث عن قالب عقد افتراضي أو مطابق للخدمة
     const templatesQuery = query(
       collection(this.db, paths.contractTemplates(this.companyId)),
       where('subServiceId', '==', quote.subServiceId),
@@ -137,7 +136,6 @@ export class DocumentService {
     const templatesSnap = await getDocs(templatesQuery);
     const template = !templatesSnap.empty ? templatesSnap.docs[0].data() as ContractTemplate : null;
 
-    // 2. إنشاء العقد الجديد
     const contractRef = doc(collection(this.db, paths.contracts(this.companyId)));
     const contractData: Contract = {
       id: contractRef.id,
@@ -149,13 +147,16 @@ export class DocumentService {
       status: 'draft',
       totalAmount: quote.totalAmount,
       pricingMode: quote.pricingMode,
+      // نسخ السياق التشغيلي لضمان عمل رادار المراحل في العقد
+      activityTypeId: quote.activityTypeId || '',
+      serviceId: quote.serviceId || '',
+      subServiceId: quote.subServiceId || '',
       version: 1,
       isPaid: false,
       isHistoryRecorded: true,
       legalText: template?.legalText || '',
       introText: template?.introText || quote.introText || '',
       clauses: template?.clauses || [],
-      // تحويل بنود عرض السعر إلى دفعات العقد
       milestones: (quote.items || []).map(item => ({
         name: item.label || item.description,
         percentage: item.percentage || 0,
@@ -173,7 +174,6 @@ export class DocumentService {
 
     await setDoc(contractRef, contractData);
 
-    // 3. توثيق العملية في سجل العميل
     const clientService = new ClientService(this.db, this.companyId);
     await clientService.addHistory(quote.clientId, {
       type: 'system_log',

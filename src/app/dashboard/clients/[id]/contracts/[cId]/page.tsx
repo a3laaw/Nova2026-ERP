@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useEffect, useState } from 'react';
@@ -69,18 +68,15 @@ export default function ContractViewPage() {
     }
   }, [contract, hasAutoOpened]);
 
-  const getOrdinalLabel = (index: number) => {
-    const arOrdinals = ["الأولى", "الثانية", "الثالثة", "الرابعة", "الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"];
-    const enOrdinals = ["First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth"];
-    const base = isRtl ? "الدفعة" : "Installment";
-    const ordinal = isRtl ? (arOrdinals[index] || `#${index + 1}`) : (enOrdinals[index] || `#${index + 1}`);
-    return `${base} ${ordinal}`;
-  };
-
+  // جلب المراحل الفنية بناءً على المسار الموروث في العقد
   const stagesQuery = useMemo(() => {
-    if (!companyId || !db || !editData.activityTypeId || !editData.serviceId || !editData.subServiceId) return null;
-    return query(collection(db, paths.technicalStages(companyId, editData.activityTypeId!, editData.serviceId!, editData.subServiceId!)), orderBy('order'));
-  }, [db, companyId, editData.activityTypeId, editData.serviceId, editData.subServiceId]);
+    const actId = editData.activityTypeId || contract?.activityTypeId;
+    const srvId = editData.serviceId || contract?.serviceId;
+    const subId = editData.subServiceId || contract?.subServiceId;
+
+    if (!companyId || !db || !actId || !srvId || !subId) return null;
+    return query(collection(db, paths.technicalStages(companyId, actId, srvId, subId)), orderBy('order'));
+  }, [db, companyId, editData.activityTypeId, editData.serviceId, editData.subServiceId, contract]);
   
   const { data: stages } = useCollection<TechnicalStage>(stagesQuery);
 
@@ -127,9 +123,6 @@ export default function ContractViewPage() {
     }
   };
 
-  /**
-   * بروتوكول الإلغاء الذكي للعقود
-   */
   const handleCancel = () => {
     if (contract && !contract.isHistoryRecorded) {
       router.push(`/dashboard/clients/${clientId}/transactions/${contract.transactionId}`);
@@ -154,7 +147,8 @@ export default function ContractViewPage() {
         percentage: 0, 
         amount: 0, 
         timing: 'at', 
-        contractualEvent: 'MANUAL' 
+        technicalStageId: 'SIGNING',
+        contractualEvent: 'SIGNING' 
       }]
     });
   };
@@ -184,12 +178,10 @@ export default function ContractViewPage() {
     <div className="space-y-6 pb-20 animate-in fade-in duration-700 bg-slate-50" dir={dir}>
       <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 print:hidden px-6 pt-6 text-start">
         <div className="flex items-center gap-4">
-           {/* زر الرجوع في الأعلى - تصميم رشيق */}
            <Button 
              variant="ghost" 
              onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${contract.transactionId}`)} 
              className="h-10 w-10 p-0 rounded-xl border-2 bg-white text-slate-400 hover:text-slate-900 transition-all shadow-sm shrink-0"
-             title={isRtl ? 'الرجوع لرادار المعاملة' : 'Back to Project'}
            >
               <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
            </Button>
@@ -345,15 +337,20 @@ export default function ContractViewPage() {
                                 <td className="p-4 text-start">
                                    {isEditing ? (
                                       <Select value={m.technicalStageId || 'SIGNING'} onValueChange={v => updateMilestone(idx, 'technicalStageId', v)}>
-                                         <SelectTrigger className="h-8 rounded-lg border-2 font-bold text-[10px]"><SelectValue /></SelectTrigger>
+                                         <SelectTrigger className="h-8 rounded-lg border-2 font-bold text-[9px] bg-white"><SelectValue /></SelectTrigger>
                                          <SelectContent className="rounded-xl border-2 shadow-2xl">
                                             <SelectItem value="SIGNING" className="font-bold text-[10px]">توقيع العقد</SelectItem>
-                                            {stages?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-[10px]">{s.name}</SelectItem>)}
+                                            {stages?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-[10px] py-2">
+                                               <span className="flex items-center gap-1"><Workflow className="h-2.5 w-2.5 text-primary" /> {s.name}</span>
+                                            </SelectItem>)}
                                          </SelectContent>
                                       </Select>
                                    ) : (
-                                      <Badge variant="outline" className="bg-slate-50 font-black text-[9px] border-slate-200">
-                                         {m.technicalStageId === 'SIGNING' ? (isRtl ? 'عند التوقيع' : 'Signing') : (stages?.find(s => s.id === m.technicalStageId)?.name || 'Manual')}
+                                      <Badge variant="outline" className={cn(
+                                        "font-black text-[9px] border-0 px-3 h-5",
+                                        m.technicalStageId === 'SIGNING' ? "bg-emerald-50 text-emerald-600" : "bg-primary/5 text-primary"
+                                      )}>
+                                         {m.technicalStageId === 'SIGNING' ? (isRtl ? 'عند التوقيع' : 'Signing') : (stages?.find(s => s.id === m.technicalStageId)?.name || (isRtl ? 'مرحلة ميدانية' : 'Field Stage'))}
                                       </Badge>
                                    )}
                                 </td>

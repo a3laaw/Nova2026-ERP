@@ -19,6 +19,11 @@ export interface BaseDocument extends BaseReference {
   version: number;
   createdBy: string;
   updatedBy: string;
+  // السياق التشغيلي الموروث من القالب لضمان ربط المسارات الفنية
+  activityTypeId?: string;
+  serviceId?: string;
+  subServiceId?: string;
+  isHistoryRecorded?: boolean;
 }
 
 export interface Quotation extends BaseDocument {
@@ -38,7 +43,7 @@ export interface Contract extends BaseDocument {
   clauses: string[];
   milestones: ContractMilestone[];
   contractType?: string;
-  isPaid?: boolean; // New flag to explicitly mark as paid
+  isPaid?: boolean; 
 }
 
 export interface BOQItem extends BaseReference {
@@ -89,9 +94,6 @@ export interface BOQ extends BaseDocument {
   name: string;
   description?: string;
   templateName?: string;
-  activityTypeId?: string;
-  serviceId?: string;
-  subServiceId?: string;
   measurementMode: MeasurementMode;
 }
 
@@ -138,7 +140,7 @@ export interface BOQVariationItem extends BaseReference {
   localStageName?: string;
   localStageCode?: string;
   insertAfterStageId?: string;   
-  isComplementary?: boolean; // NEW: flag for parallel manual stages
+  isComplementary?: boolean; 
   targetSectionId?: string | null;
   technicalStageIds?: string[];
 }
