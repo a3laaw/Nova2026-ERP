@@ -559,14 +559,13 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                                          )}
                                       </div>
                                       
-                                      <div className="relative z-20">
+                                      <div className="relative z-20" onClick={e => e.stopPropagation()}>
                                         <DropdownMenu>
                                            <DropdownMenuTrigger asChild>
                                               <Button 
                                                 variant="ghost" 
                                                 size="icon" 
-                                                onClick={e => e.stopPropagation()} 
-                                                className="h-7 w-7 rounded-full bg-white/40 hover:bg-white text-slate-900 shadow-sm border border-black/5"
+                                                className="h-8 w-8 rounded-full bg-white/60 hover:bg-white text-slate-900 shadow-sm border border-black/5"
                                               >
                                                  <MoreVertical className="h-4 w-4" />
                                               </Button>
@@ -574,17 +573,17 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                                            <DropdownMenuContent align="end" className="rounded-xl border-2 shadow-2xl z-[120] bg-white min-w-[160px]">
                                               <DropdownMenuLabel className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'الإجراءات' : 'Actions'}</DropdownMenuLabel>
                                               <DropdownMenuSeparator />
-                                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/appointments/${appt.id}`); }} className="font-bold gap-2 py-2 cursor-pointer text-[11px]">
+                                              <DropdownMenuItem onClick={() => router.push(`/dashboard/appointments/${appt.id}`)} className="font-bold gap-2 py-2 cursor-pointer text-[11px]">
                                                  <MessageSquare className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'غرفة العمليات' : 'War Room'}
                                               </DropdownMenuItem>
-                                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAction('edit', eng, slot, appt); }} className="font-bold gap-2 py-2 cursor-pointer text-[11px]">
+                                              <DropdownMenuItem onClick={() => onAction('edit', eng, slot, appt)} className="font-bold gap-2 py-2 cursor-pointer text-[11px]">
                                                  <Edit3 className="h-3.5 w-3.5 text-blue-500" /> {isRtl ? 'تعديل' : 'Edit'}
                                               </DropdownMenuItem>
-                                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleCancelAppt(appt.id!); }} className="font-bold gap-2 py-2 cursor-pointer text-[11px]">
+                                              <DropdownMenuItem onClick={() => handleCancelAppt(appt.id!)} className="font-bold gap-2 py-2 cursor-pointer text-[11px]">
                                                  <CalendarX className="h-3.5 w-3.5 text-orange-500" /> {isRtl ? 'إلغاء' : 'Cancel'}
                                               </DropdownMenuItem>
                                               <DropdownMenuSeparator />
-                                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDeleteAppt(appt.id!); }} className="font-bold gap-2 py-2 cursor-pointer text-[11px] text-rose-600 focus:text-rose-600 focus:bg-rose-50">
+                                              <DropdownMenuItem onClick={() => handleDeleteAppt(appt.id!)} className="font-bold gap-2 py-2 cursor-pointer text-[11px] text-rose-600 focus:text-rose-600 focus:bg-rose-50">
                                                  <Trash2 className="h-3.5 w-3.5" /> {isRtl ? 'حذف نهائي' : 'Delete'}
                                               </DropdownMenuItem>
                                            </DropdownMenuContent>
@@ -759,15 +758,15 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
       <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-xl flex flex-col h-fit max-h-[85vh] z-[101]" dir={dir}>
         
         <div className="bg-slate-50 p-6 text-slate-900 text-start border-b shrink-0 relative">
-           <div className="flex items-center gap-4 pr-12">
-              <div className="h-11 w-11 bg-white rounded-xl flex items-center justify-center text-primary shadow-md border-2 border-primary/10 shrink-0">
-                 {data?.mode === 'create' ? <PlusCircle className="h-6 w-6" /> : <Edit3 className="h-6 w-6" />}
+           <div className="flex items-center gap-4 pr-14">
+              <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-primary shadow-md border-2 border-primary/10 shrink-0">
+                 {data?.mode === 'create' ? <PlusCircle className="h-5 w-5" /> : <Edit3 className="h-5 w-5" />}
               </div>
               <div className="flex-1 min-w-0">
                  <DialogTitle className="text-lg font-black font-headline truncate">
                     {data?.mode === 'create' ? (isRtl ? 'حجز موعد تصميم' : 'Book Design Appt') : (isRtl ? 'تعديل موعد' : 'Edit')}
                  </DialogTitle>
-                 <div className="flex items-center gap-2 mt-1">
+                 <div className="flex items-center gap-2 mt-0.5">
                     <Badge variant="outline" className="h-5 px-2 border-2 font-mono font-black text-[9px] bg-white text-slate-500 shadow-sm">
                        <Clock className="h-3 w-3 me-1.5 opacity-40" /> {formData.time}
                     </Badge>
@@ -783,18 +782,14 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                   "flex items-center justify-between p-3 rounded-xl transition-all border-2",
                   isNewClient ? "bg-primary/5 border-primary/20 shadow-sm" : "bg-slate-50 border-white shadow-inner"
                 )}>
-                   <div className="text-start">
-                      <Label className="font-black text-[9px] uppercase text-slate-500">جديد؟</Label>
-                   </div>
+                   <Label className="font-black text-[9px] uppercase text-slate-500">جديد؟</Label>
                    <Switch checked={isNewClient} onCheckedChange={v => { setIsNewClient(v); if(v) setIsBusyBlock(false); }} className="scale-75" />
                 </div>
                 <div className={cn(
                   "flex items-center justify-between p-3 rounded-xl transition-all border-2",
                   isBusyBlock ? "bg-slate-900 text-white border-primary" : "bg-slate-800 text-white opacity-40"
                 )}>
-                   <div className="text-start">
-                      <Label className="font-black text-[9px] uppercase text-primary">Busy</Label>
-                   </div>
+                   <Label className="font-black text-[9px] uppercase text-primary">Busy</Label>
                    <Switch checked={isBusyBlock} onCheckedChange={v => { setIsBusyBlock(v); if(v) setIsNewClient(false); }} className="scale-75" />
                 </div>
              </div>
@@ -820,7 +815,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                                setFormData({...formData, newClientGovId: v, newClientGovName: isRtl?g.name:g.nameEn});
                             }}>
                                <SelectTrigger className="h-10 rounded-lg border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                               <SelectContent className="rounded-xl border-0 shadow-2xl z-[120]">
+                               <SelectContent className="rounded-xl border-0 shadow-2xl z-[130]">
                                   {governorates?.map((g: any) => <SelectItem key={g.id} value={g.id} className="font-bold text-xs">{isRtl ? g.name : g.nameEn}</SelectItem>)}
                                </SelectContent>
                             </Select>
@@ -836,10 +831,10 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                         const c = filteredClients.find((x:any) => x.id === v);
                         setFormData({...formData, clientId: v, clientName: c?.nameAr || ''});
                       }}>
-                         <SelectTrigger className="h-12 rounded-xl border-2 font-black bg-white shadow-sm">
-                            <SelectValue placeholder={isRtl ? "تحديد العميل..." : "Choose client..."} />
+                         <SelectTrigger className="h-11 rounded-xl border-2 font-black bg-white shadow-sm">
+                            <SelectValue placeholder={isRtl ? "تحديد العميل من القائمة..." : "Choose client..."} />
                          </SelectTrigger>
-                         <SelectContent className="rounded-xl border-0 shadow-3xl max-h-[250px] z-[120]">
+                         <SelectContent className="rounded-xl border-0 shadow-3xl max-h-[250px] z-[130]">
                             {filteredClients.map((c: any) => (
                               <SelectItem key={c.id} value={c.id!} className="font-black text-[11px] py-2">
                                  {c.nameAr} <span className="text-[8px] opacity-30 ms-2">#{c.fileNumber}</span>
@@ -854,20 +849,20 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
            <div className="space-y-1.5">
               <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">الغرض من الموعد</Label>
-              <Input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="h-12 rounded-xl border-2 font-bold shadow-inner" placeholder={isRtl ? "مثلاً: مراجعة المخطط الابتدائي" : "e.g. Layout Review"} />
+              <Input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="h-11 rounded-xl border-2 font-bold shadow-inner" placeholder={isRtl ? "مثلاً: مراجعة المخطط الابتدائي" : "e.g. Layout Review"} />
            </div>
 
            <div className="space-y-1.5">
               <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">توجيهات فنية للمهندس</Label>
-              <Textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="min-h-[120px] rounded-2xl border-2 bg-slate-50/30 p-4 text-sm font-bold resize-none shadow-inner focus:bg-white transition-all" placeholder="..." />
+              <Textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="min-h-[100px] rounded-xl border-2 bg-slate-50/30 p-4 text-xs font-bold resize-none shadow-inner focus:bg-white transition-all" placeholder="..." />
            </div>
         </div>
 
-        <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-4 shrink-0 shadow-inner">
+        <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-4 shrink-0 shadow-[0_-10px_20px_-5px_rgba(0,0,0,0.05)]">
            <Button variant="outline" onClick={onClose} className="flex-1 h-11 rounded-xl font-bold border-2 text-xs bg-white">
               {isRtl ? 'إلغاء' : 'Cancel'}
            </Button>
-           <Button onClick={handleSave} disabled={loading || (!isBusyBlock && !formData.clientId)} className="flex-[2] h-11 rounded-xl font-black text-xs shadow-lg gap-2">
+           <Button onClick={handleSave} disabled={loading || (!isBusyBlock && !formData.clientId)} className="flex-[2] h-11 rounded-xl font-black text-xs shadow-lg gap-2 border-b-2 border-orange-700/30">
               {loading ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
               {isRtl ? 'حفظ وتثبيت' : 'Confirm'}
            </Button>
