@@ -5,9 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 
 /**
- * @fileOverview صفحة الحجز المنفصلة (Duplicated).
- * تم استبدالها بالكامل بالنافذة المنبثقة الذكية في Architectural Radar.
- * تقوم هذه الصفحة الآن بإعادة توجيه المستخدم لضمان وحدة المرجع.
+ * @fileOverview صفحة الحجز المنفصلة المكررة.
+ * تم تحويلها لإعادة توجيه المستخدم للرادار المركزي لضمان وحدة المرجع.
  */
 export default function NewAppointmentRedirectPage() {
   const router = useRouter();

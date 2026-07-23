@@ -99,11 +99,11 @@ function getVisitColor(visitCount: number, status?: string, apptType?: string): 
 }
 
 function cardGradient(color: string) {
-  if (color === '#facc15') return "bg-yellow-50 border-yellow-200 text-yellow-900 shadow-md";
-  if (color === '#22c55e') return "bg-emerald-50 border-emerald-200 text-emerald-900 shadow-md";
-  if (color === '#3b82f6') return "bg-blue-50 border-blue-200 text-blue-900 shadow-md";
+  if (color === '#facc15') return "bg-yellow-50 border-yellow-200 text-yellow-900 shadow-sm";
+  if (color === '#22c55e') return "bg-emerald-50 border-emerald-200 text-emerald-900 shadow-sm";
+  if (color === '#3b82f6') return "bg-blue-50 border-blue-200 text-blue-900 shadow-sm";
   if (color === '#475569') return "bg-slate-100 border-slate-300 text-slate-600 grayscale opacity-80";
-  return "bg-slate-50 border-slate-200 text-slate-900 shadow-md";
+  return "bg-slate-50 border-slate-200 text-slate-900 shadow-sm";
 }
 
 function generateTimeSlots(s: string, e: string, duration: number, rest: number): string[] {
@@ -304,8 +304,6 @@ export function ArchitecturalAppointmentsView() {
     <div className="space-y-10 animate-in fade-in duration-700" dir={dir}>
       
       <div className="flex flex-col items-center gap-6 print:hidden">
-        <h2 className="text-xl font-black text-primary uppercase tracking-widest">{isRtl ? 'رادار المواعيد المعماري' : 'Architectural Radar'}</h2>
-        
         <div className="flex items-center gap-6 w-full max-w-4xl justify-center">
            <Button 
              variant="ghost" 
@@ -531,19 +529,18 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
 
                         if (appt) {
                            const m = meta.get(appt.id);
-                           const client = clients.get(appt.clientId);
                            const isBusy = appt.type === 'busy_blocked';
 
                            return (
-                             <td key={eng.id} className="p-1 border-b-2 border-slate-200 border-s-2 border-s-slate-100 align-top relative">
+                             <td key={eng.id} className="p-1 border-b-2 border-slate-200 border-s-2 border-s-slate-100 align-top relative overflow-visible">
                                 <Card 
                                   onClick={() => !isBusy && router.push(`/dashboard/appointments/${appt.id}`)}
                                   className={cn(
-                                    "border-2 p-3 rounded-xl h-full shadow-lg relative group/card cursor-pointer transition-all hover:ring-4 hover:ring-primary/5 z-10", 
+                                    "border-2 p-3 rounded-xl h-full shadow-lg relative group/card cursor-pointer transition-all hover:ring-4 hover:ring-primary/5", 
                                     cardGradient(m?.color || '')
                                   )}
                                 >
-                                   {/* ACTIONS MENU TRIGGER - SUPERIOR VISIBILITY */}
+                                   {/* SUPERIOR ACTIONS TRIGGER - ABSOLUTE Z-STACKING */}
                                    <div 
                                       className={cn("absolute top-1 z-[60]", isRtl ? "left-1" : "right-1")} 
                                       onClick={e => e.stopPropagation()}
@@ -553,7 +550,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                                             <Button 
                                               variant="secondary" 
                                               size="icon" 
-                                              className="h-7 w-7 rounded-full bg-white shadow-2xl hover:bg-slate-50 text-slate-900 border-2 border-slate-100 flex items-center justify-center transition-all scale-95"
+                                              className="h-7 w-7 rounded-full bg-white shadow-2xl hover:bg-white text-slate-900 border-2 border-slate-100 flex items-center justify-center transition-all scale-95"
                                             >
                                                <MoreVertical className="h-4 w-4" />
                                             </Button>
@@ -581,10 +578,10 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                                    </div>
 
                                    <div className={cn("text-start", isRtl ? "pr-2 pl-6" : "pl-2 pr-6")}>
-                                      <p className="font-black text-[11px] leading-tight mb-0.5 truncate">{isBusy ? (isRtl ? 'مشغول' : 'Busy') : (appt.clientName || client?.nameAr)}</p>
+                                      <p className="font-black text-[11px] leading-tight mb-0.5 truncate">{isBusy ? (isRtl ? 'مشغول' : 'Busy') : appt.clientName}</p>
                                       {!isBusy && (
                                         <div className="flex items-center gap-1 text-[7px] font-black uppercase opacity-60">
-                                           <MapPin className="h-2 w-2" /> {client?.governorateName || '---'}
+                                           <MapPin className="h-2 w-2" /> {appt.governorateName || '---'}
                                         </div>
                                       )}
                                    </div>
@@ -757,7 +754,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
       <DialogContent className="rounded-2xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-xl flex flex-col h-fit max-h-[85vh] z-[101]" dir={dir}>
         
         <div className="bg-slate-50 p-6 text-slate-900 text-start border-b shrink-0 relative">
-           <div className="flex items-center gap-4 px-6 md:px-12 pr-20 pl-20">
+           <div className="flex items-center gap-4 px-12">
               <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-primary shadow-md border-2 border-primary/10 shrink-0">
                  {data?.mode === 'create' ? <PlusCircle className="h-5 w-5" /> : <Edit3 className="h-5 w-5" />}
               </div>
@@ -772,7 +769,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
            </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-6 text-start scrollbar-hide">
+        <div className="flex-1 overflow-y-auto p-10 space-y-6 text-start scrollbar-hide">
            {data?.mode === 'create' && (
              <div className="grid grid-cols-2 gap-4">
                 <div className={cn(
