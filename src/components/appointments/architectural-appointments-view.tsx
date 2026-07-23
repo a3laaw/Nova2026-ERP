@@ -100,7 +100,7 @@ import { useRouter } from 'next/navigation';
 
 // --- Helpers ---
 function getVisitColor(visitCount: number, status?: string, apptType?: string): string {
-  if (apptType === 'busy_blocked') return '#475569'; // Slate-600
+  if (apptType === 'busy_blocked') return '#475569'; 
   if (visitCount === 1) return '#facc15'; 
   if (visitCount > 1 && status !== 'contracted') return '#22c55e'; 
   if (visitCount > 1 && status === 'contracted') return '#3b82f6'; 
@@ -108,11 +108,11 @@ function getVisitColor(visitCount: number, status?: string, apptType?: string): 
 }
 
 function cardGradient(color: string) {
-  if (color === '#facc15') return "bg-yellow-50 border-yellow-200 text-yellow-900 shadow-xl shadow-yellow-100/50";
-  if (color === '#22c55e') return "bg-emerald-50 border-emerald-200 text-emerald-900 shadow-xl shadow-emerald-100/50";
-  if (color === '#3b82f6') return "bg-blue-50 border-blue-200 text-blue-900 shadow-xl shadow-blue-100/50";
+  if (color === '#facc15') return "bg-yellow-50 border-yellow-200 text-yellow-900 shadow-lg shadow-yellow-100/50";
+  if (color === '#22c55e') return "bg-emerald-50 border-emerald-200 text-emerald-900 shadow-lg shadow-emerald-100/50";
+  if (color === '#3b82f6') return "bg-blue-50 border-blue-200 text-blue-900 shadow-lg shadow-blue-100/50";
   if (color === '#475569') return "bg-slate-100 border-slate-300 text-slate-600 grayscale opacity-80";
-  return "bg-slate-50 border-slate-200 text-slate-900 shadow-xl shadow-slate-100/50";
+  return "bg-slate-50 border-slate-200 text-slate-900 shadow-lg shadow-slate-100/50";
 }
 
 function generateTimeSlots(s: string, e: string, duration: number, rest: number): string[] {
@@ -183,7 +183,6 @@ export function ArchitecturalAppointmentsView() {
     });
   }, [currentDate]);
 
-  // --- Data Queries ---
   const apptsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.appointments(companyId)), orderBy('start')) : null, 
   [db, companyId]);
@@ -321,12 +320,12 @@ export function ArchitecturalAppointmentsView() {
              variant="ghost" 
              size="icon" 
              onClick={() => setCurrentDate(subDays(currentDate, 1))}
-             className="h-12 w-12 rounded-full hover:bg-slate-100 transition-all text-slate-400"
+             className="h-10 w-10 rounded-full hover:bg-slate-100 transition-all text-slate-400"
            >
-              <ChevronLeft className={cn("h-6 w-6", !isRtl && "rotate-180")} />
+              <ChevronLeft className={cn("h-5 w-5", !isRtl && "rotate-180")} />
            </Button>
 
-           <div className="flex gap-4 overflow-hidden py-4 px-2">
+           <div className="flex gap-4 overflow-hidden py-2 px-2">
               {visibleDates.map((date) => {
                 const isSelected = isSameDay(date, currentDate);
                 return (
@@ -334,16 +333,16 @@ export function ArchitecturalAppointmentsView() {
                     key={date.toISOString()}
                     onClick={() => setCurrentDate(date)}
                     className={cn(
-                      "min-w-[100px] h-24 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 rounded-[1.5rem] border-2 shadow-sm",
+                      "min-w-[80px] h-20 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 rounded-[1.25rem] border-2 shadow-sm",
                       isSelected 
-                        ? "bg-primary border-primary text-white scale-110 shadow-orange-500/30 ring-4 ring-orange-500/10" 
+                        ? "bg-primary border-primary text-white scale-105 shadow-orange-500/20" 
                         : "bg-white border-transparent text-slate-400 hover:border-slate-100 hover:bg-slate-50"
                     )}
                   >
-                     <span className={cn("text-[10px] font-black uppercase mb-1", isSelected ? "text-white/80" : "text-slate-400")}>
+                     <span className={cn("text-[9px] font-black uppercase mb-0.5", isSelected ? "text-white/80" : "text-slate-400")}>
                         {format(date, 'EEEE', { locale: isRtl ? ar : enUS })}
                      </span>
-                     <span className="text-3xl font-black font-headline">
+                     <span className="text-2xl font-black font-headline">
                         {format(date, 'd')}
                      </span>
                   </Card>
@@ -355,36 +354,36 @@ export function ArchitecturalAppointmentsView() {
              variant="ghost" 
              size="icon" 
              onClick={() => setCurrentDate(addDays(currentDate, 1))}
-             className="h-12 w-12 rounded-full hover:bg-slate-100 transition-all text-slate-400"
+             className="h-10 w-10 rounded-full hover:bg-slate-100 transition-all text-slate-400"
            >
-              <ChevronRight className={cn("h-6 w-6", isRtl && "rotate-180")} />
+              <ChevronRight className={cn("h-5 w-5", isRtl && "rotate-180")} />
            </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6 print:hidden">
-         <Card className="border-0 shadow-lg rounded-3xl bg-white border-b-8 border-slate-900">
-            <CardContent className="p-6 text-start">
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إجمالي المواعيد' : 'Total Appts'}</p>
-               <h3 className="text-3xl font-black text-slate-900">{stats.total}</h3>
+         <Card className="border-0 shadow-lg rounded-2xl bg-white border-b-4 border-slate-900">
+            <CardContent className="p-4 text-start">
+               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إجمالي المواعيد' : 'Total Appts'}</p>
+               <h3 className="text-2xl font-black text-slate-900">{stats.total}</h3>
             </CardContent>
          </Card>
-         <Card className="border-0 shadow-lg rounded-3xl bg-white border-b-8 border-yellow-400">
-            <CardContent className="p-6 text-start">
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'زيارة أولى (جديد)' : '1st Visits'}</p>
-               <h3 className="text-3xl font-black text-yellow-500">{stats.yellow}</h3>
+         <Card className="border-0 shadow-lg rounded-2xl bg-white border-b-4 border-yellow-400">
+            <CardContent className="p-4 text-start">
+               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'زيارة أولى (جديد)' : '1st Visits'}</p>
+               <h3 className="text-2xl font-black text-yellow-500">{stats.yellow}</h3>
             </CardContent>
          </Card>
-         <Card className="border-0 shadow-lg rounded-3xl bg-white border-b-8 border-emerald-500">
-            <CardContent className="p-6 text-start">
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'متابعة (تحت الدراسة)' : 'Follow-ups'}</p>
-               <h3 className="text-3xl font-black text-emerald-600">{stats.green}</h3>
+         <Card className="border-0 shadow-lg rounded-2xl bg-white border-b-4 border-emerald-500">
+            <CardContent className="p-4 text-start">
+               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'متابعة (تحت الدراسة)' : 'Follow-ups'}</p>
+               <h3 className="text-2xl font-black text-emerald-600">{stats.green}</h3>
             </CardContent>
          </Card>
-         <Card className="border-0 shadow-lg rounded-3xl bg-white border-b-8 border-blue-500">
-            <CardContent className="p-6 text-start">
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'عملاء متعاقدون' : 'Contracted'}</p>
-               <h3 className="text-3xl font-black text-blue-600">{stats.blue}</h3>
+         <Card className="border-0 shadow-lg rounded-2xl bg-white border-b-4 border-blue-500">
+            <CardContent className="p-4 text-start">
+               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'عملاء متعاقدون' : 'Contracted'}</p>
+               <h3 className="text-2xl font-black text-blue-600">{stats.blue}</h3>
             </CardContent>
          </Card>
       </div>
@@ -496,22 +495,22 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
   return (
     <div className="space-y-6">
        <div className="flex items-center gap-4 px-2">
-          <Badge className="bg-slate-900 text-white font-black px-6 py-2 rounded-full text-xs shadow-lg uppercase tracking-widest">{title}</Badge>
+          <Badge className="bg-slate-900 text-white font-black px-6 py-1.5 rounded-full text-[10px] shadow-md uppercase tracking-widest">{title}</Badge>
           <div className="h-[1.5px] flex-1 bg-slate-200" />
        </div>
 
-       <div className="overflow-x-auto rounded-[2.5rem] shadow-2xl border-4 border-white bg-white ring-1 ring-black/5">
+       <div className="overflow-x-auto rounded-[1.5rem] shadow-xl border-4 border-white bg-white ring-1 ring-black/5">
           <table className="w-full border-collapse">
              <thead>
                 <tr className="bg-slate-100/80">
-                   <th className="w-24 p-6 border-b-2 border-slate-200 font-black text-[10px] text-slate-500 uppercase tracking-[0.2em] bg-slate-100/50">{isRtl ? 'الوقت' : 'Time'}</th>
+                   <th className="w-20 p-4 border-b-2 border-slate-200 font-black text-[9px] text-slate-500 uppercase tracking-[0.2em] bg-slate-100/50">{isRtl ? 'الوقت' : 'Time'}</th>
                    {visibleEngineers.map((eng: Employee) => (
-                     <th key={eng.id} className="p-6 border-b-2 border-slate-200 border-s-2 border-s-slate-100 text-start bg-white min-w-[220px]">
+                     <th key={eng.id} className="p-4 border-b-2 border-slate-200 border-s-2 border-s-slate-100 text-start bg-white min-w-[200px]">
                         <div className="flex items-center gap-3">
-                           <div className="h-10 w-10 rounded-xl bg-primary text-white flex items-center justify-center font-black text-xs uppercase shadow-md border-2 border-white">{eng.fullName.charAt(0)}</div>
+                           <div className="h-9 w-9 rounded-lg bg-primary text-white flex items-center justify-center font-black text-xs uppercase shadow-sm border-2 border-white">{eng.fullName.charAt(0)}</div>
                            <div className="flex flex-col text-start">
-                              <span className="font-black text-slate-900 text-sm leading-none">{eng.fullName}</span>
-                              <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter mt-1">{eng.jobTitle}</span>
+                              <span className="font-black text-slate-900 text-xs leading-none">{eng.fullName}</span>
+                              <span className="text-[7px] font-bold text-slate-400 uppercase tracking-tighter mt-1">{eng.jobTitle}</span>
                            </div>
                         </div>
                      </th>
@@ -521,18 +520,18 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
              <tbody>
                 {slots.map((slot: string, sIdx: number) => (
                   <tr key={slot} className={cn("group/row", sIdx % 2 === 0 ? "bg-white" : "bg-slate-50/10")}>
-                     <td className="p-6 text-center border-b-2 border-slate-200 border-e-2 border-e-slate-200 font-mono font-black text-slate-500 bg-slate-100/50 text-xs">{slot}</td>
+                     <td className="p-4 text-center border-b-2 border-slate-200 border-e-2 border-e-slate-200 font-mono font-black text-slate-500 bg-slate-100/50 text-[10px]">{slot}</td>
                      {visibleEngineers.map((eng: Employee) => {
                         const appt = grid.get(eng.id)?.get(slot);
                         const block = getBlockedReason(eng.id!, slot);
 
                         if (block) {
                            return (
-                             <td key={eng.id} className="p-2 border-b-2 border-slate-200 border-s-2 border-s-slate-100 bg-slate-50/50">
-                                <div className="h-full flex items-center justify-center gap-2 text-[9px] font-black text-slate-300 uppercase italic opacity-60">
-                                   {block.type === 'leave' && <Plane className="h-3 w-3" />}
-                                   {block.type === 'permission' && <Timer className="h-3 w-3" />}
-                                   {block.type === 'absent' && <Ban className="h-3 w-3" />}
+                             <td key={eng.id} className="p-1 border-b-2 border-slate-200 border-s-2 border-s-slate-100 bg-slate-50/50">
+                                <div className="h-full flex items-center justify-center gap-2 text-[8px] font-black text-slate-300 uppercase italic opacity-60">
+                                   {block.type === 'leave' && <Plane className="h-2.5 w-2.5" />}
+                                   {block.type === 'permission' && <Timer className="h-2.5 w-2.5" />}
+                                   {block.type === 'absent' && <Ban className="h-2.5 w-2.5" />}
                                    {block.label}
                                 </div>
                            </td>
@@ -545,50 +544,50 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                            const isBusy = appt.type === 'busy_blocked';
 
                            return (
-                             <td key={eng.id} className="p-2 border-b-2 border-slate-200 border-s-2 border-s-slate-100 align-top relative">
+                             <td key={eng.id} className="p-1 border-b-2 border-slate-200 border-s-2 border-s-slate-100 align-top relative">
                                 <Card 
                                   onClick={() => !isBusy && router.push(`/dashboard/appointments/${appt.id}`)}
-                                  className={cn("border-2 p-4 rounded-2xl h-full shadow-lg relative group/card cursor-pointer transition-all hover:ring-4 hover:ring-primary/5", cardGradient(m?.color || ''))}
+                                  className={cn("border-2 p-3 rounded-xl h-full shadow-md relative group/card cursor-pointer transition-all hover:ring-4 hover:ring-primary/5", cardGradient(m?.color || ''))}
                                 >
-                                   <div className="flex justify-between items-start mb-2">
+                                   <div className="flex justify-between items-start mb-1">
                                       <div className="text-start">
-                                         <p className="font-black text-sm leading-tight mb-1">{isBusy ? (isRtl ? 'مشغول / مهام مكتبية' : 'Busy / Internal') : (appt.clientName || client?.nameAr)}</p>
+                                         <p className="font-black text-[11px] leading-tight mb-0.5">{isBusy ? (isRtl ? 'مشغول' : 'Busy') : (appt.clientName || client?.nameAr)}</p>
                                          {!isBusy && (
-                                           <div className="flex items-center gap-1.5 text-[8px] font-black uppercase opacity-60">
-                                              <MapPin className="h-2.5 w-2.5" /> {client?.governorateName || '---'}
+                                           <div className="flex items-center gap-1 text-[7px] font-black uppercase opacity-60">
+                                              <MapPin className="h-2 w-2" /> {client?.governorateName || '---'}
                                            </div>
                                          )}
                                       </div>
                                       
                                       <DropdownMenu>
                                          <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" onClick={e => e.stopPropagation()} className="h-8 w-8 rounded-lg bg-white shadow-md border border-slate-200 hover:bg-slate-50 transition-all z-20">
-                                               <MoreVertical className="h-4 w-4 text-slate-900" />
+                                            <Button variant="ghost" size="icon" onClick={e => e.stopPropagation()} className="h-6 w-6 rounded-md bg-white shadow-sm border border-slate-100 hover:bg-slate-50 transition-all z-20">
+                                               <MoreVertical className="h-3 w-3 text-slate-900" />
                                             </Button>
                                          </DropdownMenuTrigger>
-                                         <DropdownMenuContent align="end" className="rounded-xl border-2 shadow-2xl z-[120] bg-white min-w-[180px]">
-                                            <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'إجراءات الموعد' : 'Actions'}</DropdownMenuLabel>
+                                         <DropdownMenuContent align="end" className="rounded-xl border-2 shadow-2xl z-[120] bg-white min-w-[160px]">
+                                            <DropdownMenuLabel className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'الإجراءات' : 'Actions'}</DropdownMenuLabel>
                                             <DropdownMenuSeparator />
-                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/appointments/${appt.id}`); }} className="font-bold gap-3 py-3 cursor-pointer">
-                                               <MessageSquare className="h-4 w-4 text-primary" /> {isRtl ? 'غرفة العمليات (دردشة)' : 'War Room'}
+                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/appointments/${appt.id}`); }} className="font-bold gap-2 py-2 cursor-pointer text-[11px]">
+                                               <MessageSquare className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'غرفة العمليات' : 'War Room'}
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAction('edit', eng, slot, appt); }} className="font-bold gap-3 py-3 cursor-pointer">
-                                               <Edit3 className="h-4 w-4 text-blue-500" /> {isRtl ? 'تعديل / إعادة جدولة' : 'Reschedule'}
+                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAction('edit', eng, slot, appt); }} className="font-bold gap-2 py-2 cursor-pointer text-[11px]">
+                                               <Edit3 className="h-3.5 w-3.5 text-blue-500" /> {isRtl ? 'تعديل' : 'Edit'}
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleCancelAppt(appt.id!); }} className="font-bold gap-3 py-3 cursor-pointer">
-                                               <CalendarX className="h-4 w-4 text-orange-500" /> {isRtl ? 'إلغاء الموعد' : 'Cancel'}
+                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleCancelAppt(appt.id!); }} className="font-bold gap-2 py-2 cursor-pointer text-[11px]">
+                                               <CalendarX className="h-3.5 w-3.5 text-orange-500" /> {isRtl ? 'إلغاء' : 'Cancel'}
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator />
-                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDeleteAppt(appt.id!); }} className="font-bold gap-3 py-3 cursor-pointer text-rose-600 focus:text-rose-600 focus:bg-rose-50">
-                                               <Trash2 className="h-4 w-4" /> {isRtl ? 'حذف نهائي' : 'Delete'}
+                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDeleteAppt(appt.id!); }} className="font-bold gap-2 py-2 cursor-pointer text-[11px] text-rose-600 focus:text-rose-600 focus:bg-rose-50">
+                                               <Trash2 className="h-3.5 w-3.5" /> {isRtl ? 'حذف نهائي' : 'Delete'}
                                             </DropdownMenuItem>
                                          </DropdownMenuContent>
                                       </DropdownMenu>
                                    </div>
                                    {!isBusy && (
-                                     <div className="mt-auto flex items-center justify-between">
-                                        <Badge className="bg-white/60 text-inherit border-0 font-black text-[8px] h-5 px-1.5 rounded-lg shadow-sm">VISIT {m?.visitCount}</Badge>
-                                        {appt.transactionId && <LinkIcon className="h-3 w-3 opacity-30 text-inherit" />}
+                                     <div className="mt-2 flex items-center justify-between">
+                                        <Badge className="bg-white/60 text-inherit border-0 font-black text-[7px] h-4 px-1 rounded-md shadow-sm">V {m?.visitCount}</Badge>
+                                        {appt.transactionId && <LinkIcon className="h-2.5 w-2.5 opacity-30 text-inherit" />}
                                      </div>
                                    )}
                                 </Card>
@@ -599,11 +598,11 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                           <td 
                             key={eng.id} 
                             onClick={() => onAction('create', eng, slot)}
-                            className="p-2 border-b-2 border-slate-200 border-s-2 border-s-slate-100 group-hover/row:bg-primary/[0.03] transition-colors cursor-pointer"
+                            className="p-1 border-b-2 border-slate-200 border-s-2 border-s-slate-100 group-hover/row:bg-primary/[0.03] transition-colors cursor-pointer"
                           >
-                             <div className="h-16 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
-                                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                                   <Plus className="h-4 w-4" />
+                             <div className="h-12 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
+                                <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                   <Plus className="h-3.5 w-3.5" />
                                 </div>
                              </div>
                           </td>
@@ -626,32 +625,18 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
   const [isNewClient, setIsNewClient] = useState(false);
   const [isBusyBlock, setIsBusyBlock] = useState(false);
 
-  // حالات الربط الفني
   const [transactions, setTransactions] = useState<any[]>([]);
   const [stages, setStages] = useState<any[]>([]);
   const [loadingTrans, setLoadingTrans] = useState(false);
   const [loadingStages, setLoadingStages] = useState(false);
 
   const [formData, setFormData] = useState({
-    title: '',
-    clientId: '',
-    clientName: '',
-    transactionId: '',
-    transactionNumber: '',
-    stageId: '',
-    stageName: '',
-    newClientName: '',
-    newClientPhone: '',
-    newClientGovId: '',
-    newClientGovName: '',
-    date: '',
-    time: '',
-    notes: ''
+    title: '', clientId: '', clientName: '', transactionId: '', transactionNumber: '', stageId: '', stageName: '',
+    newClientName: '', newClientPhone: '', newClientGovId: '', newClientGovName: '', date: '', time: '', notes: ''
   });
 
   const targetEngineerId = data?.engineer?.id || data?.appointment?.engineerId;
   
-  // حصر قائمة العملاء للمهندس المختار فقط (سيادي)
   const filteredClients = useMemo(() => {
     let list = clients || [];
     if (targetEngineerId) {
@@ -660,7 +645,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     return list;
   }, [clients, targetEngineerId]);
 
-  // جلب المشاريع عند اختيار العميل
   useEffect(() => {
     if (formData.clientId && db && companyId && formData.clientId !== 'SYSTEM_BLOCK') {
       setLoadingTrans(true);
@@ -672,7 +656,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     }
   }, [formData.clientId, db, companyId]);
 
-  // جلب المراحل عند اختيار المشروع
   useEffect(() => {
     if (formData.transactionId && db && companyId) {
       setLoadingStages(true);
@@ -719,7 +702,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     const isCreate = data.mode === 'create';
     const start = new Date(`${formData.date}T${formData.time}:00`).toISOString();
     
-    // فحص تضارب سيادي للعميل
     if (!isBusyBlock && !isNewClient && formData.clientId) {
        const conflict = rawAppointments.find((a: any) => 
          a.clientId === formData.clientId && 
@@ -800,26 +782,19 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="rounded-3xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-2xl flex flex-col h-fit max-h-[90vh] z-[101]" dir={dir}>
+      <DialogContent className="rounded-[1.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-xl flex flex-col h-fit max-h-[85vh] z-[101]" dir={dir}>
         
-        {/* Header - Optimized layout to avoid X overlap */}
-        <div className="bg-slate-50 p-8 text-slate-900 text-start border-b shrink-0 relative">
-           <div className="flex items-center gap-6 pr-12">
-              <div className="h-14 w-14 bg-white rounded-2xl flex items-center justify-center text-primary shadow-lg border-2 border-primary/10 shrink-0">
-                 {data?.mode === 'create' ? <PlusCircle className="h-8 w-8" /> : <Edit3 className="h-8 w-8" />}
+        <div className="bg-slate-50 p-6 text-slate-900 text-start border-b shrink-0 relative">
+           <div className="flex items-center gap-4 pr-10">
+              <div className="h-11 w-11 bg-white rounded-xl flex items-center justify-center text-primary shadow-md border-2 border-primary/10 shrink-0">
+                 {data?.mode === 'create' ? <PlusCircle className="h-6 w-6" /> : <Edit3 className="h-6 w-6" />}
               </div>
               <div className="flex-1 min-w-0">
-                 <DialogTitle className="text-2xl font-black font-headline truncate">
-                    {data?.mode === 'create' ? (isRtl ? 'حجز موعد ميداني' : 'New Site Appointment') : (isRtl ? 'إعادة جدولة الموعد' : 'Reschedule')}
+                 <DialogTitle className="text-lg font-black font-headline truncate">
+                    {data?.mode === 'create' ? (isRtl ? 'حجز موعد' : 'Book Appt') : (isRtl ? 'تعديل موعد' : 'Edit')}
                  </DialogTitle>
-                 <div className="flex items-center gap-3 mt-1.5">
-                    <div className="flex items-center gap-1.5 bg-primary/10 px-3 py-1 rounded-full border border-primary/5">
-                       <UserIcon className="h-3 w-3 text-primary" />
-                       <span className="text-[10px] font-black text-primary uppercase tracking-widest truncate max-w-[150px]">
-                          {data?.engineer?.fullName || data?.appointment?.engineerName}
-                       </span>
-                    </div>
-                    <Badge variant="outline" className="h-6 px-3 border-2 font-mono font-black text-[10px] bg-white text-slate-500 shadow-sm">
+                 <div className="flex items-center gap-2 mt-1">
+                    <Badge variant="outline" className="h-5 px-2 border-2 font-mono font-black text-[9px] bg-white text-slate-500 shadow-sm">
                        <Clock className="h-3 w-3 me-1.5 opacity-40" /> {formData.time}
                     </Badge>
                  </div>
@@ -827,54 +802,51 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
            </div>
         </div>
 
-        {/* Body - Scrollable Area */}
-        <div className="flex-1 overflow-y-auto p-8 space-y-8 text-start scrollbar-hide">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 text-start scrollbar-hide">
            {data?.mode === 'create' && (
-             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+             <div className="grid grid-cols-2 gap-3">
                 <div className={cn(
-                  "flex items-center justify-between p-5 rounded-2xl transition-all border-2",
-                  isNewClient ? "bg-primary/5 border-primary/20 shadow-lg" : "bg-slate-50 border-white shadow-inner"
+                  "flex items-center justify-between p-3 rounded-xl transition-all border-2",
+                  isNewClient ? "bg-primary/5 border-primary/20 shadow-sm" : "bg-slate-50 border-white shadow-inner"
                 )}>
                    <div className="text-start">
-                      <Label className="font-black text-[10px] uppercase text-slate-500 block mb-1">عميل جديد؟</Label>
-                      <p className="text-[9px] text-slate-400 font-bold">إنشاء ملف فوري للعميل</p>
+                      <Label className="font-black text-[9px] uppercase text-slate-500">جديد؟</Label>
                    </div>
-                   <Switch checked={isNewClient} onCheckedChange={v => { setIsNewClient(v); if(v) setIsBusyBlock(false); }} />
+                   <Switch checked={isNewClient} onCheckedChange={v => { setIsNewClient(v); if(v) setIsBusyBlock(false); }} className="scale-75" />
                 </div>
                 <div className={cn(
-                  "flex items-center justify-between p-5 rounded-2xl transition-all border-2 shadow-xl",
-                  isBusyBlock ? "bg-slate-900 text-white border-primary" : "bg-slate-800/80 text-white border-transparent opacity-60"
+                  "flex items-center justify-between p-3 rounded-xl transition-all border-2",
+                  isBusyBlock ? "bg-slate-900 text-white border-primary" : "bg-slate-800 text-white opacity-40"
                 )}>
                    <div className="text-start">
-                      <Label className="font-black text-[10px] uppercase text-primary block mb-1">غلق الخانة (Busy)</Label>
-                      <p className="text-[9px] text-slate-400 font-bold">مهام مكتبية/داخلية</p>
+                      <Label className="font-black text-[9px] uppercase text-primary">Busy</Label>
                    </div>
-                   <Switch checked={isBusyBlock} onCheckedChange={v => { setIsBusyBlock(v); if(v) setIsNewClient(false); }} />
+                   <Switch checked={isBusyBlock} onCheckedChange={v => { setIsBusyBlock(v); if(v) setIsNewClient(false); }} className="scale-75" />
                 </div>
              </div>
            )}
 
            {!isBusyBlock && (
-             <div className="space-y-6">
+             <div className="space-y-4">
                 {isNewClient ? (
-                   <div className="space-y-6 p-8 rounded-[2.5rem] border-2 border-primary/10 bg-primary/5 animate-in fade-in zoom-in-95">
-                      <div className="space-y-2">
-                         <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">اسم العميل الكامل</Label>
-                         <Input value={formData.newClientName} onChange={e => setFormData({...formData, newClientName: e.target.value})} className="h-12 rounded-xl border-2 font-bold bg-white" placeholder="أدخل اسم العميل كما في الهوية..." />
+                   <div className="space-y-4 p-5 rounded-2xl border-2 border-primary/10 bg-primary/5 animate-in fade-in">
+                      <div className="space-y-1.5">
+                         <Label className="text-[10px] font-black uppercase text-slate-400">اسم العميل</Label>
+                         <Input value={formData.newClientName} onChange={e => setFormData({...formData, newClientName: e.target.value})} className="h-10 rounded-lg border-2 font-bold" />
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">رقم الهاتف</Label>
-                            <Input value={formData.newClientPhone} onChange={e => setFormData({...formData, newClientPhone: e.target.value})} className="h-12 rounded-xl border-2 font-bold bg-white" placeholder="+965" />
+                      <div className="grid grid-cols-2 gap-4">
+                         <div className="space-y-1.5">
+                            <Label className="text-[10px] font-black uppercase text-slate-400">الهاتف</Label>
+                            <Input value={formData.newClientPhone} onChange={e => setFormData({...formData, newClientPhone: e.target.value})} className="h-10 rounded-lg border-2" placeholder="+965" />
                          </div>
-                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'المحافظة' : 'Gov'}</Label>
+                         <div className="space-y-1.5">
+                            <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المحافظة' : 'Gov'}</Label>
                             <Select value={formData.newClientGovId} onValueChange={v => {
                                const g = governorates?.find((x:any)=>x.id===v);
                                setFormData({...formData, newClientGovId: v, newClientGovName: isRtl?g.name:g.nameEn});
                             }}>
-                               <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
-                               <SelectContent className="rounded-xl border-2 shadow-2xl z-[120]">
+                               <SelectTrigger className="h-10 rounded-lg border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
+                               <SelectContent className="rounded-xl border-2 z-[120]">
                                   {governorates?.map((g: any) => <SelectItem key={g.id} value={g.id} className="font-bold text-xs">{isRtl ? g.name : g.nameEn}</SelectItem>)}
                                </SelectContent>
                             </Select>
@@ -882,83 +854,62 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                       </div>
                    </div>
                 ) : (
-                   <div className="space-y-3">
-                      <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                         <Search className="h-3.5 w-3.5" /> اختيار العميل من المحفظة السيادية
+                   <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                         <Search className="h-3 w-3" /> اختيار العميل
                       </Label>
                       <Select value={formData.clientId} onValueChange={v => {
                         const c = filteredClients.find((x:any) => x.id === v);
                         setFormData({...formData, clientId: v, clientName: c?.nameAr || '', transactionId: '', stageId: ''});
                       }}>
-                         <SelectTrigger className="h-16 rounded-2xl border-2 font-black bg-white shadow-md hover:border-primary/40 transition-all">
+                         <SelectTrigger className="h-12 rounded-xl border-2 font-black bg-white shadow-sm">
                             <SelectValue placeholder={isRtl ? "تحديد العميل..." : "Choose client..."} />
                          </SelectTrigger>
-                         <SelectContent className="rounded-2xl border-0 shadow-3xl max-h-[300px] z-[120]">
-                            <div className="p-3 bg-slate-50 border-b">
-                               <p className="text-[9px] font-black text-slate-400 uppercase">Portfolio: {data?.engineer?.fullName || 'Selected Staff'}</p>
-                            </div>
+                         <SelectContent className="rounded-xl border-0 shadow-3xl max-h-[250px] z-[120]">
                             {filteredClients.map((c: any) => (
-                              <SelectItem key={c.id} value={c.id!} className="font-black text-xs py-4 border-b last:border-0 border-slate-50 cursor-pointer">
-                                 <div className="flex flex-col text-start gap-1">
-                                    <span className="text-slate-800 text-sm">{c.nameAr}</span>
-                                    <div className="flex items-center gap-2">
-                                       <span className="text-[9px] font-mono font-black text-primary px-1.5 py-0.5 bg-primary/5 rounded border border-primary/10">#{c.fileNumber}</span>
-                                       <span className="text-[9px] text-slate-400 font-bold uppercase">{c.status}</span>
-                                    </div>
-                                 </div>
+                              <SelectItem key={c.id} value={c.id!} className="font-black text-[11px] py-2">
+                                 {c.nameAr} <span className="text-[8px] opacity-30 ms-2">#{c.fileNumber}</span>
                               </SelectItem>
                             ))}
-                            {filteredClients.length === 0 && (
-                               <div className="p-10 text-center flex flex-col items-center gap-3">
-                                  <AlertTriangle className="h-8 w-8 text-amber-200" />
-                                  <p className="text-[11px] text-slate-400 font-black italic uppercase">لا يوجد عملاء منسوبين لهذا الملف</p>
-                               </div>
-                            )}
                          </SelectContent>
                       </Select>
                    </div>
                 )}
 
-                {/* ربط المشروع والمرحلة (Pipeline Context) */}
                 {formData.clientId && !isNewClient && (
-                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-6 bg-slate-50 rounded-[2rem] border-2 border-white shadow-inner animate-in slide-in-from-top-2">
-                      <div className="space-y-2">
-                         <Label className="text-[10px] font-black uppercase text-blue-600 tracking-widest flex items-center gap-2">
-                            <Briefcase className="h-3 w-3" /> ربط بمشروع قائم
+                   <div className="grid grid-cols-2 gap-3 p-4 bg-slate-50 rounded-xl border-2 border-white shadow-inner animate-in slide-in-from-top-1">
+                      <div className="space-y-1.5">
+                         <Label className="text-[9px] font-black uppercase text-blue-600 flex items-center gap-1.5">
+                            <Briefcase className="h-2.5 w-2.5" /> ربط بمشروع
                          </Label>
                          <Select value={formData.transactionId} onValueChange={v => {
                             const t = transactions.find(x => x.id === v);
                             setFormData({...formData, transactionId: v, transactionNumber: t?.transactionNumber || '', stageId: ''});
                          }}>
-                            <SelectTrigger className="h-11 rounded-xl border-2 font-bold bg-white">
+                            <SelectTrigger className="h-9 rounded-lg border-2 font-bold bg-white text-[10px]">
                                {loadingTrans ? <Loader2 className="h-3 w-3 animate-spin" /> : <SelectValue placeholder="..." />}
                             </SelectTrigger>
                             <SelectContent className="rounded-xl border-0 shadow-2xl z-[120]">
                                {transactions.map(t => (
-                                 <SelectItem key={t.id} value={t.id!} className="font-bold text-xs py-3 border-b last:border-0">
-                                    <div className="flex flex-col text-start">
-                                       <span className="text-slate-800">{t.subServiceName}</span>
-                                       <span className="text-[8px] font-mono text-blue-400">#{t.transactionNumber}</span>
-                                    </div>
-                                 </SelectItem>
+                                 <SelectItem key={t.id} value={t.id!} className="font-bold text-[10px]">{t.subServiceName}</SelectItem>
                                ))}
                             </SelectContent>
                          </Select>
                       </div>
 
-                      <div className="space-y-2">
-                         <Label className="text-[10px] font-black uppercase text-blue-600 tracking-widest flex items-center gap-2">
-                            <Workflow className="h-3 w-3" /> المرحلة الميدانية
+                      <div className="space-y-1.5">
+                         <Label className="text-[9px] font-black uppercase text-blue-600 flex items-center gap-1.5">
+                            <Workflow className="h-2.5 w-2.5" /> المرحلة
                          </Label>
                          <Select disabled={!formData.transactionId} value={formData.stageId} onValueChange={v => {
                             const s = stages.find(x => x.id === v);
                             setFormData({...formData, stageId: v, stageName: s?.name || ''});
                          }}>
-                            <SelectTrigger className="h-11 rounded-xl border-2 font-bold bg-white">
+                            <SelectTrigger className="h-9 rounded-lg border-2 font-bold bg-white text-[10px]">
                                {loadingStages ? <Loader2 className="h-3 w-3 animate-spin" /> : <SelectValue placeholder="..." />}
                             </SelectTrigger>
                             <SelectContent className="rounded-xl border-0 shadow-2xl z-[120]">
-                               {stages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs py-2 border-b last:border-0">{s.name}</SelectItem>)}
+                               {stages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-[10px]">{s.name}</SelectItem>)}
                             </SelectContent>
                          </Select>
                       </div>
@@ -967,29 +918,27 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
              </div>
            )}
 
-           <div className="space-y-2">
-              <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">مسمى الموعد / الغرض</Label>
-              <Input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="h-14 rounded-2xl border-2 font-black text-lg bg-slate-50/30 focus:bg-white transition-all shadow-inner" placeholder={isRtl ? "مثلاً: معاينة رفع عداد..." : "e.g. Site Measurement..."} />
+           <div className="space-y-1.5">
+              <Label className="text-[10px] font-black uppercase text-slate-400">الغرض من الموعد</Label>
+              <Input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="h-10 rounded-lg border-2 font-bold" />
            </div>
 
-           <div className="space-y-2">
-              <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">توجيهات فنية للمهندس</Label>
-              <Textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="min-h-[120px] rounded-[2rem] border-2 bg-slate-50/30 p-6 text-sm font-bold resize-none shadow-inner focus:bg-white transition-all" placeholder="..." />
+           <div className="space-y-1.5">
+              <Label className="text-[10px] font-black uppercase text-slate-400">توجيهات فنية</Label>
+              <Textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="min-h-[80px] rounded-lg border-2 p-3 text-xs font-bold" />
            </div>
         </div>
 
-        {/* Footer - Sticky with elevated Z and visual separation */}
-        <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4 shrink-0 shadow-[0_-10px_30px_rgba(0,0,0,0.03)] relative z-10">
-           <Button variant="outline" onClick={onClose} className="flex-1 h-16 rounded-2xl border-2 font-black text-lg bg-white shadow-sm hover:bg-slate-100 transition-all">
+        <DialogFooter className="p-5 bg-slate-50 border-t flex flex-row gap-3 shrink-0">
+           <Button variant="outline" onClick={onClose} className="flex-1 h-10 rounded-lg font-bold border-2 text-xs">
               {isRtl ? 'إلغاء' : 'Cancel'}
            </Button>
-           <Button onClick={handleSave} disabled={loading || (!isBusyBlock && !formData.clientId)} className="flex-[2] h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all gap-3 border-b-8 border-orange-700">
-              {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
-              {isRtl ? 'حفظ وتثبيت' : 'Confirm & Save'}
+           <Button onClick={handleSave} disabled={loading || (!isBusyBlock && !formData.clientId)} className="flex-[2] h-10 rounded-lg font-black text-xs shadow-lg gap-2">
+              {loading ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
+              {isRtl ? 'حفظ وتثبيت' : 'Confirm'}
            </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
-

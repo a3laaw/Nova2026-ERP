@@ -50,7 +50,6 @@ export default function NewPermissionPage() {
     db && companyId ? new PermissionService(db, companyId, permissions) : null, 
   [db, companyId, permissions]);
 
-  // حساب المدة وفحص الرصيد عند تغيير المدخلات
   useEffect(() => {
     try {
       const start = parse(form.startTime, 'HH:mm', new Date());
@@ -98,42 +97,41 @@ export default function NewPermissionPage() {
   };
 
   return (
-    <div className="space-y-10 max-w-5xl mx-auto pb-20 animate-in fade-in duration-500" dir={dir}>
+    <div className="space-y-8 max-w-5xl mx-auto pb-20 animate-in fade-in duration-500" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-8 border-slate-100">
-        <div className="text-start space-y-2">
-           <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-primary/5 px-4 py-1.5 rounded-full w-fit">
+        <div className="text-start space-y-1">
+           <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-primary/5 px-3 py-1 rounded-full w-fit">
               <ShieldCheck className="h-3 w-3" /> {isRtl ? 'بوابة الخدمات الإدارية' : 'HR Portal'}
            </div>
-           <h1 className="text-4xl font-black font-headline text-slate-900">{isRtl ? 'طلب استئذان جديد' : 'New Permission'}</h1>
+           <h1 className="text-3xl font-black font-headline text-slate-900">{isRtl ? 'طلب استئذان جديد' : 'New Permission'}</h1>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-1 space-y-6">
-           <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
-              <CardHeader className="bg-slate-50/30 border-b p-8 text-start">
-                 <CardTitle className="text-lg font-black flex items-center gap-3">
-                    <History className="h-5 w-5 text-primary" />
+           <Card className="border-0 shadow-xl rounded-[1.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
+              <CardHeader className="bg-slate-50/30 border-b p-6 text-start">
+                 <CardTitle className="text-base font-black flex items-center gap-3">
+                    <History className="h-4 w-4 text-primary" />
                     {isRtl ? 'مؤشرات الرصيد' : 'Quota Metrics'}
                  </CardTitle>
               </CardHeader>
-              <CardContent className="p-8 space-y-8 text-start">
-                 <div className="space-y-5">
-                    <div className="flex justify-between items-center">
-                       <span className="text-xs font-bold text-slate-500 uppercase">{isRtl ? 'المدة المطلوبة:' : 'Requested:'}</span>
-                       <Badge className={cn("text-lg font-black px-4", duration > 3 ? "bg-rose-500 text-white" : "bg-primary/10 text-primary")}>
+              <CardContent className="p-6 space-y-6 text-start">
+                 <div className="space-y-4">
+                    <div className="flex justify-between items-center text-xs font-bold">
+                       <span className="text-slate-500 uppercase">{isRtl ? 'المدة المطلوبة:' : 'Requested:'}</span>
+                       <Badge className={cn("text-base font-black px-3 py-1", duration > 3 ? "bg-rose-500 text-white" : "bg-primary/10 text-primary")}>
                           {duration}h
                        </Badge>
                     </div>
-                    <div className="flex justify-between items-center">
-                       <span className="text-xs font-bold text-slate-500 uppercase">{isRtl ? 'رصيد الشهر المستخدم:' : 'Month Used:'}</span>
-                       <span className="text-xl font-black text-slate-900">{monthlyUsed}h / 12h</span>
+                    <div className="flex justify-between items-center text-xs font-bold">
+                       <span className="text-slate-500 uppercase">{isRtl ? 'رصيد الشهر:' : 'Month Used:'}</span>
+                       <span className="font-black text-slate-900">{monthlyUsed}h / 12h</span>
                     </div>
-                    <div className="h-[1px] bg-slate-100 w-full" />
-                    <div className="p-4 rounded-2xl bg-amber-50 border border-amber-100 flex items-start gap-3">
-                       <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                       <p className="text-[10px] font-bold text-amber-800 leading-relaxed">
-                          {isRtl ? 'تنبيه: الحد الأقصى للاستئذان الواحد هو 3 ساعات، والحد الشهري 12 ساعة.' : 'Limit: 3 hours per request, 12 hours total per month.'}
+                    <div className="p-4 rounded-xl bg-amber-50 border border-amber-100 flex items-start gap-2">
+                       <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
+                       <p className="text-[9px] font-bold text-amber-800 leading-relaxed">
+                          {isRtl ? 'الحد الأقصى 3 ساعات للطلب، والشهري 12 ساعة.' : 'Limit: 3h per request, 12h per month.'}
                        </p>
                     </div>
                  </div>
@@ -141,44 +139,44 @@ export default function NewPermissionPage() {
            </Card>
         </div>
 
-        <div className="lg:col-span-2 space-y-8">
-           <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
-              <CardContent className="p-10 space-y-10">
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-start">
-                    <div className="space-y-3">
+        <div className="lg:col-span-2 space-y-6">
+           <Card className="border-0 shadow-xl rounded-[1.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
+              <CardContent className="p-8 space-y-8">
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-start">
+                    <div className="space-y-1.5">
                        <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'نوع الاستئذان' : 'Type'}</Label>
                        <Select value={form.type} onValueChange={(v: any) => setForm({...form, type: v})}>
-                          <SelectTrigger className="h-14 rounded-2xl border-2 font-black"><SelectValue /></SelectTrigger>
-                          <SelectContent>
+                          <SelectTrigger className="h-11 rounded-xl border-2 font-black"><SelectValue /></SelectTrigger>
+                          <SelectContent className="rounded-xl">
                              <SelectItem value="late_arrival" className="font-bold">{isRtl ? 'حضور متأخر' : 'Late Arrival'}</SelectItem>
                              <SelectItem value="early_departure" className="font-bold">{isRtl ? 'انصراف مبكر' : 'Early Departure'}</SelectItem>
                           </SelectContent>
                        </Select>
                     </div>
-                    <div className="space-y-3">
+                    <div className="space-y-1.5">
                        <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'التاريخ' : 'Date'}</Label>
                        <SmartDateInput value={form.date} onChange={v => setForm({...form, date: v})} />
                     </div>
                  </div>
 
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-slate-50 text-start">
-                    <div className="space-y-3">
-                       <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'وقت البداية' : 'Start Time'}</Label>
-                       <Input type="time" value={form.startTime} onChange={e => setForm({...form, startTime: e.target.value})} className="h-14 rounded-2xl border-2 text-lg font-black" />
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t text-start">
+                    <div className="space-y-1.5">
+                       <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'وقت البداية' : 'Start'}</Label>
+                       <Input type="time" value={form.startTime} onChange={e => setForm({...form, startTime: e.target.value})} className="h-11 rounded-xl border-2 font-black" />
                     </div>
-                    <div className="space-y-3">
-                       <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'وقت النهاية' : 'End Time'}</Label>
-                       <Input type="time" value={form.endTime} onChange={e => setForm({...form, endTime: e.target.value})} className="h-14 rounded-2xl border-2 text-lg font-black" />
+                    <div className="space-y-1.5">
+                       <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'وقت النهاية' : 'End'}</Label>
+                       <Input type="time" value={form.endTime} onChange={e => setForm({...form, endTime: e.target.value})} className="h-11 rounded-xl border-2 font-black" />
                     </div>
                  </div>
 
-                 <div className="space-y-4 pt-6 border-t border-slate-50 text-start">
-                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'سبب الاستئذان' : 'Reason'}</Label>
+                 <div className="space-y-1.5 pt-4 border-t text-start">
+                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'السبب' : 'Reason'}</Label>
                     <Textarea 
                        value={form.reason} 
                        onChange={e => setForm({...form, reason: e.target.value})} 
                        placeholder="..."
-                       className="min-h-[120px] rounded-[2rem] border-2 bg-slate-50/30 p-6 text-lg focus:bg-white transition-all resize-none shadow-inner" 
+                       className="min-h-[100px] rounded-xl border-2 bg-slate-50/30 p-4 text-sm font-bold resize-none" 
                     />
                  </div>
               </CardContent>
@@ -188,15 +186,15 @@ export default function NewPermissionPage() {
               <Button 
                 onClick={handleSubmit} 
                 disabled={loading || duration <= 0 || duration > 3} 
-                className="flex-[2] h-20 rounded-[2.5rem] bg-primary text-white font-black text-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-4 border-b-8 border-orange-700"
+                className="flex-[2] h-14 rounded-2xl bg-primary text-white font-black text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-4"
               >
-                 {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : <Send className="h-8 w-8" />} 
+                 {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />} 
                  {isRtl ? 'إرسال الطلب' : 'Submit Permission'}
               </Button>
               <Button 
                 variant="outline" 
                 onClick={() => router.push('/dashboard/hr/permissions')} 
-                className="flex-1 h-20 rounded-[2.5rem] border-2 font-black text-xl bg-white shadow-sm"
+                className="flex-1 h-14 rounded-2xl border-2 font-black text-base bg-white shadow-sm"
               >
                 {isRtl ? 'إلغاء' : 'Cancel'}
               </Button>

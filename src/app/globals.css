@@ -1,4 +1,3 @@
-
 @import "leaflet/dist/leaflet.css";
 
 @tailwind base;
@@ -36,7 +35,6 @@
   body { @apply bg-background text-foreground font-body antialiased; }
   h1, h2, h3, h4, h5, h6 { @apply font-headline tracking-tight font-bold text-slate-900; }
   
-  /* Sovereign Guard: Globally disable spin-buttons on number inputs */
   input::-webkit-outer-spin-button,
   input::-webkit-inner-spin-button {
     -webkit-appearance: none !important;
@@ -48,7 +46,7 @@
 }
 
 .btn-gradient {
-  @apply bg-gradient-to-r from-[#F57C00] to-[#FFB000] text-white shadow-xl shadow-orange-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all border-b-4 border-orange-700 font-black;
+  @apply bg-gradient-to-r from-[#F57C00] to-[#FFB000] text-white shadow-lg shadow-orange-500/10 hover:brightness-110 active:scale-[0.98] transition-all border-b-2 border-orange-700/30 font-black;
 }
 
 .card-shadow {
