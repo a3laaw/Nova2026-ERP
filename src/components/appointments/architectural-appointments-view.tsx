@@ -354,7 +354,7 @@ export function ArchitecturalAppointmentsView() {
            <Button 
              variant="ghost" 
              size="icon" 
-             onClick={() => setCurrentDate(addDays(currentDate, 1))}
+             onClick={() => currentDate.getTime() < addDays(new Date(), 30).getTime() && setCurrentDate(addDays(currentDate, 1))}
              className="h-10 w-10 rounded-full hover:bg-slate-100 transition-all text-slate-400"
            >
               <ChevronRight className={cn("h-5 w-5", isRtl && "rotate-180")} />
@@ -560,20 +560,18 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                                          )}
                                       </div>
                                       
-                                      {/* FIXED ACTION BUTTON - SUPERIOR POSITIONING */}
-                                      <div className="absolute top-0 right-0 z-[60]" onClick={e => e.stopPropagation()}>
+                                      {/* FIXED ACTION BUTTON - SUPERIOR POSITIONING WITH LOGICAL ORIENTATION */}
+                                      <div className={cn("absolute top-0 z-[60]", isRtl ? "left-0" : "right-0")} onClick={e => e.stopPropagation()}>
                                         <DropdownMenu>
                                            <DropdownMenuTrigger asChild>
-                                              <Button 
-                                                variant="ghost" 
-                                                size="icon" 
-                                                className="h-8 w-8 rounded-full bg-white shadow-xl hover:bg-slate-50 text-slate-900 border-2 border-primary/20 ring-4 ring-black/5"
+                                              <button 
+                                                className="h-7 w-7 rounded-full bg-white shadow-xl hover:bg-slate-50 text-slate-900 border-2 border-primary/20 flex items-center justify-center transition-all hover:scale-110 active:scale-95"
                                               >
                                                  <MoreVertical className="h-4 w-4" />
-                                              </Button>
+                                              </button>
                                            </DropdownMenuTrigger>
                                            <DropdownMenuPortal>
-                                              <DropdownMenuContent align="end" className="rounded-xl border-2 shadow-2xl z-[150] bg-white min-w-[160px]">
+                                              <DropdownMenuContent align={isRtl ? "start" : "end"} className="rounded-xl border-2 shadow-2xl z-[150] bg-white min-w-[160px]">
                                                  <DropdownMenuLabel className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'الإجراءات' : 'Actions'}</DropdownMenuLabel>
                                                  <DropdownMenuSeparator />
                                                  <DropdownMenuItem onClick={() => router.push(`/dashboard/appointments/${appt.id}`)} className="font-bold gap-2 py-2 cursor-pointer text-[11px]">
@@ -759,7 +757,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-xl flex flex-col h-fit max-h-[90vh] z-[101]" dir={dir}>
+      <DialogContent className="rounded-2xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-xl flex flex-col h-fit max-h-[90vh] z-[101]" dir={dir}>
         
         {/* HEADER WITH SAFETY PADDING */}
         <div className="bg-slate-50 p-6 text-slate-900 text-start border-b shrink-0 relative">
@@ -780,7 +778,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
            </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 text-start scrollbar-hide">
+        <div className="flex-1 overflow-y-auto p-8 space-y-6 text-start scrollbar-hide">
            {data?.mode === 'create' && (
              <div className="grid grid-cols-2 gap-3">
                 <div className={cn(
@@ -859,12 +857,12 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
            <div className="space-y-1.5">
               <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">توجيهات فنية للمهندس</Label>
-              <Textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="min-h-[120px] rounded-2xl border-2 bg-slate-50/30 p-4 text-xs font-bold resize-none shadow-inner focus:bg-white transition-all" placeholder="..." />
+              <Textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="min-h-[120px] rounded-xl border-2 bg-slate-50/30 p-4 text-xs font-bold resize-none shadow-inner focus:bg-white transition-all" placeholder="..." />
            </div>
         </div>
 
-        {/* STICKY FOOTER WITH SLIM BUTTONS */}
-        <DialogFooter className="sticky bottom-0 p-6 bg-slate-50 border-t flex flex-row gap-4 shrink-0 shadow-[0_-10px_20px_-5px_rgba(0,0,0,0.05)]">
+        {/* STICKY FOOTER WITH SLIM BUTTONS & CLEAR VISIBILITY */}
+        <DialogFooter className="sticky bottom-0 p-6 bg-slate-50 border-t flex flex-row gap-4 shrink-0 shadow-[0_-10px_20px_-5px_rgba(0,0,0,0.05)] z-20">
            <Button variant="outline" onClick={onClose} className="flex-1 h-11 rounded-xl font-bold border-2 text-xs bg-white">
               {isRtl ? 'إلغاء' : 'Cancel'}
            </Button>
@@ -877,4 +875,3 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     </Dialog>
   );
 }
-
