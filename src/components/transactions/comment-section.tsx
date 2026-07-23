@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -91,7 +92,7 @@ export function CommentSection({
     db && globalUser?.companyId ? new CommentService(db, globalUser.companyId, permissions) : null, 
   [db, globalUser, permissions]);
 
-  // المجرى الموحد (نعتمد على التايم لاين لتجنب تكرار سجلات التنفيذ)
+  // المجرى الموحد - تحسين الفلترة لتشمل المواعيد
   const activeStream = useMemo(() => {
     const filteredComments = (comments || [])
       .filter(c => !c.isArchived && (!filterStageId || c.stageInstanceId === filterStageId))
@@ -101,9 +102,6 @@ export function CommentSection({
         sortTime: c.createdAt?.toMillis?.() || Date.now()
       }));
     
-    // الملاحظة: نلغي استخدام externalLogs هنا لمنع التكرار كما طلب العميل
-    // ونعتمد على سجلات التايم لاين المدمجة
-
     const filteredTimeline = (timelineEvents || [])
       .filter(e => !e.isArchived && (e.type === 'numeric_update' || e.type === 'stage_start' || e.type === 'stage_complete') && (!technicalStageId || e.technicalStageId === technicalStageId || e.stageId === filterStageId))
       .map(e => ({
@@ -115,7 +113,6 @@ export function CommentSection({
     return [...filteredComments, ...filteredTimeline].sort((a, b) => a.sortTime - b.sortTime);
   }, [comments, timelineEvents, filterStageId, technicalStageId]);
 
-  // أرشيف الدردشة الشامل
   const archivedChat = useMemo(() => {
     const archivedComments = (comments || [])
       .filter(c => !!c.isArchived && (!filterStageId || c.stageInstanceId === filterStageId))
@@ -127,10 +124,6 @@ export function CommentSection({
 
     return [...archivedComments, ...archivedTimelineLogs].sort((a, b) => (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0));
   }, [comments, timelineEvents, filterStageId, technicalStageId]);
-
-  const archivedTime = useMemo(() => {
-    return (timelineEvents || []).filter(e => e.type === 'stage_reopen' && (!technicalStageId || e.technicalStageId === technicalStageId || e.stageId === filterStageId));
-  }, [timelineEvents, technicalStageId, filterStageId]);
 
   const handleSubmit = async () => {
     if (!commentService || !user || !content.trim()) return;
@@ -164,7 +157,7 @@ export function CommentSection({
                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Sovereign Control Center</p>
                 </div>
              </div>
-             {filterStageId && (
+             {onClearFilter && filterStageId && (
                 <Button onClick={onClearFilter} variant="ghost" size="sm" className="h-8 rounded-lg text-[9px] font-black gap-2 bg-slate-900 text-white hover:bg-slate-800 px-3 shadow-lg">
                   <X className="h-3 w-3" /> {isRtl ? 'عرض الكل' : 'View All'}
                 </Button>
@@ -181,7 +174,7 @@ export function CommentSection({
                     {selectedStageName}
                   </span>
                </div>
-               <Badge className="bg-primary text-white border-0 text-[8px] h-5 font-black px-3 rounded-lg">FOCUS MODE</Badge>
+               <Badge className="bg-primary text-white border-0 text-[8px] font-black h-5 px-3 rounded-lg">FOCUS MODE</Badge>
             </div>
           )}
 
@@ -220,36 +213,6 @@ export function CommentSection({
               ))
             )}
           </TabsContent>
-
-          <TabsContent value="chat_archive" className="m-0 space-y-6 pb-24">
-              {archivedChat.map((item: any) => (
-                <StreamItem key={item.id} item={item} isRtl={isRtl} user={user} boqItems={boqItems} />
-              ))}
-              {!archivedChat.length && <div className="py-32 text-center text-slate-300 flex flex-col items-center gap-4"><Archive className="h-10 w-10 opacity-20" /><p className="text-[10px] font-black italic">خزنة الأرشيف خالية.</p></div>}
-          </TabsContent>
-
-          <TabsContent value="time_archive" className="m-0 space-y-4 pb-24">
-              {archivedTime.map((event, idx) => (
-                  <div key={idx} className="p-5 rounded-[1.5rem] bg-rose-50/20 border-2 border-dashed border-rose-100 animate-in slide-in-from-top-2">
-                    <div className="flex justify-between items-start mb-3">
-                        <div className="h-8 w-8 rounded-xl bg-rose-100 flex items-center justify-center text-rose-600 shadow-sm"><RotateCcw className="h-4 w-4" /></div>
-                        <Badge className="bg-rose-600 text-white border-0 text-[8px] font-black uppercase">{event.durationText || 'Canceled'}</Badge>
-                    </div>
-                    <p className="text-xs font-black text-slate-800 leading-tight">{event.content}</p>
-                    <div className="grid grid-cols-1 gap-2 mt-4 text-[7px] font-black text-slate-400 uppercase tracking-widest">
-                        <div className="bg-white/50 p-2 rounded-lg border border-rose-50 flex justify-between items-center px-3">
-                           <span>START:</span>
-                           <span className="font-mono">{event.previousStart?.toDate().toLocaleString()}</span>
-                        </div>
-                        <div className="bg-white/50 p-2 rounded-lg border border-rose-50 flex justify-between items-center px-3">
-                           <span>END:</span>
-                           <span className="font-mono">{event.previousEnd?.toDate().toLocaleString()}</span>
-                        </div>
-                    </div>
-                  </div>
-              ))}
-          </TabsContent>
-
           <TabsContent value="timeline" className="m-0 space-y-6 pb-24">
                 {stages.sort((a,b)=> (a.order||0) - (b.order||0)).map((stage, idx) => {
                   const start = stage.startedAt?.toDate();
@@ -266,8 +229,8 @@ export function CommentSection({
                         <div className="space-y-2 text-start">
                             <h4 className="font-black text-[11px] text-slate-900">{stage.name}</h4>
                             <div className="grid grid-cols-2 gap-3 bg-white p-2.5 rounded-xl border border-slate-100 shadow-sm">
-                              <div className="space-y-0.5"><p className="text-[7px] font-black text-slate-400 uppercase">Start</p><p className="text-[8px] font-bold text-slate-600 truncate">{start ? start.toLocaleDateString() : '---'}</p></div>
-                              <div className="space-y-0.5"><p className="text-[7px] font-black text-slate-400 uppercase">End</p><p className="text-[8px] font-bold text-slate-600 truncate">{end ? end.toLocaleDateString() : '---'}</p></div>
+                              <div className="space-y-0.5"><p className="text-[7px] font-black text-slate-400 uppercase">Start</p><p className="text-[8px] font-bold text-slate-600 truncate">{start ? start.toLocaleDateString(isRtl ? 'ar-KW' : 'en-US', { numberingSystem: 'latn' }) : '---'}</p></div>
+                              <div className="space-y-0.5"><p className="text-[7px] font-black text-slate-400 uppercase">End</p><p className="text-[8px] font-bold text-slate-600 truncate">{end ? end.toLocaleDateString(isRtl ? 'ar-KW' : 'en-US', { numberingSystem: 'latn' }) : '---'}</p></div>
                             </div>
                         </div>
                       </div>
@@ -311,7 +274,7 @@ function StreamItem({ item, isRtl, user, boqItems }: any) {
       const boqItem = boqItems?.find((i: any) => i.id === item.boqItemId);
       const isComplementary = item.quantity === 0;
       return (
-         <div className="flex justify-center animate-in fade-in duration-500 px-1">
+         <div className="flex justify-center animate-in fade-in duration-500 px-1 text-start">
             <div className={cn(
               "border-2 shadow-md rounded-[1.25rem] p-4 w-full relative transition-all",
               isComplementary ? "bg-blue-50/50 border-blue-100" : "bg-emerald-50/30 border-emerald-100",
@@ -330,7 +293,6 @@ function StreamItem({ item, isRtl, user, boqItems }: any) {
                           {boqItem?.referenceTitle || (isRtl ? 'تحديث إنجاز' : 'Progress Update')}
                        </Badge>
                        {item.quantity > 0 && <Badge className="bg-emerald-600 text-white border-0 text-[8px] h-4 px-2">{item.quantity} QTY</Badge>}
-                       {item.isArchived && <Badge className="bg-slate-900 text-white border-0 text-[8px] h-4 px-2">ARCHIVED</Badge>}
                     </div>
                     
                     <div className="space-y-1 mt-1">

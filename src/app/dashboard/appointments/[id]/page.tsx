@@ -6,12 +6,14 @@ import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   ArrowRight, Calendar, Clock, User, 
   MessageSquare, ShieldCheck, 
   Loader2, Workflow, CheckCircle2,
   AlertTriangle, Timer, Hammer,
-  Check, Layers, Info, Pencil, FileText
+  Check, Layers, Info, Pencil, FileText,
+  Target, Zap, Receipt
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, where, orderBy } from 'firebase/firestore';
@@ -20,7 +22,7 @@ import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
 import { Appointment } from '@/types/appointment';
 import { Transaction, StageInstance, TransactionComment } from '@/types/transaction';
-import { BOQItemExecutionEntry } from '@/types/documents';
+import { BOQItemExecutionEntry, BOQItem } from '@/types/documents';
 import { CommentSection } from '@/components/transactions/comment-section';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
@@ -35,6 +37,8 @@ export default function AppointmentDetailPage() {
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
+  const [activeTab, setActiveTab] = useState('pipeline');
+
   const apptRef = useMemo(() => 
     companyId && db ? doc(db, paths.appointments(companyId), apptId) : null, 
   [db, companyId, apptId]);
@@ -46,12 +50,6 @@ export default function AppointmentDetailPage() {
     companyId && db && appt?.transactionId ? doc(db, paths.transactions(companyId), appt.transactionId) : null,
   [db, companyId, appt?.transactionId]);
   const { data: transaction } = useDoc<Transaction>(transRef);
-
-  // تحديد طبيعة النشاط
-  const isConsulting = useMemo(() => {
-    const name = transaction?.activityTypeName || '';
-    return name.includes('استشارات') || name.includes('Consulting') || name.includes('تصميم') || name.includes('Design');
-  }, [transaction]);
 
   // جلب مراحل المشروع
   const stagesQuery = useMemo(() => 
@@ -65,33 +63,32 @@ export default function AppointmentDetailPage() {
   [db, companyId, appt?.transactionId]);
   const { data: executions } = useCollection<BOQItemExecutionEntry>(execsQuery);
 
-  // جلب سجلات التعليقات
-  const commentsQuery = useMemo(() => 
-    companyId && db && appt?.transactionId ? query(collection(db, paths.transactionComments(companyId, appt.transactionId)), where('stageInstanceId', '==', appt.stageId || '')) : null,
-  [db, companyId, appt?.transactionId, appt?.stageId]);
-  const { data: comments } = useCollection<TransactionComment>(commentsQuery);
+  // جلب بنود المقايسة للتعرف عليها في غرفة العمليات
+  const boqItemsQuery = useMemo(() => {
+    if (!companyId || !db || !appt?.transactionId) return null;
+    return query(collection(db, paths.executions(companyId)), where('transactionId', '==', appt.transactionId));
+  }, [db, companyId, appt?.transactionId]);
+  const { data: allExecs } = useCollection<any>(boqItemsQuery);
+
+  // تحديد طبيعة النشاط
+  const isConsulting = useMemo(() => {
+    const name = transaction?.activityTypeName || '';
+    return name.includes('استشارات') || name.includes('Consulting') || name.includes('تصميم') || name.includes('Design');
+  }, [transaction]);
 
   const hasAchievement = useMemo(() => {
     if (!appt?.transactionId) return true; 
-    if (isConsulting) {
-      return (comments || []).length > 0;
-    } else {
-      if (!executions || !appt?.stageId) return false;
-      const linkedStage = stages?.find(s => s.id === appt.stageId);
-      if (!linkedStage) return false;
-      return executions.some(ex => ex.technicalStageId === linkedStage.technicalStageId && !ex.isArchived);
-    }
-  }, [isConsulting, comments, executions, appt?.stageId, appt?.transactionId, stages]);
+    const currentStageExecutions = (executions || []).filter(ex => ex.technicalStageId === appt.stageId && !ex.isArchived);
+    return currentStageExecutions.length > 0;
+  }, [executions, appt?.stageId, appt?.transactionId]);
 
   const handleComplete = async () => {
     if (!db || !companyId || !user) return;
-    if (!hasAchievement && appt?.transactionId) {
+    if (!hasAchievement && appt?.transactionId && !isConsulting) {
        toast({ 
          variant: "destructive", 
          title: isRtl ? "قفل الإنجاز مفعل" : "Execution Lock Active",
-         description: isConsulting 
-           ? (isRtl ? "لا يمكن إغلاق موعد استشاري بدون تدوين ملاحظات فنية." : "Log meeting minutes in the War Room first.")
-           : (isRtl ? "لا يمكن إغلاق موعد مقاولات بدون تسجيل إنجاز ميداني للكميات." : "Log site quantity progress first.")
+         description: isRtl ? "لا يمكن إغلاق الموعد بدون تسجيل إنجاز ميداني للكميات في هذه المرحلة." : "Log site quantity progress first."
        });
        return;
     }
@@ -108,6 +105,17 @@ export default function AppointmentDetailPage() {
   if (apptLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
   if (!appt) return <div className="p-20 text-center font-black">{isRtl ? 'الموعد غير موجود' : 'Appointment not found'}</div>;
 
+  // تنسيق الأرقام والتواريخ بنظام Latn (123) لضمان الوضوح
+  const displayDate = new Date(appt.start).toLocaleDateString(isRtl ? 'ar-KW' : 'en-US', { 
+    dateStyle: 'full',
+    numberingSystem: 'latn' 
+  });
+  const displayTime = new Date(appt.start).toLocaleTimeString(isRtl ? 'ar-KW' : 'en-US', { 
+    hour: '2-digit', 
+    minute: '2-digit',
+    numberingSystem: 'latn'
+  });
+
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-20 text-start" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-6">
@@ -118,7 +126,7 @@ export default function AppointmentDetailPage() {
            <div className="text-start">
              <h1 className="text-3xl font-black font-headline text-slate-900">{appt.title}</h1>
              <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-[0.2em] opacity-60">
-               {appt.clientName} | {transaction?.subServiceName || (isRtl ? 'مشروع مجهول' : 'Unknown Project')}
+               {appt.clientName} | {transaction?.transactionNumber || (isRtl ? 'موعد منفصل' : 'External Appointment')}
              </p>
            </div>
         </div>
@@ -128,12 +136,10 @@ export default function AppointmentDetailPage() {
              onClick={handleComplete} 
              className={cn(
                "h-14 px-10 rounded-2xl font-black text-lg transition-all gap-3 border-b-8 shadow-xl hover:scale-105",
-               hasAchievement
-                 ? (isConsulting ? "bg-blue-600 text-white border-blue-800 shadow-blue-100" : "bg-emerald-600 text-white border-emerald-800 shadow-emerald-100") 
-                 : "bg-slate-200 text-slate-400 border-slate-300 shadow-none cursor-not-allowed"
+               "bg-emerald-600 text-white border-emerald-800 shadow-emerald-100"
              )}
            >
-              {hasAchievement ? <CheckCircle2 className="h-6 w-6" /> : <AlertTriangle className="h-6 w-6" />}
+              <CheckCircle2 className="h-6 w-6" />
               {isRtl ? 'إغلاق وإنجاز الموعد' : 'Complete Appointment'}
            </Button>
         )}
@@ -147,7 +153,7 @@ export default function AppointmentDetailPage() {
                  <div className="flex justify-between items-center">
                     <CardTitle className="text-xl font-black flex items-center gap-3 text-slate-800">
                        <ShieldCheck className="h-6 w-6 text-primary" />
-                       {isRtl ? 'تفاصيل الارتباط الفني' : 'Technical Link Details'}
+                       {isRtl ? 'تفاصيل الارتباط الميداني' : 'Field Link Details'}
                     </CardTitle>
                     <Badge className={cn(
                       "font-black px-4 py-1.5 rounded-xl uppercase text-[10px] shadow-sm",
@@ -162,14 +168,14 @@ export default function AppointmentDetailPage() {
                           <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 border"><Calendar className="h-5 w-5" /></div>
                           <div className="text-start">
                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'التاريخ المجدول' : 'Scheduled Date'}</p>
-                             <p className="font-black text-slate-800 text-lg">{new Date(appt.start).toLocaleDateString(isRtl ? 'ar-KW' : 'en-US', { dateStyle: 'full' })}</p>
+                             <p className="font-black text-slate-800 text-lg">{displayDate}</p>
                           </div>
                        </div>
                        <div className="flex items-start gap-4">
                           <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 border"><Clock className="h-5 w-5" /></div>
                           <div className="text-start">
                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'الوقت' : 'Time'}</p>
-                             <p className="font-black text-slate-800 text-lg">{new Date(appt.start).toLocaleTimeString(isRtl ? 'ar-KW' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</p>
+                             <p className="font-black text-slate-800 text-lg">{displayTime}</p>
                           </div>
                        </div>
                     </div>
@@ -184,7 +190,7 @@ export default function AppointmentDetailPage() {
                        </div>
                        
                        {appt.transactionId && (
-                         <div className="p-6 rounded-[2rem] bg-blue-50/50 border-2 border-blue-100 space-y-4 animate-in slide-in-from-top-2">
+                         <div className="p-6 rounded-[2rem] bg-blue-50/50 border-2 border-blue-100 space-y-4 animate-in slide-in-from-top-2 shadow-sm">
                             <div className="flex items-center gap-3">
                                <div className="h-8 w-8 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 shadow-inner"><Workflow className="h-4 w-4" /></div>
                                <div className="text-start">
@@ -202,37 +208,31 @@ export default function AppointmentDetailPage() {
                        )}
                     </div>
                  </div>
-
-                 {appt.notes && (
-                   <div className="p-8 rounded-[2rem] bg-slate-50 border-2 border-white shadow-inner text-start space-y-2">
-                      <p className="text-[10px] font-black text-slate-400 uppercase flex items-center gap-2 tracking-widest">
-                         <MessageSquare className="h-3 w-3 text-primary" /> {isRtl ? 'ملاحظات الحجز المسبقة' : 'Booking Notes'}
-                      </p>
-                      <p className="text-sm font-bold text-slate-600 leading-relaxed italic">"{appt.notes}"</p>
-                   </div>
-                 )}
               </CardContent>
            </Card>
 
            <div className="pt-4">
-              <div className="bg-white rounded-[3rem] shadow-2xl border border-primary/10 overflow-hidden min-h-[500px]">
+              <div className="bg-white rounded-[3rem] shadow-2xl border border-primary/10 overflow-hidden min-h-[600px]">
                  <div className="bg-slate-900 p-8 text-white flex justify-between items-center">
                     <div className="flex items-center gap-4">
                        <div className="h-12 w-12 rounded-2xl bg-primary/20 flex items-center justify-center text-primary shadow-lg border border-primary/20">
                           <Timer className="h-6 w-6 animate-pulse" />
                        </div>
                        <div className="text-start">
-                          <h3 className="text-xl font-black font-headline">{isRtl ? 'غرفة عمليات الموعد' : 'Appointment War Room'}</h3>
-                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Real-time meeting logs</p>
+                          <h3 className="text-xl font-black font-headline">{isRtl ? 'غرفة عمليات المعاملة المدمجة' : 'Unified Project War Room'}</h3>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Global Field Interaction Log</p>
                        </div>
                     </div>
                     <Badge className="bg-primary text-white border-0 font-black px-4 h-7 rounded-full text-[10px] shadow-lg shadow-orange-500/20">LIVE SYNC</Badge>
                  </div>
-                 <div className="p-2 h-[600px]">
+                 <div className="p-2 h-[700px]">
                     <CommentSection 
                        transactionId={appt.transactionId || apptId} 
-                       path={`companies/${companyId}/appointments/${apptId}/comments`} 
-                       title={isRtl ? 'سجل نقاش الموعد' : 'Meeting Interaction Log'}
+                       path={appt.transactionId ? paths.transactionComments(companyId!, appt.transactionId) : `companies/${companyId}/appointments/${apptId}/comments`} 
+                       title={isRtl ? 'سجل نقاش المعاملة' : 'Project Interaction Log'}
+                       filterStageId={appt.stageId}
+                       selectedStageName={appt.stageName}
+                       stages={stages}
                     />
                  </div>
               </div>
@@ -273,7 +273,7 @@ export default function AppointmentDetailPage() {
                                 </div>
                              </div>
                              {isTarget && (
-                                <Badge className="bg-primary text-white border-0 text-[7px] font-black h-4">TARGET</Badge>
+                                <Badge className="bg-primary text-white border-0 text-[7px] font-black h-4 px-2">CURRENT MISSION</Badge>
                              )}
                           </div>
                        );
@@ -291,7 +291,7 @@ export default function AppointmentDetailPage() {
                     <div className="h-14 w-14 rounded-2xl bg-primary flex items-center justify-center text-white font-black text-xl shadow-lg border-2 border-white">{appt.clientName.charAt(0)}</div>
                     <div className="text-start">
                        <h4 className="font-black text-slate-900 leading-tight">{appt.clientName}</h4>
-                       <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase">Sovereign Client</p>
+                       <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase">Verified Sovereign Client</p>
                     </div>
                  </div>
                  <Button onClick={() => router.push(`/dashboard/clients/${appt.clientId}`)} variant="outline" className="w-full rounded-xl font-black text-[10px] h-11 gap-2 border-2 border-primary/20 text-primary hover:bg-primary hover:text-white transition-all shadow-sm">
@@ -303,15 +303,18 @@ export default function AppointmentDetailPage() {
 
            <div className={cn(
              "p-8 rounded-[2.5rem] border-2 border-dashed flex items-start gap-4",
-             isConsulting ? "bg-blue-50 border-blue-200 text-blue-800" : "bg-amber-50 border-amber-200 text-amber-800"
+             isConsulting ? "bg-blue-50 border-blue-200 text-blue-800" : "bg-emerald-50 border-emerald-200 text-emerald-800"
            )}>
-              {isConsulting ? <Pencil className="h-6 w-6 shrink-0 mt-1" /> : <AlertTriangle className="h-6 w-6 shrink-0 mt-1" />}
-              <p className="text-xs font-bold leading-relaxed">
-                 {isConsulting 
-                   ? (isRtl ? 'بروتوكول الاستشارات: لإكمال الموعد يجب تسجيل ملاحظات فنية في غرفة العمليات أدناه.' : 'Consulting Protocol: Log technical notes in the War Room to complete.')
-                   : (isRtl ? 'بروتوكول المقاولات: لا يمكنك إغلاق هذا الموعد إلا بعد تسجيل إنجاز فني في المشروع المربوط.' : 'Contracting Protocol: Log technical progress (Hammer Log) in the project to complete.')
-                 }
-              </p>
+              {isConsulting ? <Pencil className="h-6 w-6 shrink-0 mt-1" /> : <Hammer className="h-6 w-6 shrink-0 mt-1" />}
+              <div className="text-start space-y-1">
+                 <h5 className="font-black text-xs uppercase">{isRtl ? 'بروتوكول التنفيذ' : 'Field Protocol'}</h5>
+                 <p className="text-[10px] font-bold leading-relaxed opacity-70">
+                    {isConsulting 
+                      ? (isRtl ? 'لإكمال الموعد يجب تسجيل ملاحظات فنية في غرفة العمليات.' : 'Log technical notes in the War Room to complete.')
+                      : (isRtl ? 'سيتم ربط أي إنجاز تسجله في الموعد بالمقايسة الرسمية للمشروع آلياً.' : 'Any progress logged will sync with the official project BOQ.')
+                    }
+                 </p>
+              </div>
            </div>
         </div>
 
@@ -319,4 +322,3 @@ export default function AppointmentDetailPage() {
     </div>
   );
 }
-
