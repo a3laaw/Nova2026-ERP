@@ -358,25 +358,25 @@ export function ArchitecturalAppointmentsView() {
          <Card className="border-0 shadow-lg rounded-2xl bg-white border-b-4 border-slate-900">
             <CardContent className="p-4 text-start">
                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إجمالي المواعيد' : 'Total Appts'}</p>
-               <h3 className="text-2xl font-black text-slate-900">{stats.total.toLocaleString(isRtl ? 'ar-KW' : 'en-US')}</h3>
+               <h3 className="text-2xl font-black text-slate-900">{stats.total.toLocaleString('en-US')}</h3>
             </CardContent>
          </Card>
          <Card className="border-0 shadow-lg rounded-2xl bg-white border-b-4 border-yellow-400">
             <CardContent className="p-4 text-start">
                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'زيارة أولى (جديد)' : '1st Visits'}</p>
-               <h3 className="text-2xl font-black text-yellow-500">{stats.yellow.toLocaleString(isRtl ? 'ar-KW' : 'en-US')}</h3>
+               <h3 className="text-2xl font-black text-yellow-500">{stats.yellow.toLocaleString('en-US')}</h3>
             </CardContent>
          </Card>
          <Card className="border-0 shadow-lg rounded-2xl bg-white border-b-4 border-emerald-500">
             <CardContent className="p-4 text-start">
                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'متابعة (تحت الدراسة)' : 'Follow-ups'}</p>
-               <h3 className="text-2xl font-black text-emerald-600">{stats.green.toLocaleString(isRtl ? 'ar-KW' : 'en-US')}</h3>
+               <h3 className="text-2xl font-black text-emerald-600">{stats.green.toLocaleString('en-US')}</h3>
             </CardContent>
          </Card>
          <Card className="border-0 shadow-lg rounded-2xl bg-white border-b-4 border-blue-500">
             <CardContent className="p-4 text-start">
                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'عملاء متعاقدون' : 'Contracted'}</p>
-               <h3 className="text-2xl font-black text-blue-600">{stats.blue.toLocaleString(isRtl ? 'ar-KW' : 'en-US')}</h3>
+               <h3 className="text-2xl font-black text-blue-600">{stats.blue.toLocaleString('en-US')}</h3>
             </CardContent>
          </Card>
       </div>

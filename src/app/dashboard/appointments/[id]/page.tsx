@@ -142,6 +142,7 @@ export default function AppointmentDetailPage() {
   const handleComplete = async () => {
     if (!db || !companyId || !user) return;
 
+    // قفل صارم: منع الإكمال إذا لم يتوفر إنجاز فني للمواعيد الإنشائية
     if (!hasAchievement && appt?.transactionId && !isConsulting) {
        toast({ 
          variant: "destructive", 
@@ -186,9 +187,9 @@ export default function AppointmentDetailPage() {
     <div className="space-y-8 animate-in fade-in duration-700 pb-20 text-start" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-6">
         <div className="flex items-center gap-4">
-           <Button variant="ghost" onClick={() => router.back()} className="h-12 w-12 p-0 rounded-2xl bg-white shadow-sm border hover:bg-slate-50 transition-all">
+           <button onClick={() => router.back()} className="h-12 w-12 border-2 rounded-2xl bg-white shadow-sm flex items-center justify-center hover:bg-slate-50 transition-all">
              <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-180")} />
-           </Button>
+           </button>
            <div className="text-start">
              <h1 className="text-3xl font-black font-headline text-slate-900">{appt.title}</h1>
              <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-[0.2em] opacity-60">
@@ -200,9 +201,10 @@ export default function AppointmentDetailPage() {
         {appt.status !== 'completed' && (
            <Button 
              onClick={handleComplete} 
+             disabled={!hasAchievement && appt?.transactionId && !isConsulting}
              className={cn(
                "h-14 px-10 rounded-2xl font-black text-lg transition-all gap-3 border-b-8 shadow-xl hover:scale-105",
-               hasAchievement ? "bg-emerald-600 text-white border-emerald-800 shadow-emerald-100" : "bg-slate-200 text-slate-400 border-slate-400 cursor-not-allowed"
+               (hasAchievement || isConsulting) ? "bg-emerald-600 text-white border-emerald-800 shadow-emerald-100" : "bg-slate-200 text-slate-400 border-slate-400 cursor-not-allowed"
              )}
            >
               <CheckCircle2 className="h-6 w-6" />
@@ -242,14 +244,14 @@ export default function AppointmentDetailPage() {
                     </CardHeader>
                     <CardContent className="p-10 space-y-10">
                        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                          <div className="flex items-start gap-4">
+                          <div className="flex items-start gap-4 text-start">
                              <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 border"><Calendar className="h-5 w-5" /></div>
                              <div className="text-start">
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'التاريخ المجدول' : 'Scheduled Date'}</p>
                                 <p className="font-black text-slate-800 text-lg">{displayDate}</p>
                              </div>
                           </div>
-                          <div className="flex items-start gap-4">
+                          <div className="flex items-start gap-4 text-start">
                              <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 border"><Clock className="h-5 w-5" /></div>
                              <div className="text-start">
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'الوقت' : 'Time'}</p>
@@ -267,17 +269,17 @@ export default function AppointmentDetailPage() {
                        </div>
 
                        {!hasAchievement && !isConsulting && (
-                          <div className="p-8 rounded-[2.5rem] bg-rose-50 border-2 border-rose-100 text-rose-800 flex items-center gap-6 animate-pulse">
+                          <div className="p-8 rounded-[2.5rem] bg-rose-50 border-2 border-rose-100 text-rose-800 flex items-center gap-6 animate-pulse text-start">
                              <AlertTriangle className="h-10 w-10 shrink-0" />
                              <div className="text-start">
                                 <h4 className="font-black text-lg">{isRtl ? 'مطلوب تسجيل إنجاز' : 'Progress Log Required'}</h4>
-                                <p className="text-xs font-bold leading-relaxed">{isRtl ? 'تنفيذاً لسياسة Nova ERP، يجب تسجيل كميات الإنجاز الميداني قبل أن تتمكن من إغلاق الموعد بنجاح.' : 'Per Nova ERP policy, site quantities must be logged before closing this mission.'}</p>
+                                <p className="text-xs font-bold leading-relaxed">{isRtl ? 'تنفيذاً لسياسة Nova ERP، يجب تسجيل كميات الإنجاز الميداني (من خلال زر المطرقة أعلاه) قبل أن تتمكن من إغلاق الموعد بنجاح.' : 'Per Nova ERP policy, site quantities must be logged (via Hammer button above) before closing this mission.'}</p>
                              </div>
                           </div>
                        )}
 
                        {hasAchievement && (
-                          <div className="p-8 rounded-[2.5rem] bg-emerald-50 border-2 border-emerald-100 text-emerald-800 flex items-center gap-6">
+                          <div className="p-8 rounded-[2.5rem] bg-emerald-50 border-2 border-emerald-100 text-emerald-800 flex items-center gap-6 text-start">
                              <CheckCircle2 className="h-10 w-10 shrink-0" />
                              <div className="text-start">
                                 <h4 className="font-black text-lg">{isRtl ? 'الشرط الفني مكتمل' : 'Technical Condition Met'}</h4>
@@ -322,7 +324,7 @@ export default function AppointmentDetailPage() {
                             onClick={() => router.push(`/dashboard/clients/${appt.clientId}/transactions/${appt.transactionId}`)}
                             className={cn(
                               "p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between group",
-                              isTarget ? "bg-primary/5 border-primary shadow-lg scale-105" : "bg-white border-slate-50 hover:border-slate-200"
+                              isTarget ? "bg-primary/5 border-primary shadow-lg scale-105" : "bg-white border-slate-100 hover:border-slate-200"
                             )}
                           >
                              <div className="flex items-center gap-3">
@@ -352,7 +354,7 @@ export default function AppointmentDetailPage() {
                  <CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-400">{isRtl ? 'عن العميل' : 'Client Snapshot'}</CardTitle>
               </CardHeader>
               <CardContent className="p-8 space-y-6">
-                 <div className="flex items-center gap-4">
+                 <div className="flex items-center gap-4 text-start">
                     <div className="h-14 w-14 rounded-2xl bg-primary flex items-center justify-center text-white font-black text-xl shadow-lg border-2 border-white">{appt.clientName.charAt(0)}</div>
                     <div className="text-start">
                        <h4 className="font-black text-slate-900 leading-tight">{appt.clientName}</h4>
@@ -369,7 +371,7 @@ export default function AppointmentDetailPage() {
 
       </div>
 
-      {/* مودال تسجيل الإنجاز - منقول من شاشة المعاملة لضمان وحدة الوظيفة */}
+      {/* مودال تسجيل الإنجاز */}
       <Dialog open={isRecordOpen} onOpenChange={setIsRecordOpen}>
          <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-md" dir={dir}>
             <div className="bg-slate-900 p-6 text-white text-start flex justify-between items-center">
@@ -394,7 +396,12 @@ export default function AppointmentDetailPage() {
                           </SelectItem>
                         ))}
                         {!boqItems?.some(i => i.technicalStageIds?.includes(appt.stageId!) || i.technicalStageId === appt.stageId) && (
-                           <div className="p-4 text-center text-[10px] font-bold text-rose-500">{isRtl ? 'لا يوجد بنود مربوطة بهذه المرحلة' : 'No items linked to this stage'}</div>
+                           <div className="p-4 bg-amber-50 rounded-xl border-2 border-dashed border-amber-200 text-center space-y-2">
+                              <Info className="h-5 w-5 mx-auto text-amber-500" />
+                              <p className="text-[10px] font-bold text-amber-700 leading-relaxed">
+                                 {isRtl ? 'تنبيه: لا يوجد بنود مقايسة مرتبطة فنياً بهذه المرحلة حالياً. يرجى مراجعة القالب أو القاموس لربط البنود لتتمكن من تسجيل الكميات.' : 'Notice: No BOQ items are technically linked to this stage yet.'}
+                              </p>
+                           </div>
                         )}
                      </SelectContent>
                   </Select>
@@ -449,4 +456,3 @@ export default function AppointmentDetailPage() {
     </div>
   );
 }
-
