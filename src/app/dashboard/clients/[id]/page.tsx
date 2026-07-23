@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -9,7 +10,7 @@ import {
   Edit3, MapPin, Phone, 
   History, Loader2, Activity, PlayCircle, 
   Compass, Map as MapIcon, Target, Layers,
-  Trash2, AlertTriangle, ArrowRight, FileText, Gavel
+  Trash2, AlertTriangle, ArrowRight, FileText, Gavel, Receipt
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, where } from 'firebase/firestore';
@@ -32,7 +33,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { TransactionDocumentsDialog } from '@/components/transactions/document-manager-dialog';
 
 import dynamic from 'next/dynamic';
 
@@ -57,7 +57,6 @@ export default function ClientDetailsPage() {
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [docModal, setDocModal] = useState<{ type: 'quotation' | 'contract', transaction: Transaction } | null>(null);
 
   const clientRef = useMemo(() => companyId && db ? doc(db, paths.clients(companyId), clientId) : null, [db, companyId, clientId]);
   const historyQuery = useMemo(() => companyId && db ? query(collection(db, paths.clientHistory(companyId, clientId))) : null, [db, companyId, clientId]);
@@ -147,20 +146,10 @@ export default function ClientDetailsPage() {
                                variant="ghost" 
                                size="sm" 
                                className="h-8 px-2 rounded-md text-[9px] font-black gap-1 text-blue-600 hover:bg-blue-50"
-                               onClick={(e) => { e.stopPropagation(); setDocModal({ type: 'quotation', transaction: t }); }}
+                               onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/clients/${clientId}/transactions/${t.id}?tab=documents`); }}
                              >
-                                <FileText className="h-3 w-3" />
-                                {isRtl ? 'عرض سعر' : 'Quote'}
-                             </Button>
-                             <div className="w-[1px] h-4 bg-slate-100 mx-1" />
-                             <Button 
-                               variant="ghost" 
-                               size="sm" 
-                               className="h-8 px-2 rounded-md text-[9px] font-black gap-1 text-indigo-600 hover:bg-indigo-50"
-                               onClick={(e) => { e.stopPropagation(); setDocModal({ type: 'contract', transaction: t }); }}
-                             >
-                                <Gavel className="h-3 w-3" />
-                                {isRtl ? 'عقد' : 'Contract'}
+                                <Receipt className="h-3 w-3" />
+                                {isRtl ? 'المستندات' : 'Finance'}
                              </Button>
                           </div>
 
@@ -234,17 +223,6 @@ export default function ClientDetailsPage() {
            </CardContent>
         </Card>
       </div>
-
-      {docModal && (
-        <TransactionDocumentsDialog 
-          isOpen={!!docModal}
-          onClose={() => setDocModal(null)}
-          type={docModal.type}
-          transaction={docModal.transaction}
-          clientId={clientId}
-          clientName={client.nameAr}
-        />
-      )}
 
       <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
         <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white z-[100]" dir={dir}>
