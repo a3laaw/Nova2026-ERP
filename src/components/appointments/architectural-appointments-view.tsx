@@ -99,11 +99,11 @@ function getVisitColor(visitCount: number, status?: string, apptType?: string): 
 }
 
 function cardGradient(color: string) {
-  if (color === '#facc15') return "bg-yellow-50 border-yellow-200 text-yellow-900 shadow-sm";
-  if (color === '#22c55e') return "bg-emerald-50 border-emerald-200 text-emerald-900 shadow-sm";
-  if (color === '#3b82f6') return "bg-blue-50 border-blue-200 text-blue-900 shadow-sm";
+  if (color === '#facc15') return "bg-yellow-50 border-yellow-200 text-yellow-900";
+  if (color === '#22c55e') return "bg-emerald-50 border-emerald-200 text-emerald-900";
+  if (color === '#3b82f6') return "bg-blue-50 border-blue-200 text-blue-900";
   if (color === '#475569') return "bg-slate-100 border-slate-300 text-slate-600 grayscale opacity-80";
-  return "bg-slate-50 border-slate-200 text-slate-900 shadow-sm";
+  return "bg-slate-50 border-slate-200 text-slate-900";
 }
 
 function generateTimeSlots(s: string, e: string, duration: number, rest: number): string[] {
@@ -532,7 +532,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                            const isBusy = appt.type === 'busy_blocked';
 
                            return (
-                             <td key={eng.id} className="p-1 border-b-2 border-slate-200 border-s-2 border-s-slate-100 align-top relative overflow-visible">
+                             <td key={eng.id} className="p-1 border-b-2 border-slate-200 border-s-2 border-s-slate-100 align-top relative">
                                 <Card 
                                   onClick={() => !isBusy && router.push(`/dashboard/appointments/${appt.id}`)}
                                   className={cn(
@@ -540,45 +540,40 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                                     cardGradient(m?.color || '')
                                   )}
                                 >
-                                   {/* SUPERIOR ACTIONS TRIGGER - ABSOLUTE Z-STACKING */}
-                                   <div 
-                                      className={cn("absolute top-1 z-[60]", isRtl ? "left-1" : "right-1")} 
-                                      onClick={e => e.stopPropagation()}
-                                   >
+                                   {/* زر النقاط الثلاث المصغر والأنيق */}
+                                   <div className={cn("absolute top-1 z-10", isRtl ? "left-1" : "right-1")} onClick={e => e.stopPropagation()}>
                                       <DropdownMenu>
                                          <DropdownMenuTrigger asChild>
                                             <Button 
-                                              variant="secondary" 
+                                              variant="ghost" 
                                               size="icon" 
-                                              className="h-7 w-7 rounded-full bg-white shadow-2xl hover:bg-white text-slate-900 border-2 border-slate-100 flex items-center justify-center transition-all scale-95"
+                                              className="h-6 w-6 rounded-full bg-white/80 hover:bg-white text-slate-900 border shadow-sm flex items-center justify-center"
                                             >
-                                               <MoreVertical className="h-4 w-4" />
+                                               <MoreVertical className="h-3 w-3" />
                                             </Button>
                                          </DropdownMenuTrigger>
                                          <DropdownMenuPortal>
-                                            <DropdownMenuContent align={isRtl ? "start" : "end"} className="rounded-xl border-2 shadow-3xl z-[150] bg-white min-w-[160px]">
-                                               <DropdownMenuLabel className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'الإجراءات' : 'Actions'}</DropdownMenuLabel>
-                                               <DropdownMenuSeparator />
-                                               <DropdownMenuItem onClick={() => router.push(`/dashboard/appointments/${appt.id}`)} className="font-bold gap-2 py-2 cursor-pointer text-[11px]">
-                                                  <MessageSquare className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'غرفة العمليات' : 'War Room'}
+                                            <DropdownMenuContent align={isRtl ? "start" : "end"} className="rounded-xl border-2 shadow-3xl bg-white min-w-[150px] z-[150]">
+                                               <DropdownMenuItem onClick={() => router.push(`/dashboard/appointments/${appt.id}`)} className="font-bold gap-2 py-2 text-[10px]">
+                                                  <MessageSquare className="h-3 w-3 text-primary" /> {isRtl ? 'غرفة العمليات' : 'War Room'}
                                                </DropdownMenuItem>
-                                               <DropdownMenuItem onClick={() => onAction('edit', eng, slot, appt)} className="font-bold gap-2 py-2 cursor-pointer text-[11px]">
-                                                  <Edit3 className="h-3.5 w-3.5 text-blue-500" /> {isRtl ? 'تعديل' : 'Edit'}
+                                               <DropdownMenuItem onClick={() => onAction('edit', eng, slot, appt)} className="font-bold gap-2 py-2 text-[10px]">
+                                                  <Edit3 className="h-3 w-3 text-blue-500" /> {isRtl ? 'تعديل' : 'Edit'}
                                                </DropdownMenuItem>
-                                               <DropdownMenuItem onClick={() => handleCancelAppt(appt.id!)} className="font-bold gap-2 py-2 cursor-pointer text-[11px]">
-                                                  <CalendarX className="h-3.5 w-3.5 text-orange-500" /> {isRtl ? 'إلغاء' : 'Cancel'}
+                                               <DropdownMenuItem onClick={() => handleCancelAppt(appt.id!)} className="font-bold gap-2 py-2 text-[10px]">
+                                                  <CalendarX className="h-3 w-3 text-orange-500" /> {isRtl ? 'إلغاء' : 'Cancel'}
                                                </DropdownMenuItem>
                                                <DropdownMenuSeparator />
-                                               <DropdownMenuItem onClick={() => handleDeleteAppt(appt.id!)} className="font-bold gap-2 py-2 cursor-pointer text-[11px] text-rose-600 focus:text-rose-600 focus:bg-rose-50">
-                                                  <Trash2 className="h-3.5 w-3.5" /> {isRtl ? 'حذف نهائي' : 'Delete'}
+                                               <DropdownMenuItem onClick={() => handleDeleteAppt(appt.id!)} className="font-bold gap-2 py-2 text-[10px] text-rose-600">
+                                                  <Trash2 className="h-3 w-3" /> {isRtl ? 'حذف' : 'Delete'}
                                                </DropdownMenuItem>
                                             </DropdownMenuContent>
                                          </DropdownMenuPortal>
                                       </DropdownMenu>
                                    </div>
 
-                                   <div className={cn("text-start", isRtl ? "pr-2 pl-6" : "pl-2 pr-6")}>
-                                      <p className="font-black text-[11px] leading-tight mb-0.5 truncate">{isBusy ? (isRtl ? 'مشغول' : 'Busy') : appt.clientName}</p>
+                                   <div className={cn("text-start", isRtl ? "pr-1 pl-5" : "pl-1 pr-5")}>
+                                      <p className="font-black text-[10px] leading-tight mb-0.5 truncate">{isBusy ? (isRtl ? 'مشغول' : 'Busy') : appt.clientName}</p>
                                       {!isBusy && (
                                         <div className="flex items-center gap-1 text-[7px] font-black uppercase opacity-60">
                                            <MapPin className="h-2 w-2" /> {appt.governorateName || '---'}
@@ -588,7 +583,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                                    
                                    {!isBusy && (
                                      <div className="mt-2 flex items-center justify-between px-1">
-                                        <Badge className="bg-white/60 text-inherit border-0 font-black text-[7px] h-4 px-1.5 rounded-md shadow-sm">V {m?.visitCount}</Badge>
+                                        <Badge className="bg-white/40 text-inherit border-0 font-black text-[7px] h-4 px-1.5 rounded shadow-sm">V {m?.visitCount}</Badge>
                                         {appt.transactionId && <LinkIcon className="h-2.5 w-2.5 opacity-30 text-inherit" />}
                                      </div>
                                    )}
@@ -604,7 +599,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                           >
                              <div className="h-10 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
                                 <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                                   <Plus className="h-3.5 w-3.5" />
+                                   <Plus className="h-3 w-3" />
                                 </div>
                              </div>
                           </td>
@@ -751,39 +746,30 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="rounded-2xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-xl flex flex-col h-fit max-h-[85vh] z-[101]" dir={dir}>
+      <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg flex flex-col h-fit max-h-[85vh] z-[101]" dir={dir}>
         
-        <div className="bg-slate-50 p-6 text-slate-900 text-start border-b shrink-0 relative">
-           <div className="flex items-center gap-4 px-12">
-              <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-primary shadow-md border-2 border-primary/10 shrink-0">
-                 {data?.mode === 'create' ? <PlusCircle className="h-5 w-5" /> : <Edit3 className="h-5 w-5" />}
-              </div>
-              <div className="flex-1 min-w-0">
-                 <DialogTitle className="text-lg font-black font-headline truncate">
-                    {data?.mode === 'create' ? (isRtl ? 'حجز موعد تصميم' : 'Book Design Appt') : (isRtl ? 'تعديل موعد' : 'Edit')}
-                 </DialogTitle>
-                 <Badge variant="outline" className="h-5 px-2 border-2 font-mono font-black text-[9px] bg-white text-slate-500 shadow-sm mt-1">
-                    <Clock className="h-3 w-3 me-1.5 opacity-40" /> {formData.time}
-                 </Badge>
-              </div>
-           </div>
+        <div className="bg-slate-50 p-6 text-slate-900 text-start border-b shrink-0 relative pr-12 pl-12">
+           <DialogTitle className="text-lg font-black font-headline truncate flex items-center gap-3">
+              {data?.mode === 'create' ? <PlusCircle className="h-5 w-5 text-primary" /> : <Edit3 className="h-5 w-5 text-primary" />}
+              {data?.mode === 'create' ? (isRtl ? 'حجز موعد تصميم' : 'Book Design Appt') : (isRtl ? 'تعديل موعد' : 'Edit')}
+           </DialogTitle>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-10 space-y-6 text-start scrollbar-hide">
+        <div className="flex-1 overflow-y-auto p-8 space-y-6 text-start scrollbar-hide">
            {data?.mode === 'create' && (
              <div className="grid grid-cols-2 gap-4">
                 <div className={cn(
-                  "flex items-center justify-between p-3 rounded-xl transition-all border-2",
-                  isNewClient ? "bg-primary/5 border-primary/20 shadow-sm" : "bg-slate-50 border-white shadow-inner"
+                  "flex items-center justify-between p-3 rounded-xl border-2 transition-all",
+                  isNewClient ? "bg-primary/5 border-primary/20" : "bg-white border-slate-100"
                 )}>
-                   <Label className="font-black text-[9px] uppercase text-slate-500">جديد؟</Label>
+                   <Label className="text-[10px] font-black text-slate-400">جديد؟</Label>
                    <Switch checked={isNewClient} onCheckedChange={v => { setIsNewClient(v); if(v) setIsBusyBlock(false); }} className="scale-75" />
                 </div>
                 <div className={cn(
-                  "flex items-center justify-between p-3 rounded-xl transition-all border-2",
-                  isBusyBlock ? "bg-slate-900 text-white border-primary" : "bg-slate-800 text-white opacity-40"
+                  "flex items-center justify-between p-3 rounded-xl border-2 transition-all",
+                  isBusyBlock ? "bg-slate-900 text-white border-primary" : "bg-white border-slate-100"
                 )}>
-                   <Label className="font-black text-[9px] uppercase text-primary">Busy</Label>
+                   <Label className="text-[10px] font-black text-primary">Busy</Label>
                    <Switch checked={isBusyBlock} onCheckedChange={v => { setIsBusyBlock(v); if(v) setIsNewClient(false); }} className="scale-75" />
                 </div>
              </div>
@@ -792,24 +778,21 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
            {!isBusyBlock && (
              <div className="space-y-4">
                 {isNewClient ? (
-                   <div className="space-y-4 p-5 rounded-2xl border-2 border-primary/10 bg-primary/5 animate-in fade-in">
+                   <div className="space-y-4 p-5 rounded-2xl border bg-slate-50/50 animate-in fade-in">
                       <div className="space-y-1.5">
                          <Label className="text-[10px] font-black uppercase text-slate-400">اسم العميل</Label>
-                         <Input value={formData.newClientName} onChange={e => setFormData({...formData, newClientName: e.target.value})} className="h-10 rounded-lg border-2 font-bold" />
+                         <Input value={formData.newClientName} onChange={e => setFormData({...formData, newClientName: e.target.value})} className="h-10 rounded-lg border-2" />
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                          <div className="space-y-1.5">
                             <Label className="text-[10px] font-black uppercase text-slate-400">الهاتف</Label>
-                            <Input value={formData.newClientPhone} onChange={e => setFormData({...formData, newClientPhone: e.target.value})} className="h-10 rounded-lg border-2" placeholder="+965" />
+                            <Input value={formData.newClientPhone} onChange={e => setFormData({...formData, newClientPhone: e.target.value})} className="h-10 rounded-lg border-2" />
                          </div>
-                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'المحافظة' : 'Gov'}</Label>
-                            <Select value={formData.newClientGovId} onValueChange={v => {
-                               const g = governorates?.find((x:any)=>x.id===v);
-                               setFormData({...formData, newClientGovId: v, newClientGovName: isRtl?g.name:g.nameEn});
-                            }}>
+                         <div className="space-y-1.5">
+                            <Label className="text-[10px] font-black uppercase text-slate-400">المحافظة</Label>
+                            <Select value={formData.newClientGovId} onValueChange={v => setFormData({...formData, newClientGovId: v})}>
                                <SelectTrigger className="h-10 rounded-lg border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                               <SelectContent className="rounded-xl border-2 shadow-2xl z-[150]">
+                               <SelectContent className="rounded-xl border shadow-2xl z-[150]">
                                   {governorates?.map((g: any) => <SelectItem key={g.id} value={g.id} className="font-bold text-xs">{isRtl ? g.name : g.nameEn}</SelectItem>)}
                                </SelectContent>
                             </Select>
@@ -818,20 +801,18 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                    </div>
                 ) : (
                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                         <Search className="h-3 w-3" /> اختيار العميل
-                      </Label>
+                      <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">اختيار العميل</Label>
                       <Select value={formData.clientId} onValueChange={v => {
                         const c = filteredClients.find((x:any) => x.id === v);
                         setFormData({...formData, clientId: v, clientName: c?.nameAr || ''});
                       }}>
-                         <SelectTrigger className="h-12 rounded-xl border-2 font-black bg-white shadow-sm">
-                            <SelectValue placeholder={isRtl ? "تحديد العميل..." : "Choose client..."} />
+                         <SelectTrigger className="h-11 rounded-xl border-2 font-bold bg-white">
+                            <SelectValue placeholder={isRtl ? "تحديد العميل من القائمة..." : "Choose client..."} />
                          </SelectTrigger>
-                         <SelectContent className="rounded-xl border-2 shadow-3xl max-h-[300px] z-[150]">
+                         <SelectContent className="rounded-xl border shadow-3xl max-h-[300px] z-[150]">
                             {filteredClients.map((c: any) => (
-                              <SelectItem key={c.id} value={c.id!} className="font-black text-[11px] py-2 border-b last:border-0 border-slate-50">
-                                 {c.nameAr} <span className="text-[8px] opacity-30 ms-2">#{c.fileNumber}</span>
+                              <SelectItem key={c.id} value={c.id!} className="font-bold text-[11px] py-2">
+                                 {c.nameAr}
                               </SelectItem>
                             ))}
                          </SelectContent>
@@ -842,23 +823,23 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
            )}
 
            <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">الغرض من الموعد</Label>
-              <Input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="h-10 rounded-lg border-2 font-bold" placeholder={isRtl ? "مثلاً: مراجعة المخطط الابتدائي" : "e.g. Layout Review"} />
+              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">غرض الموعد</Label>
+              <Input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="h-10 rounded-lg border-2 font-bold" />
            </div>
 
-           <div className="space-y-2">
-              <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">توجيهات فنية للمهندس</Label>
-              <Textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="min-h-[120px] rounded-xl border-2 bg-slate-50/30 p-4 text-xs font-bold resize-none shadow-inner focus:bg-white transition-all" placeholder="..." />
+           <div className="space-y-1.5">
+              <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">توجيهات فنية</Label>
+              <Textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="min-h-[100px] rounded-xl border-2 bg-slate-50/30 p-4 text-xs font-bold" />
            </div>
         </div>
 
-        <DialogFooter className="sticky bottom-0 p-6 bg-slate-50 border-t flex flex-row gap-4 shrink-0 shadow-[0_-10px_20px_-5px_rgba(0,0,0,0.05)] z-20">
-           <Button variant="outline" onClick={onClose} className="flex-1 h-10 rounded-xl font-bold border-2 text-xs bg-white">
+        <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-3 shrink-0 shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.05)]">
+           <Button variant="outline" onClick={onClose} className="flex-1 h-10 rounded-lg font-bold border-2 bg-white">
               {isRtl ? 'إلغاء' : 'Cancel'}
            </Button>
-           <Button onClick={handleSave} disabled={loading || (!isBusyBlock && !formData.clientId)} className="flex-[2] h-10 rounded-xl font-bold text-xs shadow-lg gap-2 border-b-2 border-orange-700/30">
+           <Button onClick={handleSave} disabled={loading || (!isBusyBlock && !formData.clientId)} className="flex-[2] h-10 rounded-lg font-black gap-2">
               {loading ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
-              {isRtl ? 'حفظ وتثبيت' : 'Confirm'}
+              {isRtl ? 'حفظ الموعد' : 'Confirm'}
            </Button>
         </DialogFooter>
       </DialogContent>
