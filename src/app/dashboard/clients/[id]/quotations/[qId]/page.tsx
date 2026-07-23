@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useEffect, useState } from 'react';
@@ -17,7 +16,8 @@ import {
   LayoutGrid,
   Plus,
   ArrowRight,
-  X
+  X,
+  Gavel
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy } from 'firebase/firestore';
@@ -52,6 +52,7 @@ export default function QuotationViewPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [hasAutoOpened, setHasAutoOpened] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [converting, setConverting] = useState(false);
   const [editData, setEditForm] = useState<Partial<Quotation>>({});
 
   const quoteRef = useMemo(() => 
@@ -130,6 +131,25 @@ export default function QuotationViewPage() {
     }
   };
 
+  const handleConvertToContract = async () => {
+    if (!db || !companyId || !user) return;
+    setConverting(true);
+    try {
+      const service = new DocumentService(db, companyId, permissions);
+      const contractId = await service.convertQuotationToContract(
+        quotationId, 
+        user.uid, 
+        globalUser?.username || user.displayName || 'Admin'
+      );
+      toast({ title: isRtl ? "تم تحويل العرض إلى عقد رسمي" : "Quotation converted to Contract" });
+      router.push(`/dashboard/clients/${clientId}/contracts/${contractId}`);
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('error'), description: e.message });
+    } finally {
+      setConverting(false);
+    }
+  };
+
   /**
    * بروتوكول الإلغاء الذكي
    */
@@ -142,7 +162,7 @@ export default function QuotationViewPage() {
     }
   };
 
-  const updateItem = (idx: number, field: keyof QuotationItem, val: any) => {
+  const updateItem = (idx: number, field: string, val: any) => {
     const newItems = [...(editData.items || [])];
     (newItems[idx] as any)[field] = val;
     setEditForm({ ...editData, items: newItems });
@@ -214,6 +234,16 @@ export default function QuotationViewPage() {
               </>
            ) : (
              <>
+               <Button 
+                 onClick={handleConvertToContract} 
+                 disabled={converting}
+                 variant="outline" 
+                 size="sm" 
+                 className="rounded-xl h-10 px-6 font-black gap-2 bg-indigo-50 text-indigo-600 border-indigo-200 hover:bg-indigo-100"
+               >
+                  {converting ? <Loader2 className="animate-spin h-4 w-4" /> : <Gavel className="h-4 w-4" />}
+                  {t('convertToContract')}
+               </Button>
                <Button onClick={() => setIsEditing(true)} variant="outline" size="sm" className="rounded-xl h-10 px-6 font-black gap-2 border-2 bg-white text-primary hover:bg-primary/5">
                   <Edit3 className="h-4 w-4" /> {isRtl ? 'تعديل البنود' : 'Edit Template'}
                </Button>
@@ -383,7 +413,7 @@ export default function QuotationViewPage() {
                            <td colSpan={editData.pricingMode === 'percentage' ? 4 : 3} className="p-4 text-start">
                               <h3 className="text-sm font-black font-headline uppercase tracking-tighter">{isRtl ? 'إجمالي قيمة العرض' : 'Total Quote Value'}</h3>
                               {editData.pricingMode === 'percentage' && (
-                                 <Badge className={cn("mt-1 border-0 text-[7px] font-black h-4 px-3 shadow-sm", stats.isValid ? "bg-emerald-50 text-white" : "bg-rose-50 text-white animate-pulse")}>
+                                 <Badge className={cn("mt-1 border-0 text-[7px] font-black h-4 px-3 shadow-sm", stats.isValid ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")}>
                                     {stats.isValid ? `BALANCED: ${stats.totalPercentage}%` : `MISMATCH: ${stats.totalPercentage}% / 100%`}
                                  </Badge>
                               )}

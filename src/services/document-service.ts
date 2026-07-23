@@ -119,6 +119,73 @@ export class DocumentService {
     return deleteDoc(docRef);
   }
 
+  async convertQuotationToContract(quotationId: string, userId: string, userName: string): Promise<string> {
+    ensureActionPermission(this.permissions, 'projects:create');
+    
+    const quoteRef = doc(this.db, paths.quotations(this.companyId), quotationId);
+    const quoteSnap = await getDoc(quoteRef);
+    if (!quoteSnap.exists()) throw new Error('QUOTATION_NOT_FOUND');
+    
+    const quote = quoteSnap.data() as Quotation;
+    
+    // 1. البحث عن قالب عقد افتراضي أو مطابق للخدمة
+    const templatesQuery = query(
+      collection(this.db, paths.contractTemplates(this.companyId)),
+      where('subServiceId', '==', quote.subServiceId),
+      limit(1)
+    );
+    const templatesSnap = await getDocs(templatesQuery);
+    const template = !templatesSnap.empty ? templatesSnap.docs[0].data() as ContractTemplate : null;
+
+    // 2. إنشاء العقد الجديد
+    const contractRef = doc(collection(this.db, paths.contracts(this.companyId)));
+    const contractData: Contract = {
+      id: contractRef.id,
+      transactionId: quote.transactionId,
+      clientId: quote.clientId,
+      clientName: quote.clientName,
+      templateId: template?.id || 'manual_conversion',
+      name: quote.name.replace('عرض سعر', 'عقد').replace('Quotation', 'Contract'),
+      status: 'draft',
+      totalAmount: quote.totalAmount,
+      pricingMode: quote.pricingMode,
+      version: 1,
+      isPaid: false,
+      isHistoryRecorded: true,
+      legalText: template?.legalText || '',
+      introText: template?.introText || quote.introText || '',
+      clauses: template?.clauses || [],
+      // تحويل بنود عرض السعر إلى دفعات العقد
+      milestones: (quote.items || []).map(item => ({
+        name: item.label || item.description,
+        percentage: item.percentage || 0,
+        amount: item.amount || (item.unitPrice || 0) * (item.quantity || 1),
+        timing: 'at',
+        technicalStageId: item.technicalStageId || 'SIGNING',
+        contractualEvent: item.technicalStageId === 'SIGNING' ? 'SIGNING' : 'MANUAL'
+      })),
+      companyId: this.companyId,
+      createdBy: userId,
+      updatedBy: userId,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    } as any;
+
+    await setDoc(contractRef, contractData);
+
+    // 3. توثيق العملية في سجل العميل
+    const clientService = new ClientService(this.db, this.companyId);
+    await clientService.addHistory(quote.clientId, {
+      type: 'system_log',
+      content: `تم تحويل عرض السعر إلى مسودة عقد رسمي للمعاملة: ${quote.name}`,
+      userId, 
+      userName, 
+      companyId: this.companyId
+    });
+
+    return contractRef.id;
+  }
+
   async instantiateContractFromTemplate(
     templateId: string,
     payload: { transactionId: string, clientId: string, clientName: string, name: string },
