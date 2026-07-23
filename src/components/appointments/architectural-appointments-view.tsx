@@ -559,30 +559,37 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                                          )}
                                       </div>
                                       
-                                      <DropdownMenu>
-                                         <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" onClick={e => e.stopPropagation()} className="h-6 w-6 rounded-md bg-white shadow-sm border border-slate-100 hover:bg-slate-50 transition-all z-20">
-                                               <MoreVertical className="h-3 w-3 text-slate-900" />
-                                            </Button>
-                                         </DropdownMenuTrigger>
-                                         <DropdownMenuContent align="end" className="rounded-xl border-2 shadow-2xl z-[120] bg-white min-w-[160px]">
-                                            <DropdownMenuLabel className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'الإجراءات' : 'Actions'}</DropdownMenuLabel>
-                                            <DropdownMenuSeparator />
-                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/appointments/${appt.id}`); }} className="font-bold gap-2 py-2 cursor-pointer text-[11px]">
-                                               <MessageSquare className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'غرفة العمليات' : 'War Room'}
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAction('edit', eng, slot, appt); }} className="font-bold gap-2 py-2 cursor-pointer text-[11px]">
-                                               <Edit3 className="h-3.5 w-3.5 text-blue-500" /> {isRtl ? 'تعديل' : 'Edit'}
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleCancelAppt(appt.id!); }} className="font-bold gap-2 py-2 cursor-pointer text-[11px]">
-                                               <CalendarX className="h-3.5 w-3.5 text-orange-500" /> {isRtl ? 'إلغاء' : 'Cancel'}
-                                            </DropdownMenuItem>
-                                            <DropdownMenuSeparator />
-                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDeleteAppt(appt.id!); }} className="font-bold gap-2 py-2 cursor-pointer text-[11px] text-rose-600 focus:text-rose-600 focus:bg-rose-50">
-                                               <Trash2 className="h-3.5 w-3.5" /> {isRtl ? 'حذف نهائي' : 'Delete'}
-                                            </DropdownMenuItem>
-                                         </DropdownMenuContent>
-                                      </DropdownMenu>
+                                      <div className="relative z-20">
+                                        <DropdownMenu>
+                                           <DropdownMenuTrigger asChild>
+                                              <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                onClick={e => e.stopPropagation()} 
+                                                className="h-7 w-7 rounded-full bg-white/40 hover:bg-white text-slate-900 shadow-sm border border-black/5"
+                                              >
+                                                 <MoreVertical className="h-4 w-4" />
+                                              </Button>
+                                           </DropdownMenuTrigger>
+                                           <DropdownMenuContent align="end" className="rounded-xl border-2 shadow-2xl z-[120] bg-white min-w-[160px]">
+                                              <DropdownMenuLabel className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'الإجراءات' : 'Actions'}</DropdownMenuLabel>
+                                              <DropdownMenuSeparator />
+                                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/appointments/${appt.id}`); }} className="font-bold gap-2 py-2 cursor-pointer text-[11px]">
+                                                 <MessageSquare className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'غرفة العمليات' : 'War Room'}
+                                              </DropdownMenuItem>
+                                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAction('edit', eng, slot, appt); }} className="font-bold gap-2 py-2 cursor-pointer text-[11px]">
+                                                 <Edit3 className="h-3.5 w-3.5 text-blue-500" /> {isRtl ? 'تعديل' : 'Edit'}
+                                              </DropdownMenuItem>
+                                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleCancelAppt(appt.id!); }} className="font-bold gap-2 py-2 cursor-pointer text-[11px]">
+                                                 <CalendarX className="h-3.5 w-3.5 text-orange-500" /> {isRtl ? 'إلغاء' : 'Cancel'}
+                                              </DropdownMenuItem>
+                                              <DropdownMenuSeparator />
+                                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDeleteAppt(appt.id!); }} className="font-bold gap-2 py-2 cursor-pointer text-[11px] text-rose-600 focus:text-rose-600 focus:bg-rose-50">
+                                                 <Trash2 className="h-3.5 w-3.5" /> {isRtl ? 'حذف نهائي' : 'Delete'}
+                                              </DropdownMenuItem>
+                                           </DropdownMenuContent>
+                                        </DropdownMenu>
+                                      </div>
                                    </div>
                                    {!isBusy && (
                                      <div className="mt-2 flex items-center justify-between">
@@ -752,7 +759,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
       <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-xl flex flex-col h-fit max-h-[85vh] z-[101]" dir={dir}>
         
         <div className="bg-slate-50 p-6 text-slate-900 text-start border-b shrink-0 relative">
-           <div className="flex items-center gap-4 pr-10">
+           <div className="flex items-center gap-4 pr-12">
               <div className="h-11 w-11 bg-white rounded-xl flex items-center justify-center text-primary shadow-md border-2 border-primary/10 shrink-0">
                  {data?.mode === 'create' ? <PlusCircle className="h-6 w-6" /> : <Edit3 className="h-6 w-6" />}
               </div>
