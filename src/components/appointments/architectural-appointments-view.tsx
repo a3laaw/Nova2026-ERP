@@ -1,8 +1,8 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
-  parse, 
   format, 
   isValid, 
   addMinutes, 
@@ -10,7 +10,8 @@ import {
   parseISO, 
   addDays,
   eachDayOfInterval,
-  subDays
+  subDays,
+  parse
 } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import { 
@@ -19,7 +20,6 @@ import {
   Plus, 
   ChevronLeft, 
   ChevronRight, 
-  ChevronDown, 
   Edit3,
   Loader2,
   CheckCircle2,
@@ -28,30 +28,20 @@ import {
   Save,
   Trash2,
   Search,
-  Target,
-  ArrowRight,
-  Globe,
-  Hammer,
   User as UserIcon,
   ShieldCheck,
   Building2,
-  Filter,
-  Eye,
-  AlertTriangle,
-  MoreVertical,
   CalendarX,
   Plane,
   Timer,
   Ban,
-  RotateCcw,
   MessageSquare,
   Link as LinkIcon,
-  Workflow,
-  Briefcase,
-  PlusCircle
+  PlusCircle,
+  MoreVertical
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, where, doc, getDocs, updateDoc, deleteDoc, serverTimestamp, addDoc } from 'firebase/firestore';
+import { collection, query, orderBy, where, doc, getDocs, updateDoc, deleteDoc, serverTimestamp, addDoc, setDoc } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
@@ -96,7 +86,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from '@/hooks/use-toast';
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useRouter } from 'next/navigation';
 
 // --- Helpers ---
@@ -386,6 +375,7 @@ export function ArchitecturalAppointmentsView() {
                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'عملاء متعاقدون' : 'Contracted'}</p>
                <h3 className="text-2xl font-black text-blue-600">{stats.blue}</h3>
             </CardContent>
+         </Card>
       </div>
 
       <div className="space-y-12 pb-20">
@@ -552,9 +542,9 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                                     cardGradient(m?.color || '')
                                   )}
                                 >
-                                   {/* ACTIONS DROPDOWN - SUPREME VISIBILITY FIX */}
+                                   {/* ACTIONS DROPDOWN */}
                                    <div 
-                                      className={cn("absolute top-1 z-[60] opacity-100", isRtl ? "left-1" : "right-1")} 
+                                      className={cn("absolute top-1 z-[70]", isRtl ? "left-1" : "right-1")} 
                                       onClick={e => e.stopPropagation()}
                                    >
                                       <DropdownMenu>
@@ -562,9 +552,9 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                                             <Button 
                                               variant="secondary" 
                                               size="icon" 
-                                              className="h-6 w-6 rounded-full bg-white shadow-2xl hover:bg-slate-50 text-slate-900 border border-slate-200 flex items-center justify-center transition-all"
+                                              className="h-7 w-7 rounded-full bg-white shadow-2xl hover:bg-slate-50 text-slate-900 border border-slate-200 flex items-center justify-center transition-all"
                                             >
-                                               <MoreVertical className="h-3.5 w-3.5" />
+                                               <MoreVertical className="h-4 w-4" />
                                             </Button>
                                          </DropdownMenuTrigger>
                                          <DropdownMenuPortal>
@@ -697,8 +687,8 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
        if (conflict) {
           toast({ 
             variant: "destructive", 
-            title: isRtl ? "تضارب سيادي للعميل" : "Client Conflict", 
-            description: isRtl ? `العميل لديه موعد آخر في نفس الساعة مع المهندس: ${conflict.engineerName}` : `Client already has an appointment`
+            title: isRtl ? "تضارب للعميل" : "Client Conflict", 
+            description: isRtl ? `العميل لديه موعد آخر في نفس الساعة.` : `Client already has an appointment`
           });
           return;
        }
@@ -766,11 +756,11 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
       <DialogContent className="rounded-2xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-xl flex flex-col h-fit max-h-[85vh] z-[101]" dir={dir}>
         
         <div className="bg-slate-50 p-6 text-slate-900 text-start border-b shrink-0 relative">
-           <div className="flex items-center gap-4 px-6 md:px-12">
+           <div className="flex items-center gap-4 px-6 md:px-12 pr-16">
               <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-primary shadow-md border-2 border-primary/10 shrink-0">
                  {data?.mode === 'create' ? <PlusCircle className="h-5 w-5" /> : <Edit3 className="h-5 w-5" />}
               </div>
-              <div className="flex-1 min-w-0 pr-10">
+              <div className="flex-1 min-w-0">
                  <DialogTitle className="text-lg font-black font-headline truncate">
                     {data?.mode === 'create' ? (isRtl ? 'حجز موعد تصميم' : 'Book Design Appt') : (isRtl ? 'تعديل موعد' : 'Edit')}
                  </DialogTitle>
@@ -807,12 +797,12 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                    <div className="space-y-4 p-5 rounded-2xl border-2 border-primary/10 bg-primary/5 animate-in fade-in">
                       <div className="space-y-1.5">
                          <Label className="text-[10px] font-black uppercase text-slate-400">اسم العميل</Label>
-                         <Input value={formData.newClientName} onChange={e => setFormData({...formData, newClientName: e.target.value})} className="h-11 rounded-xl border-2 font-bold" />
+                         <Input value={formData.newClientName} onChange={e => setFormData({...formData, newClientName: e.target.value})} className="h-10 rounded-lg border-2 font-bold" />
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                          <div className="space-y-1.5">
                             <Label className="text-[10px] font-black uppercase text-slate-400">الهاتف</Label>
-                            <Input value={formData.newClientPhone} onChange={e => setFormData({...formData, newClientPhone: e.target.value})} className="h-11 rounded-xl border-2" placeholder="+965" />
+                            <Input value={formData.newClientPhone} onChange={e => setFormData({...formData, newClientPhone: e.target.value})} className="h-10 rounded-lg border-2" placeholder="+965" />
                          </div>
                          <div className="space-y-1.5">
                             <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المحافظة' : 'Gov'}</Label>
@@ -820,7 +810,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                                const g = governorates?.find((x:any)=>x.id===v);
                                setFormData({...formData, newClientGovId: v, newClientGovName: isRtl?g.name:g.nameEn});
                             }}>
-                               <SelectTrigger className="h-11 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
+                               <SelectTrigger className="h-10 rounded-lg border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
                                <SelectContent className="rounded-xl border-2 shadow-2xl z-[150]">
                                   {governorates?.map((g: any) => <SelectItem key={g.id} value={g.id} className="font-bold text-xs">{isRtl ? g.name : g.nameEn}</SelectItem>)}
                                </SelectContent>
@@ -855,7 +845,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
            <div className="space-y-1.5">
               <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">الغرض من الموعد</Label>
-              <Input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="h-11 rounded-xl border-2 font-bold" placeholder={isRtl ? "مثلاً: مراجعة المخطط الابتدائي" : "e.g. Layout Review"} />
+              <Input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="h-10 rounded-lg border-2 font-bold" placeholder={isRtl ? "مثلاً: مراجعة المخطط الابتدائي" : "e.g. Layout Review"} />
            </div>
 
            <div className="space-y-1.5">
@@ -868,7 +858,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
            <Button variant="outline" onClick={onClose} className="flex-1 h-10 rounded-xl font-bold border-2 text-xs bg-white">
               {isRtl ? 'إلغاء' : 'Cancel'}
            </Button>
-           <Button onClick={handleSave} disabled={loading || (!isBusyBlock && !formData.clientId)} className="flex-[2] h-10 rounded-xl font-black text-xs shadow-lg gap-2 border-b-2 border-orange-700/30">
+           <Button onClick={handleSave} disabled={loading || (!isBusyBlock && !formData.clientId)} className="flex-[2] h-10 rounded-xl font-bold text-xs shadow-lg gap-2 border-b-2 border-orange-700/30">
               {loading ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
               {isRtl ? 'حفظ وتثبيت' : 'Confirm'}
            </Button>
