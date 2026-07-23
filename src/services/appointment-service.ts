@@ -81,7 +81,9 @@ export class AppointmentService {
   async deleteAppointment(id: string): Promise<void> {
     if (!id) return;
     const ref = doc(this.db, paths.appointments(this.companyId), id);
-    deleteDoc(ref).catch(async (err) => {
+    
+    // No await here per performance guidelines, but returns promise for view logic
+    deleteDoc(ref).catch(async (serverError) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: ref.path,
         operation: 'delete'

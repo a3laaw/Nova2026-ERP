@@ -33,32 +33,34 @@ export default function DashboardLayout({
   }, [user, authLoading, router]);
 
   /**
-   * Sovereign Absolute Thaw Protocol V3: 
+   * Sovereign Absolute Thaw Protocol V4: 
    * Aggressively forces the removal of any CSS locks (pointer-events/overflow)
-   * that Radix UI or any modal might leave behind.
+   * This is critical when complex Dropdowns and Dialogs are combined.
    */
   useEffect(() => {
     if (typeof document !== 'undefined') {
       const thaw = () => {
-        // Force unlock pointer events on body
-        if (document.body.style.pointerEvents === 'none') {
-          document.body.style.pointerEvents = 'auto';
+        const body = document.body;
+        
+        // Force unlock pointer events
+        if (body.style.pointerEvents !== 'auto') {
+          body.style.pointerEvents = 'auto';
         }
         
         // Force unlock overflow
-        if (document.body.style.overflow === 'hidden') {
-           document.body.style.overflow = 'auto';
+        if (body.style.overflow === 'hidden' || body.getAttribute('data-scroll-locked') !== null) {
+           body.style.overflow = 'auto';
+           body.style.paddingRight = '0px';
+           body.removeAttribute('data-scroll-locked');
         }
 
-        document.body.removeAttribute('data-scroll-locked');
-        
-        // Clean up focus guards that might be hanging
+        // Clean up lingering focus guards
         const focusGuards = document.querySelectorAll('[data-radix-focus-guard]');
         focusGuards.forEach(el => el.remove());
       };
 
       thaw();
-      const interval = setInterval(thaw, 300); // Check every 300ms
+      const interval = setInterval(thaw, 150); // High-frequency check (150ms)
       
       return () => clearInterval(interval);
     }

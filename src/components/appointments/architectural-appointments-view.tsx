@@ -357,25 +357,25 @@ export function ArchitecturalAppointmentsView() {
          <Card className="border-0 shadow-lg rounded-2xl bg-white border-b-4 border-slate-900">
             <CardContent className="p-4 text-start">
                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إجمالي المواعيد' : 'Total Appts'}</p>
-               <h3 className="text-2xl font-black text-slate-900">{stats.total}</h3>
+               <h3 className="text-2xl font-black text-slate-900" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.total.toLocaleString('en-US')}</h3>
             </CardContent>
          </Card>
          <Card className="border-0 shadow-lg rounded-2xl bg-white border-b-4 border-yellow-400">
             <CardContent className="p-4 text-start">
                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'زيارة أولى (جديد)' : '1st Visits'}</p>
-               <h3 className="text-2xl font-black text-yellow-500">{stats.yellow}</h3>
+               <h3 className="text-2xl font-black text-yellow-500" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.yellow.toLocaleString('en-US')}</h3>
             </CardContent>
          </Card>
          <Card className="border-0 shadow-lg rounded-2xl bg-white border-b-4 border-emerald-500">
             <CardContent className="p-4 text-start">
                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'متابعة (تحت الدراسة)' : 'Follow-ups'}</p>
-               <h3 className="text-2xl font-black text-emerald-600">{stats.green}</h3>
+               <h3 className="text-2xl font-black text-emerald-600" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.green.toLocaleString('en-US')}</h3>
             </CardContent>
          </Card>
          <Card className="border-0 shadow-lg rounded-2xl bg-white border-b-4 border-blue-500">
             <CardContent className="p-4 text-start">
                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'عملاء متعاقدون' : 'Contracted'}</p>
-               <h3 className="text-2xl font-black text-blue-600">{stats.blue}</h3>
+               <h3 className="text-2xl font-black text-blue-600" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.blue.toLocaleString('en-US')}</h3>
             </CardContent>
          </Card>
       </div>
@@ -463,12 +463,21 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
      return null;
   };
 
-  const handleDeleteAppt = (id: string) => {
+  const handleDeleteAppt = async (id: string) => {
      if (!confirm(isRtl ? "هل أنت متأكد من حذف الموعد نهائياً؟" : "Confirm permanent deletion?")) return;
      
      const service = new AppointmentService(db, companyId);
-     service.deleteAppointment(id);
-     toast({ title: isRtl ? "تم حذف الموعد" : "Appointment Deleted" });
+     try {
+        await service.deleteAppointment(id);
+        toast({ title: isRtl ? "تم حذف الموعد" : "Appointment Deleted" });
+        // Force UI Thaw after deletion
+        if (typeof document !== 'undefined') {
+           document.body.style.pointerEvents = 'auto';
+           document.body.style.overflow = 'auto';
+        }
+     } catch (e) {
+        toast({ variant: "destructive", title: "Error Deleting" });
+     }
   };
 
   return (
@@ -769,15 +778,16 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
         <div className="flex-1 overflow-y-auto p-8 space-y-6 text-start scrollbar-hide">
            
-           {!isEdit && (
-             <div className="grid grid-cols-2 gap-4 p-6 bg-slate-900 text-white rounded-[2rem] shadow-2xl relative overflow-hidden ring-4 ring-slate-100">
+           {/* التاريخ والوقت يظهران فقط في وضع التعديل لإعادة الجدولة */}
+           {isEdit && (
+             <div className="grid grid-cols-2 gap-4 p-6 bg-slate-900 text-white rounded-[2rem] shadow-2xl relative overflow-hidden ring-4 ring-slate-100 animate-in zoom-in-95">
                 <div className="absolute top-0 right-0 p-4 opacity-10"><Clock className="h-20 w-20" /></div>
                 <div className="space-y-2 relative z-10">
-                   <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'التاريخ المجدول' : 'New Date'}</Label>
+                   <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'إعادة الجدولة (تاريخ)' : 'Reschedule Date'}</Label>
                    <Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="h-11 rounded-xl bg-white/10 border-0 text-white font-black text-lg focus:ring-2 focus:ring-primary" />
                 </div>
                 <div className="space-y-2 relative z-10">
-                   <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'الوقت' : 'New Time'}</Label>
+                   <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'الوقت الجديد' : 'Reschedule Time'}</Label>
                    <Input type="time" value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} className="h-11 rounded-xl bg-white/10 border-0 text-white font-black text-lg focus:ring-2 focus:ring-primary" />
                 </div>
              </div>
