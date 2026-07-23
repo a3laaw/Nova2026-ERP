@@ -37,7 +37,9 @@ import {
   MessageSquare,
   Link as LinkIcon,
   PlusCircle,
-  MoreVertical
+  MoreVertical,
+  Zap,
+  RotateCcw
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs, updateDoc, deleteDoc, serverTimestamp, addDoc, setDoc } from 'firebase/firestore';
@@ -299,7 +301,7 @@ export function ArchitecturalAppointmentsView() {
   if (!mounted || apptsLoading || empsLoading || clientsLoading || !settings) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
   return (
-    <div className="space-y-12 animate-in fade-in duration-700" dir={dir}>
+    <div className="space-y-10 animate-in fade-in duration-700" dir={dir}>
       
       <div className="flex flex-col items-center gap-6 print:hidden">
         <h2 className="text-xl font-black text-primary uppercase tracking-widest">{isRtl ? 'رادار المواعيد المعماري' : 'Architectural Radar'}</h2>
@@ -537,13 +539,13 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                                 <Card 
                                   onClick={() => !isBusy && router.push(`/dashboard/appointments/${appt.id}`)}
                                   className={cn(
-                                    "border-2 p-3 rounded-xl h-full shadow-lg relative group/card cursor-pointer transition-all hover:ring-4 hover:ring-primary/5", 
+                                    "border-2 p-3 rounded-xl h-full shadow-lg relative group/card cursor-pointer transition-all hover:ring-4 hover:ring-primary/5 z-10", 
                                     cardGradient(m?.color || '')
                                   )}
                                 >
-                                   {/* ACTIONS MENU TRIGGER - HIGH VISIBILITY FIXED */}
+                                   {/* ACTIONS MENU TRIGGER - SUPERIOR VISIBILITY */}
                                    <div 
-                                      className={cn("absolute top-1 z-[70]", isRtl ? "left-1" : "right-1")} 
+                                      className={cn("absolute top-1 z-[60]", isRtl ? "left-1" : "right-1")} 
                                       onClick={e => e.stopPropagation()}
                                    >
                                       <DropdownMenu>
@@ -551,7 +553,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                                             <Button 
                                               variant="secondary" 
                                               size="icon" 
-                                              className="h-7 w-7 rounded-full bg-white shadow-2xl hover:bg-slate-50 text-slate-900 border border-slate-200 flex items-center justify-center transition-all"
+                                              className="h-7 w-7 rounded-full bg-white shadow-2xl hover:bg-slate-50 text-slate-900 border-2 border-slate-100 flex items-center justify-center transition-all scale-95"
                                             >
                                                <MoreVertical className="h-4 w-4" />
                                             </Button>
@@ -578,7 +580,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                                       </DropdownMenu>
                                    </div>
 
-                                   <div className="text-start pr-6 pl-2">
+                                   <div className={cn("text-start", isRtl ? "pr-2 pl-6" : "pl-2 pr-6")}>
                                       <p className="font-black text-[11px] leading-tight mb-0.5 truncate">{isBusy ? (isRtl ? 'مشغول' : 'Busy') : (appt.clientName || client?.nameAr)}</p>
                                       {!isBusy && (
                                         <div className="flex items-center gap-1 text-[7px] font-black uppercase opacity-60">
@@ -755,7 +757,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
       <DialogContent className="rounded-2xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-xl flex flex-col h-fit max-h-[85vh] z-[101]" dir={dir}>
         
         <div className="bg-slate-50 p-6 text-slate-900 text-start border-b shrink-0 relative">
-           <div className="flex items-center gap-4 px-6 md:px-12 pr-16">
+           <div className="flex items-center gap-4 px-6 md:px-12 pr-20 pl-20">
               <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-primary shadow-md border-2 border-primary/10 shrink-0">
                  {data?.mode === 'create' ? <PlusCircle className="h-5 w-5" /> : <Edit3 className="h-5 w-5" />}
               </div>
@@ -803,8 +805,8 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                             <Label className="text-[10px] font-black uppercase text-slate-400">الهاتف</Label>
                             <Input value={formData.newClientPhone} onChange={e => setFormData({...formData, newClientPhone: e.target.value})} className="h-10 rounded-lg border-2" placeholder="+965" />
                          </div>
-                         <div className="space-y-1.5">
-                            <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المحافظة' : 'Gov'}</Label>
+                         <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'المحافظة' : 'Gov'}</Label>
                             <Select value={formData.newClientGovId} onValueChange={v => {
                                const g = governorates?.find((x:any)=>x.id===v);
                                setFormData({...formData, newClientGovId: v, newClientGovName: isRtl?g.name:g.nameEn});
@@ -847,9 +849,9 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
               <Input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="h-10 rounded-lg border-2 font-bold" placeholder={isRtl ? "مثلاً: مراجعة المخطط الابتدائي" : "e.g. Layout Review"} />
            </div>
 
-           <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">توجيهات فنية للمهندس</Label>
-              <Textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="min-h-[100px] rounded-xl border-2 bg-slate-50/30 p-4 text-xs font-bold resize-none shadow-inner focus:bg-white transition-all" placeholder="..." />
+           <div className="space-y-2">
+              <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">توجيهات فنية للمهندس</Label>
+              <Textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="min-h-[120px] rounded-xl border-2 bg-slate-50/30 p-4 text-xs font-bold resize-none shadow-inner focus:bg-white transition-all" placeholder="..." />
            </div>
         </div>
 
