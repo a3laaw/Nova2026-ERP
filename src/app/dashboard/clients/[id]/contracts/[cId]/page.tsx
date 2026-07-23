@@ -14,7 +14,8 @@ import {
   Layers, Percent,
   History,
   Wallet,
-  ArrowRight
+  ArrowRight,
+  Plus
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, where, orderBy } from 'firebase/firestore';
@@ -173,7 +174,7 @@ export default function ContractViewPage() {
              <h1 className="text-xl font-black text-slate-900">{isRtl ? 'عقد خدمات هندسية رسمي' : 'Official Engineering Contract'}</h1>
              <Badge className={cn(
                "font-black px-4 py-1 rounded-xl shadow-sm uppercase text-[9px]",
-               (editData.status || contract.status) === 'paid' ? 'bg-emerald-500 text-white' : 'bg-blue-500 text-white'
+               (editData.status || contract.status) === 'paid' ? 'bg-emerald-500 text-white' : 'bg-blue-50 text-white'
              )}>
                 {editData.status || contract.status}
              </Badge>
@@ -398,6 +399,12 @@ export default function ContractViewPage() {
             </div>
          </div>
       </PrintWrapper>
+      <div className="max-w-5xl mx-auto px-6 pt-4 flex justify-start print:hidden">
+         <Button variant="ghost" onClick={() => router.back()} className="h-10 px-6 rounded-xl border-2 font-bold bg-white text-slate-400 hover:text-slate-900 transition-all gap-2">
+            <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
+            {isRtl ? 'الرجوع لملف العميل' : 'Back to Client'}
+         </Button>
+      </div>
     </div>
   );
 }

@@ -15,7 +15,8 @@ import {
   CheckCircle2,
   Workflow,
   LayoutGrid,
-  Plus
+  Plus,
+  ArrowRight
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy } from 'firebase/firestore';
@@ -182,7 +183,7 @@ export default function QuotationViewPage() {
                 </Button>
                 <Button onClick={handleSave} disabled={saving} size="sm" className="h-10 px-8 rounded-xl font-black gap-2 shadow-xl">
                    {saving ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
-                   {quote.status === 'draft' ? (isRtl ? 'اعتماد وحفظ العرض' : 'Commit & Save') : (isRtl ? 'حفظ التعديلات' : 'Save Changes')}
+                   {quote.status === 'draft' ? (isRtl ? 'اعتماد وحفظ عرض السعر' : 'Commit & Save') : (isRtl ? 'حفظ التعديلات' : 'Save Changes')}
                 </Button>
               </>
            ) : (
@@ -434,6 +435,12 @@ export default function QuotationViewPage() {
             </div>
          </div>
       </PrintWrapper>
+      <div className="max-w-5xl mx-auto px-6 pt-4 flex justify-start print:hidden">
+         <Button variant="ghost" onClick={() => router.back()} className="h-10 px-6 rounded-xl border-2 font-bold bg-white text-slate-400 hover:text-slate-900 transition-all gap-2">
+            <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
+            {isRtl ? 'الرجوع لملف العميل' : 'Back to Client'}
+         </Button>
+      </div>
     </div>
   );
 }

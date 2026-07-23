@@ -74,11 +74,12 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
       if (typeof document !== 'undefined') {
         document.body.style.pointerEvents = 'auto';
         document.body.style.overflow = 'auto';
+        document.body.removeAttribute('data-scroll-locked');
       }
     };
 
     if (!isOpen) {
-      const timer = setTimeout(thaw, 200);
+      const timer = setTimeout(thaw, 100);
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
@@ -147,7 +148,6 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
       toast({ variant: "destructive", title: t('error') });
     } finally {
       setLoading(false);
-      // التحقق من فك التجمد بعد الحذف
       if (typeof document !== 'undefined') {
         document.body.style.pointerEvents = 'auto';
       }
