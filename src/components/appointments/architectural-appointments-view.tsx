@@ -47,7 +47,8 @@ import {
   MessageSquare,
   Link as LinkIcon,
   Workflow,
-  Briefcase
+  Briefcase,
+  PlusCircle
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs, updateDoc, deleteDoc, serverTimestamp, addDoc } from 'firebase/firestore';
@@ -70,6 +71,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -564,7 +566,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                                                <MoreVertical className="h-4 w-4 text-slate-900" />
                                             </Button>
                                          </DropdownMenuTrigger>
-                                         <DropdownMenuContent align="end" className="rounded-xl border-2 shadow-2xl z-[110] bg-white min-w-[180px]">
+                                         <DropdownMenuContent align="end" className="rounded-xl border-2 shadow-2xl z-[120] bg-white min-w-[180px]">
                                             <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'إجراءات الموعد' : 'Actions'}</DropdownMenuLabel>
                                             <DropdownMenuSeparator />
                                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/appointments/${appt.id}`); }} className="font-bold gap-3 py-3 cursor-pointer">
@@ -675,7 +677,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     if (formData.transactionId && db && companyId) {
       setLoadingStages(true);
       getDocs(query(collection(db, paths.transactionStages(companyId, formData.transactionId)), orderBy('order', 'asc')))
-        .then(snap => setStages(snap.docs.map(d => ({id: d.id, ...d.data()}))))
+        .then(snap => setStages(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
         .finally(() => setLoadingStages(false));
     } else {
       setStages([]);
@@ -802,7 +804,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         
         {/* Header - Optimized layout to avoid X overlap */}
         <div className="bg-slate-50 p-8 text-slate-900 text-start border-b shrink-0 relative">
-           <div className="flex items-center gap-6 pr-10">
+           <div className="flex items-center gap-6 pr-12">
               <div className="h-14 w-14 bg-white rounded-2xl flex items-center justify-center text-primary shadow-lg border-2 border-primary/10 shrink-0">
                  {data?.mode === 'create' ? <PlusCircle className="h-8 w-8" /> : <Edit3 className="h-8 w-8" />}
               </div>
@@ -866,7 +868,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                             <Input value={formData.newClientPhone} onChange={e => setFormData({...formData, newClientPhone: e.target.value})} className="h-12 rounded-xl border-2 font-bold bg-white" placeholder="+965" />
                          </div>
                          <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">المحافظة</Label>
+                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'المحافظة' : 'Gov'}</Label>
                             <Select value={formData.newClientGovId} onValueChange={v => {
                                const g = governorates?.find((x:any)=>x.id===v);
                                setFormData({...formData, newClientGovId: v, newClientGovName: isRtl?g.name:g.nameEn});
@@ -990,3 +992,4 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     </Dialog>
   );
 }
+
