@@ -51,6 +51,7 @@ import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { WorkHoursService } from '@/services/work-hours-service';
+import * as WorkHoursEngine from '@/services/work-hours-engine';
 import { AppointmentService } from '@/services/appointment-service';
 import { ClientService } from '@/services/client-service';
 import { Appointment, AppointmentStatus } from '@/types/appointment';
@@ -107,24 +108,6 @@ function cardGradient(color: string) {
   if (color === '#3b82f6') return "bg-blue-50 border-blue-200 text-blue-900";
   if (color === '#475569') return "bg-slate-100 border-slate-300 text-slate-600 grayscale opacity-80";
   return "bg-slate-50 border-slate-200 text-slate-900";
-}
-
-function generateTimeSlots(s: string, e: string, duration: number, rest: number): string[] {
-  if (!s || !e || !duration || duration <= 0) return [];
-  const slots: string[] = [];
-  try {
-    const st = parse(s, 'HH:mm', new Date());
-    const et = parse(e, 'HH:mm', new Date());
-    if (!isValid(st) || !isValid(et) || st >= et) return [];
-    let cur = st;
-    while (cur < et) {
-      const end = addMinutes(cur, duration);
-      if (end > et) break;
-      slots.push(format(cur, 'HH:mm'));
-      cur = addMinutes(end, rest);
-    }
-  } catch (e) { return []; }
-  return slots;
 }
 
 type ApptMeta = { visitCount: number; status: string; color: string };
@@ -256,30 +239,13 @@ export function ArchitecturalAppointmentsView() {
     return res;
   }, [filteredAppointments, apptMeta]);
 
+  // استخدام محرك الساعات الموحد لضمان دقة "نصف الدوام"
   const timeSlots = useMemo(() => {
     if (!settings) return { morning: [], evening: [] };
-    const dow = format(currentDate, 'EEEE') as any;
-    if (settings.holidays.includes(dow)) return { morning: [], evening: [] };
-
-    const arch = settings.architectural;
-    const dur = arch.slotDurationMinutes || 45;
-    const buf = arch.restDurationMinutes || 0;
-
-    let mEnd = arch.morningEndTime;
-    let eStart = arch.eveningStartTime;
-    let eEnd = arch.eveningEndTime;
-
-    if (settings.halfDay.day === dow) {
-      if (settings.halfDay.mode === 'morning_only') {
-        return { morning: generateTimeSlots(arch.morningStartTime, arch.morningEndTime, dur, buf), evening: [] };
-      }
-      mEnd = settings.halfDay.endTime;
-      eStart = "00:00"; eEnd = "00:00"; 
-    }
-
+    const result = WorkHoursEngine.buildDaySlots(currentDate, settings, 'architectural');
     return {
-      morning: generateTimeSlots(arch.morningStartTime, mEnd, dur, buf),
-      evening: generateTimeSlots(eStart, eEnd, dur, buf)
+      morning: result.morningSlots,
+      evening: result.eveningSlots
     };
   }, [settings, currentDate]);
 

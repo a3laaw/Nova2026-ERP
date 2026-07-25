@@ -17,7 +17,7 @@ export interface DailySchedule {
 
 export interface HalfDayRule {
   day: DayOfWeek | '';
-  mode: 'morning_only' | 'custom_end_time';
+  mode: 'morning_only' | 'evening_only' | 'custom_end_time';
   endTime: string;
 }
 

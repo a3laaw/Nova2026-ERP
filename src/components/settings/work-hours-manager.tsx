@@ -11,7 +11,8 @@ import {
   Clock, Calendar, MoonStar, 
   Loader2, Save, Sun, HardHat,
   Trash2, Zap, Coffee, Users,
-  Info, Plus, CalendarX, CheckCircle2
+  Info, Plus, CalendarX, CheckCircle2,
+  CalendarDays
 } from "lucide-react";
 import { useFirestore } from '@/firebase';
 import { useAuthContext } from '@/context/auth-context';
@@ -35,7 +36,6 @@ export function WorkHoursManager() {
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<WorkHoursSettings | null>(null);
 
-  // Manual Holiday Form State
   const [newHoliday, setNewHoliday] = useState<PublicHoliday>({ date: '', name: '', nameEn: '' });
 
   const service = useMemo(() => 
@@ -282,6 +282,7 @@ export function WorkHoursManager() {
                       <SelectTrigger className="h-12 rounded-xl border-2 font-bold"><SelectValue /></SelectTrigger>
                       <SelectContent>
                          <SelectItem value="morning_only" className="font-bold">{t('morningOnly')}</SelectItem>
+                         <SelectItem value="evening_only" className="font-bold">{t('eveningOnly')}</SelectItem>
                          <SelectItem value="custom_end_time" className="font-bold">{t('customEndTime')}</SelectItem>
                       </SelectContent>
                    </Select>
