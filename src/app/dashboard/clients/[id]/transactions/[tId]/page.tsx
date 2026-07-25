@@ -16,7 +16,8 @@ import {
   PlusCircle, ArrowRight,
   Info, Sparkles, FilePlus, ShieldCheck,
   Pencil, FileText, LayoutGrid, Lock, Wallet,
-  Gavel, Receipt, Trash2, RotateCcw
+  Gavel, Receipt, Trash2, RotateCcw,
+  PencilLine, History as HistoryIcon
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, limit, doc, addDoc } from 'firebase/firestore';
@@ -93,7 +94,6 @@ export default function TransactionDetailsPage() {
 
   const [incompleteStage, setIncompleteStage] = useState<{ stage: StageInstance, progress: StageProgressResult } | null>(null);
   const [isVOOpen, setIsVOOpen] = useState(false);
-  const [isOverExecutionOpen, setIsOverExecutionOpen] = useState(false);
 
   const editAccess = check('projects', 'edit');
   const currentUserName = useMemo(() => globalUser?.username || user?.displayName || 'Admin', [globalUser, user]);
@@ -198,6 +198,19 @@ export default function TransactionDetailsPage() {
     finally { setProcessingId(null); }
   };
 
+  const handleRecordRevision = async (stageId: string) => {
+    if (!transactionService || !user) return;
+    setProcessingId(`rev_${stageId}`);
+    try {
+      await transactionService.incrementStageRevision(transactionId, stageId, user.uid, currentUserName);
+      toast({ title: isRtl ? "تم تسجيل دورة مراجعة جديدة" : "Revision Logged" });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('error'), description: e.message });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   const handleReopenStage = async (stageId: string) => {
     if (!transactionService || !user) return;
     if (!confirm(isRtl ? "تنبيه سيادي: إعادة فتح المرحلة سيجمد كافة المراحل اللاحقة لضمان دقة المسار. هل ترغب في المتابعة؟" : "Warning: Reopening will freeze subsequent stages. Continue?")) return;
@@ -297,13 +310,21 @@ export default function TransactionDetailsPage() {
                               const boqProgress = stageProgressMap[stage.technicalStageId];
                               const isPreviousCompleted = idx === 0 || stages[idx-1].status === 'completed';
                               const isOperationalFrontier = stage.status === 'in-progress' || (stage.status === 'pending' && isPreviousCompleted);
+                              
                               return (
                                 <Card key={stage.id} onClick={() => setFilterStageId(filterStageId === stage.id ? null : stage.id!)} className={cn("border-0 shadow-lg rounded-2xl bg-white transition-all border-s-8 cursor-pointer", stage.status === 'completed' ? 'border-s-emerald-500' : stage.status === 'in-progress' ? 'border-s-blue-500' : isOperationalFrontier ? 'border-s-orange-300' : 'border-s-slate-100 opacity-50')}>
                                   <CardContent className="p-5 flex flex-col md:flex-row items-center justify-between gap-6">
                                      <div className="flex items-center gap-5 flex-1 text-start">
                                         <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center font-black shadow-sm border", stage.status === 'completed' ? "bg-emerald-50 text-emerald-600" : "bg-white")}>{stage.status === 'completed' ? <CheckCircle2 className="h-5 w-5" /> : (idx + 1)}</div>
                                         <div className="space-y-1 flex-1">
-                                           <h4 className="font-black text-base text-slate-900 tracking-tight">{stage.name}</h4>
+                                           <div className="flex items-center gap-2">
+                                              <h4 className="font-black text-base text-slate-900 tracking-tight">{stage.name}</h4>
+                                              {isConsulting && (stage.revisionCount || 0) > 0 && (
+                                                <Badge className="bg-orange-100 text-orange-700 border-0 font-black text-[9px] px-2 h-5">
+                                                  {isRtl ? `مراجعة #${stage.revisionCount}` : `Rev #${stage.revisionCount}`}
+                                                </Badge>
+                                              )}
+                                           </div>
                                            {boqProgress && boqProgress.linkedItemsCount > 0 && (<div className="mt-2 space-y-1.5"><div className="flex justify-between text-[8px] font-black uppercase text-slate-400"><span>{isRtl ? 'الإنجاز الفني' : 'Progress'}</span><span>{boqProgress.progressPercent}%</span></div><Progress value={boqProgress.progressPercent} className="h-1.5" /></div>)}
                                         </div>
                                      </div>
@@ -312,6 +333,12 @@ export default function TransactionDetailsPage() {
                                               <>
                                                 {stage.status === 'pending' && <Button onClick={() => handleStartStage(stage.id!)} disabled={!!processingId} className="h-10 px-6 rounded-xl bg-blue-600 text-white font-black text-[10px] gap-2">{processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Play className="h-4 w-4" />} {isRtl ? 'بدء العمل' : 'Start'}</Button>}
                                                 {stage.status === 'in-progress' && <Button onClick={() => handleCompleteStage(stage)} disabled={!!processingId} className="h-10 px-6 rounded-xl bg-emerald-600 text-white font-black text-[10px] gap-2">{processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Check className="h-4 w-4" />} {isRtl ? 'إكمال' : 'Done'}</Button>}
+                                                {stage.status === 'in-progress' && isConsulting && (
+                                                  <Button onClick={() => handleRecordRevision(stage.id!)} disabled={processingId === `rev_${stage.id}`} variant="outline" className="h-10 px-4 rounded-xl border-orange-200 text-orange-600 font-black text-[10px] gap-2 hover:bg-orange-50">
+                                                    {processingId === `rev_${stage.id}` ? <Loader2 className="animate-spin h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
+                                                    {isRtl ? 'تسجيل دورة تعديل' : 'Log Revision'}
+                                                  </Button>
+                                                )}
                                                 {stage.status === 'in-progress' && editAccess.can && !isConsulting && (<Button onClick={() => { setTargetStage(stage); setIsRecordOpen(true); }} className="btn-gradient h-10 px-6 rounded-xl text-[10px] gap-2"><Hammer className="h-4 w-4" /> {isRtl ? 'تسجيل إنجاز' : 'Log'}</Button>)}
                                               </>
                                            )}

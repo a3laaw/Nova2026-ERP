@@ -25,7 +25,6 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { ensureActionPermission } from '@/lib/permissions/engine';
 import { BOQExecutionService } from './boq-execution-service';
-import { CommentService } from './comment-service';
 
 export class TransactionService {
   constructor(
@@ -146,12 +145,42 @@ export class TransactionService {
         subServiceId: subServiceId,
         companyId: this.companyId,
         createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
+        revisionCount: 0
       };
       batch.set(instanceRef, instanceData);
     });
 
     await batch.commit();
+  }
+
+  async incrementStageRevision(transactionId: string, stageId: string, userId: string, userName: string) {
+    ensureActionPermission(this.permissions, 'projects:edit');
+    const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
+    const stageSnap = await getDoc(stageRef);
+    if (!stageSnap.exists()) return;
+    const stageData = stageSnap.data() as StageInstance;
+
+    const nextRev = (stageData.revisionCount || 0) + 1;
+
+    await updateDoc(stageRef, {
+      revisionCount: increment(1),
+      updatedAt: serverTimestamp(),
+      updatedBy: userId
+    });
+
+    const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
+    await addDoc(timelineRef, {
+      transactionId,
+      stageId,
+      technicalStageId: stageData.technicalStageId,
+      type: 'revision_logged',
+      content: `دورة تعديل تصميم: تم تسجيل المراجعة رقم (${nextRev}) للمرحلة: ${stageData.name}`,
+      userId,
+      userName,
+      companyId: this.companyId,
+      createdAt: serverTimestamp()
+    });
   }
 
   async startStage(transactionId: string, stageId: string, userId: string, userName: string) {
@@ -225,7 +254,7 @@ export class TransactionService {
     });
   }
 
-  async reopenStage(transactionId: string, stageId: string, userId: string, userName: string, clearLogs: boolean = false) {
+  async reopenStage(transactionId: string, stageId: string, userId: string, userName: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
     
     const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
@@ -235,7 +264,6 @@ export class TransactionService {
 
     const batch = writeBatch(this.db);
     
-    // 1. إعادة المرحلة المختارة لحالة "قيد التنفيذ"
     batch.update(stageRef, {
       status: 'in-progress',
       completedAt: null,
@@ -244,7 +272,6 @@ export class TransactionService {
       updatedBy: userId
     });
 
-    // 2. تجميد المراحل اللاحقة
     const allStagesSnap = await getDocs(collection(this.db, paths.transactionStages(this.companyId, transactionId)));
     allStagesSnap.docs.forEach(d => {
        const s = d.data() as StageInstance;
@@ -274,11 +301,6 @@ export class TransactionService {
     });
 
     await batch.commit();
-
-    if (clearLogs) {
-      const boqExecService = new BOQExecutionService(this.db, this.companyId, this.permissions);
-      await boqExecService.archiveStageExecutions(transactionId, stageData.technicalStageId, true);
-    }
   }
 
   async deleteStageInstance(transactionId: string, stageId: string) {

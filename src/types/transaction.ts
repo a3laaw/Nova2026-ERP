@@ -29,7 +29,7 @@ export interface TransactionTimelineEvent extends BaseReference {
   transactionId: string;
   stageId?: string; 
   technicalStageId?: string; 
-  type: 'system' | 'stage_start' | 'stage_complete' | 'stage_reopen' | 'comment' | 'numeric_update' | 'admin_override';
+  type: 'system' | 'stage_start' | 'stage_complete' | 'stage_reopen' | 'comment' | 'numeric_update' | 'admin_override' | 'revision_logged';
   content: string;
   userId: string;
   userName: string;
@@ -80,8 +80,9 @@ export interface StageInstance extends BaseReference {
   completedBy?: string;
   updatedBy?: string;
   isTemporary?: boolean;
-  isComplementary?: boolean; // NEW: flag to allow parallel execution without blocking the main path
+  isComplementary?: boolean;
   createdFromVO?: boolean;
   originType?: 'temporary_vo' | 'manual_injection';
   isManuallyActivated?: boolean; 
+  revisionCount?: number; // العداد السيادي لتعديلات التصميم
 }
