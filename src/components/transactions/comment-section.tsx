@@ -10,7 +10,7 @@ import {
   History, Clock, Zap, Archive, FilterX,
   Calendar, Printer, CheckCircle2, Timer,
   RotateCcw, FileText, LayoutGrid, X,
-  Target, Pencil, Check
+  Target, Pencil, Check, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where } from 'firebase/firestore';
@@ -20,7 +20,7 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { CommentService } from '@/services/comment-service';
 import { TransactionComment, CommentType, StageInstance } from '@/types/transaction';
 import { cn } from '@/lib/utils';
-import { formatDistanceToNow, differenceInHours, differenceInDays } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import { 
   DropdownMenu, 
@@ -50,6 +50,8 @@ interface Props {
   onlyComments?: boolean; 
 }
 
+const PAGE_SIZE = 10;
+
 export function CommentSection({ 
   transactionId, 
   path, 
@@ -66,7 +68,7 @@ export function CommentSection({
   onlyComments = false
 }: Props) {
   const { user, globalUser } = useAuthContext();
-  const { lang, dir } = useLanguage();
+  const { lang, dir, t: translate } = useLanguage();
   const { permissions, isAdmin } = usePermissions();
   const db = useFirestore();
   const isRtl = lang === 'ar';
@@ -74,12 +76,18 @@ export function CommentSection({
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'active' | 'timeline' | 'chat_archive' | 'time_archive'>('active');
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     if (activeTabOverride) {
       setActiveTab(activeTabOverride);
     }
   }, [activeTabOverride]);
+
+  // إعادة تعيين الصفحة عند تغيير التبويب أو الفلتر
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, filterStageId]);
 
   const commentsQuery = useMemo(() => 
     db ? query(collection(db, path), orderBy('createdAt', 'asc')) : null, 
@@ -96,7 +104,8 @@ export function CommentSection({
     db && globalUser?.companyId ? new CommentService(db, globalUser.companyId, permissions) : null, 
   [db, globalUser, permissions]);
 
-  const activeStream = useMemo(() => {
+  // تجهيز مصفوفات البيانات الكاملة
+  const allActiveItems = useMemo(() => {
     const filteredComments = (comments || [])
       .filter(c => !c.isArchived && (!filterStageId || c.stageInstanceId === filterStageId))
       .map(c => ({ 
@@ -106,7 +115,7 @@ export function CommentSection({
       }));
     
     if (onlyComments) {
-      return filteredComments.sort((a, b) => a.sortTime - b.sortTime);
+      return filteredComments.sort((a, b) => b.sortTime - a.sortTime); // الأحدث أولاً
     }
 
     const filteredTimeline = (timelineEvents || [])
@@ -117,16 +126,24 @@ export function CommentSection({
         sortTime: e.createdAt?.toMillis?.() || Date.now()
       }));
 
-    return [...filteredComments, ...filteredTimeline].sort((a, b) => a.sortTime - b.sortTime);
+    return [...filteredComments, ...filteredTimeline].sort((a, b) => b.sortTime - a.sortTime);
   }, [comments, timelineEvents, filterStageId, technicalStageId, onlyComments]);
 
-  const archivedStream = useMemo(() => {
+  const allArchivedItems = useMemo(() => {
     return (comments || []).filter(c => c.isArchived).map(c => ({
       ...c,
       streamType: 'comment' as const,
       sortTime: c.createdAt?.toMillis?.() || Date.now()
     })).sort((a, b) => b.sortTime - a.sortTime);
   }, [comments]);
+
+  // حساب الصفحات
+  const currentStream = activeTab === 'chat_archive' ? allArchivedItems : allActiveItems;
+  const totalPages = Math.ceil(currentStream.length / PAGE_SIZE) || 1;
+  const paginatedStream = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return currentStream.slice(start, start + PAGE_SIZE);
+  }, [currentStream, currentPage]);
 
   const handleSubmit = async () => {
     if (!commentService || !user || !content.trim()) return;
@@ -143,6 +160,7 @@ export function CommentSection({
         appointmentId
       );
       setContent("");
+      setCurrentPage(1); // العودة للصفحة الأولى لمشاهدة التعليق الجديد
     } finally {
       setLoading(false);
     }
@@ -152,9 +170,9 @@ export function CommentSection({
     if (!commentService || !confirm(isRtl ? 'حذف هذا التعليق؟' : 'Delete comment?')) return;
     try {
       await commentService.deleteComment(path, commentId);
-      toast({ title: t('deleted') });
+      toast({ title: translate('deleted') });
     } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
+      toast({ variant: "destructive", title: translate('error') });
     }
   };
 
@@ -162,9 +180,9 @@ export function CommentSection({
     if (!commentService) return;
     try {
       await commentService.updateComment(path, commentId, newContent);
-      toast({ title: t('saved') });
+      toast({ title: translate('saved') });
     } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
+      toast({ variant: "destructive", title: translate('error') });
     }
   };
 
@@ -215,15 +233,25 @@ export function CommentSection({
           <TabsContent value="active" className="m-0 space-y-6 pb-24">
             {commentsLoading ? (
               <div className="py-20 text-center"><Loader2 className="animate-spin mx-auto text-primary/20" /></div>
-            ) : activeStream.length === 0 ? (
+            ) : paginatedStream.length === 0 ? (
                <div className="py-20 text-center flex flex-col items-center gap-4 opacity-30">
                   <Zap className="h-12 w-12 text-slate-200" />
                   <p className="text-xs font-black text-slate-400">{isRtl ? 'بانتظار الملاحظات الفنية' : 'Awaiting notes...'}</p>
                </div>
             ) : (
-              activeStream.map((item: any) => (
-                  <StreamItem key={item.id || item.sortTime} item={item} isRtl={isRtl} user={user} boqItems={boqItems} onDelete={handleDelete} onUpdate={handleUpdate} isAdmin={isAdmin} />
-              ))
+              <>
+                {paginatedStream.map((item: any) => (
+                    <StreamItem key={item.id || item.sortTime} item={item} isRtl={isRtl} user={user} boqItems={boqItems} onDelete={handleDelete} onUpdate={handleUpdate} isAdmin={isAdmin} />
+                ))}
+                {totalPages > 1 && (
+                  <PaginationControl 
+                    current={currentPage} 
+                    total={totalPages} 
+                    onPageChange={setCurrentPage} 
+                    isRtl={isRtl} 
+                  />
+                )}
+              </>
             )}
           </TabsContent>
           
@@ -232,10 +260,13 @@ export function CommentSection({
                 <Info className="h-4 w-4 text-amber-600" />
                 <p className="text-[10px] font-bold text-amber-800">{isRtl ? 'تظهر هنا السجلات التي تم استبعادها نتيجة التراجع عن المراحل.' : 'Historical logs from reverted stages.'}</p>
              </div>
-             {archivedStream.map((item: any) => (
+             {paginatedStream.map((item: any) => (
                 <StreamItem key={item.id} item={item} isRtl={isRtl} user={user} boqItems={boqItems} isArchiveView={true} />
              ))}
-             {archivedStream.length === 0 && <div className="py-20 text-center text-[10px] text-slate-300 italic font-bold">لا يوجد سجلات مؤرشفة.</div>}
+             {allArchivedItems.length === 0 && <div className="py-20 text-center text-[10px] text-slate-300 italic font-bold">لا يوجد سجلات مؤرشفة.</div>}
+             {totalPages > 1 && (
+                <PaginationControl current={currentPage} total={totalPages} onPageChange={setCurrentPage} isRtl={isRtl} />
+             )}
           </TabsContent>
 
           {!onlyComments && (
@@ -293,6 +324,38 @@ export function CommentSection({
   );
 }
 
+function PaginationControl({ current, total, onPageChange, isRtl }: any) {
+  return (
+    <div className="flex items-center justify-center gap-2 pt-6 pb-4">
+      <Button 
+        variant="outline" 
+        size="icon" 
+        className="h-8 w-8 rounded-lg border-slate-100" 
+        disabled={current === 1}
+        onClick={() => onPageChange(current - 1)}
+      >
+        <ChevronLeft className={cn("h-4 w-4", isRtl && "rotate-180")} />
+      </Button>
+      
+      <div className="flex items-center gap-1.5 px-4 h-8 rounded-full bg-slate-50 border border-slate-100">
+         <span className="text-[10px] font-black text-primary">{current.toLocaleString('en-US')}</span>
+         <span className="text-[8px] font-bold text-slate-300 uppercase tracking-tighter">of</span>
+         <span className="text-[10px] font-black text-slate-600">{total.toLocaleString('en-US')}</span>
+      </div>
+
+      <Button 
+        variant="outline" 
+        size="icon" 
+        className="h-8 w-8 rounded-lg border-slate-100" 
+        disabled={current === total}
+        onClick={() => onPageChange(current + 1)}
+      >
+        <ChevronRight className={cn("h-4 w-4", isRtl && "rotate-180")} />
+      </Button>
+    </div>
+  );
+}
+
 function StreamItem({ item, isRtl, user, boqItems, onDelete, onUpdate, isAdmin, isArchiveView = false }: any) {
    const [isEditing, setIsEditing] = useState(false);
    const [editContent, setEditContent] = useState(item.content);
@@ -322,7 +385,7 @@ function StreamItem({ item, isRtl, user, boqItems, onDelete, onUpdate, isAdmin, 
                        <Badge variant="outline" className="text-[8px] font-black border-slate-200 bg-white text-slate-600 px-2 truncate max-w-[140px]">
                           {boqItem?.referenceTitle || (isRtl ? 'تحديث إنجاز' : 'Progress Update')}
                        </Badge>
-                       {item.quantity > 0 && <Badge className="bg-emerald-600 text-white border-0 text-[8px] h-4 px-2">{item.quantity} QTY</Badge>}
+                       {item.quantity > 0 && <Badge className="bg-emerald-600 text-white border-0 text-[8px] h-4 px-2">{item.quantity.toLocaleString('en-US')} QTY</Badge>}
                     </div>
                     <div className="space-y-1 mt-1">
                         <p className="text-[10px] font-black text-slate-800">{item.content}</p>
@@ -384,7 +447,6 @@ function StreamItem({ item, isRtl, user, boqItems, onDelete, onUpdate, isAdmin, 
                  <p className="whitespace-pre-wrap">{item.content}</p>
               )}
 
-              {/* أزرار التحكم (تظهر فقط لصاحب التعليق أو الأدمن) */}
               {!isArchiveView && !isEditing && (isMine || isAdmin) && (
                 <div className={cn(
                   "absolute top-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1",
