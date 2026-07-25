@@ -44,7 +44,8 @@ import {
   MoonStar,
   HardHat,
   Users,
-  Target
+  Target,
+  CalendarDays
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs, serverTimestamp } from 'firebase/firestore';
@@ -200,10 +201,15 @@ export function ConstructionBookingsView() {
   if (!mounted || apptsLoading || empsLoading || !settings) return <div className="h-[40vh] flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>;
 
   return (
-    <div className="space-y-10" dir={dir}>
+    <div className="space-y-10 print:space-y-4" dir={dir}>
       
+      {/* Print-only Date Header */}
+      <div className="hidden print:block text-start mb-2 border-b pb-2">
+         <p className="text-lg font-black">{format(currentDate, 'EEEE, d MMMM yyyy', { locale: isRtl ? ar : enUS })}</p>
+      </div>
+
       {/* التحكم في التاريخ */}
-      <div className="flex flex-col items-center gap-4">
+      <div className="flex flex-col items-center gap-4 print:hidden">
         <div className="flex items-center gap-6 w-full max-w-4xl justify-center bg-white p-2 rounded-2xl border shadow-sm print:hidden">
            <Button variant="ghost" size="icon" onClick={() => setCurrentDate(subDays(currentDate, 1))} className="h-10 w-10 rounded-full text-slate-400"><ChevronLeft className={cn("h-5 w-5", !isRtl && "rotate-180")} /></Button>
            
@@ -219,7 +225,7 @@ export function ConstructionBookingsView() {
       </div>
 
       {/* عرض الرادار الميداني */}
-      <div className="space-y-12 pb-20">
+      <div className="space-y-12 pb-20 print:pb-0 print:space-y-4">
          <GridSection 
            title={isRtl ? "الفترة الميدانية الأولى ☀️" : "Morning Ops"} 
            slots={timeSlots.morning} 
@@ -274,27 +280,27 @@ function GridSection({ title, slots, engineers, grid, onAction, isRtl, t, router
   if (slots.length === 0) return null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 print:space-y-2">
        <div className="flex items-center gap-4 px-2 print:hidden">
           <Badge className="bg-slate-900 text-white font-black px-6 py-1.5 rounded-full text-[10px] uppercase tracking-widest">{title}</Badge>
           <div className="h-[1.5px] flex-1 bg-slate-200" />
        </div>
 
-       <div className="overflow-x-auto rounded-xl shadow-xl border-4 border-white bg-white ring-1 ring-black/5">
+       <div className="overflow-x-auto rounded-xl shadow-xl border-4 border-white bg-white ring-1 ring-black/5 print:shadow-none print:border-0 print:ring-0">
           <table className="w-full border-collapse">
              <thead>
-                <tr className="bg-slate-50">
-                   <th className="w-20 p-4 border-b-2 border-slate-200 font-black text-[9px] text-slate-400 uppercase tracking-widest">{isRtl ? 'الوقت' : 'Time'}</th>
+                <tr className="bg-slate-50 print:bg-white">
+                   <th className="w-20 p-4 border-b-2 border-slate-200 font-black text-[9px] text-slate-400 uppercase tracking-widest print:p-1 print:border-b">{isRtl ? 'الوقت' : 'Time'}</th>
                    {engineers.map((eng: Employee) => (
-                      <th key={eng.id} className="p-4 border-b-2 border-slate-200 border-s-2 border-s-slate-100 text-start bg-white min-w-[250px]">
-                         <div className="flex items-center gap-3">
-                            <Avatar className="h-10 w-10 rounded-xl border-2 border-white shadow-md">
+                      <th key={eng.id} className="p-4 border-b-2 border-slate-200 border-s-2 border-s-slate-100 text-start bg-white min-w-[250px] print:p-2 print:min-w-[150px] print:border-s print:border-b">
+                         <div className="flex items-center gap-3 print:gap-1">
+                            <Avatar className="h-10 w-10 rounded-xl border-2 border-white shadow-md print:h-8 print:w-8 print:rounded-lg">
                                <AvatarImage src={`https://picsum.photos/seed/${eng.id}/100/100`} />
-                               <AvatarFallback className="bg-primary text-white font-black text-xs uppercase">{eng.fullName.charAt(0)}</AvatarFallback>
+                               <AvatarFallback className="bg-primary text-white font-black text-xs uppercase print:text-[10px]">{eng.fullName.charAt(0)}</AvatarFallback>
                             </Avatar>
                             <div className="text-start">
-                               <span className="font-black text-slate-900 text-xs leading-none">{eng.fullName}</span>
-                               <p className="text-[8px] font-bold text-slate-400 mt-1 uppercase">{eng.jobTitle}</p>
+                               <span className="font-black text-slate-900 text-xs leading-none print:text-[10px]">{eng.fullName}</span>
+                               <p className="text-[8px] font-bold text-slate-400 mt-1 uppercase print:hidden">{eng.jobTitle}</p>
                             </div>
                          </div>
                       </th>
@@ -303,8 +309,8 @@ function GridSection({ title, slots, engineers, grid, onAction, isRtl, t, router
              </thead>
              <tbody>
                 {slots.map((slot: string, sIdx: number) => (
-                  <tr key={slot} className={cn("group/row", sIdx % 2 === 0 ? "bg-white" : "bg-slate-50/10")}>
-                     <td className="p-4 text-center border-b-2 border-slate-200 border-e-2 border-e-slate-200 font-mono font-black text-slate-500 bg-slate-50 text-[10px]">{slot}</td>
+                  <tr key={slot} className={cn("group/row", sIdx % 2 === 0 ? "bg-white" : "bg-slate-50/10 print:bg-white")}>
+                     <td className="p-4 text-center border-b-2 border-slate-200 border-e-2 border-e-slate-200 font-mono font-black text-slate-500 bg-slate-50 text-[10px] print:bg-white print:p-1 print:border-b print:border-e">{slot}</td>
                      {engineers.map((eng: Employee) => {
                         const appt = grid.find((a: any) => {
                            const start = format(parseISO(a.start), 'HH:mm');
@@ -314,25 +320,25 @@ function GridSection({ title, slots, engineers, grid, onAction, isRtl, t, router
                         if (appt) {
                            const isCompleted = appt.status === 'completed';
                            return (
-                             <td key={eng.id} className="p-1 border-b-2 border-slate-200 border-s-2 border-s-slate-100 align-top">
+                             <td key={eng.id} className="p-1 border-b-2 border-slate-200 border-s-2 border-s-slate-100 align-top print:p-0.5 print:border-s print:border-b">
                                 <Card 
                                   onClick={() => router.push(`/dashboard/appointments/${appt.id}`)}
                                   className={cn(
-                                    "border-2 p-3 rounded-xl h-full shadow-sm hover:shadow-lg transition-all cursor-pointer",
+                                    "border-2 p-3 rounded-xl h-full shadow-sm hover:shadow-lg transition-all cursor-pointer print:shadow-none print:p-1.5 print:border print:rounded-md",
                                     isCompleted ? "bg-emerald-50/50 border-emerald-500/20" : "bg-primary/5 border-primary/20"
                                   )}
                                 >
                                    <div className="text-start">
                                       <div className="flex items-center gap-1.5 mb-1">
-                                         {isCompleted && <CheckCircle2 className="h-3 w-3 text-emerald-600 shrink-0" />}
-                                         <p className="font-black text-[10px] leading-tight truncate">{appt.clientName}</p>
+                                         {isCompleted && <CheckCircle2 className="h-3 w-3 text-emerald-600 shrink-0 print:h-2 print:w-2" />}
+                                         <p className="font-black text-[10px] leading-tight truncate print:text-[8px]">{appt.clientName}</p>
                                       </div>
-                                      <p className="text-[8px] font-bold text-slate-400 uppercase truncate">
-                                         <MapPin className="h-2 w-2 inline me-1" /> {appt.governorateName || 'Site'}
+                                      <p className="text-[8px] font-bold text-slate-400 uppercase truncate print:text-[6px]">
+                                         <MapPin className="h-2 w-2 inline me-1 print:h-1.5 print:w-1.5" /> {appt.governorateName || 'Site'}
                                       </p>
                                       {appt.transactionNumber && (
-                                        <div className="flex items-center gap-1 text-[7px] font-black text-primary mt-2 uppercase">
-                                           <Workflow className="h-2.5 w-2.5" /> {appt.transactionNumber}
+                                        <div className="flex items-center gap-1 text-[7px] font-black text-primary mt-2 uppercase print:mt-1">
+                                           <Workflow className="h-2.5 w-2.5 print:h-2 print:w-2" /> {appt.transactionNumber}
                                         </div>
                                       )}
                                    </div>
@@ -344,9 +350,9 @@ function GridSection({ title, slots, engineers, grid, onAction, isRtl, t, router
                           <td 
                             key={eng.id} 
                             onClick={() => onAction('create', eng, slot)}
-                            className="p-1 border-b-2 border-slate-200 border-s-2 border-s-slate-100 group-hover/row:bg-primary/[0.03] transition-colors cursor-pointer"
+                            className="p-1 border-b-2 border-slate-200 border-s-2 border-s-slate-100 group-hover/row:bg-primary/[0.03] transition-colors cursor-pointer print:bg-white print:border-s print:border-b"
                           >
-                             <div className="h-10 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
+                             <div className="h-10 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity print:hidden">
                                 <div className="h-7 w-7 rounded-full bg-primary/10 text-primary flex items-center justify-center">
                                    <Plus className="h-3 w-3" />
                                 </div>

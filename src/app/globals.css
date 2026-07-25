@@ -63,17 +63,22 @@
 @media print {
   @page {
     size: landscape;
-    margin: 5mm;
+    margin: 5mm !important;
   }
   
   body {
-    zoom: 75%;
+    background: white !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  .sidebar, header, .print-hidden {
+  .sidebar, header, nav, .print-hidden, 
+  [data-sidebar="sidebar"], [data-sidebar="header"], [data-sidebar="trigger"],
+  [data-sidebar="footer"], .breadcrumb-nav {
     display: none !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   main {
@@ -81,8 +86,46 @@
     margin: 0 !important;
   }
 
+  .container {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Force content to top */
+  .space-y-4, .space-y-6, .space-y-8, .space-y-10 {
+    margin-top: 0 !important;
+    gap: 0 !important;
+  }
+
+  .space-y-4 > :not([hidden]) ~ :not([hidden]),
+  .space-y-6 > :not([hidden]) ~ :not([hidden]),
+  .space-y-8 > :not([hidden]) ~ :not([hidden]),
+  .space-y-10 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 10px !important; /* Small gap for readability */
+  }
+
   .card {
     box-shadow: none !important;
     border: 1px solid #eee !important;
+    border-radius: 4px !important;
+    break-inside: avoid;
+  }
+
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    table-layout: auto !important;
+  }
+
+  th, td {
+    padding: 4px !important;
+    font-size: 10px !important;
+  }
+
+  h1 {
+    font-size: 18px !important;
+    margin-bottom: 5px !important;
   }
 }

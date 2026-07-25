@@ -337,7 +337,7 @@ export function ArchitecturalAppointmentsView() {
   if (!mounted || apptsLoading || empsLoading || clientsLoading || !settings || !user) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-700" dir={dir}>
+    <div className="space-y-10 animate-in fade-in duration-700 print:space-y-4" dir={dir}>
       
       {overdueMissions.length > 0 && (
         <div className="animate-in slide-in-from-top-4 duration-500 print:hidden">
@@ -393,7 +393,12 @@ export function ArchitecturalAppointmentsView() {
         </div>
       )}
 
-      <div className="flex flex-col items-center gap-6">
+      {/* Print-only Date Header */}
+      <div className="hidden print:block text-start mb-2 border-b pb-2">
+         <p className="text-lg font-black">{format(currentDate, 'EEEE, d MMMM yyyy', { locale: isRtl ? ar : enUS })}</p>
+      </div>
+
+      <div className="flex flex-col items-center gap-6 print:hidden">
         <div className="flex items-center gap-6 w-full max-w-4xl justify-center">
            <Button 
              variant="ghost" 
@@ -442,7 +447,7 @@ export function ArchitecturalAppointmentsView() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 print:hidden">
          <Card className="border-0 shadow-lg rounded-xl bg-white border-b-4 border-b-slate-900 print:shadow-none">
             <CardContent className="p-4 text-start">
                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إجمالي المواعيد اليوم' : 'Total Today'}</p>
@@ -466,10 +471,9 @@ export function ArchitecturalAppointmentsView() {
                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'عملاء متعاقدون' : 'Contracted'}</p>
                <h3 className="text-2xl font-black text-blue-600" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.blue.toLocaleString('en-US')}</h3>
             </CardContent>
-         </Card>
       </div>
 
-      <div className="space-y-12 pb-20 print:pb-0">
+      <div className="space-y-12 pb-20 print:pb-0 print:space-y-4">
          <GridSection 
            title={isRtl ? "الفترة الصباحية ☀️" : "Morning Session"} 
            slots={timeSlots.morning} 
@@ -581,7 +585,7 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 print:space-y-2">
        <div className="flex items-center gap-4 px-2 print:hidden">
           <Badge className="bg-slate-900 text-white font-black px-6 py-1.5 rounded-full text-[10px] shadow-md uppercase tracking-widest">{title}</Badge>
           <div className="h-[1.5px] flex-1 bg-slate-200" />
@@ -591,7 +595,7 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
           <table className="w-full border-collapse">
              <thead>
                 <tr className="bg-slate-100/80 print:bg-white">
-                   <th className="w-20 p-4 border-b-2 border-slate-200 font-black text-[9px] text-slate-500 uppercase tracking-[0.2em] bg-slate-100/50 print:bg-white">{isRtl ? 'الوقت' : 'Time'}</th>
+                   <th className="w-20 p-4 border-b-2 border-slate-200 font-black text-[9px] text-slate-500 uppercase tracking-[0.2em] bg-slate-100/50 print:bg-white print:p-1 print:border-b">{isRtl ? 'الوقت' : 'Time'}</th>
                    {visibleEngineers.map((eng: Employee) => {
                       const engAppts = gridMap.get(eng.id!) || [];
                       const totalCount = engAppts.length;
@@ -604,30 +608,30 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
                       });
 
                       return (
-                        <th key={eng.id} className="p-4 border-b-2 border-slate-200 border-s-2 border-s-slate-100 text-start bg-white min-w-[280px]">
-                           <div className="flex items-center gap-3">
-                              <Avatar className="h-12 w-12 rounded-xl border-2 border-white shadow-md ring-2 ring-primary/10 shrink-0">
+                        <th key={eng.id} className="p-4 border-b-2 border-slate-200 border-s-2 border-s-slate-100 text-start bg-white min-w-[280px] print:p-2 print:min-w-[150px] print:border-s print:border-b">
+                           <div className="flex items-center gap-3 print:gap-2">
+                              <Avatar className="h-12 w-12 rounded-xl border-2 border-white shadow-md ring-2 ring-primary/10 shrink-0 print:h-8 print:w-8 print:rounded-lg">
                                  <AvatarImage src={`https://picsum.photos/seed/${eng.id}/100/100`} />
-                                 <AvatarFallback className="bg-primary text-white font-black text-sm uppercase">
+                                 <AvatarFallback className="bg-primary text-white font-black text-sm uppercase print:text-xs">
                                     {eng.fullName.charAt(0)}
                                  </AvatarFallback>
                               </Avatar>
                               <div className="flex flex-col text-start flex-1 min-w-0">
-                                 <span className="font-black text-slate-900 text-sm leading-none truncate">{eng.fullName}</span>
-                                 <div className="flex flex-wrap gap-1 mt-2">
-                                    <div className="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100 shadow-sm">
+                                 <span className="font-black text-slate-900 text-sm leading-none truncate print:text-[10px]">{eng.fullName}</span>
+                                 <div className="flex flex-wrap gap-1 mt-2 print:mt-1">
+                                    <div className="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100 shadow-sm print:px-1">
                                        <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter">{t('engTotal')}</span>
-                                       <span className="text-[10px] font-black text-slate-900">{totalCount}</span>
+                                       <span className="text-[10px] font-black text-slate-900 print:text-[8px]">{totalCount}</span>
                                     </div>
-                                    <div className="flex items-center gap-1 bg-yellow-50 px-2 py-0.5 rounded-md border border-yellow-100 shadow-sm">
+                                    <div className="flex items-center gap-1 bg-yellow-50 px-2 py-0.5 rounded-md border border-yellow-100 shadow-sm print:hidden">
                                        <span className="text-[7px] font-black text-yellow-600 uppercase tracking-tighter">{t('engNew')}</span>
                                        <span className="text-[10px] font-black text-yellow-900">{v1}</span>
                                     </div>
-                                    <div className="flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100 shadow-sm">
+                                    <div className="flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100 shadow-sm print:hidden">
                                        <span className="text-[7px] font-black text-emerald-600 uppercase tracking-tighter">{t('engFollow')}</span>
                                        <span className="text-[10px] font-black text-emerald-900">{follow}</span>
                                     </div>
-                                    <div className="flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 shadow-sm">
+                                    <div className="flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 shadow-sm print:hidden">
                                        <span className="text-[7px] font-black text-blue-600 uppercase tracking-tighter">{t('engContracted')}</span>
                                        <span className="text-[10px] font-black text-blue-900">{cont}</span>
                                     </div>
@@ -642,7 +646,7 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
              <tbody>
                 {slots.map((slot: string, sIdx: number) => (
                   <tr key={slot} className={cn("group/row", sIdx % 2 === 0 ? "bg-white" : "bg-slate-50/10 print:bg-white")}>
-                     <td className="p-4 text-center border-b-2 border-slate-200 border-e-2 border-e-slate-200 font-mono font-black text-slate-500 bg-slate-100/50 text-[10px] print:bg-white">{slot}</td>
+                     <td className="p-4 text-center border-b-2 border-slate-200 border-e-2 border-e-slate-200 font-mono font-black text-slate-500 bg-slate-100/50 text-[10px] print:bg-white print:p-1 print:border-b print:border-e">{slot}</td>
                      {visibleEngineers.map((eng: Employee) => {
                         const engAppts = gridMap.get(eng.id!) || [];
                         const appt = engAppts.find((a: any) => {
@@ -659,7 +663,7 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
 
                         if (block) {
                            return (
-                             <td key={eng.id} className="p-1 border-b-2 border-slate-200 border-s-2 border-s-slate-100 bg-slate-50/50 print:bg-white">
+                             <td key={eng.id} className="p-1 border-b-2 border-slate-200 border-s-2 border-s-slate-100 bg-slate-50/50 print:bg-white print:border-s print:border-b">
                                 <div className="h-full flex items-center justify-center gap-2 text-[8px] font-black text-slate-300 uppercase italic opacity-60">
                                    {block.type === 'leave' && <Plane className="h-2.5 w-2.5" />}
                                    {block.type === 'permission' && <Timer className="h-2.5 w-2.5" />}
@@ -677,11 +681,11 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
                            const isStart = format(parseISO(appt.start), 'HH:mm') === slot;
 
                            return (
-                             <td key={eng.id} className="p-1 border-b-2 border-slate-200 border-s-2 border-s-slate-100 align-top relative">
+                             <td key={eng.id} className="p-1 border-b-2 border-slate-200 border-s-2 border-s-slate-100 align-top relative print:p-0.5 print:border-s print:border-b">
                                 <Card 
                                   onClick={() => router.push(`/dashboard/appointments/${appt.id}`)}
                                   className={cn(
-                                    "border-2 p-3 rounded-xl h-full shadow-lg relative group/card cursor-pointer transition-all hover:ring-4 hover:ring-primary/5 print:shadow-none print:ring-0", 
+                                    "border-2 p-3 rounded-xl h-full shadow-lg relative group/card cursor-pointer transition-all hover:ring-4 hover:ring-primary/5 print:shadow-none print:ring-0 print:p-1.5 print:border print:rounded-md", 
                                     cardGradient(m?.color || '', isCompleted)
                                   )}
                                 >
@@ -717,32 +721,32 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
 
                                    <div className={cn("text-start", isRtl ? "pr-1 pl-5" : "pl-1 pr-5")}>
                                       <div className="flex items-center gap-1.5">
-                                         {isCompleted && <CheckCircle2 className="h-3 w-3 text-emerald-600 shrink-0" />}
-                                         <p className={cn("font-black text-[10px] leading-tight mb-0.5 truncate", isCompleted && "text-emerald-900")}>
+                                         {isCompleted && <CheckCircle2 className="h-3 w-3 text-emerald-600 shrink-0 print:h-2 print:w-2" />}
+                                         <p className={cn("font-black text-[10px] leading-tight mb-0.5 truncate print:text-[8px]", isCompleted && "text-emerald-900")}>
                                            {isBusy ? (isRtl ? `[مشغول: ${appt.notes || '...'}]` : `[BUSY: ${appt.notes || '...'}]`) : appt.clientName}
                                          </p>
                                       </div>
                                       {!isBusy && (
-                                        <div className="flex items-center gap-1 text-[7px] font-black uppercase opacity-60">
-                                           <MapPin className="h-2 w-2" /> {appt.governorateName || '---'}
+                                        <div className="flex items-center gap-1 text-[7px] font-black uppercase opacity-60 print:text-[6px]">
+                                           <MapPin className="h-2 w-2 print:h-1.5 print:w-1.5" /> {appt.governorateName || '---'}
                                         </div>
                                       )}
                                       {appt.transactionNumber && (
-                                        <div className="flex items-center gap-1 text-[7px] font-black text-primary mt-1 uppercase tracking-tighter">
-                                           <Workflow className="h-2.5 w-2.5" /> {appt.transactionNumber}
+                                        <div className="flex items-center gap-1 text-[7px] font-black text-primary mt-1 uppercase tracking-tighter print:mt-0.5">
+                                           <Workflow className="h-2.5 w-2.5 print:h-2 print:w-2" /> {appt.transactionNumber}
                                         </div>
                                       )}
                                    </div>
                                    
                                    {!isBusy ? (
-                                     <div className="mt-2 flex items-center justify-between px-1">
-                                        <Badge className="bg-white/40 text-inherit border-0 font-black text-[7px] h-4 px-1.5 rounded shadow-sm">V {m?.visitCount}</Badge>
-                                        {appt.transactionId && <LinkIcon className="h-2.5 w-2.5 opacity-30 text-inherit" />}
+                                     <div className="mt-2 flex items-center justify-between px-1 print:mt-1">
+                                        <Badge className="bg-white/40 text-inherit border-0 font-black text-[7px] h-4 px-1.5 rounded shadow-sm print:h-3 print:px-1">V {m?.visitCount}</Badge>
+                                        {appt.transactionId && <LinkIcon className="h-2.5 w-2.5 opacity-30 text-inherit print:hidden" />}
                                      </div>
                                    ) : (
-                                     <div className="mt-2 flex items-center justify-between px-1 text-[7px] font-black text-slate-500 uppercase tracking-tighter">
+                                     <div className="mt-2 flex items-center justify-between px-1 text-[7px] font-black text-slate-500 uppercase tracking-tighter print:mt-1">
                                         <span>Ends: {appt.end ? format(parseISO(appt.end), 'HH:mm') : '---'}</span>
-                                        <Ban className="h-2.5 w-2.5 opacity-30" />
+                                        <Ban className="h-2.5 w-2.5 opacity-30 print:hidden" />
                                      </div>
                                    )}
                                 </Card>
@@ -753,7 +757,7 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
                           <td 
                             key={eng.id} 
                             onClick={() => onAction('create', eng, slot)}
-                            className="p-1 border-b-2 border-slate-200 border-s-2 border-s-slate-100 group-hover/row:bg-primary/[0.03] transition-colors cursor-pointer print:bg-white"
+                            className="p-1 border-b-2 border-slate-200 border-s-2 border-s-slate-100 group-hover/row:bg-primary/[0.03] transition-colors cursor-pointer print:bg-white print:border-s print:border-b"
                           >
                              <div className="h-10 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity print:hidden">
                                 <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary">
