@@ -53,10 +53,9 @@ import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { WorkHoursService } from '@/services/work-hours-service';
 import * as WorkHoursEngine from '@/services/work-hours-engine';
+import { Appointment, AppointmentStatus } from '@/types/appointment';
 import { AppointmentService } from '@/services/appointment-service';
 import { ClientService } from '@/services/client-service';
-import { Appointment, AppointmentStatus } from '@/types/appointment';
-import { Client } from '@/types/client';
 import { Employee, LeaveRequest, PermissionRequest, AttendanceRecord } from '@/types/hr';
 import { DayOfWeek, WorkHoursSettings } from '@/types/work-hours';
 import { Governorate } from '@/types/reference';
@@ -282,20 +281,22 @@ export function ArchitecturalAppointmentsView() {
     }
   }, []);
 
-  const confirmDelete = async () => {
-     if (!deletingId || !db || !companyId) return;
+  const confirmDelete = async (id?: string) => {
+     const targetId = id || deletingId;
+     if (!targetId || !db || !companyId) return;
      const service = new AppointmentService(db, companyId);
      try {
-        await service.deleteAppointment(deletingId);
-        toast({ title: isRtl ? "تم حذف الموعد بنجاح" : "Appointment Deleted" });
+        await service.deleteAppointment(targetId);
+        toast({ title: isRtl ? "تم الحذف بنجاح" : "Deleted Successfully" });
         setDeletingId(null);
+        setDialogOpen(false);
         forceThaw();
      } catch (e) {
         toast({ variant: "destructive", title: t('error') });
      }
   };
 
-  if (!mounted || apptsLoading || empsLoading || clientsLoading || !settings) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
+  if (!mounted || apptsLoading || empsLoading || clientsLoading || !settings || !user) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
   return (
     <div className="space-y-10 animate-in fade-in duration-700" dir={dir}>
@@ -421,21 +422,20 @@ export function ArchitecturalAppointmentsView() {
          )}
       </div>
 
-      {user && (
-        <AppointmentManagerDialog 
-          isOpen={dialogOpen} 
-          onClose={() => { setDialogOpen(false); forceThaw(); }} 
-          data={dialogData} 
-          clients={allClients || []}
-          governorates={governorates || []}
-          companyId={companyId!}
-          userId={user.uid}
-          userName={user.displayName || user.email || 'Admin'}
-          db={db}
-          rawAppointments={rawAppointments || []}
-          settings={settings}
-        />
-      )}
+      <AppointmentManagerDialog 
+        isOpen={dialogOpen} 
+        onClose={() => { setDialogOpen(false); forceThaw(); }} 
+        data={dialogData} 
+        clients={allClients || []}
+        governorates={governorates || []}
+        companyId={companyId!}
+        userId={user.uid}
+        userName={globalUser?.username || user.displayName || user.email || 'Admin'}
+        db={db}
+        rawAppointments={rawAppointments || []}
+        settings={settings}
+        onDelete={confirmDelete}
+      />
 
       <AlertDialog open={!!deletingId} onOpenChange={(v) => { if(!v) setDeletingId(null); forceThaw(); }}>
          <AlertDialogContent className="rounded-xl p-10 border-0 shadow-3xl bg-white z-[200]" dir={dir}>
@@ -450,7 +450,7 @@ export function ArchitecturalAppointmentsView() {
             </AlertDialogHeader>
             <AlertDialogFooter className="mt-12 gap-4 flex flex-row">
                <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white" onClick={() => { setDeletingId(null); forceThaw(); }}>إلغاء</AlertDialogCancel>
-               <AlertDialogAction onClick={confirmDelete} className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl">
+               <AlertDialogAction onClick={() => confirmDelete()} className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl">
                   {isRtl ? 'نعم، احذف الموعد' : 'Confirm Delete'}
                </AlertDialogAction>
             </AlertDialogFooter>
@@ -551,10 +551,10 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
                         const engAppts = gridMap.get(eng.id!) || [];
                         const appt = engAppts.find((a: any) => {
                            const start = format(parseISO(a.start), 'HH:mm');
+                           const end = a.end ? format(parseISO(a.end), 'HH:mm') : start;
                            if (start === slot) return true;
-                           if (a.type === 'busy_blocked' && a.end) {
-                              const end = format(parseISO(a.end), 'HH:mm');
-                              return slot > start && slot < end;
+                           if (a.type === 'busy_blocked') {
+                              return slot >= start && slot < end;
                            }
                            return false;
                         });
@@ -582,7 +582,7 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
                            return (
                              <td key={eng.id} className="p-1 border-b-2 border-slate-200 border-s-2 border-s-slate-100 align-top relative">
                                 <Card 
-                                  onClick={() => !isBusy && router.push(`/dashboard/appointments/${appt.id}`)}
+                                  onClick={() => router.push(`/dashboard/appointments/${appt.id}`)}
                                   className={cn(
                                     "border-2 p-3 rounded-xl h-full shadow-lg relative group/card cursor-pointer transition-all hover:ring-4 hover:ring-primary/5", 
                                     cardGradient(m?.color || '')
@@ -672,7 +672,7 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
   );
 }
 
-function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates, companyId, userId, userName, db, rawAppointments, settings }: any) {
+function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates, companyId, userId, userName, db, rawAppointments, settings, onDelete }: any) {
   const { dir, lang, t } = useLanguage();
   const isRtl = lang === 'ar';
   
@@ -699,6 +699,13 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     }
     return list;
   }, [clients, targetEngineerId]);
+
+  // توليد قائمة أوقات البدء المتاحة بناءً على الجدول الزمني لليوم
+  const availableSlots = useMemo(() => {
+    if (!settings || !formData.date) return [];
+    const res = WorkHoursEngine.buildDaySlots(parseISO(formData.date), settings, 'architectural');
+    return [...res.morningSlots, ...res.eveningSlots];
+  }, [settings, formData.date]);
 
   // توليد قائمة أوقات الانتهاء المتاحة بناءً على الجدول الزمني لليوم
   const availableEndTimes = useMemo(() => {
@@ -846,7 +853,16 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                 </div>
                 <div className="space-y-2 relative z-10">
                    <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'وقت البدء' : 'Start Time'}</Label>
-                   <Input type="time" value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} className="h-11 rounded-xl bg-white/10 border-0 text-white font-black text-lg focus:ring-2 focus:ring-primary" />
+                   <Select value={formData.time} onValueChange={v => setFormData({...formData, time: v})}>
+                      <SelectTrigger className="h-11 rounded-xl bg-white/10 border-0 text-white font-black text-lg focus:ring-2 focus:ring-primary">
+                         <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border shadow-2xl z-[155]">
+                        {availableSlots.map(slot => (
+                           <SelectItem key={slot} value={slot} className="font-black py-3 border-b last:border-0 border-slate-50">{slot}</SelectItem>
+                        ))}
+                      </SelectContent>
+                   </Select>
                 </div>
              </div>
            )}
@@ -1001,10 +1017,22 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         </div>
 
         <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-3 shrink-0 shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.05)]">
-           <Button variant="outline" onClick={onClose} className="flex-1 h-12 rounded-xl font-bold border-2 bg-white">
-              {isRtl ? 'إلغاء' : 'Cancel'}
-           </Button>
-           <Button onClick={handleSave} disabled={loading || (!isBusyBlock && !formData.clientId)} className="flex-[2] h-12 rounded-xl font-black gap-2 shadow-xl shadow-primary/20">
+           <div className="flex-1 flex gap-3">
+              <Button variant="outline" onClick={onClose} className="flex-1 h-12 rounded-xl font-bold border-2 bg-white">
+                {isRtl ? 'إلغاء' : 'Cancel'}
+              </Button>
+              {isEdit && (
+                <Button 
+                  variant="ghost" 
+                  onClick={() => onDelete(data.appointment?.id)} 
+                  className="flex-1 h-12 rounded-xl font-black text-rose-600 bg-rose-50 border-2 border-rose-100 hover:bg-rose-100 gap-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  {isBusyBlock ? (isRtl ? 'فك التجميد' : 'Unfreeze') : (isRtl ? 'حذف الموعد' : 'Delete')}
+                </Button>
+              )}
+           </div>
+           <Button onClick={handleSave} disabled={loading || (!isBusyBlock && !formData.clientId)} className="flex-1 h-12 rounded-xl font-black gap-2 shadow-xl shadow-primary/20">
               {loading ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
               {isRtl ? 'حفظ التغييرات' : 'Confirm & Save'}
            </Button>
