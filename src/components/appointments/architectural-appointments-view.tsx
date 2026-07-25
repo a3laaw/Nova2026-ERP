@@ -377,6 +377,7 @@ export function ArchitecturalAppointmentsView() {
                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'عملاء متعاقدون' : 'Contracted'}</p>
                <h3 className="text-2xl font-black text-blue-600" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.blue.toLocaleString('en-US')}</h3>
             </CardContent>
+         </Card>
       </div>
 
       <div className="space-y-12 pb-20">
