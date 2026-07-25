@@ -201,11 +201,12 @@ export function ConstructionBookingsView() {
   if (!mounted || apptsLoading || empsLoading || !settings) return <div className="h-[40vh] flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>;
 
   return (
-    <div className="space-y-10 print:space-y-4" dir={dir}>
+    <div className="space-y-10 animate-in fade-in duration-700 print:space-y-1 print:pt-0" dir={dir}>
       
-      {/* Print-only Date Header */}
-      <div className="hidden print:block text-start mb-2 border-b pb-2">
-         <p className="text-lg font-black">{format(currentDate, 'EEEE, d MMMM yyyy', { locale: isRtl ? ar : enUS })}</p>
+      {/* Print-only Date Header - Compact */}
+      <div className="hidden print:flex justify-between items-end border-b pb-1 mb-2">
+         <p className="text-xs font-black uppercase tracking-widest text-primary">NovaFlow Field Ops Radar</p>
+         <p className="text-sm font-black">{format(currentDate, 'EEEE, d MMMM yyyy', { locale: isRtl ? ar : enUS })}</p>
       </div>
 
       {/* التحكم في التاريخ */}
@@ -220,7 +221,7 @@ export function ConstructionBookingsView() {
               </span>
            </div>
 
-           <Button variant="ghost" size="icon" onClick={() => setCurrentDate(addDays(currentDate, 1))} className="h-10 w-10 rounded-full text-slate-400"><ChevronRight className={cn("h-5 w-5", isRtl && "rotate-180")} /></Button>
+           <Button variant="ghost" size="icon" onClick={() => currentDate.getTime() < addDays(new Date(), 30).getTime() && setCurrentDate(addDays(currentDate, 1))} className="h-10 w-10 rounded-full text-slate-400"><ChevronRight className={cn("h-5 w-5", isRtl && "rotate-180")} /></Button>
         </div>
       </div>
 
@@ -280,9 +281,9 @@ function GridSection({ title, slots, engineers, grid, onAction, isRtl, t, router
   if (slots.length === 0) return null;
 
   return (
-    <div className="space-y-6 print:space-y-2">
-       <div className="flex items-center gap-4 px-2 print:hidden">
-          <Badge className="bg-slate-900 text-white font-black px-6 py-1.5 rounded-full text-[10px] uppercase tracking-widest">{title}</Badge>
+    <div className="space-y-6 print:space-y-1">
+       <div className="flex items-center gap-4 px-2 print:gap-1">
+          <Badge className="bg-slate-900 text-white font-black px-6 py-1.5 rounded-full text-[10px] uppercase tracking-widest print:px-2 print:py-0.5 print:text-[8px]">{title}</Badge>
           <div className="h-[1.5px] flex-1 bg-slate-200" />
        </div>
 
@@ -290,21 +291,27 @@ function GridSection({ title, slots, engineers, grid, onAction, isRtl, t, router
           <table className="w-full border-collapse">
              <thead>
                 <tr className="bg-slate-50 print:bg-white">
-                   <th className="w-20 p-4 border-b-2 border-slate-200 font-black text-[9px] text-slate-400 uppercase tracking-widest print:p-1 print:border-b">{isRtl ? 'الوقت' : 'Time'}</th>
-                   {engineers.map((eng: Employee) => (
-                      <th key={eng.id} className="p-4 border-b-2 border-slate-200 border-s-2 border-s-slate-100 text-start bg-white min-w-[250px] print:p-2 print:min-w-[150px] print:border-s print:border-b">
-                         <div className="flex items-center gap-3 print:gap-1">
-                            <Avatar className="h-10 w-10 rounded-xl border-2 border-white shadow-md print:h-8 print:w-8 print:rounded-lg">
-                               <AvatarImage src={`https://picsum.photos/seed/${eng.id}/100/100`} />
-                               <AvatarFallback className="bg-primary text-white font-black text-xs uppercase print:text-[10px]">{eng.fullName.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div className="text-start">
-                               <span className="font-black text-slate-900 text-xs leading-none print:text-[10px]">{eng.fullName}</span>
-                               <p className="text-[8px] font-bold text-slate-400 mt-1 uppercase print:hidden">{eng.jobTitle}</p>
-                            </div>
-                         </div>
-                      </th>
-                   ))}
+                   <th className="w-20 p-4 border-b-2 border-slate-200 font-black text-[9px] text-slate-400 uppercase tracking-widest print:p-1 print:border-b print:w-10">{isRtl ? 'الوقت' : 'Time'}</th>
+                   {engineers.map((eng: Employee) => {
+                      const engAppts = grid.filter((a: any) => a.engineerId === eng.id);
+                      return (
+                        <th key={eng.id} className="p-4 border-b-2 border-slate-200 border-s-2 border-s-slate-100 text-start bg-white min-w-[250px] print:p-1 print:min-w-[120px] print:border-s print:border-b">
+                           <div className="flex items-center gap-3 print:gap-1">
+                              <Avatar className="h-10 w-10 rounded-xl border-2 border-white shadow-md print:h-6 print:w-6 print:rounded-md">
+                                 <AvatarImage src={`https://picsum.photos/seed/${eng.id}/100/100`} />
+                                 <AvatarFallback className="bg-primary text-white font-black text-xs uppercase print:text-[8px]">{eng.fullName.charAt(0)}</AvatarFallback>
+                              </Avatar>
+                              <div className="text-start">
+                                 <span className="font-black text-slate-900 text-xs leading-none print:text-[9px]">{eng.fullName}</span>
+                                 <div className="flex items-center gap-2 mt-1 print:mt-0">
+                                    <span className="text-[8px] font-bold text-slate-400 uppercase print:text-[6px]">{eng.jobTitle}</span>
+                                    <Badge variant="outline" className="h-4 px-1.5 border-slate-200 text-[8px] font-black bg-slate-50 print:h-3 print:px-1 print:text-[6px]">{engAppts.length} {isRtl ? 'مهمة' : 'Tasks'}</Badge>
+                                 </div>
+                              </div>
+                           </div>
+                        </th>
+                      );
+                   })}
                 </tr>
              </thead>
              <tbody>
@@ -324,7 +331,7 @@ function GridSection({ title, slots, engineers, grid, onAction, isRtl, t, router
                                 <Card 
                                   onClick={() => router.push(`/dashboard/appointments/${appt.id}`)}
                                   className={cn(
-                                    "border-2 p-3 rounded-xl h-full shadow-sm hover:shadow-lg transition-all cursor-pointer print:shadow-none print:p-1.5 print:border print:rounded-md",
+                                    "border-2 p-3 rounded-xl h-full shadow-sm hover:shadow-lg transition-all cursor-pointer print:shadow-none print:p-1 print:border print:rounded-md",
                                     isCompleted ? "bg-emerald-50/50 border-emerald-500/20" : "bg-primary/5 border-primary/20"
                                   )}
                                 >
@@ -337,7 +344,7 @@ function GridSection({ title, slots, engineers, grid, onAction, isRtl, t, router
                                          <MapPin className="h-2 w-2 inline me-1 print:h-1.5 print:w-1.5" /> {appt.governorateName || 'Site'}
                                       </p>
                                       {appt.transactionNumber && (
-                                        <div className="flex items-center gap-1 text-[7px] font-black text-primary mt-2 uppercase print:mt-1">
+                                        <div className="flex items-center gap-1 text-[7px] font-black text-primary mt-2 uppercase print:mt-1 print:text-[6px]">
                                            <Workflow className="h-2.5 w-2.5 print:h-2 print:w-2" /> {appt.transactionNumber}
                                         </div>
                                       )}

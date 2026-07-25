@@ -337,7 +337,7 @@ export function ArchitecturalAppointmentsView() {
   if (!mounted || apptsLoading || empsLoading || clientsLoading || !settings || !user) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-700 print:space-y-4" dir={dir}>
+    <div className="space-y-10 animate-in fade-in duration-700 print:space-y-1 print:pt-0" dir={dir}>
       
       {overdueMissions.length > 0 && (
         <div className="animate-in slide-in-from-top-4 duration-500 print:hidden">
@@ -393,9 +393,10 @@ export function ArchitecturalAppointmentsView() {
         </div>
       )}
 
-      {/* Print-only Date Header */}
-      <div className="hidden print:block text-start mb-2 border-b pb-2">
-         <p className="text-lg font-black">{format(currentDate, 'EEEE, d MMMM yyyy', { locale: isRtl ? ar : enUS })}</p>
+      {/* Print-only Date Header - Compact */}
+      <div className="hidden print:flex justify-between items-end border-b pb-1 mb-2">
+         <p className="text-xs font-black uppercase tracking-widest text-primary">NovaFlow Architectural Radar</p>
+         <p className="text-sm font-black">{format(currentDate, 'EEEE, d MMMM yyyy', { locale: isRtl ? ar : enUS })}</p>
       </div>
 
       <div className="flex flex-col items-center gap-6 print:hidden">
@@ -447,34 +448,35 @@ export function ArchitecturalAppointmentsView() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 print:hidden">
-         <Card className="border-0 shadow-lg rounded-xl bg-white border-b-4 border-b-slate-900 print:shadow-none">
-            <CardContent className="p-4 text-start">
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إجمالي المواعيد اليوم' : 'Total Today'}</p>
-               <h3 className="text-2xl font-black text-slate-900" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.total.toLocaleString('en-US')}</h3>
+      {/* Stats row - restored for print but compacted */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 print:gap-1">
+         <Card className="border-0 shadow-lg rounded-xl bg-white border-b-4 border-b-slate-900 print:shadow-none print:border-b-2 print:p-1">
+            <CardContent className="p-4 print:p-2 text-start">
+               <p className="text-[10px] print:text-[7px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إجمالي المواعيد' : 'Total Today'}</p>
+               <h3 className="text-2xl print:text-base font-black text-slate-900" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.total.toLocaleString('en-US')}</h3>
             </CardContent>
          </Card>
-         <Card className="border-0 shadow-lg rounded-xl bg-white border-b-4 border-b-yellow-400 print:shadow-none">
-            <CardContent className="p-4 text-start">
-               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'زيارة أولى (جديد)' : '1st Visits'}</p>
-               <h3 className="text-2xl font-black text-yellow-500" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.yellow.toLocaleString('en-US')}</h3>
+         <Card className="border-0 shadow-lg rounded-xl bg-white border-b-4 border-b-yellow-400 print:shadow-none print:border-b-2 print:p-1">
+            <CardContent className="p-4 print:p-2 text-start">
+               <p className="text-[9px] print:text-[7px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'زيارة أولى' : '1st Visits'}</p>
+               <h3 className="text-2xl print:text-base font-black text-yellow-500" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.yellow.toLocaleString('en-US')}</h3>
             </CardContent>
          </Card>
-         <Card className="border-0 shadow-lg rounded-xl bg-white border-b-4 border-b-emerald-500 print:shadow-none">
-            <CardContent className="p-4 text-start">
-               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'متابعة (تحت الدراسة)' : 'Follow-ups'}</p>
-               <h3 className="text-2xl font-black text-emerald-600" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.green.toLocaleString('en-US')}</h3>
+         <Card className="border-0 shadow-lg rounded-xl bg-white border-b-4 border-b-emerald-500 print:shadow-none print:border-b-2 print:p-1">
+            <CardContent className="p-4 print:p-2 text-start">
+               <p className="text-[9px] print:text-[7px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'متابعة' : 'Follow-ups'}</p>
+               <h3 className="text-2xl print:text-base font-black text-emerald-600" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.green.toLocaleString('en-US')}</h3>
             </CardContent>
          </Card>
-         <Card className="border-0 shadow-lg rounded-xl bg-white border-b-4 border-b-blue-500 print:shadow-none">
-            <CardContent className="p-4 text-start">
-               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'عملاء متعاقدون' : 'Contracted'}</p>
-               <h3 className="text-2xl font-black text-blue-600" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.blue.toLocaleString('en-US')}</h3>
+         <Card className="border-0 shadow-lg rounded-xl bg-white border-b-4 border-b-blue-500 print:shadow-none print:border-b-2 print:p-1">
+            <CardContent className="p-4 print:p-2 text-start">
+               <p className="text-[9px] print:text-[7px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'متعاقدون' : 'Contracted'}</p>
+               <h3 className="text-2xl print:text-base font-black text-blue-600" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.blue.toLocaleString('en-US')}</h3>
             </CardContent>
          </Card>
       </div>
 
-      <div className="space-y-12 pb-20 print:pb-0 print:space-y-4">
+      <div className="space-y-8 pb-20 print:pb-0 print:space-y-4">
          <GridSection 
            title={isRtl ? "الفترة الصباحية ☀️" : "Morning Session"} 
            slots={timeSlots.morning} 
@@ -586,9 +588,9 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
   };
 
   return (
-    <div className="space-y-6 print:space-y-2">
-       <div className="flex items-center gap-4 px-2 print:hidden">
-          <Badge className="bg-slate-900 text-white font-black px-6 py-1.5 rounded-full text-[10px] shadow-md uppercase tracking-widest">{title}</Badge>
+    <div className="space-y-6 print:space-y-1">
+       <div className="flex items-center gap-4 px-2 print:gap-1">
+          <Badge className="bg-slate-900 text-white font-black px-6 py-1.5 rounded-full text-[10px] shadow-md uppercase tracking-widest print:px-2 print:py-0.5 print:text-[8px]">{title}</Badge>
           <div className="h-[1.5px] flex-1 bg-slate-200" />
        </div>
 
@@ -596,7 +598,7 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
           <table className="w-full border-collapse">
              <thead>
                 <tr className="bg-slate-100/80 print:bg-white">
-                   <th className="w-20 p-4 border-b-2 border-slate-200 font-black text-[9px] text-slate-500 uppercase tracking-[0.2em] bg-slate-100/50 print:bg-white print:p-1 print:border-b">{isRtl ? 'الوقت' : 'Time'}</th>
+                   <th className="w-20 p-4 border-b-2 border-slate-200 font-black text-[9px] text-slate-500 uppercase tracking-[0.2em] bg-slate-100/50 print:bg-white print:p-1 print:border-b print:w-10">{isRtl ? 'الوقت' : 'Time'}</th>
                    {visibleEngineers.map((eng: Employee) => {
                       const engAppts = gridMap.get(eng.id!) || [];
                       const totalCount = engAppts.length;
@@ -609,32 +611,32 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
                       });
 
                       return (
-                        <th key={eng.id} className="p-4 border-b-2 border-slate-200 border-s-2 border-s-slate-100 text-start bg-white min-w-[280px] print:p-2 print:min-w-[150px] print:border-s print:border-b">
-                           <div className="flex items-center gap-3 print:gap-2">
-                              <Avatar className="h-12 w-12 rounded-xl border-2 border-white shadow-md ring-2 ring-primary/10 shrink-0 print:h-8 print:w-8 print:rounded-lg">
+                        <th key={eng.id} className="p-4 border-b-2 border-slate-200 border-s-2 border-s-slate-100 text-start bg-white min-w-[280px] print:p-1 print:min-w-[120px] print:border-s print:border-b">
+                           <div className="flex items-center gap-3 print:gap-1">
+                              <Avatar className="h-12 w-12 rounded-xl border-2 border-white shadow-md ring-2 ring-primary/10 shrink-0 print:h-6 print:w-6 print:rounded-md">
                                  <AvatarImage src={`https://picsum.photos/seed/${eng.id}/100/100`} />
-                                 <AvatarFallback className="bg-primary text-white font-black text-sm uppercase print:text-xs">
+                                 <AvatarFallback className="bg-primary text-white font-black text-sm uppercase print:text-[8px]">
                                     {eng.fullName.charAt(0)}
                                  </AvatarFallback>
                               </Avatar>
                               <div className="flex flex-col text-start flex-1 min-w-0">
-                                 <span className="font-black text-slate-900 text-sm leading-none truncate print:text-[10px]">{eng.fullName}</span>
+                                 <span className="font-black text-slate-900 text-sm leading-none truncate print:text-[9px]">{eng.fullName}</span>
                                  <div className="flex flex-wrap gap-1 mt-2 print:mt-1">
-                                    <div className="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100 shadow-sm print:px-1">
-                                       <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter">{t('engTotal')}</span>
+                                    <div className="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100 shadow-sm print:px-1 print:py-0">
+                                       <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter print:text-[5px]">{t('engTotal')}</span>
                                        <span className="text-[10px] font-black text-slate-900 print:text-[8px]">{totalCount}</span>
                                     </div>
-                                    <div className="flex items-center gap-1 bg-yellow-50 px-2 py-0.5 rounded-md border border-yellow-100 shadow-sm print:hidden">
-                                       <span className="text-[7px] font-black text-yellow-600 uppercase tracking-tighter">{t('engNew')}</span>
-                                       <span className="text-[10px] font-black text-yellow-900">{v1}</span>
+                                    <div className="flex items-center gap-1 bg-yellow-50 px-2 py-0.5 rounded-md border border-yellow-100 shadow-sm print:px-1 print:py-0">
+                                       <span className="text-[7px] font-black text-yellow-600 uppercase tracking-tighter print:text-[5px]">{t('engNew')}</span>
+                                       <span className="text-[10px] font-black text-yellow-900 print:text-[8px]">{v1}</span>
                                     </div>
-                                    <div className="flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100 shadow-sm print:hidden">
-                                       <span className="text-[7px] font-black text-emerald-600 uppercase tracking-tighter">{t('engFollow')}</span>
-                                       <span className="text-[10px] font-black text-emerald-900">{follow}</span>
+                                    <div className="flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100 shadow-sm print:px-1 print:py-0">
+                                       <span className="text-[7px] font-black text-emerald-600 uppercase tracking-tighter print:text-[5px]">{t('engFollow')}</span>
+                                       <span className="text-[10px] font-black text-emerald-900 print:text-[8px]">{follow}</span>
                                     </div>
-                                    <div className="flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 shadow-sm print:hidden">
-                                       <span className="text-[7px] font-black text-blue-600 uppercase tracking-tighter">{t('engContracted')}</span>
-                                       <span className="text-[10px] font-black text-blue-900">{cont}</span>
+                                    <div className="flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 shadow-sm print:px-1 print:py-0">
+                                       <span className="text-[7px] font-black text-blue-600 uppercase tracking-tighter print:text-[5px]">{t('engContracted')}</span>
+                                       <span className="text-[10px] font-black text-blue-900 print:text-[8px]">{cont}</span>
                                     </div>
                                  </div>
                               </div>
@@ -665,7 +667,7 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
                         if (block) {
                            return (
                              <td key={eng.id} className="p-1 border-b-2 border-slate-200 border-s-2 border-s-slate-100 bg-slate-50/50 print:bg-white print:border-s print:border-b">
-                                <div className="h-full flex items-center justify-center gap-2 text-[8px] font-black text-slate-300 uppercase italic opacity-60">
+                                <div className="h-full flex items-center justify-center gap-2 text-[8px] font-black text-slate-300 uppercase italic opacity-60 print:text-[6px]">
                                    {block.type === 'leave' && <Plane className="h-2.5 w-2.5" />}
                                    {block.type === 'permission' && <Timer className="h-2.5 w-2.5" />}
                                    {block.type === 'absent' && <Ban className="h-2.5 w-2.5" />}
@@ -686,7 +688,7 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
                                 <Card 
                                   onClick={() => router.push(`/dashboard/appointments/${appt.id}`)}
                                   className={cn(
-                                    "border-2 p-3 rounded-xl h-full shadow-lg relative group/card cursor-pointer transition-all hover:ring-4 hover:ring-primary/5 print:shadow-none print:ring-0 print:p-1.5 print:border print:rounded-md", 
+                                    "border-2 p-3 rounded-xl h-full shadow-lg relative group/card cursor-pointer transition-all hover:ring-4 hover:ring-primary/5 print:shadow-none print:ring-0 print:p-1 print:border print:rounded-md", 
                                     cardGradient(m?.color || '', isCompleted)
                                   )}
                                 >
@@ -733,19 +735,19 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
                                         </div>
                                       )}
                                       {appt.transactionNumber && (
-                                        <div className="flex items-center gap-1 text-[7px] font-black text-primary mt-1 uppercase tracking-tighter print:mt-0.5">
-                                           <Workflow className="h-2.5 w-2.5 print:h-2 print:size-2" /> {appt.transactionNumber}
+                                        <div className="flex items-center gap-1 text-[7px] font-black text-primary mt-1 uppercase tracking-tighter print:mt-0.5 print:text-[6px]">
+                                           <Workflow className="h-2.5 w-2.5 print:h-2 print:w-2" /> {appt.transactionNumber}
                                         </div>
                                       )}
                                    </div>
                                    
                                    {!isBusy ? (
                                      <div className="mt-2 flex items-center justify-between px-1 print:mt-1">
-                                        <Badge className="bg-white/40 text-inherit border-0 font-black text-[7px] h-4 px-1.5 rounded shadow-sm print:h-3 print:px-1">V {m?.visitCount}</Badge>
+                                        <Badge className="bg-white/40 text-inherit border-0 font-black text-[7px] h-4 px-1.5 rounded shadow-sm print:h-3 print:px-1 print:text-[6px]">V {m?.visitCount}</Badge>
                                         {appt.transactionId && <LinkIcon className="h-2.5 w-2.5 opacity-30 text-inherit print:hidden" />}
                                      </div>
                                    ) : (
-                                     <div className="mt-2 flex items-center justify-between px-1 text-[7px] font-black text-slate-500 uppercase tracking-tighter print:mt-1">
+                                     <div className="mt-2 flex items-center justify-between px-1 text-[7px] font-black text-slate-500 uppercase tracking-tighter print:mt-1 print:text-[6px]">
                                         <span>Ends: {appt.end ? format(parseISO(appt.end), 'HH:mm') : '---'}</span>
                                         <Ban className="h-2.5 w-2.5 opacity-30 print:hidden" />
                                      </div>
