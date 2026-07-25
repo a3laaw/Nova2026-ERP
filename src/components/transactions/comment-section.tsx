@@ -85,7 +85,6 @@ export function CommentSection({
     }
   }, [activeTabOverride]);
 
-  // إعادة تعيين الصفحة عند تغيير التبويب أو الفلتر
   useEffect(() => {
     setCurrentPage(1);
   }, [activeTab, filterStageId]);
@@ -105,7 +104,6 @@ export function CommentSection({
     db && globalUser?.companyId ? new CommentService(db, globalUser.companyId, permissions) : null, 
   [db, globalUser, permissions]);
 
-  // تجهيز مصفوفات البيانات الكاملة
   const allActiveItems = useMemo(() => {
     const filteredComments = (comments || [])
       .filter(c => !c.isArchived && (!filterStageId || c.stageInstanceId === filterStageId))
@@ -116,7 +114,7 @@ export function CommentSection({
       }));
     
     if (onlyComments) {
-      return filteredComments.sort((a, b) => b.sortTime - a.sortTime); // الأحدث أولاً
+      return filteredComments.sort((a, b) => b.sortTime - a.sortTime);
     }
 
     const filteredTimeline = (timelineEvents || [])
@@ -138,7 +136,6 @@ export function CommentSection({
     })).sort((a, b) => b.sortTime - a.sortTime);
   }, [comments]);
 
-  // حساب الصفحات
   const currentStream = activeTab === 'chat_archive' ? allArchivedItems : allActiveItems;
   const totalPages = Math.ceil(currentStream.length / PAGE_SIZE) || 1;
   const paginatedStream = useMemo(() => {
@@ -161,7 +158,7 @@ export function CommentSection({
         appointmentId
       );
       setContent("");
-      setCurrentPage(1); // العودة للصفحة الأولى لمشاهدة التعليق الجديد
+      setCurrentPage(1);
     } finally {
       setLoading(false);
     }
@@ -326,32 +323,35 @@ export function CommentSection({
 }
 
 function PaginationControl({ current, total, onPageChange, isRtl }: any) {
+  // بروتوكول تصحيح الاتجاه (Logical Direction Fix): 
+  // في العربية (RTL)، زر "التقدم" للأمام هو السهم المتجه لليسار.
+  // زر "الرجوع" للخلف هو السهم المتجه لليمين.
   return (
-    <div className="flex items-center justify-center gap-2 pt-6 pb-4">
+    <div className={cn("flex items-center justify-center gap-3 pt-6 pb-4", isRtl ? "flex-row-reverse" : "flex-row")}>
       <Button 
         variant="outline" 
         size="icon" 
-        className="h-8 w-8 rounded-lg border-slate-100" 
+        className="h-9 w-9 rounded-xl border-slate-100 bg-white shadow-sm hover:bg-slate-50" 
         disabled={current === 1}
         onClick={() => onPageChange(current - 1)}
       >
-        <ChevronLeft className={cn("h-4 w-4", isRtl && "rotate-180")} />
+        {isRtl ? <ChevronRight className="h-4 w-4 text-slate-400" /> : <ChevronLeft className="h-4 w-4 text-slate-400" />}
       </Button>
       
-      <div className="flex items-center gap-1.5 px-4 h-8 rounded-full bg-slate-50 border border-slate-100">
-         <span className="text-[10px] font-black text-primary">{current.toLocaleString('en-US')}</span>
-         <span className="text-[8px] font-bold text-slate-300 uppercase tracking-tighter">of</span>
-         <span className="text-[10px] font-black text-slate-600">{total.toLocaleString('en-US')}</span>
+      <div className="flex items-center gap-2 px-6 h-9 rounded-full bg-slate-50 border border-slate-100 shadow-inner">
+         <span className="text-[11px] font-black text-primary">{current.toLocaleString('en-US')}</span>
+         <span className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">{isRtl ? 'من' : 'of'}</span>
+         <span className="text-[11px] font-black text-slate-600">{total.toLocaleString('en-US')}</span>
       </div>
 
       <Button 
         variant="outline" 
         size="icon" 
-        className="h-8 w-8 rounded-lg border-slate-100" 
+        className="h-9 w-9 rounded-xl border-slate-100 bg-white shadow-sm hover:bg-slate-50" 
         disabled={current === total}
         onClick={() => onPageChange(current + 1)}
       >
-        <ChevronRight className={cn("h-4 w-4", isRtl && "rotate-180")} />
+        {isRtl ? <ChevronLeft className="h-4 w-4 text-slate-400" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
       </Button>
     </div>
   );
