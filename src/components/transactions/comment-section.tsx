@@ -10,7 +10,8 @@ import {
   History, Clock, Zap, Archive, FilterX,
   Calendar, Printer, CheckCircle2, Timer,
   RotateCcw, FileText, LayoutGrid, X,
-  Target, Pencil, Check, ChevronLeft, ChevronRight
+  Target, Pencil, Check, ChevronLeft, ChevronRight,
+  Info
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where } from 'firebase/firestore';
