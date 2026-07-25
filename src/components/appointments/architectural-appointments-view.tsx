@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
@@ -106,7 +105,7 @@ import { useRouter } from 'next/navigation';
 
 // --- Helpers ---
 function getVisitColor(visitCount: number, status?: string, apptType?: string): string {
-  if (apptType === 'busy_blocked') return '#475569'; 
+  if (apptType === 'busy_blocked') return '#f57c00'; // تجميد الوقت يستخدم برتقالي داكن
   if (visitCount === 1) return '#facc15'; 
   if (visitCount > 1 && status !== 'contracted') return '#22c55e'; 
   if (visitCount > 1 && status === 'contracted') return '#3b82f6'; 
@@ -114,10 +113,10 @@ function getVisitColor(visitCount: number, status?: string, apptType?: string): 
 }
 
 function cardGradient(color: string) {
-  if (color === '#facc15') return "bg-yellow-50 border-yellow-200 text-yellow-900";
-  if (color === '#22c55e') return "bg-emerald-50 border-emerald-200 text-emerald-900";
-  if (color === '#3b82f6') return "bg-blue-50 border-blue-200 text-blue-900";
-  if (color === '#475569') return "bg-slate-100 border-slate-300 text-slate-600 grayscale opacity-80";
+  if (color === '#facc15') return "bg-yellow-50 border-yellow-200 text-yellow-900 shadow-sm";
+  if (color === '#22c55e') return "bg-emerald-50 border-emerald-200 text-emerald-900 shadow-sm";
+  if (color === '#3b82f6') return "bg-blue-50 border-blue-200 text-blue-900 shadow-sm";
+  if (color === '#f57c00') return "bg-primary/5 border-primary/20 text-primary border-dashed shadow-none";
   return "bg-slate-50 border-slate-200 text-slate-900";
 }
 
@@ -840,19 +839,19 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
            </DialogTitle>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-8 space-y-6 text-start scrollbar-hide">
+        <div className="flex-1 overflow-y-auto p-8 space-y-6 text-start scrollbar-hide bg-white">
            
            {isEdit && (
-             <div className="grid grid-cols-2 gap-4 p-6 bg-primary/5 border-2 border-primary/10 rounded-[1.5rem] shadow-sm relative overflow-hidden animate-in zoom-in-95">
+             <div className="grid grid-cols-2 gap-4 p-6 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] shadow-sm relative overflow-hidden animate-in zoom-in-95">
                 <div className="absolute top-0 right-0 p-4 opacity-5"><Clock className="h-20 w-20 text-primary" /></div>
                 <div className="space-y-2 relative z-10">
-                   <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'تاريخ الموعد' : 'Appointment Date'}</Label>
-                   <Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="h-11 rounded-xl bg-white border-2 border-primary/10 text-slate-900 font-black text-lg focus:ring-2 focus:ring-primary shadow-sm" />
+                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'تاريخ الموعد' : 'Appointment Date'}</Label>
+                   <Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="h-11 rounded-xl bg-white border-2 border-slate-200 text-slate-900 font-black text-lg focus:ring-2 focus:ring-primary shadow-sm" />
                 </div>
                 <div className="space-y-2 relative z-10">
-                   <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'وقت البدء' : 'Start Time'}</Label>
+                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'وقت البدء' : 'Start Time'}</Label>
                    <Select value={formData.time} onValueChange={v => setFormData({...formData, time: v})}>
-                      <SelectTrigger className="h-11 rounded-xl bg-white border-2 border-primary/10 text-slate-900 font-black text-lg focus:ring-2 focus:ring-primary shadow-sm">
+                      <SelectTrigger className="h-11 rounded-xl bg-white border-2 border-slate-200 text-slate-900 font-black text-lg focus:ring-2 focus:ring-primary shadow-sm">
                          <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl border shadow-2xl z-[155]">
@@ -869,43 +868,43 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
              <div className="grid grid-cols-2 gap-4">
                 <div className={cn(
                   "flex items-center justify-between p-3 rounded-xl border-2 transition-all",
-                  isNewClient ? "bg-primary/5 border-primary/20" : "bg-white border-slate-100"
+                  isNewClient ? "bg-primary/5 border-primary/20 shadow-sm" : "bg-white border-slate-100"
                 )}>
-                   <Label className={cn("text-[10px] font-black", isNewClient ? "text-primary" : "text-slate-400")}>{isRtl ? 'عميل جديد؟' : 'New Client?'}</Label>
+                   <Label className={cn("text-[10px] font-black uppercase tracking-tighter", isNewClient ? "text-primary" : "text-slate-400")}>{isRtl ? 'عميل جديد؟' : 'New Client?'}</Label>
                    <Switch checked={isNewClient} onCheckedChange={v => { setIsNewClient(v); if(v) setIsBusyBlock(false); }} className="scale-75" />
                 </div>
                 <div className={cn(
                   "flex items-center justify-between p-3 rounded-xl border-2 transition-all",
-                  isBusyBlock ? "bg-primary/5 border-primary/20" : "bg-white border-slate-100"
+                  isBusyBlock ? "bg-primary/5 border-primary/20 shadow-sm" : "bg-white border-slate-100"
                 )}>
-                   <Label className={cn("text-[10px] font-black", isBusyBlock ? "text-primary" : "text-slate-400")}>TAGG/FREEZE</Label>
+                   <Label className={cn("text-[10px] font-black uppercase tracking-tighter", isBusyBlock ? "text-primary" : "text-slate-400")}>TAGG/FREEZE</Label>
                    <Switch checked={isBusyBlock} onCheckedChange={v => { setIsBusyBlock(v); if(v) setIsNewClient(false); }} className="scale-75" />
                 </div>
              </div>
            )}
 
            {isBusyBlock && (
-              <div className="p-6 bg-white border-2 border-dashed border-primary/30 rounded-[1.5rem] space-y-6 animate-in slide-in-from-top-4 duration-500 shadow-sm relative overflow-hidden">
+              <div className="p-6 bg-white border-2 border-dashed border-primary/20 rounded-[1.5rem] space-y-6 animate-in slide-in-from-top-4 duration-500 shadow-sm relative overflow-hidden">
                  <div className="absolute top-0 right-0 p-4 opacity-5"><Ban className="h-20 w-20 text-primary" /></div>
                  <div className="flex items-center gap-3 border-b border-primary/10 pb-4 relative z-10">
                     <div className="p-2 bg-primary/10 rounded-lg"><ShieldCheck className="h-5 w-5 text-primary" /></div>
-                    <h5 className="font-black text-sm uppercase tracking-widest text-slate-900">{isRtl ? 'حظر / تجميد وقت المهندس' : 'Time Freeze'}</h5>
+                    <h5 className="font-black text-xs uppercase tracking-widest text-slate-900">{isRtl ? 'حظر / تجميد وقت المهندس' : 'Time Freeze'}</h5>
                  </div>
                  
                  <div className="space-y-4 relative z-10">
                     <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'سبب الانشغال / المهمة' : 'Freeze Reason / Task'}</Label>
+                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'سبب الانشغال / المهمة' : 'Freeze Reason / Task'}</Label>
                        <Input 
                          value={formData.notes} 
                          onChange={e => setFormData({...formData, notes: e.target.value})} 
-                         className="h-12 rounded-xl bg-slate-50 border-2 border-slate-100 text-slate-900 font-bold" 
+                         className="h-12 rounded-xl bg-slate-50/50 border-2 border-slate-100 text-slate-900 font-bold" 
                          placeholder={isRtl ? "مثلاً: اجتماع داخلي، معاينة طارئة..." : "e.g. Internal Meeting..."}
                        />
                     </div>
                     <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'وقت الانتهاء المخطط' : 'Planned End Time'}</Label>
+                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'وقت الانتهاء المخطط' : 'Planned End Time'}</Label>
                        <Select value={formData.endTime} onValueChange={v => setFormData({...formData, endTime: v})}>
-                          <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-2 border-slate-100 text-slate-900 font-black text-lg">
+                          <SelectTrigger className="h-12 rounded-xl bg-slate-50/50 border-2 border-slate-100 text-slate-900 font-black text-lg">
                              <SelectValue placeholder={isRtl ? "تحديد وقت الانتهاء..." : "Select End Time..."} />
                           </SelectTrigger>
                           <SelectContent className="rounded-xl border shadow-2xl z-[155]">
@@ -925,7 +924,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
            {!isBusyBlock && (
              <div className="space-y-4">
                 {isNewClient ? (
-                   <div className="space-y-4 p-5 rounded-2xl border bg-slate-50/50 animate-in fade-in">
+                   <div className="space-y-4 p-5 rounded-2xl border-2 border-slate-100 bg-slate-50/30 animate-in fade-in">
                       <div className="space-y-1.5">
                          <Label className="text-[10px] font-black uppercase text-slate-400">اسم العميل</Label>
                          <Input value={formData.newClientName} onChange={e => setFormData({...formData, newClientName: e.target.value})} className="h-10 rounded-lg border-2 font-bold" />
