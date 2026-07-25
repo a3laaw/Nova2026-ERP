@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { 
   format, 
   isSameDay, 
@@ -8,7 +8,8 @@ import {
   addDays,
   eachDayOfInterval,
   subDays,
-  parse
+  parse,
+  isAfter
 } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import { 
@@ -41,7 +42,8 @@ import {
   Workflow,
   Target,
   LayoutGrid,
-  AlertTriangle
+  AlertTriangle,
+  Image as ImageIcon
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs, updateDoc, deleteDoc, serverTimestamp, addDoc, setDoc } from 'firebase/firestore';
@@ -66,6 +68,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Dialog,
   DialogContent,
@@ -430,6 +433,7 @@ export function ArchitecturalAppointmentsView() {
           userName={user.displayName || user.email || 'Admin'}
           db={db}
           rawAppointments={rawAppointments || []}
+          settings={settings}
         />
       )}
 
@@ -506,7 +510,12 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
                       return (
                         <th key={eng.id} className="p-4 border-b-2 border-slate-200 border-s-2 border-s-slate-100 text-start bg-white min-w-[280px]">
                            <div className="flex items-center gap-3">
-                              <div className="h-10 w-10 rounded-lg bg-primary text-white flex items-center justify-center font-black text-sm uppercase shadow-sm border-2 border-white shrink-0">{eng.fullName.charAt(0)}</div>
+                              <Avatar className="h-10 w-10 rounded-xl border-2 border-white shadow-sm ring-2 ring-primary/10 shrink-0">
+                                 <AvatarImage src={`https://picsum.photos/seed/${eng.id}/100/100`} />
+                                 <AvatarFallback className="bg-primary text-white font-black text-sm uppercase">
+                                    {eng.fullName.charAt(0)}
+                                 </AvatarFallback>
+                              </Avatar>
                               <div className="flex flex-col text-start flex-1 min-w-0">
                                  <span className="font-black text-slate-900 text-sm leading-none truncate">{eng.fullName}</span>
                                  <div className="flex flex-wrap gap-1.5 mt-2">
@@ -663,7 +672,7 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
   );
 }
 
-function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates, companyId, userId, userName, db, rawAppointments }: any) {
+function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates, companyId, userId, userName, db, rawAppointments, settings }: any) {
   const { dir, lang, t } = useLanguage();
   const isRtl = lang === 'ar';
   
@@ -690,6 +699,16 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     }
     return list;
   }, [clients, targetEngineerId]);
+
+  // توليد قائمة أوقات الانتهاء المتاحة بناءً على الجدول الزمني لليوم
+  const availableEndTimes = useMemo(() => {
+     if (!settings || !formData.date || !formData.time) return [];
+     const res = WorkHoursEngine.buildDaySlots(parseISO(formData.date), settings, 'architectural');
+     const allSlots = [...res.morningSlots, ...res.eveningSlots];
+     
+     // نأخذ الأوقات التي تأتي حصراً بعد وقت البداية
+     return allSlots.filter(s => s > formData.time);
+  }, [settings, formData.date, formData.time]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -871,12 +890,19 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                     </div>
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black text-primary uppercase tracking-widest">{isRtl ? 'وقت الانتهاء المخطط' : 'Planned End Time'}</Label>
-                       <Input 
-                         type="time" 
-                         value={formData.endTime} 
-                         onChange={e => setFormData({...formData, endTime: e.target.value})} 
-                         className="h-12 rounded-xl bg-white/10 border-0 text-white font-black text-lg" 
-                       />
+                       <Select value={formData.endTime} onValueChange={v => setFormData({...formData, endTime: v})}>
+                          <SelectTrigger className="h-12 rounded-xl bg-white/10 border-0 text-white font-black text-lg">
+                             <SelectValue placeholder={isRtl ? "تحديد وقت الانتهاء..." : "Select End Time..."} />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl border shadow-2xl z-[155]">
+                             {availableEndTimes.map(slot => (
+                                <SelectItem key={slot} value={slot} className="font-black py-3 border-b last:border-0 border-slate-50">
+                                   {slot}
+                                </SelectItem>
+                             ))}
+                             {availableEndTimes.length === 0 && <div className="p-4 text-center text-xs font-bold text-slate-400 italic">No slots after start time</div>}
+                          </SelectContent>
+                       </Select>
                     </div>
                  </div>
               </div>
