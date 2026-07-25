@@ -63,15 +63,18 @@
 @media print {
   @page {
     size: landscape;
-    margin: 5mm !important;
+    margin: 0mm !important; /* تصفير هوامش الصفحة تماماً */
   }
   
   body {
     background: white !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
+  /* حجب العناصر غير الهيكلية تماماً */
   .sidebar, header, nav, .print-hidden, 
   [data-sidebar="sidebar"], [data-sidebar="header"], [data-sidebar="trigger"],
   [data-sidebar="footer"], .breadcrumb-nav {
@@ -84,6 +87,7 @@
   main {
     padding: 0 !important;
     margin: 0 !important;
+    width: 100% !important;
   }
 
   .container {
@@ -93,39 +97,49 @@
     margin: 0 !important;
   }
 
-  /* Force content to top */
-  .space-y-4, .space-y-6, .space-y-8, .space-y-10 {
+  /* ضغط المسافات العمودية */
+  .space-y-4, .space-y-6, .space-y-8, .space-y-10, .space-y-12 {
     margin-top: 0 !important;
+    margin-bottom: 0 !important;
     gap: 0 !important;
   }
 
   .space-y-4 > :not([hidden]) ~ :not([hidden]),
   .space-y-6 > :not([hidden]) ~ :not([hidden]),
   .space-y-8 > :not([hidden]) ~ :not([hidden]),
-  .space-y-10 > :not([hidden]) ~ :not([hidden]) {
-    margin-top: 10px !important; /* Small gap for readability */
+  .space-y-10 > :not([hidden]) ~ :not([hidden]),
+  .space-y-12 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 2mm !important; /* مسافة بسيطة جداً للفصل */
   }
 
   .card {
     box-shadow: none !important;
-    border: 1px solid #eee !important;
+    border: 1px solid #ddd !important;
     border-radius: 4px !important;
-    break-inside: avoid;
+    break-inside: avoid; /* منع انقسام البطاقة بين صفحتين */
   }
 
   table {
     width: 100% !important;
     border-collapse: collapse !important;
     table-layout: auto !important;
+    page-break-inside: auto;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
   }
 
   th, td {
-    padding: 4px !important;
-    font-size: 10px !important;
+    padding: 2px !important;
+    font-size: 9px !important;
+    border: 1px solid #eee !important;
   }
 
   h1 {
-    font-size: 18px !important;
-    margin-bottom: 5px !important;
+    font-size: 14px !important;
+    margin-bottom: 2mm !important;
+    margin-top: 0 !important;
   }
 }

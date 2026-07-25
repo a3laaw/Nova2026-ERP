@@ -412,16 +412,16 @@ export function ArchitecturalAppointmentsView() {
            <div className="flex gap-4 overflow-hidden py-2 px-2">
               {visibleDates.map((date) => {
                 const isSelected = isSameDay(date, currentDate);
-                if (!isSelected && typeof window !== 'undefined' && window.matchMedia('print').matches) return null;
+                if (!isSelected) return null;
                 
                 return (
                   <Card 
                     key={date.toISOString()}
                     onClick={() => setCurrentDate(date)}
                     className={cn(
-                      "min-w-[80px] h-20 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 rounded-xl border-2 shadow-sm print:shadow-none print:scale-100 print:border-slate-100",
+                      "min-w-[80px] h-20 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 rounded-xl border-2 shadow-sm",
                       isSelected 
-                        ? "bg-primary border-primary text-white scale-105 shadow-orange-500/20 print:bg-primary print:text-white" 
+                        ? "bg-primary border-primary text-white scale-105 shadow-orange-500/20" 
                         : "bg-white border-transparent text-slate-400 hover:border-slate-100 hover:bg-slate-50 print:hidden"
                     )}
                   >
@@ -471,6 +471,7 @@ export function ArchitecturalAppointmentsView() {
                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'عملاء متعاقدون' : 'Contracted'}</p>
                <h3 className="text-2xl font-black text-blue-600" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.blue.toLocaleString('en-US')}</h3>
             </CardContent>
+         </Card>
       </div>
 
       <div className="space-y-12 pb-20 print:pb-0 print:space-y-4">
@@ -733,7 +734,7 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
                                       )}
                                       {appt.transactionNumber && (
                                         <div className="flex items-center gap-1 text-[7px] font-black text-primary mt-1 uppercase tracking-tighter print:mt-0.5">
-                                           <Workflow className="h-2.5 w-2.5 print:h-2 print:w-2" /> {appt.transactionNumber}
+                                           <Workflow className="h-2.5 w-2.5 print:h-2 print:size-2" /> {appt.transactionNumber}
                                         </div>
                                       )}
                                    </div>
