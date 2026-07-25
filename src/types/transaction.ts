@@ -78,7 +78,9 @@ export interface StageInstance extends BaseReference {
   serviceId: string;
   subServiceId: string;
   startedAt?: any;
+  startedByApptId?: string; // الموعد الذي بدأ فيه العمل
   completedAt?: any;
+  completedByApptId?: string; // الموعد الذي انتهى فيه العمل
   completedBy?: string;
   updatedBy?: string;
   isTemporary?: boolean;
@@ -86,5 +88,5 @@ export interface StageInstance extends BaseReference {
   createdFromVO?: boolean;
   originType?: 'temporary_vo' | 'manual_injection';
   isManuallyActivated?: boolean; 
-  revisionCount?: number; // العداد السيادي لتعديلات التصميم
+  revisionCount?: number; 
 }

@@ -170,7 +170,6 @@ export class TransactionService {
       updatedBy: userId
     });
 
-    // 1. توثيق الحدث في سجل أحداث المشروع (Timeline)
     const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
     await addDoc(timelineRef, {
       transactionId,
@@ -186,7 +185,6 @@ export class TransactionService {
       createdAt: serverTimestamp()
     });
 
-    // 2. حقن ملاحظة المراجعة في غرفة العمليات (War Room) كتعليق فني
     if (notes.trim()) {
        const commentService = new CommentService(this.db, this.companyId, this.permissions);
        await commentService.addTransactionComment(
@@ -202,7 +200,7 @@ export class TransactionService {
     }
   }
 
-  async startStage(transactionId: string, stageId: string, userId: string, userName: string) {
+  async startStage(transactionId: string, stageId: string, userId: string, userName: string, appointmentId?: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
     const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
     const stageSnap = await getDoc(stageRef);
@@ -212,6 +210,7 @@ export class TransactionService {
     await updateDoc(stageRef, {
       status: 'in-progress',
       startedAt: serverTimestamp(),
+      startedByApptId: appointmentId || null,
       updatedAt: serverTimestamp(),
       updatedBy: userId
     });
@@ -220,6 +219,7 @@ export class TransactionService {
     await addDoc(timelineRef, {
       transactionId,
       stageId,
+      appointmentId: appointmentId || null,
       technicalStageId: stageData.technicalStageId,
       type: 'stage_start',
       content: `تم بدء العمل في المرحلة الفنية: ${stageData.name}`,
@@ -231,7 +231,7 @@ export class TransactionService {
     });
   }
 
-  async completeStage(transactionId: string, stageId: string, userId: string, userName: string, force: boolean = false) {
+  async completeStage(transactionId: string, stageId: string, userId: string, userName: string, force: boolean = false, appointmentId?: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
     
     const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
@@ -251,6 +251,7 @@ export class TransactionService {
     await updateDoc(stageRef, {
       status: 'completed',
       completedAt: serverTimestamp(),
+      completedByApptId: appointmentId || null,
       completedBy: userId,
       updatedAt: serverTimestamp(),
       isForceClosed: force || false
@@ -260,6 +261,7 @@ export class TransactionService {
     await addDoc(timelineRef, {
       transactionId,
       stageId,
+      appointmentId: appointmentId || null,
       technicalStageId: stageData.technicalStageId,
       type: 'stage_complete',
       content: force 
@@ -287,6 +289,7 @@ export class TransactionService {
       status: 'in-progress',
       completedAt: null,
       completedBy: null,
+      completedByApptId: null,
       updatedAt: serverTimestamp(),
       updatedBy: userId
     });
@@ -300,6 +303,8 @@ export class TransactionService {
              startedAt: null,
              completedAt: null,
              completedBy: null,
+             completedByApptId: null,
+             startedByApptId: null,
              updatedAt: serverTimestamp()
           });
        }
