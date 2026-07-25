@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
@@ -9,7 +10,6 @@ import {
   eachDayOfInterval,
   subDays,
   parse,
-  isAfter
 } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import { 
@@ -833,7 +833,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     <Dialog open={isOpen} onOpenChange={(v) => { if(!v) onClose(); }}>
       <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg flex flex-col h-fit max-h-[90vh] z-[101]" dir={dir}>
         
-        <div className="bg-slate-50 p-6 text-slate-900 text-start border-b shrink-0 relative">
+        <div className="bg-slate-50/50 p-6 text-slate-900 text-start border-b shrink-0 relative">
            <DialogTitle className="text-lg font-black font-headline truncate flex items-center gap-3 text-slate-900">
               {isEdit ? <Edit3 className="h-5 w-5 text-primary" /> : <PlusCircle className="h-5 w-5 text-primary" />}
               {isEdit ? (isRtl ? 'تعديل بيانات الموعد' : 'Edit Appointment') : (isRtl ? 'حجز موعد جديد' : 'New Appointment')}
@@ -843,7 +843,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         <div className="flex-1 overflow-y-auto p-8 space-y-6 text-start scrollbar-hide">
            
            {isEdit && (
-             <div className="grid grid-cols-2 gap-4 p-6 bg-primary/5 border-2 border-primary/20 rounded-[1.5rem] shadow-sm relative overflow-hidden animate-in zoom-in-95">
+             <div className="grid grid-cols-2 gap-4 p-6 bg-primary/5 border-2 border-primary/10 rounded-[1.5rem] shadow-sm relative overflow-hidden animate-in zoom-in-95">
                 <div className="absolute top-0 right-0 p-4 opacity-5"><Clock className="h-20 w-20 text-primary" /></div>
                 <div className="space-y-2 relative z-10">
                    <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'تاريخ الموعد' : 'Appointment Date'}</Label>
@@ -871,14 +871,14 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                   "flex items-center justify-between p-3 rounded-xl border-2 transition-all",
                   isNewClient ? "bg-primary/5 border-primary/20" : "bg-white border-slate-100"
                 )}>
-                   <Label className="text-[10px] font-black text-slate-400">عميل جديد؟</Label>
+                   <Label className={cn("text-[10px] font-black", isNewClient ? "text-primary" : "text-slate-400")}>{isRtl ? 'عميل جديد؟' : 'New Client?'}</Label>
                    <Switch checked={isNewClient} onCheckedChange={v => { setIsNewClient(v); if(v) setIsBusyBlock(false); }} className="scale-75" />
                 </div>
                 <div className={cn(
                   "flex items-center justify-between p-3 rounded-xl border-2 transition-all",
-                  isBusyBlock ? "bg-primary text-white border-primary" : "bg-white border-slate-100"
+                  isBusyBlock ? "bg-primary/5 border-primary/20" : "bg-white border-slate-100"
                 )}>
-                   <Label className="text-[10px] font-black text-white uppercase">Tagg/Freeze</Label>
+                   <Label className={cn("text-[10px] font-black", isBusyBlock ? "text-primary" : "text-slate-400")}>TAGG/FREEZE</Label>
                    <Switch checked={isBusyBlock} onCheckedChange={v => { setIsBusyBlock(v); if(v) setIsNewClient(false); }} className="scale-75" />
                 </div>
              </div>
@@ -1014,7 +1014,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
            )}
         </div>
 
-        <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-3 shrink-0 shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.05)]">
+        <DialogFooter className="p-6 bg-slate-50/50 border-t flex flex-row gap-3 shrink-0 shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.05)]">
            <div className="flex-1 flex gap-3">
               <Button variant="outline" onClick={onClose} className="flex-1 h-12 rounded-xl font-bold border-2 bg-white">
                 {isRtl ? 'إلغاء' : 'Cancel'}
