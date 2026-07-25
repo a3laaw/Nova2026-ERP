@@ -8,7 +8,8 @@ import {
   serverTimestamp, 
   getDocs,
   query,
-  limit
+  limit,
+  deleteDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { SEED_DATA } from '@/lib/seed-data';
@@ -18,8 +19,7 @@ import { ReferenceListService } from './reference-list-service';
 import { BOQReferenceNode } from '@/types/reference';
 
 /**
- * خدمة تهيئة النظام الموحدة (Consolidated Seed Service).
- * تقوم بضخ البيانات المرجعية حصراً في الهياكل الجديدة boqReferenceNodes.
+ * خدمة تهيئة وتطهير النظام الموحدة (Consolidated Seed & Purge Service).
  */
 export class SeedService {
   constructor(private db: Firestore, private companyId: string) {}
@@ -146,7 +146,6 @@ export class SeedService {
     }
 
     // 4. ضخ القاموس الهندسي الشجري الموحد (boqReferenceNodes)
-    // مع ربط البند بالمرحلة الفنية لضمان عمل "تسجيل الإنجاز" فوراً
     const rootCivilRef = doc(collection(this.db, paths.boqReferenceNodes(this.companyId)));
     batch.set(rootCivilRef, {
       code: 'CONSTRUCTION_ROOT',
@@ -168,7 +167,7 @@ export class SeedService {
     } as BOQReferenceNode);
 
     const excavationRef = doc(collection(this.db, paths.boqReferenceNodes(this.companyId)));
-    const excavationStageId = stageRefs['FILE-OPEN'] || ''; // ربط تجريبي بمرحلة فتح الملف
+    const excavationStageId = stageRefs['FILE-OPEN'] || '';
 
     batch.set(excavationRef, {
       code: 'EXC_STR_01',
@@ -200,6 +199,26 @@ export class SeedService {
 
     const refListService = new ReferenceListService(this.db, this.companyId);
     await refListService.seedAllLists('SYSTEM_ADMIN');
+  }
+
+  /**
+   * تطهير سجل المواعيد نهائياً (Absolute Appointments Purge).
+   */
+  async purgeAllAppointments() {
+    const q = query(collection(this.db, paths.appointments(this.companyId)));
+    const snap = await getDocs(q);
+    
+    if (snap.empty) return;
+
+    const batch = writeBatch(this.db);
+    snap.docs.forEach(d => batch.delete(d.ref));
+    
+    return batch.commit().catch(err => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: 'appointments_purge', operation: 'delete'
+      }));
+      throw err;
+    });
   }
 
   async isSystemSeeded() {

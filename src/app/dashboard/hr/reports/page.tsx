@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { 
   BarChart3, FileText, Users, CalendarDays, 
   Calculator, Scale, ArrowUpRight, TrendingUp,
-  Clock, ShieldCheck
+  Clock, ShieldCheck, MapPinned, Target
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useFirestore, useCollection } from '@/firebase';
@@ -38,6 +38,15 @@ export default function HRReportsHub() {
       path: '/dashboard/hr/reports/dossier'
     },
     {
+      id: 'visits',
+      title: isRtl ? 'سجل تفاعل العملاء والزيارات' : 'Client Visit Dossier',
+      desc: isRtl ? 'تحليل تاريخي لكل زيارة: الإنجاز الفني الموثق والملاحظات.' : 'Visit-by-visit audit of technical progress and site notes.',
+      icon: MapPinned,
+      color: 'text-primary',
+      bg: 'bg-orange-50',
+      path: '/dashboard/hr/reports/client-visits'
+    },
+    {
       id: 'attendance',
       title: isRtl ? 'تحليل الحضور والغياب' : 'Attendance Analysis',
       desc: isRtl ? 'تقرير إجمالي التأخير والغياب لفترة محددة.' : 'Total late minutes and absence summary report.',
@@ -54,15 +63,6 @@ export default function HRReportsHub() {
       color: 'text-amber-600',
       bg: 'bg-amber-50',
       path: '/dashboard/hr/reports/payroll'
-    },
-    {
-      id: 'leaves',
-      title: isRtl ? 'سجل أرصدة الإجازات' : 'Leave Balance Report',
-      desc: isRtl ? 'متابعة الأرصدة المتبقية والمستهلكة للموظفين.' : 'Track remaining and consumed leave balances.',
-      icon: CalendarDays,
-      color: 'text-blue-600',
-      bg: 'bg-blue-50',
-      path: '/dashboard/hr/reports/leaves'
     }
   ];
 
@@ -71,10 +71,10 @@ export default function HRReportsHub() {
       <div className="text-start">
         <h1 className="text-4xl font-black font-headline flex items-center gap-3">
           <BarChart3 className="h-10 w-10 text-primary" />
-          {isRtl ? 'مركز تقارير HR' : 'HR Analytics Hub'}
+          {isRtl ? 'مركز تقارير HR والرقابة' : 'HR Analytics Hub'}
         </h1>
         <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-          {isRtl ? 'تحليل القوى العاملة والامتثال التشغيلي' : 'Workforce analysis and operational compliance'}
+          {isRtl ? 'تحليل القوى العاملة والامتثال والإنتاجية الميدانية' : 'Workforce analysis, compliance, and field productivity'}
         </p>
       </div>
 
@@ -132,11 +132,13 @@ export default function HRReportsHub() {
             onClick={() => router.push(card.path)}
           >
             <CardHeader className="p-8 pb-4 text-start">
-               <div className={cn("w-16 h-16 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform", card.bg, card.color)}>
+               <div className={cn("w-16 h-16 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110 shadow-lg", card.bg, card.color)}>
                   <card.icon className="h-8 w-8" />
                </div>
-               <CardTitle className="text-2xl font-black font-headline">{card.title}</CardTitle>
-               <CardDescription className="text-base font-bold leading-relaxed">{card.desc}</CardDescription>
+               <CardTitle className="text-2xl font-black font-headline text-slate-900">{card.title}</CardTitle>
+               <CardDescription className="text-base font-bold leading-relaxed mt-4">
+                  {card.desc}
+               </CardDescription>
             </CardHeader>
             <CardContent className="p-8 pt-0 text-start">
                <div className={cn("flex items-center gap-2 font-black text-xs group-hover:gap-4 transition-all", card.color)}>

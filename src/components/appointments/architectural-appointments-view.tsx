@@ -791,6 +791,12 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
   const [clientTransactions, setClientTransactions] = useState<any[]>([]);
 
   const targetEngineerId = data?.engineer?.id || data?.appointment?.engineerId;
+
+  // فحص العطلة (الجمعة أو الرسمية)
+  const isSelectedDateHoliday = useMemo(() => {
+     if (!settings || !formData.date) return false;
+     return WorkHoursEngine.isHoliday(parseISO(formData.date), settings);
+  }, [settings, formData.date]);
   
   const filteredClients = useMemo(() => {
     let list = clients || [];
@@ -860,7 +866,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
   };
 
   const handleSave = async () => {
-    if (!data) return;
+    if (!data || isSelectedDateHoliday) return;
     const isCreate = data.mode === 'create';
     const start = new Date(`${formData.date}T${formData.time}:00`).toISOString();
     const end = formData.endTime ? new Date(`${formData.date}T${formData.endTime}:00`).toISOString() : null;
@@ -944,13 +950,21 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
               <div className="absolute top-0 right-0 p-4 opacity-5"><Clock className="h-20 w-20 text-primary" /></div>
               <div className="space-y-2 relative z-10">
                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'تاريخ الموعد' : 'Appointment Date'}</Label>
-                 <Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="h-11 rounded-xl bg-white border-2 border-slate-200 text-slate-900 font-black text-lg focus:ring-2 focus:ring-primary shadow-sm" />
+                 <Input 
+                   type="date" 
+                   value={formData.date} 
+                   onChange={e => setFormData({...formData, date: e.target.value})} 
+                   className={cn(
+                     "h-11 rounded-xl bg-white border-2 font-black text-lg focus:ring-2 shadow-sm",
+                     isSelectedDateHoliday ? "border-rose-500 ring-rose-50" : "border-slate-200 text-slate-900"
+                   )}
+                 />
               </div>
               <div className="space-y-2 relative z-10">
                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'وقت البدء' : 'Start Time'}</Label>
-                 <Select value={formData.time} onValueChange={v => setFormData({...formData, time: v})}>
+                 <Select disabled={isSelectedDateHoliday} value={formData.time} onValueChange={v => setFormData({...formData, time: v})}>
                     <SelectTrigger className="h-11 rounded-xl bg-white border-2 border-slate-200 text-slate-900 font-black text-lg focus:ring-2 focus:ring-primary shadow-sm">
-                       <SelectValue />
+                       <SelectValue placeholder={isSelectedDateHoliday ? "---" : "..."} />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl border shadow-2xl z-[155]">
                       {availableSlots.map(slot => (
@@ -959,9 +973,16 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                     </SelectContent>
                  </Select>
               </div>
+
+              {isSelectedDateHoliday && (
+                 <div className="col-span-2 mt-2 p-3 bg-rose-50 border border-rose-100 rounded-xl flex items-center gap-2 text-rose-600 animate-pulse">
+                    <AlertTriangle className="h-4 w-4" />
+                    <p className="text-[10px] font-black uppercase">{isRtl ? 'عطلة رسمية: لا يمكن الحجز في هذا التاريخ' : 'Holiday: No bookings allowed'}</p>
+                 </div>
+              )}
            </div>
 
-           {!isEdit && (
+           {!isEdit && !isSelectedDateHoliday && (
              <div className="grid grid-cols-2 gap-4">
                 <div className={cn(
                   "flex items-center justify-between p-3 rounded-xl border-2 transition-all",
@@ -980,7 +1001,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
              </div>
            )}
 
-           {isBusyBlock && (
+           {isBusyBlock && !isSelectedDateHoliday && (
               <div className="p-6 bg-white border-2 border-dashed border-primary/20 rounded-[1.5rem] space-y-6 animate-in slide-in-from-top-4 duration-500 shadow-sm relative overflow-hidden">
                  <div className="absolute top-0 right-0 p-4 opacity-5"><Ban className="h-20 w-20 text-primary" /></div>
                  <div className="flex items-center gap-3 border-b border-primary/10 pb-4 relative z-10">
@@ -1018,7 +1039,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
               </div>
            )}
 
-           {!isBusyBlock && (
+           {!isBusyBlock && !isSelectedDateHoliday && (
              <div className="space-y-4">
                 {isNewClient ? (
                    <div className="space-y-4 p-5 rounded-2xl border-2 border-slate-100 bg-slate-50/30 animate-in fade-in">
@@ -1126,7 +1147,11 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                 </Button>
               )}
            </div>
-           <Button onClick={handleSave} disabled={loading || (!isBusyBlock && !formData.clientId)} className="flex-1 h-12 rounded-xl font-black gap-2 shadow-xl shadow-primary/20">
+           <Button 
+             onClick={handleSave} 
+             disabled={loading || isSelectedDateHoliday || (!isBusyBlock && !formData.clientId)} 
+             className="flex-1 h-12 rounded-xl font-black gap-2 shadow-xl shadow-primary/20"
+           >
               {loading ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
               {isRtl ? 'حفظ التغييرات' : 'Confirm & Save'}
            </Button>
