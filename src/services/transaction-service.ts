@@ -275,6 +275,10 @@ export class TransactionService {
     });
   }
 
+  /**
+   * إعادة فتح مرحلة فنية (The Sovereign Reset)
+   * يقوم بتصفية كافة السجلات المرتبطة بالمرحلة والمراحل اللاحقة.
+   */
   async reopenStage(transactionId: string, stageId: string, userId: string, userName: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
     
@@ -285,6 +289,7 @@ export class TransactionService {
 
     const batch = writeBatch(this.db);
     
+    // 1. إعادة حالة المرحلة الحالية
     batch.update(stageRef, {
       status: 'in-progress',
       completedAt: null,
@@ -294,7 +299,10 @@ export class TransactionService {
       updatedBy: userId
     });
 
+    // 2. تجميد وإعادة تصفير المراحل اللاحقة (Cascade Freeze)
     const allStagesSnap = await getDocs(collection(this.db, paths.transactionStages(this.companyId, transactionId)));
+    const affectedStageIds: string[] = [stageId];
+
     allStagesSnap.docs.forEach(d => {
        const s = d.data() as StageInstance;
        if (s.order > stageData.order) {
@@ -307,16 +315,30 @@ export class TransactionService {
              startedByApptId: null,
              updatedAt: serverTimestamp()
           });
+          affectedStageIds.push(d.id!);
        }
     });
 
+    // 3. أرشفة التعليقات والإنجازات للمراحل المتأثرة
+    const commentService = new CommentService(this.db, this.companyId, this.permissions);
+    const boqService = new BOQExecutionService(this.db, this.companyId, this.permissions);
+
+    for (const sid of affectedStageIds) {
+       await commentService.archiveStageComments(transactionId, sid);
+       const sData = allStagesSnap.docs.find(d => d.id === sid)?.data() as StageInstance;
+       if (sData) {
+          await boqService.archiveStageExecutions(transactionId, sData.technicalStageId, true);
+       }
+    }
+
+    // 4. توثيق الحدث الإداري في التايم لاين
     const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
     batch.set(timelineRef, {
       transactionId,
       stageId,
       technicalStageId: stageData.technicalStageId,
       type: 'stage_reopen',
-      content: `إجراء إداري: إعادة فتح مرحلة "${stageData.name}" للمراجعة. تم تجميد كافة المراحل اللاحقة.`,
+      content: `إجراء إداري: إعادة فتح مرحلة "${stageData.name}" للمراجعة. تم تجميد كافة المراحل اللاحقة وتطهير السجلات المرتبطة لضمان دقة التنفيذ.`,
       userId,
       userName,
       isArchived: false,

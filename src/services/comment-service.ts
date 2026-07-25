@@ -84,6 +84,9 @@ export class CommentService {
     return commentRef;
   }
 
+  /**
+   * أرشفة تعليقات مرحلة معينة عند التراجع (Sovereign Archive)
+   */
   async archiveStageComments(transactionId: string, stageInstanceId: string) {
     const path = paths.transactionComments(this.companyId, transactionId);
     const q = query(collection(this.db, path), where('stageInstanceId', '==', stageInstanceId));
@@ -115,6 +118,20 @@ export class CommentService {
     return deleteDoc(commentRef).catch(err => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: commentRef.path, operation: 'delete'
+      }));
+      throw err;
+    });
+  }
+
+  async updateComment(path: string, commentId: string, content: string) {
+    const commentRef = doc(this.db, path, commentId);
+    return updateDoc(commentRef, {
+      content,
+      isEdited: true,
+      updatedAt: serverTimestamp()
+    }).catch(err => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: commentRef.path, operation: 'update'
       }));
       throw err;
     });

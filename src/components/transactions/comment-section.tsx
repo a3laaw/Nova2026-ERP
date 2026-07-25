@@ -10,7 +10,7 @@ import {
   History, Clock, Zap, Archive, FilterX,
   Calendar, Printer, CheckCircle2, Timer,
   RotateCcw, FileText, LayoutGrid, X,
-  Target
+  Target, Pencil, Check
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where } from 'firebase/firestore';
@@ -32,6 +32,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { paths } from '@/firebase/multi-tenant';
+import { toast } from '@/hooks/use-toast';
 
 interface Props {
   transactionId: string;
@@ -49,10 +50,6 @@ interface Props {
   onlyComments?: boolean; 
 }
 
-/**
- * @fileOverview غرفة العمليات المركزية (War Room Component).
- * تم تحديثها لتدعم وضع "التعليقات فقط" المخصص للزيارات الميدانية.
- */
 export function CommentSection({ 
   transactionId, 
   path, 
@@ -99,7 +96,6 @@ export function CommentSection({
     db && globalUser?.companyId ? new CommentService(db, globalUser.companyId, permissions) : null, 
   [db, globalUser, permissions]);
 
-  // المجرى الموحد (The Integrated Stream)
   const activeStream = useMemo(() => {
     const filteredComments = (comments || [])
       .filter(c => !c.isArchived && (!filterStageId || c.stageInstanceId === filterStageId))
@@ -109,7 +105,6 @@ export function CommentSection({
         sortTime: c.createdAt?.toMillis?.() || Date.now()
       }));
     
-    // إذا كان وضع "التعليقات فقط" مفعلاً، نستثني سجلات النظام
     if (onlyComments) {
       return filteredComments.sort((a, b) => a.sortTime - b.sortTime);
     }
@@ -124,6 +119,14 @@ export function CommentSection({
 
     return [...filteredComments, ...filteredTimeline].sort((a, b) => a.sortTime - b.sortTime);
   }, [comments, timelineEvents, filterStageId, technicalStageId, onlyComments]);
+
+  const archivedStream = useMemo(() => {
+    return (comments || []).filter(c => c.isArchived).map(c => ({
+      ...c,
+      streamType: 'comment' as const,
+      sortTime: c.createdAt?.toMillis?.() || Date.now()
+    })).sort((a, b) => b.sortTime - a.sortTime);
+  }, [comments]);
 
   const handleSubmit = async () => {
     if (!commentService || !user || !content.trim()) return;
@@ -142,6 +145,26 @@ export function CommentSection({
       setContent("");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async (commentId: string) => {
+    if (!commentService || !confirm(isRtl ? 'حذف هذا التعليق؟' : 'Delete comment?')) return;
+    try {
+      await commentService.deleteComment(path, commentId);
+      toast({ title: t('deleted') });
+    } catch (e) {
+      toast({ variant: "destructive", title: t('error') });
+    }
+  };
+
+  const handleUpdate = async (commentId: string, newContent: string) => {
+    if (!commentService) return;
+    try {
+      await commentService.updateComment(path, commentId, newContent);
+      toast({ title: t('saved') });
+    } catch (e) {
+      toast({ variant: "destructive", title: t('error') });
     }
   };
 
@@ -180,7 +203,7 @@ export function CommentSection({
                       <Archive className="h-3 w-3" /> {isRtl ? 'الأرشيف' : 'Archive'}
                     </TabsTrigger>
                     <TabsTrigger value="time_archive" className="rounded-lg text-[10px] font-black gap-1.5 transition-all">
-                      <Clock className="h-3 w-3" /> {isRtl ? 'الوقت' : 'Time Arc'}
+                      <Clock className="h-3 w-3" /> {isRtl ? 'تتبع الوقت' : 'Time Arc'}
                     </TabsTrigger>
                   </>
                 )}
@@ -199,10 +222,22 @@ export function CommentSection({
                </div>
             ) : (
               activeStream.map((item: any) => (
-                  <StreamItem key={item.id || item.sortTime} item={item} isRtl={isRtl} user={user} boqItems={boqItems} />
+                  <StreamItem key={item.id || item.sortTime} item={item} isRtl={isRtl} user={user} boqItems={boqItems} onDelete={handleDelete} onUpdate={handleUpdate} isAdmin={isAdmin} />
               ))
             )}
           </TabsContent>
+          
+          <TabsContent value="chat_archive" className="m-0 space-y-6 pb-24">
+             <div className="px-2 py-4 bg-amber-50 rounded-xl border border-amber-100 flex items-center gap-2 mb-4">
+                <Info className="h-4 w-4 text-amber-600" />
+                <p className="text-[10px] font-bold text-amber-800">{isRtl ? 'تظهر هنا السجلات التي تم استبعادها نتيجة التراجع عن المراحل.' : 'Historical logs from reverted stages.'}</p>
+             </div>
+             {archivedStream.map((item: any) => (
+                <StreamItem key={item.id} item={item} isRtl={isRtl} user={user} boqItems={boqItems} isArchiveView={true} />
+             ))}
+             {archivedStream.length === 0 && <div className="py-20 text-center text-[10px] text-slate-300 italic font-bold">لا يوجد سجلات مؤرشفة.</div>}
+          </TabsContent>
+
           {!onlyComments && (
             <TabsContent value="timeline" className="m-0 space-y-6 pb-24">
                 {stages.sort((a,b)=> (a.order||0) - (b.order||0)).map((stage, idx) => {
@@ -258,7 +293,10 @@ export function CommentSection({
   );
 }
 
-function StreamItem({ item, isRtl, user, boqItems }: any) {
+function StreamItem({ item, isRtl, user, boqItems, onDelete, onUpdate, isAdmin, isArchiveView = false }: any) {
+   const [isEditing, setIsEditing] = useState(false);
+   const [editContent, setEditContent] = useState(item.content);
+
    const isLog = item.streamType === 'log' || item.streamType === 'timeline_log';
    const displayName = item.userName || item.createdByName || item.recordedByName || (isRtl ? 'مستخدم' : 'User');
 
@@ -270,7 +308,7 @@ function StreamItem({ item, isRtl, user, boqItems }: any) {
             <div className={cn(
               "border-2 shadow-md rounded-[1.25rem] p-4 w-full relative transition-all",
               isComplementary ? "bg-blue-50/50 border-blue-100" : "bg-emerald-50/30 border-emerald-100",
-              item.isArchived && "opacity-60 grayscale border-dashed border-slate-300"
+              (item.isArchived || isArchiveView) && "opacity-60 grayscale border-dashed border-slate-300"
             )}>
                <div className="flex items-start gap-4">
                  <div className={cn(
@@ -314,10 +352,13 @@ function StreamItem({ item, isRtl, user, boqItems }: any) {
               <span className="text-[7px] font-bold text-slate-300">
                  {item.createdAt ? formatDistanceToNow(item.createdAt.toDate(), { addSuffix: true, locale: isRtl ? ar : enUS }) : '...'}
               </span>
+              {item.isEdited && <Badge variant="ghost" className="h-3 p-0 text-[6px] font-bold text-slate-300 italic">(edited)</Badge>}
            </div>
+           
            <div className={cn(
              "p-3 rounded-[1.25rem] shadow-sm text-xs font-bold leading-relaxed relative group transition-all",
-             isMine ? "bg-[#e87c24] text-white rounded-te-none" : "bg-white border-2 border-slate-50 text-slate-700 rounded-ts-none"
+             isMine ? "bg-[#e87c24] text-white rounded-te-none" : "bg-white border-2 border-slate-50 text-slate-700 rounded-ts-none",
+             isArchiveView && "opacity-50"
            )}>
               {item.stageName && (
                  <div className="mb-1.5">
@@ -326,7 +367,39 @@ function StreamItem({ item, isRtl, user, boqItems }: any) {
                     </Badge>
                  </div>
               )}
-              <p className="whitespace-pre-wrap">{item.content}</p>
+              
+              {isEditing ? (
+                 <div className="space-y-2 min-w-[200px]">
+                    <Textarea 
+                      value={editContent} 
+                      onChange={e => setEditContent(e.target.value)}
+                      className="bg-white text-slate-900 border-0 h-10 min-h-[40px] text-xs" 
+                    />
+                    <div className="flex justify-end gap-1">
+                       <Button size="icon" className="h-6 w-6 rounded-md bg-emerald-500" onClick={() => { onUpdate(item.id, editContent); setIsEditing(false); }}><Check className="h-3 w-3" /></Button>
+                       <Button size="icon" className="h-6 w-6 rounded-md bg-rose-500" onClick={() => setIsEditing(false)}><X className="h-3 w-3" /></Button>
+                    </div>
+                 </div>
+              ) : (
+                 <p className="whitespace-pre-wrap">{item.content}</p>
+              )}
+
+              {/* أزرار التحكم (تظهر فقط لصاحب التعليق أو الأدمن) */}
+              {!isArchiveView && !isEditing && (isMine || isAdmin) && (
+                <div className={cn(
+                  "absolute top-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1",
+                  isRtl ? (isMine ? "right-full mr-1" : "left-full ml-1") : (isMine ? "left-full ml-1" : "right-full mr-1")
+                )}>
+                   {isMine && (
+                     <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full bg-white shadow-sm border border-slate-100 text-slate-400 hover:text-blue-500" onClick={() => setIsEditing(true)}>
+                        <Pencil className="h-3 w-3" />
+                     </Button>
+                   )}
+                   <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full bg-white shadow-sm border border-slate-100 text-slate-400 hover:text-rose-500" onClick={() => onDelete(item.id)}>
+                      <Trash2 className="h-3 w-3" />
+                   </Button>
+                </div>
+              )}
            </div>
         </div>
      </div>

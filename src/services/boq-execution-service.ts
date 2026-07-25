@@ -146,6 +146,9 @@ export class BOQExecutionService {
     return { success: true };
   }
 
+  /**
+   * أرشفة كافة سجلات الإنجاز لمرحلة معينة عند التراجع (The Purge)
+   */
   async archiveStageExecutions(transactionId: string, technicalStageId: string, isReset: boolean = false) {
     ensureActionPermission(this.permissions, 'projects:edit');
     
@@ -179,6 +182,7 @@ export class BOQExecutionService {
 
     await batch.commit();
 
+    // إعادة حساب الكميات لكل البنود المتأثرة لإلغاء أثر المرحلة المشفقة
     for (const boqId of Array.from(boqIds)) {
       for (const itemId of Array.from(affectedItemIds)) {
         await this.recalculateItemQuantity(boqId, itemId);
