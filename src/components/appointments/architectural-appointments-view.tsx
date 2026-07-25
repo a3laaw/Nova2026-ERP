@@ -237,7 +237,6 @@ export function ArchitecturalAppointmentsView() {
     return res;
   }, [filteredAppointments, apptMeta]);
 
-  // استخدام محرك الساعات الموحد لضمان دقة "نصف الدوام"
   const timeSlots = useMemo(() => {
     if (!settings) return { morning: [], evening: [] };
     const result = WorkHoursEngine.buildDaySlots(currentDate, settings, 'architectural');
@@ -265,13 +264,13 @@ export function ArchitecturalAppointmentsView() {
     setDialogOpen(true);
   };
 
-  const forceThaw = () => {
+  const forceThaw = useCallback(() => {
     if (typeof document !== 'undefined') {
        document.body.style.pointerEvents = 'auto';
        document.body.style.overflow = 'auto';
        document.body.removeAttribute('data-scroll-locked');
     }
-  };
+  }, []);
 
   const handleDeleteAppt = async (id: string) => {
      forceThaw();
@@ -386,6 +385,7 @@ export function ArchitecturalAppointmentsView() {
            db={db}
            companyId={companyId}
            router={router}
+           t={t}
          />
          {timeSlots.evening.length > 0 && (
            <GridSection 
@@ -407,6 +407,7 @@ export function ArchitecturalAppointmentsView() {
              db={db}
              companyId={companyId}
              router={router}
+             t={t}
            />
          )}
       </div>
@@ -414,7 +415,7 @@ export function ArchitecturalAppointmentsView() {
       {user && (
         <AppointmentManagerDialog 
           isOpen={dialogOpen} 
-          onClose={() => setDialogOpen(false)} 
+          onClose={() => { setDialogOpen(false); forceThaw(); }} 
           data={dialogData} 
           clients={allClients || []}
           governorates={governorates || []}
@@ -429,7 +430,7 @@ export function ArchitecturalAppointmentsView() {
   );
 }
 
-function GridSection({ title, slots, engineers, grid, meta, onAction, onDelete, isRtl, clients, isAdmin, currentEngineerId, leaves, permissions, absences, dateStr, db, companyId, router }: any) {
+function GridSection({ title, slots, engineers, grid, meta, onAction, onDelete, isRtl, clients, isAdmin, currentEngineerId, leaves, permissions, absences, dateStr, db, companyId, router, t }: any) {
   if (slots.length === 0) return null;
   
   const visibleEngineers = isAdmin ? engineers : engineers.filter((e: any) => e.id === currentEngineerId);
@@ -466,9 +467,8 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, onDelete, 
                 <tr className="bg-slate-100/80">
                    <th className="w-20 p-4 border-b-2 border-slate-200 font-black text-[9px] text-slate-500 uppercase tracking-[0.2em] bg-slate-100/50">{isRtl ? 'الوقت' : 'Time'}</th>
                    {visibleEngineers.map((eng: Employee) => {
-                      // حساب إحصائيات المهندس لهذا اليوم
                       const engAppts = Array.from(grid.get(eng.id!)?.values() || []);
-                      const total = engAppts.length;
+                      const totalCount = engAppts.length;
                       let v1 = 0, follow = 0, cont = 0;
                       engAppts.forEach((a: Appointment) => {
                          const m = meta.get(a.id);
@@ -478,16 +478,28 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, onDelete, 
                       });
 
                       return (
-                        <th key={eng.id} className="p-4 border-b-2 border-slate-200 border-s-2 border-s-slate-100 text-start bg-white min-w-[220px]">
+                        <th key={eng.id} className="p-4 border-b-2 border-slate-200 border-s-2 border-s-slate-100 text-start bg-white min-w-[280px]">
                            <div className="flex items-center gap-3">
-                              <div className="h-9 w-9 rounded-lg bg-primary text-white flex items-center justify-center font-black text-xs uppercase shadow-sm border-2 border-white shrink-0">{eng.fullName.charAt(0)}</div>
+                              <div className="h-10 w-10 rounded-lg bg-primary text-white flex items-center justify-center font-black text-sm uppercase shadow-sm border-2 border-white shrink-0">{eng.fullName.charAt(0)}</div>
                               <div className="flex flex-col text-start flex-1 min-w-0">
-                                 <span className="font-black text-slate-900 text-xs leading-none truncate">{eng.fullName}</span>
-                                 <div className="flex flex-wrap gap-1 mt-2">
-                                    <Badge variant="outline" className="h-4 px-1 text-[7px] font-black border-slate-900/10 text-slate-500 bg-slate-50" title="Total Appts">Σ {total}</Badge>
-                                    <Badge variant="outline" className="h-4 px-1 text-[7px] font-black border-yellow-200 text-yellow-600 bg-yellow-50" title="1st Visits">V1 {v1}</Badge>
-                                    <Badge variant="outline" className="h-4 px-1 text-[7px] font-black border-emerald-200 text-emerald-600 bg-emerald-50" title="Follow-ups">FU {follow}</Badge>
-                                    <Badge variant="outline" className="h-4 px-1 text-[7px] font-black border-blue-200 text-blue-600 bg-blue-50" title="Contracted">CN {cont}</Badge>
+                                 <span className="font-black text-slate-900 text-sm leading-none truncate">{eng.fullName}</span>
+                                 <div className="flex flex-wrap gap-1.5 mt-2">
+                                    <div className="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200">
+                                       <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter">{t('engTotal')}</span>
+                                       <span className="text-[10px] font-black text-slate-900">{totalCount}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1 bg-yellow-50 px-2 py-0.5 rounded-md border border-yellow-200">
+                                       <span className="text-[7px] font-black text-yellow-600 uppercase tracking-tighter">{t('engNew')}</span>
+                                       <span className="text-[10px] font-black text-yellow-900">{v1}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                                       <span className="text-[7px] font-black text-emerald-600 uppercase tracking-tighter">{t('engFollow')}</span>
+                                       <span className="text-[10px] font-black text-emerald-900">{follow}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                                       <span className="text-[7px] font-black text-blue-600 uppercase tracking-tighter">{t('engContracted')}</span>
+                                       <span className="text-[10px] font-black text-blue-900">{cont}</span>
+                                    </div>
                                  </div>
                               </div>
                            </div>
@@ -559,10 +571,9 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, onDelete, 
                                    </div>
 
                                    <div className={cn("text-start", isRtl ? "pr-1 pl-5" : "pl-1 pr-5")}>
-                                      <p className="font-black text-[10px] leading-tight mb-0.5 truncate">{isBusy ? (isRtl ? 'مشغول' : 'Busy') : appt.clientName}</p>
-                                      {isBusy && appt.notes && (
-                                         <p className="text-[7px] font-bold text-slate-500 italic mt-1 bg-white/40 px-1 rounded line-clamp-1">"{appt.notes}"</p>
-                                      )}
+                                      <p className="font-black text-[10px] leading-tight mb-0.5 truncate">
+                                        {isBusy ? (isRtl ? `[مشغول: ${appt.notes || '...'}]` : `[BUSY: ${appt.notes || '...'}]`) : appt.clientName}
+                                      </p>
                                       {!isBusy && (
                                         <div className="flex items-center gap-1 text-[7px] font-black uppercase opacity-60">
                                            <MapPin className="h-2 w-2" /> {appt.governorateName || '---'}
@@ -581,9 +592,9 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, onDelete, 
                                         {appt.transactionId && <LinkIcon className="h-2.5 w-2.5 opacity-30 text-inherit" />}
                                      </div>
                                    ) : (
-                                     <div className="mt-2 flex items-center justify-between px-1 text-[6px] font-black text-slate-400 uppercase">
+                                     <div className="mt-2 flex items-center justify-between px-1 text-[7px] font-black text-slate-500 uppercase tracking-tighter">
                                         <span>Ends: {appt.end ? format(parseISO(appt.end), 'HH:mm') : '---'}</span>
-                                        <Ban className="h-2 w-2 opacity-30" />
+                                        <Ban className="h-2.5 w-2.5 opacity-30" />
                                      </div>
                                    )}
                                 </Card>
@@ -626,25 +637,10 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     newClientName: '', newClientPhone: '', newClientGovId: '', newClientGovName: '', 
     transactionId: '', transactionNumber: '',
     date: '', time: '', notes: '',
-    endTime: '' // الوقت المخطط للانتهاء (للحظر)
+    endTime: '' 
   });
 
   const [clientTransactions, setClientTransactions] = useState<any[]>([]);
-
-  const forceThaw = useCallback(() => {
-    if (typeof document !== 'undefined') {
-      document.body.style.pointerEvents = 'auto';
-      document.body.style.overflow = 'auto';
-      document.body.removeAttribute('data-scroll-locked');
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!isOpen) {
-       const timer = setTimeout(forceThaw, 150);
-       return () => clearTimeout(timer);
-    }
-  }, [isOpen, forceThaw]);
 
   const targetEngineerId = data?.engineer?.id || data?.appointment?.engineerId;
   
@@ -761,7 +757,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
       }
       toast({ title: t('saved') });
       onClose();
-      forceThaw();
     } catch (e) {
       toast({ variant: "destructive", title: t('error') });
     } finally {

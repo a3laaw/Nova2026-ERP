@@ -224,6 +224,10 @@ const translations: Record<Language, Record<string, string>> = {
     manageCompanyData: 'Manage organizational identity and legal data',
     unitPrice: 'Unit Price',
     convertToContract: 'Convert to Contract',
+    engTotal: 'إجمالي',
+    engNew: 'جديد',
+    engFollow: 'متابعة',
+    engContracted: 'متعاقد',
   },
   en: {
     dashboard: 'Dashboard',
@@ -436,6 +440,10 @@ const translations: Record<Language, Record<string, string>> = {
     manageCompanyData: 'Manage organizational identity and legal data',
     unitPrice: 'Unit Price',
     convertToContract: 'Convert to Contract',
+    engTotal: 'Total',
+    engNew: 'New',
+    engFollow: 'Follow',
+    engContracted: 'Contract',
   }
 };
 
