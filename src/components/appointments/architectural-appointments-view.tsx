@@ -393,13 +393,13 @@ export function ArchitecturalAppointmentsView() {
         </div>
       )}
 
-      <div className="flex flex-col items-center gap-6 print:hidden">
+      <div className="flex flex-col items-center gap-6">
         <div className="flex items-center gap-6 w-full max-w-4xl justify-center">
            <Button 
              variant="ghost" 
              size="icon" 
              onClick={() => setCurrentDate(subDays(currentDate, 1))}
-             className="h-10 w-10 rounded-full hover:bg-slate-100 transition-all text-slate-400"
+             className="h-10 w-10 rounded-full hover:bg-slate-100 transition-all text-slate-400 print:hidden"
            >
               <ChevronLeft className={cn("h-5 w-5", !isRtl && "rotate-180")} />
            </Button>
@@ -407,15 +407,17 @@ export function ArchitecturalAppointmentsView() {
            <div className="flex gap-4 overflow-hidden py-2 px-2">
               {visibleDates.map((date) => {
                 const isSelected = isSameDay(date, currentDate);
+                if (!isSelected && typeof window !== 'undefined' && window.matchMedia('print').matches) return null;
+                
                 return (
                   <Card 
                     key={date.toISOString()}
                     onClick={() => setCurrentDate(date)}
                     className={cn(
-                      "min-w-[80px] h-20 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 rounded-xl border-2 shadow-sm",
+                      "min-w-[80px] h-20 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 rounded-xl border-2 shadow-sm print:shadow-none print:scale-100 print:border-slate-100",
                       isSelected 
-                        ? "bg-primary border-primary text-white scale-105 shadow-orange-500/20" 
-                        : "bg-white border-transparent text-slate-400 hover:border-slate-100 hover:bg-slate-50"
+                        ? "bg-primary border-primary text-white scale-105 shadow-orange-500/20 print:bg-primary print:text-white" 
+                        : "bg-white border-transparent text-slate-400 hover:border-slate-100 hover:bg-slate-50 print:hidden"
                     )}
                   >
                      <span className={cn("text-[9px] font-black uppercase mb-0.5", isSelected ? "text-white/80" : "text-slate-400")}>
@@ -433,33 +435,33 @@ export function ArchitecturalAppointmentsView() {
              variant="ghost" 
              size="icon" 
              onClick={() => currentDate.getTime() < addDays(new Date(), 30).getTime() && setCurrentDate(addDays(currentDate, 1))}
-             className="h-10 w-10 rounded-full hover:bg-slate-100 transition-all text-slate-400"
+             className="h-10 w-10 rounded-full hover:bg-slate-100 transition-all text-slate-400 print:hidden"
            >
               <ChevronRight className={cn("h-5 w-5", isRtl && "rotate-180")} />
            </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 print:hidden">
-         <Card className="border-0 shadow-lg rounded-xl bg-white border-b-4 border-slate-900">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+         <Card className="border-0 shadow-lg rounded-xl bg-white border-b-4 border-b-slate-900 print:shadow-none">
             <CardContent className="p-4 text-start">
                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إجمالي المواعيد اليوم' : 'Total Today'}</p>
                <h3 className="text-2xl font-black text-slate-900" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.total.toLocaleString('en-US')}</h3>
             </CardContent>
          </Card>
-         <Card className="border-0 shadow-lg rounded-xl bg-white border-b-4 border-yellow-400">
+         <Card className="border-0 shadow-lg rounded-xl bg-white border-b-4 border-b-yellow-400 print:shadow-none">
             <CardContent className="p-4 text-start">
                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'زيارة أولى (جديد)' : '1st Visits'}</p>
                <h3 className="text-2xl font-black text-yellow-500" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.yellow.toLocaleString('en-US')}</h3>
             </CardContent>
          </Card>
-         <Card className="border-0 shadow-lg rounded-xl bg-white border-b-4 border-emerald-500">
+         <Card className="border-0 shadow-lg rounded-xl bg-white border-b-4 border-b-emerald-500 print:shadow-none">
             <CardContent className="p-4 text-start">
                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'متابعة (تحت الدراسة)' : 'Follow-ups'}</p>
                <h3 className="text-2xl font-black text-emerald-600" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.green.toLocaleString('en-US')}</h3>
             </CardContent>
          </Card>
-         <Card className="border-0 shadow-lg rounded-xl bg-white border-b-4 border-blue-500">
+         <Card className="border-0 shadow-lg rounded-xl bg-white border-b-4 border-b-blue-500 print:shadow-none">
             <CardContent className="p-4 text-start">
                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'عملاء متعاقدون' : 'Contracted'}</p>
                <h3 className="text-2xl font-black text-blue-600" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.blue.toLocaleString('en-US')}</h3>
@@ -604,7 +606,7 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
                       return (
                         <th key={eng.id} className="p-4 border-b-2 border-slate-200 border-s-2 border-s-slate-100 text-start bg-white min-w-[280px]">
                            <div className="flex items-center gap-3">
-                              <Avatar className="h-10 w-10 rounded-xl border-2 border-white shadow-sm ring-2 ring-primary/10 shrink-0 print:hidden">
+                              <Avatar className="h-12 w-12 rounded-xl border-2 border-white shadow-md ring-2 ring-primary/10 shrink-0">
                                  <AvatarImage src={`https://picsum.photos/seed/${eng.id}/100/100`} />
                                  <AvatarFallback className="bg-primary text-white font-black text-sm uppercase">
                                     {eng.fullName.charAt(0)}
@@ -612,20 +614,20 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
                               </Avatar>
                               <div className="flex flex-col text-start flex-1 min-w-0">
                                  <span className="font-black text-slate-900 text-sm leading-none truncate">{eng.fullName}</span>
-                                 <div className="flex flex-wrap gap-1.5 mt-2 print:hidden">
-                                    <div className="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200">
+                                 <div className="flex flex-wrap gap-1 mt-2">
+                                    <div className="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100 shadow-sm">
                                        <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter">{t('engTotal')}</span>
                                        <span className="text-[10px] font-black text-slate-900">{totalCount}</span>
                                     </div>
-                                    <div className="flex items-center gap-1 bg-yellow-50 px-2 py-0.5 rounded-md border border-yellow-200">
+                                    <div className="flex items-center gap-1 bg-yellow-50 px-2 py-0.5 rounded-md border border-yellow-100 shadow-sm">
                                        <span className="text-[7px] font-black text-yellow-600 uppercase tracking-tighter">{t('engNew')}</span>
                                        <span className="text-[10px] font-black text-yellow-900">{v1}</span>
                                     </div>
-                                    <div className="flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                                    <div className="flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100 shadow-sm">
                                        <span className="text-[7px] font-black text-emerald-600 uppercase tracking-tighter">{t('engFollow')}</span>
                                        <span className="text-[10px] font-black text-emerald-900">{follow}</span>
                                     </div>
-                                    <div className="flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                                    <div className="flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 shadow-sm">
                                        <span className="text-[7px] font-black text-blue-600 uppercase tracking-tighter">{t('engContracted')}</span>
                                        <span className="text-[10px] font-black text-blue-900">{cont}</span>
                                     </div>
