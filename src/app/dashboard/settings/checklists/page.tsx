@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -39,40 +40,40 @@ export default function TechnicalSetupPage() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" dir={dir}>
         <div className="overflow-x-auto pb-4 scrollbar-hide">
-          <TabsList className="flex w-fit min-w-full md:min-w-0 md:grid md:grid-cols-6 h-16 bg-white border border-primary/10 rounded-xl p-1.5 shadow-sm gap-2">
+          <TabsList className="flex w-fit min-w-full md:min-w-0 md:flex h-16 bg-white border border-primary/10 rounded-xl p-1.5 shadow-sm gap-2">
             <TabsTrigger 
               value="general" 
-              className="tab-sovereign rounded-lg font-black gap-2 transition-all data-[state=active]:bg-[#F57C00] data-[state=active]:text-white data-[state=active]:shadow-lg flex items-center justify-center px-6 h-full"
+              className="tab-sovereign rounded-lg font-black gap-2 transition-all data-[state=active]:bg-[#F57C00] data-[state=active]:text-white data-[state=active]:shadow-lg flex items-center justify-center px-6 h-full flex-1"
             >
               <ListTree className="h-4 w-4" /> {t('referenceLists')}
             </TabsTrigger>
             <TabsTrigger 
               value="boq_nodes" 
-              className="tab-sovereign rounded-lg font-black gap-2 transition-all data-[state=active]:bg-[#F57C00] data-[state=active]:text-white data-[state=active]:shadow-lg flex items-center justify-center px-6 h-full"
+              className="tab-sovereign rounded-lg font-black gap-2 transition-all data-[state=active]:bg-[#F57C00] data-[state=active]:text-white data-[state=active]:shadow-lg flex items-center justify-center px-6 h-full flex-1"
             >
               <GitBranch className="h-4 w-4" /> {isRtl ? 'شجرة الأعمال' : 'BOQ Master Tree'}
             </TabsTrigger>
             <TabsTrigger 
               value="org" 
-              className="tab-sovereign rounded-lg font-black gap-2 transition-all data-[state=active]:bg-[#F57C00] data-[state=active]:text-white data-[state=active]:shadow-lg flex items-center justify-center px-6 h-full"
+              className="tab-sovereign rounded-lg font-black gap-2 transition-all data-[state=active]:bg-[#F57C00] data-[state=active]:text-white data-[state=active]:shadow-lg flex items-center justify-center px-6 h-full flex-1"
             >
               <Building2 className="h-4 w-4" /> {t('orgRef')}
             </TabsTrigger>
             <TabsTrigger 
               value="technical" 
-              className="tab-sovereign rounded-lg font-black gap-2 transition-all data-[state=active]:bg-[#F57C00] data-[state=active]:text-white data-[state=active]:shadow-lg flex items-center justify-center px-6 h-full"
+              className="tab-sovereign rounded-lg font-black gap-2 transition-all data-[state=active]:bg-[#F57C00] data-[state=active]:text-white data-[state=active]:shadow-lg flex items-center justify-center px-6 h-full flex-1"
             >
               <Workflow className="h-4 w-4" /> {t('techRef')}
             </TabsTrigger>
             <TabsTrigger 
               value="geo" 
-              className="tab-sovereign rounded-lg font-black gap-2 transition-all data-[state=active]:bg-[#F57C00] data-[state=active]:text-white data-[state=active]:shadow-lg flex items-center justify-center px-6 h-full"
+              className="tab-sovereign rounded-lg font-black gap-2 transition-all data-[state=active]:bg-[#F57C00] data-[state=active]:text-white data-[state=active]:shadow-lg flex items-center justify-center px-6 h-full flex-1"
             >
               <MapPin className="h-4 w-4" /> {t('geoRef')}
             </TabsTrigger>
             <TabsTrigger 
               value="setup" 
-              className="tab-sovereign rounded-lg font-black gap-2 transition-all data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-lg flex items-center justify-center px-6 h-full"
+              className="tab-sovereign rounded-lg font-black gap-2 transition-all data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-lg flex items-center justify-center px-6 h-full flex-1"
             >
               <Settings2 className="h-4 w-4" /> {t('systemSetup')}
             </TabsTrigger>

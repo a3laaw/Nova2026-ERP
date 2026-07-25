@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -23,7 +24,7 @@ import { Input } from '@/components/ui/input';
 
 /**
  * @fileOverview تقرير تحليل تفاعل العملاء (Client Visit Dossier).
- * يربط المواعيد بالإنجازات الفنية والتعليقات الميدانية.
+ * تم تحديثه لتجنب أخطاء الفهارس (Index-Free) عبر التصفية في الذاكرة.
  */
 export default function ClientVisitsReportPage() {
   const { globalUser } = useAuthContext();
@@ -43,20 +44,25 @@ export default function ClientVisitsReportPage() {
   [db, companyId]);
   const { data: clients, loading: clientsLoading } = useCollection<Client>(clientsQuery);
 
-  // 2. محرك جلب تفاصيل الزيارات للعميل المختار
+  // 2. محرك جلب تفاصيل الزيارات للعميل المختار (بدون فهارس مركبة)
   useEffect(() => {
     async function fetchDetails() {
       if (!selectedClientId || !db || !companyId) return;
       setLoadingVisits(true);
       try {
-        // أ. جلب المواعيد المكتملة للعميل
+        // أ. جلب كافة المواعيد للعميل (استعلام بسيط لا يحتاج فهرس مركب)
         const apptsRef = collection(db, paths.appointments(companyId));
-        const apptsQuery = query(apptsRef, where('clientId', '==', selectedClientId), where('status', '==', 'completed'), orderBy('start', 'desc'));
+        const apptsQuery = query(apptsRef, where('clientId', '==', selectedClientId));
         const apptsSnap = await getDocs(apptsQuery);
-        const appts = apptsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Appointment));
+        
+        // ب. التصفية والترتيب في الذاكرة (Memory Processing) لضمان العمل الفوري
+        const allAppts = apptsSnap.docs
+          .map(d => ({ id: d.id, ...d.data() } as Appointment))
+          .filter(a => a.status === 'completed')
+          .sort((a, b) => b.start.localeCompare(a.start));
 
-        // ب. جلب الإنجازات والتعليقات المربوطة بكل موعد
-        const fullData = await Promise.all(appts.map(async (appt) => {
+        // ج. جلب الإنجازات والتعليقات المربوطة بكل موعد
+        const fullData = await Promise.all(allAppts.map(async (appt) => {
            const execsRef = collection(db, paths.executions(companyId));
            const execsQuery = query(execsRef, where('appointmentId', '==', appt.id));
            const execsSnap = await getDocs(execsQuery);
@@ -107,6 +113,7 @@ export default function ClientVisitsReportPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
          
+         {/* القائمة الجانبية للعملاء */}
          <div className="lg:col-span-4 space-y-4 print:hidden">
             <Card className="border-0 shadow-xl rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/5">
                <CardHeader className="bg-slate-50/50 border-b p-6">
@@ -145,6 +152,7 @@ export default function ClientVisitsReportPage() {
             </Card>
          </div>
 
+         {/* عرض تفاصيل الزيارات */}
          <div className="lg:col-span-8">
             {!selectedClientId ? (
                <div className="h-[600px] rounded-[3rem] border-4 border-dashed border-slate-100 bg-slate-50/50 flex flex-col items-center justify-center text-center p-10 animate-pulse">
@@ -158,6 +166,7 @@ export default function ClientVisitsReportPage() {
                </div>
             ) : (
               <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
+                 {/* ملخص العميل */}
                  <Card className="border-0 shadow-2xl rounded-[3rem] bg-slate-900 text-white overflow-hidden relative">
                     <div className="absolute top-0 right-0 p-10 opacity-5"><LayoutGrid className="h-32 w-32" /></div>
                     <CardContent className="p-10 flex flex-col md:flex-row justify-between items-center gap-8 relative z-10">
@@ -174,6 +183,7 @@ export default function ClientVisitsReportPage() {
                     </CardContent>
                  </Card>
 
+                 {/* الخط الزمني للزيارات */}
                  <div className="space-y-8 relative ps-8">
                     <div className="absolute top-0 bottom-0 left-3.5 w-1 bg-slate-100 rounded-full" />
                     
