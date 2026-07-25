@@ -80,12 +80,20 @@ export default function AppointmentDetailPage() {
   [db, companyId, appt?.transactionId]);
   const { data: transaction } = useDoc<Transaction>(transRef);
 
-  // جلب المراحل - نفس المسار المرجعي للمعاملة لضمان التزامن
+  // جلب المراحل - نفس المسار المرجعي للمعاملة لضمان التزامن السيادي
   const stagesQuery = useMemo(() => 
     companyId && db && appt?.transactionId ? query(collection(db, paths.transactionStages(companyId, appt.transactionId)), orderBy('order')) : null,
   [db, companyId, appt?.transactionId]);
   const { data: rawStages } = useCollection<StageInstance>(stagesQuery);
   const stages = useMemo(() => (rawStages || []).sort((a,b) => (a.order || 0) - (b.order || 0)), [rawStages]);
+
+  // تعيين أول مرحلة غير مكتملة كاختيار افتراضي لتبسيط العمل
+  useEffect(() => {
+    if (stages.length > 0 && !selectedStageId) {
+      const nextStage = stages.find(s => s.status !== 'completed');
+      if (nextStage) setSelectedStageId(nextStage.id!);
+    }
+  }, [stages, selectedStageId]);
 
   const boqQuery = useMemo(() => 
     companyId && db && appt?.transactionId ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', appt.transactionId), limit(1)) : null,
@@ -399,8 +407,8 @@ export default function AppointmentDetailPage() {
                     {stages.map((stage, idx) => {
                        const isSelected = stage.id === selectedStageId;
                        const isPreviousCompleted = idx === 0 || stages[idx-1].status === 'completed';
+                       // تعريف "الجبهة التشغيلية" (Frontier): المرحلة التي يمكن البدء فيها أو إنجازها
                        const isFrontier = stage.status === 'in-progress' || (stage.status === 'pending' && isPreviousCompleted);
-                       const boqProgress = stageProgressMap[stage.technicalStageId];
                        
                        return (
                           <div 
@@ -434,7 +442,8 @@ export default function AppointmentDetailPage() {
                                 {isSelected && <Badge className="bg-primary text-white text-[7px] font-black h-4 px-2">SELECTED</Badge>}
                              </div>
 
-                             {isFrontier && isSelected && (
+                             {/* أزرار الإجراءات - تظهر عند تحديد المرحلة إذا كانت في الجبهة التشغيلية */}
+                             {isSelected && isFrontier && (
                                 <div className="flex flex-wrap gap-2 animate-in slide-in-from-top-1" onClick={e => e.stopPropagation()}>
                                    {stage.status === 'pending' && (
                                       <Button onClick={() => handleStartStage(stage.id!)} disabled={!!processingId} className="flex-1 h-9 rounded-xl bg-blue-600 text-white font-black text-[9px] gap-2 shadow-lg">
