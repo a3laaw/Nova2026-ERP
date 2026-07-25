@@ -2,22 +2,38 @@
 
 import { useLanguage } from '@/context/language-context';
 import { ArchitecturalAppointmentsView } from '@/components/appointments/architectural-appointments-view';
-import { CalendarDays } from 'lucide-react';
+import { CalendarDays, Printer } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export default function AppointmentsListPage() {
   const { lang, dir } = useLanguage();
   const isRtl = lang === 'ar';
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500" dir={dir}>
-      <div className="text-start">
-         <h1 className="text-3xl font-black font-headline flex items-center gap-3 text-slate-900">
-           <CalendarDays className="h-8 w-8 text-primary" />
-           {isRtl ? 'رادار المواعيد المعماري' : 'Architectural Radar'}
-         </h1>
-         <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-            {isRtl ? 'جدولة اللقاءات مع العملاء والزيارات الميدانية لقطاع التصميم.' : 'Schedule client meetings and consulting site visits for Design.'}
-         </p>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="text-start">
+           <h1 className="text-3xl font-black font-headline flex items-center gap-3 text-slate-900">
+             <CalendarDays className="h-8 w-8 text-primary" />
+             {isRtl ? 'رادار المواعيد المعماري' : 'Architectural Radar'}
+           </h1>
+           <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic print:hidden">
+              {isRtl ? 'جدولة اللقاءات مع العملاء والزيارات الميدانية لقطاع التصميم.' : 'Schedule client meetings and consulting site visits for Design.'}
+           </p>
+        </div>
+        
+        <Button 
+          onClick={handlePrint} 
+          variant="outline" 
+          className="h-12 px-6 rounded-xl border-2 font-black gap-2 bg-white shadow-sm hover:bg-slate-50 print:hidden"
+        >
+          <Printer className="h-5 w-5 text-primary" />
+          {isRtl ? 'طباعة الجدول الزمني' : 'Print Radar'}
+        </Button>
       </div>
 
       <ArchitecturalAppointmentsView />

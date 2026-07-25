@@ -183,8 +183,6 @@ export function ArchitecturalAppointmentsView() {
     });
   }, [currentDate]);
 
-  // --- محرك تنظيف المواعيد القديمة (Smart Archiving Logic) ---
-  // نقوم بجلب المواعيد من آخر 30 يوماً فقط للمكتملة، ولكن نجلب كافة المواعيد المعلقة (Scheduled) لضمان عدم ضياع المهام.
   const apptsQuery = useMemo(() => {
     if (!companyId || !db) return null;
     return query(
@@ -233,13 +231,10 @@ export function ArchitecturalAppointmentsView() {
     }
   }, [db, companyId]);
 
-  // --- تصفية المواعيد القديمة المكتملة برمجياً لتخفيف العرض (Memory-level Cleanup) ---
   const activeAndRecentAppointments = useMemo(() => {
     const thirtyDaysAgo = subMonths(new Date(), 1);
     return (rawAppointments || []).filter(a => {
-      // 1. نبقي المواعيد المعلقة مهما كان تاريخها (Overdue Protection)
       if (a.status === 'scheduled') return true;
-      // 2. نبقي المواعيد المكتملة فقط إذا كانت خلال الـ 30 يوماً الماضية (Visibility Optimization)
       const apptDate = parseISO(a.start);
       return !isBefore(apptDate, thirtyDaysAgo);
     });
@@ -345,7 +340,7 @@ export function ArchitecturalAppointmentsView() {
     <div className="space-y-10 animate-in fade-in duration-700" dir={dir}>
       
       {overdueMissions.length > 0 && (
-        <div className="animate-in slide-in-from-top-4 duration-500">
+        <div className="animate-in slide-in-from-top-4 duration-500 print:hidden">
            <div className="flex items-center gap-3 mb-4 px-2">
               <ShieldAlert className="h-6 w-6 text-rose-500" />
               <h2 className="text-xl font-black font-headline text-rose-900">{isRtl ? 'مهمات بانتظار الإغلاق الفني' : 'Missions Awaiting Closure'}</h2>
@@ -472,7 +467,7 @@ export function ArchitecturalAppointmentsView() {
          </Card>
       </div>
 
-      <div className="space-y-12 pb-20">
+      <div className="space-y-12 pb-20 print:pb-0">
          <GridSection 
            title={isRtl ? "الفترة الصباحية ☀️" : "Morning Session"} 
            slots={timeSlots.morning} 
@@ -585,16 +580,16 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
 
   return (
     <div className="space-y-6">
-       <div className="flex items-center gap-4 px-2">
+       <div className="flex items-center gap-4 px-2 print:hidden">
           <Badge className="bg-slate-900 text-white font-black px-6 py-1.5 rounded-full text-[10px] shadow-md uppercase tracking-widest">{title}</Badge>
           <div className="h-[1.5px] flex-1 bg-slate-200" />
        </div>
 
-       <div className="overflow-x-auto rounded-xl shadow-xl border-4 border-white bg-white ring-1 ring-black/5">
+       <div className="overflow-x-auto rounded-xl shadow-xl border-4 border-white bg-white ring-1 ring-black/5 print:shadow-none print:border-0 print:ring-0">
           <table className="w-full border-collapse">
              <thead>
-                <tr className="bg-slate-100/80">
-                   <th className="w-20 p-4 border-b-2 border-slate-200 font-black text-[9px] text-slate-500 uppercase tracking-[0.2em] bg-slate-100/50">{isRtl ? 'الوقت' : 'Time'}</th>
+                <tr className="bg-slate-100/80 print:bg-white">
+                   <th className="w-20 p-4 border-b-2 border-slate-200 font-black text-[9px] text-slate-500 uppercase tracking-[0.2em] bg-slate-100/50 print:bg-white">{isRtl ? 'الوقت' : 'Time'}</th>
                    {visibleEngineers.map((eng: Employee) => {
                       const engAppts = gridMap.get(eng.id!) || [];
                       const totalCount = engAppts.length;
@@ -609,7 +604,7 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
                       return (
                         <th key={eng.id} className="p-4 border-b-2 border-slate-200 border-s-2 border-s-slate-100 text-start bg-white min-w-[280px]">
                            <div className="flex items-center gap-3">
-                              <Avatar className="h-10 w-10 rounded-xl border-2 border-white shadow-sm ring-2 ring-primary/10 shrink-0">
+                              <Avatar className="h-10 w-10 rounded-xl border-2 border-white shadow-sm ring-2 ring-primary/10 shrink-0 print:hidden">
                                  <AvatarImage src={`https://picsum.photos/seed/${eng.id}/100/100`} />
                                  <AvatarFallback className="bg-primary text-white font-black text-sm uppercase">
                                     {eng.fullName.charAt(0)}
@@ -617,7 +612,7 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
                               </Avatar>
                               <div className="flex flex-col text-start flex-1 min-w-0">
                                  <span className="font-black text-slate-900 text-sm leading-none truncate">{eng.fullName}</span>
-                                 <div className="flex flex-wrap gap-1.5 mt-2">
+                                 <div className="flex flex-wrap gap-1.5 mt-2 print:hidden">
                                     <div className="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200">
                                        <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter">{t('engTotal')}</span>
                                        <span className="text-[10px] font-black text-slate-900">{totalCount}</span>
@@ -644,8 +639,8 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
              </thead>
              <tbody>
                 {slots.map((slot: string, sIdx: number) => (
-                  <tr key={slot} className={cn("group/row", sIdx % 2 === 0 ? "bg-white" : "bg-slate-50/10")}>
-                     <td className="p-4 text-center border-b-2 border-slate-200 border-e-2 border-e-slate-200 font-mono font-black text-slate-500 bg-slate-100/50 text-[10px]">{slot}</td>
+                  <tr key={slot} className={cn("group/row", sIdx % 2 === 0 ? "bg-white" : "bg-slate-50/10 print:bg-white")}>
+                     <td className="p-4 text-center border-b-2 border-slate-200 border-e-2 border-e-slate-200 font-mono font-black text-slate-500 bg-slate-100/50 text-[10px] print:bg-white">{slot}</td>
                      {visibleEngineers.map((eng: Employee) => {
                         const engAppts = gridMap.get(eng.id!) || [];
                         const appt = engAppts.find((a: any) => {
@@ -662,7 +657,7 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
 
                         if (block) {
                            return (
-                             <td key={eng.id} className="p-1 border-b-2 border-slate-200 border-s-2 border-s-slate-100 bg-slate-50/50">
+                             <td key={eng.id} className="p-1 border-b-2 border-slate-200 border-s-2 border-s-slate-100 bg-slate-50/50 print:bg-white">
                                 <div className="h-full flex items-center justify-center gap-2 text-[8px] font-black text-slate-300 uppercase italic opacity-60">
                                    {block.type === 'leave' && <Plane className="h-2.5 w-2.5" />}
                                    {block.type === 'permission' && <Timer className="h-2.5 w-2.5" />}
@@ -684,12 +679,12 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
                                 <Card 
                                   onClick={() => router.push(`/dashboard/appointments/${appt.id}`)}
                                   className={cn(
-                                    "border-2 p-3 rounded-xl h-full shadow-lg relative group/card cursor-pointer transition-all hover:ring-4 hover:ring-primary/5", 
+                                    "border-2 p-3 rounded-xl h-full shadow-lg relative group/card cursor-pointer transition-all hover:ring-4 hover:ring-primary/5 print:shadow-none print:ring-0", 
                                     cardGradient(m?.color || '', isCompleted)
                                   )}
                                 >
                                    {isStart && (
-                                     <div className={cn("absolute top-1 z-10", isRtl ? "left-1" : "right-1")} onClick={e => e.stopPropagation()}>
+                                     <div className={cn("absolute top-1 z-10 print:hidden", isRtl ? "left-1" : "right-1")} onClick={e => e.stopPropagation()}>
                                         <DropdownMenu>
                                            <DropdownMenuTrigger asChild>
                                               <Button 
@@ -756,9 +751,9 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
                           <td 
                             key={eng.id} 
                             onClick={() => onAction('create', eng, slot)}
-                            className="p-1 border-b-2 border-slate-200 border-s-2 border-s-slate-100 group-hover/row:bg-primary/[0.03] transition-colors cursor-pointer"
+                            className="p-1 border-b-2 border-slate-200 border-s-2 border-s-slate-100 group-hover/row:bg-primary/[0.03] transition-colors cursor-pointer print:bg-white"
                           >
-                             <div className="h-10 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
+                             <div className="h-10 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity print:hidden">
                                 <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                                    <Plus className="h-3 w-3" />
                                 </div>

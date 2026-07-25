@@ -59,3 +59,30 @@
 [data-state=active].tab-sovereign {
   @apply bg-gradient-to-r from-[#F57C00] to-[#FFB000] text-white shadow-lg !important;
 }
+
+@media print {
+  @page {
+    size: landscape;
+    margin: 5mm;
+  }
+  
+  body {
+    zoom: 75%;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .sidebar, header, .print-hidden {
+    display: none !important;
+  }
+
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .card {
+    box-shadow: none !important;
+    border: 1px solid #eee !important;
+  }
+}
