@@ -80,6 +80,7 @@ export interface BOQItemExecutionEntry extends BaseReference {
   boqId: string;
   boqItemId: string;
   transactionId?: string;
+  appointmentId?: string; // المرجع الزمني للزيارة
   technicalStageId: string;
   quantity: number;
   notes?: string;

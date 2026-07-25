@@ -35,6 +35,7 @@ export interface TransactionTimelineEvent extends BaseReference {
   userName: string;
   isArchived?: boolean; 
   archivedAt?: any;
+  appointmentId?: string;
 }
 
 export type CommentType = 'general' | 'note' | 'warning' | 'instruction';
@@ -42,6 +43,7 @@ export type CommentType = 'general' | 'note' | 'warning' | 'instruction';
 export interface TransactionComment extends BaseReference {
   id?: string;
   transactionId: string;
+  appointmentId?: string; // الربط المباشر بالزيارة الميدانية
   stageInstanceId?: string | null; 
   stageName?: string; 
   content: string;

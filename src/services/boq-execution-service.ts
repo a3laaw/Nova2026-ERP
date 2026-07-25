@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -60,7 +59,8 @@ export class BOQExecutionService {
     userName: string,
     notes?: string,
     stageInstanceId?: string,
-    isForced: boolean = false
+    isForced: boolean = false,
+    appointmentId?: string
   ) {
     ensureActionPermission(this.permissions, 'projects:edit');
 
@@ -92,6 +92,7 @@ export class BOQExecutionService {
       boqId,
       boqItemId: itemId,
       transactionId: itemData.transactionId || '',
+      appointmentId: appointmentId || null,
       technicalStageId,
       quantity,
       notes: notes || '',
@@ -126,6 +127,7 @@ export class BOQExecutionService {
       await addDoc(timelineRef, {
         transactionId: itemData.transactionId,
         stageId: stageInstanceId || '', 
+        appointmentId: appointmentId || null,
         technicalStageId: technicalStageId,
         type: 'numeric_update',
         content: timelineContent,

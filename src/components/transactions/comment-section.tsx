@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -46,6 +45,7 @@ interface Props {
   selectedStageName?: string;
   technicalStageId?: string | null;
   activeTabOverride?: 'active' | 'timeline' | 'chat_archive' | 'time_archive';
+  appointmentId?: string; // التاج الزمني للزيارة
 }
 
 export function CommentSection({ 
@@ -59,7 +59,8 @@ export function CommentSection({
   onClearFilter,
   selectedStageName,
   technicalStageId,
-  activeTabOverride
+  activeTabOverride,
+  appointmentId
 }: Props) {
   const { user, globalUser } = useAuthContext();
   const { lang, dir } = useLanguage();
@@ -103,7 +104,7 @@ export function CommentSection({
       }));
     
     const filteredTimeline = (timelineEvents || [])
-      .filter(e => !e.isArchived && (e.type === 'numeric_update' || e.type === 'stage_start' || e.type === 'stage_complete') && (!technicalStageId || e.technicalStageId === technicalStageId || e.stageId === filterStageId))
+      .filter(e => !e.isArchived && (e.type === 'numeric_update' || e.type === 'stage_start' || e.type === 'stage_complete' || e.type === 'revision_logged') && (!technicalStageId || e.technicalStageId === technicalStageId || e.stageId === filterStageId))
       .map(e => ({
         ...e,
         streamType: 'timeline_log' as const,
@@ -135,7 +136,9 @@ export function CommentSection({
         user.uid, 
         globalUser?.username || user.displayName || user.email || 'User',
         filterStageId,
-        selectedStageName
+        selectedStageName,
+        'general',
+        appointmentId
       );
       setContent("");
     } finally {

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -36,13 +35,15 @@ export class CommentService {
     userName: string,
     stageInstanceId?: string | null,
     stageName?: string,
-    type: CommentType = 'general'
+    type: CommentType = 'general',
+    appointmentId?: string
   ) {
     ensureActionPermission(this.permissions, 'projects:view');
     
     const path = paths.transactionComments(this.companyId, transactionId);
     const commentData: any = {
       transactionId,
+      appointmentId: appointmentId || null,
       stageInstanceId: stageInstanceId || null,
       stageName: stageName || '',
       content,

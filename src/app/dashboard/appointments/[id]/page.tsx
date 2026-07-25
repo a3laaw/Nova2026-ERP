@@ -146,20 +146,24 @@ export default function AppointmentDetailPage() {
   const checkResults = useMemo(() => {
     if (!appt?.transactionId) return { hasAchievement: true, hasComment: true, ready: true };
     
-    // 1. فحص الإنجاز الفني (سجلات إنجاز أو مراجعات)
-    const hasProgressLogs = (allExecutions || []).length > 0;
-    const hasRevisions = stages.some(s => (s.revisionCount || 0) > 0);
-    const hasAchievement = hasProgressLogs || hasRevisions;
+    // 1. فحص الإنجاز الفني (سجلات إنجاز أو مراجعات) مرتبط بهذا الموعد حصراً
+    const hasProgressLogs = (allExecutions || []).some(e => e.appointmentId === apptId);
+    
+    // فحص المراجعات المسجلة في سجل الأحداث لهذا الموعد
+    // ملاحظة: RevisionCount حقل تراكمي في المرحلة، لذا نعتمد على وجود سجل في Timeline أو تعليق مرتبط
+    const hasRevisionsInWarRoom = (comments || []).some((c: any) => c.appointmentId === apptId && c.commentType === 'note');
+    
+    const hasAchievement = hasProgressLogs || hasRevisionsInWarRoom;
 
-    // 2. فحص التعليق (يجب أن يكون المهندس قد كتب تعليقاً واحداً على الأقل في هذه المعاملة)
-    const hasComment = (comments || []).some((c: any) => c.createdBy === user?.uid);
+    // 2. فحص التعليق (يجب أن يكون المهندس قد كتب تعليقاً واحداً على الأقل في هذا الموعد)
+    const hasComment = (comments || []).some((c: any) => c.appointmentId === apptId && c.createdBy === user?.uid);
 
     return {
       hasAchievement,
       hasComment,
       ready: hasAchievement && hasComment
     };
-  }, [allExecutions, comments, stages, appt?.transactionId, user?.uid]);
+  }, [allExecutions, comments, apptId, appt?.transactionId, user?.uid]);
 
   const handleStartStage = async (stageId: string) => {
     if (!transactionService || !user || !appt?.transactionId) return;
@@ -213,7 +217,8 @@ export default function AppointmentDetailPage() {
         revisionStage.id!, 
         user.uid, 
         globalUser?.username || 'User', 
-        revisionComment
+        revisionComment,
+        apptId // وسم المراجعة بالموعد
       );
       toast({ title: isRtl ? "تم تسجيل دورة مراجعة جديدة بنجاح" : "Revision Cycle Logged" });
     } catch (e: any) {
@@ -244,7 +249,9 @@ export default function AppointmentDetailPage() {
         user.uid, 
         currentUserName, 
         progressNotes, 
-        selectedStageId
+        selectedStageId,
+        false,
+        apptId // وسم الإنجاز بالموعد
       );
 
       toast({ title: isRtl ? "تم تسجيل الإنجاز في الميدان" : "Field Progress Logged" });
@@ -313,7 +320,7 @@ export default function AppointmentDetailPage() {
               {!checkResults.ready && (
                 <div className="flex items-center gap-2 text-rose-500 font-black text-[9px] uppercase bg-rose-50 px-3 py-1 rounded-lg animate-pulse">
                    <AlertCircle className="h-3 w-3" />
-                   {isRtl ? 'بانتظار تسجيل إنجاز وتعليق' : 'Awaiting achievement & comment'}
+                   {isRtl ? 'بانتظار تسجيل إنجاز وتعليق لهذه الزيارة' : 'Awaiting achievement & comment for this visit'}
                 </div>
               )}
            </div>
@@ -386,6 +393,7 @@ export default function AppointmentDetailPage() {
                  <div className="bg-white rounded-[3rem] shadow-2xl border border-primary/10 overflow-hidden h-full">
                     <CommentSection 
                        transactionId={appt.transactionId || apptId} 
+                       appointmentId={apptId}
                        path={appt.transactionId ? paths.transactionComments(companyId!, appt.transactionId) : `companies/${companyId}/appointments/${apptId}/comments`} 
                        title={isRtl ? 'غرفة عمليات المشروع' : 'War Room'}
                     />

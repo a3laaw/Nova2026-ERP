@@ -155,7 +155,7 @@ export class TransactionService {
     await batch.commit();
   }
 
-  async incrementStageRevision(transactionId: string, stageId: string, userId: string, userName: string, notes: string = "") {
+  async incrementStageRevision(transactionId: string, stageId: string, userId: string, userName: string, notes: string = "", appointmentId?: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
     const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
     const stageSnap = await getDoc(stageRef);
@@ -175,6 +175,7 @@ export class TransactionService {
     await addDoc(timelineRef, {
       transactionId,
       stageId,
+      appointmentId: appointmentId || null,
       technicalStageId: stageData.technicalStageId,
       type: 'revision_logged',
       content: `دورة تعديل تصميم: تم تسجيل المراجعة رقم (${nextRev}) للمرحلة: ${stageData.name}`,
@@ -195,7 +196,8 @@ export class TransactionService {
           userName,
           stageId,
           stageData.name,
-          'note'
+          'note',
+          appointmentId
        );
     }
   }
