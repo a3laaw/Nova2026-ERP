@@ -447,29 +447,29 @@ export function ArchitecturalAppointmentsView() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 print:gap-1">
-         <Card className="border-0 shadow-lg rounded-xl bg-white border-b-4 border-b-slate-900 print:shadow-none print:border-b-2 print:p-1">
-            <CardContent className="p-4 print:p-2 text-start">
-               <p className="text-[10px] print:text-[7px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إجمالي المواعيد' : 'Total Today'}</p>
-               <h3 className="text-2xl print:text-base font-black text-slate-900" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.total.toLocaleString('en-US')}</h3>
+      <div className="grid grid-cols-4 gap-4 print:gap-1">
+         <Card className="border-0 shadow-md rounded-xl bg-white border-b-4 border-b-slate-900 print:shadow-none print:border-b-2">
+            <CardContent className="p-3 print:p-1 flex flex-col items-center justify-center text-center h-20 print:h-12">
+               <p className="text-[8px] print:text-[6px] font-black text-slate-400 uppercase tracking-tighter mb-1">{isRtl ? 'إجمالي المواعيد' : 'Total Today'}</p>
+               <h3 className="text-xl print:text-xs font-black text-slate-900" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.total.toLocaleString('en-US')}</h3>
             </CardContent>
          </Card>
-         <Card className="border-0 shadow-lg rounded-xl bg-white border-b-4 border-b-yellow-400 print:shadow-none print:border-b-2 print:p-1">
-            <CardContent className="p-4 print:p-2 text-start">
-               <p className="text-[9px] print:text-[7px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'زيارة أولى' : '1st Visits'}</p>
-               <h3 className="text-2xl print:text-base font-black text-yellow-500" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.yellow.toLocaleString('en-US')}</h3>
+         <Card className="border-0 shadow-md rounded-xl bg-white border-b-4 border-b-yellow-400 print:shadow-none print:border-b-2">
+            <CardContent className="p-3 print:p-1 flex flex-col items-center justify-center text-center h-20 print:h-12">
+               <p className="text-[8px] print:text-[6px] font-black text-slate-400 uppercase tracking-tighter mb-1">{isRtl ? 'زيارة أولى' : '1st Visits'}</p>
+               <h3 className="text-xl print:text-xs font-black text-yellow-500" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.yellow.toLocaleString('en-US')}</h3>
             </CardContent>
          </Card>
-         <Card className="border-0 shadow-lg rounded-xl bg-white border-b-4 border-b-emerald-500 print:shadow-none print:border-b-2 print:p-1">
-            <CardContent className="p-4 print:p-2 text-start">
-               <p className="text-[9px] print:text-[7px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'متابعة' : 'Follow-ups'}</p>
-               <h3 className="text-2xl print:text-base font-black text-emerald-600" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.green.toLocaleString('en-US')}</h3>
+         <Card className="border-0 shadow-md rounded-xl bg-white border-b-4 border-b-emerald-500 print:shadow-none print:border-b-2">
+            <CardContent className="p-3 print:p-1 flex flex-col items-center justify-center text-center h-20 print:h-12">
+               <p className="text-[8px] print:text-[6px] font-black text-slate-400 uppercase tracking-tighter mb-1">{isRtl ? 'متابعة' : 'Follow-ups'}</p>
+               <h3 className="text-xl print:text-xs font-black text-emerald-600" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.green.toLocaleString('en-US')}</h3>
             </CardContent>
          </Card>
-         <Card className="border-0 shadow-lg rounded-xl bg-white border-b-4 border-b-blue-500 print:shadow-none print:border-b-2 print:p-1">
-            <CardContent className="p-4 print:p-2 text-start">
-               <p className="text-[9px] print:text-[7px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'متعاقدون' : 'Contracted'}</p>
-               <h3 className="text-2xl print:text-base font-black text-blue-600" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.blue.toLocaleString('en-US')}</h3>
+         <Card className="border-0 shadow-md rounded-xl bg-white border-b-4 border-b-blue-500 print:shadow-none print:border-b-2">
+            <CardContent className="p-3 print:p-1 flex flex-col items-center justify-center text-center h-20 print:h-12">
+               <p className="text-[8px] print:text-[6px] font-black text-slate-400 uppercase tracking-tighter mb-1">{isRtl ? 'متعاقدون' : 'Contracted'}</p>
+               <h3 className="text-xl print:text-xs font-black text-blue-600" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.blue.toLocaleString('en-US')}</h3>
             </CardContent>
          </Card>
       </div>
