@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,9 @@ import {
   Loader2, Workflow, CheckCircle2,
   AlertTriangle, Hammer,
   Check, Layers, Info, Save,
-  Target, Zap, Play, X
+  Target, Zap, Play, X, RotateCcw,
+  ListChecks,
+  AlertCircle
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, where, orderBy, limit } from 'firebase/firestore';
@@ -62,6 +64,11 @@ export default function AppointmentDetailPage() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [stageProgressMap, setStageProgressMap] = useState<Record<string, StageProgressResult>>({});
 
+  // حالات تسجيل المراجعة (Revision) - موحدة مع المعاملة
+  const [isRevisionOpen, setIsRevisionOpen] = useState(false);
+  const [revisionStage, setRevisionStage] = useState<StageInstance | null>(null);
+  const [revisionComment, setRevisionComment] = useState("");
+
   const apptRef = useMemo(() => 
     companyId && db ? doc(db, paths.appointments(companyId), apptId) : null, 
   [db, companyId, apptId]);
@@ -73,6 +80,7 @@ export default function AppointmentDetailPage() {
   [db, companyId, appt?.transactionId]);
   const { data: transaction } = useDoc<Transaction>(transRef);
 
+  // جلب المراحل - نفس المسار المرجعي للمعاملة لضمان التزامن
   const stagesQuery = useMemo(() => 
     companyId && db && appt?.transactionId ? query(collection(db, paths.transactionStages(companyId, appt.transactionId)), orderBy('order')) : null,
   [db, companyId, appt?.transactionId]);
@@ -94,6 +102,12 @@ export default function AppointmentDetailPage() {
     companyId && db && appt?.transactionId ? query(collection(db, paths.executions(companyId)), where('transactionId', '==', appt.transactionId)) : null,
   [db, companyId, appt?.transactionId]);
   const { data: allExecutions } = useCollection<BOQItemExecutionEntry>(execsQuery);
+
+  // جلب التعليقات لفحص شرط الإغلاق
+  const commentsQuery = useMemo(() => 
+    companyId && db && appt?.transactionId ? query(collection(db, paths.transactionComments(companyId, appt.transactionId))) : null,
+  [db, companyId, appt?.transactionId]);
+  const { data: comments } = useCollection<any>(commentsQuery);
 
   const isConsulting = useMemo(() => {
     const name = transaction?.activityTypeName || '';
@@ -120,10 +134,24 @@ export default function AppointmentDetailPage() {
     return () => { active = false; };
   }, [executionService, stages, appt?.transactionId, allExecutions, isConsulting]);
 
-  const hasAchievement = useMemo(() => {
-    if (!appt?.transactionId || isConsulting) return true; 
-    return (allExecutions || []).filter(ex => !ex.isArchived).length > 0;
-  }, [allExecutions, appt?.transactionId, isConsulting]);
+  // --- محرك فحص جاهزية الإغلاق (The Closure Readiness Engine) ---
+  const checkResults = useMemo(() => {
+    if (!appt?.transactionId) return { hasAchievement: true, hasComment: true, ready: true };
+    
+    // 1. فحص الإنجاز الفني (سجلات إنجاز أو مراجعات)
+    const hasProgressLogs = (allExecutions || []).length > 0;
+    const hasRevisions = stages.some(s => (s.revisionCount || 0) > 0);
+    const hasAchievement = hasProgressLogs || hasRevisions;
+
+    // 2. فحص التعليق (يجب أن يكون المهندس قد كتب تعليقاً واحداً على الأقل في هذه المعاملة)
+    const hasComment = (comments || []).some((c: any) => c.createdBy === user?.uid);
+
+    return {
+      hasAchievement,
+      hasComment,
+      ready: hasAchievement && hasComment
+    };
+  }, [allExecutions, comments, stages, appt?.transactionId, user?.uid]);
 
   const handleStartStage = async (stageId: string) => {
     if (!transactionService || !user || !appt?.transactionId) return;
@@ -138,10 +166,10 @@ export default function AppointmentDetailPage() {
     }
   };
 
-  const handleCompleteStage = async (stage: StageInstance) => {
+  const handleCompleteStage = async (stage: StageInstance, force: boolean = false) => {
     if (!transactionService || !user || !stage.id || !appt?.transactionId) return;
     
-    if (!isConsulting) {
+    if (!isConsulting && !force) {
       const progress = stageProgressMap[stage.technicalStageId];
       if (progress && !progress.canComplete) {
          toast({ variant: "destructive", title: isRtl ? "المرحلة غير مكتملة فنيًا" : "Incomplete", description: progress.reason });
@@ -151,12 +179,40 @@ export default function AppointmentDetailPage() {
 
     setProcessingId(stage.id);
     try {
-      await transactionService.completeStage(appt.transactionId, stage.id, user.uid, globalUser?.username || 'User');
+      await transactionService.completeStage(appt.transactionId, stage.id, user.uid, globalUser?.username || 'User', force);
       toast({ title: isRtl ? "تم إنجاز المرحلة" : "Stage Completed" });
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
       setProcessingId(null);
+    }
+  };
+
+  const handleOpenRevisionDialog = (stage: StageInstance) => {
+    setRevisionStage(stage);
+    setRevisionComment("");
+    setIsRevisionOpen(true);
+  };
+
+  const handleConfirmRevision = async () => {
+    if (!transactionService || !user || !revisionStage || !revisionComment.trim() || !appt?.transactionId) return;
+    
+    setProcessingId(`rev_${revisionStage.id}`);
+    setIsRevisionOpen(false);
+    try {
+      await transactionService.incrementStageRevision(
+        appt.transactionId, 
+        revisionStage.id!, 
+        user.uid, 
+        globalUser?.username || 'User', 
+        revisionComment
+      );
+      toast({ title: isRtl ? "تم تسجيل دورة مراجعة جديدة بنجاح" : "Revision Cycle Logged" });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('error'), description: e.message });
+    } finally {
+      setProcessingId(null);
+      setRevisionStage(null);
     }
   };
 
@@ -197,10 +253,6 @@ export default function AppointmentDetailPage() {
 
   const handleCompleteAppt = async () => {
     if (!db || !companyId || !user) return;
-    if (!hasAchievement && appt?.transactionId && !isConsulting) {
-       toast({ variant: "destructive", title: isRtl ? "قفل الإنجاز مفعل" : "Lock Active", description: isRtl ? "سجل إنجازاً أولاً" : "Log progress first" });
-       return;
-    }
     try {
       const service = new AppointmentService(db, companyId);
       await service.updateStatus(apptId, 'completed', user.uid);
@@ -210,6 +262,14 @@ export default function AppointmentDetailPage() {
       toast({ variant: "destructive", title: t('error') });
     }
   };
+
+  const forceThaw = useCallback(() => {
+    if (typeof document !== 'undefined') {
+       document.body.style.pointerEvents = 'auto';
+       document.body.style.overflow = 'auto';
+       document.body.removeAttribute('data-scroll-locked');
+    }
+  }, []);
 
   if (apptLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
   if (!appt) return <div className="p-20 text-center font-black">{isRtl ? 'الموعد غير موجود' : 'Not found'}</div>;
@@ -230,17 +290,25 @@ export default function AppointmentDetailPage() {
         </div>
         
         {appt.status !== 'completed' && (
-           <Button 
-             onClick={handleCompleteAppt} 
-             disabled={!hasAchievement && appt?.transactionId && !isConsulting}
-             className={cn(
-               "h-14 px-10 rounded-2xl font-black text-lg transition-all gap-3 border-b-8 shadow-xl hover:scale-105",
-               (hasAchievement || isConsulting) ? "bg-emerald-600 text-white border-emerald-800 shadow-emerald-100" : "bg-slate-200 text-slate-400 border-slate-400"
-             )}
-           >
-              <CheckCircle2 className="h-6 w-6" />
-              {isRtl ? 'إغلاق وإنجاز الموعد' : 'Complete Appointment'}
-           </Button>
+           <div className="flex flex-col items-end gap-2">
+              <Button 
+                onClick={handleCompleteAppt} 
+                disabled={!checkResults.ready}
+                className={cn(
+                  "h-14 px-10 rounded-2xl font-black text-lg transition-all gap-3 border-b-8 shadow-xl hover:scale-105",
+                  checkResults.ready ? "bg-emerald-600 text-white border-emerald-800 shadow-emerald-100" : "bg-slate-200 text-slate-400 border-slate-400"
+                )}
+              >
+                  <CheckCircle2 className="h-6 w-6" />
+                  {isRtl ? 'إغلاق وإنجاز الموعد' : 'Complete Appointment'}
+              </Button>
+              {!checkResults.ready && (
+                <div className="flex items-center gap-2 text-rose-500 font-black text-[9px] uppercase bg-rose-50 px-3 py-1 rounded-lg animate-pulse">
+                   <AlertCircle className="h-3 w-3" />
+                   {isRtl ? 'بانتظار تسجيل إنجاز وتعليق' : 'Awaiting achievement & comment'}
+                </div>
+              )}
+           </div>
         )}
       </div>
 
@@ -259,7 +327,7 @@ export default function AppointmentDetailPage() {
 
               <TabsContent value="pipeline" className="space-y-8 animate-in fade-in">
                  <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
-                    <CardHeader className="bg-slate-900 p-8 text-white flex flex-row justify-between items-center">
+                    <CardHeader className="bg-slate-900 p-8 text-white flex flex-row justify-between items-center text-start">
                        <div className="text-start">
                           <CardTitle className="text-xl font-black flex items-center gap-3">
                              <Target className="h-6 w-6 text-primary" />
@@ -274,7 +342,7 @@ export default function AppointmentDetailPage() {
                        )}
                     </CardHeader>
                     <CardContent className="p-10 space-y-8">
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-start">
                           <div className="flex items-start gap-4 text-start">
                              <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 border"><Calendar className="h-5 w-5" /></div>
                              <div className="text-start">
@@ -295,9 +363,9 @@ export default function AppointmentDetailPage() {
                           </div>
                        </div>
 
-                       <div className="p-8 rounded-[2rem] bg-slate-50/50 border-2 border-slate-100 flex items-start gap-4">
+                       <div className="p-8 rounded-[2rem] bg-slate-50/50 border-2 border-slate-100 flex items-start gap-4 text-start">
                           <Info className="h-6 w-6 text-primary mt-1" />
-                          <div className="space-y-1">
+                          <div className="space-y-1 text-start">
                              <h5 className="font-black text-xs uppercase">{isRtl ? 'توجيهات العمل' : 'Work Instructions'}</h5>
                              <p className="text-sm font-bold text-slate-600 italic">"{appt.notes || (isRtl ? 'لا يوجد ملاحظات.' : 'No notes.')}"</p>
                           </div>
@@ -332,11 +400,12 @@ export default function AppointmentDetailPage() {
                        const isSelected = stage.id === selectedStageId;
                        const isPreviousCompleted = idx === 0 || stages[idx-1].status === 'completed';
                        const isFrontier = stage.status === 'in-progress' || (stage.status === 'pending' && isPreviousCompleted);
+                       const boqProgress = stageProgressMap[stage.technicalStageId];
                        
                        return (
                           <div 
                             key={stage.id} 
-                            onClick={() => setSelectedStageId(stage.id!)}
+                            onClick={() => { setSelectedStageId(stage.id!); }}
                             className={cn(
                               "p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col gap-3 group",
                               isSelected ? "bg-primary/5 border-primary shadow-lg scale-105" : "bg-white border-slate-100 hover:border-slate-200"
@@ -351,7 +420,14 @@ export default function AppointmentDetailPage() {
                                       {stage.status === 'completed' ? <Check className="h-4 w-4" /> : (idx + 1)}
                                    </div>
                                    <div className="text-start">
-                                      <p className={cn("text-[11px] font-black leading-tight", isSelected ? "text-primary" : "text-slate-800")}>{stage.name}</p>
+                                      <div className="flex items-center gap-2">
+                                         <p className={cn("text-[11px] font-black leading-tight", isSelected ? "text-primary" : "text-slate-800")}>{stage.name}</p>
+                                         {isConsulting && (stage.revisionCount || 0) > 0 && (
+                                            <Badge className="bg-orange-100 text-orange-700 border-0 font-black text-[7px] h-4 px-1.5">
+                                               #{stage.revisionCount}
+                                            </Badge>
+                                         )}
+                                      </div>
                                       <p className="text-[8px] font-bold text-slate-400 uppercase">{stage.status}</p>
                                    </div>
                                 </div>
@@ -359,18 +435,26 @@ export default function AppointmentDetailPage() {
                              </div>
 
                              {isFrontier && isSelected && (
-                                <div className="flex gap-2 animate-in slide-in-from-top-1" onClick={e => e.stopPropagation()}>
+                                <div className="flex flex-wrap gap-2 animate-in slide-in-from-top-1" onClick={e => e.stopPropagation()}>
                                    {stage.status === 'pending' && (
-                                      <Button onClick={() => handleStartStage(stage.id!)} disabled={!!processingId} className="flex-1 h-9 rounded-xl bg-blue-600 text-white font-black text-[9px] gap-2">
+                                      <Button onClick={() => handleStartStage(stage.id!)} disabled={!!processingId} className="flex-1 h-9 rounded-xl bg-blue-600 text-white font-black text-[9px] gap-2 shadow-lg">
                                          {processingId === stage.id ? <Loader2 className="animate-spin h-3 w-3" /> : <Play className="h-3 w-3" />}
                                          {isRtl ? 'بدء العمل' : 'Start'}
                                       </Button>
                                    )}
                                    {stage.status === 'in-progress' && (
-                                      <Button onClick={() => handleCompleteStage(stage)} disabled={!!processingId} className="flex-1 h-9 rounded-xl bg-emerald-600 text-white font-black text-[9px] gap-2">
-                                         {processingId === stage.id ? <Loader2 className="animate-spin h-3 w-3" /> : <Check className="h-3 w-3" />}
-                                         {isRtl ? 'إنجاز المرحلة' : 'Done'}
-                                      </Button>
+                                      <>
+                                        <Button onClick={() => handleCompleteStage(stage)} disabled={!!processingId} className="flex-1 h-9 rounded-xl bg-emerald-600 text-white font-black text-[9px] gap-2 shadow-lg">
+                                           {processingId === stage.id ? <Loader2 className="animate-spin h-3 w-3" /> : <Check className="h-3 w-3" />}
+                                           {isRtl ? 'إنجاز' : 'Done'}
+                                        </Button>
+                                        {isConsulting && (
+                                           <Button onClick={() => handleOpenRevisionDialog(stage)} disabled={!!processingId} variant="outline" className="flex-1 h-9 rounded-xl border-orange-200 text-orange-600 font-black text-[9px] gap-2 hover:bg-orange-50">
+                                              <RotateCcw className="h-3 w-3" />
+                                              {isRtl ? 'دورة تعديل' : 'Revision'}
+                                           </Button>
+                                        )}
+                                      </>
                                    )}
                                 </div>
                              )}
@@ -384,9 +468,46 @@ export default function AppointmentDetailPage() {
 
       </div>
 
-      {/* مودال تسجيل الإنجاز */}
-      <Dialog open={isRecordOpen} onOpenChange={setIsRecordOpen}>
-         <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-md" dir={dir}>
+      {/* مودال تسجيل المراجعة (Revision) */}
+      <Dialog open={isRevisionOpen} onOpenChange={(v) => { if(!v) setIsRevisionOpen(false); forceThaw(); }}>
+         <DialogContent className="rounded-xl p-0 max-w-lg border-0 shadow-3xl bg-white z-[150]" dir={dir}>
+            <div className="bg-orange-50 p-6 border-b text-orange-900 text-start">
+               <DialogTitle className="text-xl font-black flex items-center gap-3">
+                  <RotateCcw className="h-6 w-6" /> {isRtl ? 'توثيق مراجعة وتعديل التصميم' : 'Log Design Revision'}
+               </DialogTitle>
+               <p className="text-xs font-bold mt-1 opacity-70">{revisionStage?.name}</p>
+            </div>
+            <div className="p-8 space-y-4 text-start">
+               <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'أسباب أو تفاصيل التعديل' : 'Revision Notes / Reason'}</Label>
+               <Textarea 
+                 value={revisionComment} 
+                 onChange={e => setRevisionComment(e.target.value)}
+                 placeholder={isRtl ? "ما هي التعديلات التي طلبها العميل في هذه الزيارة؟" : "What changes did the client request?"}
+                 className="min-h-[120px] rounded-2xl border-2 p-5 text-sm font-bold bg-slate-50 focus:bg-white transition-all shadow-inner"
+               />
+               <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 flex items-start gap-3">
+                  <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+                  <p className="text-[10px] text-blue-700 font-bold leading-relaxed">
+                     {isRtl ? 'سيتم توثيق هذا التعديل في المعاملة وغرفة العمليات لفتح دورة عمل جديدة.' : 'This revision will be logged in the transaction and War Room to open a new cycle.'}
+                  </p>
+               </div>
+            </div>
+            <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-3">
+               <Button variant="outline" onClick={() => setIsRevisionOpen(false)} className="flex-1 h-12 rounded-xl font-bold">إلغاء</Button>
+               <Button 
+                 onClick={handleConfirmRevision} 
+                 disabled={!revisionComment.trim()} 
+                 className="flex-[2] h-12 rounded-xl bg-orange-600 text-white font-black text-lg shadow-xl shadow-orange-200"
+               >
+                  <Save className="h-5 w-5" /> {isRtl ? 'اعتماد التعديل' : 'Confirm Revision'}
+               </Button>
+            </DialogFooter>
+         </DialogContent>
+      </Dialog>
+
+      {/* مودال تسجيل الإنجاز (BOQ Progress) */}
+      <Dialog open={isRecordOpen} onOpenChange={(v) => { if(!v) setIsRecordOpen(false); forceThaw(); }}>
+         <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-md z-[150]" dir={dir}>
             <div className="bg-slate-900 p-6 text-white text-start"><DialogTitle className="text-lg font-black flex items-center gap-3"><Hammer className="h-5 w-5 text-primary" />{isRtl ? 'تسجيل إنجاز فني (ميداني)' : 'Log Progress'}</DialogTitle></div>
             <div className="p-6 space-y-6 text-start">
                <div className="space-y-1.5">
