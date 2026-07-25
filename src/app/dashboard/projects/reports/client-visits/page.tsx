@@ -22,10 +22,6 @@ import { Appointment } from '@/types/appointment';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 
-/**
- * @fileOverview تقرير تحليل تفاعل العملاء (Client Visit Dossier).
- * تم تحديثه لتجنب أخطاء الفهارس (Index-Free) عبر التصفية في الذاكرة.
- */
 export default function ClientVisitsReportPage() {
   const { globalUser } = useAuthContext();
   const { lang, dir, t } = useLanguage();
@@ -38,30 +34,25 @@ export default function ClientVisitsReportPage() {
   const [visitsData, setVisitsData] = useState<any[]>([]);
   const [loadingVisits, setLoadingVisits] = useState(false);
 
-  // 1. جلب العملاء
   const clientsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.clients(companyId)), orderBy('nameAr')) : null, 
   [db, companyId]);
   const { data: clients, loading: clientsLoading } = useCollection<Client>(clientsQuery);
 
-  // 2. محرك جلب تفاصيل الزيارات للعميل المختار (بدون فهارس مركبة)
   useEffect(() => {
     async function fetchDetails() {
       if (!selectedClientId || !db || !companyId) return;
       setLoadingVisits(true);
       try {
-        // أ. جلب كافة المواعيد للعميل (استعلام بسيط لا يحتاج فهرس مركب)
         const apptsRef = collection(db, paths.appointments(companyId));
         const apptsQuery = query(apptsRef, where('clientId', '==', selectedClientId));
         const apptsSnap = await getDocs(apptsQuery);
         
-        // ب. التصفية والترتيب في الذاكرة (Memory Processing) لضمان العمل الفوري
         const allAppts = apptsSnap.docs
           .map(d => ({ id: d.id, ...d.data() } as Appointment))
           .filter(a => a.status === 'completed')
           .sort((a, b) => b.start.localeCompare(a.start));
 
-        // ج. جلب الإنجازات والتعليقات المربوطة بكل موعد
         const fullData = await Promise.all(allAppts.map(async (appt) => {
            const execsRef = collection(db, paths.executions(companyId));
            const execsQuery = query(execsRef, where('appointmentId', '==', appt.id));
@@ -106,14 +97,13 @@ export default function ClientVisitsReportPage() {
               {isRtl ? 'تحليل زيارات المواقع وربط الحضور بالنتائج الفنية والتعليقات.' : 'Analyze site visits and link attendance to technical outcomes.'}
            </p>
         </div>
-        <Button onClick={() => window.print()} className="rounded-xl font-black gap-2 h-12 px-6 print:hidden">
-           <Printer className="h-5 w-5" /> {isRtl ? 'طباعة التقرير' : 'Print Dossier'}
+        <Button onClick={() => window.print()} variant="outline" className="rounded-xl border-2 font-black gap-2 h-12 px-6 print:hidden">
+           <Printer className="h-5 w-5 text-primary" /> {isRtl ? 'طباعة التقرير' : 'Print Dossier'}
         </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
          
-         {/* القائمة الجانبية للعملاء */}
          <div className="lg:col-span-4 space-y-4 print:hidden">
             <Card className="border-0 shadow-xl rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/5">
                <CardHeader className="bg-slate-50/50 border-b p-6">
@@ -152,7 +142,6 @@ export default function ClientVisitsReportPage() {
             </Card>
          </div>
 
-         {/* عرض تفاصيل الزيارات */}
          <div className="lg:col-span-8">
             {!selectedClientId ? (
                <div className="h-[600px] rounded-[3rem] border-4 border-dashed border-slate-100 bg-slate-50/50 flex flex-col items-center justify-center text-center p-10 animate-pulse">
@@ -166,24 +155,22 @@ export default function ClientVisitsReportPage() {
                </div>
             ) : (
               <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
-                 {/* ملخص العميل */}
-                 <Card className="border-0 shadow-2xl rounded-[3rem] bg-slate-900 text-white overflow-hidden relative">
-                    <div className="absolute top-0 right-0 p-10 opacity-5"><LayoutGrid className="h-32 w-32" /></div>
+                 {/* تم استبدال الكحلي ببطاقة فاتحة احترافية */}
+                 <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5 border-b-8 border-b-primary">
                     <CardContent className="p-10 flex flex-col md:flex-row justify-between items-center gap-8 relative z-10">
                        <div className="text-start space-y-1">
-                          <h2 className="text-3xl font-black font-headline">{clients?.find(c => c.id === selectedClientId)?.nameAr}</h2>
+                          <h2 className="text-3xl font-black font-headline text-slate-900">{clients?.find(c => c.id === selectedClientId)?.nameAr}</h2>
                           <div className="flex gap-4 items-center">
-                             <Badge className="bg-white/10 text-primary border-0 font-black px-4">{clients?.find(c => c.id === selectedClientId)?.fileNumber}</Badge>
-                             <span className="text-slate-500 font-bold text-xs uppercase">{isRtl ? 'زيارات مكتملة:' : 'Completed Visits:'} {visitsData.length}</span>
+                             <Badge className="bg-primary text-white border-0 font-black px-4">{clients?.find(c => c.id === selectedClientId)?.fileNumber}</Badge>
+                             <span className="text-slate-400 font-bold text-xs uppercase">{isRtl ? 'زيارات مكتملة:' : 'Completed Visits:'} {visitsData.length}</span>
                           </div>
                        </div>
-                       <div className="h-20 w-20 rounded-[2rem] bg-white/5 flex items-center justify-center shadow-inner border border-white/10">
-                          <CheckCircle2 className="h-10 w-10 text-emerald-400" />
+                       <div className="h-20 w-20 rounded-[2rem] bg-emerald-50 flex items-center justify-center shadow-inner border border-emerald-100">
+                          <CheckCircle2 className="h-10 w-10 text-emerald-600" />
                        </div>
                     </CardContent>
                  </Card>
 
-                 {/* الخط الزمني للزيارات */}
                  <div className="space-y-8 relative ps-8">
                     <div className="absolute top-0 bottom-0 left-3.5 w-1 bg-slate-100 rounded-full" />
                     

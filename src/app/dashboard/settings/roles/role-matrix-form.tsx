@@ -1,6 +1,7 @@
 
 /**
  * @fileOverview واجهة مصفوفة الصلاحيات المدمجة والعملية (Compact Matrix Form).
+ * تم تطهير اللون الكحلي تماماً واستبداله بالهوية الفاتحة.
  */
 
 'use client';
@@ -134,14 +135,14 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
   return (
     <div className="space-y-4 animate-in slide-in-from-bottom-2 duration-300 pb-10 text-start">
       <Card className="border-0 shadow-xl rounded-2xl bg-white overflow-hidden ring-1 ring-black/5">
-        <CardHeader className="bg-primary/5 p-5 border-b flex flex-row items-center justify-between">
+        <CardHeader className="bg-slate-50 p-5 border-b flex flex-row items-center justify-between">
            <div className="flex items-center gap-3">
               <ShieldCheck className="h-6 w-6 text-primary" />
-              <CardTitle className="text-lg font-black font-headline">
+              <CardTitle className="text-lg font-black font-headline text-slate-900">
                  {isRtl ? 'مصفوفة الصلاحيات الميدانية' : 'Permission Matrix'}
               </CardTitle>
            </div>
-           <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-8 w-8 hover:bg-white"><X className="h-4 w-4" /></Button>
+           <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-8 w-8 hover:bg-white text-slate-400"><X className="h-4 w-4" /></Button>
         </CardHeader>
         
         <CardContent className="p-0">
@@ -244,7 +245,7 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
            <div className="p-6 bg-slate-50 border-t flex justify-end">
               <div className="flex gap-3 w-full md:w-auto">
                  <Button variant="outline" onClick={onClose} className="flex-1 md:w-32 h-11 rounded-xl font-bold text-xs bg-white">
-                    {t('logout')}
+                    إغلاق
                  </Button>
                  <Button 
                    onClick={handleSave} 

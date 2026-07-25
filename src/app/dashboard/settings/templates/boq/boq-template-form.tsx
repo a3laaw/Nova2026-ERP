@@ -260,7 +260,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
   const renderBOQTreeRows = (node: BOQTreeNode, prefix: string): React.ReactNode => {
     return (
       <React.Fragment key={node.id}>
-        <TableRow className="bg-slate-50/80 hover:bg-slate-100 border-b-2 border-white group/row">
+        <TableRow className="bg-slate-100 hover:bg-slate-200 border-b-2 border-white group/row">
           <TableCell className="font-mono text-[11px] font-black text-slate-400 ps-6 w-[80px] text-start">{prefix}</TableCell>
           <TableCell className="w-[100px] font-mono text-[10px] font-bold text-slate-400 text-start">---</TableCell>
           <TableCell className="font-black text-slate-900 text-sm py-4 text-start" style={{ paddingInlineStart: `${node.depth * 20 + 16}px` }}>
@@ -283,7 +283,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
             : pathStages;
           
           return (
-            <TableRow key={`${item.boqReferenceNodeId}-${originalIdx}`} className="hover:bg-primary/[0.02] transition-colors border-b-slate-100 group/item">
+            <TableRow key={`${item.boqReferenceNodeId}-${originalIdx}`} className="hover:bg-primary/[0.02] transition-colors border-b-slate-50 group/item">
               <TableCell className="font-mono text-[10px] font-bold text-slate-300 ps-8 text-start">{itemPrefix}</TableCell>
               <TableCell className="font-mono text-[10px] font-black text-primary/60 text-start">{item.referenceCode}</TableCell>
               <TableCell className="text-xs font-bold text-slate-700 text-start" style={{ paddingInlineStart: `${(node.depth + 1) * 20 + 16}px` }}>
@@ -373,9 +373,9 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     <div className="flex flex-col h-full bg-[#fdfaf3]" dir={dir}>
       <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-white/80 backdrop-blur-md px-6 shadow-sm">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 border rounded-xl hover:bg-slate-50">
+          <button onClick={onClose} className="h-10 w-10 border-2 rounded-xl flex items-center justify-center hover:bg-slate-50 transition-colors text-slate-400">
              <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
-          </Button>
+          </button>
           <div className="text-start">
              <h1 className="text-lg font-black text-slate-900 leading-none">{isRtl ? 'هندسة القوالب الشجرية' : 'BOQ Template Engineering'}</h1>
              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{formData.name || 'Draft Template'}</p>
@@ -408,7 +408,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                        <Label className="text-[10px] font-black uppercase text-slate-400">Code</Label>
                        <Input value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value.toUpperCase()})} className="h-11 rounded-xl border-2 font-mono font-black text-primary text-xs" />
                     </div>
-                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border-2">
+                    <div className="flex items-center justify-between p-3 mt-4 bg-slate-50 rounded-xl border-2">
                        <Label className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'افتراضي' : 'Default'}</Label>
                        <Switch checked={formData.isDefault || false} onCheckedChange={v => setFormData({...formData, isDefault: v})} />
                     </div>
@@ -417,26 +417,29 @@ export function BOQTemplateForm({ template, onClose }: Props) {
 
               <div className={cn(
                 "p-6 rounded-[2.5rem] transition-all space-y-4 relative overflow-hidden shadow-2xl ring-1 ring-black/5",
-                isMathValid ? "bg-emerald-600 text-white" : "bg-[#1e1b4b] text-white"
+                isMathValid ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-900 border-2"
               )}>
                  <div className="absolute top-0 right-0 p-6 opacity-10"><Calculator className="h-24 w-24" /></div>
                  <div className="relative z-10 space-y-2 text-start">
-                    <p className="text-[10px] font-black uppercase opacity-60 tracking-[0.2em]">{isRtl ? 'الميزانية المستهدفة' : 'Target Budget'}</p>
+                    <p className={cn("text-[10px] font-black uppercase tracking-[0.2em]", isMathValid ? "text-white/60" : "text-slate-400")}>{isRtl ? 'الميزانية المستهدفة' : 'Target Budget'}</p>
                     <Input 
                       type="number" 
                       value={formData.baseAmount || 0} 
                       onChange={e => setFormData({...formData, baseAmount: Number(e.target.value)})} 
-                      className="h-12 rounded-2xl border-0 bg-white/20 text-white font-black text-2xl text-center shadow-inner focus:ring-2 focus:ring-white/30"
+                      className={cn(
+                        "h-12 rounded-2xl border-0 text-2xl text-center shadow-inner font-black",
+                        isMathValid ? "bg-white/20 text-white" : "bg-white text-slate-900"
+                      )}
                     />
                  </div>
-                 <div className="relative z-10 pt-4 border-t border-white/10 flex justify-between items-end">
+                 <div className={cn("relative z-10 pt-4 border-t flex justify-between items-end", isMathValid ? "border-white/10" : "border-slate-200")}>
                     <div className="text-start">
-                       <p className="text-[8px] font-black uppercase opacity-60">{isRtl ? 'إجمالي البنود الحالية' : 'Current Sum'}</p>
+                       <p className={cn("text-[8px] font-black uppercase", isMathValid ? "text-white/60" : "text-slate-400")}>{isRtl ? 'إجمالي البنود الحالية' : 'Current Sum'}</p>
                        <p className="text-xl font-black">{totalItemsValue.toLocaleString()} <span className="text-[10px] opacity-40">KWD</span></p>
                     </div>
                     <div className={cn(
                       "h-10 w-10 rounded-2xl flex items-center justify-center shadow-lg transition-transform",
-                      isMathValid ? "bg-white text-emerald-600 rotate-12" : "bg-orange-50 text-white animate-pulse"
+                      isMathValid ? "bg-white text-emerald-600 rotate-12" : "bg-white text-orange-500"
                     )}>
                        {isMathValid ? <CheckCircle2 className="h-6 w-6" /> : <AlertTriangle className="h-6 w-6" />}
                     </div>
@@ -500,7 +503,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                  <div className="flex items-center gap-3">
                     <Dialog open={isPickerOpen} onOpenChange={setIsMasterPickerOpen}>
                         <DialogTrigger asChild>
-                          <button type="button" className="h-9 px-5 rounded-xl bg-[#1e1b4b] text-white font-black text-[10px] gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all group flex items-center">
+                          <button type="button" className="h-9 px-5 rounded-xl bg-slate-900 text-white font-black text-[10px] gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all group flex items-center">
                               <FolderTree className="h-3.5 w-3.5 text-primary group-hover:rotate-12 transition-transform" />
                               {isRtl ? 'مستكشف القاموس السيادي' : 'Registry Explorer'}
                           </button>
@@ -525,7 +528,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                               ) : pickerTree.map(renderPickerNode)}
                           </div>
                           <DialogFooter className="p-8 bg-slate-50 border-t flex justify-end">
-                              <Button variant="outline" type="button" onClick={() => setIsMasterPickerOpen(false)} className="rounded-xl font-black h-12 px-10">إغلاق</Button>
+                              <Button variant="outline" type="button" onClick={() => setIsMasterPickerOpen(false)} className="rounded-xl font-black h-12 px-10 bg-white border-2">إغلاق</Button>
                           </DialogFooter>
                         </DialogContent>
                     </Dialog>
@@ -548,17 +551,17 @@ export function BOQTemplateForm({ template, onClose }: Props) {
               </div>
 
               <Table>
-                <TableHeader className="bg-slate-900 sticky top-0 z-20">
-                  <TableRow className="hover:bg-slate-900 border-0">
-                    <TableHead className="ps-6 w-[80px] text-white/40 font-mono text-[10px] text-start">S.No</TableHead>
-                    <TableHead className="w-[100px] text-white/40 font-mono text-[10px] text-start">Code</TableHead>
-                    <TableHead className="text-white font-black text-xs text-start">{isRtl ? 'وصف بند العمل' : 'Work Item Description'}</TableHead>
-                    <TableHead className="text-white font-black text-xs text-start">{isRtl ? 'المواصفة الفنية' : 'Technical Specification'}</TableHead>
-                    <TableHead className="text-white font-black text-xs text-start">{isRtl ? 'الارتباط المالي' : 'Financial Trigger'}</TableHead>
-                    <TableHead className="text-center w-[60px] text-white font-black text-xs">{isRtl ? 'الوحدة' : 'Unit'}</TableHead>
-                    <TableHead className="text-center w-[80px] text-white font-black text-xs">{isRtl ? 'الكمية' : 'Qty'}</TableHead>
-                    <TableHead className="text-center w-[100px] text-white font-black text-xs">{isRtl ? 'الفئة (د.ك)' : 'Rate (KWD)'}</TableHead>
-                    <TableHead className="text-end pe-8 w-[120px] text-white font-black text-xs">{isRtl ? 'الإجمالي' : 'Subtotal'}</TableHead>
+                <TableHeader className="bg-slate-50 sticky top-0 z-20 border-b">
+                  <TableRow className="hover:bg-slate-50 border-0">
+                    <TableHead className="ps-6 w-[80px] text-slate-400 font-mono text-[10px] text-start">S.No</TableHead>
+                    <TableHead className="w-[100px] text-slate-400 font-mono text-[10px] text-start">Code</TableHead>
+                    <TableHead className="text-slate-900 font-black text-xs text-start">{isRtl ? 'وصف بند العمل' : 'Work Item Description'}</TableHead>
+                    <TableHead className="text-slate-900 font-black text-xs text-start">{isRtl ? 'المواصفة الفنية' : 'Technical Specification'}</TableHead>
+                    <TableHead className="text-slate-900 font-black text-xs text-start">{isRtl ? 'الارتباط المالي' : 'Financial Trigger'}</TableHead>
+                    <TableHead className="text-center w-[60px] text-slate-900 font-black text-xs">{isRtl ? 'الوحدة' : 'Unit'}</TableHead>
+                    <TableHead className="text-center w-[80px] text-slate-900 font-black text-xs">{isRtl ? 'الكمية' : 'Qty'}</TableHead>
+                    <TableHead className="text-center w-[100px] text-slate-900 font-black text-xs">{isRtl ? 'الفئة (د.ك)' : 'Rate (KWD)'}</TableHead>
+                    <TableHead className="text-end pe-8 w-[120px] text-slate-900 font-black text-xs">{isRtl ? 'الإجمالي' : 'Subtotal'}</TableHead>
                     <TableHead className="w-[60px]"></TableHead>
                   </TableRow>
                 </TableHeader>

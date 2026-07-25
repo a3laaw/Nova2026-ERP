@@ -69,8 +69,6 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // --- بروتوكول الإذابة السيادي (Sovereign Thaw Protocol) ---
-  // يضمن تحرير المتصفح من أي قفل للنقر فور إغلاق النوافذ
   const forceThaw = useCallback(() => {
     if (typeof document !== 'undefined') {
       document.body.style.pointerEvents = 'auto';
@@ -146,7 +144,6 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
       }
       toast({ title: isRtl ? "تم حذف المستند بنجاح" : "Document deleted" });
       setDeletingId(null);
-      // تحرير فوري للشاشة بعد الحذف
       forceThaw();
     } catch (e) {
       toast({ variant: "destructive", title: t('error') });
@@ -187,22 +184,22 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
     <>
       <Dialog open={isOpen} onOpenChange={(v) => { if(!v) onClose(); }}>
         <DialogContent className="max-w-4xl rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
-          <div className="bg-[#1e1b4b] p-6 text-white text-start flex justify-between items-center shrink-0">
+          <div className="bg-slate-50 p-6 text-slate-900 text-start border-b flex justify-between items-center shrink-0">
              <div className="flex items-center gap-4">
-                <div className="h-10 w-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary border border-primary/20">
+                <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary border border-primary/20">
                    {type === 'quotation' ? <FileText className="h-5 w-5" /> : <Gavel className="h-5 w-5" />}
                 </div>
                 <div>
-                   <DialogTitle className="text-lg font-black font-headline">
+                   <DialogTitle className="text-lg font-black font-headline text-slate-900">
                       {type === 'quotation' ? (isRtl ? 'عروض الأسعار' : 'Quotations') : (isRtl ? 'العقود الرسمية' : 'Formal Contracts')}
                    </DialogTitle>
                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{transaction.transactionNumber}</p>
                 </div>
              </div>
-             <Badge className="bg-white/10 text-white border-0 font-black h-7 px-3 rounded-lg text-[9px]">{clientName}</Badge>
+             <Badge variant="secondary" className="bg-white border text-slate-600 border-slate-200 font-black h-7 px-3 rounded-lg text-[9px]">{clientName}</Badge>
           </div>
 
-          <div className="p-8 grid grid-cols-1 lg:grid-cols-2 gap-8 max-h-[65vh] overflow-y-auto scrollbar-hide text-start">
+          <div className="p-8 grid grid-cols-1 lg:grid-cols-2 gap-8 max-h-[65vh] overflow-y-auto scrollbar-hide text-start bg-white">
              
              <div className="space-y-4">
                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b pb-2 flex items-center gap-2">
@@ -227,9 +224,9 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
                    <Button 
                      onClick={handleCreate} 
                      disabled={loading || !selectedTemplateId}
-                     className="w-full h-10 rounded-xl bg-[#1e1b4b] text-white font-black text-xs gap-2"
+                     className="w-full h-10 rounded-xl bg-primary text-white font-black text-xs gap-2"
                    >
-                      {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Sparkles className="h-4 w-4 text-primary" />}
+                      {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
                       {isRtl ? 'تجهيز المسودة' : 'Generate'}
                    </Button>
                 </div>
@@ -306,7 +303,6 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
         </DialogContent>
       </Dialog>
 
-      {/* حوار تأكيد الحذف - تم سحبه للخارج لضمان عدم تعليق الشاشة */}
       <AlertDialog open={!!deletingId} onOpenChange={(v) => { if(!v) setDeletingId(null); forceThaw(); }}>
         <AlertDialogContent className="rounded-xl p-8 border-0 shadow-3xl bg-white z-[200]" dir={dir}>
           <AlertDialogHeader>

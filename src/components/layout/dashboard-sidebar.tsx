@@ -1,6 +1,7 @@
+
 /**
- * @fileOverview القائمة الجانبية (Sidebar) بتصميم الكبسولات البرتقالية كاملة الاستدارة مع تلميحات وقوائم منبثقة باللون الكحلي السيادي.
- * تم تحسين القوائم المنبثقة لضمان عدم التداخل واستجابة الزوم.
+ * @fileOverview القائمة الجانبية (Sidebar) بتصميم الكبسولات البرتقالية كاملة الاستدارة مع تلميحات وقوائم منبثقة فاتحة ونظيفة.
+ * تم تطهير اللون الكحلي بالكامل واستبداله بالأبيض النقي.
  */
 
 "use client"
@@ -147,7 +148,7 @@ export function DashboardSidebar() {
       <SidebarHeader className="p-4 pt-6">
         {!isCollapsed ? (
           <div className="flex flex-col text-start px-2 border-b-2 border-orange-50 pb-4">
-            <span className="font-headline font-black text-2xl text-[#1e1b4b] tracking-tighter leading-none">NovaFlow</span>
+            <span className="font-headline font-black text-2xl text-slate-900 tracking-tighter leading-none">NovaFlow</span>
             <div className="flex items-center gap-2 mt-1">
               <span className="text-[8px] uppercase font-black tracking-[0.3em] text-[#e87c24]">ENTERPRISE</span>
               <div className="h-[1.5px] w-8 bg-[#e87c24] rounded-full" />
@@ -218,19 +219,19 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                   <button className={collapsedStyle}>
                     <item.icon className="h-6 w-6" />
                   </button>
-                  {/* Floating Popover - Deep Navy Theme Optimized for Zoom */}
+                  {/* Floating Popover - NOW CLEAN LIGHT THEME */}
                   <div className={cn(
                     "absolute top-0 z-[999] hidden group-hover:block animate-in fade-in zoom-in-95 duration-200",
                     isRtl ? "right-full mr-3" : "left-full ml-3"
                   )}>
                     <div className="bg-white border-2 border-slate-100 shadow-3xl rounded-[1.5rem] min-w-[220px] overflow-hidden ring-4 ring-black/[0.02]">
-                      <div className="px-5 py-4 bg-[#1e1b4b] border-b border-white/5 flex items-center justify-between">
-                        <p className="text-[10px] font-black text-white uppercase tracking-widest">{item.title}</p>
-                        <div className="h-6 w-6 rounded-lg bg-primary/20 flex items-center justify-center">
+                      <div className="px-5 py-4 bg-slate-50 border-b flex items-center justify-between">
+                        <p className="text-[10px] font-black text-slate-800 uppercase tracking-widest">{item.title}</p>
+                        <div className="h-6 w-6 rounded-lg bg-primary/10 flex items-center justify-center">
                           <item.icon className="h-3.5 w-3.5 text-primary" />
                         </div>
                       </div>
-                      <div className="p-3 space-y-1.5 bg-[#F8F9FA]/50 max-h-[60vh] overflow-y-auto scrollbar-hide">
+                      <div className="p-3 space-y-1.5 bg-white max-h-[60vh] overflow-y-auto scrollbar-hide">
                         {item.subItems.map((sub: any) => (
                           <Link 
                             key={sub.title} 
@@ -251,7 +252,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                   </div>
                 </div>
               </TooltipTrigger>
-              <TooltipContent side={isRtl ? "left" : "right"} className="bg-[#1e1b4b] text-white font-black text-[10px] rounded-lg border-0 shadow-2xl py-2 px-4">
+              <TooltipContent side={isRtl ? "left" : "right"} className="bg-white text-slate-900 font-black text-[10px] rounded-lg border-2 shadow-2xl py-2 px-4">
                 {item.title}
               </TooltipContent>
             </Tooltip>
@@ -264,7 +265,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                   <item.icon className="h-6 w-6" />
                 </Link>
               </TooltipTrigger>
-              <TooltipContent side={isRtl ? "left" : "right"} className="bg-[#1e1b4b] text-white font-black text-[10px] rounded-lg border-0 shadow-2xl py-2 px-4">
+              <TooltipContent side={isRtl ? "left" : "right"} className="bg-white text-slate-900 font-black text-[10px] rounded-lg border-2 shadow-2xl py-2 px-4">
                 {item.title}
               </TooltipContent>
             </Tooltip>

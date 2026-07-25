@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -184,9 +185,9 @@ export default function TransactionBOQProgressPage() {
 
   const renderBOQTreeRows = (node: BOQTreeNode, prefix: string): React.ReactNode => (
     <React.Fragment key={node.id}>
-      <TableRow className="bg-[#1e1b4b] hover:bg-[#1e1b4b]/90 border-b-2 border-white/10">
-        <TableCell className="font-mono text-[11px] font-black text-white/40 ps-6 text-start">{prefix}</TableCell>
-        <TableCell colSpan={2} className="font-black text-white text-sm py-4 text-start" style={{ paddingInlineStart: `${node.depth * 20 + 16}px` }}>
+      <TableRow className="bg-slate-100 hover:bg-slate-200 border-b-2 border-white">
+        <TableCell className="font-mono text-[11px] font-black text-slate-400 ps-6 text-start">{prefix}</TableCell>
+        <TableCell colSpan={2} className="font-black text-slate-900 text-sm py-4 text-start" style={{ paddingInlineStart: `${node.depth * 20 + 16}px` }}>
           <div className="flex items-center gap-2"><Folder className="h-4 w-4 text-primary" />{node.title}</div>
         </TableCell>
         <TableCell colSpan={8}></TableCell>
@@ -198,7 +199,7 @@ export default function TransactionBOQProgressPage() {
         const totalPct = Math.round(((metrics.prev + metrics.current) / planned) * 100);
 
         return (
-          <TableRow key={item.boqReferenceNodeId} className="hover:bg-primary/[0.02] border-b-slate-100">
+          <TableRow key={item.boqReferenceNodeId} className="hover:bg-primary/[0.02] border-b-slate-50">
             <TableCell className="font-mono text-[10px] font-bold text-slate-300 ps-8 text-start">{itemPrefix}</TableCell>
             <TableCell className="font-mono text-[10px] font-black text-primary/60 text-start">{item.referenceCode}</TableCell>
             <TableCell className="text-xs font-bold text-slate-700 text-start">{item.referenceTitle}</TableCell>
@@ -275,19 +276,19 @@ export default function TransactionBOQProgressPage() {
 
       <div className="flex-1 bg-white rounded-3xl shadow-2xl border border-primary/5 overflow-hidden flex flex-col min-h-[600px]">
          <Table>
-           <TableHeader className="bg-[#1e1b4b] sticky top-0 z-20 border-0">
-             <TableRow className="hover:bg-[#1e1b4b] border-0">
-               <TableHead className="ps-6 text-white font-black text-xs text-start">{isRtl ? 'المرجع' : 'Ref'}</TableHead>
-               <TableHead className="text-white font-black text-xs text-start">{isRtl ? 'الكود' : 'Code'}</TableHead>
-               <TableHead className="text-white font-black text-xs text-start">{isRtl ? 'البند' : 'Description'}</TableHead>
-               <TableHead className="text-center text-white font-black text-xs">{isRtl ? 'وحدة' : 'Unit'}</TableHead>
-               <TableHead className="text-center text-white font-black text-xs">{isRtl ? 'الكمية' : 'Planned'}</TableHead>
-               <TableHead className="text-center text-white font-black text-xs">{isRtl ? 'سابق' : 'Prev'}</TableHead>
-               <TableHead className="text-center text-white font-black text-xs">{isRtl ? 'حالي' : 'Curr'}</TableHead>
-               <TableHead className="text-center text-white font-black text-xs">{isRtl ? 'إجمالي' : 'Total'}</TableHead>
-               <TableHead className="text-center text-white font-black text-xs">{isRtl ? 'سعر الوحدة' : 'Rate'}</TableHead>
-               <TableHead className="text-end text-white font-black text-xs">{isRtl ? 'القيمة' : 'Value'}</TableHead>
-               <TableHead className="pe-6 text-white font-black text-xs text-end">{isRtl ? 'إنجاز' : 'Progress'}</TableHead>
+           <TableHeader className="bg-slate-100 sticky top-0 z-20 border-0">
+             <TableRow className="hover:bg-slate-100 border-0">
+               <TableHead className="ps-6 text-slate-500 font-black text-xs text-start">{isRtl ? 'المرجع' : 'Ref'}</TableHead>
+               <TableHead className="text-slate-500 font-black text-xs text-start">{isRtl ? 'الكود' : 'Code'}</TableHead>
+               <TableHead className="text-slate-500 font-black text-xs text-start">{isRtl ? 'البند' : 'Description'}</TableHead>
+               <TableHead className="text-center text-slate-500 font-black text-xs">{isRtl ? 'وحدة' : 'Unit'}</TableHead>
+               <TableHead className="text-center text-slate-500 font-black text-xs">{isRtl ? 'الكمية' : 'Planned'}</TableHead>
+               <TableHead className="text-center text-slate-500 font-black text-xs">{isRtl ? 'سابق' : 'Prev'}</TableHead>
+               <TableHead className="text-center text-slate-500 font-black text-xs">{isRtl ? 'حالي' : 'Curr'}</TableHead>
+               <TableHead className="text-center text-slate-500 font-black text-xs">{isRtl ? 'إجمالي' : 'Total'}</TableHead>
+               <TableHead className="text-center text-slate-500 font-black text-xs">{isRtl ? 'سعر الوحدة' : 'Rate'}</TableHead>
+               <TableHead className="text-end text-slate-500 font-black text-xs">{isRtl ? 'القيمة' : 'Value'}</TableHead>
+               <TableHead className="pe-6 text-slate-500 font-black text-xs text-end">{isRtl ? 'إنجاز' : 'Progress'}</TableHead>
              </TableRow>
            </TableHeader>
            <TableBody>{boqTree.length === 0 ? <TableRow><TableCell colSpan={11} className="py-40 text-center opacity-30"><Calculator className="h-12 w-12 mx-auto" /><p className="text-lg font-black">Empty BOQ</p></TableCell></TableRow> : boqTree.map((node, idx) => renderBOQTreeRows(node, (idx + 1).toString() + ".0"))}</TableBody>
@@ -295,28 +296,28 @@ export default function TransactionBOQProgressPage() {
       </div>
 
       <Dialog open={!!reviewVO} onOpenChange={(open) => !open && setReviewVO(null)}>
-         <DialogContent className="max-w-5xl rounded-none p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
-            <div className="bg-[#1e1b4b] p-8 text-white text-start flex justify-between items-center">
+         <DialogContent className="max-w-5xl rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
+            <div className="bg-slate-50 p-8 text-slate-900 text-start border-b flex justify-between items-center">
                <div className="flex items-center gap-6">
-                  <div className="h-14 w-14 bg-primary/20 rounded-2xl flex items-center justify-center text-primary shadow-2xl"><FileSearch className="h-7 w-7" /></div>
+                  <div className="h-14 w-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary shadow-lg"><FileSearch className="h-7 w-7" /></div>
                   <div><DialogTitle className="text-2xl font-black">{isRtl ? 'مراجعة أمر تغييري' : 'Review VO'}</DialogTitle><p className="text-[10px] text-slate-400 uppercase tracking-widest">{reviewVO?.title}</p></div>
                </div>
                <div className="text-end">
                   <p className="text-[9px] font-black text-primary uppercase mb-1">Impact</p>
-                  <h3 className={cn("text-3xl font-black font-mono", (reviewVO?.totalAmount || 0) >= 0 ? "text-emerald-400" : "text-rose-400")}>{reviewVO?.totalAmount.toLocaleString()} <span className="text-xs opacity-40">KWD</span></h3>
+                  <h3 className={cn("text-3xl font-black font-mono", (reviewVO?.totalAmount || 0) >= 0 ? "text-emerald-600" : "text-rose-600")}>{reviewVO?.totalAmount.toLocaleString()} <span className="text-xs opacity-40">KWD</span></h3>
                </div>
             </div>
-            <div className="p-8 space-y-6 max-h-[60vh] overflow-y-auto scrollbar-hide text-start">
-               <div className="p-6 bg-slate-50 rounded-2xl border-2 border-white shadow-inner"><h5 className="font-black text-xs text-slate-400 uppercase mb-2">Justification</h5><p className="text-sm font-bold text-slate-700 leading-relaxed">{reviewVO?.reason || '---'}</p></div>
+            <div className="p-8 space-y-6 max-h-[60vh] overflow-y-auto scrollbar-hide text-start bg-white">
+               <div className="p-6 bg-slate-50 rounded-2xl border-2 border-white shadow-inner space-y-2"><h5 className="font-black text-xs text-slate-400 uppercase mb-2">Justification</h5><p className="text-sm font-bold text-slate-700 leading-relaxed">{reviewVO?.reason || '---'}</p></div>
                <div className="border rounded-2xl overflow-hidden shadow-sm">
                   <Table>
-                     <TableHeader className="bg-[#1e1b4b]">
+                     <TableHeader className="bg-slate-50">
                         <TableRow>
-                          <TableHead className="ps-6 text-white">Action</TableHead>
-                          <TableHead className="text-white">Item</TableHead>
-                          <TableHead className="text-center text-white">Delta</TableHead>
-                          <TableHead className="text-end text-white">Rate</TableHead>
-                          <TableHead className="text-end pe-6 text-white">Total</TableHead>
+                          <TableHead className="ps-6">Action</TableHead>
+                          <TableHead>Item</TableHead>
+                          <TableHead className="text-center">Delta</TableHead>
+                          <TableHead className="text-end">Rate</TableHead>
+                          <TableHead className="text-end pe-6">Total</TableHead>
                         </TableRow>
                      </TableHeader>
                      <TableBody>
