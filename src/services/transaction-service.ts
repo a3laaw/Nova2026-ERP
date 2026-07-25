@@ -25,6 +25,7 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { ensureActionPermission } from '@/lib/permissions/engine';
 import { BOQExecutionService } from './boq-execution-service';
+import { CommentService } from './comment-service';
 
 export class TransactionService {
   constructor(
@@ -154,7 +155,7 @@ export class TransactionService {
     await batch.commit();
   }
 
-  async incrementStageRevision(transactionId: string, stageId: string, userId: string, userName: string) {
+  async incrementStageRevision(transactionId: string, stageId: string, userId: string, userName: string, notes: string = "") {
     ensureActionPermission(this.permissions, 'projects:edit');
     const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
     const stageSnap = await getDoc(stageRef);
@@ -169,6 +170,7 @@ export class TransactionService {
       updatedBy: userId
     });
 
+    // 1. توثيق الحدث في سجل أحداث المشروع (Timeline)
     const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
     await addDoc(timelineRef, {
       transactionId,
@@ -176,11 +178,26 @@ export class TransactionService {
       technicalStageId: stageData.technicalStageId,
       type: 'revision_logged',
       content: `دورة تعديل تصميم: تم تسجيل المراجعة رقم (${nextRev}) للمرحلة: ${stageData.name}`,
+      notes, 
       userId,
       userName,
       companyId: this.companyId,
       createdAt: serverTimestamp()
     });
+
+    // 2. حقن ملاحظة المراجعة في غرفة العمليات (War Room) كتعليق فني
+    if (notes.trim()) {
+       const commentService = new CommentService(this.db, this.companyId, this.permissions);
+       await commentService.addTransactionComment(
+          transactionId,
+          `[مراجعة #${nextRev}] ${notes}`,
+          userId,
+          userName,
+          stageId,
+          stageData.name,
+          'note'
+       );
+    }
   }
 
   async startStage(transactionId: string, stageId: string, userId: string, userName: string) {

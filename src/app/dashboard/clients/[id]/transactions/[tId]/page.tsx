@@ -95,6 +95,11 @@ export default function TransactionDetailsPage() {
   const [incompleteStage, setIncompleteStage] = useState<{ stage: StageInstance, progress: StageProgressResult } | null>(null);
   const [isVOOpen, setIsVOOpen] = useState(false);
 
+  // حالات تسجيل المراجعة (Revision)
+  const [isRevisionOpen, setIsRevisionOpen] = useState(false);
+  const [revisionStage, setRevisionStage] = useState<StageInstance | null>(null);
+  const [revisionComment, setRevisionComment] = useState("");
+
   const editAccess = check('projects', 'edit');
   const currentUserName = useMemo(() => globalUser?.username || user?.displayName || 'Admin', [globalUser, user]);
 
@@ -198,16 +203,31 @@ export default function TransactionDetailsPage() {
     finally { setProcessingId(null); }
   };
 
-  const handleRecordRevision = async (stageId: string) => {
-    if (!transactionService || !user) return;
-    setProcessingId(`rev_${stageId}`);
+  const handleOpenRevisionDialog = (stage: StageInstance) => {
+     setRevisionStage(stage);
+     setRevisionComment("");
+     setIsRevisionOpen(true);
+  };
+
+  const handleConfirmRevision = async () => {
+    if (!transactionService || !user || !revisionStage || !revisionComment.trim()) return;
+    
+    setProcessingId(`rev_${revisionStage.id}`);
+    setIsRevisionOpen(false);
     try {
-      await transactionService.incrementStageRevision(transactionId, stageId, user.uid, currentUserName);
-      toast({ title: isRtl ? "تم تسجيل دورة مراجعة جديدة" : "Revision Logged" });
+      await transactionService.incrementStageRevision(
+        transactionId, 
+        revisionStage.id!, 
+        user.uid, 
+        currentUserName, 
+        revisionComment
+      );
+      toast({ title: isRtl ? "تم تسجيل دورة مراجعة جديدة بنجاح" : "Revision Cycle Logged" });
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
       setProcessingId(null);
+      setRevisionStage(null);
     }
   };
 
@@ -334,7 +354,7 @@ export default function TransactionDetailsPage() {
                                                 {stage.status === 'pending' && <Button onClick={() => handleStartStage(stage.id!)} disabled={!!processingId} className="h-10 px-6 rounded-xl bg-blue-600 text-white font-black text-[10px] gap-2">{processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Play className="h-4 w-4" />} {isRtl ? 'بدء العمل' : 'Start'}</Button>}
                                                 {stage.status === 'in-progress' && <Button onClick={() => handleCompleteStage(stage)} disabled={!!processingId} className="h-10 px-6 rounded-xl bg-emerald-600 text-white font-black text-[10px] gap-2">{processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Check className="h-4 w-4" />} {isRtl ? 'إكمال' : 'Done'}</Button>}
                                                 {stage.status === 'in-progress' && isConsulting && (
-                                                  <Button onClick={() => handleRecordRevision(stage.id!)} disabled={processingId === `rev_${stage.id}`} variant="outline" className="h-10 px-4 rounded-xl border-orange-200 text-orange-600 font-black text-[10px] gap-2 hover:bg-orange-50">
+                                                  <Button onClick={() => handleOpenRevisionDialog(stage)} disabled={processingId === `rev_${stage.id}`} variant="outline" className="h-10 px-4 rounded-xl border-orange-200 text-orange-600 font-black text-[10px] gap-2 hover:bg-orange-50">
                                                     {processingId === `rev_${stage.id}` ? <Loader2 className="animate-spin h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
                                                     {isRtl ? 'تسجيل دورة تعديل' : 'Log Revision'}
                                                   </Button>
@@ -364,12 +384,52 @@ export default function TransactionDetailsPage() {
           </div>
       </div>
 
-      {/* مودالات فرعية */}
+      {/* مودال تسجيل المراجعة (إلزامي بالتعليق) */}
+      <Dialog open={isRevisionOpen} onOpenChange={setIsRevisionOpen}>
+         <DialogContent className="rounded-xl p-0 max-w-lg border-0 shadow-3xl bg-white" dir={dir}>
+            <div className="bg-orange-50 p-6 border-b text-orange-900 text-start">
+               <DialogTitle className="text-xl font-black flex items-center gap-3">
+                  <RotateCcw className="h-6 w-6" /> {isRtl ? 'توثيق مراجعة وتعديل التصميم' : 'Log Design Revision'}
+               </DialogTitle>
+               <p className="text-xs font-bold mt-1 opacity-70">{revisionStage?.name}</p>
+            </div>
+            <div className="p-8 space-y-4 text-start">
+               <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'أسباب أو تفاصيل التعديل' : 'Revision Notes / Reason'}</Label>
+               <Textarea 
+                 value={revisionComment} 
+                 onChange={e => setRevisionComment(e.target.value)}
+                 placeholder={isRtl ? "اكتب هنا تفاصيل التعديلات التي تمت على المخطط..." : "Describe the changes made..."}
+                 className="min-h-[120px] rounded-2xl border-2 p-5 text-sm font-bold bg-slate-50 focus:bg-white transition-all shadow-inner"
+               />
+               <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 flex items-start gap-3">
+                  <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+                  <p className="text-[10px] text-blue-700 font-bold leading-relaxed">
+                     {isRtl ? 'سيتم زيادة عداد المراجعات لهذه المرحلة آلياً وحقن هذه الملاحظة في غرفة العمليات.' : 'Revision counter will be auto-incremented and this note will be logged in the War Room.'}
+                  </p>
+               </div>
+            </div>
+            <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-3">
+               <Button variant="outline" onClick={() => setIsRevisionOpen(false)} className="flex-1 h-12 rounded-xl font-bold">إلغاء</Button>
+               <Button 
+                 onClick={handleConfirmRevision} 
+                 disabled={!revisionComment.trim()} 
+                 className="flex-[2] h-12 rounded-xl bg-orange-600 text-white font-black text-lg shadow-xl shadow-orange-200"
+               >
+                  <Save className="h-5 w-5" /> {isRtl ? 'اعتماد دورة التعديل' : 'Confirm Revision'}
+               </Button>
+            </DialogFooter>
+         </DialogContent>
+      </Dialog>
+
+      {/* مودالات فرعية أخرى */}
       <Dialog open={isBoqInitOpen} onOpenChange={setIsBoqInitOpen}>
          <DialogContent className="rounded-[2.5rem] p-0 max-w-lg" dir={dir}>
             <div className="bg-[#1e1b4b] p-10 text-white"><DialogTitle className="text-2xl font-black font-headline flex items-center gap-4"><FilePlus className="h-8 w-8 text-primary" />{isRtl ? 'استنساخ مقايسة' : 'Create BOQ'}</DialogTitle></div>
             <div className="p-10 space-y-8">
-               <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}><SelectTrigger className="h-14 rounded-2xl border-2 font-black"><SelectValue placeholder="..." /></SelectTrigger><SelectContent className="rounded-2xl">{templates?.map(t => (<SelectItem key={t.id} value={t.id!} className="font-bold py-4">{t.name}</SelectItem>))}</SelectContent></Select>
+               <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                  <SelectTrigger className="h-14 rounded-2xl border-2 font-black"><SelectValue placeholder="..." /></SelectTrigger>
+                  <SelectContent className="rounded-2xl">{templates?.map(t => (<SelectItem key={t.id} value={t.id!} className="font-bold py-4">{t.name}</SelectItem>))}</SelectContent>
+               </Select>
                <Button onClick={handleCreateBOQ} disabled={!selectedTemplateId || !!loadingAction} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl gap-3">{loadingAction ? <Loader2 className="animate-spin h-6 w-6" /> : <Sparkles className="h-6 w-6" />}{isRtl ? 'إنشاء المقايسة' : 'Generate'}</Button>
             </div>
          </DialogContent>
