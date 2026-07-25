@@ -13,7 +13,7 @@ import {
   CalendarDays, CheckCircle2,
   Printer, Filter, LayoutGrid, X,
   XCircle, AlertTriangle, FileText,
-  User, History
+  User, History, ShieldCheck
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
@@ -227,8 +227,8 @@ export default function ClientVisitsReportPage() {
                                   <TableCell className="align-top">
                                      <Badge className={cn(
                                        "font-black text-[8px] uppercase px-2 py-0.5 rounded-md border-0 shadow-sm",
-                                       visit.status === 'completed' ? 'bg-emerald-500 text-white' : 
-                                       visit.status === 'cancelled' ? 'bg-rose-500 text-white' : 
+                                       visit.status === 'completed' ? "bg-emerald-500 text-white" : 
+                                       visit.status === 'cancelled' ? "bg-rose-500 text-white" : 
                                        'bg-blue-500 text-white'
                                      )}>
                                         {visit.status}
@@ -293,4 +293,3 @@ export default function ClientVisitsReportPage() {
     </div>
   );
 }
-
