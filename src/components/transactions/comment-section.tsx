@@ -45,10 +45,14 @@ interface Props {
   selectedStageName?: string;
   technicalStageId?: string | null;
   activeTabOverride?: 'active' | 'timeline' | 'chat_archive' | 'time_archive';
-  appointmentId?: string; // التاج الزمني للزيارة
-  onlyComments?: boolean; // وضع التبسيط للزيارات
+  appointmentId?: string; 
+  onlyComments?: boolean; 
 }
 
+/**
+ * @fileOverview غرفة العمليات المركزية (War Room Component).
+ * تم تحديثها لتدعم وضع "التعليقات فقط" المخصص للزيارات الميدانية.
+ */
 export function CommentSection({ 
   transactionId, 
   path, 
@@ -95,7 +99,7 @@ export function CommentSection({
     db && globalUser?.companyId ? new CommentService(db, globalUser.companyId, permissions) : null, 
   [db, globalUser, permissions]);
 
-  // المجرى الموحد - تحسين الفلترة لتشمل المواعيد
+  // المجرى الموحد (The Integrated Stream)
   const activeStream = useMemo(() => {
     const filteredComments = (comments || [])
       .filter(c => !c.isArchived && (!filterStageId || c.stageInstanceId === filterStageId))
@@ -105,7 +109,7 @@ export function CommentSection({
         sortTime: c.createdAt?.toMillis?.() || Date.now()
       }));
     
-    // إذا كان وضع "التعليقات فقط" مفعلاً (كما في الزيارة)، نكتفي بالتعليقات
+    // إذا كان وضع "التعليقات فقط" مفعلاً، نستثني سجلات النظام
     if (onlyComments) {
       return filteredComments.sort((a, b) => a.sortTime - b.sortTime);
     }
@@ -162,21 +166,6 @@ export function CommentSection({
              )}
           </div>
 
-          {filterStageId && (
-            <div className="px-4 py-3 rounded-2xl bg-slate-900 text-white mx-1 flex items-center justify-between animate-in slide-in-from-top-2 shadow-2xl relative overflow-hidden">
-               <div className="flex items-center gap-3 relative z-10">
-                  <div className="h-6 w-6 rounded-lg bg-primary/20 flex items-center justify-center border border-primary/20">
-                     <Target className="h-3 w-3 text-primary animate-pulse" />
-                  </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest truncate max-w-[150px]">
-                    {selectedStageName}
-                  </span>
-               </div>
-               <Badge className="bg-primary text-white border-0 text-[8px] font-black h-5 px-3 rounded-lg">FOCUS MODE</Badge>
-            </div>
-          )}
-
-          {/* إخفاء التبويبات في وضع التبسيط (الزيارة) لضمان التركيز على التعليقات فقط */}
           {!onlyComments && (
             <TabsList className={cn("grid w-full h-11 bg-slate-100/50 rounded-xl p-1 gap-1 mx-1", isAdmin ? "grid-cols-4" : "grid-cols-2")}>
                 <TabsTrigger value="active" className="rounded-lg text-[10px] font-black transition-all">
@@ -206,7 +195,7 @@ export function CommentSection({
             ) : activeStream.length === 0 ? (
                <div className="py-20 text-center flex flex-col items-center gap-4 opacity-30">
                   <Zap className="h-12 w-12 text-slate-200" />
-                  <p className="text-xs font-black text-slate-400">{isRtl ? 'بانتظار الملاحظات الفنية' : 'Awaiting technician notes...'}</p>
+                  <p className="text-xs font-black text-slate-400">{isRtl ? 'بانتظار الملاحظات الفنية' : 'Awaiting notes...'}</p>
                </div>
             ) : (
               activeStream.map((item: any) => (
@@ -231,8 +220,8 @@ export function CommentSection({
                         <div className="space-y-2 text-start">
                             <h4 className="font-black text-[11px] text-slate-900">{stage.name}</h4>
                             <div className="grid grid-cols-2 gap-3 bg-white p-2.5 rounded-xl border border-slate-100 shadow-sm">
-                              <div className="space-y-0.5"><p className="text-[7px] font-black text-slate-400 uppercase">Start</p><p className="text-[8px] font-bold text-slate-600 truncate">{start ? start.toLocaleDateString(isRtl ? 'ar-KW' : 'en-US', { numberingSystem: 'latn' }) : '---'}</p></div>
-                              <div className="space-y-0.5"><p className="text-[7px] font-black text-slate-400 uppercase">End</p><p className="text-[8px] font-bold text-slate-600 truncate">{end ? end.toLocaleDateString(isRtl ? 'ar-KW' : 'en-US', { numberingSystem: 'latn' }) : '---'}</p></div>
+                              <div className="space-y-0.5"><p className="text-[7px] font-black text-slate-400 uppercase">Start</p><p className="text-[8px] font-bold text-slate-600 truncate">{start ? start.toLocaleDateString(isRtl ? 'ar-KW' : 'en-US') : '---'}</p></div>
+                              <div className="space-y-0.5"><p className="text-[7px] font-black text-slate-400 uppercase">End</p><p className="text-[8px] font-bold text-slate-600 truncate">{end ? end.toLocaleDateString(isRtl ? 'ar-KW' : 'en-US') : '---'}</p></div>
                             </div>
                         </div>
                       </div>
@@ -249,7 +238,7 @@ export function CommentSection({
                 <Textarea 
                   value={content}
                   onChange={e => setContent(e.target.value)}
-                  placeholder={isRtl ? (filterStageId ? `اكتب ملاحظة في مرحلة ${selectedStageName}...` : "اكتب تعليقاً في سجل الزيارة...") : "Write a visit note..."}
+                  placeholder={isRtl ? "اكتب تعليقاً في سجل الزيارة..." : "Write a visit note..."}
                   className="min-h-[44px] max-h-[150px] rounded-xl border-0 focus-visible:ring-0 text-xs font-bold bg-slate-50/50 resize-none p-4"
                 />
                 <Button 
@@ -297,16 +286,10 @@ function StreamItem({ item, isRtl, user, boqItems }: any) {
                        </Badge>
                        {item.quantity > 0 && <Badge className="bg-emerald-600 text-white border-0 text-[8px] h-4 px-2">{item.quantity} QTY</Badge>}
                     </div>
-                    
                     <div className="space-y-1 mt-1">
-                        <p className="text-[10px] font-black text-slate-800 leading-tight">{item.content}</p>
-                        {item.notes && (
-                            <p className="text-[10px] font-bold text-slate-500 italic border-s-2 border-primary/20 ps-2 py-0.5">
-                                "{item.notes}"
-                            </p>
-                        )}
+                        <p className="text-[10px] font-black text-slate-800">{item.content}</p>
+                        {item.notes && <p className="text-[10px] font-bold text-slate-500 italic border-s-2 border-primary/20 ps-2 py-0.5">"{item.notes}"</p>}
                     </div>
-
                     <div className="flex items-center gap-3 mt-3 pt-2 border-t border-black/[0.03] text-[7px] font-black text-slate-400 uppercase">
                        <span className="flex items-center gap-1"><User className="h-2 w-2" /> {displayName}</span>
                        <span className="flex items-center gap-1"><Clock className="h-2 w-2" /> {item.createdAt ? formatDistanceToNow(item.createdAt.toDate(), { addSuffix: true, locale: isRtl ? ar : enUS }) : '...'}</span>
@@ -334,8 +317,7 @@ function StreamItem({ item, isRtl, user, boqItems }: any) {
            </div>
            <div className={cn(
              "p-3 rounded-[1.25rem] shadow-sm text-xs font-bold leading-relaxed relative group transition-all",
-             isMine ? "bg-[#e87c24] text-white rounded-te-none" : "bg-white border-2 border-slate-50 text-slate-700 rounded-ts-none",
-             item.isArchived && "opacity-60 grayscale border-dashed border-slate-300"
+             isMine ? "bg-[#e87c24] text-white rounded-te-none" : "bg-white border-2 border-slate-50 text-slate-700 rounded-ts-none"
            )}>
               {item.stageName && (
                  <div className="mb-1.5">

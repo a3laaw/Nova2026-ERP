@@ -43,6 +43,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
+/**
+ * @fileOverview صفحة تفاصيل الزيارة الميدانية الموحدة (Sovereign Visit Radar).
+ * تجسد وحدة المرجع السيادي بربط رادار الزيارة بالمعاملة الأصلية مباشرة.
+ */
 export default function AppointmentDetailPage() {
   const apptId = useParams().id as string;
   const { globalUser, user } = useAuthContext();
@@ -64,7 +68,7 @@ export default function AppointmentDetailPage() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [stageProgressMap, setStageProgressMap] = useState<Record<string, StageProgressResult>>({});
 
-  // حالات تسجيل المراجعة (Revision) - موحدة مع المعاملة
+  // حالات تسجيل المراجعة (Revision)
   const [isRevisionOpen, setIsRevisionOpen] = useState(false);
   const [revisionStage, setRevisionStage] = useState<StageInstance | null>(null);
   const [revisionComment, setRevisionComment] = useState("");
@@ -80,14 +84,14 @@ export default function AppointmentDetailPage() {
   [db, companyId, appt?.transactionId]);
   const { data: transaction } = useDoc<Transaction>(transRef);
 
-  // جلب المراحل - نفس المسار المرجعي للمعاملة لضمان التزامن السيادي
+  // جلب المراحل - نفس المسار المرجعي للمعاملة لضمان التزامن السيادي المطلق
   const stagesQuery = useMemo(() => 
     companyId && db && appt?.transactionId ? query(collection(db, paths.transactionStages(companyId, appt.transactionId)), orderBy('order')) : null,
   [db, companyId, appt?.transactionId]);
   const { data: rawStages } = useCollection<StageInstance>(stagesQuery);
   const stages = useMemo(() => (rawStages || []).sort((a,b) => (a.order || 0) - (b.order || 0)), [rawStages]);
 
-  // تعيين أول مرحلة غير مكتملة كاختيار افتراضي لتبسيط العمل
+  // تعيين أول مرحلة غير مكتملة كاختيار افتراضي لتبسيط العمل الميداني
   useEffect(() => {
     if (stages.length > 0 && !selectedStageId) {
       const nextStage = stages.find(s => s.status !== 'completed');
@@ -111,7 +115,7 @@ export default function AppointmentDetailPage() {
   [db, companyId, appt?.transactionId]);
   const { data: allExecutions } = useCollection<BOQItemExecutionEntry>(execsQuery);
 
-  // جلب التعليقات لفحص شرط الإغلاق
+  // جلب التعليقات لفحص شرط الإغلاق السيادي
   const commentsQuery = useMemo(() => 
     companyId && db && appt?.transactionId ? query(collection(db, paths.transactionComments(companyId, appt.transactionId))) : null,
   [db, companyId, appt?.transactionId]);
@@ -146,15 +150,12 @@ export default function AppointmentDetailPage() {
   const checkResults = useMemo(() => {
     if (!appt?.transactionId) return { hasAchievement: true, hasComment: true, ready: true };
     
-    // 1. فحص الإنجاز الفني (سجلات إنجاز أو مراجعات) مرتبط بهذا الموعد حصراً
+    // 1. فحص الإنجاز الفني مرتبط بهذا الموعد حصراً
     const hasProgressLogs = (allExecutions || []).some(e => e.appointmentId === apptId);
-    
-    // فحص المراجعات المسجلة في سجل الأحداث لهذا الموعد
     const hasRevisionsInWarRoom = (comments || []).some((c: any) => c.appointmentId === apptId && c.commentType === 'note');
-    
     const hasAchievement = hasProgressLogs || hasRevisionsInWarRoom;
 
-    // 2. فحص التعليق (يجب أن يكون المهندس قد كتب تعليقاً واحداً على الأقل في هذا الموعد)
+    // 2. فحص التعليق (إلزامي للتوثيق المعرفي)
     const hasComment = (comments || []).some((c: any) => c.appointmentId === apptId && c.createdBy === user?.uid);
 
     return {
@@ -217,9 +218,9 @@ export default function AppointmentDetailPage() {
         user.uid, 
         globalUser?.username || 'User', 
         revisionComment,
-        apptId // وسم المراجعة بالموعد
+        apptId 
       );
-      toast({ title: isRtl ? "تم تسجيل دورة مراجعة جديدة بنجاح" : "Revision Cycle Logged" });
+      toast({ title: isRtl ? "تم تسجيل دورة مراجعة جديدة" : "Revision Logged" });
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
@@ -235,8 +236,6 @@ export default function AppointmentDetailPage() {
     setLoadingAction('recording');
     try {
       const service = new BOQExecutionService(db, companyId, permissions);
-      const currentUserName = globalUser?.username || user.displayName || 'Engineer';
-      
       const stage = stages?.find(s => s.id === selectedStageId);
       if (!stage) throw new Error("Stage not found");
 
@@ -246,14 +245,14 @@ export default function AppointmentDetailPage() {
         stage.technicalStageId, 
         qtyInput, 
         user.uid, 
-        currentUserName, 
+        globalUser?.username || 'User', 
         progressNotes, 
         selectedStageId,
         false,
-        apptId // وسم الإنجاز بالموعد
+        apptId 
       );
 
-      toast({ title: isRtl ? "تم تسجيل الإنجاز في الميدان" : "Field Progress Logged" });
+      toast({ title: isRtl ? "تم تسجيل الإنجاز الميداني" : "Progress Logged" });
       setIsRecordOpen(false);
       setProgressQty("");
       setProgressNotes("");
@@ -270,7 +269,7 @@ export default function AppointmentDetailPage() {
     try {
       const service = new AppointmentService(db, companyId);
       await service.updateStatus(apptId, 'completed', user.uid);
-      toast({ title: isRtl ? "تم إنجاز الموعد" : "Appt Completed" });
+      toast({ title: isRtl ? "تم إنجاز الموعد وإغلاق الملف" : "Appt Completed" });
       router.push('/dashboard/appointments');
     } catch (e) {
       toast({ variant: "destructive", title: t('error') });
@@ -341,8 +340,7 @@ export default function AppointmentDetailPage() {
 
               <TabsContent value="pipeline" className="space-y-8 animate-in fade-in">
                  <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
-                    {/* تحديث الهيدر للون الفاتح كما طلب المستخدم سابقاً */}
-                    <CardHeader className="bg-primary/5 p-8 text-slate-900 border-b flex flex-row justify-between items-center text-start">
+                    <CardHeader className="bg-slate-50/50 p-8 text-slate-900 border-b flex flex-row justify-between items-center text-start">
                        <div className="text-start">
                           <CardTitle className="text-xl font-black flex items-center gap-3">
                              <Target className="h-6 w-6 text-primary" />
@@ -395,8 +393,8 @@ export default function AppointmentDetailPage() {
                        transactionId={appt.transactionId || apptId} 
                        appointmentId={apptId}
                        path={appt.transactionId ? paths.transactionComments(companyId!, appt.transactionId) : `companies/${companyId}/appointments/${apptId}/comments`} 
-                       title={isRtl ? 'غرفة عمليات المشروع' : 'War Room'}
-                       onlyComments={true} // تفعيل وضع التبسيط (التعليقات فقط) للزيارة
+                       title={isRtl ? 'غرفة عمليات الزيارة' : 'Visit War Room'}
+                       onlyComments={true} 
                     />
                  </div>
               </TabsContent>
@@ -406,17 +404,16 @@ export default function AppointmentDetailPage() {
         <div className="lg:col-span-4 space-y-6">
            {appt.transactionId && (
               <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
-                 <CardHeader className="bg-primary/5 p-6 text-slate-900 border-b text-start">
+                 <CardHeader className="bg-slate-50/50 p-6 text-slate-900 border-b text-start">
                     <div className="flex items-center gap-3">
                        <Layers className="h-5 w-5 text-primary" />
-                       <CardTitle className="text-sm font-black uppercase tracking-widest">{isRtl ? 'رادار المسار الفني' : 'Pipeline'}</CardTitle>
+                       <CardTitle className="text-sm font-black uppercase tracking-widest">{isRtl ? 'رادار المسار الفني' : 'Technical Radar'}</CardTitle>
                     </div>
                  </CardHeader>
                  <CardContent className="p-4 space-y-2">
                     {stages.map((stage, idx) => {
                        const isSelected = stage.id === selectedStageId;
                        const isPreviousCompleted = idx === 0 || stages[idx-1].status === 'completed';
-                       // تعريف "الجبهة التشغيلية" (Frontier): المرحلة التي يمكن البدء فيها أو إنجازها
                        const isFrontier = stage.status === 'in-progress' || (stage.status === 'pending' && isPreviousCompleted);
                        
                        return (
@@ -451,7 +448,6 @@ export default function AppointmentDetailPage() {
                                 {isSelected && <Badge className="bg-primary text-white text-[7px] font-black h-4 px-2">SELECTED</Badge>}
                              </div>
 
-                             {/* أزرار الإجراءات - تظهر عند تحديد المرحلة إذا كانت في الجبهة التشغيلية */}
                              {isSelected && isFrontier && (
                                 <div className="flex flex-wrap gap-2 animate-in slide-in-from-top-1" onClick={e => e.stopPropagation()}>
                                    {stage.status === 'pending' && (
@@ -503,12 +499,6 @@ export default function AppointmentDetailPage() {
                  placeholder={isRtl ? "ما هي التعديلات التي طلبها العميل في هذه الزيارة؟" : "What changes did the client request?"}
                  className="min-h-[120px] rounded-2xl border-2 p-5 text-sm font-bold bg-slate-50 focus:bg-white transition-all shadow-inner"
                />
-               <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 flex items-start gap-3">
-                  <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
-                  <p className="text-[10px] text-blue-700 font-bold leading-relaxed">
-                     {isRtl ? 'سيتم توثيق هذا التعديل في المعاملة وغرفة العمليات لفتح دورة عمل جديدة.' : 'This revision will be logged in the transaction and War Room to open a new cycle.'}
-                  </p>
-               </div>
             </div>
             <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-3">
                <Button variant="outline" onClick={() => setIsRevisionOpen(false)} className="flex-1 h-12 rounded-xl font-bold">إلغاء</Button>
