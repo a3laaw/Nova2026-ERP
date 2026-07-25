@@ -9,6 +9,9 @@ import {
   eachDayOfInterval,
   subDays,
   parse,
+  isBefore,
+  startOfDay,
+  differenceInDays
 } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import { 
@@ -42,7 +45,9 @@ import {
   Target,
   LayoutGrid,
   AlertTriangle,
-  Image as ImageIcon
+  AlertCircle,
+  ArrowRight,
+  ShieldAlert
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs, updateDoc, deleteDoc, serverTimestamp, addDoc, setDoc } from 'firebase/firestore';
@@ -105,7 +110,7 @@ import { useRouter } from 'next/navigation';
 
 // --- Helpers ---
 function getVisitColor(visitCount: number, status?: string, apptType?: string): string {
-  if (apptType === 'busy_blocked') return '#f57c00'; // تجميد الوقت يستخدم برتقالي داكن
+  if (apptType === 'busy_blocked') return '#f57c00'; 
   if (visitCount === 1) return '#facc15'; 
   if (visitCount > 1 && status !== 'contracted') return '#22c55e'; 
   if (visitCount > 1 && status === 'contracted') return '#3b82f6'; 
@@ -229,6 +234,23 @@ export function ArchitecturalAppointmentsView() {
     return m;
   }, [allClients]);
 
+  // --- كشف المهام المتأخرة (Overdue Monitor) ---
+  const overdueMissions = useMemo(() => {
+    const today = startOfDay(new Date());
+    let list = (rawAppointments || []).filter(a => 
+      a.status === 'scheduled' && 
+      isBefore(parseISO(a.start), today)
+    );
+
+    // تصفية للموظف: يرى فقط مهامه المتأخرة
+    if (!isAdmin && globalUser?.employeeId) {
+      list = list.filter(a => a.engineerId === globalUser.employeeId);
+    }
+    // الإدارة ترى الجميع
+
+    return list.sort((a, b) => a.start.localeCompare(b.start));
+  }, [rawAppointments, isAdmin, globalUser?.employeeId]);
+
   const filteredAppointments = useMemo(() => {
     let list = (rawAppointments || []).filter(a => a.status !== 'cancelled' && isSameDay(parseISO(a.start), currentDate));
     if (!isAdmin && globalUser?.employeeId) {
@@ -300,6 +322,61 @@ export function ArchitecturalAppointmentsView() {
   return (
     <div className="space-y-10 animate-in fade-in duration-700" dir={dir}>
       
+      {/* --- Overdue & Pending Closure Awareness Section --- */}
+      {overdueMissions.length > 0 && (
+        <div className="animate-in slide-in-from-top-4 duration-500">
+           <div className="flex items-center gap-3 mb-4 px-2">
+              <ShieldAlert className="h-6 w-6 text-rose-500" />
+              <h2 className="text-xl font-black font-headline text-rose-900">{isRtl ? 'مهمات بانتظار الإغلاق الفني' : 'Missions Awaiting Closure'}</h2>
+              <Badge className="bg-rose-500 text-white font-black border-0 h-6 px-3 rounded-full shadow-lg shadow-rose-200">
+                 {overdueMissions.length.toLocaleString('en-US')}
+              </Badge>
+           </div>
+           
+           <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide px-1">
+              {overdueMissions.map((mission) => {
+                const daysLate = differenceInDays(startOfDay(new Date()), startOfDay(parseISO(mission.start)));
+                return (
+                  <Card 
+                    key={mission.id} 
+                    onClick={() => router.push(`/dashboard/appointments/${mission.id}`)}
+                    className="min-w-[280px] border-2 border-rose-100 bg-rose-50/30 hover:bg-rose-50 hover:border-rose-300 transition-all cursor-pointer rounded-[1.5rem] shadow-sm group"
+                  >
+                     <CardContent className="p-5 space-y-4">
+                        <div className="flex justify-between items-start">
+                           <div className="text-start">
+                              <p className="text-[10px] font-black text-rose-400 uppercase tracking-widest">{isRtl ? 'متأخر منذ' : 'Late by'}</p>
+                              <p className="text-sm font-black text-rose-600">{daysLate} {isRtl ? 'أيام' : 'Days'}</p>
+                           </div>
+                           <Badge variant="outline" className="bg-white border-rose-200 text-rose-500 text-[8px] font-black uppercase">OVERDUE</Badge>
+                        </div>
+                        
+                        <div className="text-start space-y-1">
+                           <h4 className="font-black text-xs text-slate-800 line-clamp-1">{mission.clientName}</h4>
+                           <p className="text-[9px] font-bold text-slate-400 flex items-center gap-1 uppercase">
+                              <CalendarX className="h-3 w-3" /> {format(parseISO(mission.start), 'dd/MM/yyyy')}
+                           </p>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-2 border-t border-rose-100">
+                           <div className="flex items-center gap-2">
+                              <Avatar className="h-6 w-6 rounded-lg ring-1 ring-white shadow-sm">
+                                 <AvatarFallback className="bg-rose-100 text-rose-600 text-[8px] font-black">{mission.engineerName.charAt(0)}</AvatarFallback>
+                              </Avatar>
+                              <span className="text-[9px] font-black text-slate-500 truncate max-w-[100px]">{mission.engineerName}</span>
+                           </div>
+                           <div className="h-7 w-7 rounded-lg bg-white flex items-center justify-center text-rose-400 group-hover:bg-rose-600 group-hover:text-white transition-all shadow-sm">
+                              <ArrowRight className={cn("h-3.5 w-3.5", isRtl && "rotate-180")} />
+                           </div>
+                        </div>
+                     </CardContent>
+                  </Card>
+                );
+              })}
+           </div>
+        </div>
+      )}
+
       <div className="flex flex-col items-center gap-6 print:hidden">
         <div className="flex items-center gap-6 w-full max-w-4xl justify-center">
            <Button 
