@@ -11,7 +11,8 @@ import {
   parse,
   isBefore,
   startOfDay,
-  differenceInDays
+  differenceInDays,
+  subMonths
 } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import { 
@@ -109,7 +110,8 @@ import { toast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
 // --- Helpers ---
-function getVisitColor(visitCount: number, status?: string, apptType?: string): string {
+function getVisitColor(visitCount: number, status?: string, apptType?: string, apptStatus?: string): string {
+  if (apptStatus === 'completed') return '#10b981'; // Emerald for completed
   if (apptType === 'busy_blocked') return '#f57c00'; 
   if (visitCount === 1) return '#facc15'; 
   if (visitCount > 1 && status !== 'contracted') return '#22c55e'; 
@@ -117,7 +119,8 @@ function getVisitColor(visitCount: number, status?: string, apptType?: string): 
   return '#9ca3af'; 
 }
 
-function cardGradient(color: string) {
+function cardGradient(color: string, isCompleted: boolean) {
+  if (isCompleted) return "bg-emerald-50/50 border-emerald-500/30 text-emerald-900 shadow-sm ring-1 ring-emerald-500/10";
   if (color === '#facc15') return "bg-yellow-50 border-yellow-200 text-yellow-900 shadow-sm";
   if (color === '#22c55e') return "bg-emerald-50 border-emerald-200 text-emerald-900 shadow-sm";
   if (color === '#3b82f6') return "bg-blue-50 border-blue-200 text-blue-900 shadow-sm";
@@ -141,7 +144,11 @@ function computeMeta(list: Appointment[], clients: Map<string, any>): Map<string
     const clientStatus = clients.get(cid)?.status || 'new';
     sorted.forEach((a, i) => {
       const vc = i + 1;
-      out.set(a.id!, { visitCount: vc, status: clientStatus, color: getVisitColor(vc, clientStatus, a.type) });
+      out.set(a.id!, { 
+        visitCount: vc, 
+        status: clientStatus, 
+        color: getVisitColor(vc, clientStatus, a.type, a.status) 
+      });
     });
   });
   return out;
@@ -176,9 +183,15 @@ export function ArchitecturalAppointmentsView() {
     });
   }, [currentDate]);
 
-  const apptsQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.appointments(companyId)), orderBy('start')) : null, 
-  [db, companyId]);
+  // --- محرك تنظيف المواعيد القديمة (Smart Archiving Logic) ---
+  // نقوم بجلب المواعيد من آخر 30 يوماً فقط للمكتملة، ولكن نجلب كافة المواعيد المعلقة (Scheduled) لضمان عدم ضياع المهام.
+  const apptsQuery = useMemo(() => {
+    if (!companyId || !db) return null;
+    return query(
+      collection(db, paths.appointments(companyId)), 
+      orderBy('start', 'asc')
+    );
+  }, [db, companyId]);
 
   const empsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active')) : null, 
@@ -220,6 +233,18 @@ export function ArchitecturalAppointmentsView() {
     }
   }, [db, companyId]);
 
+  // --- تصفية المواعيد القديمة المكتملة برمجياً لتخفيف العرض (Memory-level Cleanup) ---
+  const activeAndRecentAppointments = useMemo(() => {
+    const thirtyDaysAgo = subMonths(new Date(), 1);
+    return (rawAppointments || []).filter(a => {
+      // 1. نبقي المواعيد المعلقة مهما كان تاريخها (Overdue Protection)
+      if (a.status === 'scheduled') return true;
+      // 2. نبقي المواعيد المكتملة فقط إذا كانت خلال الـ 30 يوماً الماضية (Visibility Optimization)
+      const apptDate = parseISO(a.start);
+      return !isBefore(apptDate, thirtyDaysAgo);
+    });
+  }, [rawAppointments]);
+
   const archEngineers = useMemo(() => {
     const list = (allEmployees || []).filter(e => e.departmentName?.includes('معماري') || e.departmentName?.includes('Arch'));
     if (!isAdmin && globalUser?.employeeId) {
@@ -234,32 +259,29 @@ export function ArchitecturalAppointmentsView() {
     return m;
   }, [allClients]);
 
-  // --- كشف المهام المتأخرة (Overdue Monitor) ---
   const overdueMissions = useMemo(() => {
     const today = startOfDay(new Date());
-    let list = (rawAppointments || []).filter(a => 
+    let list = activeAndRecentAppointments.filter(a => 
       a.status === 'scheduled' && 
       isBefore(parseISO(a.start), today)
     );
 
-    // تصفية للموظف: يرى فقط مهامه المتأخرة
     if (!isAdmin && globalUser?.employeeId) {
       list = list.filter(a => a.engineerId === globalUser.employeeId);
     }
-    // الإدارة ترى الجميع
 
     return list.sort((a, b) => a.start.localeCompare(b.start));
-  }, [rawAppointments, isAdmin, globalUser?.employeeId]);
+  }, [activeAndRecentAppointments, isAdmin, globalUser?.employeeId]);
 
   const filteredAppointments = useMemo(() => {
-    let list = (rawAppointments || []).filter(a => a.status !== 'cancelled' && isSameDay(parseISO(a.start), currentDate));
+    let list = activeAndRecentAppointments.filter(a => a.status !== 'cancelled' && isSameDay(parseISO(a.start), currentDate));
     if (!isAdmin && globalUser?.employeeId) {
       list = list.filter(a => a.engineerId === globalUser.employeeId);
     }
     return list;
-  }, [rawAppointments, currentDate, isAdmin, globalUser?.employeeId]);
+  }, [activeAndRecentAppointments, currentDate, isAdmin, globalUser?.employeeId]);
 
-  const apptMeta = useMemo(() => computeMeta(rawAppointments || [], clientsMap), [rawAppointments, clientsMap]);
+  const apptMeta = useMemo(() => computeMeta(activeAndRecentAppointments, clientsMap), [activeAndRecentAppointments, clientsMap]);
 
   const stats = useMemo(() => {
     const res = { total: filteredAppointments.length, yellow: 0, green: 0, blue: 0 };
@@ -322,7 +344,6 @@ export function ArchitecturalAppointmentsView() {
   return (
     <div className="space-y-10 animate-in fade-in duration-700" dir={dir}>
       
-      {/* --- Overdue & Pending Closure Awareness Section --- */}
       {overdueMissions.length > 0 && (
         <div className="animate-in slide-in-from-top-4 duration-500">
            <div className="flex items-center gap-3 mb-4 px-2">
@@ -509,7 +530,7 @@ export function ArchitecturalAppointmentsView() {
           userId={user.uid}
           userName={user.displayName || user.email || 'User'}
           db={db}
-          rawAppointments={rawAppointments || []}
+          rawAppointments={activeAndRecentAppointments}
           settings={settings}
           onDelete={confirmDelete}
         />
@@ -655,6 +676,7 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
                         if (appt) {
                            const m = meta.get(appt.id);
                            const isBusy = appt.type === 'busy_blocked';
+                           const isCompleted = appt.status === 'completed';
                            const isStart = format(parseISO(appt.start), 'HH:mm') === slot;
 
                            return (
@@ -663,7 +685,7 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
                                   onClick={() => router.push(`/dashboard/appointments/${appt.id}`)}
                                   className={cn(
                                     "border-2 p-3 rounded-xl h-full shadow-lg relative group/card cursor-pointer transition-all hover:ring-4 hover:ring-primary/5", 
-                                    cardGradient(m?.color || '')
+                                    cardGradient(m?.color || '', isCompleted)
                                   )}
                                 >
                                    {isStart && (
@@ -697,9 +719,12 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
                                    )}
 
                                    <div className={cn("text-start", isRtl ? "pr-1 pl-5" : "pl-1 pr-5")}>
-                                      <p className="font-black text-[10px] leading-tight mb-0.5 truncate">
-                                        {isBusy ? (isRtl ? `[مشغول: ${appt.notes || '...'}]` : `[BUSY: ${appt.notes || '...'}]`) : appt.clientName}
-                                      </p>
+                                      <div className="flex items-center gap-1.5">
+                                         {isCompleted && <CheckCircle2 className="h-3 w-3 text-emerald-600 shrink-0" />}
+                                         <p className={cn("font-black text-[10px] leading-tight mb-0.5 truncate", isCompleted && "text-emerald-900")}>
+                                           {isBusy ? (isRtl ? `[مشغول: ${appt.notes || '...'}]` : `[BUSY: ${appt.notes || '...'}]`) : appt.clientName}
+                                         </p>
+                                      </div>
                                       {!isBusy && (
                                         <div className="flex items-center gap-1 text-[7px] font-black uppercase opacity-60">
                                            <MapPin className="h-2 w-2" /> {appt.governorateName || '---'}
@@ -918,28 +943,26 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
         <div className="flex-1 overflow-y-auto p-8 space-y-6 text-start scrollbar-hide bg-white">
            
-           {isEdit && (
-             <div className="grid grid-cols-2 gap-4 p-6 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] shadow-sm relative overflow-hidden animate-in zoom-in-95">
-                <div className="absolute top-0 right-0 p-4 opacity-5"><Clock className="h-20 w-20 text-primary" /></div>
-                <div className="space-y-2 relative z-10">
-                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'تاريخ الموعد' : 'Appointment Date'}</Label>
-                   <Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="h-11 rounded-xl bg-white border-2 border-slate-200 text-slate-900 font-black text-lg focus:ring-2 focus:ring-primary shadow-sm" />
-                </div>
-                <div className="space-y-2 relative z-10">
-                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'وقت البدء' : 'Start Time'}</Label>
-                   <Select value={formData.time} onValueChange={v => setFormData({...formData, time: v})}>
-                      <SelectTrigger className="h-11 rounded-xl bg-white border-2 border-slate-200 text-slate-900 font-black text-lg focus:ring-2 focus:ring-primary shadow-sm">
-                         <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-xl border shadow-2xl z-[155]">
-                        {availableSlots.map(slot => (
-                           <SelectItem key={slot} value={slot} className="font-black py-3 border-b last:border-0 border-slate-50">{slot}</SelectItem>
-                        ))}
-                      </SelectContent>
-                   </Select>
-                </div>
-             </div>
-           )}
+           <div className="grid grid-cols-2 gap-4 p-6 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] shadow-sm relative overflow-hidden animate-in zoom-in-95">
+              <div className="absolute top-0 right-0 p-4 opacity-5"><Clock className="h-20 w-20 text-primary" /></div>
+              <div className="space-y-2 relative z-10">
+                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'تاريخ الموعد' : 'Appointment Date'}</Label>
+                 <Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="h-11 rounded-xl bg-white border-2 border-slate-200 text-slate-900 font-black text-lg focus:ring-2 focus:ring-primary shadow-sm" />
+              </div>
+              <div className="space-y-2 relative z-10">
+                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'وقت البدء' : 'Start Time'}</Label>
+                 <Select value={formData.time} onValueChange={v => setFormData({...formData, time: v})}>
+                    <SelectTrigger className="h-11 rounded-xl bg-white border-2 border-slate-200 text-slate-900 font-black text-lg focus:ring-2 focus:ring-primary shadow-sm">
+                       <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border shadow-2xl z-[155]">
+                      {availableSlots.map(slot => (
+                         <SelectItem key={slot} value={slot} className="font-black py-3 border-b last:border-0 border-slate-50">{slot}</SelectItem>
+                      ))}
+                    </SelectContent>
+                 </Select>
+              </div>
+           </div>
 
            {!isEdit && (
              <div className="grid grid-cols-2 gap-4">
