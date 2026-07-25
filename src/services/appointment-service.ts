@@ -76,18 +76,19 @@ export class AppointmentService {
 
   /**
    * حذف الموعد نهائياً من قاعدة البيانات (حذف سيادي)
-   * تم تحسينه لضمان الدقة والسرعة
+   * تم تحسينه ليكون متوافقاً مع وعود واجهة المستخدم.
    */
   async deleteAppointment(id: string): Promise<void> {
     if (!id) return;
     const ref = doc(this.db, paths.appointments(this.companyId), id);
     
-    // No await here per performance guidelines, but returns promise for view logic
-    deleteDoc(ref).catch(async (serverError) => {
+    // نرجع الوعد لضمان استجابة الواجهة
+    return deleteDoc(ref).catch(async (serverError) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: ref.path,
         operation: 'delete'
       }));
+      throw serverError;
     });
   }
 }

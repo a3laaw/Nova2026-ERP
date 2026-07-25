@@ -33,9 +33,9 @@ export default function DashboardLayout({
   }, [user, authLoading, router]);
 
   /**
-   * Sovereign Absolute Thaw Protocol V4: 
+   * Sovereign Absolute Thaw Protocol V5: 
    * Aggressively forces the removal of any CSS locks (pointer-events/overflow)
-   * This is critical when complex Dropdowns and Dialogs are combined.
+   * This ensures the UI is ALWAYS clickable after closing any modal or dropdown.
    */
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -54,15 +54,20 @@ export default function DashboardLayout({
            body.removeAttribute('data-scroll-locked');
         }
 
-        // Clean up lingering focus guards
+        // Clean up lingering focus guards from Radix UI
         const focusGuards = document.querySelectorAll('[data-radix-focus-guard]');
         focusGuards.forEach(el => el.remove());
       };
 
       thaw();
-      const interval = setInterval(thaw, 150); // High-frequency check (150ms)
+      // Listen to all clicks to trigger a thaw just in case
+      window.addEventListener('click', thaw);
+      const interval = setInterval(thaw, 150); // High-frequency check
       
-      return () => clearInterval(interval);
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener('click', thaw);
+      };
     }
   }, [pathname]);
 

@@ -377,7 +377,6 @@ export function ArchitecturalAppointmentsView() {
                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'عملاء متعاقدون' : 'Contracted'}</p>
                <h3 className="text-2xl font-black text-blue-600" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.blue.toLocaleString('en-US')}</h3>
             </CardContent>
-         </Card>
       </div>
 
       <div className="space-y-12 pb-20">
@@ -474,9 +473,10 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
         if (typeof document !== 'undefined') {
            document.body.style.pointerEvents = 'auto';
            document.body.style.overflow = 'auto';
+           document.body.removeAttribute('data-scroll-locked');
         }
      } catch (e) {
-        toast({ variant: "destructive", title: "Error Deleting" });
+        toast({ variant: "destructive", title: isRtl ? "خطأ في الحذف" : "Error Deleting" });
      }
   };
 
@@ -552,14 +552,14 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                                          </DropdownMenuTrigger>
                                          <DropdownMenuPortal>
                                             <DropdownMenuContent align={isRtl ? "start" : "end"} className="rounded-xl border-2 shadow-3xl bg-white min-w-[150px] z-[150]">
-                                               <DropdownMenuItem onClick={() => router.push(`/dashboard/appointments/${appt.id}`)} className="font-bold gap-2 py-2 text-[10px]">
+                                               <DropdownMenuItem onSelect={() => router.push(`/dashboard/appointments/${appt.id}`)} className="font-bold gap-2 py-2 text-[10px] cursor-pointer">
                                                   <MessageSquare className="h-3 w-3 text-primary" /> {isRtl ? 'غرفة العمليات' : 'War Room'}
                                                </DropdownMenuItem>
-                                               <DropdownMenuItem onClick={() => onAction('edit', eng, slot, appt)} className="font-bold gap-2 py-2 text-[10px]">
+                                               <DropdownMenuItem onSelect={() => onAction('edit', eng, slot, appt)} className="font-bold gap-2 py-2 text-[10px] cursor-pointer">
                                                   <Edit3 className="h-3 w-3 text-blue-500" /> {isRtl ? 'تعديل البيانات' : 'Edit Details'}
                                                </DropdownMenuItem>
                                                <DropdownMenuSeparator />
-                                               <DropdownMenuItem onClick={() => handleDeleteAppt(appt.id!)} className="font-bold gap-2 py-2 text-[10px] text-rose-600">
+                                               <DropdownMenuItem onSelect={() => handleDeleteAppt(appt.id!)} className="font-bold gap-2 py-2 text-[10px] text-rose-600 cursor-pointer hover:bg-rose-50">
                                                   <Trash2 className="h-3 w-3" /> {isRtl ? 'حذف الموعد نهائياً' : 'Delete Permanent'}
                                                </DropdownMenuItem>
                                             </DropdownMenuContent>
@@ -778,7 +778,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
         <div className="flex-1 overflow-y-auto p-8 space-y-6 text-start scrollbar-hide">
            
-           {/* التاريخ والوقت يظهران فقط في وضع التعديل لإعادة الجدولة */}
            {isEdit && (
              <div className="grid grid-cols-2 gap-4 p-6 bg-slate-900 text-white rounded-[2rem] shadow-2xl relative overflow-hidden ring-4 ring-slate-100 animate-in zoom-in-95">
                 <div className="absolute top-0 right-0 p-4 opacity-10"><Clock className="h-20 w-20" /></div>
@@ -861,7 +860,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                       {formData.clientId && (
                         <div className="space-y-4 p-5 bg-slate-50/50 rounded-2xl border-2 border-slate-100 animate-in slide-in-from-top-2">
                            <div className="space-y-1.5">
-                              <Label className="text-[9px] font-black uppercase text-primary flex items-center gap-1">
+                              <Label className="text-[9px] font-black uppercase text-primary flex items-gap-1">
                                  <Workflow className="h-3 w-3" /> {isRtl ? 'ربط بالمسار الفني (المشروع)' : 'Link to Technical Path'}
                               </Label>
                               <Select value={formData.transactionId} onValueChange={v => {
