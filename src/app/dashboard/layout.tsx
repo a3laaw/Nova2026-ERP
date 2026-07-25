@@ -33,47 +33,41 @@ export default function DashboardLayout({
   }, [user, authLoading, router]);
 
   /**
-   * Sovereign Absolute Thaw Protocol V6: 
-   * Aggressively forces the removal of any CSS locks (pointer-events/overflow)
-   * Ensures the UI is ALWAYS clickable after closing any modal, dropdown, or confirmed action.
+   * Sovereign Absolute Thaw Protocol V7: 
+   * عدواني جداً في فك أي قفل للنقر يتركه الـ Dropdown أو الـ Dialog.
+   * يضمن استجابة زر الحذف وكافة الأزرار الأخرى.
    */
   useEffect(() => {
     if (typeof document !== 'undefined') {
       const thaw = () => {
         const body = document.body;
         
-        // Force unlock pointer events
-        if (body.style.pointerEvents !== 'auto') {
+        // 1. فك قفل النقر القسري
+        if (body.style.pointerEvents === 'none') {
           body.style.pointerEvents = 'auto';
         }
         
-        // Force unlock overflow and remove scroll locks
+        // 2. فك قفل التمرير (Scroll Lock)
         if (body.style.overflow === 'hidden' || body.getAttribute('data-scroll-locked') !== null) {
            body.style.overflow = 'auto';
            body.style.paddingRight = '0px';
            body.removeAttribute('data-scroll-locked');
         }
 
-        // Clean up lingering focus guards from Radix UI
+        // 3. تنظيف بقايا الراديكس (Radix Focus Guards)
         const focusGuards = document.querySelectorAll('[data-radix-focus-guard]');
         focusGuards.forEach(el => el.remove());
-
-        // Remove any lingering overlays that might be blocking interaction
-        const overlays = document.querySelectorAll('[data-state="open"]');
-        if (overlays.length === 0) {
-            const possibleStuckOverlays = document.querySelectorAll('.fixed.inset-0.z-50');
-            // This is risky but effective if the UI is frozen
-        }
       };
 
       thaw();
-      // Listen to all clicks to trigger a thaw just in case
-      window.addEventListener('click', thaw);
-      const interval = setInterval(thaw, 150); // Aggressive check every 150ms
+      
+      // التنفيذ عند كل نقرة لضمان الإذابة الفورية
+      window.addEventListener('mousedown', thaw);
+      const interval = setInterval(thaw, 200); 
       
       return () => {
         clearInterval(interval);
-        window.removeEventListener('click', thaw);
+        window.removeEventListener('mousedown', thaw);
       };
     }
   }, [pathname]);

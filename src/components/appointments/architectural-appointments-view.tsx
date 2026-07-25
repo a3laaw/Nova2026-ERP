@@ -301,6 +301,28 @@ export function ArchitecturalAppointmentsView() {
     setDialogOpen(true);
   };
 
+  const forceThaw = () => {
+    if (typeof document !== 'undefined') {
+       document.body.style.pointerEvents = 'auto';
+       document.body.style.overflow = 'auto';
+       document.body.removeAttribute('data-scroll-locked');
+    }
+  };
+
+  const handleDeleteAppt = async (id: string) => {
+     forceThaw();
+     if (!confirm(isRtl ? "هل أنت متأكد من حذف الموعد نهائياً؟" : "Confirm permanent deletion?")) return;
+     
+     const service = new AppointmentService(db!, companyId!);
+     try {
+        await service.deleteAppointment(id);
+        toast({ title: isRtl ? "تم حذف الموعد" : "Appointment Deleted" });
+        forceThaw();
+     } catch (e) {
+        toast({ variant: "destructive", title: isRtl ? "خطأ في الحذف" : "Error Deleting" });
+     }
+  };
+
   if (!mounted || apptsLoading || empsLoading || clientsLoading || !settings) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
   return (
@@ -388,6 +410,7 @@ export function ArchitecturalAppointmentsView() {
            grid={grid} 
            meta={apptMeta} 
            onAction={handleAction}
+           onDelete={handleDeleteAppt}
            isRtl={isRtl}
            clients={clientsMap}
            isAdmin={isAdmin}
@@ -408,6 +431,7 @@ export function ArchitecturalAppointmentsView() {
              grid={grid} 
              meta={apptMeta} 
              onAction={handleAction}
+             onDelete={handleDeleteAppt}
              isRtl={isRtl}
              clients={clientsMap}
              isAdmin={isAdmin}
@@ -432,7 +456,7 @@ export function ArchitecturalAppointmentsView() {
           governorates={governorates || []}
           companyId={companyId!}
           userId={user.uid}
-          userName={user.displayName || 'User'}
+          userName={user.displayName || user.email || 'Admin'}
           db={db}
           rawAppointments={rawAppointments || []}
         />
@@ -441,7 +465,7 @@ export function ArchitecturalAppointmentsView() {
   );
 }
 
-function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, clients, isAdmin, currentEngineerId, leaves, permissions, absences, dateStr, db, companyId, router }: any) {
+function GridSection({ title, slots, engineers, grid, meta, onAction, onDelete, isRtl, clients, isAdmin, currentEngineerId, leaves, permissions, absences, dateStr, db, companyId, router }: any) {
   if (slots.length === 0) return null;
   
   const visibleEngineers = isAdmin ? engineers : engineers.filter((e: any) => e.id === currentEngineerId);
@@ -463,29 +487,6 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
      if (perm) return { type: 'permission', label: isRtl ? 'استئذان' : 'Permission' };
 
      return null;
-  };
-
-  const handleDeleteAppt = async (id: string) => {
-     // تحرير فوري قبل الحوار لمنع التجمد
-     if (typeof document !== 'undefined') {
-        document.body.style.pointerEvents = 'auto';
-     }
-
-     if (!confirm(isRtl ? "هل أنت متأكد من حذف الموعد نهائياً؟" : "Confirm permanent deletion?")) return;
-     
-     const service = new AppointmentService(db, companyId);
-     try {
-        await service.deleteAppointment(id);
-        toast({ title: isRtl ? "تم حذف الموعد" : "Appointment Deleted" });
-        // Force UI Thaw after deletion
-        if (typeof document !== 'undefined') {
-           document.body.style.pointerEvents = 'auto';
-           document.body.style.overflow = 'auto';
-           document.body.removeAttribute('data-scroll-locked');
-        }
-     } catch (e) {
-        toast({ variant: "destructive", title: isRtl ? "خطأ في الحذف" : "Error Deleting" });
-     }
   };
 
   return (
@@ -567,7 +568,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
                                                   <Edit3 className="h-3 w-3 text-blue-500" /> {isRtl ? 'تعديل البيانات' : 'Edit Details'}
                                                </DropdownMenuItem>
                                                <DropdownMenuSeparator />
-                                               <DropdownMenuItem onSelect={() => handleDeleteAppt(appt.id!)} className="font-bold gap-2 py-2 text-[10px] text-rose-600 cursor-pointer hover:bg-rose-50">
+                                               <DropdownMenuItem onSelect={() => onDelete(appt.id!)} className="font-bold gap-2 py-2 text-[10px] text-rose-600 cursor-pointer hover:bg-rose-50">
                                                   <Trash2 className="h-3 w-3" /> {isRtl ? 'حذف الموعد نهائياً' : 'Delete Permanent'}
                                                </DropdownMenuItem>
                                             </DropdownMenuContent>
@@ -774,7 +775,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
   const isEdit = data?.mode === 'edit';
 
   return (
-    <Dialog open={isOpen} onOpenChange={(v) => { if(!v) { onClose(); forceThaw(); } }}>
+    <Dialog open={isOpen} onOpenChange={(v) => { if(!v) onClose(); }}>
       <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg flex flex-col h-fit max-h-[90vh] z-[101]" dir={dir}>
         
         <div className="bg-slate-50 p-6 text-slate-900 text-start border-b shrink-0 relative pr-12 pl-12">
@@ -912,7 +913,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         </div>
 
         <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-3 shrink-0 shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.05)]">
-           <Button variant="outline" onClick={() => { onClose(); forceThaw(); }} className="flex-1 h-12 rounded-xl font-bold border-2 bg-white">
+           <Button variant="outline" onClick={onClose} className="flex-1 h-12 rounded-xl font-bold border-2 bg-white">
               {isRtl ? 'إلغاء' : 'Cancel'}
            </Button>
            <Button onClick={handleSave} disabled={loading || (!isBusyBlock && !formData.clientId)} className="flex-[2] h-12 rounded-xl font-black gap-2">

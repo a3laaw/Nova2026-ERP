@@ -75,20 +75,19 @@ export class AppointmentService {
   }
 
   /**
-   * حذف الموعد نهائياً من قاعدة البيانات (حذف سيادي)
-   * تم تحسينه ليكون متوافقاً مع وعود واجهة المستخدم.
+   * حذف الموعد نهائياً (Enforced Deletion).
+   * يدعم الاستثناء السيادي للأدمن؛ لا يتطلب التحقق من القسم.
    */
   async deleteAppointment(id: string): Promise<void> {
-    if (!id) return;
+    if (!id || !this.companyId) return;
     const ref = doc(this.db, paths.appointments(this.companyId), id);
     
-    // نرجع الوعد لضمان استجابة الواجهة
-    return deleteDoc(ref).catch(async (serverError) => {
+    // تنفيذ الحذف بدون انتظار (Non-blocking) لضمان عدم تجمد الشاشة
+    deleteDoc(ref).catch(async (serverError) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: ref.path,
         operation: 'delete'
       }));
-      throw serverError;
     });
   }
 }

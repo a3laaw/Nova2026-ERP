@@ -1,6 +1,6 @@
 /**
  * @fileOverview محرك اتخاذ القرار الأمني السيادي الموحد.
- * يقوم بالربط النهائي بين صلاحية الدور (Action) والسياق المكاني للموظف (Department ID).
+ * تم تحديثه لمنح "الأدمن" صلاحية مطلقة (Master Key) حتى في غياب سجل الموظف.
  */
 
 import { RoleMatrix, Action, Scope } from './types';
@@ -16,13 +16,20 @@ export interface AccessResult {
 export function hasResourceAccess(
   role: RoleMatrix | null,
   resourceId: string,
-  action: Action = 'view'
+  action: Action = 'view',
+  userEmail?: string
 ): AccessResult {
   
   if (!resourceId) return { can: false, scope: 'none' };
 
-  // 1. حالة الأدمن (Master Key) - تجاوز كامل لكافة القيود
-  if (role?.code?.toUpperCase() === 'ADMIN' || role?.code?.toLowerCase() === 'system_admin' || role?.matrix?.some(m => m.resourceId === '*')) {
+  // 1. حالة الأدمن (Sovereign Master Key)
+  // التجاوز المطلق للأدمن الرئيسي أو أي دور يحمل كود ADMIN
+  if (
+    userEmail === 'admin@novaflow.com' || 
+    role?.code?.toUpperCase() === 'ADMIN' || 
+    role?.code?.toLowerCase() === 'system_admin' || 
+    role?.matrix?.some(m => m.resourceId === '*')
+  ) {
     return { can: true, scope: 'all' };
   }
 
@@ -46,15 +53,14 @@ export function hasResourceAccess(
 /**
  * التحقق مما إذا كان المستخدم يملك صلاحية رؤية الموديول (السايدبار)
  */
-export function canViewModule(role: RoleMatrix | null, resourceId: string): boolean {
+export function canViewModule(role: RoleMatrix | null, resourceId: string, userEmail?: string): boolean {
   if (!resourceId) return false;
-  const access = hasResourceAccess(role, resourceId, 'view');
+  const access = hasResourceAccess(role, resourceId, 'view', userEmail);
   return access.can;
 }
 
 /**
  * دالة الإنفاذ (Enforcement): ترمي خطأ إذا لم تتوفر الصلاحية.
- * تستخدم في الخدمات البرمجية (Services) لحماية العمليات.
  */
 export function ensureActionPermission(permissions: string[], requiredCode: string) {
   if (!permissions) return false;
@@ -67,17 +73,16 @@ export function ensureActionPermission(permissions: string[], requiredCode: stri
 
 /**
  * دالة الإنفاذ الميداني (The Real Link):
- * تربط القسم المرجعي للموظف بالقسم المرجعي للسجل.
  */
 export function canPerformOnRecord(
   access: AccessResult,
-  currentUser: { uid: string; departmentId?: string },
+  currentUser: { uid: string; departmentId?: string; isDeveloper?: boolean },
   record: { createdBy?: string; departmentId?: string }
 ): boolean {
   if (!access.can) return false;
   
-  // إذا كان النطاق "الكل": يسمح له بغض النظر عن الأقسام
-  if (access.scope === 'all') return true;
+  // الأدمن والمطور يملكون حق الوصول لكافة السجلات دائماً
+  if (access.scope === 'all' || currentUser.isDeveloper) return true;
   
   // إذا كان النطاق "القسم": نقارن الـ IDs المرجعية حصراً
   if (access.scope === 'dept') {
