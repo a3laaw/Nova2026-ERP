@@ -10,7 +10,7 @@ import { DashboardSidebar } from "@/components/layout/dashboard-sidebar"
 import { UserNav } from "@/components/layout/user-nav"
 import { NotificationBell } from "@/components/layout/notification-bell"
 import { BreadcrumbNav } from "@/components/layout/breadcrumb-nav"
-import { Loader2, Languages } from 'lucide-react';
+import { Loader2, Languages, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -109,6 +109,18 @@ export default function DashboardLayout({
                 <Languages className="h-4 w-4 text-[#FFA000]" />
                 {t('switchLang')}
               </Button>
+
+              {/* زر المواعيد بجوار التنبيهات */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => router.push('/dashboard/appointments')}
+                className="text-muted-foreground hover:text-primary transition-colors h-10 w-10 relative"
+                title={isRtl ? 'المواعيد' : 'Appointments'}
+              >
+                <CalendarDays className="h-5 w-5" />
+              </Button>
+
               <NotificationBell />
               <div className="h-8 w-[1.5px] bg-slate-100 rounded-full" />
               <UserNav />
