@@ -111,7 +111,7 @@ import { useRouter } from 'next/navigation';
 
 // --- Helpers ---
 function getVisitColor(visitCount: number, status?: string, apptType?: string, apptStatus?: string): string {
-  if (apptStatus === 'completed') return '#10b981'; // Emerald for completed
+  if (apptStatus === 'completed') return '#10b981'; 
   if (apptType === 'busy_blocked') return '#f57c00'; 
   if (visitCount === 1) return '#facc15'; 
   if (visitCount > 1 && status !== 'contracted') return '#22c55e'; 
@@ -178,8 +178,8 @@ export function ArchitecturalAppointmentsView() {
 
   const visibleDates = useMemo(() => {
     return eachDayOfInterval({
-      start: subDays(currentDate, 2),
-      end: addDays(currentDate, 2)
+      start: subDays(currentDate, 3),
+      end: addDays(currentDate, 3)
     });
   }, [currentDate]);
 
@@ -410,10 +410,9 @@ export function ArchitecturalAppointmentsView() {
               <ChevronLeft className={cn("h-5 w-5", !isRtl && "rotate-180")} />
            </Button>
 
-           <div className="flex gap-4 overflow-hidden py-2 px-2">
+           <div className="flex gap-4 overflow-x-auto py-2 px-2 scrollbar-hide">
               {visibleDates.map((date) => {
                 const isSelected = isSameDay(date, currentDate);
-                if (!isSelected) return null;
                 
                 return (
                   <Card 
@@ -423,7 +422,7 @@ export function ArchitecturalAppointmentsView() {
                       "min-w-[80px] h-20 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 rounded-xl border-2 shadow-sm",
                       isSelected 
                         ? "bg-primary border-primary text-white scale-105 shadow-orange-500/20" 
-                        : "bg-white border-transparent text-slate-400 hover:border-slate-100 hover:bg-slate-50 print:hidden"
+                        : "bg-white border-transparent text-slate-400 hover:border-slate-100 hover:bg-slate-50"
                     )}
                   >
                      <span className={cn("text-[9px] font-black uppercase mb-0.5", isSelected ? "text-white/80" : "text-slate-400")}>
@@ -448,7 +447,6 @@ export function ArchitecturalAppointmentsView() {
         </div>
       </div>
 
-      {/* Stats row - restored for print but compacted */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 print:gap-1">
          <Card className="border-0 shadow-lg rounded-xl bg-white border-b-4 border-b-slate-900 print:shadow-none print:border-b-2 print:p-1">
             <CardContent className="p-4 print:p-2 text-start">
@@ -476,7 +474,7 @@ export function ArchitecturalAppointmentsView() {
          </Card>
       </div>
 
-      <div className="space-y-8 pb-20 print:pb-0 print:space-y-4">
+      <div className="space-y-12 pb-20 print:pb-0 print:space-y-4">
          <GridSection 
            title={isRtl ? "الفترة الصباحية ☀️" : "Morning Session"} 
            slots={timeSlots.morning} 
@@ -799,7 +797,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
   const targetEngineerId = data?.engineer?.id || data?.appointment?.engineerId;
 
-  // فحص العطلة (الجمعة أو الرسمية)
   const isSelectedDateHoliday = useMemo(() => {
      if (!settings || !formData.date) return false;
      return WorkHoursEngine.isHoliday(parseISO(formData.date), settings);
