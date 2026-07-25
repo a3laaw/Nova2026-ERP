@@ -25,6 +25,7 @@ import { Client } from '@/types/client';
 import { Appointment } from '@/types/appointment';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
 
 /**
