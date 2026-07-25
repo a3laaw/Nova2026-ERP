@@ -123,7 +123,7 @@ function cardGradient(color: string) {
 
 type ApptMeta = { visitCount: number; status: string; color: string };
 
-function computeMeta(list: Appointment[], clients: Map<string, Client>): Map<string, ApptMeta> {
+function computeMeta(list: Appointment[], clients: Map<string, any>): Map<string, ApptMeta> {
   const byClient = new Map<string, Appointment[]>();
   list.forEach(a => {
     if (!a.clientId || !a.id) return;
@@ -202,7 +202,7 @@ export function ArchitecturalAppointmentsView() {
 
   const { data: rawAppointments, loading: apptsLoading } = useCollection<Appointment>(apptsQuery);
   const { data: allEmployees, loading: empsLoading } = useCollection<Employee>(empsQuery);
-  const { data: allClients, loading: clientsLoading } = useCollection<Client>(clientsQuery);
+  const { data: allClients, loading: clientsLoading } = useCollection<any>(clientsQuery);
   const { data: governorates } = useCollection<Governorate>(govsQuery);
   
   const { data: approvedLeaves } = useCollection<LeaveRequest>(leavesQuery);
@@ -225,7 +225,7 @@ export function ArchitecturalAppointmentsView() {
   }, [allEmployees, isAdmin, globalUser]);
 
   const clientsMap = useMemo(() => {
-    const m = new Map<string, Client>();
+    const m = new Map<string, any>();
     (allClients || []).forEach(c => { if (c.id) m.set(c.id, c); });
     return m;
   }, [allClients]);
@@ -320,7 +320,7 @@ export function ArchitecturalAppointmentsView() {
                     key={date.toISOString()}
                     onClick={() => setCurrentDate(date)}
                     className={cn(
-                      "min-w-[80px] h-20 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 rounded-[1.25rem] border-2 shadow-sm",
+                      "min-w-[80px] h-20 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 rounded-xl border-2 shadow-sm",
                       isSelected 
                         ? "bg-primary border-primary text-white scale-105 shadow-orange-500/20" 
                         : "bg-white border-transparent text-slate-400 hover:border-slate-100 hover:bg-slate-50"
@@ -422,20 +422,22 @@ export function ArchitecturalAppointmentsView() {
          )}
       </div>
 
-      <AppointmentManagerDialog 
-        isOpen={dialogOpen} 
-        onClose={() => { setDialogOpen(false); forceThaw(); }} 
-        data={dialogData} 
-        clients={allClients || []}
-        governorates={governorates || []}
-        companyId={companyId!}
-        userId={user.uid}
-        userName={globalUser?.username || user.displayName || user.email || 'Admin'}
-        db={db}
-        rawAppointments={rawAppointments || []}
-        settings={settings}
-        onDelete={confirmDelete}
-      />
+      {user && (
+        <AppointmentManagerDialog 
+          isOpen={dialogOpen} 
+          onClose={() => { setDialogOpen(false); forceThaw(); }} 
+          data={dialogData} 
+          clients={allClients || []}
+          governorates={governorates || []}
+          companyId={companyId!}
+          userId={user.uid}
+          userName={user.displayName || user.email || 'User'}
+          db={db}
+          rawAppointments={rawAppointments || []}
+          settings={settings}
+          onDelete={confirmDelete}
+        />
+      )}
 
       <AlertDialog open={!!deletingId} onOpenChange={(v) => { if(!v) setDeletingId(null); forceThaw(); }}>
          <AlertDialogContent className="rounded-xl p-10 border-0 shadow-3xl bg-white z-[200]" dir={dir}>
@@ -491,7 +493,7 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
           <div className="h-[1.5px] flex-1 bg-slate-200" />
        </div>
 
-       <div className="overflow-x-auto rounded-[1.5rem] shadow-xl border-4 border-white bg-white ring-1 ring-black/5">
+       <div className="overflow-x-auto rounded-xl shadow-xl border-4 border-white bg-white ring-1 ring-black/5">
           <table className="w-full border-collapse">
              <thead>
                 <tr className="bg-slate-100/80">
@@ -700,20 +702,16 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     return list;
   }, [clients, targetEngineerId]);
 
-  // توليد قائمة أوقات البدء المتاحة بناءً على الجدول الزمني لليوم
   const availableSlots = useMemo(() => {
     if (!settings || !formData.date) return [];
     const res = WorkHoursEngine.buildDaySlots(parseISO(formData.date), settings, 'architectural');
     return [...res.morningSlots, ...res.eveningSlots];
   }, [settings, formData.date]);
 
-  // توليد قائمة أوقات الانتهاء المتاحة بناءً على الجدول الزمني لليوم
   const availableEndTimes = useMemo(() => {
      if (!settings || !formData.date || !formData.time) return [];
      const res = WorkHoursEngine.buildDaySlots(parseISO(formData.date), settings, 'architectural');
      const allSlots = [...res.morningSlots, ...res.eveningSlots];
-     
-     // نأخذ الأوقات التي تأتي حصراً بعد وقت البداية
      return allSlots.filter(s => s > formData.time);
   }, [settings, formData.date, formData.time]);
 
@@ -836,7 +834,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
       <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg flex flex-col h-fit max-h-[90vh] z-[101]" dir={dir}>
         
         <div className="bg-slate-50 p-6 text-slate-900 text-start border-b shrink-0 relative">
-           <DialogTitle className="text-lg font-black font-headline truncate flex items-center gap-3">
+           <DialogTitle className="text-lg font-black font-headline truncate flex items-center gap-3 text-slate-900">
               {isEdit ? <Edit3 className="h-5 w-5 text-primary" /> : <PlusCircle className="h-5 w-5 text-primary" />}
               {isEdit ? (isRtl ? 'تعديل بيانات الموعد' : 'Edit Appointment') : (isRtl ? 'حجز موعد جديد' : 'New Appointment')}
            </DialogTitle>
@@ -845,16 +843,16 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         <div className="flex-1 overflow-y-auto p-8 space-y-6 text-start scrollbar-hide">
            
            {isEdit && (
-             <div className="grid grid-cols-2 gap-4 p-6 bg-slate-900 text-white rounded-[2rem] shadow-2xl relative overflow-hidden ring-4 ring-slate-100 animate-in zoom-in-95">
-                <div className="absolute top-0 right-0 p-4 opacity-10"><Clock className="h-20 w-20" /></div>
+             <div className="grid grid-cols-2 gap-4 p-6 bg-primary/5 border-2 border-primary/20 rounded-[1.5rem] shadow-sm relative overflow-hidden animate-in zoom-in-95">
+                <div className="absolute top-0 right-0 p-4 opacity-5"><Clock className="h-20 w-20 text-primary" /></div>
                 <div className="space-y-2 relative z-10">
                    <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'تاريخ الموعد' : 'Appointment Date'}</Label>
-                   <Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="h-11 rounded-xl bg-white/10 border-0 text-white font-black text-lg focus:ring-2 focus:ring-primary" />
+                   <Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="h-11 rounded-xl bg-white border-2 border-primary/10 text-slate-900 font-black text-lg focus:ring-2 focus:ring-primary shadow-sm" />
                 </div>
                 <div className="space-y-2 relative z-10">
                    <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'وقت البدء' : 'Start Time'}</Label>
                    <Select value={formData.time} onValueChange={v => setFormData({...formData, time: v})}>
-                      <SelectTrigger className="h-11 rounded-xl bg-white/10 border-0 text-white font-black text-lg focus:ring-2 focus:ring-primary">
+                      <SelectTrigger className="h-11 rounded-xl bg-white border-2 border-primary/10 text-slate-900 font-black text-lg focus:ring-2 focus:ring-primary shadow-sm">
                          <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl border shadow-2xl z-[155]">
@@ -878,36 +876,36 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                 </div>
                 <div className={cn(
                   "flex items-center justify-between p-3 rounded-xl border-2 transition-all",
-                  isBusyBlock ? "bg-slate-900 text-white border-primary" : "bg-white border-slate-100"
+                  isBusyBlock ? "bg-primary text-white border-primary" : "bg-white border-slate-100"
                 )}>
-                   <Label className="text-[10px] font-black text-primary uppercase">Tagg/Freeze</Label>
+                   <Label className="text-[10px] font-black text-white uppercase">Tagg/Freeze</Label>
                    <Switch checked={isBusyBlock} onCheckedChange={v => { setIsBusyBlock(v); if(v) setIsNewClient(false); }} className="scale-75" />
                 </div>
              </div>
            )}
 
            {isBusyBlock && (
-              <div className="p-6 bg-slate-900 text-white rounded-[2rem] space-y-6 animate-in slide-in-from-top-4 duration-500 shadow-2xl relative overflow-hidden">
-                 <div className="absolute top-0 right-0 p-4 opacity-10"><Ban className="h-20 w-20" /></div>
-                 <div className="flex items-center gap-3 border-b border-white/10 pb-4 relative z-10">
-                    <ShieldCheck className="h-5 w-5 text-primary" />
-                    <h5 className="font-black text-sm uppercase tracking-widest">{isRtl ? 'حظر / تجميد وقت المهندس' : 'Sovereign Time Freeze'}</h5>
+              <div className="p-6 bg-white border-2 border-dashed border-primary/30 rounded-[1.5rem] space-y-6 animate-in slide-in-from-top-4 duration-500 shadow-sm relative overflow-hidden">
+                 <div className="absolute top-0 right-0 p-4 opacity-5"><Ban className="h-20 w-20 text-primary" /></div>
+                 <div className="flex items-center gap-3 border-b border-primary/10 pb-4 relative z-10">
+                    <div className="p-2 bg-primary/10 rounded-lg"><ShieldCheck className="h-5 w-5 text-primary" /></div>
+                    <h5 className="font-black text-sm uppercase tracking-widest text-slate-900">{isRtl ? 'حظر / تجميد وقت المهندس' : 'Time Freeze'}</h5>
                  </div>
                  
                  <div className="space-y-4 relative z-10">
                     <div className="space-y-2">
-                       <Label className="text-[10px] font-black text-primary uppercase tracking-widest">{isRtl ? 'سبب الانشغال / المهمة' : 'Freeze Reason / Task'}</Label>
+                       <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'سبب الانشغال / المهمة' : 'Freeze Reason / Task'}</Label>
                        <Input 
                          value={formData.notes} 
                          onChange={e => setFormData({...formData, notes: e.target.value})} 
-                         className="h-12 rounded-xl bg-white/10 border-0 text-white font-bold" 
+                         className="h-12 rounded-xl bg-slate-50 border-2 border-slate-100 text-slate-900 font-bold" 
                          placeholder={isRtl ? "مثلاً: اجتماع داخلي، معاينة طارئة..." : "e.g. Internal Meeting..."}
                        />
                     </div>
                     <div className="space-y-2">
-                       <Label className="text-[10px] font-black text-primary uppercase tracking-widest">{isRtl ? 'وقت الانتهاء المخطط' : 'Planned End Time'}</Label>
+                       <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'وقت الانتهاء المخطط' : 'Planned End Time'}</Label>
                        <Select value={formData.endTime} onValueChange={v => setFormData({...formData, endTime: v})}>
-                          <SelectTrigger className="h-12 rounded-xl bg-white/10 border-0 text-white font-black text-lg">
+                          <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-2 border-slate-100 text-slate-900 font-black text-lg">
                              <SelectValue placeholder={isRtl ? "تحديد وقت الانتهاء..." : "Select End Time..."} />
                           </SelectTrigger>
                           <SelectContent className="rounded-xl border shadow-2xl z-[155]">
