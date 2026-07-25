@@ -46,6 +46,7 @@ interface Props {
   technicalStageId?: string | null;
   activeTabOverride?: 'active' | 'timeline' | 'chat_archive' | 'time_archive';
   appointmentId?: string; // التاج الزمني للزيارة
+  onlyComments?: boolean; // وضع التبسيط للزيارات
 }
 
 export function CommentSection({ 
@@ -60,7 +61,8 @@ export function CommentSection({
   selectedStageName,
   technicalStageId,
   activeTabOverride,
-  appointmentId
+  appointmentId,
+  onlyComments = false
 }: Props) {
   const { user, globalUser } = useAuthContext();
   const { lang, dir } = useLanguage();
@@ -103,6 +105,11 @@ export function CommentSection({
         sortTime: c.createdAt?.toMillis?.() || Date.now()
       }));
     
+    // إذا كان وضع "التعليقات فقط" مفعلاً (كما في الزيارة)، نكتفي بالتعليقات
+    if (onlyComments) {
+      return filteredComments.sort((a, b) => a.sortTime - b.sortTime);
+    }
+
     const filteredTimeline = (timelineEvents || [])
       .filter(e => !e.isArchived && (e.type === 'numeric_update' || e.type === 'stage_start' || e.type === 'stage_complete' || e.type === 'revision_logged') && (!technicalStageId || e.technicalStageId === technicalStageId || e.stageId === filterStageId))
       .map(e => ({
@@ -112,19 +119,7 @@ export function CommentSection({
       }));
 
     return [...filteredComments, ...filteredTimeline].sort((a, b) => a.sortTime - b.sortTime);
-  }, [comments, timelineEvents, filterStageId, technicalStageId]);
-
-  const archivedChat = useMemo(() => {
-    const archivedComments = (comments || [])
-      .filter(c => !!c.isArchived && (!filterStageId || c.stageInstanceId === filterStageId))
-      .map(c => ({ ...c, streamType: 'comment' as const }));
-
-    const archivedTimelineLogs = (timelineEvents || [])
-      .filter(e => !!e.isArchived && e.type === 'numeric_update' && (!technicalStageId || e.technicalStageId === technicalStageId || e.stageId === filterStageId))
-      .map(e => ({ ...e, streamType: 'timeline_log' as const }));
-
-    return [...archivedComments, ...archivedTimelineLogs].sort((a, b) => (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0));
-  }, [comments, timelineEvents, filterStageId, technicalStageId]);
+  }, [comments, timelineEvents, filterStageId, technicalStageId, onlyComments]);
 
   const handleSubmit = async () => {
     if (!commentService || !user || !content.trim()) return;
@@ -181,24 +176,27 @@ export function CommentSection({
             </div>
           )}
 
-          <TabsList className={cn("grid w-full h-11 bg-slate-100/50 rounded-xl p-1 gap-1 mx-1", isAdmin ? "grid-cols-4" : "grid-cols-2")}>
-              <TabsTrigger value="active" className="rounded-lg text-[10px] font-black transition-all">
-                {isRtl ? 'النشاط' : 'Active'}
-              </TabsTrigger>
-              <TabsTrigger value="timeline" className="rounded-lg text-[10px] font-black transition-all">
-                {isRtl ? 'الزمني' : 'Timeline'}
-              </TabsTrigger>
-              {isAdmin && (
-                <>
-                  <TabsTrigger value="chat_archive" className="rounded-lg text-[10px] font-black gap-1.5 transition-all">
-                    <Archive className="h-3 w-3" /> {isRtl ? 'الأرشيف' : 'Archive'}
-                  </TabsTrigger>
-                  <TabsTrigger value="time_archive" className="rounded-lg text-[10px] font-black gap-1.5 transition-all">
-                    <Clock className="h-3 w-3" /> {isRtl ? 'الوقت' : 'Time Arc'}
-                  </TabsTrigger>
-                </>
-              )}
-          </TabsList>
+          {/* إخفاء التبويبات في وضع التبسيط (الزيارة) لضمان التركيز على التعليقات فقط */}
+          {!onlyComments && (
+            <TabsList className={cn("grid w-full h-11 bg-slate-100/50 rounded-xl p-1 gap-1 mx-1", isAdmin ? "grid-cols-4" : "grid-cols-2")}>
+                <TabsTrigger value="active" className="rounded-lg text-[10px] font-black transition-all">
+                  {isRtl ? 'النشاط' : 'Active'}
+                </TabsTrigger>
+                <TabsTrigger value="timeline" className="rounded-lg text-[10px] font-black transition-all">
+                  {isRtl ? 'الزمني' : 'Timeline'}
+                </TabsTrigger>
+                {isAdmin && (
+                  <>
+                    <TabsTrigger value="chat_archive" className="rounded-lg text-[10px] font-black gap-1.5 transition-all">
+                      <Archive className="h-3 w-3" /> {isRtl ? 'الأرشيف' : 'Archive'}
+                    </TabsTrigger>
+                    <TabsTrigger value="time_archive" className="rounded-lg text-[10px] font-black gap-1.5 transition-all">
+                      <Clock className="h-3 w-3" /> {isRtl ? 'الوقت' : 'Time Arc'}
+                    </TabsTrigger>
+                  </>
+                )}
+            </TabsList>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto mt-6 px-1 scrollbar-hide">
@@ -208,7 +206,7 @@ export function CommentSection({
             ) : activeStream.length === 0 ? (
                <div className="py-20 text-center flex flex-col items-center gap-4 opacity-30">
                   <Zap className="h-12 w-12 text-slate-200" />
-                  <p className="text-xs font-black text-slate-400">{isRtl ? 'بانتظار التقارير الميدانية' : 'Awaiting site reports...'}</p>
+                  <p className="text-xs font-black text-slate-400">{isRtl ? 'بانتظار الملاحظات الفنية' : 'Awaiting technician notes...'}</p>
                </div>
             ) : (
               activeStream.map((item: any) => (
@@ -216,7 +214,8 @@ export function CommentSection({
               ))
             )}
           </TabsContent>
-          <TabsContent value="timeline" className="m-0 space-y-6 pb-24">
+          {!onlyComments && (
+            <TabsContent value="timeline" className="m-0 space-y-6 pb-24">
                 {stages.sort((a,b)=> (a.order||0) - (b.order||0)).map((stage, idx) => {
                   const start = stage.startedAt?.toDate();
                   const end = stage.completedAt?.toDate();
@@ -239,7 +238,8 @@ export function CommentSection({
                       </div>
                   );
                 })}
-          </TabsContent>
+            </TabsContent>
+          )}
         </div>
 
         {activeTab === 'active' && (
@@ -249,7 +249,7 @@ export function CommentSection({
                 <Textarea 
                   value={content}
                   onChange={e => setContent(e.target.value)}
-                  placeholder={isRtl ? (filterStageId ? `اكتب ملاحظة في مرحلة ${selectedStageName}...` : "اكتب تعليقاً عاماً...") : "Write a comment..."}
+                  placeholder={isRtl ? (filterStageId ? `اكتب ملاحظة في مرحلة ${selectedStageName}...` : "اكتب تعليقاً في سجل الزيارة...") : "Write a visit note..."}
                   className="min-h-[44px] max-h-[150px] rounded-xl border-0 focus-visible:ring-0 text-xs font-bold bg-slate-50/50 resize-none p-4"
                 />
                 <Button 

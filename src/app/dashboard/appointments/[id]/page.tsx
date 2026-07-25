@@ -150,7 +150,6 @@ export default function AppointmentDetailPage() {
     const hasProgressLogs = (allExecutions || []).some(e => e.appointmentId === apptId);
     
     // فحص المراجعات المسجلة في سجل الأحداث لهذا الموعد
-    // ملاحظة: RevisionCount حقل تراكمي في المرحلة، لذا نعتمد على وجود سجل في Timeline أو تعليق مرتبط
     const hasRevisionsInWarRoom = (comments || []).some((c: any) => c.appointmentId === apptId && c.commentType === 'note');
     
     const hasAchievement = hasProgressLogs || hasRevisionsInWarRoom;
@@ -341,14 +340,15 @@ export default function AppointmentDetailPage() {
               </TabsList>
 
               <TabsContent value="pipeline" className="space-y-8 animate-in fade-in">
-                 <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
-                    <CardHeader className="bg-slate-900 p-8 text-white flex flex-row justify-between items-center text-start">
+                 <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
+                    {/* تحديث الهيدر للون الفاتح كما طلب المستخدم سابقاً */}
+                    <CardHeader className="bg-primary/5 p-8 text-slate-900 border-b flex flex-row justify-between items-center text-start">
                        <div className="text-start">
                           <CardTitle className="text-xl font-black flex items-center gap-3">
                              <Target className="h-6 w-6 text-primary" />
                              {isRtl ? 'مهمة الزيارة الميدانية' : 'Site Mission'}
                           </CardTitle>
-                          <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-widest">{transaction?.subServiceName || 'General Project Visit'}</p>
+                          <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">{transaction?.subServiceName || 'General Project Visit'}</p>
                        </div>
                        {appt.status !== 'completed' && !isConsulting && (
                           <Button onClick={() => setIsRecordOpen(true)} className="btn-gradient h-12 px-8 rounded-xl gap-2 shadow-lg">
@@ -396,6 +396,7 @@ export default function AppointmentDetailPage() {
                        appointmentId={apptId}
                        path={appt.transactionId ? paths.transactionComments(companyId!, appt.transactionId) : `companies/${companyId}/appointments/${apptId}/comments`} 
                        title={isRtl ? 'غرفة عمليات المشروع' : 'War Room'}
+                       onlyComments={true} // تفعيل وضع التبسيط (التعليقات فقط) للزيارة
                     />
                  </div>
               </TabsContent>
@@ -405,7 +406,7 @@ export default function AppointmentDetailPage() {
         <div className="lg:col-span-4 space-y-6">
            {appt.transactionId && (
               <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
-                 <CardHeader className="bg-slate-900 p-6 text-white text-start">
+                 <CardHeader className="bg-primary/5 p-6 text-slate-900 border-b text-start">
                     <div className="flex items-center gap-3">
                        <Layers className="h-5 w-5 text-primary" />
                        <CardTitle className="text-sm font-black uppercase tracking-widest">{isRtl ? 'رادار المسار الفني' : 'Pipeline'}</CardTitle>
@@ -525,7 +526,7 @@ export default function AppointmentDetailPage() {
       {/* مودال تسجيل الإنجاز (BOQ Progress) */}
       <Dialog open={isRecordOpen} onOpenChange={(v) => { if(!v) setIsRecordOpen(false); forceThaw(); }}>
          <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-md z-[150]" dir={dir}>
-            <div className="bg-slate-900 p-6 text-white text-start"><DialogTitle className="text-lg font-black flex items-center gap-3"><Hammer className="h-5 w-5 text-primary" />{isRtl ? 'تسجيل إنجاز فني (ميداني)' : 'Log Progress'}</DialogTitle></div>
+            <div className="bg-slate-50 p-6 text-slate-900 border-b text-start"><DialogTitle className="text-lg font-black flex items-center gap-3"><Hammer className="h-5 w-5 text-primary" />{isRtl ? 'تسجيل إنجاز فني (ميداني)' : 'Log Progress'}</DialogTitle></div>
             <div className="p-6 space-y-6 text-start">
                <div className="space-y-1.5">
                   <Label className="text-[11px] font-black uppercase text-slate-400">{isRtl ? 'تحديد المرحلة التنفيذية' : 'Execution Stage'}</Label>
