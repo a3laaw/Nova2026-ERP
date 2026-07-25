@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview القائمة الجانبية (Sidebar) بتصميم الكبسولات البرتقالية كاملة الاستدارة مع تلميحات وقوائم منبثقة فاتحة ونظيفة.
  * تم تطهير اللون الكحلي بالكامل واستبداله بالأبيض النقي.
@@ -16,7 +15,7 @@ import {
   Layers, FileSearch, Truck,
   Building2, ChevronLeft, Settings2, ChevronDown,
   Database, FileSpreadsheet, CalendarDays, Gavel,
-  MapPinned
+  MapPinned, Hammer, MapPin
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
@@ -67,6 +66,16 @@ export function DashboardSidebar() {
         { title: isRtl ? 'سجل تفاعل العملاء' : 'Visits Dossier', url: "/dashboard/projects/reports/client-visits", icon: MapPinned },
         { title: t('boqExplorer'), url: "/dashboard/projects/boqs", icon: FileSpreadsheet },
         { title: t('reports'), url: "/dashboard/reports", icon: FileText },
+      ]
+    },
+    { 
+      title: t('construction'), 
+      icon: Hammer, 
+      url: "/dashboard/construction/bookings", 
+      resource: 'projects',
+      subItems: [
+        { title: t('fieldRadar'), url: "/dashboard/construction/bookings", icon: MapPin },
+        { title: isRtl ? 'زيارات المواقع المنفذة' : 'Site Reports', url: "/dashboard/construction/field-visits", icon: FileText },
       ]
     },
     { 

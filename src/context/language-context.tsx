@@ -228,6 +228,9 @@ const translations: Record<Language, Record<string, string>> = {
     engNew: 'جديد',
     engFollow: 'متابعة',
     engContracted: 'متعاقد',
+    construction: 'المقاولات',
+    fieldRadar: 'رادار العمليات الميدانية',
+    fieldBookings: 'حجز زيارات الموقع',
   },
   en: {
     dashboard: 'Dashboard',
@@ -444,6 +447,9 @@ const translations: Record<Language, Record<string, string>> = {
     engNew: 'New',
     engFollow: 'Follow',
     engContracted: 'Contract',
+    construction: 'Construction',
+    fieldRadar: 'Field Operations Radar',
+    fieldBookings: 'Site Bookings',
   }
 };
 
