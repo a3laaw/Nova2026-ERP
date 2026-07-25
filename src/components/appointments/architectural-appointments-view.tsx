@@ -40,7 +40,8 @@ import {
   RotateCcw,
   Workflow,
   Target,
-  LayoutGrid
+  LayoutGrid,
+  AlertTriangle
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs, updateDoc, deleteDoc, serverTimestamp, addDoc, setDoc } from 'firebase/firestore';
@@ -88,6 +89,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
@@ -144,6 +155,7 @@ export function ArchitecturalAppointmentsView() {
   const [settings, setSettings] = useState<WorkHoursSettings | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogData, setDialogData] = useState<{ mode: 'create' | 'edit'; appointment?: Appointment; slot?: string; engineer?: Employee } | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -246,15 +258,10 @@ export function ArchitecturalAppointmentsView() {
     };
   }, [settings, currentDate]);
 
-  const grid = useMemo(() => {
-    const map = new Map<string, Map<string, Appointment>>();
+  const engineerAppointmentsMap = useMemo(() => {
+    const map = new Map<string, Appointment[]>();
     archEngineers.forEach(eng => {
-      const engMap = new Map<string, Appointment>();
-      filteredAppointments.filter(a => a.engineerId === eng.id).forEach(a => {
-        const time = format(parseISO(a.start), 'HH:mm');
-        engMap.set(time, a);
-      });
-      map.set(eng.id!, engMap);
+      map.set(eng.id!, filteredAppointments.filter(a => a.engineerId === eng.id));
     });
     return map;
   }, [archEngineers, filteredAppointments]);
@@ -272,17 +279,16 @@ export function ArchitecturalAppointmentsView() {
     }
   }, []);
 
-  const handleDeleteAppt = async (id: string) => {
-     forceThaw();
-     if (!confirm(isRtl ? "هل أنت متأكد من حذف الموعد نهائياً؟" : "Confirm permanent deletion?")) return;
-     
-     const service = new AppointmentService(db!, companyId!);
+  const confirmDelete = async () => {
+     if (!deletingId || !db || !companyId) return;
+     const service = new AppointmentService(db, companyId);
      try {
-        await service.deleteAppointment(id);
-        toast({ title: isRtl ? "تم حذف الموعد" : "Appointment Deleted" });
+        await service.deleteAppointment(deletingId);
+        toast({ title: isRtl ? "تم حذف الموعد بنجاح" : "Appointment Deleted" });
+        setDeletingId(null);
         forceThaw();
      } catch (e) {
-        toast({ variant: "destructive", title: isRtl ? "خطأ في الحذف" : "Error Deleting" });
+        toast({ variant: "destructive", title: t('error') });
      }
   };
 
@@ -370,10 +376,10 @@ export function ArchitecturalAppointmentsView() {
            title={isRtl ? "الفترة الصباحية ☀️" : "Morning Session"} 
            slots={timeSlots.morning} 
            engineers={archEngineers} 
-           grid={grid} 
+           gridMap={engineerAppointmentsMap} 
            meta={apptMeta} 
            onAction={handleAction}
-           onDelete={handleDeleteAppt}
+           onDelete={setDeletingId}
            isRtl={isRtl}
            clients={clientsMap}
            isAdmin={isAdmin}
@@ -392,10 +398,10 @@ export function ArchitecturalAppointmentsView() {
              title={isRtl ? "الفترة المسائية 🌆" : "Evening Session"} 
              slots={timeSlots.evening} 
              engineers={archEngineers} 
-             grid={grid} 
+             gridMap={engineerAppointmentsMap} 
              meta={apptMeta} 
              onAction={handleAction}
-             onDelete={handleDeleteAppt}
+             onDelete={setDeletingId}
              isRtl={isRtl}
              clients={clientsMap}
              isAdmin={isAdmin}
@@ -426,11 +432,31 @@ export function ArchitecturalAppointmentsView() {
           rawAppointments={rawAppointments || []}
         />
       )}
+
+      <AlertDialog open={!!deletingId} onOpenChange={(v) => { if(!v) setDeletingId(null); forceThaw(); }}>
+         <AlertDialogContent className="rounded-xl p-10 border-0 shadow-3xl bg-white z-[200]" dir={dir}>
+            <AlertDialogHeader>
+               <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50">
+                  <Trash2 className="h-10 w-10" />
+               </div>
+               <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900">{isRtl ? 'حذف الموعد نهائياً' : 'Permanent Deletion'}</AlertDialogTitle>
+               <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg">
+                  {isRtl ? 'هل أنت متأكد؟ سيتم إزالة هذا الموعد من كافة التقارير والرادار الزمني ولا يمكن التراجع.' : 'Are you sure? This appointment will be removed from all reports and radar. Action cannot be undone.'}
+               </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="mt-12 gap-4 flex flex-row">
+               <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white" onClick={() => { setDeletingId(null); forceThaw(); }}>إلغاء</AlertDialogCancel>
+               <AlertDialogAction onClick={confirmDelete} className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl">
+                  {isRtl ? 'نعم، احذف الموعد' : 'Confirm Delete'}
+               </AlertDialogAction>
+            </AlertDialogFooter>
+         </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
 
-function GridSection({ title, slots, engineers, grid, meta, onAction, onDelete, isRtl, clients, isAdmin, currentEngineerId, leaves, permissions, absences, dateStr, db, companyId, router, t }: any) {
+function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelete, isRtl, clients, isAdmin, currentEngineerId, leaves, permissions, absences, dateStr, db, companyId, router, t }: any) {
   if (slots.length === 0) return null;
   
   const visibleEngineers = isAdmin ? engineers : engineers.filter((e: any) => e.id === currentEngineerId);
@@ -467,7 +493,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, onDelete, 
                 <tr className="bg-slate-100/80">
                    <th className="w-20 p-4 border-b-2 border-slate-200 font-black text-[9px] text-slate-500 uppercase tracking-[0.2em] bg-slate-100/50">{isRtl ? 'الوقت' : 'Time'}</th>
                    {visibleEngineers.map((eng: Employee) => {
-                      const engAppts = Array.from(grid.get(eng.id!)?.values() || []);
+                      const engAppts = gridMap.get(eng.id!) || [];
                       const totalCount = engAppts.length;
                       let v1 = 0, follow = 0, cont = 0;
                       engAppts.forEach((a: Appointment) => {
@@ -513,7 +539,17 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, onDelete, 
                   <tr key={slot} className={cn("group/row", sIdx % 2 === 0 ? "bg-white" : "bg-slate-50/10")}>
                      <td className="p-4 text-center border-b-2 border-slate-200 border-e-2 border-e-slate-200 font-mono font-black text-slate-500 bg-slate-100/50 text-[10px]">{slot}</td>
                      {visibleEngineers.map((eng: Employee) => {
-                        const appt = grid.get(eng.id)?.get(slot);
+                        const engAppts = gridMap.get(eng.id!) || [];
+                        const appt = engAppts.find((a: any) => {
+                           const start = format(parseISO(a.start), 'HH:mm');
+                           if (start === slot) return true;
+                           if (a.type === 'busy_blocked' && a.end) {
+                              const end = format(parseISO(a.end), 'HH:mm');
+                              return slot > start && slot < end;
+                           }
+                           return false;
+                        });
+                        
                         const block = getBlockedReason(eng.id!, slot);
 
                         if (block) {
@@ -532,6 +568,7 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, onDelete, 
                         if (appt) {
                            const m = meta.get(appt.id);
                            const isBusy = appt.type === 'busy_blocked';
+                           const isStart = format(parseISO(appt.start), 'HH:mm') === slot;
 
                            return (
                              <td key={eng.id} className="p-1 border-b-2 border-slate-200 border-s-2 border-s-slate-100 align-top relative">
@@ -542,33 +579,35 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, onDelete, 
                                     cardGradient(m?.color || '')
                                   )}
                                 >
-                                   <div className={cn("absolute top-1 z-10", isRtl ? "left-1" : "right-1")} onClick={e => e.stopPropagation()}>
-                                      <DropdownMenu>
-                                         <DropdownMenuTrigger asChild>
-                                            <Button 
-                                              variant="ghost" 
-                                              size="icon" 
-                                              className="h-6 w-6 rounded-full bg-white/80 hover:bg-white text-slate-900 border shadow-sm flex items-center justify-center"
-                                            >
-                                               <MoreVertical className="h-3 w-3" />
-                                            </Button>
-                                         </DropdownMenuTrigger>
-                                         <DropdownMenuPortal>
-                                            <DropdownMenuContent align={isRtl ? "start" : "end"} className="rounded-xl border-2 shadow-3xl bg-white min-w-[150px] z-[150]">
-                                               <DropdownMenuItem onSelect={() => router.push(`/dashboard/appointments/${appt.id}`)} className="font-bold gap-2 py-2 text-[10px] cursor-pointer">
-                                                  <MessageSquare className="h-3 w-3 text-primary" /> {isRtl ? 'غرفة العمليات' : 'War Room'}
-                                               </DropdownMenuItem>
-                                               <DropdownMenuItem onSelect={() => onAction('edit', eng, slot, appt)} className="font-bold gap-2 py-2 text-[10px] cursor-pointer">
-                                                  <Edit3 className="h-3 w-3 text-blue-500" /> {isRtl ? 'تعديل البيانات' : 'Edit Details'}
-                                               </DropdownMenuItem>
-                                               <DropdownMenuSeparator />
-                                               <DropdownMenuItem onSelect={() => onDelete(appt.id!)} className="font-bold gap-2 py-2 text-[10px] text-rose-600 cursor-pointer hover:bg-rose-50">
-                                                  <Trash2 className="h-3 w-3" /> {isRtl ? 'حذف الموعد نهائياً' : 'Delete Permanent'}
-                                               </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                         </DropdownMenuPortal>
-                                      </DropdownMenu>
-                                   </div>
+                                   {isStart && (
+                                     <div className={cn("absolute top-1 z-10", isRtl ? "left-1" : "right-1")} onClick={e => e.stopPropagation()}>
+                                        <DropdownMenu>
+                                           <DropdownMenuTrigger asChild>
+                                              <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className="h-6 w-6 rounded-full bg-white/80 hover:bg-white text-slate-900 border shadow-sm flex items-center justify-center"
+                                              >
+                                                 <MoreVertical className="h-3 w-3" />
+                                              </Button>
+                                           </DropdownMenuTrigger>
+                                           <DropdownMenuPortal>
+                                              <DropdownMenuContent align={isRtl ? "start" : "end"} className="rounded-xl border-2 shadow-3xl bg-white min-w-[150px] z-[150]">
+                                                 <DropdownMenuItem onSelect={() => router.push(`/dashboard/appointments/${appt.id}`)} className="font-bold gap-2 py-2 text-[10px] cursor-pointer">
+                                                    <MessageSquare className="h-3 w-3 text-primary" /> {isRtl ? 'غرفة العمليات' : 'War Room'}
+                                                 </DropdownMenuItem>
+                                                 <DropdownMenuItem onSelect={() => onAction('edit', eng, slot, appt)} className="font-bold gap-2 py-2 text-[10px] cursor-pointer">
+                                                    <Edit3 className="h-3 w-3 text-blue-500" /> {isRtl ? 'تعديل البيانات' : 'Edit Details'}
+                                                 </DropdownMenuItem>
+                                                 <DropdownMenuSeparator />
+                                                 <DropdownMenuItem onSelect={() => onDelete(appt.id!)} className="font-bold gap-2 py-2 text-[10px] text-rose-600 cursor-pointer hover:bg-rose-50">
+                                                    <Trash2 className="h-3 w-3" /> {isRtl ? 'حذف الموعد نهائياً' : 'Delete Permanent'}
+                                                 </DropdownMenuItem>
+                                              </DropdownMenuContent>
+                                           </DropdownMenuPortal>
+                                        </DropdownMenu>
+                                     </div>
+                                   )}
 
                                    <div className={cn("text-start", isRtl ? "pr-1 pl-5" : "pl-1 pr-5")}>
                                       <p className="font-black text-[10px] leading-tight mb-0.5 truncate">

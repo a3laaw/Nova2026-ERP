@@ -36,7 +36,7 @@ export class AppointmentService {
 
   async updateAppointment(id: string, data: Partial<Appointment>): Promise<void> {
     const ref = doc(this.db, paths.appointments(this.companyId), id);
-    updateDoc(ref, { 
+    return updateDoc(ref, { 
       ...data, 
       updatedAt: serverTimestamp() 
     }).catch(async (err) => {
@@ -75,19 +75,19 @@ export class AppointmentService {
   }
 
   /**
-   * حذف الموعد نهائياً (Enforced Deletion).
-   * يدعم الاستثناء السيادي للأدمن؛ لا يتطلب التحقق من القسم.
+   * حذف الموعد نهائياً (Sovereign Enforced Deletion).
    */
   async deleteAppointment(id: string): Promise<void> {
     if (!id || !this.companyId) return;
     const ref = doc(this.db, paths.appointments(this.companyId), id);
     
-    // تنفيذ الحذف بدون انتظار (Non-blocking) لضمان عدم تجمد الشاشة
-    deleteDoc(ref).catch(async (serverError) => {
+    // إرجاع الوعد لضمان معرفة الواجهة بنتيجة العملية
+    return deleteDoc(ref).catch(async (serverError) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: ref.path,
         operation: 'delete'
       }));
+      throw serverError;
     });
   }
 }

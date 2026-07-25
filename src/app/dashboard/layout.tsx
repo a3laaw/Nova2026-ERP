@@ -33,41 +33,43 @@ export default function DashboardLayout({
   }, [user, authLoading, router]);
 
   /**
-   * Sovereign Absolute Thaw Protocol V7: 
-   * عدواني جداً في فك أي قفل للنقر يتركه الـ Dropdown أو الـ Dialog.
-   * يضمن استجابة زر الحذف وكافة الأزرار الأخرى.
+   * Sovereign Absolute Thaw Protocol V9: 
+   * محرك إذابة قسري عدواني جداً لمنع تجميد الشاشة.
+   * يقوم بمسح كافة قيود Radix UI و Browser Locks تلقائياً.
    */
   useEffect(() => {
     if (typeof document !== 'undefined') {
       const thaw = () => {
         const body = document.body;
+        const html = document.documentElement;
         
-        // 1. فك قفل النقر القسري
-        if (body.style.pointerEvents === 'none') {
-          body.style.pointerEvents = 'auto';
-        }
+        // 1. فك قفل النقر القسري (The Click Unlock)
+        if (body.style.pointerEvents === 'none') body.style.pointerEvents = 'auto';
+        if (html.style.pointerEvents === 'none') html.style.pointerEvents = 'auto';
         
-        // 2. فك قفل التمرير (Scroll Lock)
+        // 2. فك قفل التمرير (The Scroll Unlock)
         if (body.style.overflow === 'hidden' || body.getAttribute('data-scroll-locked') !== null) {
            body.style.overflow = 'auto';
            body.style.paddingRight = '0px';
            body.removeAttribute('data-scroll-locked');
         }
 
-        // 3. تنظيف بقايا الراديكس (Radix Focus Guards)
+        // 3. تطهير بقايا النوافذ المنبثقة (The Ghost Cleanup)
         const focusGuards = document.querySelectorAll('[data-radix-focus-guard]');
         focusGuards.forEach(el => el.remove());
       };
 
       thaw();
       
-      // التنفيذ عند كل نقرة لضمان الإذابة الفورية
+      // تنفيذ عند كل حركة ماوس أو نقرة لضمان السيولة المطلقة
       window.addEventListener('mousedown', thaw);
-      const interval = setInterval(thaw, 200); 
+      window.addEventListener('mouseup', thaw);
+      const interval = setInterval(thaw, 150); 
       
       return () => {
         clearInterval(interval);
         window.removeEventListener('mousedown', thaw);
+        window.removeEventListener('mouseup', thaw);
       };
     }
   }, [pathname]);
@@ -110,7 +112,6 @@ export default function DashboardLayout({
                 {t('switchLang')}
               </Button>
 
-              {/* زر المواعيد بجوار التنبيهات */}
               <Button
                 variant="ghost"
                 size="icon"
