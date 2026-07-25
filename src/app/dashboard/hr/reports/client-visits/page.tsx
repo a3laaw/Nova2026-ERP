@@ -64,7 +64,6 @@ export default function ClientVisitsReportPage() {
            const achievements = execsSnap.docs.map(d => d.data());
 
            // جلب التعليقات الميدانية المربوطة بهذا الموعد
-           // ملاحظة: نحتاج جلب التعليقات من المعاملة المرتبطة بالموعد
            let comments: any[] = [];
            if (appt.transactionId) {
               const commentsRef = collection(db, paths.transactionComments(companyId, appt.transactionId));
@@ -128,7 +127,7 @@ export default function ClientVisitsReportPage() {
                   {clientsLoading ? (
                     <div className="py-20 text-center"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/30" /></div>
                   ) : filteredClients.length === 0 ? (
-                    <div className="py-20 text-center text-slate-300 font-bold italic text-xs">{isRtl ? 'لا توجد نتائج.' : 'No clients found.'}</div>
+                    <div className="py-20 text-center text-slate-300 font-bold italic text-xs">{isRtl ? 'لا يوجد نتائج.' : 'No clients found.'}</div>
                   ) : filteredClients.map(c => (
                     <div 
                       key={c.id} 
@@ -142,7 +141,7 @@ export default function ClientVisitsReportPage() {
                           <p className={cn("font-black text-sm", selectedClientId === c.id ? "text-primary" : "text-slate-700")}>{c.nameAr}</p>
                           <p className="text-[10px] font-mono font-bold text-slate-400 mt-0.5">{c.fileNumber}</p>
                        </div>
-                       <ChevronRight className={cn("h-4 w-4 transition-transform", isRtl && "rotate-180", selectedClientId === c.id ? "text-primary scale-125" : "text-slate-200")} />
+                       <ArrowRight className={cn("h-4 w-4 transition-transform", isRtl && "rotate-180", selectedClientId === c.id ? "text-primary scale-125" : "text-slate-200")} />
                     </div>
                   ))}
                </CardContent>
@@ -188,7 +187,6 @@ export default function ClientVisitsReportPage() {
                       <div className="py-20 text-center text-slate-400 font-bold italic">{isRtl ? 'لا يوجد زيارات مكتملة مسجلة لهذا العميل.' : 'No completed visits for this client.'}</div>
                     ) : visitsData.map((visit, vIdx) => (
                       <div key={visit.id} className="relative group">
-                         {/* مؤشر الزيارة */}
                          <div className="absolute -left-8 top-0 h-8 w-8 rounded-xl bg-white border-4 border-slate-100 flex items-center justify-center z-10 shadow-lg group-hover:border-primary transition-colors">
                             <span className="text-[10px] font-black text-slate-400 group-hover:text-primary">{visitsData.length - vIdx}</span>
                          </div>
@@ -207,8 +205,6 @@ export default function ClientVisitsReportPage() {
                                <Badge variant="outline" className="bg-white font-black text-[9px] px-3">{visit.engineerName}</Badge>
                             </CardHeader>
                             <CardContent className="p-8 space-y-8 text-start">
-                               
-                               {/* نتائج الإنجاز الفني */}
                                <div className="space-y-4">
                                   <h5 className="text-[10px] font-black uppercase text-emerald-600 tracking-widest flex items-center gap-2">
                                      <Hammer className="h-3.5 w-3.5" /> {isRtl ? 'المخرجات الفنية والإنجاز' : 'Technical Achievements'}
@@ -228,7 +224,6 @@ export default function ClientVisitsReportPage() {
                                   </div>
                                </div>
 
-                               {/* الملاحظات والتعليقات */}
                                <div className="space-y-4 pt-4 border-t border-slate-50">
                                   <h5 className="text-[10px] font-black uppercase text-blue-600 tracking-widest flex items-center gap-2">
                                      <MessageSquare className="h-3.5 w-3.5" /> {isRtl ? 'التوثيق المعرفي والملاحظات' : 'Knowledge Documentation'}
@@ -246,7 +241,6 @@ export default function ClientVisitsReportPage() {
                                      )}
                                   </div>
                                </div>
-
                             </CardContent>
                          </Card>
                       </div>
@@ -255,7 +249,6 @@ export default function ClientVisitsReportPage() {
               </div>
             )}
          </div>
-
       </div>
     </div>
   );
