@@ -354,25 +354,25 @@ export function ArchitecturalAppointmentsView() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6 print:hidden">
-         <Card className="border-0 shadow-lg rounded-2xl bg-white border-b-4 border-slate-900">
+         <Card className="border-0 shadow-lg rounded-xl bg-white border-b-4 border-slate-900">
             <CardContent className="p-4 text-start">
                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إجمالي المواعيد' : 'Total Appts'}</p>
                <h3 className="text-2xl font-black text-slate-900" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.total.toLocaleString('en-US')}</h3>
             </CardContent>
          </Card>
-         <Card className="border-0 shadow-lg rounded-2xl bg-white border-b-4 border-yellow-400">
+         <Card className="border-0 shadow-lg rounded-xl bg-white border-b-4 border-yellow-400">
             <CardContent className="p-4 text-start">
                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'زيارة أولى (جديد)' : '1st Visits'}</p>
                <h3 className="text-2xl font-black text-yellow-500" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.yellow.toLocaleString('en-US')}</h3>
             </CardContent>
          </Card>
-         <Card className="border-0 shadow-lg rounded-2xl bg-white border-b-4 border-emerald-500">
+         <Card className="border-0 shadow-lg rounded-xl bg-white border-b-4 border-emerald-500">
             <CardContent className="p-4 text-start">
                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'متابعة (تحت الدراسة)' : 'Follow-ups'}</p>
                <h3 className="text-2xl font-black text-emerald-600" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.green.toLocaleString('en-US')}</h3>
             </CardContent>
          </Card>
-         <Card className="border-0 shadow-lg rounded-2xl bg-white border-b-4 border-blue-500">
+         <Card className="border-0 shadow-lg rounded-xl bg-white border-b-4 border-blue-500">
             <CardContent className="p-4 text-start">
                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'عملاء متعاقدون' : 'Contracted'}</p>
                <h3 className="text-2xl font-black text-blue-600" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.blue.toLocaleString('en-US')}</h3>
@@ -423,18 +423,20 @@ export function ArchitecturalAppointmentsView() {
          )}
       </div>
 
-      <AppointmentManagerDialog 
-        isOpen={dialogOpen} 
-        onClose={() => setDialogOpen(false)} 
-        data={dialogData} 
-        clients={allClients || []}
-        governorates={governorates || []}
-        companyId={companyId!}
-        userId={user!.uid}
-        userName={user!.displayName || 'User'}
-        db={db}
-        rawAppointments={rawAppointments || []}
-      />
+      {user && (
+        <AppointmentManagerDialog 
+          isOpen={dialogOpen} 
+          onClose={() => setDialogOpen(false)} 
+          data={dialogData} 
+          clients={allClients || []}
+          governorates={governorates || []}
+          companyId={companyId!}
+          userId={user.uid}
+          userName={user.displayName || 'User'}
+          db={db}
+          rawAppointments={rawAppointments || []}
+        />
+      )}
     </div>
   );
 }
@@ -464,6 +466,11 @@ function GridSection({ title, slots, engineers, grid, meta, onAction, isRtl, cli
   };
 
   const handleDeleteAppt = async (id: string) => {
+     // تحرير فوري قبل الحوار لمنع التجمد
+     if (typeof document !== 'undefined') {
+        document.body.style.pointerEvents = 'auto';
+     }
+
      if (!confirm(isRtl ? "هل أنت متأكد من حذف الموعد نهائياً؟" : "Confirm permanent deletion?")) return;
      
      const service = new AppointmentService(db, companyId);

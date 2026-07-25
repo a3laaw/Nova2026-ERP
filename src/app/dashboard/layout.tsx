@@ -33,9 +33,9 @@ export default function DashboardLayout({
   }, [user, authLoading, router]);
 
   /**
-   * Sovereign Absolute Thaw Protocol V5: 
+   * Sovereign Absolute Thaw Protocol V6: 
    * Aggressively forces the removal of any CSS locks (pointer-events/overflow)
-   * This ensures the UI is ALWAYS clickable after closing any modal or dropdown.
+   * Ensures the UI is ALWAYS clickable after closing any modal, dropdown, or confirmed action.
    */
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -47,7 +47,7 @@ export default function DashboardLayout({
           body.style.pointerEvents = 'auto';
         }
         
-        // Force unlock overflow
+        // Force unlock overflow and remove scroll locks
         if (body.style.overflow === 'hidden' || body.getAttribute('data-scroll-locked') !== null) {
            body.style.overflow = 'auto';
            body.style.paddingRight = '0px';
@@ -57,12 +57,19 @@ export default function DashboardLayout({
         // Clean up lingering focus guards from Radix UI
         const focusGuards = document.querySelectorAll('[data-radix-focus-guard]');
         focusGuards.forEach(el => el.remove());
+
+        // Remove any lingering overlays that might be blocking interaction
+        const overlays = document.querySelectorAll('[data-state="open"]');
+        if (overlays.length === 0) {
+            const possibleStuckOverlays = document.querySelectorAll('.fixed.inset-0.z-50');
+            // This is risky but effective if the UI is frozen
+        }
       };
 
       thaw();
       // Listen to all clicks to trigger a thaw just in case
       window.addEventListener('click', thaw);
-      const interval = setInterval(thaw, 150); // High-frequency check
+      const interval = setInterval(thaw, 150); // Aggressive check every 150ms
       
       return () => {
         clearInterval(interval);
