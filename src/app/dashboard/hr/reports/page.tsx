@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { 
   BarChart3, FileText, Users, CalendarDays, 
   Calculator, Scale, ArrowUpRight, TrendingUp,
-  Clock, ShieldCheck, MapPinned, Target
+  Clock, ShieldCheck, Target
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useFirestore, useCollection } from '@/firebase';
@@ -38,15 +38,6 @@ export default function HRReportsHub() {
       path: '/dashboard/hr/reports/dossier'
     },
     {
-      id: 'visits',
-      title: isRtl ? 'سجل تفاعل العملاء والزيارات' : 'Client Visit Dossier',
-      desc: isRtl ? 'تحليل تاريخي لكل زيارة: الإنجاز الفني الموثق والملاحظات.' : 'Visit-by-visit audit of technical progress and site notes.',
-      icon: MapPinned,
-      color: 'text-primary',
-      bg: 'bg-orange-50',
-      path: '/dashboard/hr/reports/client-visits'
-    },
-    {
       id: 'attendance',
       title: isRtl ? 'تحليل الحضور والغياب' : 'Attendance Analysis',
       desc: isRtl ? 'تقرير إجمالي التأخير والغياب لفترة محددة.' : 'Total late minutes and absence summary report.',
@@ -74,7 +65,7 @@ export default function HRReportsHub() {
           {isRtl ? 'مركز تقارير HR والرقابة' : 'HR Analytics Hub'}
         </h1>
         <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-          {isRtl ? 'تحليل القوى العاملة والامتثال والإنتاجية الميدانية' : 'Workforce analysis, compliance, and field productivity'}
+          {isRtl ? 'تحليل القوى العاملة والامتثال والإنتاجية الميدانية' : 'Workforce analysis and compliance'}
         </p>
       </div>
 

@@ -14,7 +14,8 @@ import {
   Calendar, FileText, Package,
   Layers, FileSearch, Truck,
   Building2, ChevronLeft, Settings2, ChevronDown,
-  Database, FileSpreadsheet, CalendarDays, Gavel
+  Database, FileSpreadsheet, CalendarDays, Gavel,
+  MapPinned
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
@@ -62,7 +63,7 @@ export function DashboardSidebar() {
       subItems: [
         { title: t('activeProjects'), url: "/dashboard/projects", icon: Layers },
         { title: isRtl ? 'المواعيد والزيارات' : 'Appointments', url: "/dashboard/appointments", icon: CalendarDays },
-        { title: isRtl ? 'التقارير الميدانية' : 'Field Visits', url: "/dashboard/construction/field-visits", icon: HardHat },
+        { title: isRtl ? 'سجل تفاعل العملاء' : 'Visits Dossier', url: "/dashboard/projects/reports/client-visits", icon: MapPinned },
         { title: t('boqExplorer'), url: "/dashboard/projects/boqs", icon: FileSpreadsheet },
         { title: t('reports'), url: "/dashboard/reports", icon: FileText },
       ]
