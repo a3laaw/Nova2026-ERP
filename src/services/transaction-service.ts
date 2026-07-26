@@ -140,6 +140,7 @@ export class TransactionService {
         isRequired: !!stage.isRequired,
         isEditable: stage.isEditable !== false,
         nextStageIds: stage.nextStageIds || [],
+        allowedDepartmentIds: stage.allowedDepartmentIds || [], // نسخ رابط الأقسام للنسخة الحية
         status: 'pending',
         activityTypeId: activityId,
         serviceId: serviceId,

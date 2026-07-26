@@ -73,6 +73,7 @@ export interface StageInstance extends BaseReference {
   isRequired: boolean;
   isEditable: boolean;
   nextStageIds: string[];
+  allowedDepartmentIds?: string[]; // مضاف لفلترة العرض الميداني
   status: 'pending' | 'in-progress' | 'completed' | 'skipped';
   activityTypeId: string;
   serviceId: string;

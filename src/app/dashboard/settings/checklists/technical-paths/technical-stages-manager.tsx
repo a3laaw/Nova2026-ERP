@@ -8,7 +8,8 @@ import {
   Plus, Loader2, Trash2, Edit3, 
   Workflow, ArrowRight, Clock,
   ListChecks, ShieldCheck,
-  GripVertical, ChevronUp, ChevronDown
+  GripVertical, ChevronUp, ChevronDown,
+  Building2, Check
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,7 +18,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query } from 'firebase/firestore';
+import { collection, query, orderBy } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
@@ -25,7 +26,7 @@ import { TechnicalPathService } from '@/services/technical-path-service';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { TechnicalStage, SubService, ActivityType, Service } from '@/types/reference';
+import { TechnicalStage, SubService, ActivityType, Service, Department } from '@/types/reference';
 
 interface Props {
   activityType: ActivityType;
@@ -48,6 +49,9 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
   const stagesQuery = useMemo(() => companyId && db ? query(collection(db, paths.technicalStages(companyId, activityType.id!, mainService.id!, subService.id!))) : null, [db, companyId, activityType, mainService, subService]);
   const { data: stages, loading } = useCollection<TechnicalStage>(stagesQuery);
 
+  const deptsQuery = useMemo(() => companyId && db ? query(collection(db, paths.departments(companyId)), orderBy('order')) : null, [db, companyId]);
+  const { data: departments } = useCollection<Department>(deptsQuery);
+
   const sortedStages = useMemo(() => {
     return [...(stages || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
   }, [stages]);
@@ -67,10 +71,10 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
       isEditable: form.isEditable !== undefined ? form.isEditable : true, 
       order: nextOrder,
       nextStageIds: form.nextStageIds || [], 
+      allowedDepartmentIds: form.allowedDepartmentIds || [],
       name: form.name || '', 
       nameEn: form.nameEn || '', 
       description: form.description || '',
-      // تخزين مسار التتبع لسهولة الربط في القاموس
       fullPathName: isRtl 
         ? `${activityType.name} > ${mainService.name}` 
         : `${activityType.nameEn} > ${mainService.nameEn}`
@@ -111,6 +115,15 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
     } finally {
       setLoadingAction(null);
     }
+  };
+
+  const toggleDept = (deptId: string) => {
+    if (!form) return;
+    const current = form.allowedDepartmentIds || [];
+    const updated = current.includes(deptId) 
+      ? current.filter(id => id !== deptId) 
+      : [...current, deptId];
+    setForm({ ...form, allowedDepartmentIds: updated });
   };
 
   const getAncestors = (targetId: string, allStages: TechnicalStage[]) => {
@@ -158,7 +171,7 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
             </div>
           </div>
         </div>
-        <Button onClick={() => setForm({ name: '', nameEn: '', description: '', code: '', isNumeric: false, isTimed: false, nextStageIds: [] })} variant="default" className="h-11 shadow-lg shadow-primary/20">
+        <Button onClick={() => setForm({ name: '', nameEn: '', description: '', code: '', isNumeric: false, isTimed: false, nextStageIds: [], allowedDepartmentIds: [] })} variant="default" className="h-11 shadow-lg shadow-primary/20">
           <Plus className="me-2 h-4 w-4" /> {isRtl ? 'إضافة مرحلة' : 'Add Stage'}
         </Button>
       </div>
@@ -192,10 +205,18 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
                     </div>
                     <div>
                       <h3 className="font-black text-slate-800 text-base">{isRtl ? stage.name : stage.nameEn}</h3>
-                      <div className="flex gap-3 mt-1">
+                      <div className="flex flex-wrap gap-3 mt-1">
                          <span className="text-[10px] font-black text-primary bg-primary/5 px-2 rounded">#{idx + 1}</span>
                          {stage.isTimed && <span className="text-[10px] font-bold text-blue-600 flex items-center gap-1"><Clock className="h-3 w-3" /> {stage.timeTargetDays} {isRtl ? 'يوم' : 'Days'}</span>}
                          {stage.isNumeric && <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1"><ListChecks className="h-3 w-3" /> {isRtl ? 'مستهدف:' : 'Target:'} {stage.numericTarget}</span>}
+                         {stage.allowedDepartmentIds && stage.allowedDepartmentIds.length > 0 && (
+                           <div className="flex gap-1">
+                              {stage.allowedDepartmentIds.map(id => {
+                                 const dept = departments?.find(d => d.id === id);
+                                 return <Badge key={id} variant="outline" className="text-[7px] border-indigo-100 text-indigo-500 font-black">{isRtl ? dept?.name : dept?.nameEn}</Badge>
+                              })}
+                           </div>
+                         )}
                       </div>
                     </div>
                   </div>
@@ -212,9 +233,9 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
 
       {form && (
         <Dialog open onOpenChange={() => setForm(null)}>
-          <DialogContent className="rounded-xl p-0 overflow-hidden max-w-4xl border-0 shadow-3xl bg-white" dir={dir}>
-            <div className="grid grid-cols-1 lg:grid-cols-5 h-full max-h-[85vh]">
-              <div className="lg:col-span-3 p-8 space-y-6 overflow-y-auto bg-white border-e">
+          <DialogContent className="rounded-xl p-0 overflow-hidden max-w-5xl border-0 shadow-3xl bg-white" dir={dir}>
+            <div className="grid grid-cols-1 lg:grid-cols-12 h-full max-h-[85vh]">
+              <div className="lg:col-span-7 p-8 space-y-6 overflow-y-auto bg-white border-e scrollbar-hide">
                 <DialogHeader className="text-start">
                   <DialogTitle className="text-2xl font-black font-headline flex items-center gap-2 text-slate-800">
                     <ShieldCheck className="text-primary h-7 w-7" /> {form.id ? t('editStage') : t('addStage')}
@@ -231,6 +252,34 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
                       <Label className="text-xs font-black uppercase text-slate-400">{t('name')} (En)</Label>
                       <Input value={form.nameEn || ''} onChange={e => setForm({...form, nameEn: e.target.value})} className="h-11 border-2 font-bold text-start" dir="ltr" />
                     </div>
+                  </div>
+
+                  {/* قسم تعيين الأقسام المسموح لها بالتنفيذ */}
+                  <div className="p-6 bg-slate-50 rounded-xl border-2 space-y-4">
+                    <div className="flex items-center gap-2 text-primary font-black text-xs uppercase tracking-widest">
+                       <Building2 className="h-4 w-4" /> {isRtl ? 'الأقسام المسؤولة عن التنفيذ' : 'Responsible Departments'}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                       {departments?.map(dept => {
+                          const isSelected = form.allowedDepartmentIds?.includes(dept.id!);
+                          return (
+                            <div 
+                              key={dept.id} 
+                              onClick={() => toggleDept(dept.id!)}
+                              className={cn(
+                                "p-3 rounded-lg border-2 cursor-pointer transition-all flex items-center justify-between",
+                                isSelected ? "bg-white border-primary shadow-sm" : "bg-white/50 border-slate-100 hover:border-slate-200"
+                              )}
+                            >
+                               <span className={cn("text-xs font-bold", isSelected ? "text-slate-900" : "text-slate-400")}>{isRtl ? dept.name : dept.nameEn}</span>
+                               {isSelected && <Check className="h-4 w-4 text-primary" />}
+                            </div>
+                          );
+                       })}
+                    </div>
+                    <p className="text-[9px] text-slate-400 font-bold italic leading-relaxed">
+                       {isRtl ? '* في حال عدم اختيار أي قسم، ستظهر المرحلة لكافة الموظفين تلقائياً.' : '* If no departments are selected, the stage will be visible to everyone.'}
+                    </p>
                   </div>
                   
                   <div className="p-6 bg-slate-50 rounded-xl border-2 space-y-6">
@@ -260,16 +309,21 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
                 </DialogFooter>
               </div>
 
-              <div className="lg:col-span-2 bg-slate-50/50 p-8 flex flex-col">
+              <div className="lg:col-span-5 bg-slate-50/50 p-8 flex flex-col overflow-y-auto scrollbar-hide">
                 <div className="mb-6 text-start">
                   <h4 className="font-black text-lg flex items-center gap-2 text-slate-700"><ArrowRight className="h-5 w-5 text-primary" /> {t('nextStages')}</h4>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Dependency Mapping</p>
                 </div>
                 <ScrollArea className="flex-1">
                   <div className="space-y-2 pr-3">
                     {availableNextStages.length === 0 ? <div className="py-10 text-center bg-white/50 rounded-xl border-2 border-dashed"><p className="text-[10px] text-slate-400 font-bold px-4">لا توجد مراحل متاحة للربط.</p></div> : 
                       availableNextStages.map((s) => (
-                        <div key={s.id} onClick={() => toggleNextStage(s.id!)} className={cn("p-4 rounded-xl border-2 transition-all cursor-pointer flex items-center gap-3", form.nextStageIds?.includes(s.id!) ? "bg-white border-primary shadow-md" : "bg-white border-slate-100")}>
-                          <Checkbox id={`stage-${s.id}`} checked={form.nextStageIds?.includes(s.id!)} className="h-5 w-5 pointer-events-none" /><Label className="font-black text-xs block cursor-pointer text-slate-700">{isRtl ? s.name : s.nameEn}</Label>
+                        <div key={s.id} onClick={() => toggleNextStage(s.id!)} className={cn("p-4 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between group", form.nextStageIds?.includes(s.id!) ? "bg-white border-primary shadow-md" : "bg-white border-slate-100")}>
+                          <div className="flex items-center gap-3">
+                             <Checkbox id={`stage-${s.id}`} checked={form.nextStageIds?.includes(s.id!)} className="h-5 w-5 pointer-events-none" />
+                             <Label className="font-black text-xs block cursor-pointer text-slate-700">{isRtl ? s.name : s.nameEn}</Label>
+                          </div>
+                          {form.nextStageIds?.includes(s.id!) && <Badge className="bg-primary text-white border-0 text-[8px] h-4">NEXT</Badge>}
                         </div>
                       ))
                     }

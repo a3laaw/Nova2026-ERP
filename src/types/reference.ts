@@ -104,6 +104,7 @@ export interface TechnicalStage extends BaseReference {
   isRequired: boolean;
   isEditable: boolean;
   nextStageIds: string[];
+  allowedDepartmentIds?: string[]; // مضاف: الأقسام المسموح لها برؤية/تنفيذ هذه المرحلة
   isActive: boolean;
 }
 

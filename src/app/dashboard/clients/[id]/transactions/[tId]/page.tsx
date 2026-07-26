@@ -138,7 +138,20 @@ export default function TransactionDetailsPage() {
   const executionsQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.executions(companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
   const { data: allExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
 
-  const stages = useMemo(() => (rawStages || []).sort((a, b) => (a.order || 0) - (b.order || 0)), [rawStages]);
+  // الفلترة السيادية للأقسام: المرحلة تظهر فقط لو كانت مسموح بها لقسم المستخدم
+  const stages = useMemo(() => {
+    const list = (rawStages || []).sort((a, b) => (a.order || 0) - (b.order || 0));
+    
+    if (isAdmin) return list; // المدير يرى كافة المراحل دائماً
+
+    const userDeptId = globalUser?.departmentId;
+    return list.filter(stage => {
+       // إذا لم تكن هناك قيود (المصفوفة فارغة)، فهي مرحلة عامة
+       if (!stage.allowedDepartmentIds || stage.allowedDepartmentIds.length === 0) return true;
+       // خلاف ذلك، يجب أن يكون قسم المستخدم ضمن القائمة المسموح بها
+       return userDeptId && stage.allowedDepartmentIds.includes(userDeptId);
+    });
+  }, [rawStages, isAdmin, globalUser?.departmentId]);
 
   const progressPercent = useMemo(() => {
     if (stages.length === 0) return 0;
@@ -319,12 +332,24 @@ export default function TransactionDetailsPage() {
                    ) : stages.length === 0 ? (
                       <div className="py-24 text-center bg-white rounded-[3rem] border-4 border-dashed border-slate-100 space-y-6">
                         <div className="w-24 h-24 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto text-slate-200"><Workflow className="h-12 w-12" /></div>
-                        <h3 className="text-2xl font-black text-slate-400">{isRtl ? 'بانتظار هندسة المسار الفني' : 'Awaiting Pipeline'}</h3>
-                        {!isConsulting && !activeBoq && <Button onClick={() => setIsBoqInitOpen(true)} className="h-14 px-10 rounded-2xl gap-3"><Sparkles className="h-5 w-5" /> {isRtl ? 'إنشاء مقايسة للمشروع' : 'Create BOQ'}</Button>}
+                        <h3 className="text-2xl font-black text-slate-400">
+                          {isRtl ? (isAdmin ? 'بانتظار هندسة المسار الفني' : 'لا توجد مراحل مرتبطة بقسمك حالياً') : 'Awaiting Pipeline'}
+                        </h3>
+                        {!isConsulting && !activeBoq && isAdmin && <Button onClick={() => setIsBoqInitOpen(true)} className="h-14 px-10 rounded-2xl gap-3"><Sparkles className="h-5 w-5" /> {isRtl ? 'إنشاء مقايسة للمشروع' : 'Create BOQ'}</Button>}
                       </div>
                    ) : (
                      <div className="space-y-6">
-                        <div className="flex justify-between items-end px-2"><h3 className="text-lg font-black font-headline text-slate-800 flex items-center gap-2"><Workflow className="h-5 w-5 text-primary" /> {isRtl ? 'رادار المسار الميداني' : 'Field Pipeline'}</h3><span className="text-3xl font-black font-headline text-primary">{progressPercent}%</span></div>
+                        <div className="flex justify-between items-end px-2">
+                           <h3 className="text-lg font-black font-headline text-slate-800 flex items-center gap-2">
+                              <Workflow className="h-5 w-5 text-primary" /> {isRtl ? 'رادار المسار الميداني' : 'Field Pipeline'}
+                              {!isAdmin && (
+                                <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-100 text-[8px] font-black h-5 uppercase px-2">
+                                  {isRtl ? 'عرض معزول للقسم' : 'Dept View Only'}
+                                </Badge>
+                              )}
+                           </h3>
+                           <span className="text-3xl font-black font-headline text-primary">{progressPercent}%</span>
+                        </div>
                         <div className="space-y-4">
                            {stages.map((stage, idx) => {
                               const boqProgress = stageProgressMap[stage.technicalStageId];
