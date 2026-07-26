@@ -1,5 +1,7 @@
+
 'use client';
 
+import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -11,7 +13,12 @@ import {
   ArrowUpRight, 
   Plus,
   Activity,
-  FileText
+  FileText,
+  ShieldAlert,
+  CalendarX,
+  ArrowRight,
+  Clock,
+  Loader2
 } from "lucide-react"
 import { 
   Bar, 
@@ -26,6 +33,13 @@ import { cn } from "@/lib/utils"
 import { useAuthContext } from "@/context/auth-context"
 import { useCompanyContext } from "@/context/company-context"
 import { useLanguage } from "@/context/language-context"
+import { useCollection, useFirestore } from '@/firebase';
+import { collection, query, orderBy, where } from 'firebase/firestore';
+import { paths } from '@/firebase/multi-tenant';
+import { Appointment } from '@/types/appointment';
+import { startOfDay, isBefore, parseISO, format, differenceInDays } from 'date-fns';
+import { useRouter } from 'next/navigation';
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const data = [
   { name: "Jan", revenue: 4500, expenses: 2400 },
@@ -39,18 +53,47 @@ const data = [
 const chartConfig = {
   revenue: {
     label: "Revenue",
-    color: "#039BE5", // Firebase Blue
+    color: "#039BE5", 
   },
   expenses: {
     label: "Expenses",
-    color: "#FFA000", // Firebase Orange
+    color: "#FFA000", 
   },
 } satisfies ChartConfig
 
 export default function DashboardPage() {
   const { company } = useCompanyContext();
+  const { globalUser } = useAuthContext();
   const { t, dir, lang } = useLanguage();
+  const db = useFirestore();
+  const router = useRouter();
   const isRtl = lang === 'ar';
+
+  const companyId = globalUser?.companyId;
+  const isAdmin = globalUser?.roleCode === 'ADMIN' || globalUser?.role?.toLowerCase() === 'admin';
+
+  // جلب المواعيد المتأخرة للرقابة (The Sovereign Watch)
+  const apptsQuery = useMemo(() => {
+    if (!companyId || !db) return null;
+    return query(
+      collection(db, paths.appointments(companyId)),
+      where('status', '==', 'scheduled'),
+      orderBy('start', 'asc')
+    );
+  }, [db, companyId]);
+
+  const { data: allScheduled, loading: apptsLoading } = useCollection<Appointment>(apptsQuery);
+
+  const overdueMissions = useMemo(() => {
+    const today = startOfDay(new Date());
+    let list = allScheduled.filter(a => isBefore(parseISO(a.start), today));
+
+    // عزل البيانات: الموظف يرى مهامه فقط، المدير يرى الكل
+    if (!isAdmin && globalUser?.employeeId) {
+      list = list.filter(a => a.engineerId === globalUser.employeeId);
+    }
+    return list;
+  }, [allScheduled, isAdmin, globalUser?.employeeId]);
 
   const stats = [
     {
@@ -92,7 +135,7 @@ export default function DashboardPage() {
   ]
 
   return (
-    <div className="space-y-6" dir={dir}>
+    <div className="space-y-8" dir={dir}>
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="text-start">
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{isRtl ? 'نظرة عامة على العمليات' : 'Operations Overview'}</h1>
@@ -103,12 +146,67 @@ export default function DashboardPage() {
             <FileText className="me-2 h-4 w-4" />
             {isRtl ? `تصدير التقرير` : `Export`}
           </Button>
-          <Button size="sm" className="bg-[#FFA000] hover:bg-[#F57C00] text-white shadow-sm h-9 font-bold px-5">
+          <Button size="sm" onClick={() => router.push('/dashboard/clients')} className="bg-[#FFA000] hover:bg-[#F57C00] text-white shadow-sm h-9 font-bold px-5">
             <Plus className="me-2 h-4 w-4" />
             {isRtl ? 'مشروع جديد' : 'New Project'}
           </Button>
         </div>
       </header>
+
+      {/* قسم المهمات المتأخرة - تم نقله هنا للإنفاذ الإداري */}
+      {overdueMissions.length > 0 && (
+        <div className="animate-in slide-in-from-top-4 duration-500">
+           <div className="flex items-center gap-3 mb-4 px-2">
+              <ShieldAlert className="h-6 w-6 text-rose-500" />
+              <h2 className="text-xl font-black font-headline text-rose-900">
+                {isRtl ? (isAdmin ? 'تنبيه: مهمات متأخرة لم تغلق بعد' : 'لديك مهمات بانتظار الإغلاق الفني') : 'Missions Awaiting Closure'}
+              </h2>
+              <Badge className="bg-rose-500 text-white font-black border-0 h-6 px-3 rounded-full shadow-lg shadow-rose-200">
+                 {overdueMissions.length.toLocaleString('en-US')}
+              </Badge>
+           </div>
+           
+           <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide px-1">
+              {overdueMissions.map((mission) => {
+                const daysLate = differenceInDays(startOfDay(new Date()), startOfDay(parseISO(mission.start)));
+                return (
+                  <Card 
+                    key={mission.id} 
+                    onClick={() => router.push(`/dashboard/appointments/${mission.id}`)}
+                    className="min-w-[280px] border-2 border-rose-100 bg-white hover:border-rose-300 transition-all cursor-pointer rounded-2xl shadow-sm group"
+                  >
+                     <CardContent className="p-5 space-y-4">
+                        <div className="flex justify-between items-start">
+                           <div className="text-start">
+                              <p className="text-[10px] font-black text-rose-400 uppercase tracking-widest">{isRtl ? 'تجاوزت الموعد بـ' : 'Late by'}</p>
+                              <p className="text-sm font-black text-rose-600">{daysLate} {isRtl ? 'أيام' : 'Days'}</p>
+                           </div>
+                           <Badge variant="outline" className="bg-rose-50 border-rose-200 text-rose-500 text-[8px] font-black uppercase">ACTION REQUIRED</Badge>
+                        </div>
+                        
+                        <div className="text-start space-y-1">
+                           <h4 className="font-black text-xs text-slate-800 line-clamp-1">{mission.clientName}</h4>
+                           <p className="text-[9px] font-bold text-slate-400 flex items-center gap-1 uppercase">
+                              <Clock className="h-3 w-3" /> {format(parseISO(mission.start), 'dd MMM yyyy')}
+                           </p>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-50">
+                           <div className="flex items-center gap-2">
+                              <div className="h-6 w-6 rounded-lg bg-rose-50 flex items-center justify-center text-rose-500">
+                                 <Users className="h-3.5 w-3.5" />
+                              </div>
+                              <span className="text-[9px] font-black text-slate-500 truncate max-w-[100px]">{mission.engineerName}</span>
+                           </div>
+                           <ArrowRight className={cn("h-4 w-4 text-slate-200 group-hover:text-rose-600 transition-all", isRtl && "rotate-180")} />
+                        </div>
+                     </CardContent>
+                  </Card>
+                );
+              })}
+           </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat, i) => (

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
@@ -6,13 +7,8 @@ import {
   isSameDay, 
   parseISO, 
   addDays,
-  eachDayOfInterval,
   subDays,
   parse,
-  isBefore,
-  startOfDay,
-  differenceInDays,
-  subMonths
 } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import { 
@@ -28,7 +24,7 @@ import {
   X,
   Save,
   Trash2,
-  User as UserIcon,
+  Users,
   ShieldCheck,
   CalendarX,
   Plane,
@@ -43,7 +39,6 @@ import {
   Sun,
   MoonStar,
   HardHat,
-  Users,
   Target,
   CalendarDays
 } from 'lucide-react';
@@ -60,7 +55,6 @@ import { AppointmentService } from '@/services/appointment-service';
 import { ClientService } from '@/services/client-service';
 import { Employee, LeaveRequest, PermissionRequest, AttendanceRecord } from '@/types/hr';
 import { DayOfWeek, WorkHoursSettings } from '@/types/work-hours';
-import { Governorate } from '@/types/reference';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -68,8 +62,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Textarea } from '@/components/ui/textarea';
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Dialog,
   DialogContent,
@@ -81,7 +74,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
   DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
@@ -92,23 +84,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { toast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
-/**
- * @fileOverview مكون رادار العمليات الميدانية (Construction Bookings View).
- * مخصص لمهندسي الموقع ويعتمد على توقيتات "العمل الميداني" (Field Work).
- */
 export function ConstructionBookingsView() {
   const { globalUser, user } = useAuthContext();
   const { lang, dir, t } = useLanguage();
@@ -123,29 +101,21 @@ export function ConstructionBookingsView() {
   const [settings, setSettings] = useState<WorkHoursSettings | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogData, setDialogData] = useState<any>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
 
   const dateStr = useMemo(() => format(currentDate, 'yyyy-MM-dd'), [currentDate]);
 
-  // استعلام المواعيد للمنشأة بالكامل
   const apptsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.appointments(companyId)), orderBy('start', 'asc')) : null, 
   [db, companyId]);
 
-  // جلب المهندسين الميدانيين حصراً
   const empsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active')) : null, 
   [db, companyId]);
 
-  const clientsQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.clients(companyId))) : null, 
-  [db, companyId]);
-
   const { data: rawAppointments, loading: apptsLoading } = useCollection<Appointment>(apptsQuery);
   const { data: allEmployees, loading: empsLoading } = useCollection<Employee>(empsQuery);
-  const { data: allClients } = useCollection<any>(clientsQuery);
 
   useEffect(() => {
     if (db && companyId) {
@@ -154,7 +124,6 @@ export function ConstructionBookingsView() {
     }
   }, [db, companyId]);
 
-  // تصفية المهندسين الميدانيين (تنفيذ أو موقع)
   const fieldEngineers = useMemo(() => {
     const list = (allEmployees || []).filter(e => 
       e.jobTitle?.includes('موقع') || 
@@ -190,150 +159,105 @@ export function ConstructionBookingsView() {
     setDialogOpen(true);
   };
 
-  const forceThaw = useCallback(() => {
-    if (typeof document !== 'undefined') {
-       document.body.style.pointerEvents = 'auto';
-       document.body.style.overflow = 'auto';
-       document.body.removeAttribute('data-scroll-locked');
-    }
-  }, []);
-
   if (!mounted || apptsLoading || empsLoading || !settings) return <div className="h-[40vh] flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>;
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-700 print:space-y-1 print:pt-0" dir={dir}>
+    <div className="space-y-6 animate-in fade-in duration-700 print:space-y-1 print:pt-0" dir={dir}>
       
-      {/* Print-only Date Header - Compact */}
-      <div className="hidden print:flex justify-between items-end border-b pb-1 mb-2">
-         <p className="text-xs font-black uppercase tracking-widest text-primary">NovaFlow Field Ops Radar</p>
-         <p className="text-sm font-black">{format(currentDate, 'EEEE, d MMMM yyyy', { locale: isRtl ? ar : enUS })}</p>
-      </div>
-
-      {/* التحكم في التاريخ */}
-      <div className="flex flex-col items-center gap-4 print:hidden">
-        <div className="flex items-center gap-6 w-full max-w-4xl justify-center bg-white p-2 rounded-2xl border shadow-sm print:hidden">
-           <Button variant="ghost" size="icon" onClick={() => setCurrentDate(subDays(currentDate, 1))} className="h-10 w-10 rounded-full text-slate-400"><ChevronLeft className={cn("h-5 w-5", !isRtl && "rotate-180")} /></Button>
-           
-           <div className="flex items-center gap-3">
+      <div className="flex justify-center print:hidden">
+        <div className="bg-white p-2 rounded-2xl border-2 border-slate-100 shadow-sm flex items-center gap-4">
+           <Button variant="ghost" size="icon" onClick={() => setCurrentDate(subDays(currentDate, 1))} className="h-10 w-10 rounded-xl text-slate-400"><ChevronLeft className={cn("h-5 w-5", !isRtl && "rotate-180")} /></Button>
+           <div className="flex items-center gap-2 px-4 border-x-2 border-slate-50">
               <CalendarDays className="h-5 w-5 text-primary" />
-              <span className="font-black text-lg text-slate-800 uppercase tracking-tighter">
+              <span className="font-black text-lg text-slate-900 uppercase">
                  {format(currentDate, 'EEEE, d MMM yyyy', { locale: isRtl ? ar : enUS })}
               </span>
            </div>
-
-           <Button variant="ghost" size="icon" onClick={() => currentDate.getTime() < addDays(new Date(), 30).getTime() && setCurrentDate(addDays(currentDate, 1))} className="h-10 w-10 rounded-full text-slate-400"><ChevronRight className={cn("h-5 w-5", isRtl && "rotate-180")} /></Button>
+           <Button variant="ghost" size="icon" onClick={() => setCurrentDate(addDays(currentDate, 1))} className="h-10 w-10 rounded-xl text-slate-400"><ChevronRight className={cn("h-5 w-5", !isRtl && "rotate-180")} /></Button>
         </div>
       </div>
 
-      {/* عرض الرادار الميداني */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 print:gap-1">
+      <div className="grid grid-cols-4 gap-3 print:gap-1">
          <Card className="border-0 shadow-md rounded-xl bg-white border-b-4 border-b-slate-900 print:shadow-none print:border-b-2">
-            <CardContent className="p-3 print:p-1 flex flex-col items-center justify-center text-center h-20 print:h-12">
-               <p className="text-[8px] print:text-[6px] font-black text-slate-400 uppercase tracking-tighter mb-1">{isRtl ? 'إجمالي المواعيد' : 'Total Today'}</p>
+            <CardContent className="p-3 print:p-1 flex flex-col items-center justify-center text-center h-16 print:h-12">
+               <p className="text-[8px] print:text-[6px] font-black text-slate-400 uppercase tracking-tighter">{isRtl ? 'إجمالي اليوم' : 'Total'}</p>
                <h3 className="text-xl print:text-xs font-black text-slate-900" style={{ fontVariantNumeric: 'tabular-nums' }}>{filteredAppointments.length.toLocaleString('en-US')}</h3>
             </CardContent>
          </Card>
          <Card className="border-0 shadow-md rounded-xl bg-white border-b-4 border-b-yellow-400 print:shadow-none print:border-b-2">
-            <CardContent className="p-3 print:p-1 flex flex-col items-center justify-center text-center h-20 print:h-12">
-               <p className="text-[8px] print:text-[6px] font-black text-slate-400 uppercase tracking-tighter mb-1">{isRtl ? 'قيد التنفيذ' : 'In Progress'}</p>
+            <CardContent className="p-3 print:p-1 flex flex-col items-center justify-center text-center h-16 print:h-12">
+               <p className="text-[8px] print:text-[6px] font-black text-slate-400 uppercase tracking-tighter">{isRtl ? 'قيد التنفيذ' : 'Active'}</p>
                <h3 className="text-xl print:text-xs font-black text-yellow-500" style={{ fontVariantNumeric: 'tabular-nums' }}>{filteredAppointments.filter(a => a.status === 'scheduled').length.toLocaleString('en-US')}</h3>
             </CardContent>
          </Card>
          <Card className="border-0 shadow-md rounded-xl bg-white border-b-4 border-b-emerald-500 print:shadow-none print:border-b-2">
-            <CardContent className="p-3 print:p-1 flex flex-col items-center justify-center text-center h-20 print:h-12">
-               <p className="text-[8px] print:text-[6px] font-black text-slate-400 uppercase tracking-tighter mb-1">{isRtl ? 'مكتملة' : 'Completed'}</p>
+            <CardContent className="p-3 print:p-1 flex flex-col items-center justify-center text-center h-16 print:h-12">
+               <p className="text-[8px] print:text-[6px] font-black text-slate-400 uppercase tracking-tighter">{isRtl ? 'مكتملة' : 'Done'}</p>
                <h3 className="text-xl print:text-xs font-black text-emerald-600" style={{ fontVariantNumeric: 'tabular-nums' }}>{filteredAppointments.filter(a => a.status === 'completed').length.toLocaleString('en-US')}</h3>
             </CardContent>
          </Card>
          <Card className="border-0 shadow-md rounded-xl bg-white border-b-4 border-b-blue-500 print:shadow-none print:border-b-2">
-            <CardContent className="p-3 print:p-1 flex flex-col items-center justify-center text-center h-20 print:h-12">
-               <p className="text-[8px] print:text-[6px] font-black text-slate-400 uppercase tracking-tighter mb-1">{isRtl ? 'القوى الميدانية' : 'Field Force'}</p>
+            <CardContent className="p-3 print:p-1 flex flex-col items-center justify-center text-center h-16 print:h-12">
+               <p className="text-[8px] print:text-[6px] font-black text-slate-400 uppercase tracking-tighter">{isRtl ? 'القوى الميدانية' : 'Staff'}</p>
                <h3 className="text-xl print:text-xs font-black text-blue-600" style={{ fontVariantNumeric: 'tabular-nums' }}>{fieldEngineers.length.toLocaleString('en-US')}</h3>
             </CardContent>
          </Card>
       </div>
 
-      <div className="space-y-12 pb-20 print:pb-0 print:space-y-4">
+      <div className="space-y-8 pb-10 print:pb-0 print:space-y-4">
          <GridSection 
-           title={isRtl ? "الفترة الميدانية الأولى ☀️" : "Morning Ops"} 
+           title={isRtl ? "الفترة الميدانية الأولى ☀️" : "Morning Session"} 
            slots={timeSlots.morning} 
            engineers={fieldEngineers} 
            grid={filteredAppointments} 
            onAction={handleAction}
            isRtl={isRtl}
-           t={t}
            router={router}
+           t={t}
          />
          {timeSlots.evening.length > 0 && (
            <GridSection 
-             title={isRtl ? "الفترة الميدانية الثانية 🌆" : "Evening Ops"} 
+             title={isRtl ? "الفترة الميدانية الثانية 🌆" : "Evening Session"} 
              slots={timeSlots.evening} 
              engineers={fieldEngineers} 
              grid={filteredAppointments} 
              onAction={handleAction}
              isRtl={isRtl}
-             t={t}
              router={router}
+             t={t}
            />
          )}
       </div>
-
-      <Dialog open={dialogOpen} onOpenChange={(v) => { if(!v) setDialogOpen(false); forceThaw(); }}>
-         <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
-            <div className="bg-slate-50 p-6 border-b text-start">
-               <DialogTitle className="text-lg font-black flex items-center gap-3">
-                  <Hammer className="h-5 w-5 text-primary" />
-                  {dialogData?.mode === 'edit' ? (isRtl ? 'تعديل موعد موقع' : 'Edit Site Booking') : (isRtl ? 'حجز موعد ميداني' : 'New Site Booking')}
-               </DialogTitle>
-            </div>
-            <div className="p-8 space-y-6 text-start bg-white">
-               <div className="p-5 bg-blue-50 border border-blue-100 rounded-2xl flex items-start gap-4">
-                  <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
-                  <p className="text-[10px] font-bold text-blue-800 leading-relaxed italic">
-                     سيتم ربط هذا الموعد برادار العمليات الميدانية لتمكين المهندس من تسجيل الإنجاز الفني فور وصوله للموقع.
-                  </p>
-               </div>
-               <p className="text-center py-10 text-slate-400 font-bold italic">نموذج الحجز الميداني المتقدم يكتمل في التحديث القادم...</p>
-            </div>
-            <DialogFooter className="p-6 bg-slate-50 border-t">
-               <Button variant="outline" onClick={() => setDialogOpen(false)} className="rounded-xl h-11 px-8 font-bold">إلغاء</Button>
-            </DialogFooter>
-         </DialogContent>
-      </Dialog>
     </div>
   );
 }
 
-function GridSection({ title, slots, engineers, grid, onAction, isRtl, t, router }: any) {
+function GridSection({ title, slots, engineers, grid, onAction, isRtl, router, t }: any) {
   if (slots.length === 0) return null;
 
   return (
-    <div className="space-y-6 print:space-y-1">
-       <div className="flex items-center gap-4 px-2 print:gap-1">
-          <Badge className="bg-slate-900 text-white font-black px-6 py-1.5 rounded-full text-[10px] uppercase tracking-widest print:px-2 print:py-0.5 print:text-[8px]">{title}</Badge>
-          <div className="h-[1.5px] flex-1 bg-slate-200" />
+    <div className="space-y-4 print:space-y-1">
+       <div className="flex items-center gap-3 px-1 print:gap-1">
+          <Badge className="bg-slate-900 text-white font-black px-4 py-1 rounded-lg text-[9px] uppercase tracking-widest">{title}</Badge>
+          <div className="h-[1px] flex-1 bg-slate-100" />
        </div>
 
-       <div className="overflow-x-auto rounded-xl shadow-xl border-4 border-white bg-white ring-1 ring-black/5 print:shadow-none print:border-0 print:ring-0">
+       <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white shadow-sm print:border-0 print:shadow-none">
           <table className="w-full border-collapse">
              <thead>
-                <tr className="bg-slate-50 print:bg-white">
-                   <th className="w-20 p-4 border-b-2 border-slate-200 font-black text-[9px] text-slate-400 uppercase tracking-widest print:p-1 print:border-b print:w-10">{isRtl ? 'الوقت' : 'Time'}</th>
+                <tr className="bg-slate-50/50 print:bg-white">
+                   <th className="w-16 p-2 border-b border-slate-100 font-black text-[9px] text-slate-400 uppercase tracking-tighter bg-slate-50/50 print:p-1 print:w-10">Time</th>
                    {engineers.map((eng: Employee) => {
                       const engAppts = grid.filter((a: any) => a.engineerId === eng.id);
                       return (
-                        <th key={eng.id} className="p-4 border-b-2 border-slate-200 border-s-2 border-s-slate-100 text-start bg-white min-w-[250px] print:p-1 print:min-w-[120px] print:border-s print:border-b">
-                           <div className="flex items-center gap-3 print:gap-1">
-                              <Avatar className="h-10 w-10 rounded-xl border-2 border-white shadow-md print:h-6 print:w-6 print:rounded-md">
-                                 <AvatarImage src={`https://picsum.photos/seed/${eng.id}/100/100`} />
-                                 <AvatarFallback className="bg-primary text-white font-black text-xs uppercase print:text-[8px]">{eng.fullName.charAt(0)}</AvatarFallback>
+                        <th key={eng.id} className="p-3 border-b border-slate-100 border-s border-s-slate-50 min-w-[180px] print:p-1 print:min-w-[100px]">
+                           <div className="flex items-center gap-2">
+                              <Avatar className="h-8 w-8 rounded-lg shrink-0">
+                                 <AvatarFallback className="bg-primary/10 text-primary font-black text-[10px]">{eng.fullName.charAt(0)}</AvatarFallback>
                               </Avatar>
-                              <div className="text-start">
-                                 <span className="font-black text-slate-900 text-xs leading-none print:text-[9px]">{eng.fullName}</span>
-                                 <div className="flex items-center gap-2 mt-1 print:mt-0">
-                                    <span className="text-[8px] font-bold text-slate-400 uppercase print:text-[6px]">{eng.jobTitle}</span>
-                                    <Badge variant="outline" className="h-4 px-1.5 border-slate-200 text-[8px] font-black bg-slate-50 print:h-3 print:px-1 print:text-[6px]">{engAppts.length} {isRtl ? 'مهمة' : 'Tasks'}</Badge>
-                                 </div>
+                              <div className="text-start flex-1 min-w-0">
+                                 <span className="font-black text-slate-800 text-[11px] leading-none block truncate">{eng.fullName}</span>
+                                 <Badge className="bg-slate-100 text-slate-500 text-[7px] font-black h-4 px-1 border-0 mt-1 uppercase">{engAppts.length} TASK</Badge>
                               </div>
                            </div>
                         </th>
@@ -342,9 +266,9 @@ function GridSection({ title, slots, engineers, grid, onAction, isRtl, t, router
                 </tr>
              </thead>
              <tbody>
-                {slots.map((slot: string, sIdx: number) => (
-                  <tr key={slot} className={cn("group/row", sIdx % 2 === 0 ? "bg-white" : "bg-slate-50/10 print:bg-white")}>
-                     <td className="p-4 text-center border-b-2 border-slate-200 border-e-2 border-e-slate-200 font-mono font-black text-slate-500 bg-slate-50 text-[10px] print:bg-white print:p-1 print:border-b print:border-e">{slot}</td>
+                {slots.map((slot: string) => (
+                  <tr key={slot} className="group/row">
+                     <td className="p-3 text-center border-b border-slate-50 border-e border-e-slate-50 font-mono font-black text-slate-300 text-[10px] bg-slate-50/20">{slot}</td>
                      {engineers.map((eng: Employee) => {
                         const appt = grid.find((a: any) => {
                            const start = format(parseISO(a.start), 'HH:mm');
@@ -354,27 +278,18 @@ function GridSection({ title, slots, engineers, grid, onAction, isRtl, t, router
                         if (appt) {
                            const isCompleted = appt.status === 'completed';
                            return (
-                             <td key={eng.id} className="p-1 border-b-2 border-slate-200 border-s-2 border-s-slate-100 align-top print:p-0.5 print:border-s print:border-b">
+                             <td key={eng.id} className="p-0.5 border-b border-slate-50 border-s border-s-slate-50 align-top">
                                 <Card 
                                   onClick={() => router.push(`/dashboard/appointments/${appt.id}`)}
                                   className={cn(
-                                    "border-2 p-3 rounded-xl h-full shadow-sm hover:shadow-lg transition-all cursor-pointer print:shadow-none print:p-1 print:border print:rounded-md",
+                                    "p-2 rounded-lg h-full transition-all cursor-pointer",
                                     isCompleted ? "bg-emerald-50/50 border-emerald-500/20" : "bg-primary/5 border-primary/20"
                                   )}
                                 >
                                    <div className="text-start">
-                                      <div className="flex items-center gap-1.5 mb-1">
-                                         {isCompleted && <CheckCircle2 className="h-3 w-3 text-emerald-600 shrink-0 print:h-2 print:w-2" />}
-                                         <p className="font-black text-[10px] leading-tight truncate print:text-[8px]">{appt.clientName}</p>
-                                      </div>
-                                      <p className="text-[8px] font-bold text-slate-400 uppercase truncate print:text-[6px]">
-                                         <MapPin className="h-2 w-2 inline me-1 print:h-1.5 print:w-1.5" /> {appt.governorateName || 'Site'}
+                                      <p className={cn("font-black text-[9px] leading-tight truncate", isCompleted && "text-emerald-900")}>
+                                        {appt.clientName}
                                       </p>
-                                      {appt.transactionNumber && (
-                                        <div className="flex items-center gap-1 text-[7px] font-black text-primary mt-2 uppercase print:mt-1 print:text-[6px]">
-                                           <Workflow className="h-2.5 w-2.5 print:h-2 print:w-2" /> {appt.transactionNumber}
-                                        </div>
-                                      )}
                                    </div>
                                 </Card>
                              </td>
@@ -384,12 +299,10 @@ function GridSection({ title, slots, engineers, grid, onAction, isRtl, t, router
                           <td 
                             key={eng.id} 
                             onClick={() => onAction('create', eng, slot)}
-                            className="p-1 border-b-2 border-slate-200 border-s-2 border-s-slate-100 group-hover/row:bg-primary/[0.03] transition-colors cursor-pointer print:bg-white print:border-s print:border-b"
+                            className="p-0.5 border-b border-slate-50 border-s border-s-slate-50 group-hover/row:bg-primary/[0.02] cursor-pointer"
                           >
-                             <div className="h-10 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity print:hidden">
-                                <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                                   <Plus className="h-3 w-3" />
-                                </div>
+                             <div className="h-6 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
+                                <Plus className="h-3 w-3 text-primary/30" />
                              </div>
                           </td>
                         );
