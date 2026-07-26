@@ -1,6 +1,6 @@
 import { BaseReference } from './reference';
 
-export type AppointmentType = 'client_meeting' | 'site_visit' | 'busy_blocked' | 'other';
+export type AppointmentType = 'client_meeting' | 'site_visit' | 'busy_blocked' | 'hall_meeting' | 'other';
 export type AppointmentStatus = 'scheduled' | 'completed' | 'cancelled';
 
 export interface Appointment extends BaseReference {
@@ -12,14 +12,25 @@ export interface Appointment extends BaseReference {
   clientId: string;
   clientName: string;
   
+  // الربط اللوجستي بالقاعات والأقسام
+  hallId?: string;
+  hallName?: string;
+  departmentId?: string;
+  departmentName?: string;
+  departmentColor?: string;
+
   // الربط الفني بالمشاريع والمراحل
-  transactionId?: string;      // معرف المعاملة (المشروع)
-  transactionNumber?: string;  // رقم المعاملة للعرض
-  stageId?: string;            // معرف المرحلة الفنية (StageInstance)
-  stageName?: string;          // اسم المرحلة
+  transactionId?: string;      
+  transactionNumber?: string;  
+  stageId?: string;            
+  stageName?: string;          
   
-  engineerId: string;
+  // دعم المهندسين المتعددين (لورش العمل المشتركة)
+  engineerId: string; // المهندس الرئيسي (للتوافق)
   engineerName: string;
+  additionalEngineerIds?: string[]; 
+  additionalEngineerNames?: string[];
+  
   start: string; // ISO String
   end?: string;  // ISO String
   location?: string;

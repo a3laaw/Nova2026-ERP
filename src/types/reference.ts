@@ -36,6 +36,15 @@ export interface MilestoneTimingType extends BaseReferenceList {}
 export interface ItemCategory extends BaseReferenceList {}
 export interface CostTypeCategory extends BaseReferenceList {}
 
+export interface MeetingRoom extends BaseReference {
+  id: string;
+  name: string;
+  nameEn: string;
+  capacity?: number;
+  isActive: boolean;
+  order: number;
+}
+
 export interface ServiceType extends BaseReference {
   code: string;
   name: string;
@@ -104,6 +113,7 @@ export interface Department extends BaseReference {
   description?: string;
   order: number;
   isActive: boolean;
+  color?: string; // لون القسم المرجعي للتقارير
 }
 
 export interface Job extends BaseReference {
@@ -142,7 +152,7 @@ export interface BOQReferenceNode extends BaseReference {
   title: string;              // مسمى العقدة
   description?: string;       // وصف تفصيلي
   parentId: string | null;    // مرجع العقدة الأب
-  order: number;              // الترتيب داخل المستوى
+  order: number;              // التترتيب داخل المستوى
   childrenCount: number;      // عدد الأبناء المباشرين
   depth: number;              // مستوى العمق (0 للجذر)
   ancestorIds: string[];      // مصفوفة كافة الأباء في المسار العلوي

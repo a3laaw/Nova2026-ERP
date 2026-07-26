@@ -27,11 +27,12 @@ export class SeedService {
   async runSeed() {
     const batch = writeBatch(this.db);
     
-    // 1. الأقسام والوظائف
+    // 1. الأقسام والوظائف (إضافة ألوان للأقسام)
     for (const dept of SEED_DATA.departments) {
       const deptRef = doc(collection(this.db, paths.departments(this.companyId)));
       batch.set(deptRef, {
         ...dept,
+        color: dept.code === 'ARCH' ? '#F57C00' : '#2563eb', // ألوان افتراضية
         isActive: true,
         companyId: this.companyId,
         createdAt: serverTimestamp(),
@@ -145,7 +146,18 @@ export class SeedService {
       }
     }
 
-    // 4. ضخ القاموس الهندسي الشجري الموحد (boqReferenceNodes)
+    // 4. ضخ قاعات الاجتماعات الافتراضية
+    const rooms = [
+       { name: 'القاعة الكبرى', nameEn: 'Grand Hall', order: 1 },
+       { name: 'غرفة اجتماعات (1)', nameEn: 'Meeting Room 1', order: 2 },
+       { name: 'المكتب الفني', nameEn: 'Technical Office', order: 3 },
+    ];
+    rooms.forEach(r => {
+       const ref = doc(collection(this.db, paths.meetingRooms(this.companyId)));
+       batch.set(ref, { ...r, isActive: true, companyId: this.companyId, createdAt: serverTimestamp() });
+    });
+
+    // 5. ضخ القاموس الهندسي الشجري الموحد (boqReferenceNodes)
     const rootCivilRef = doc(collection(this.db, paths.boqReferenceNodes(this.companyId)));
     batch.set(rootCivilRef, {
       code: 'CONSTRUCTION_ROOT',
