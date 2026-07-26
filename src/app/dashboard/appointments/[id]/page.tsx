@@ -10,7 +10,8 @@ import {
   ArrowRight, Loader2, Workflow, CheckCircle2,
   AlertTriangle, Hammer, Check, Layers, Save,
   Target, X, RotateCcw, Lock, Info, AlertCircle, Play,
-  Users, Truck, Plus, Trash2, HardHat, Link as LinkIcon
+  Users, Truck, Plus, Trash2, HardHat, Link as LinkIcon,
+  ShieldAlert, Settings2
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, where, orderBy, limit, updateDoc, serverTimestamp, getDocs } from 'firebase/firestore';
