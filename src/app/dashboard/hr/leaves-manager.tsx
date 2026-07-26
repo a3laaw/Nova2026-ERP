@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -31,7 +32,7 @@ import { canPerformOnRecord } from '@/lib/permissions/engine';
 export function LeavesManager() {
   const { globalUser, user } = useAuthContext();
   const { t, lang, dir } = useLanguage();
-  const { check } = usePermissions();
+  const { check, permissions } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
@@ -51,8 +52,8 @@ export function LeavesManager() {
   const canApprove = check('hr', 'approve').can;
 
   const leaveService = useMemo(() => 
-    db && companyId ? new LeaveService(db, companyId) : null, 
-  [db, companyId]);
+    db && companyId ? new LeaveService(db, companyId, permissions) : null, 
+  [db, companyId, permissions]);
 
   const leavesQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.leaveRequests(companyId)), orderBy('createdAt', 'desc')) : null, 
@@ -120,7 +121,7 @@ export function LeavesManager() {
         </Button>
       </div>
 
-      <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
+      <Card className="border-0 shadow-2xl rounded-xl bg-white overflow-hidden ring-1 ring-black/5">
          <CardContent className="p-0 overflow-x-auto">
             <Table>
                <TableHeader className="bg-muted/30">
@@ -180,7 +181,7 @@ export function LeavesManager() {
       </Card>
 
       <Dialog open={!!processingLeave} onOpenChange={(open) => !open && setProcessingLeave(null)}>
-        <DialogContent className="rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
+        <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-xl" dir={dir}>
            <div className="bg-primary/5 p-10 text-slate-900 text-start border-b">
               <DialogTitle className="text-3xl font-black font-headline flex items-center gap-3">
                  <Clock className="h-9 w-9 text-primary" />
@@ -190,7 +191,7 @@ export function LeavesManager() {
            </div>
            
            <div className="p-10 space-y-8 text-start bg-white">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-slate-50 rounded-[2rem] border-2 border-dashed border-primary/10">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-slate-50 rounded-2xl border-2 border-dashed border-primary/10">
                  <div className="space-y-2">
                     <Label className="text-[10px] font-black text-slate-400 uppercase flex items-center gap-2">
                        <Calendar className="h-3.5 w-3.5" /> {isRtl ? 'تاريخ البدء المعتمد' : 'Approve Start Date'}

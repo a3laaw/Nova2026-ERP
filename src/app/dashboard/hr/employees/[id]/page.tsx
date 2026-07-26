@@ -32,7 +32,7 @@ export default function EmployeeDetailsPage() {
   const empId = params.id as string;
   const { user, globalUser } = useAuthContext();
   const { t, lang, dir } = useLanguage();
-  const { check, isAdmin } = usePermissions();
+  const { check, isAdmin, permissions } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
@@ -48,8 +48,8 @@ export default function EmployeeDetailsPage() {
 
   const companyId = globalUser?.companyId;
   const hrService = useMemo(() => 
-    db && companyId ? new HRService(db, companyId) : null, 
-  [db, companyId]);
+    db && companyId ? new HRService(db, companyId, permissions) : null, 
+  [db, companyId, permissions]);
 
   const empRef = useMemo(() => companyId && db ? doc(db, paths.employees(companyId), empId) : null, [db, companyId, empId]);
   const logsQuery = useMemo(() => companyId && db ? query(collection(db, `${paths.employees(companyId)}/${empId}/auditLogs`), orderBy('createdAt', 'desc')) : null, [db, companyId, empId]);
@@ -118,7 +118,7 @@ export default function EmployeeDetailsPage() {
                    <Ban className="h-4 w-4" /> {isRtl ? 'إنهاء الخدمة' : 'Terminate'}
                 </Button>
              </DialogTrigger>
-             <DialogContent className="rounded-[2rem] max-w-lg p-0 overflow-hidden" dir={dir}>
+             <DialogContent className="rounded-xl p-0 overflow-hidden" dir={dir}>
                 <div className="bg-rose-50 p-8 border-b text-start">
                    <DialogTitle className="font-black text-rose-800 flex items-center gap-2">
                       <AlertTriangle className="h-6 w-6" /> {isRtl ? 'تأكيد إنهاء الخدمة' : 'Confirm Termination'}
@@ -159,7 +159,7 @@ export default function EmployeeDetailsPage() {
 
         <div className="space-y-6">
            {canEdit && (
-              <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
+              <Card className="border-0 shadow-xl rounded-xl bg-white overflow-hidden ring-1 ring-black/5">
                 <CardHeader className="bg-slate-50 border-b p-8 text-start">
                    <CardTitle className="text-lg font-black flex items-center gap-3 text-slate-900">
                       <History className="h-5 w-5 text-primary" />

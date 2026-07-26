@@ -36,7 +36,7 @@ import {
 export default function EmployeesPage() {
   const { globalUser } = useAuthContext();
   const { t, lang, dir } = useLanguage();
-  const { check } = usePermissions();
+  const { check, permissions } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
@@ -58,8 +58,8 @@ export default function EmployeesPage() {
   const { data: employees, loading } = useCollection<Employee>(employeesQuery);
 
   const hrService = useMemo(() => 
-    db && companyId ? new HRService(db, companyId) : null, 
-  [db, companyId]);
+    db && companyId ? new HRService(db, companyId, permissions) : null, 
+  [db, companyId, permissions]);
 
   const filteredEmployees = useMemo(() => {
     if (!viewAccess.can || !employees) return [];
@@ -113,7 +113,6 @@ export default function EmployeesPage() {
         )}
       </div>
 
-      {/* Independent Filter Card */}
       <Card className="border-0 shadow-sm rounded-xl bg-white mb-4 overflow-hidden">
         <div className="p-5 flex flex-row items-center justify-between gap-4">
           <div className="relative w-full max-w-md">
@@ -131,7 +130,6 @@ export default function EmployeesPage() {
         </div>
       </Card>
 
-      {/* Main Data Table */}
       <Card className="border-0 shadow-xl rounded-xl bg-white overflow-hidden ring-1 ring-black/5">
         <CardContent className="p-0 overflow-x-auto">
           <Table>

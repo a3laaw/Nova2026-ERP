@@ -31,7 +31,7 @@ export default function LeaveDetailsPage() {
   const leaveId = useParams().id as string;
   const { user, globalUser } = useAuthContext();
   const { t, lang, dir } = useLanguage();
-  const { isAdmin, check } = usePermissions();
+  const { isAdmin, check, permissions } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
@@ -49,8 +49,8 @@ export default function LeaveDetailsPage() {
 
   const companyId = globalUser?.companyId;
   const leaveService = useMemo(() => 
-    db && companyId ? new LeaveService(db, companyId) : null, 
-  [db, companyId]);
+    db && companyId ? new LeaveService(db, companyId, permissions) : null, 
+  [db, companyId, permissions]);
 
   const leaveRef = useMemo(() => 
     companyId && db ? doc(db, paths.leaveRequests(companyId), leaveId) : null, 
@@ -94,7 +94,6 @@ export default function LeaveDetailsPage() {
   if (loading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
   if (!leave) return <div className="p-20 text-center text-slate-400 font-bold">{isRtl ? 'الطلب غير موجود' : 'Request not found'}</div>;
 
-  const isOwner = user?.uid === leave.userId || user?.uid === (leave as any).createdBy;
   const canPrint = check('hr', 'print').can;
 
   return (
@@ -107,9 +106,9 @@ export default function LeaveDetailsPage() {
                 <Badge className={cn(
                   "font-black px-4 py-1 rounded-xl shadow-sm uppercase",
                   leave.status === 'approved' ? 'bg-blue-500 text-white' : 
-                  leave.status === 'on-leave' ? 'bg-amber-500 text-white' :
+                  leave.status === 'on-leave' ? 'bg-amber-50 text-white' :
                   leave.status === 'returned' ? 'bg-purple-500 text-white' :
-                  leave.status === 'commenced' ? 'bg-emerald-500 text-white' :
+                  leave.status === 'commenced' ? 'bg-emerald-50 text-white' :
                   leave.status === 'pending' ? 'bg-amber-50 text-amber-600 border-amber-200 border' : 
                   'bg-rose-500 text-white'
                 )}>
