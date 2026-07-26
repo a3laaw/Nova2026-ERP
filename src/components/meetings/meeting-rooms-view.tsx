@@ -156,7 +156,7 @@ export function MeetingRoomsView() {
       {/* 3-Day Strip Selector */}
       <div className="flex justify-center print:hidden">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => setCurrentDate(subDays(currentDate, 1))} className="h-10 w-10 rounded-xl bg-white shadow-sm border-2 border-slate-100"><ChevronLeft className={cn("h-5 w-5", !isRtl && "rotate-180")} /></Button>
+          <Button variant="ghost" size="icon" onClick={() => setCurrentDate(subDays(currentDate, 1))} className="h-10 w-10 rounded-xl bg-white shadow-sm border-2 border-slate-100 text-slate-400 hover:text-primary"><ChevronLeft className={cn("h-5 w-5", !isRtl && "rotate-180")} /></Button>
           <div className="flex gap-2">
             {[-1, 0, 1].map((offset) => {
               const d = addDays(currentDate, offset);
@@ -177,7 +177,7 @@ export function MeetingRoomsView() {
               );
             })}
           </div>
-          <Button variant="ghost" size="icon" onClick={() => setCurrentDate(addDays(currentDate, 1))} className="h-10 w-10 rounded-xl bg-white shadow-sm border-2 border-slate-100"><ChevronRight className={cn("h-5 w-5", !isRtl && "rotate-180")} /></Button>
+          <Button variant="ghost" size="icon" onClick={() => setCurrentDate(addDays(currentDate, 1))} className="h-10 w-10 rounded-xl bg-white shadow-sm border-2 border-slate-100 text-slate-400 hover:text-primary"><ChevronRight className={cn("h-5 w-5", !isRtl && "rotate-180")} /></Button>
         </div>
       </div>
 
@@ -402,7 +402,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
              endTime: appt.end ? format(parseISO(appt.end), 'HH:mm') : '',
              notes: appt.notes || ''
           });
-       } else {
+       } else if (data.room) {
           setFormData(prev => ({
             ...prev,
             date: format(new Date(), 'yyyy-MM-dd'),
@@ -416,7 +416,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
   }, [isOpen, data, isEdit]);
 
   const handleSave = async () => {
-    if (!db || !companyId || !formData.clientId || !formData.engineerId) return;
+    if (!db || !companyId || !formData.clientId || !formData.engineerId || !data) return;
 
     const start = new Date(`${formData.date}T${formData.time}:00`);
     const duration = settings?.meetingRooms?.slotDurationMinutes || 60;
@@ -512,14 +512,16 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-2xl text-start" dir={dir}>
-        <div className="bg-slate-50 p-8 border-b flex items-center justify-between shrink-0">
+        <div className="bg-slate-50/50 p-8 border-b flex items-center justify-between shrink-0 relative">
            <div className="flex items-center gap-4">
               <div className="h-12 w-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary shadow-sm"><Landmark className="h-6 w-6" /></div>
               <div>
                  <DialogTitle className="text-2xl font-black font-headline">
                     {isEdit ? (isRtl ? 'تعديل حجز القاعة' : 'Edit Booking') : (isRtl ? 'حجز قاعة اجتماع' : 'Room Booking')}
                  </DialogTitle>
-                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{isRtl ? `القاعة: ${data.room?.name}` : `Room: ${data.room?.nameEn}`}</p>
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    {data?.room ? (isRtl ? `القاعة: ${data.room.name}` : `Room: ${data.room.nameEn}`) : ''}
+                 </p>
               </div>
            </div>
            <Badge className="bg-slate-900 text-white font-black h-8 px-4 rounded-xl text-lg">{formData.time}</Badge>
@@ -616,7 +618,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
               {isEdit && (
                 <Button 
                   variant="ghost" 
-                  onClick={() => onDelete(data.appointment?.id)} 
+                  onClick={() => onDelete(data?.appointment?.id)} 
                   className="flex-1 h-14 rounded-2xl font-black text-rose-600 bg-rose-50 border-2 border-rose-100 hover:bg-rose-100 gap-2 shadow-sm"
                 >
                   <Trash2 className="h-4 w-4" />
