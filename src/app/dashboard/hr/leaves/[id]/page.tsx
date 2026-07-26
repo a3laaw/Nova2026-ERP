@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -9,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { 
   Loader2, CheckCircle2, XCircle,
   User, History, Printer, PlaneTakeoff, PlaneLanding, Scale,
-  Clock, ShieldAlert
+  Clock, ShieldAlert, AlertTriangle, Info, CalendarDays
 } from "lucide-react";
 import { useFirestore, useDoc } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -40,6 +39,9 @@ export default function LeaveDetailsPage() {
   const [actualDepartureDate, setActualDepartureDate] = useState('');
   const [actualReturnDate, setActualReturnDate] = useState('');
   
+  const [conflictData, setConflictData] = useState<{ count: number; peers: any[] } | null>(null);
+  const [loadingConflict, setLoadingConflict] = useState(false);
+
   const [editForm, setEditForm] = useState({
     comment: '',
     startDate: '',
@@ -68,8 +70,21 @@ export default function LeaveDetailsPage() {
       });
       setActualDepartureDate(leave.actualDepartureDate || leave.startDate);
       setActualReturnDate(leave.actualReturnDate || leave.endDate);
+
+      // فحص تداخل القسم عند تحميل الطلب
+      if (leaveService && (leave as any).departmentId) {
+        setLoadingConflict(true);
+        leaveService.getDepartmentLeaveDensity(
+          (leave as any).departmentId,
+          leave.startDate,
+          leave.endDate,
+          leave.id
+        ).then(res => {
+          setConflictData(res);
+        }).finally(() => setLoadingConflict(false));
+      }
     }
-  }, [leave]);
+  }, [leave, leaveService]);
 
   const handleAction = async (status: LeaveRequest['status']) => {
     if (!leaveService || !user) return;
@@ -106,9 +121,9 @@ export default function LeaveDetailsPage() {
                 <Badge className={cn(
                   "font-black px-4 py-1 rounded-xl shadow-sm uppercase",
                   leave.status === 'approved' ? 'bg-blue-500 text-white' : 
-                  leave.status === 'on-leave' ? 'bg-amber-50 text-white' :
+                  leave.status === 'on-leave' ? 'bg-amber-500 text-white' :
                   leave.status === 'returned' ? 'bg-purple-500 text-white' :
-                  leave.status === 'commenced' ? 'bg-emerald-50 text-white' :
+                  leave.status === 'commenced' ? 'bg-emerald-500 text-white' :
                   leave.status === 'pending' ? 'bg-amber-50 text-amber-600 border-amber-200 border' : 
                   'bg-rose-500 text-white'
                 )}>
@@ -117,18 +132,61 @@ export default function LeaveDetailsPage() {
              </div>
           </div>
         </div>
-        {canPrint && (
-           <Button onClick={() => window.print()} className="h-12 px-6 rounded-xl bg-white border-2 text-slate-900 font-black gap-2 hover:bg-slate-50 shadow-sm">
-              <Printer className="h-5 w-5 text-primary" /> {isRtl ? 'طباعة المستند' : 'Print'}
-           </Button>
-        )}
+        <div className="flex gap-3">
+           {canPrint && (
+              <Button onClick={() => window.print()} className="h-12 px-6 rounded-xl bg-white border-2 text-slate-900 font-black gap-2 hover:bg-slate-50 shadow-sm">
+                 <Printer className="h-5 w-5 text-primary" /> {isRtl ? 'طباعة المستند' : 'Print'}
+              </Button>
+           )}
+        </div>
       </div>
 
       <PrintWrapper title={isRtl ? "إقرار إجازة رسمية" : "Official Leave Authorization"}>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-           <div className="lg:col-span-2 space-y-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+           
+           <div className="lg:col-span-8 space-y-8">
+              {/* قسم تحذير التداخل السيادي - يظهر للمدير فقط */}
               {isAdmin && leave.status === 'pending' && (
-                <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-2 ring-primary/20 print:hidden">
+                <div className="space-y-6">
+                   {loadingConflict ? (
+                      <div className="p-6 bg-slate-50 rounded-3xl animate-pulse flex items-center gap-3">
+                         <Loader2 className="h-5 w-5 animate-spin text-primary/30" />
+                         <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Analyzing Team Availability...</span>
+                      </div>
+                   ) : conflictData && conflictData.count > 0 && (
+                      <div className="p-8 bg-rose-50 border-4 border-rose-100 rounded-[2.5rem] space-y-4 animate-in shake-in duration-500 shadow-xl shadow-rose-200/20">
+                         <div className="flex items-center gap-4 text-rose-600">
+                            <ShieldAlert className="h-10 w-10" />
+                            <div className="text-start">
+                               <h3 className="font-black text-xl uppercase tracking-tighter">{isRtl ? 'تنبيه: تداخل تخصصي حرج' : 'Operational Conflict Warning'}</h3>
+                               <p className="text-sm font-bold opacity-80">{isRtl ? 'يوجد موظفون آخرون من نفس القسم لديهم إجازات في نفس الفترة.' : 'Other department staff are away during this period.'}</p>
+                            </div>
+                         </div>
+                         
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                            {conflictData.peers.map((p, i) => (
+                              <div key={i} className="bg-white/80 p-4 rounded-2xl border border-rose-100 flex items-center justify-between">
+                                 <div className="text-start">
+                                    <p className="font-black text-xs text-slate-800">{p.name}</p>
+                                    <p className="text-[9px] font-bold text-rose-400">{p.period}</p>
+                                 </div>
+                                 <Badge className={cn("text-[8px] font-black uppercase border-0", p.status === 'pending' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700")}>
+                                    {p.status}
+                                 </Badge>
+                              </div>
+                            ))}
+                         </div>
+                         <div className="p-4 bg-rose-600 text-white rounded-2xl flex items-center gap-3">
+                            <AlertTriangle className="h-5 w-5" />
+                            <p className="text-xs font-black">{isRtl ? 'يرجى مراجعة الجدول الزمني للقسم قبل اتمام الموافقة لتجنب توقف العمل.' : 'Review department schedule before approval to prevent downtime.'}</p>
+                         </div>
+                      </div>
+                   )}
+                </div>
+              )}
+
+              {isAdmin && leave.status === 'pending' && (
+                <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-2 ring-primary/10 print:hidden">
                    <div className="bg-slate-900 p-8 text-white text-start">
                       <h3 className="text-2xl font-black font-headline flex items-center gap-3"><Clock className="h-7 w-7 text-primary" /> {isRtl ? 'قرار الإدارة وتصحيح البيانات' : 'Admin Decision'}</h3>
                    </div>
@@ -138,14 +196,116 @@ export default function LeaveDetailsPage() {
                          <div className="space-y-2"><Label className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'تاريخ العودة المعتمد' : 'Approve Return'}</Label><SmartDateInput value={editForm.endDate} onChange={v => setEditForm({...editForm, endDate: v})} /></div>
                          <div className="space-y-2 md:col-span-2"><Label className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'أيام الخصم الفعلي (للمحاسبة)' : 'Deduction Days'}</Label><Input type="number" value={editForm.workingDays} onChange={e => setEditForm({...editForm, workingDays: Number(e.target.value)})} className="h-14 rounded-2xl border-2 font-black text-primary text-xl" /></div>
                       </div>
+                      <div className="space-y-3">
+                         <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'ملاحظات الإدارة' : 'Internal Notes'}</Label>
+                         <Textarea value={editForm.comment} onChange={e => setEditForm({...editForm, comment: e.target.value})} className="min-h-[100px] rounded-2xl border-2" />
+                      </div>
                       <div className="flex gap-4">
                          <Button onClick={() => handleAction('rejected')} disabled={processing} variant="outline" className="flex-1 h-16 rounded-2xl border-2 text-rose-600 font-black">{isRtl ? 'رفض الطلب' : 'Reject'}</Button>
-                         <Button onClick={() => handleAction('approved')} disabled={processing} className="flex-1 h-16 rounded-2xl bg-emerald-600 text-white font-black">{isRtl ? 'اعتماد وصرف' : 'Approve'}</Button>
+                         <Button onClick={() => handleAction('approved')} disabled={processing} className="flex-1 h-16 rounded-2xl bg-emerald-600 text-white font-black shadow-xl shadow-emerald-100">{isRtl ? 'اعتماد وصرف' : 'Approve'}</Button>
                       </div>
                    </CardContent>
                 </Card>
               )}
+
+              <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
+                 <CardHeader className="bg-slate-50/50 border-b p-8">
+                    <CardTitle className="text-xl font-black">{isRtl ? 'بيانات طلب الإجازة' : 'Request Details'}</CardTitle>
+                 </CardHeader>
+                 <CardContent className="p-8 space-y-10 text-start">
+                    <div className="flex items-center gap-6">
+                       <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner border border-primary/10">
+                          <User className="h-8 w-8" />
+                       </div>
+                       <div>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'اسم الموظف صاحب الطلب' : 'Employee'}</p>
+                          <h4 className="text-2xl font-black text-slate-900">{leave.userName}</h4>
+                       </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                       <div className="p-6 rounded-2xl bg-slate-50 border-2 border-white shadow-sm text-start">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'نوع الإجازة' : 'Type'}</p>
+                          <p className="text-lg font-black text-primary uppercase">{leave.type}</p>
+                       </div>
+                       <div className="p-6 rounded-2xl bg-slate-50 border-2 border-white shadow-sm text-start">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'المدة التقويمية' : 'Calendar Days'}</p>
+                          <p className="text-lg font-black text-slate-900">{leave.days} {isRtl ? 'يوم' : 'Days'}</p>
+                       </div>
+                       <div className="p-6 rounded-2xl bg-emerald-50 border-2 border-white shadow-sm text-start">
+                          <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">{isRtl ? 'الخصم الفعلي' : 'Net Deduction'}</p>
+                          <p className="text-lg font-black text-emerald-700">{leave.workingDays} {isRtl ? 'يوم عمل' : 'Work Days'}</p>
+                       </div>
+                    </div>
+
+                    <div className="p-8 rounded-[2rem] border-2 border-dashed border-slate-200 flex flex-col md:flex-row justify-between items-center gap-8 relative overflow-hidden">
+                       <div className="absolute top-0 right-0 p-4 opacity-5"><CalendarDays className="h-20 w-20" /></div>
+                       <div className="text-center md:text-start space-y-1">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'تاريخ البداية' : 'Start Date'}</p>
+                          <p className="text-2xl font-black text-slate-900">{leave.startDate}</p>
+                       </div>
+                       <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-300">
+                          <ArrowRight className={cn("h-6 w-6", isRtl && "rotate-180")} />
+                       </div>
+                       <div className="text-center md:text-end space-y-1">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'تاريخ العودة' : 'Return Date'}</p>
+                          <p className="text-2xl font-black text-slate-900">{leave.endDate}</p>
+                       </div>
+                    </div>
+
+                    <div className="space-y-4">
+                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                          <Info className="h-3 w-3" /> {isRtl ? 'المبررات والأسباب' : 'Reason / Justification'}
+                       </p>
+                       <p className="p-6 bg-slate-50/50 rounded-2xl border-2 border-white shadow-inner text-sm font-bold text-slate-700 leading-relaxed italic">
+                          {leave.reason}
+                       </p>
+                    </div>
+                 </CardContent>
+              </Card>
            </div>
+
+           <div className="lg:col-span-4 space-y-6 print:hidden">
+              <Card className="border-0 shadow-xl rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/5">
+                 <CardHeader className="bg-slate-50 border-b p-6">
+                    <CardTitle className="text-base font-black flex items-center gap-2">
+                       <History className="h-5 w-5 text-primary" />
+                       {isRtl ? 'سجل الحركات (Audit)' : 'Audit Trail'}
+                    </CardTitle>
+                 </CardHeader>
+                 <CardContent className="p-6">
+                    <div className="space-y-6">
+                       <div className="relative ps-6 border-s-2 border-slate-100 pb-2">
+                          <div className="absolute -left-[9px] top-0 h-4 w-4 rounded-full bg-primary border-4 border-white shadow-sm" />
+                          <p className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'تقديم الطلب' : 'Request Created'}</p>
+                          <p className="text-xs font-bold text-slate-700 mt-1">{leave.createdAt?.toDate().toLocaleString()}</p>
+                       </div>
+                       {leave.approvedAt && (
+                          <div className="relative ps-6 border-s-2 border-slate-100 pb-2">
+                             <div className="absolute -left-[9px] top-0 h-4 w-4 rounded-full bg-emerald-500 border-4 border-white shadow-sm" />
+                             <p className="text-[9px] font-black text-emerald-600 uppercase">{isRtl ? 'تم الاعتماد' : 'Approved'}</p>
+                             <p className="text-xs font-bold text-slate-700 mt-1">{leave.approvedAt?.toDate().toLocaleString()}</p>
+                          </div>
+                       )}
+                       {leave.rejectedAt && (
+                          <div className="relative ps-6 border-s-2 border-slate-100 pb-2">
+                             <div className="absolute -left-[9px] top-0 h-4 w-4 rounded-full bg-rose-500 border-4 border-white shadow-sm" />
+                             <p className="text-[9px] font-black text-rose-600 uppercase">{isRtl ? 'تم الرفض' : 'Rejected'}</p>
+                             <p className="text-xs font-bold text-slate-700 mt-1">{leave.rejectedAt?.toDate().toLocaleString()}</p>
+                          </div>
+                       )}
+                    </div>
+                 </CardContent>
+              </Card>
+
+              <div className="p-8 rounded-[2rem] bg-amber-50 border-2 border-dashed border-amber-200 flex items-start gap-4">
+                 <Scale className="h-6 w-6 text-amber-600 shrink-0 mt-1" />
+                 <p className="text-[10px] text-amber-800 font-bold leading-relaxed text-start">
+                    {isRtl ? 'بناءً على مادة 70: لا يحق للموظف القيام بالإجازة إلا بموافقة الإدارة. يحق للمدير تعديل تواريخ الإجازة بما يتناسب مع مصلحة العمل وضمان استمرارية القسم.' : 'Art 70: Leave requires admin approval. Manager can adjust dates to suit operational needs and department continuity.'}
+                 </p>
+              </div>
+           </div>
+
         </div>
       </PrintWrapper>
     </div>

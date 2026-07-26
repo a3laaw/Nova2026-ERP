@@ -30,7 +30,6 @@ export class LeaveService {
   async submitRequest(data: Omit<LeaveRequest, 'id' | 'createdAt' | 'updatedAt' | 'companyId' | 'status'>, departmentId?: string) {
     const path = paths.leaveRequests(this.companyId);
     
-    // التحقق من تداخل الإجازات باستخدام employeeId لضمان السيادة حتى للموظفين بدون حسابات دخول
     const overlapQuery = query(
       collection(this.db, path),
       where('employeeId', '==', data.employeeId)
@@ -52,7 +51,7 @@ export class LeaveService {
       status: 'pending',
       companyId: this.companyId,
       departmentId: departmentId || '', 
-      createdBy: data.userId, // المستخدم الذي أجرى العملية فعلياً
+      createdBy: data.userId, 
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
@@ -69,24 +68,32 @@ export class LeaveService {
 
   /**
    * محرك تحليل كثافة الإجازات في القسم (Department Leave Density)
-   * يفحص عدد الموظفين من نفس القسم الذين يملكون إجازات معتمدة في نفس الفترة.
+   * تم تحسينه ليشمل الطلبات "المقدمة" (Pending) والطلبات "المقبولة" لضمان عدم حدوث تضارب.
    */
-  async getDepartmentLeaveDensity(departmentId: string, startDate: string, endDate: string) {
+  async getDepartmentLeaveDensity(departmentId: string, startDate: string, endDate: string, currentRequestId?: string) {
     const q = query(
       collection(this.db, paths.leaveRequests(this.companyId)),
       where('departmentId', '==', departmentId),
-      where('status', 'in', ['approved', 'on-leave', 'commenced'])
+      where('status', 'in', ['pending', 'approved', 'on-leave', 'commenced'])
     );
 
     const snap = await getDocs(q);
     const peersOnLeave = snap.docs.filter(d => {
        const data = d.data();
+       // استبعاد الطلب الحالي من الفحص
+       if (currentRequestId && d.id === currentRequestId) return false;
+       // فحص تداخل التواريخ
        return (startDate <= data.endDate && endDate >= data.startDate);
     });
 
     return {
       count: peersOnLeave.length,
-      peers: peersOnLeave.map(d => ({ id: d.id, name: d.data().userName }))
+      peers: peersOnLeave.map(d => ({ 
+        id: d.id, 
+        name: d.data().userName,
+        status: d.data().status,
+        period: `${d.data().startDate} -> ${d.data().endDate}`
+      }))
     };
   }
 
