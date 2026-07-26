@@ -1,7 +1,7 @@
-
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   format, 
   isSameDay, 
@@ -9,6 +9,7 @@ import {
   addDays,
   subDays,
   parse,
+  addMinutes
 } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import { 
@@ -40,7 +41,8 @@ import {
   MoonStar, 
   HardHat, 
   Target, 
-  CalendarDays 
+  CalendarDays,
+  Eye
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs, serverTimestamp } from 'firebase/firestore';
@@ -62,7 +64,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Dialog,
   DialogContent,
@@ -76,6 +78,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuPortal,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
   Select,
@@ -85,7 +88,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from '@/hooks/use-toast';
-import { useRouter } from 'next/navigation';
 
 export function ConstructionBookingsView() {
   const { globalUser, user } = useAuthContext();
@@ -98,7 +100,7 @@ export function ConstructionBookingsView() {
 
   const [mounted, setMounted] = useState(false);
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
-  const [settings, setSettings] = useState<WorkHoursSettings | null>(null);
+  const [settings, setSettings] = useState<any>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogData, setDialogData] = useState<any>(null);
 
@@ -138,7 +140,6 @@ export function ConstructionBookingsView() {
   }, [allEmployees, isAdmin, globalUser]);
 
   const filteredAppointments = useMemo(() => {
-    // الإنفاذ السيادي للفصل الراداري: استبعاد hall_meeting
     let list = (rawAppointments || []).filter(a => 
       a.status !== 'cancelled' && 
       a.type !== 'hall_meeting' && 
@@ -233,6 +234,8 @@ export function ConstructionBookingsView() {
            isRtl={isRtl}
            router={router}
            t={t}
+           settings={settings}
+           dateStr={dateStr}
          />
          {timeSlots.evening.length > 0 && (
            <GridSection 
@@ -244,6 +247,8 @@ export function ConstructionBookingsView() {
              isRtl={isRtl}
              router={router}
              t={t}
+             settings={settings}
+             dateStr={dateStr}
            />
          )}
       </div>
@@ -251,7 +256,7 @@ export function ConstructionBookingsView() {
   );
 }
 
-function GridSection({ title, slots, engineers, grid, onAction, isRtl, router, t }: any) {
+function GridSection({ title, slots, engineers, grid, onAction, isRtl, router, t, settings, dateStr }: any) {
   if (slots.length === 0) return null;
 
   return (
@@ -261,7 +266,7 @@ function GridSection({ title, slots, engineers, grid, onAction, isRtl, router, t
           <div className="h-[1px] flex-1 bg-slate-100" />
        </div>
 
-       <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white shadow-sm print:border-0 print:shadow-none">
+       <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white shadow-sm print:border-0 print:shadow-none scrollbar-hide">
           <table className="w-full border-collapse">
              <thead>
                 <tr className="bg-slate-50/50 print:bg-white">
@@ -271,12 +276,13 @@ function GridSection({ title, slots, engineers, grid, onAction, isRtl, router, t
                       return (
                         <th key={eng.id} className="p-3 border-b border-slate-100 border-s border-s-slate-50 min-w-[180px] print:p-1 print:min-w-[100px]">
                            <div className="flex flex-col items-center text-center">
-                              <Avatar className="h-8 w-8 rounded-lg shrink-0 mb-2">
+                              <Avatar className="h-10 w-10 rounded-2xl shrink-0 mb-2 border-2 border-white shadow-md ring-1 ring-slate-100">
+                                 <AvatarImage src={`https://picsum.photos/seed/${eng.id}/40/40`} />
                                  <AvatarFallback className="bg-primary/10 text-primary font-black text-[10px]">{eng.fullName.charAt(0)}</AvatarFallback>
                               </Avatar>
                               <div className="text-center w-full">
                                  <span className="font-black text-slate-800 text-[11px] leading-none block truncate">{eng.fullName}</span>
-                                 <Badge className="bg-slate-100 text-slate-500 text-[7px] font-black h-4 px-1 border-0 mt-1.5 uppercase">{engAppts.length} TASK</Badge>
+                                 <Badge className="bg-slate-100 text-slate-500 text-[7px] font-black h-4 px-1.5 border-0 mt-1.5 uppercase shadow-sm">{engAppts.length} TASKS</Badge>
                               </div>
                            </div>
                         </th>
@@ -285,53 +291,100 @@ function GridSection({ title, slots, engineers, grid, onAction, isRtl, router, t
                 </tr>
              </thead>
              <tbody>
-                {slots.map((slot: string) => (
-                  <tr key={slot} className="group/row">
-                     <td className="p-3 text-center border-b border-slate-50 border-e border-e-slate-50 font-mono font-black text-slate-300 text-[10px] bg-slate-50/20">{slot}</td>
-                     {engineers.map((eng: Employee) => {
-                        const appt = grid.find((a: any) => {
-                           const start = format(parseISO(a.start), 'HH:mm');
-                           return start === slot && a.engineerId === eng.id;
-                        });
+                {slots.map((slot: string) => {
+                  const slotStart = parse(`${dateStr} ${slot}`, 'yyyy-MM-dd HH:mm', new Date());
+                  const slotEnd = addMinutes(slotStart, settings?.fieldWork?.slotDurationMinutes || 60);
 
-                        if (appt) {
-                           const isCompleted = appt.status === 'completed';
-                           return (
-                             <td key={eng.id} className="p-0.5 border-b border-slate-50 border-s border-s-slate-50 align-top">
-                                <Card 
-                                  onClick={() => router.push(`/dashboard/appointments/${appt.id}`)}
-                                  className={cn(
-                                    "p-1.5 rounded-lg h-full transition-all cursor-pointer min-h-[40px]",
-                                    isCompleted ? "bg-emerald-50/50 border-emerald-500/20" : "bg-primary/5 border-primary/20"
-                                  )}
-                                >
-                                   <div className="text-start">
-                                      <p className={cn("font-black text-[8px] leading-tight truncate", isCompleted && "text-emerald-900")}>
-                                        {appt.clientName}
-                                      </p>
-                                   </div>
-                                </Card>
-                             </td>
-                           );
-                        }
-                        return (
-                          <td 
-                            key={eng.id} 
-                            onClick={() => onAction('create', eng, slot)}
-                            className="p-0.5 border-b border-slate-50 border-s border-s-slate-50 group-hover/row:bg-primary/[0.02] cursor-pointer"
-                          >
-                             <div className="h-6 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
-                                <Plus className="h-3 w-3 text-primary/30" />
-                             </div>
-                          </td>
-                        );
-                     })}
-                  </tr>
-                ))}
+                  return (
+                    <tr key={slot} className="group/row">
+                       <td className="p-3 text-center border-b border-slate-50 border-e border-e-slate-50 font-mono font-black text-slate-300 text-[10px] bg-slate-50/20">{slot}</td>
+                       {engineers.map((eng: Employee) => {
+                          const appt = grid.find((a: any) => {
+                             const apptStart = parseISO(a.start);
+                             const apptEnd = a.end 
+                               ? parseISO(a.end) 
+                               : addMinutes(apptStart, settings?.fieldWork?.slotDurationMinutes || 60);
+                             
+                             return apptStart < slotEnd && slotStart < apptEnd && a.engineerId === eng.id;
+                          });
+
+                          if (appt) {
+                             const isCompleted = appt.status === 'completed';
+                             const apptStart = parseISO(appt.start);
+                             const isStartSlot = apptStart >= slotStart && apptStart < slotEnd;
+
+                             return (
+                               <td key={eng.id} className="p-0.5 border-b border-slate-50 border-s border-s-slate-50 align-top">
+                                  <div className="relative h-full">
+                                    <Card 
+                                      onClick={() => router.push(`/dashboard/appointments/${appt.id}`)}
+                                      className={cn(
+                                        "p-2 rounded-xl h-full transition-all cursor-pointer min-h-[44px] shadow-sm",
+                                        isCompleted ? "bg-emerald-50/50 border-emerald-500/20" : "bg-primary/5 border-primary/20"
+                                      )}
+                                    >
+                                      <div className="text-start space-y-1 pr-6">
+                                          {isStartSlot && (
+                                            <>
+                                              <div className="flex items-center gap-1.5">
+                                                 {isCompleted && <CheckCircle2 className="h-2.5 w-2.5 text-emerald-600 shrink-0" />}
+                                                 <p className={cn("font-black text-[9px] leading-tight truncate", isCompleted ? "text-emerald-900" : "text-slate-900")}>
+                                                   {appt.clientName}
+                                                 </p>
+                                              </div>
+                                              <div className="flex items-center gap-1 text-[7px] font-bold opacity-60">
+                                                 <MapPin className="h-2.5 w-2.5" /> {appt.governorateName?.slice(0, 10)}
+                                              </div>
+                                            </>
+                                          )}
+                                      </div>
+                                    </Card>
+
+                                    {isStartSlot && (
+                                      <div className="absolute top-1 right-1 print:hidden" onClick={e => e.stopPropagation()}>
+                                        <DropdownMenu>
+                                          <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-5 w-5 rounded-md hover:bg-black/5">
+                                              <MoreVertical className="h-3 w-3" />
+                                            </Button>
+                                          </DropdownMenuTrigger>
+                                          <DropdownMenuContent className="rounded-xl border-2 shadow-2xl" align="end">
+                                            <DropdownMenuItem className="font-bold text-xs gap-2" onClick={() => router.push(`/dashboard/appointments/${appt.id}`)}>
+                                              <Eye className="h-3.5 w-3.5" /> {isRtl ? 'فتح التقرير' : 'Open Report'}
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem className="font-bold text-xs gap-2" onClick={() => onAction('edit', eng, slot, appt)}>
+                                              <Edit3 className="h-3.5 w-3.5" /> {isRtl ? 'تعديل' : 'Edit'}
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem className="font-black text-xs gap-2 text-rose-600">
+                                              <Trash2 className="h-3.5 w-3.5" /> {isRtl ? 'إلغاء الموعد' : 'Cancel'}
+                                            </DropdownMenuItem>
+                                          </DropdownMenuContent>
+                                        </DropdownMenu>
+                                      </div>
+                                    )}
+                                  </div>
+                               </td>
+                             );
+                          }
+                          return (
+                            <td 
+                              key={eng.id} 
+                              onClick={() => onAction('create', eng, slot)}
+                              className="p-0.5 border-b border-slate-50 border-s border-s-slate-50 group-hover/row:bg-primary/[0.02] cursor-pointer"
+                            >
+                               <div className="h-6 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
+                                  <Plus className="h-3 w-3 text-primary/30" />
+                               </div>
+                            </td>
+                          );
+                       })}
+                    </tr>
+                  );
+                })}
              </tbody>
           </table>
        </div>
     </div>
   );
 }
-

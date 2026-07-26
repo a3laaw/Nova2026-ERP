@@ -493,15 +493,16 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
                       return (
                         <th key={eng.id} className="p-3 border-b border-slate-100 border-s border-s-slate-50 min-w-[180px] print:p-1">
                            <div className="flex flex-col items-center text-center">
-                              <Avatar className="h-8 w-8 rounded-lg shrink-0 print:h-6 print:w-6 mb-2">
+                              <Avatar className="h-10 w-10 rounded-2xl shrink-0 print:h-6 print:w-6 mb-2 border-2 border-white shadow-md ring-1 ring-slate-100">
+                                 <AvatarImage src={`https://picsum.photos/seed/${eng.id}/40/40`} />
                                  <AvatarFallback className="bg-primary/10 text-primary font-black text-[10px]">{eng.fullName.charAt(0)}</AvatarFallback>
                               </Avatar>
                               <div className="text-center w-full">
                                  <span className="font-black text-slate-800 text-[11px] leading-none block truncate">{eng.fullName}</span>
-                                 <div className="flex justify-center gap-0.5 mt-1.5">
-                                    <Badge className="bg-yellow-50 text-yellow-600 text-[7px] font-black h-4 px-1 border-0">{v1}</Badge>
-                                    <Badge className="bg-emerald-50 text-emerald-600 text-[7px] font-black h-4 px-1 border-0">{follow}</Badge>
-                                    <Badge className="bg-blue-50 text-blue-600 text-[7px] font-black h-4 px-1 border-0">{cont}</Badge>
+                                 <div className="flex justify-center gap-1 mt-2">
+                                    <Badge className="bg-yellow-50 text-yellow-600 text-[8px] font-black h-4 px-1.5 border-0 shadow-sm">{v1}</Badge>
+                                    <Badge className="bg-emerald-50 text-emerald-600 text-[8px] font-black h-4 px-1.5 border-0 shadow-sm">{follow}</Badge>
+                                    <Badge className="bg-blue-50 text-blue-600 text-[8px] font-black h-4 px-1.5 border-0 shadow-sm">{cont}</Badge>
                                  </div>
                               </div>
                            </div>
@@ -554,22 +555,22 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
                                     <Card 
                                       onClick={() => router.push(`/dashboard/appointments/${appt.id}`)}
                                       className={cn(
-                                        "p-1.5 rounded-lg h-full transition-all cursor-pointer print:p-1 min-h-[40px]", 
+                                        "p-2 rounded-xl h-full transition-all cursor-pointer print:p-1 min-h-[44px] shadow-sm", 
                                         cardGradient(m?.color || '', isCompleted)
                                       )}
                                     >
-                                      <div className="text-start relative pr-6">
+                                      <div className="text-start relative pr-6 space-y-1">
                                           {isStartSlot && (
-                                            <div className="flex items-center gap-1">
-                                              {isCompleted && <CheckCircle2 className="h-2 w-2 text-emerald-600 shrink-0" />}
-                                              <p className={cn("font-black text-[8px] leading-tight truncate", isCompleted && "text-emerald-900")}>
+                                            <div className="flex items-center gap-1.5">
+                                              {isCompleted ? <CheckCircle2 className="h-2.5 w-2.5 text-emerald-600 shrink-0" /> : <Badge className="h-3.5 px-1 bg-black/5 text-[7px] font-black border-0">V{m?.visitCount}</Badge>}
+                                              <p className={cn("font-black text-[9px] leading-tight truncate", isCompleted ? "text-emerald-900" : "text-slate-900")}>
                                                 {isBusy ? (isRtl ? 'مشغول' : 'BUSY') : appt.clientName}
                                               </p>
                                             </div>
                                           )}
                                           {!isBusy && isStartSlot && (
-                                            <div className="flex items-center gap-1 text-[6px] font-bold opacity-60 mt-0.5">
-                                              <MapPin className="h-2 w-2" /> {appt.governorateName?.slice(0, 10)}
+                                            <div className="flex items-center gap-1 text-[7px] font-bold opacity-60">
+                                              <MapPin className="h-2.5 w-2.5" /> {appt.governorateName?.slice(0, 10)}
                                             </div>
                                           )}
                                       </div>
@@ -610,7 +611,7 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
                             >
                                <div className="h-6 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
                                   <Plus className="h-3 w-3 text-primary/30" />
-                               </div>
+                                </div>
                             </td>
                           );
                        })}
@@ -747,7 +748,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
   const fetchClientTransactions = async (cid: string) => {
     if (!db || !companyId) return;
-    const q = query(collection(db, paths.transactions(companyId)), where('clientId', '==', cid));
+    const q = query(collection(this.db, paths.transactions(this.companyId)), where('clientId', '==', cid));
     const snap = await getDocs(q);
     const trans = snap.docs.map(d => ({id: d.id, ...d.data()}));
     setClientTransactions(trans);
