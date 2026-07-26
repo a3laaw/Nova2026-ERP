@@ -98,7 +98,7 @@ export default function AppointmentDetailPage() {
     if (filteredStages.length === 0) return { stages: [], isEligible: false };
 
     const firstDeptStageOrder = filteredStages[0].order;
-    const previousStages = allStages.filter(s => s.order < firstDeptOrder);
+    const previousStages = allStages.filter(s => s.order < firstDeptStageOrder);
     const incompleteBlocker = previousStages.find(s => s.status !== 'completed');
 
     return {
