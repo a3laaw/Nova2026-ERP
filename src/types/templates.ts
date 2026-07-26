@@ -11,7 +11,7 @@ export type PricingMode = 'fixed' | 'itemized' | 'percentage';
 
 export type MeasurementMode = 'quantity' | 'lumpsum' | 'hybrid';
 
-export type MilestoneTiming = 'at' | 'during' | 'after';
+export type MilestoneTiming = 'at' | 'before' | 'during' | 'after';
 
 export interface QuotationItem {
   description: string;

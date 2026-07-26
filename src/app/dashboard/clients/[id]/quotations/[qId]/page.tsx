@@ -17,7 +17,8 @@ import {
   Plus,
   ArrowRight,
   X,
-  Gavel
+  Gavel,
+  Clock
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy } from 'firebase/firestore';
@@ -27,7 +28,7 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { Quotation } from '@/types/documents';
 import { TechnicalStage } from '@/types/reference';
-import { PricingMode, QuotationItem } from '@/types/templates';
+import { PricingMode, QuotationItem, MilestoneTiming } from '@/types/templates';
 import { cn } from '@/lib/utils';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
 import { DocumentService } from '@/services/document-service';
@@ -61,7 +62,6 @@ export default function QuotationViewPage() {
 
   const { data: quote, loading } = useDoc<Quotation>(quoteRef);
 
-  // دورة العمل الذكية: التعديل التلقائي يفتح مرة واحدة فقط للمسودات الجديدة
   useEffect(() => {
     if (quote && !hasAutoOpened) {
       setEditForm(quote);
@@ -150,9 +150,6 @@ export default function QuotationViewPage() {
     }
   };
 
-  /**
-   * بروتوكول الإلغاء الذكي
-   */
   const handleCancel = () => {
     if (quote && !quote.isHistoryRecorded) {
       router.push(`/dashboard/clients/${clientId}/transactions/${quote.transactionId}`);
@@ -179,6 +176,7 @@ export default function QuotationViewPage() {
         unitPrice: 0, 
         quantity: 1, 
         description: '',
+        timing: 'at',
         technicalStageId: ''
       }]
     });
@@ -200,16 +198,19 @@ export default function QuotationViewPage() {
     ? (editData.pricingMode === 'itemized' ? stats.totalItemizedAmount : (editData.totalAmount || quote.totalAmount || 0))
     : (quote.totalAmount || 0);
 
+  const getTimingLabel = (t: MilestoneTiming) => {
+    const map = { at: 'عند', before: 'قبل', during: 'أثناء', after: 'بعد' };
+    return isRtl ? map[t] : t.toUpperCase();
+  };
+
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-700 bg-slate-50" dir={dir}>
       <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 print:hidden px-6 pt-6 text-start">
         <div className="flex items-center gap-4">
-           {/* زر الرجوع في الأعلى - تصميم رشيق */}
            <Button 
              variant="ghost" 
              onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${quote.transactionId}`)} 
              className="h-10 w-10 p-0 rounded-xl border-2 bg-white text-slate-400 hover:text-slate-900 transition-all shadow-sm shrink-0"
-             title={isRtl ? 'الرجوع لرادار المعاملة' : 'Back to Project'}
            >
               <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
            </Button>
@@ -279,31 +280,9 @@ export default function QuotationViewPage() {
                            <span className="text-slate-400">{isRtl ? 'تاريخ الإصدار' : 'Issue Date'}</span>
                            <span className="text-slate-900">{(quote.createdAt?.toDate ? quote.createdAt.toDate() : new Date()).toLocaleDateString()}</span>
                         </div>
-                        <div className="flex justify-between items-center text-[9px] font-black uppercase text-primary gap-4">
-                           <span>{isRtl ? 'صلاحية العرض' : 'Valid For'}</span>
-                           <div className="flex items-center gap-2">
-                              {isEditing ? (
-                                <input type="number" value={editData.validDays === 0 ? "" : editData.validDays} onChange={e => setEditForm({...editData, validDays: e.target.value === "" ? 0 : Number(e.target.value)})} className="w-8 h-5 border rounded text-center bg-white text-[10px]" />
-                              ) : <span>{quote.validDays}</span>}
-                              <span>{isRtl ? 'يوم' : 'Days'}</span>
-                           </div>
-                        </div>
                      </div>
                   </div>
                </div>
-            </div>
-
-            <div className="text-start space-y-2">
-               <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                  <FileText className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'تحية طيبة وبعد،،' : 'Introduction'}
-               </h4>
-               {isEditing ? (
-                  <Textarea value={editData.introText} onChange={e => setEditForm({...editData, introText: e.target.value})} className="min-h-[60px] rounded-xl border-2 p-3 font-bold text-[10px] bg-slate-50/30" />
-               ) : (
-                  <p className="p-4 bg-white rounded-xl border-2 border-slate-50 leading-relaxed text-slate-600 font-bold text-sm italic whitespace-pre-wrap">
-                     {quote.introText}
-                  </p>
-               )}
             </div>
 
             <div className="space-y-4 text-start">
@@ -323,8 +302,9 @@ export default function QuotationViewPage() {
                      <thead className="bg-slate-900 text-white">
                         <tr className="font-black uppercase text-[8px] tracking-widest">
                            <th className="p-3 text-start w-10">#</th>
-                           <th className="p-3 text-start">{isRtl ? 'توصيف البند / الدفعة' : 'Description'}</th>
-                           {editData.pricingMode === 'percentage' && <th className="p-3 text-center w-20">{isRtl ? 'الحصة' : 'Share'}</th>}
+                           <th className="p-3 text-start">{isRtl ? 'مسمى البند / الدفعة' : 'Description'}</th>
+                           {editData.pricingMode === 'percentage' && <th className="p-3 text-center w-16">%</th>}
+                           {isEditing && <th className="p-3 text-center w-24">{isRtl ? 'التوقيت' : 'Timing'}</th>}
                            <th className="p-3 text-start w-40">{isRtl ? 'الارتباط الفني' : 'Technical Link'}</th>
                            <th className="p-3 text-end pe-6 w-32">{isRtl ? 'القيمة' : 'Amount'}</th>
                            {isEditing && <th className="p-3 w-10"></th>}
@@ -337,6 +317,8 @@ export default function QuotationViewPage() {
                              ? ((editData.totalAmount || 0) * (item.percentage || 0)) / 100 
                              : (item.unitPrice || 0);
                            
+                           const linkedStageName = stages?.find(s => s.id === item.technicalStageId)?.name;
+
                            return (
                              <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
                                 <td className="p-3 font-black text-slate-300 text-start">{idx + 1}</td>
@@ -344,12 +326,18 @@ export default function QuotationViewPage() {
                                    {isEditing ? (
                                       <div className="space-y-1">
                                          <Input value={item.label} onChange={e => updateItem(originalIdx, 'label', e.target.value)} className="h-7 rounded-md font-black text-[10px]" />
-                                         <Input value={item.description} onChange={e => updateItem(originalIdx, 'description', e.target.value)} className="h-7 text-[8px] font-medium opacity-70" />
+                                         <Input value={item.description} onChange={e => updateItem(originalIdx, 'description', e.target.value)} className="h-7 text-[8px] font-medium opacity-70" placeholder={isRtl ? "وصف إضافي..." : "Add detail..."} />
                                       </div>
                                    ) : (
-                                      <div className="space-y-0.5">
+                                      <div className="space-y-1">
                                          <p className="font-black text-slate-900 text-[11px]">{item.label}</p>
-                                         <p className="text-[9px] font-bold text-slate-400 leading-tight">{item.description}</p>
+                                         {item.description && <p className="text-[9px] font-bold text-slate-400 leading-tight">{item.description}</p>}
+                                         {item.technicalStageId && item.technicalStageId !== 'NONE' && (
+                                            <p className="text-[8px] font-black text-primary/60 italic flex items-center gap-1">
+                                               <Clock className="h-2 w-2" />
+                                               {getTimingLabel(item.timing || 'at')} {item.technicalStageId === 'SIGNING' ? (isRtl ? 'توقيع العقد' : 'Contract Signing') : linkedStageName}
+                                            </p>
+                                         )}
                                       </div>
                                    )}
                                 </td>
@@ -361,6 +349,19 @@ export default function QuotationViewPage() {
                                             <Percent className="absolute right-1 top-1/2 -translate-y-1/2 h-2 w-2 text-slate-300" />
                                          </div>
                                       ) : <Badge className="bg-slate-900 text-white font-black text-[9px] px-2 h-5 rounded-md">{item.percentage}%</Badge>}
+                                   </td>
+                                )}
+                                {isEditing && (
+                                   <td className="p-2">
+                                      <Select value={item.timing || 'at'} onValueChange={v => updateItem(originalIdx, 'timing', v)}>
+                                         <SelectTrigger className="h-7 rounded-md border-2 font-black text-[9px] bg-white"><SelectValue /></SelectTrigger>
+                                         <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
+                                            <SelectItem value="at" className="font-bold text-[10px]">{isRtl ? 'عند' : 'At'}</SelectItem>
+                                            <SelectItem value="before" className="font-bold text-[10px]">{isRtl ? 'قبل' : 'Before'}</SelectItem>
+                                            <SelectItem value="during" className="font-bold text-[10px]">{isRtl ? 'أثناء' : 'During'}</SelectItem>
+                                            <SelectItem value="after" className="font-bold text-[10px]">{isRtl ? 'بعد' : 'After'}</SelectItem>
+                                         </SelectContent>
+                                      </Select>
                                    </td>
                                 )}
                                 <td className="p-3 text-start">
@@ -375,9 +376,9 @@ export default function QuotationViewPage() {
                                          )}>
                                             <SelectValue placeholder={isRtl ? "ربط فني..." : "Link Stage..."} />
                                          </SelectTrigger>
-                                         <SelectContent className="rounded-xl border-2 shadow-2xl">
+                                         <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
                                             <SelectItem value="SIGNING" className="font-black text-[9px] py-2">
-                                               <span className="flex items-center gap-1"><ShieldCheck className="h-2.5 w-2.5 text-emerald-500" /> {isRtl ? 'عند توقيع العقد (حر)' : 'At Signing (Free Link)'}</span>
+                                               <span className="flex items-center gap-1"><ShieldCheck className="h-2.5 w-2.5 text-emerald-500" /> {isRtl ? 'عند توقيع العقد (حر)' : 'At Signing'}</span>
                                             </SelectItem>
                                             <SelectItem value="NONE" className="font-bold text-[9px] text-slate-400 italic">--- {isRtl ? 'بدون ربط' : 'No Link'} ---</SelectItem>
                                             {stages?.map(s => (
@@ -392,7 +393,7 @@ export default function QuotationViewPage() {
                                         "font-black text-[8px] border-0 px-2 h-5",
                                         item.technicalStageId === 'SIGNING' ? "bg-emerald-50 text-emerald-600" : (item.technicalStageId ? "bg-primary/5 text-primary" : "bg-slate-50 text-slate-300")
                                       )}>
-                                         {item.technicalStageId === 'SIGNING' ? (isRtl ? 'عند التوقيع' : 'Signing') : (item.technicalStageId ? (stages?.find(s => s.id === item.technicalStageId)?.name || 'Linked') : '---')}
+                                         {item.technicalStageId === 'SIGNING' ? (isRtl ? 'عند التوقيع' : 'Signing') : (item.technicalStageId ? (linkedStageName || 'Linked') : '---')}
                                       </Badge>
                                    )}
                                 </td>
@@ -410,11 +411,11 @@ export default function QuotationViewPage() {
                      </tbody>
                      <tfoot className="bg-slate-900 text-white">
                         <tr>
-                           <td colSpan={editData.pricingMode === 'percentage' ? 4 : 3} className="p-4 text-start">
+                           <td colSpan={editData.pricingMode === 'percentage' ? (isEditing ? 5 : 4) : (isEditing ? 4 : 3)} className="p-4 text-start">
                               <h3 className="text-sm font-black font-headline uppercase tracking-tighter">{isRtl ? 'إجمالي قيمة العرض' : 'Total Quote Value'}</h3>
                               {editData.pricingMode === 'percentage' && (
                                  <Badge className={cn("mt-1 border-0 text-[7px] font-black h-4 px-3 shadow-sm", stats.isValid ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")}>
-                                    {stats.isValid ? `BALANCED: ${stats.totalPercentage}%` : `MISMATCH: ${stats.totalPercentage}% / 100%`}
+                                    {stats.isValid ? `BALANCED: ${stats.totalPercentage}%` : `MISMATCH: ${stats.totalPercentage}%`}
                                  </Badge>
                               )}
                            </td>
@@ -442,19 +443,6 @@ export default function QuotationViewPage() {
                      {quote.defaultTerms}
                   </p>
                )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-12 pt-10 border-t-2 border-dashed border-slate-100">
-               <div className="text-start space-y-4">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'اعتماد العميل المالك' : 'Client Approval'}</p>
-                  <div className="h-10 w-full border-b border-slate-200" />
-               </div>
-               <div className="text-end flex flex-col items-end">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">{isRtl ? 'ختم الشركة الرسمي' : 'Official Stamp'}</p>
-                  <div className="h-16 w-16 rounded-xl border-2 border-slate-50 flex items-center justify-center bg-white shadow-sm rotate-3">
-                    <ShieldCheck className="h-8 w-8 text-slate-100" />
-                  </div>
-               </div>
             </div>
          </div>
       </PrintWrapper>

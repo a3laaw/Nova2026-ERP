@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -19,7 +18,7 @@ import {
   Save, X, Plus, Trash2, Loader2, ArrowRight,
   Gavel, Calculator, DollarSign, ShieldCheck,
   AlertTriangle, Target, Percent, Workflow,
-  FileText, LayoutGrid
+  FileText, LayoutGrid, Clock
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
@@ -27,7 +26,7 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, getDocs } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
-import { ContractTemplate, ContractMilestone, PricingMode } from '@/types/templates';
+import { ContractTemplate, ContractMilestone, PricingMode, MilestoneTiming } from '@/types/templates';
 import { ActivityType, Service, SubService, TechnicalStage } from '@/types/reference';
 import { TemplateService } from '@/services/template-service';
 import { toast } from '@/hooks/use-toast';
@@ -183,7 +182,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-500 bg-[#fdfaf3]" dir={dir}>
       <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-white/80 backdrop-blur-md px-6 shadow-sm">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 text-start">
           <Button variant="ghost" size="icon" onClick={onClose} className="h-9 w-9 border rounded-lg hover:bg-slate-50 transition-all">
             <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
           </Button>
@@ -206,7 +205,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start text-start">
          <div className="lg:col-span-8 space-y-6">
             <Card className="border-0 shadow-sm rounded-xl bg-white ring-1 ring-black/5">
                <CardContent className="p-5 grid grid-cols-1 md:grid-cols-3 gap-4 text-start">
@@ -276,9 +275,10 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                         <table className="w-full text-[10px] text-start">
                            <thead className="bg-slate-900 text-white">
                               <tr className="font-black uppercase tracking-widest text-[9px]">
-                                 <th className="p-3 w-10">#</th>
+                                 <th className="p-3 w-10 text-start">#</th>
                                  <th className="p-3 text-start">{isRtl ? 'مسمى الدفعة' : 'Milestone Name'}</th>
-                                 {formData.pricingMode === 'percentage' && <th className="p-3 text-center w-20">%</th>}
+                                 {formData.pricingMode === 'percentage' && <th className="p-3 text-center w-16">%</th>}
+                                 <th className="p-3 text-center w-24">{isRtl ? 'التوقيت' : 'Timing'}</th>
                                  <th className="p-3 text-start w-32">{isRtl ? 'الارتباط الميداني' : 'Technical Link'}</th>
                                  <th className="p-3 text-end pe-6 w-32">{isRtl ? 'القيمة' : 'Amount'}</th>
                                  <th className="p-3 w-10"></th>
@@ -292,24 +292,35 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                  
                                  return (
                                    <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                                      <td className="p-3 font-black text-slate-300">{idx + 1}</td>
+                                      <td className="p-3 font-black text-slate-300 text-start">{idx + 1}</td>
                                       <td className="p-2">
                                          <Input value={m.name} onChange={e => updateMilestone(idx, 'name', e.target.value)} className="h-8 rounded-lg font-bold text-[10px] bg-slate-50/50" />
                                       </td>
                                       {formData.pricingMode === 'percentage' && (
                                         <td className="p-2">
-                                           <div className="relative w-16 mx-auto">
+                                           <div className="relative w-14 mx-auto">
                                               <Input type="number" value={m.percentage === 0 ? "" : m.percentage} onChange={e => updateMilestone(idx, 'percentage', e.target.value === "" ? 0 : Number(e.target.value))} className="h-8 rounded-lg border-2 font-black text-center pe-5 text-[10px]" />
                                               <Percent className="absolute right-1 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-300" />
                                            </div>
                                         </td>
                                       )}
                                       <td className="p-2">
+                                         <Select value={m.timing || 'at'} onValueChange={v => updateMilestone(idx, 'timing', v)}>
+                                            <SelectTrigger className="h-8 rounded-lg border-2 font-black text-[9px] bg-white"><SelectValue /></SelectTrigger>
+                                            <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
+                                               <SelectItem value="at" className="font-bold text-[10px]">{isRtl ? 'عند' : 'At'}</SelectItem>
+                                               <SelectItem value="before" className="font-bold text-[10px]">{isRtl ? 'قبل' : 'Before'}</SelectItem>
+                                               <SelectItem value="during" className="font-bold text-[10px]">{isRtl ? 'أثناء' : 'During'}</SelectItem>
+                                               <SelectItem value="after" className="font-bold text-[10px]">{isRtl ? 'بعد' : 'After'}</SelectItem>
+                                            </SelectContent>
+                                         </Select>
+                                      </td>
+                                      <td className="p-2">
                                          <Select value={m.technicalStageId || 'SIGNING'} onValueChange={v => updateMilestone(idx, 'technicalStageId', v)}>
                                             <SelectTrigger className="h-8 rounded-lg border-2 font-bold text-[9px] bg-white"><SelectValue /></SelectTrigger>
-                                            <SelectContent className="rounded-xl border-2 shadow-2xl">
+                                            <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
                                                <SelectItem value="SIGNING" className="font-bold text-[10px]">توقيع العقد</SelectItem>
-                                               {pathStages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-[10px] py-2">
+                                               {pathStages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-[10px] py-2 border-b last:border-0 border-slate-50">
                                                   <span className="flex items-center gap-1"><Workflow className="h-2.5 w-2.5 text-primary" /> {s.name}</span>
                                                </SelectItem>)}
                                             </SelectContent>
@@ -331,7 +342,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                            </tbody>
                            <tfoot className="bg-slate-900 text-white">
                               <tr>
-                                 <td colSpan={formData.pricingMode === 'percentage' ? 3 : 2} className="p-5 text-start">
+                                 <td colSpan={formData.pricingMode === 'percentage' ? 5 : 4} className="p-5 text-start">
                                     <h3 className="text-xs font-black font-headline uppercase tracking-tighter">{isRtl ? 'إجمالي قيمة العقد' : 'Total Contract Value'}</h3>
                                     {formData.pricingMode === 'percentage' && (
                                        <Badge className={cn("mt-1 border-0 text-[7px] font-black h-4 px-3 shadow-sm", stats.isValid ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")}>
@@ -345,7 +356,6 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                        <p className="text-[8px] font-black text-white/30 uppercase tracking-[0.3em]">Kuwaiti Dinars</p>
                                     </div>
                                  </td>
-                                 <td></td>
                               </tr>
                            </tfoot>
                         </table>
@@ -369,7 +379,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                      <Target className="h-4 w-4 text-primary" /> {isRtl ? 'الارتباط التشغيلي السيادي' : 'Operational Context'}
                   </CardTitle>
                </CardHeader>
-               <CardContent className="p-6 space-y-6">
+               <CardContent className="p-6 space-y-6 text-start">
                   <div className="space-y-2">
                      <Label className="text-[10px] font-black uppercase text-slate-500">Activity Type</Label>
                      <Select value={formData.activityTypeId} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: ''})}>
