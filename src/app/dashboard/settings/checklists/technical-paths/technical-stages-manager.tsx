@@ -9,7 +9,7 @@ import {
   Workflow, ArrowRight, Clock,
   ListChecks, ShieldCheck,
   GripVertical, ChevronUp, ChevronDown,
-  Building2, Check
+  Building2, Check, Search, X
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +24,7 @@ import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
 import { TechnicalPathService } from '@/services/technical-path-service';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { TechnicalStage, SubService, ActivityType, Service, Department } from '@/types/reference';
@@ -44,6 +45,8 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
 
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [form, setForm] = useState<Partial<TechnicalStage> | null>(null);
+  const [deptSearch, setDeptSearch] = useState("");
+  const [showDeptPicker, setShowDeptPicker] = useState(false);
 
   const technicalPathService = useMemo(() => db && companyId ? new TechnicalPathService(db, companyId) : null, [db, companyId]);
   const stagesQuery = useMemo(() => companyId && db ? query(collection(db, paths.technicalStages(companyId, activityType.id!, mainService.id!, subService.id!))) : null, [db, companyId, activityType, mainService, subService]);
@@ -55,6 +58,14 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
   const sortedStages = useMemo(() => {
     return [...(stages || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
   }, [stages]);
+
+  const filteredDepts = useMemo(() => {
+    if (!deptSearch.trim()) return departments || [];
+    return (departments || []).filter(d => 
+      d.name.toLowerCase().includes(deptSearch.toLowerCase()) || 
+      d.nameEn.toLowerCase().includes(deptSearch.toLowerCase())
+    );
+  }, [departments, deptSearch]);
 
   const handleSave = async () => {
     if (!technicalPathService || !form || !form.name) return;
@@ -254,29 +265,94 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
                     </div>
                   </div>
 
-                  {/* قسم تعيين الأقسام المسموح لها بالتنفيذ */}
+                  {/* قسم تعيين الأقسام المسموح لها بالتنفيذ - مطور يدعم 100+ قسم */}
                   <div className="p-6 bg-slate-50 rounded-xl border-2 space-y-4">
                     <div className="flex items-center gap-2 text-primary font-black text-xs uppercase tracking-widest">
                        <Building2 className="h-4 w-4" /> {isRtl ? 'الأقسام المسؤولة عن التنفيذ' : 'Responsible Departments'}
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                       {departments?.map(dept => {
-                          const isSelected = form.allowedDepartmentIds?.includes(dept.id!);
-                          return (
-                            <div 
-                              key={dept.id} 
-                              onClick={() => toggleDept(dept.id!)}
-                              className={cn(
-                                "p-3 rounded-lg border-2 cursor-pointer transition-all flex items-center justify-between",
-                                isSelected ? "bg-white border-primary shadow-sm" : "bg-white/50 border-slate-100 hover:border-slate-200"
-                              )}
-                            >
-                               <span className={cn("text-xs font-bold", isSelected ? "text-slate-900" : "text-slate-400")}>{isRtl ? dept.name : dept.nameEn}</span>
-                               {isSelected && <Check className="h-4 w-4 text-primary" />}
+
+                    <Popover open={showDeptPicker} onOpenChange={setShowDeptPicker}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full h-12 justify-between rounded-xl border-2 bg-white font-bold text-xs"
+                        >
+                          <div className="flex items-center gap-2 overflow-hidden">
+                             {form.allowedDepartmentIds && form.allowedDepartmentIds.length > 0 ? (
+                               <Badge className="bg-primary text-white border-0 text-[10px] h-6 px-3">
+                                 {form.allowedDepartmentIds.length} {isRtl ? 'أقسام مختارة' : 'Selected'}
+                               </Badge>
+                             ) : (
+                               <span className="text-slate-400">{isRtl ? '--- اختر الأقسام المعنية ---' : '--- Select Departments ---'}</span>
+                             )}
+                          </div>
+                          <ChevronDown className="h-4 w-4 opacity-30" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[400px] p-0 rounded-2xl shadow-3xl border-2" align="start">
+                         <div className="p-4 bg-slate-50 border-b">
+                            <div className="relative">
+                               <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+                               <Input 
+                                 placeholder={isRtl ? "بحث في الأقسام..." : "Search departments..."}
+                                 className="h-10 ps-10 rounded-lg border-2 bg-white font-bold"
+                                 value={deptSearch}
+                                 onChange={e => setDeptSearch(e.target.value)}
+                               />
                             </div>
+                         </div>
+                         <ScrollArea className="h-64">
+                            <div className="p-2 space-y-1">
+                               {filteredDepts.length === 0 ? (
+                                 <div className="py-10 text-center text-xs text-slate-400 italic">No matches.</div>
+                               ) : filteredDepts.map(dept => {
+                                 const isSelected = form.allowedDepartmentIds?.includes(dept.id!);
+                                 return (
+                                   <div 
+                                     key={dept.id}
+                                     onClick={() => toggleDept(dept.id!)}
+                                     className={cn(
+                                       "flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all",
+                                       isSelected ? "bg-primary/5 text-primary" : "hover:bg-slate-50"
+                                     )}
+                                   >
+                                      <div className="flex items-center gap-3">
+                                         <Checkbox checked={isSelected} className="pointer-events-none" />
+                                         <span className="text-xs font-black">{isRtl ? dept.name : dept.nameEn}</span>
+                                      </div>
+                                      {isSelected && <Check className="h-3.5 w-3.5" />}
+                                   </div>
+                                 );
+                               })}
+                            </div>
+                         </ScrollArea>
+                         <div className="p-3 bg-slate-50 border-t flex justify-between items-center">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{filteredDepts.length} Total</span>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => setForm({...form, allowedDepartmentIds: []})}
+                              className="h-7 text-rose-500 hover:bg-rose-50 font-black text-[10px] gap-1"
+                            >
+                               <X className="h-3 w-3" /> {isRtl ? 'تصفير' : 'Clear'}
+                            </Button>
+                         </div>
+                      </PopoverContent>
+                    </Popover>
+
+                    <div className="flex flex-wrap gap-2 mt-2">
+                       {form.allowedDepartmentIds?.map(id => {
+                          const dept = departments?.find(d => d.id === id);
+                          if (!dept) return null;
+                          return (
+                            <Badge key={id} variant="secondary" className="bg-primary/10 text-primary border-0 font-black text-[9px] gap-1 px-3">
+                               {isRtl ? dept.name : dept.nameEn}
+                               <X className="h-2.5 w-2.5 cursor-pointer hover:text-rose-600" onClick={(e) => { e.stopPropagation(); toggleDept(id); }} />
+                            </Badge>
                           );
                        })}
                     </div>
+
                     <p className="text-[9px] text-slate-400 font-bold italic leading-relaxed">
                        {isRtl ? '* في حال عدم اختيار أي قسم، ستظهر المرحلة لكافة الموظفين تلقائياً.' : '* If no departments are selected, the stage will be visible to everyone.'}
                     </p>
