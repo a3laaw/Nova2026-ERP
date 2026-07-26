@@ -36,11 +36,11 @@ export class TransactionService {
 
   /**
    * دالة التحقق السيادي من مطابقة القسم (The Sovereign Dept Guard)
-   * تمنع التداخل بين المعماري والإنشائي وباقي الأقسام
+   * تم تحديثها للسماح للمهندس المسؤول بالتحكم المطلق في مسار مشروعه.
    */
-  private verifyDeptAccess(stage: StageInstance, userDeptId?: string) {
-    // 1. المدير له صلاحية مطلقة دوماً
-    if (this.permissions.includes('*')) return;
+  private verifyDeptAccess(stage: StageInstance, userDeptId?: string, isAssignedEngineer: boolean = false) {
+    // 1. المدير أو المهندس المسؤول له صلاحية مطلقة دوماً
+    if (this.permissions.includes('*') || isAssignedEngineer) return;
 
     // 2. إذا كانت المرحلة مقيدة بأقسام معينة
     if (stage.allowedDepartmentIds && stage.allowedDepartmentIds.length > 0) {
@@ -172,6 +172,21 @@ export class TransactionService {
     await batch.commit();
   }
 
+  /**
+   * دالة مساعدة للتحقق من هوية المهندس المسؤول
+   */
+  private async getIsAssignedEngineer(transactionId: string, userId: string): Promise<boolean> {
+     const transSnap = await getDoc(doc(this.db, paths.transactions(this.companyId), transactionId));
+     const transData = transSnap.data();
+     if (!transData) return false;
+     
+     // نحتاج لمعرفة employeeId الخاص بالمستخدم من السجل العالمي
+     const userSnap = await getDoc(doc(this.db, 'global_users', userId));
+     const userData = userSnap.data();
+     
+     return transData.assignedEngineerId === userData?.employeeId;
+  }
+
   async incrementStageRevision(transactionId: string, stageId: string, userId: string, userName: string, notes: string = "", userDeptId?: string, appointmentId?: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
     const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
@@ -179,8 +194,8 @@ export class TransactionService {
     if (!stageSnap.exists()) return;
     const stageData = stageSnap.data() as StageInstance;
 
-    // إنفاذ القيد التخصصي
-    this.verifyDeptAccess(stageData, userDeptId);
+    const isAssigned = await this.getIsAssignedEngineer(transactionId, userId);
+    this.verifyDeptAccess(stageData, userDeptId, isAssigned);
 
     const nextRev = (stageData.revisionCount || 0) + 1;
 
@@ -227,8 +242,8 @@ export class TransactionService {
     if (!stageSnap.exists()) return;
     const stageData = stageSnap.data() as StageInstance;
 
-    // إنفاذ القيد التخصصي
-    this.verifyDeptAccess(stageData, userDeptId);
+    const isAssigned = await this.getIsAssignedEngineer(transactionId, userId);
+    this.verifyDeptAccess(stageData, userDeptId, isAssigned);
 
     await updateDoc(stageRef, {
       status: 'in-progress',
@@ -262,8 +277,8 @@ export class TransactionService {
     if (!stageSnap.exists()) return;
     const stageData = stageSnap.data() as StageInstance;
 
-    // إنفاذ القيد التخصصي
-    this.verifyDeptAccess(stageData, userDeptId);
+    const isAssigned = await this.getIsAssignedEngineer(transactionId, userId);
+    this.verifyDeptAccess(stageData, userDeptId, isAssigned);
 
     if (!force) {
       const boqService = new BOQExecutionService(this.db, this.companyId, this.permissions);

@@ -103,7 +103,6 @@ export default function TransactionDetailsPage() {
 
   const editAccess = check('projects', 'edit');
   
-  // بروتوكول الرقابة المالية: التحقق من صلاحية رؤية المستندات والمالية
   const canSeeFinance = check('accounting', 'view').can || check('procurement', 'view').can;
 
   const currentUserName = useMemo(() => globalUser?.username || user?.displayName || 'Admin', [globalUser, user]);
@@ -318,7 +317,6 @@ export default function TransactionDetailsPage() {
                    <TabsTrigger value="pipeline" className="rounded-lg font-black text-xs px-8 data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2 h-full">
                       <Workflow className="h-4 w-4" /> {isRtl ? 'رادار التنفيذ' : 'Technical Radar'}
                    </TabsTrigger>
-                   {/* تحصين تبويب المالية: يظهر فقط لمن يملك الصلاحية */}
                    {canSeeFinance && (
                      <TabsTrigger value="documents" className="rounded-lg font-black text-xs px-8 data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2 h-full">
                         <Receipt className="h-4 w-4" /> {isRtl ? 'المستندات والمالية' : 'Financial Docs'}
@@ -333,7 +331,6 @@ export default function TransactionDetailsPage() {
                          <h3 className="text-3xl font-black text-rose-900 font-headline">{isRtl ? 'رادار التنفيذ مغلق مالياً' : 'Pipeline Locked'}</h3>
                          <p className="text-slate-400 font-bold mt-2">{isRtl ? 'يرجى اعتماد عقد المشروع لفتح مسار العمل.' : 'Approve contract to launch pipeline.'}</p>
                          
-                         {/* إظهار زر التوجيه للمالية فقط إذا كان الموظف مخولاً برؤيتها */}
                          {canSeeFinance && (
                            <Button onClick={() => setActiveTab('documents')} variant="outline" className="rounded-xl border-2 font-bold px-10 h-14 mt-6 gap-2">
                               <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} /> 
@@ -374,7 +371,10 @@ export default function TransactionDetailsPage() {
                               const isPreviousCompleted = idx === 0 || stages[idx-1].status === 'completed';
                               const isOperationalFrontier = stage.status === 'in-progress' || (stage.status === 'pending' && isPreviousCompleted);
                               const isReadyToStart = stage.status === 'pending' && isPreviousCompleted;
-                              const isDeptAllowed = !stage.allowedDepartmentIds?.length || (globalUser?.departmentId && stage.allowedDepartmentIds.includes(globalUser.departmentId));
+                              
+                              // تصحيح منطق الوصول: السماح للمهندس المسؤول بالوصول المطلق للمسار
+                              const isAssignedEngineer = globalUser?.employeeId === transaction?.assignedEngineerId;
+                              const isDeptAllowed = !stage.allowedDepartmentIds?.length || isAssignedEngineer || (globalUser?.departmentId && stage.allowedDepartmentIds.includes(globalUser.departmentId));
 
                               return (
                                 <Card key={stage.id} onClick={() => setFilterStageId(filterStageId === stage.id ? null : stage.id!)} className={cn("border-0 shadow-lg rounded-2xl bg-white transition-all border-s-8 cursor-pointer", stage.status === 'completed' ? 'border-s-emerald-500' : stage.status === 'in-progress' ? 'border-s-blue-500' : isOperationalFrontier ? 'border-s-orange-300' : 'border-s-slate-100 opacity-50')}>
@@ -388,7 +388,7 @@ export default function TransactionDetailsPage() {
                                               {isConsulting && (stage.revisionCount || 0) > 0 && <Badge className="bg-orange-100 text-orange-700 border-0 font-black text-[9px] px-2 h-5">{isRtl ? `مراجعة #${stage.revisionCount}` : `Rev #${stage.revisionCount}`}</Badge>}
                                               {!isAdmin && !isDeptAllowed && <Badge variant="outline" className="bg-rose-50 text-rose-600 border-rose-100 font-black text-[7px] gap-1 h-4"><Lock className="h-2 w-2" /> {isRtl ? 'خاص بقسم آخر' : 'Dept Locked'}</Badge>}
                                            </div>
-                                           {boqProgress && boqProgress.linkedItemsCount > 0 && (<div className="mt-2 space-y-1.5"><div className="flex justify-between text-[8px] font-black uppercase text-slate-400"><span>{isRtl ? 'الإنجاز الفني' : 'Progress'}</span><span>{boqProgress.progressPercent}%</span></div><Progress value={boqProgress.progressPercent} className="h-1.5" /></div>)}
+                                           {boqProgress && boqProgress.linkedItemsCount > 0 && (<div className="mt-2 space-y-1.5"><div className="flex justify-between text-[8px] font-black uppercase text-slate-400"><span>{isRtl ? 'الإنجاز الفني' : 'Progress'}</span><span>{boqProgress.progressPercent} %</span></div><Progress value={boqProgress.progressPercent} className="h-1.5" /></div>)}
                                         </div>
                                      </div>
                                      <div className="flex gap-2" onClick={e => e.stopPropagation()}>
@@ -401,7 +401,7 @@ export default function TransactionDetailsPage() {
                                               </>
                                            )}
                                            {isAdmin && stage.status === 'completed' && <Button onClick={() => handleReopenStage(stage.id!)} variant="outline" className="h-9 px-4 rounded-lg text-orange-600 border-orange-200 hover:bg-orange-50 text-[9px] gap-1"><RotateCcw className="h-3 w-3" /> {isRtl ? 'إعادة فتح' : 'Reopen'}</Button>}
-                                           {isAdmin && <Button onClick={() => handleDeleteStage(stage.id!)} variant="ghost" size="icon" className="h-9 w-9 text-rose-300 hover:text-rose-600"><Trash2 className="h-4 w-4" /></Button>}
+                                           {isAdmin && <Button variant="ghost" size="icon" className="h-9 w-9 text-rose-300 hover:text-rose-600"><Trash2 className="h-4 w-4" /></Button>}
                                      </div>
                                   </CardContent>
                                 </Card>
@@ -455,7 +455,7 @@ export default function TransactionDetailsPage() {
       </Dialog>
 
       <Dialog open={isRecordOpen} onOpenChange={setIsRecordOpen}>
-         <DialogContent className="rounded-xl p-0 max-w-md border-0 shadow-3xl bg-white" dir={dir}>
+         <DialogContent className="rounded-xl p-0 max-md border-0 shadow-3xl bg-white" dir={dir}>
             <div className="bg-slate-50 p-6 text-slate-900 border-b text-start"><DialogTitle className="text-lg font-black flex items-center gap-3"><Hammer className="h-5 w-5 text-primary" />{isRtl ? 'تسجيل إنجاز فني' : 'Log Progress'}</DialogTitle></div>
             <div className="p-6 space-y-6 text-start">
                <Label className="text-[11px] font-black uppercase text-slate-400">Target Item</Label>

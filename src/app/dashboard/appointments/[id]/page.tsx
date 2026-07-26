@@ -386,7 +386,9 @@ export default function AppointmentDetailPage() {
                     const isPreviousCompleted = idx === 0 || stages[idx-1].status === 'completed';
                     const isReadyToStart = stage.status === 'pending' && isPreviousCompleted;
                     
-                    const isDeptAllowed = !stage.allowedDepartmentIds?.length || (globalUser?.departmentId && stage.allowedDepartmentIds.includes(globalUser.departmentId));
+                    // تصحيح منطق الوصول: المهندس المسؤول لديه وصول مطلق لمسار مشروعه
+                    const isAssignedEngineer = globalUser?.employeeId === transaction?.assignedEngineerId;
+                    const isDeptAllowed = !stage.allowedDepartmentIds?.length || isAssignedEngineer || (globalUser?.departmentId && stage.allowedDepartmentIds.includes(globalUser.departmentId));
 
                     return (
                        <div key={stage.id} onClick={() => setSelectedStageId(stage.id!)} className={cn("p-5 rounded-3xl border-2 transition-all cursor-pointer flex flex-col gap-4 group", isSelected ? "bg-primary/5 border-primary shadow-lg scale-[1.01]" : "bg-white border-slate-100 hover:border-slate-200")}>
