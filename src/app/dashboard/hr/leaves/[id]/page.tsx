@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { 
   Loader2, CheckCircle2, XCircle,
   User, History, Printer, PlaneTakeoff, PlaneLanding, Scale,
-  Clock, ShieldAlert, AlertTriangle, Info, CalendarDays
+  Clock, ShieldAlert, AlertTriangle, Info, CalendarDays,
+  ArrowRight
 } from "lucide-react";
 import { useFirestore, useDoc } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -71,7 +72,6 @@ export default function LeaveDetailsPage() {
       setActualDepartureDate(leave.actualDepartureDate || leave.startDate);
       setActualReturnDate(leave.actualReturnDate || leave.endDate);
 
-      // فحص تداخل القسم عند تحميل الطلب
       if (leaveService && (leave as any).departmentId) {
         setLoadingConflict(true);
         leaveService.getDepartmentLeaveDensity(
@@ -145,7 +145,6 @@ export default function LeaveDetailsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
            
            <div className="lg:col-span-8 space-y-8">
-              {/* قسم تحذير التداخل السيادي - يظهر للمدير فقط */}
               {isAdmin && leave.status === 'pending' && (
                 <div className="space-y-6">
                    {loadingConflict ? (
