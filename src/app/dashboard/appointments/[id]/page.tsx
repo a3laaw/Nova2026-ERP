@@ -49,6 +49,9 @@ export default function AppointmentDetailPage() {
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
+  // فرض الاسم الكامل السيادي لضمان الاحترافية في السجلات
+  const currentUserName = useMemo(() => globalUser?.fullName || user?.displayName || 'User', [globalUser, user]);
+
   const [selectedStageId, setSelectedStageId] = useState("");
   const [selectedItemId, setSelectedItemId] = useState("");
   const [progressQty, setProgressQty] = useState<number | "">(""); 
@@ -170,7 +173,7 @@ export default function AppointmentDetailPage() {
     if (!transactionService || !user || !appt?.transactionId) return;
     setProcessingId(stageId);
     try {
-      await transactionService.startStage(appt.transactionId, stageId, user.uid, globalUser?.username || 'User', globalUser?.departmentId, apptId);
+      await transactionService.startStage(appt.transactionId, stageId, user.uid, currentUserName, globalUser?.departmentId, apptId);
       toast({ title: isRtl ? "تم بدء العمل" : "Stage Started" });
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
@@ -183,7 +186,7 @@ export default function AppointmentDetailPage() {
     if (!transactionService || !user || !stage.id || !appt?.transactionId) return;
     setProcessingId(stage.id);
     try {
-      await transactionService.completeStage(appt.transactionId, stage.id, user.uid, globalUser?.username || 'User', globalUser?.departmentId, force, apptId);
+      await transactionService.completeStage(appt.transactionId, stage.id, user.uid, currentUserName, globalUser?.departmentId, force, apptId);
       toast({ title: isRtl ? "تم إنجاز المرحلة" : "Stage Completed" });
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
@@ -203,7 +206,7 @@ export default function AppointmentDetailPage() {
     setProcessingId(`rev_${revisionStage.id}`);
     setIsRevisionOpen(false);
     try {
-      await transactionService.incrementStageRevision(appt.transactionId, revisionStage.id!, user.uid, globalUser?.username || 'User', revisionComment, globalUser?.departmentId, apptId);
+      await transactionService.incrementStageRevision(appt.transactionId, revisionStage.id!, user.uid, currentUserName, revisionComment, globalUser?.departmentId, apptId);
       toast({ title: isRtl ? "تم تسجيل دورة مراجعة جديدة" : "Revision Cycle Logged" });
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
@@ -224,7 +227,7 @@ export default function AppointmentDetailPage() {
 
       await service.recordBOQItemExecution(
         activeBoq.id, selectedItemId, stage.technicalStageId, qtyInput, 
-        user.uid, globalUser?.username || 'User', progressNotes, 
+        user.uid, currentUserName, progressNotes, 
         selectedStageId, false, apptId, 
         { laborDetails, equipmentUsed }
       );

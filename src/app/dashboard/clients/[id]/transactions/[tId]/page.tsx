@@ -105,7 +105,8 @@ export default function TransactionDetailsPage() {
   
   const canSeeFinance = check('accounting', 'view').can || check('procurement', 'view').can;
 
-  const currentUserName = useMemo(() => globalUser?.username || user?.displayName || 'Admin', [globalUser, user]);
+  // فرض الاسم الكامل السيادي لضمان الاحترافية في السجلات
+  const currentUserName = useMemo(() => globalUser?.fullName || user?.displayName || 'User', [globalUser, user]);
 
   const transRef = useMemo(() => (companyId && db && transactionId) ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
   const { data: transaction, loading: transLoading } = useDoc<Transaction>(transRef);
@@ -372,7 +373,7 @@ export default function TransactionDetailsPage() {
                               const isOperationalFrontier = stage.status === 'in-progress' || (stage.status === 'pending' && isPreviousCompleted);
                               const isReadyToStart = stage.status === 'pending' && isPreviousCompleted;
                               
-                              // تصحيح منطق الوصول: السماح للمهندس المسؤول بالوصول المطلق للمسار
+                              // تصحيح منطق الوصول: السماح للمهندس المسؤول بالوصول المطلق لمسار مشروعه
                               const isAssignedEngineer = globalUser?.employeeId === transaction?.assignedEngineerId;
                               const isDeptAllowed = !stage.allowedDepartmentIds?.length || isAssignedEngineer || (globalUser?.departmentId && stage.allowedDepartmentIds.includes(globalUser.departmentId));
 

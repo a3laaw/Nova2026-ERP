@@ -34,15 +34,8 @@ export class TransactionService {
     private permissions: string[] = []
   ) {}
 
-  /**
-   * دالة التحقق السيادي من مطابقة القسم (The Sovereign Dept Guard)
-   * تم تحديثها للسماح للمهندس المسؤول بالتحكم المطلق في مسار مشروعه.
-   */
   private verifyDeptAccess(stage: StageInstance, userDeptId?: string, isAssignedEngineer: boolean = false) {
-    // 1. المدير أو المهندس المسؤول له صلاحية مطلقة دوماً
     if (this.permissions.includes('*') || isAssignedEngineer) return;
-
-    // 2. إذا كانت المرحلة مقيدة بأقسام معينة
     if (stage.allowedDepartmentIds && stage.allowedDepartmentIds.length > 0) {
       if (!userDeptId || !stage.allowedDepartmentIds.includes(userDeptId)) {
         throw new Error('RESTRICTED_DEPARTMENT: عذراً، هذه المرحلة تتبع قسم آخر ولا يمكن المباشرة بها من قبلك.');
@@ -50,18 +43,12 @@ export class TransactionService {
     }
   }
 
-  /**
-   * دالة مساعدة للتحقق من هوية المهندس المسؤول
-   */
   private async getIsAssignedEngineer(transactionId: string, userId: string): Promise<boolean> {
      const transSnap = await getDoc(doc(this.db, paths.transactions(this.companyId), transactionId));
      const transData = transSnap.data();
      if (!transData) return false;
-     
-     // نحتاج لمعرفة employeeId الخاص بالمستخدم من السجل العالمي
      const userSnap = await getDoc(doc(this.db, 'global_users', userId));
      const userData = userSnap.data();
-     
      return transData.assignedEngineerId === userData?.employeeId;
   }
 
@@ -355,7 +342,7 @@ export class TransactionService {
       batch.set(autoStartLogRef, {
         transactionId,
         type: 'stage_start',
-        content: `تنشيط تلقائي: تم بدء العمل في المرحلة التالية (${autoStartedStageName}) فور إنجاز سابقتها لضمان استمرارية التدفق.`,
+        content: `[تنشيط تلقائي] تم بدء العمل في المرحلة التالية (${autoStartedStageName}) فور إنجاز سابقتها لضمان استمرارية التدفق.`,
         userId: 'SYSTEM',
         userName: 'NovaFlow Auto',
         isArchived: false,

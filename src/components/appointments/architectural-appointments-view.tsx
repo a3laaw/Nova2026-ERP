@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
@@ -418,7 +417,7 @@ export function ArchitecturalAppointmentsView() {
           departments={departments || []}
           companyId={companyId!}
           userId={user.uid}
-          userName={user.displayName || user.email || 'User'}
+          userName={globalUser?.fullName || user.displayName || user.email || 'User'}
           db={db}
           settings={settings}
           onDelete={confirmDelete}
@@ -783,7 +782,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
       : addMinutes(start, duration);
     
     // --- TESTING BYPASS: Allow Admin to book in the past for tests ---
-    // Remove this check after pilot if you want to lock it for everyone including Admin
+    // Ref: docs/testing-bypass-log.md
     if (!isAdmin && start < new Date()) {
        toast({ variant: "destructive", title: isRtl ? "تنبيه: لا يمكن الحجز في وقت سابق" : "Alert: Cannot book in the past" });
        return;
