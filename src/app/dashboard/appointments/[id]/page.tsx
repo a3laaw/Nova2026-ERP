@@ -63,6 +63,11 @@ export default function AppointmentDetailPage() {
   const [isRecordOpen, setIsRecordOpen] = useState(false);
   const [isLinkOpen, setIsLinkOpen] = useState(false);
 
+  // حالات تسجيل المراجعة (Revision) الموحدة
+  const [isRevisionOpen, setIsRevisionOpen] = useState(false);
+  const [revisionStage, setRevisionStage] = useState<StageInstance | null>(null);
+  const [revisionComment, setRevisionComment] = useState("");
+
   const apptRef = useMemo(() => 
     companyId && db ? doc(db, paths.appointments(companyId), apptId) : null, 
   [db, companyId, apptId]);
@@ -73,26 +78,25 @@ export default function AppointmentDetailPage() {
   [db, companyId, appt?.transactionId]);
   const { data: transaction } = useDoc<Transaction>(transRef);
 
+  const isConsulting = useMemo(() => {
+    const name = transaction?.activityTypeName || '';
+    return name.includes('استشارات') || name.includes('Consulting') || name.includes('تصميم') || name.includes('Design');
+  }, [transaction]);
+
   const stagesQuery = useMemo(() => 
     companyId && db && appt?.transactionId ? query(collection(db, paths.transactionStages(companyId, appt.transactionId)), orderBy('order')) : null,
   [db, companyId, appt?.transactionId]);
   const { data: rawStages } = useCollection<StageInstance>(stagesQuery);
 
-  /**
-   * محرك الفلترة والتحقق من الأهلية (Eligibility & Filtering Engine)
-   */
   const { stages, isEligible, blockerStage } = useMemo(() => {
     const allStages = (rawStages || []).sort((a, b) => (a.order || 0) - (b.order || 0));
     const apptDeptId = appt?.departmentId;
 
     if (!apptDeptId) return { stages: allStages, isEligible: true };
 
-    // 1. فلترة المراحل التي تنتمي لهذا القسم
     const filteredStages = allStages.filter(s => s.allowedDepartmentIds?.includes(apptDeptId));
-
     if (filteredStages.length === 0) return { stages: [], isEligible: false };
 
-    // 2. فحص الأهلية (هل اكتملت كافة المراحل التي تسبق أول مرحلة في هذا القسم؟)
     const firstDeptStageOrder = filteredStages[0].order;
     const previousStages = allStages.filter(s => s.order < firstDeptStageOrder);
     const incompleteBlocker = previousStages.find(s => s.status !== 'completed');
@@ -188,6 +192,27 @@ export default function AppointmentDetailPage() {
       toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
       setProcessingId(null);
+    }
+  };
+
+  const handleOpenRevisionDialog = (stage: StageInstance) => {
+    setRevisionStage(stage);
+    setRevisionComment("");
+    setIsRevisionOpen(true);
+  };
+
+  const handleConfirmRevision = async () => {
+    if (!transactionService || !user || !revisionStage || !revisionComment.trim() || !appt?.transactionId) return;
+    setProcessingId(`rev_${revisionStage.id}`);
+    setIsRevisionOpen(false);
+    try {
+      await transactionService.incrementStageRevision(appt.transactionId, revisionStage.id!, user.uid, globalUser?.username || 'User', revisionComment, apptId);
+      toast({ title: isRtl ? "تم تسجيل دورة مراجعة جديدة" : "Revision Cycle Logged" });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('error'), description: e.message });
+    } finally {
+      setProcessingId(null);
+      setRevisionStage(null);
     }
   };
 
@@ -362,6 +387,11 @@ export default function AppointmentDetailPage() {
                                             {isRtl ? 'جاهزة للبدء' : 'Ready'}
                                          </Badge>
                                       )}
+                                      {isConsulting && (stage.revisionCount || 0) > 0 && (
+                                        <Badge className="bg-orange-100 text-orange-700 border-0 font-black text-[9px] px-2 h-5">
+                                          {isRtl ? `مراجعة #${stage.revisionCount}` : `Rev #${stage.revisionCount}`}
+                                        </Badge>
+                                      )}
                                    </div>
                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter mt-1">{stage.status}</p>
                                 </div>
@@ -370,7 +400,13 @@ export default function AppointmentDetailPage() {
                           {isSelected && (stage.status === 'pending' || stage.status === 'in-progress') && (
                              <div className="flex gap-3 animate-in slide-in-from-top-1" onClick={e => e.stopPropagation()}>
                                 {stage.status === 'pending' && <Button onClick={() => handleStartStage(stage.id!)} disabled={!!processingId} className="flex-1 h-12 rounded-2xl bg-blue-600 text-white font-black text-xs gap-2 shadow-lg hover:scale-105 transition-all">{processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Play className="h-4 w-4" />}{isRtl ? 'بدء العمل' : 'Start'}</Button>}
-                                {stage.status === 'in-progress' && <Button onClick={() => handleCompleteStage(stage)} disabled={!!processingId} className="flex-1 h-12 rounded-2xl bg-emerald-600 text-white font-black text-xs gap-2 shadow-lg hover:scale-105 transition-all">{processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}{isRtl ? 'إنجاز' : 'Done'}</Button>}
+                                {stage.status === 'in-progress' && <Button onClick={() => handleCompleteStage(stage)} disabled={!!processingId} className="flex-1 h-12 rounded-2xl bg-emerald-600 text-white font-black text-xs gap-2 shadow-lg hover:scale-105 transition-all">{processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}{isRtl ? 'إكمال' : 'Done'}</Button>}
+                                {stage.status === 'in-progress' && isConsulting && (
+                                  <Button onClick={() => handleOpenRevisionDialog(stage)} disabled={!!processingId} variant="outline" className="flex-1 h-12 rounded-2xl border-orange-200 text-orange-600 font-black text-xs gap-2 hover:bg-orange-50">
+                                    {processingId === `rev_${stage.id}` ? <Loader2 className="animate-spin h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
+                                    {isRtl ? 'تسجيل دورة تعديل' : 'Log Revision'}
+                                  </Button>
+                                )}
                              </div>
                           )}
                        </div>
@@ -392,6 +428,28 @@ export default function AppointmentDetailPage() {
         </div>
       </div>
 
+      {/* مودال تسجيل مراجعة التصميم الموحد */}
+      <Dialog open={isRevisionOpen} onOpenChange={(v) => { if(!v) setIsRevisionOpen(false); forceThaw(); }}>
+         <DialogContent className="rounded-xl p-0 max-w-lg border-0 shadow-3xl bg-white" dir={dir}>
+            <div className="bg-orange-50 p-6 border-b text-orange-900 text-start">
+               <DialogTitle className="text-xl font-black flex items-center gap-3">
+                  <RotateCcw className="h-6 w-6" /> {isRtl ? 'توثيق مراجعة وتعديل التصميم' : 'Log Design Revision'}
+               </DialogTitle>
+               <p className="text-xs font-bold mt-1 opacity-70">{revisionStage?.name}</p>
+            </div>
+            <div className="p-8 space-y-4 text-start bg-white">
+               <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'أسباب أو تفاصيل التعديل' : 'Revision Notes / Reason'}</Label>
+               <Textarea value={revisionComment} onChange={e => setRevisionComment(e.target.value)} placeholder={isRtl ? "اكتب هنا تفاصيل التعديلات التي تمت على المخطط..." : "Describe the changes made..."} className="min-h-[120px] rounded-2xl border-2 p-5 text-sm font-bold bg-slate-50 focus:bg-white transition-all shadow-inner" />
+            </div>
+            <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-3">
+               <Button variant="outline" onClick={() => setIsRevisionOpen(false)} className="flex-1 h-12 rounded-xl font-bold bg-white">إلغاء</Button>
+               <Button onClick={handleConfirmRevision} disabled={!revisionComment.trim()} className="flex-[2] h-12 rounded-xl bg-orange-600 text-white font-black text-lg shadow-xl shadow-orange-200">
+                  <Save className="h-5 w-5" /> {isRtl ? 'اعتماد دورة التعديل' : 'Confirm Revision'}
+               </Button>
+            </DialogFooter>
+         </DialogContent>
+      </Dialog>
+
       {/* مودال الربط بالمعاملة */}
       <Dialog open={isLinkOpen} onOpenChange={(v) => { if(!v) setIsLinkOpen(false); forceThaw(); }}>
          <DialogContent className="rounded-xl p-0 overflow-hidden max-w-lg border-0 shadow-3xl bg-white" dir={dir}>
@@ -401,7 +459,7 @@ export default function AppointmentDetailPage() {
                   {isRtl ? 'ربط الموعد بمشروع قائم' : 'Link to Existing Project'}
                </DialogTitle>
             </div>
-            <div className="p-8 space-y-6 text-start">
+            <div className="p-8 space-y-6 text-start bg-white">
                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اختر المعاملة الفنية' : 'Select Transaction'}</Label>
                <div className="space-y-2">
                   {availableTransactions.length === 0 ? (
@@ -420,7 +478,7 @@ export default function AppointmentDetailPage() {
                </div>
             </div>
             <DialogFooter className="p-6 bg-slate-50 border-t">
-               <Button variant="outline" onClick={() => setIsLinkOpen(false)} className="w-full h-12 rounded-xl font-bold">إلغاء</Button>
+               <Button variant="outline" onClick={() => setIsLinkOpen(false)} className="w-full h-12 rounded-xl font-bold bg-white">إلغاء</Button>
             </DialogFooter>
          </DialogContent>
       </Dialog>
@@ -431,20 +489,20 @@ export default function AppointmentDetailPage() {
                <DialogTitle className="text-xl font-black flex items-center gap-3"><Hammer className="h-6 w-6 text-primary" />{isRtl ? 'تسجيل إنجاز فني وموارد الموقع' : 'Log Site Progress & Resources'}</DialogTitle>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-8 space-y-8 text-start scrollbar-hide">
+            <div className="flex-1 overflow-y-auto p-8 space-y-8 text-start scrollbar-hide bg-white">
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                      <Label className="text-[10px] font-black uppercase text-slate-400">Target Stage</Label>
                      <Select value={selectedStageId} onValueChange={v => { setSelectedStageId(v); setSelectedItemId(""); }}>
-                        <SelectTrigger className="h-10 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                        <SelectContent className="rounded-xl">{stages?.filter(s => s.status === 'in-progress').map(s => (<SelectItem key={s.id} value={s.id!} className="font-bold py-2">{s.name}</SelectItem>))}</SelectContent>
+                        <SelectTrigger className="h-10 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
+                        <SelectContent className="rounded-xl z-[150]">{stages?.filter(s => s.status === 'in-progress').map(s => (<SelectItem key={s.id} value={s.id!} className="font-bold py-2">{s.name}</SelectItem>))}</SelectContent>
                      </Select>
                   </div>
                   <div className="space-y-2">
                      <Label className="text-[10px] font-black uppercase text-slate-400">BOQ Work Item</Label>
                      <Select disabled={!selectedStageId} value={selectedItemId} onValueChange={setSelectedItemId}>
-                        <SelectTrigger className="h-10 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                        <SelectContent className="rounded-xl">{boqItems?.filter(i => {
+                        <SelectTrigger className="h-10 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
+                        <SelectContent className="rounded-xl z-[150]">{boqItems?.filter(i => {
                            const stage = stages?.find(s => s.id === selectedStageId);
                            return (i.plannedQuantity || 0) > 0 && (i.technicalStageIds?.includes(stage?.technicalStageId!) || i.technicalStageId === stage?.technicalStageId);
                         }).map(i => (<SelectItem key={i.id} value={i.id!} className="font-bold text-xs py-3 text-start"><div className="text-start flex flex-col"><span className="font-black text-slate-800">{i.referenceTitle}</span><span className="text-[8px] text-slate-400">#{i.referenceCode}</span></div></SelectItem>))}</SelectContent>
@@ -459,18 +517,18 @@ export default function AppointmentDetailPage() {
                <div className="space-y-4">
                   <div className="flex items-center justify-between border-b pb-2">
                      <h4 className="text-xs font-black uppercase text-slate-500 flex items-center gap-2"><Users className="h-4 w-4 text-blue-500" /> {isRtl ? 'العمالة والمهن المشاركة' : 'Labor Resources'}</h4>
-                     <Button variant="ghost" size="sm" onClick={() => setLaborDetails([...laborDetails, { trade: '', count: 1 }])} className="h-7 text-[10px] font-black gap-1 text-primary"><Plus className="h-3 w-3" /> {isRtl ? 'إضافة فئة' : 'Add Trade'}</Button>
+                     <Button type="button" variant="ghost" size="sm" onClick={() => setLaborDetails([...laborDetails, { trade: '', count: 1 }])} className="h-7 text-[10px] font-black gap-1 text-primary"><Plus className="h-3 w-3" /> {isRtl ? 'إضافة فئة' : 'Add Trade'}</Button>
                   </div>
                   <div className="grid grid-cols-1 gap-3">
                      {laborDetails.map((labor, i) => (
                         <div key={i} className="flex items-center gap-3 animate-in slide-in-from-top-1">
                            <Input placeholder={isRtl ? "التخصص" : "Trade"} value={labor.trade} onChange={e => {
                               const newL = [...laborDetails]; newL[i].trade = e.target.value; setLaborDetails(newL);
-                           }} className="h-10 rounded-lg font-bold text-xs" />
+                           }} className="h-10 rounded-lg font-bold text-xs bg-white" />
                            <Input type="number" value={labor.count} onChange={e => {
                               const newL = [...laborDetails]; newL[i].count = Number(e.target.value); setLaborDetails(newL);
-                           }} className="h-10 w-24 rounded-lg font-black text-center" />
-                           {laborDetails.length > 1 && <Button variant="ghost" size="icon" onClick={() => setLaborDetails(laborDetails.filter((_, idx) => idx !== i))} className="text-rose-300 hover:text-rose-600"><Trash2 className="h-4 w-4" /></Button>}
+                           }} className="h-10 w-24 rounded-lg font-black text-center bg-white" />
+                           {laborDetails.length > 1 && <Button type="button" variant="ghost" size="icon" onClick={() => setLaborDetails(laborDetails.filter((_, idx) => idx !== i))} className="text-rose-300 hover:text-rose-600"><Trash2 className="h-4 w-4" /></Button>}
                         </div>
                      ))}
                   </div>
@@ -479,7 +537,7 @@ export default function AppointmentDetailPage() {
                <div className="space-y-4 pt-4">
                   <div className="flex items-center justify-between border-b pb-2">
                      <h4 className="text-xs font-black uppercase text-slate-500 flex items-center gap-2"><Truck className="h-4 w-4 text-orange-500" /> {isRtl ? 'الآليات والمعدات المستخدمة' : 'Equipment & Tools'}</h4>
-                     <Button variant="ghost" size="sm" onClick={() => setEquipmentUsed([...equipmentUsed, { equipmentId: '', name: '', hoursUsed: 1 }])} className="h-7 text-[10px] font-black gap-1 text-primary"><Plus className="h-3 w-3" /> {isRtl ? 'إضافة معدة' : 'Add Gear'}</Button>
+                     <Button type="button" variant="ghost" size="sm" onClick={() => setEquipmentUsed([...equipmentUsed, { equipmentId: '', name: '', hoursUsed: 1 }])} className="h-7 text-[10px] font-black gap-1 text-primary"><Plus className="h-3 w-3" /> {isRtl ? 'إضافة معدة' : 'Add Gear'}</Button>
                   </div>
                   <div className="grid grid-cols-1 gap-3">
                      {equipmentUsed.map((equip, i) => (
@@ -488,16 +546,16 @@ export default function AppointmentDetailPage() {
                               const item = equipmentItems.find(x => x.id === v);
                               const newE = [...equipmentUsed]; newE[i].equipmentId = v; newE[i].name = item?.name || ''; setEquipmentUsed(newE);
                            }}>
-                              <SelectTrigger className="h-10 rounded-lg font-bold text-xs"><SelectValue placeholder="..." /></SelectTrigger>
-                              <SelectContent className="rounded-xl">{equipmentItems.map((e:any) => <SelectItem key={e.id} value={e.id!} className="font-bold text-xs">{e.name}</SelectItem>)}</SelectContent>
+                              <SelectTrigger className="h-10 rounded-lg font-bold text-xs bg-white"><SelectValue placeholder="..." /></SelectTrigger>
+                              <SelectContent className="rounded-xl z-[150]">{equipmentItems.map((e:any) => <SelectItem key={e.id} value={e.id!} className="font-bold text-xs">{e.name}</SelectItem>)}</SelectContent>
                            </Select>
                            <div className="relative w-32 shrink-0">
                               <Input type="number" value={equip.hoursUsed} onChange={e => {
                                  const newE = [...equipmentUsed]; newE[i].hoursUsed = Number(e.target.value); setEquipmentUsed(newE);
-                              }} className="h-10 rounded-lg font-black text-center pe-8" />
+                              }} className="h-10 rounded-lg font-black text-center pe-8 bg-white" />
                               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-400">HRS</span>
                            </div>
-                           <Button variant="ghost" size="icon" onClick={() => setEquipmentUsed(equipmentUsed.filter((_, idx) => idx !== i))} className="text-rose-300 hover:text-rose-600"><Trash2 className="h-4 w-4" /></Button>
+                           <Button type="button" variant="ghost" size="icon" onClick={() => setEquipmentUsed(equipmentUsed.filter((_, idx) => idx !== i))} className="text-rose-300 hover:text-rose-600"><Trash2 className="h-4 w-4" /></Button>
                         </div>
                      ))}
                   </div>
@@ -510,8 +568,8 @@ export default function AppointmentDetailPage() {
             </div>
 
             <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4 shrink-0 shadow-lg">
-               <Button variant="outline" onClick={() => setIsRecordOpen(false)} className="flex-1 h-14 rounded-2xl font-bold">إلغاء</Button>
-               <Button onClick={handleRecordProgress} disabled={!!loadingAction || !selectedItemId || !selectedStageId} className="flex-[2] btn-gradient h-14 rounded-2xl text-xl gap-2 shadow-xl shadow-orange-500/20">
+               <Button variant="outline" onClick={() => setIsRecordOpen(false)} className="flex-1 h-14 rounded-2xl font-bold bg-white">إلغاء</Button>
+               <Button onClick={handleRecordProgress} disabled={!!loadingAction || !selectedItemId || !selectedStageId} className="flex-[2] h-14 rounded-2xl text-xl gap-2 shadow-xl shadow-orange-500/20 bg-primary text-white font-black">
                   {loadingAction === 'recording' ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />}
                   {isRtl ? 'حفظ واعتماد السجل' : 'Commit Record'}
                </Button>
