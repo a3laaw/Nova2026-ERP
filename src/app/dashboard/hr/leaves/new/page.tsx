@@ -14,8 +14,18 @@ import {
   Loader2,
   Users,
   UserCircle,
-  Info
+  Info,
+  Search,
+  Check,
+  ChevronDown
 } from "lucide-react";
+import { 
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
@@ -44,6 +54,8 @@ export default function NewLeaveRequestPage() {
   const companyId = globalUser?.companyId;
 
   const [targetEmpId, setTargetEmpId] = useState<string>(globalUser?.employeeId || "");
+  const [empSearch, setEmpSearch] = useState("");
+  const [openEmpPicker, setOpenEmpPicker] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [workingDays, setWorkingDays] = useState(0);
   const [totalCalendarDays, setTotalCalendarDays] = useState(0);
@@ -61,6 +73,15 @@ export default function NewLeaveRequestPage() {
     companyId && db && isAdmin ? query(collection(db, paths.employees(companyId)), orderBy('fullName')) : null, 
   [db, companyId, isAdmin]);
   const { data: employees } = useCollection<Employee>(allEmpsQuery);
+
+  const filteredEmployees = useMemo(() => {
+    if (!employees || !empSearch.trim()) return employees || [];
+    const q = empSearch.toLowerCase();
+    return employees.filter(e => 
+      e.fullName.toLowerCase().includes(q) || 
+      e.employeeNumber.includes(q)
+    );
+  }, [employees, empSearch]);
 
   const empRef = useMemo(() => 
     companyId && db && targetEmpId ? doc(db, paths.employees(companyId), targetEmpId) : null, 
@@ -126,7 +147,7 @@ export default function NewLeaveRequestPage() {
     setIsSubmitting(true);
     try {
       await leaveService.submitRequest({
-        userId: employee.id!, 
+        userId: user.uid, // الشخص الذي قام بالإدخال
         employeeId: targetEmpId,
         userName: employee.fullName,
         type: form.type,
@@ -181,15 +202,50 @@ export default function NewLeaveRequestPage() {
                 </CardHeader>
                 <CardContent className="p-6 space-y-4">
                    <div className="space-y-2">
-                      <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اختر الموظف المستهدف' : 'Target Employee'}</Label>
-                      <Select value={targetEmpId} onValueChange={setTargetEmpId}>
-                         <SelectTrigger className="h-11 rounded-xl bg-white border-2 font-bold">
-                            <SelectValue placeholder="..." />
-                         </SelectTrigger>
-                         <SelectContent className="rounded-xl border-0 shadow-2xl">
-                            {employees?.map(e => <SelectItem key={e.id} value={e.id!} className="font-bold">{e.fullName}</SelectItem>)}
-                         </SelectContent>
-                      </Select>
+                      <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'بحث واختيار الموظف' : 'Search & Select Employee'}</Label>
+                      
+                      <Popover open={openEmpPicker} onOpenChange={setOpenEmpPicker}>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full h-12 rounded-xl border-2 font-bold justify-between px-4 bg-white">
+                            <span className="truncate">{employee?.fullName || (isRtl ? 'اختر موظفاً...' : 'Select employee...')}</span>
+                            <ChevronDown className="h-4 w-4 opacity-30" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[300px] p-0 rounded-2xl shadow-3xl border-2 z-[100]" align="start">
+                           <div className="p-3 bg-slate-50 border-b">
+                              <div className="relative">
+                                 <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                                 <Input 
+                                   placeholder={isRtl ? "بحث بالاسم أو الرقم..." : "Search name or ID..."}
+                                   className="h-9 ps-9 rounded-lg border-2 bg-white text-xs font-bold"
+                                   value={empSearch}
+                                   onChange={e => setEmpSearch(e.target.value)}
+                                 />
+                              </div>
+                           </div>
+                           <ScrollArea className="h-64">
+                              <div className="p-2 space-y-1">
+                                 {filteredEmployees.map(e => (
+                                   <div 
+                                     key={e.id} 
+                                     onClick={() => { setTargetEmpId(e.id!); setOpenEmpPicker(false); setEmpSearch(""); }}
+                                     className={cn(
+                                       "p-3 rounded-xl cursor-pointer transition-all flex items-center justify-between",
+                                       targetEmpId === e.id ? "bg-primary/5 text-primary" : "hover:bg-slate-50"
+                                     )}
+                                   >
+                                      <div className="flex flex-col text-start">
+                                         <span className="text-xs font-black">{e.fullName}</span>
+                                         <span className="text-[8px] font-mono text-slate-400 uppercase">#{e.employeeNumber}</span>
+                                      </div>
+                                      {targetEmpId === e.id && <Check className="h-3.5 w-3.5" />}
+                                   </div>
+                                 ))}
+                                 {filteredEmployees.length === 0 && <div className="py-10 text-center text-[10px] text-slate-400 italic">No employees found.</div>}
+                              </div>
+                           </ScrollArea>
+                        </PopoverContent>
+                      </Popover>
                    </div>
                    <div className="p-3 bg-slate-50 rounded-xl flex items-start gap-2 border border-slate-100">
                       <Info className="h-3 w-3 text-primary mt-0.5 shrink-0" />
@@ -254,7 +310,7 @@ export default function NewLeaveRequestPage() {
                        <SmartDateInput value={form.startDate} onChange={v => setForm({...form, startDate: v})} />
                     </div>
                     <div className="space-y-1.5">
-                       <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'تاريخ العودة للعودة' : 'Return to Work Date'}</Label>
+                       <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'تاريخ العودة للعمل' : 'Return to Work Date'}</Label>
                        <SmartDateInput value={form.endDate} onChange={v => setForm({...form, endDate: v})} />
                     </div>
                  </div>

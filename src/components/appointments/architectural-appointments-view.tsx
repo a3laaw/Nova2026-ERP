@@ -47,7 +47,10 @@ import {
   ShieldAlert, 
   Eye,
   ShieldX,
-  User
+  User,
+  Search,
+  Check,
+  ChevronDown
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs, updateDoc, deleteDoc, serverTimestamp, addDoc, setDoc } from 'firebase/firestore';
@@ -92,6 +95,12 @@ import {
   Select,
   SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -630,6 +639,8 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
   const [isNewClient, setIsNewClient] = useState(false);
   const [isBusyBlock, setIsBusyBlock] = useState(false);
   const [eligibilityLoading, setEligibilityLoading] = useState(false);
+  const [clientSearch, setClientSearch] = useState("");
+  const [openClientPicker, setOpenClientPicker] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '', clientId: '', clientName: '', departmentId: '', departmentName: '',
@@ -662,8 +673,12 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     if (targetEngineerId) {
       list = list.filter((c: any) => c.assignedEngineerId === targetEngineerId);
     }
+    if (clientSearch.trim()) {
+      const q = clientSearch.toLowerCase();
+      list = list.filter((c: any) => c.nameAr?.toLowerCase().includes(q) || c.mobile?.includes(q) || c.fileNumber?.includes(q));
+    }
     return list;
-  }, [clients, targetEngineerId]);
+  }, [clients, targetEngineerId, clientSearch]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -678,6 +693,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
        setIsBusyBlock(false);
        setClientTransactions([]);
        setEligibilityBlocker(null);
+       setClientSearch("");
     }
   }, [isOpen]);
 
@@ -942,22 +958,54 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                    <div className="space-y-4">
                       <div className="space-y-1.5">
                          <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">اختيار العميل</Label>
-                         <Select value={formData.clientId} onValueChange={v => {
-                           const c = filteredClients.find((x:any) => x.id === v);
-                           setFormData({...formData, clientId: v, clientName: c?.nameAr || '', transactionId: '', transactionNumber: ''});
-                           if (v) fetchClientTransactions(v);
-                         }}>
-                            <SelectTrigger className="h-11 rounded-xl border-2 font-bold bg-white">
-                               <SelectValue placeholder={isRtl ? "تحديد العميل..." : "Choose client..."} />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl border shadow-3xl max-h-[300px] z-[150]">
-                               {filteredClients.map((c: any) => (
-                                 <SelectItem key={c.id} value={c.id!} className="font-bold text-[11px] py-2">
-                                    {c.nameAr}
-                                 </SelectItem>
-                               ))}
-                            </SelectContent>
-                         </Select>
+                         
+                         <Popover open={openClientPicker} onOpenChange={setOpenClientPicker}>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" className="w-full h-11 rounded-xl border-2 font-bold justify-between bg-white px-4">
+                                <span className="truncate">{formData.clientName || (isRtl ? "تحديد العميل..." : "Choose client...")}</span>
+                                <ChevronDown className="h-4 w-4 opacity-30" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[400px] p-0 rounded-2xl shadow-3xl border-2 z-[150]" align="start">
+                               <div className="p-3 bg-slate-50 border-b">
+                                  <div className="relative">
+                                     <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                                     <Input 
+                                       placeholder={isRtl ? "بحث بالاسم أو الهاتف..." : "Search client..."}
+                                       className="h-9 ps-9 rounded-lg border-2 bg-white text-xs font-bold"
+                                       value={clientSearch}
+                                       onChange={e => setClientSearch(e.target.value)}
+                                     />
+                                  </div>
+                               </div>
+                               <ScrollArea className="h-64">
+                                  <div className="p-2 space-y-1">
+                                     {filteredClients.map((c: any) => (
+                                       <div 
+                                         key={c.id} 
+                                         onClick={() => {
+                                           setFormData({...formData, clientId: c.id!, clientName: c.nameAr, transactionId: '', transactionNumber: ''});
+                                           setOpenClientPicker(false);
+                                           setClientSearch("");
+                                           fetchClientTransactions(c.id!);
+                                         }}
+                                         className={cn(
+                                           "p-3 rounded-xl cursor-pointer transition-all flex items-center justify-between",
+                                           formData.clientId === c.id ? "bg-primary/5 text-primary" : "hover:bg-slate-50"
+                                         )}
+                                       >
+                                          <div className="flex flex-col text-start">
+                                             <span className="text-xs font-black">{c.nameAr}</span>
+                                             <span className="text-[8px] font-mono text-slate-400 uppercase">{c.fileNumber} • {c.mobile}</span>
+                                          </div>
+                                          {formData.clientId === c.id && <Check className="h-3.5 w-3.5" />}
+                                       </div>
+                                     ))}
+                                     {filteredClients.length === 0 && <div className="py-10 text-center text-[10px] text-slate-400 italic">No clients found.</div>}
+                                  </div>
+                               </ScrollArea>
+                            </PopoverContent>
+                         </Popover>
                       </div>
 
                       {formData.clientId && (

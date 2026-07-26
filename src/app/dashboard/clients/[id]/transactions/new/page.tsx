@@ -1,24 +1,35 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { 
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, CheckCircle2, Workflow, Building2, Briefcase } from "lucide-react";
+import { 
+  Loader2, CheckCircle2, Workflow, Building2, 
+  Briefcase, Search, Check, ChevronDown, X
+} from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
-import { usePermissions } from '@/hooks/use-permissions';
+import { usePermissions } from '@/hooks/use-permissions'; 
 import { paths } from '@/firebase/multi-tenant';
 import { Client } from '@/types/client';
 import { ActivityType, Service, SubService, Department } from '@/types/reference';
 import { Employee } from '@/types/hr';
 import { TransactionService } from '@/services/transaction-service';
 import { toast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 export default function NewTransactionPage() {
   const clientId = useParams().id as string;
@@ -31,6 +42,9 @@ export default function NewTransactionPage() {
   const companyId = globalUser?.companyId;
 
   const [loading, setLoading] = useState(false);
+  const [engSearch, setEngSearch] = useState("");
+  const [openEngPicker, setOpenEngPicker] = useState(false);
+  
   const [form, setForm] = useState({ 
     activityTypeId: '', serviceId: '', subServiceId: '', departmentId: '', description: '', assignedEngineerId: '' 
   });
@@ -50,11 +64,19 @@ export default function NewTransactionPage() {
   const { data: departments } = useCollection<Department>(deptsQuery);
   const { data: employees } = useCollection<Employee>(empsQuery);
 
-  // تصفية المهندسين بناءً على القسم المختار (بروتوكول التوجيه التخصصي)
   const filteredEngineers = useMemo(() => {
-    if (!form.departmentId) return employees;
-    return employees.filter(e => e.departmentId === form.departmentId);
-  }, [employees, form.departmentId]);
+    let list = employees || [];
+    if (form.departmentId) {
+      list = list.filter(e => e.departmentId === form.departmentId);
+    }
+    if (engSearch.trim()) {
+      const q = engSearch.toLowerCase();
+      list = list.filter(e => e.fullName.toLowerCase().includes(q) || e.employeeNumber.includes(q));
+    }
+    return list;
+  }, [employees, form.departmentId, engSearch]);
+
+  const selectedEngineer = employees?.find(e => e.id === form.assignedEngineerId);
 
   const handleCreate = async () => {
     if (!db || !companyId || !user || !form.subServiceId || !form.assignedEngineerId) return;
@@ -127,14 +149,14 @@ export default function NewTransactionPage() {
                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">الخدمة الرئيسية</Label>
                 <Select disabled={!form.activityTypeId} value={form.serviceId} onValueChange={(v) => setForm({...form, serviceId: v, subServiceId: ''})}>
                   <SelectTrigger className="h-12 rounded-xl border-2 font-black text-xs bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
-                  <SelectContent className="rounded-2xl">{services?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs">{isRtl ? s.name : s.nameEn}</SelectItem>)}</SelectContent>
+                  <SelectContent className="rounded-xl">{services?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs">{isRtl ? s.name : s.nameEn}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">المسار الفني (Pipeline)</Label>
                 <Select disabled={!form.serviceId} value={form.subServiceId} onValueChange={(v) => setForm({...form, subServiceId: v})}>
                   <SelectTrigger className="h-12 rounded-xl border-2 font-black text-xs bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
-                  <SelectContent className="rounded-2xl">{subServices?.map(ss => <SelectItem key={ss.id} value={ss.id!} className="font-bold text-xs">{isRtl ? ss.name : ss.nameEn}</SelectItem>)}</SelectContent>
+                  <SelectContent className="rounded-xl">{subServices?.map(ss => <SelectItem key={ss.id} value={ss.id!} className="font-bold text-xs">{isRtl ? ss.name : ss.nameEn}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
            </div>
@@ -158,14 +180,49 @@ export default function NewTransactionPage() {
                 <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5">
                    <Briefcase className="h-3 w-3" /> {isRtl ? 'المهندس المسؤول عن التنفيذ' : 'Assigned Engineer'}
                 </Label>
-                <Select disabled={!form.departmentId} value={form.assignedEngineerId} onValueChange={(v) => setForm({...form, assignedEngineerId: v})}>
-                   <SelectTrigger className="h-14 rounded-2xl border-2 font-black bg-white shadow-sm">
-                      <SelectValue placeholder={isRtl ? "تحديد المهندس المختص..." : "Assign Specialist..."} />
-                   </SelectTrigger>
-                   <SelectContent className="rounded-2xl">
-                      {filteredEngineers?.map(emp => (<SelectItem key={emp.id} value={emp.id!} className="font-bold text-xs">{emp.fullName}</SelectItem>))}
-                   </SelectContent>
-                </Select>
+                
+                <Popover open={openEngPicker} onOpenChange={setOpenEngPicker}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full h-14 rounded-2xl border-2 bg-white font-black justify-between px-4">
+                      <span className="truncate">{selectedEngineer?.fullName || (isRtl ? "تحديد المهندس..." : "Assign Engineer...")}</span>
+                      <ChevronDown className="h-4 w-4 opacity-30" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[350px] p-0 rounded-2xl shadow-3xl border-2 z-[100]" align="start">
+                     <div className="p-3 bg-slate-50 border-b">
+                        <div className="relative">
+                           <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                           <Input 
+                             placeholder={isRtl ? "بحث بالاسم أو الرقم..." : "Search engineer..."}
+                             className="h-10 ps-10 rounded-lg border-2 bg-white font-bold"
+                             value={engSearch}
+                             onChange={e => setEngSearch(e.target.value)}
+                           />
+                        </div>
+                     </div>
+                     <ScrollArea className="h-64">
+                        <div className="p-2 space-y-1">
+                           {filteredEngineers.map(emp => (
+                             <div 
+                               key={emp.id} 
+                               onClick={() => { setForm({...form, assignedEngineerId: emp.id!}); setOpenEngPicker(false); setEngSearch(""); }}
+                               className={cn(
+                                 "p-3 rounded-xl cursor-pointer transition-all flex items-center justify-between",
+                                 form.assignedEngineerId === emp.id ? "bg-primary/5 text-primary" : "hover:bg-slate-50"
+                               )}
+                             >
+                                <div className="flex flex-col text-start">
+                                   <span className="text-xs font-black">{emp.fullName}</span>
+                                   <span className="text-[8px] font-mono text-slate-400">#{emp.employeeNumber}</span>
+                                </div>
+                                {form.assignedEngineerId === emp.id && <Check className="h-3.5 w-3.5" />}
+                             </div>
+                           ))}
+                           {filteredEngineers.length === 0 && <div className="py-10 text-center text-xs font-bold text-slate-400 italic">No engineers found.</div>}
+                        </div>
+                     </ScrollArea>
+                  </PopoverContent>
+                </Popover>
               </div>
            </div>
 
