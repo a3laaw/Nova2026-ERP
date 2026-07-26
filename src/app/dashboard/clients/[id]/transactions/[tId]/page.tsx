@@ -202,6 +202,38 @@ export default function TransactionDetailsPage() {
     finally { setProcessingId(null); }
   };
 
+  const handleCreateBOQ = async () => {
+    if (!db || !companyId || !user || !selectedTemplateId || !transaction) return;
+    setLoadingAction('creating_boq');
+    try {
+      const service = new DocumentService(db, companyId, permissions);
+      const template = templates?.find(t => t.id === selectedTemplateId);
+      
+      await service.instantiateBoqFromTemplate(
+        selectedTemplateId,
+        {
+          transactionId,
+          clientId,
+          clientName: transaction.clientName,
+          activityTypeId: transaction.activityTypeId,
+          serviceId: transaction.serviceId,
+          subServiceId: transaction.subServiceId,
+          name: template?.name || ""
+        },
+        user.uid,
+        currentUserName
+      );
+
+      toast({ title: isRtl ? "تم إنشاء المقايسة بنجاح" : "BOQ Created Successfully" });
+      setIsBoqInitOpen(false);
+      setSelectedTemplateId("");
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('error'), description: e.message });
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
   const handleOpenRevisionDialog = (stage: StageInstance) => {
      setRevisionStage(stage);
      setRevisionComment("");
@@ -465,7 +497,7 @@ export default function TransactionDetailsPage() {
       <AlertDialog open={!!incompleteStage} onOpenChange={(v) => !v && setIncompleteStage(null)}>
          <AlertDialogContent className="rounded-xl p-8 border-0 shadow-3xl bg-white" dir={dir}>
             <AlertDialogHeader className="bg-amber-50 p-6 rounded-xl border border-amber-100"><AlertDialogTitle className="text-start font-black text-xl text-amber-900 flex items-center gap-2"><AlertTriangle className="h-6 w-6" /> {isRtl ? 'المرحلة غير مكتملة فنيًا' : 'Incomplete Stage'}</AlertDialogTitle><AlertDialogDescription className="text-start font-bold text-amber-700 mt-2">{isRtl ? `نسبة إنجاز بنود المقايسة في هذه المرحلة هي ${incompleteStage?.progress.progressPercent}%. هل ترغب في الإغلاق الإجباري؟` : `Progress is only ${incompleteStage?.progress.progressPercent}%. Force close?`}</AlertDialogDescription></AlertDialogHeader>
-            <AlertDialogFooter className="mt-8 gap-3 flex flex-row"><AlertDialogCancel className="flex-1 h-12 rounded-lg font-bold border-2 bg-white">إلغاء</AlertDialogCancel><AlertDialogAction onClick={() => handleCompleteStage(incompleteStage!.stage, true)} className="flex-[2] h-12 rounded-lg font-black bg-orange-600 text-white shadow-xl shadow-rose-200">{isRtl ? 'نعم، إغلاق إجباري' : 'Force Close'}</AlertDialogAction></AlertDialogFooter>
+            <AlertDialogFooter className="mt-8 gap-3 flex flex-row"><AlertDialogCancel className="flex-1 h-10 rounded-lg font-bold border-2 bg-white">إلغاء</AlertDialogCancel><AlertDialogAction onClick={() => handleCompleteStage(incompleteStage!.stage, true)} className="flex-[2] h-10 rounded-lg font-black bg-orange-600 text-white shadow-xl shadow-rose-200">{isRtl ? 'نعم، إغلاق إجباري' : 'Force Close'}</AlertDialogAction></AlertDialogFooter>
          </AlertDialogContent>
       </AlertDialog>
 
