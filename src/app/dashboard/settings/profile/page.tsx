@@ -16,6 +16,8 @@ import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { useFirestore } from '@/firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
@@ -55,7 +57,11 @@ export default function ProfilePage() {
     if (!file) return;
 
     if (file.size > 1024 * 1024) {
-      toast({ variant: "destructive", title: isRtl ? "حجم الصورة كبير" : "Image too large", description: "Max 1MB" });
+      toast({ 
+        variant: "destructive", 
+        title: isRtl ? "حجم الصورة كبير" : "Image too large", 
+        description: isRtl ? "يرجى اختيار صورة أقل من 1 ميجابايت." : "Max 1MB" 
+      });
       return;
     }
 
@@ -66,37 +72,55 @@ export default function ProfilePage() {
     reader.readAsDataURL(file);
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!db || !user?.uid || !globalUser?.companyId) return;
     setSaving(true);
-    try {
-      // تحديث السجل العالمي السيادي
-      const globalUserRef = doc(db, 'global_users', user.uid);
-      await updateDoc(globalUserRef, {
-        fullName: formData.fullName,
-        photoUrl: formData.photoUrl,
-        updatedAt: serverTimestamp(),
+
+    const globalUserRef = doc(db, 'global_users', user.uid);
+    const tenantUserRef = doc(db, 'companies', globalUser.companyId, 'users', user.uid);
+
+    const globalPayload = {
+      fullName: formData.fullName,
+      photoUrl: formData.photoUrl,
+      updatedAt: serverTimestamp(),
+    };
+
+    const tenantPayload = {
+      displayName: formData.fullName,
+      photoUrl: formData.photoUrl,
+      updatedAt: serverTimestamp(),
+    };
+
+    // تنفيذ التحديثات بنمط غير محظور (Non-blocking mutations)
+    updateDoc(globalUserRef, globalPayload)
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: globalUserRef.path,
+          operation: 'update',
+          requestResourceData: globalPayload
+        } satisfies SecurityRuleContext);
+        errorEmitter.emit('permission-error', permissionError);
       });
 
-      // مزامنة الاسم مع السجل الداخلي للشركة
-      const tenantUserRef = doc(db, 'companies', globalUser.companyId, 'users', user.uid);
-      await updateDoc(tenantUserRef, {
-        displayName: formData.fullName,
-        photoUrl: formData.photoUrl,
-        updatedAt: serverTimestamp(),
+    updateDoc(tenantUserRef, tenantPayload)
+      .then(() => {
+        toast({ title: t('saved') });
+        setSaving(false);
+      })
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: tenantUserRef.path,
+          operation: 'update',
+          requestResourceData: tenantPayload
+        } satisfies SecurityRuleContext);
+        errorEmitter.emit('permission-error', permissionError);
+        setSaving(false);
       });
-
-      toast({ title: t('saved') });
-    } catch (error) {
-      toast({ variant: "destructive", title: t('error') });
-    } finally {
-      setSaving(false);
-    }
   };
 
   if (authLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
-  const isAdmin = globalUser?.role?.toLowerCase() === 'admin';
+  const isAdmin = globalUser?.role?.toLowerCase() === 'admin' || globalUser?.roleCode === 'ADMIN';
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto pb-20" dir={dir}>
@@ -118,7 +142,7 @@ export default function ProfilePage() {
                 <div className="relative group cursor-pointer" onClick={handleAvatarClick}>
                    <Avatar className="h-28 w-28 rounded-[2rem] border-4 border-white shadow-2xl ring-4 ring-primary/5 transition-transform group-hover:scale-105">
                       <AvatarImage src={formData.photoUrl || `https://picsum.photos/seed/${user?.uid}/100/100`} className="object-cover" />
-                      <AvatarFallback className="bg-slate-100 text-slate-400 font-black text-2xl uppercase">
+                      <AvatarFallback className="bg-primary/10 text-primary font-black text-2xl uppercase">
                          {formData.fullName?.charAt(0)}
                       </AvatarFallback>
                    </Avatar>
