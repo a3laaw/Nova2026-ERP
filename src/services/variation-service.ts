@@ -28,6 +28,20 @@ export class VariationService {
     private permissions: string[] = []
   ) {}
 
+  /**
+   * دالة مساعدة للتحقق من هوية المهندس المسؤول
+   */
+  private async getIsAssignedEngineer(transactionId: string, userId: string): Promise<boolean> {
+     const transSnap = await getDoc(doc(this.db, paths.transactions(this.companyId), transactionId));
+     const transData = transSnap.data();
+     if (!transData) return false;
+     
+     const userSnap = await getDoc(doc(this.db, 'global_users', userId));
+     const userData = userSnap.data();
+     
+     return transData.assignedEngineerId === userData?.employeeId;
+  }
+
   async createVariation(
     boqId: string, 
     transactionId: string,
@@ -36,7 +50,10 @@ export class VariationService {
     items: Partial<BOQVariationItem>[],
     userId: string
   ): Promise<string> {
-    ensureActionPermission(this.permissions, 'projects:edit');
+    const isAssigned = await this.getIsAssignedEngineer(transactionId, userId);
+    if (!isAssigned) {
+       ensureActionPermission(this.permissions, 'projects:edit');
+    }
 
     const boqRef = doc(this.db, paths.boqs(this.companyId), boqId);
     const boqSnap = await getDoc(boqRef);
@@ -92,7 +109,10 @@ export class VariationService {
   }
 
   async approveVariation(boqId: string, voId: string, transactionId: string, userId: string, userName: string) {
-    ensureActionPermission(this.permissions, 'projects:edit');
+    const isAssigned = await this.getIsAssignedEngineer(transactionId, userId);
+    if (!isAssigned) {
+       ensureActionPermission(this.permissions, 'projects:edit');
+    }
     
     const voRef = doc(this.db, paths.boqVariations(this.companyId, boqId), voId);
     const voSnap = await getDoc(voRef);
@@ -221,7 +241,10 @@ export class VariationService {
   }
 
   async rejectVariation(boqId: string, voId: string, transactionId: string, userId: string, userName: string) {
-    ensureActionPermission(this.permissions, 'projects:edit');
+    const isAssigned = await this.getIsAssignedEngineer(transactionId, userId);
+    if (!isAssigned) {
+       ensureActionPermission(this.permissions, 'projects:edit');
+    }
     const voRef = doc(this.db, paths.boqVariations(this.companyId, boqId), voId);
     await updateDoc(voRef, { status: 'cancelled', rejectedBy: userId, rejectedAt: serverTimestamp() });
   }

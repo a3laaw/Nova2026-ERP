@@ -50,6 +50,21 @@ export class TransactionService {
     }
   }
 
+  /**
+   * دالة مساعدة للتحقق من هوية المهندس المسؤول
+   */
+  private async getIsAssignedEngineer(transactionId: string, userId: string): Promise<boolean> {
+     const transSnap = await getDoc(doc(this.db, paths.transactions(this.companyId), transactionId));
+     const transData = transSnap.data();
+     if (!transData) return false;
+     
+     // نحتاج لمعرفة employeeId الخاص بالمستخدم من السجل العالمي
+     const userSnap = await getDoc(doc(this.db, 'global_users', userId));
+     const userData = userSnap.data();
+     
+     return transData.assignedEngineerId === userData?.employeeId;
+  }
+
   async createTransaction(data: {
     clientId: string;
     clientName: string;
@@ -172,29 +187,17 @@ export class TransactionService {
     await batch.commit();
   }
 
-  /**
-   * دالة مساعدة للتحقق من هوية المهندس المسؤول
-   */
-  private async getIsAssignedEngineer(transactionId: string, userId: string): Promise<boolean> {
-     const transSnap = await getDoc(doc(this.db, paths.transactions(this.companyId), transactionId));
-     const transData = transSnap.data();
-     if (!transData) return false;
-     
-     // نحتاج لمعرفة employeeId الخاص بالمستخدم من السجل العالمي
-     const userSnap = await getDoc(doc(this.db, 'global_users', userId));
-     const userData = userSnap.data();
-     
-     return transData.assignedEngineerId === userData?.employeeId;
-  }
-
   async incrementStageRevision(transactionId: string, stageId: string, userId: string, userName: string, notes: string = "", userDeptId?: string, appointmentId?: string) {
-    ensureActionPermission(this.permissions, 'projects:edit');
+    const isAssigned = await this.getIsAssignedEngineer(transactionId, userId);
+    if (!isAssigned) {
+       ensureActionPermission(this.permissions, 'projects:edit');
+    }
+
     const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
     const stageSnap = await getDoc(stageRef);
     if (!stageSnap.exists()) return;
     const stageData = stageSnap.data() as StageInstance;
 
-    const isAssigned = await this.getIsAssignedEngineer(transactionId, userId);
     this.verifyDeptAccess(stageData, userDeptId, isAssigned);
 
     const nextRev = (stageData.revisionCount || 0) + 1;
@@ -236,13 +239,16 @@ export class TransactionService {
   }
 
   async startStage(transactionId: string, stageId: string, userId: string, userName: string, userDeptId?: string, appointmentId?: string) {
-    ensureActionPermission(this.permissions, 'projects:edit');
+    const isAssigned = await this.getIsAssignedEngineer(transactionId, userId);
+    if (!isAssigned) {
+       ensureActionPermission(this.permissions, 'projects:edit');
+    }
+
     const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
     const stageSnap = await getDoc(stageRef);
     if (!stageSnap.exists()) return;
     const stageData = stageSnap.data() as StageInstance;
 
-    const isAssigned = await this.getIsAssignedEngineer(transactionId, userId);
     this.verifyDeptAccess(stageData, userDeptId, isAssigned);
 
     await updateDoc(stageRef, {
@@ -270,14 +276,16 @@ export class TransactionService {
   }
 
   async completeStage(transactionId: string, stageId: string, userId: string, userName: string, userDeptId?: string, force: boolean = false, appointmentId?: string) {
-    ensureActionPermission(this.permissions, 'projects:edit');
+    const isAssigned = await this.getIsAssignedEngineer(transactionId, userId);
+    if (!isAssigned) {
+       ensureActionPermission(this.permissions, 'projects:edit');
+    }
     
     const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
     const stageSnap = await getDoc(stageRef);
     if (!stageSnap.exists()) return;
     const stageData = stageSnap.data() as StageInstance;
 
-    const isAssigned = await this.getIsAssignedEngineer(transactionId, userId);
     this.verifyDeptAccess(stageData, userDeptId, isAssigned);
 
     if (!force) {
@@ -360,7 +368,10 @@ export class TransactionService {
   }
 
   async reopenStage(transactionId: string, stageId: string, userId: string, userName: string) {
-    ensureActionPermission(this.permissions, 'projects:edit');
+    const isAssigned = await this.getIsAssignedEngineer(transactionId, userId);
+    if (!isAssigned) {
+       ensureActionPermission(this.permissions, 'projects:edit');
+    }
     
     const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
     const stageSnap = await getDoc(stageRef);

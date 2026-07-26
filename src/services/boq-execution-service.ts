@@ -50,6 +50,21 @@ export class BOQExecutionService {
     return item.technicalStageId ? [item.technicalStageId] : [];
   }
 
+  /**
+   * دالة مساعدة للتحقق من هوية المهندس المسؤول عن المعاملة
+   */
+  private async getIsAssignedEngineer(transactionId: string | undefined, userId: string): Promise<boolean> {
+     if (!transactionId) return false;
+     const transSnap = await getDoc(doc(this.db, paths.transactions(this.companyId), transactionId));
+     const transData = transSnap.data();
+     if (!transData) return false;
+     
+     const userSnap = await getDoc(doc(this.db, 'global_users', userId));
+     const userData = userSnap.data();
+     
+     return transData.assignedEngineerId === userData?.employeeId;
+  }
+
   async recordBOQItemExecution(
     boqId: string,
     itemId: string,
@@ -66,17 +81,19 @@ export class BOQExecutionService {
        equipmentUsed?: EquipmentUsed[];
     }
   ) {
-    ensureActionPermission(this.permissions, 'projects:edit');
+    const itemRef = doc(this.db, paths.boqItems(this.companyId, boqId), itemId);
+    const itemSnap = await getDoc(itemRef);
+    if (!itemSnap.exists()) throw new Error('ITEM_NOT_FOUND');
+    const itemData = itemSnap.data() as BOQItem;
+
+    const isAssigned = await this.getIsAssignedEngineer(itemData.transactionId, userId);
+    if (!isAssigned) {
+       ensureActionPermission(this.permissions, 'projects:edit');
+    }
 
     if (quantity < 0) {
       throw new Error('INVALID_QUANTITY: الكمية لا يمكن أن تكون سالبة.');
     }
-
-    const itemRef = doc(this.db, paths.boqItems(this.companyId, boqId), itemId);
-    const itemSnap = await getDoc(itemRef);
-    
-    if (!itemSnap.exists()) throw new Error('ITEM_NOT_FOUND: البند غير موجود.');
-    const itemData = itemSnap.data() as BOQItem;
 
     const allowedStages = this.getAllowedTechnicalStageIds(itemData);
     const isStageAllowed = allowedStages.includes(technicalStageId);
@@ -281,7 +298,7 @@ export class BOQExecutionService {
       progressPercent: Math.min(100, Math.round(progress * 100) / 100),
       canComplete: isFullyCompleted,
       reason: !isFullyCompleted 
-        ? "لا يمكن إغلاق المرحلة قبل اكتمال 100% من البنود المرتبطة بها (المرحلة ما زالت تحتوي على كميات غير منفذة)." 
+        ? "لا يمكن إغلاق المرحلة قبل اكتمال 100% من بنود المقايسة المرتبطة بها (المرحلة ما زالت تحتوي على كميات غير منفذة)." 
         : undefined
     };
   }
