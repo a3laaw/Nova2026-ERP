@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
@@ -424,6 +425,7 @@ export function ArchitecturalAppointmentsView() {
           existingAppts={rawAppointments || []}
           employees={allEmployees || []}
           archEngineers={archEngineers}
+          isAdmin={isAdmin}
         />
       )}
 
@@ -631,7 +633,7 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
   );
 }
 
-function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates, departments, companyId, userId, userName, db, settings, onDelete, existingAppts, employees, archEngineers }: any) {
+function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates, departments, companyId, userId, userName, db, settings, onDelete, existingAppts, employees, archEngineers, isAdmin }: any) {
   const { dir, lang, t } = useLanguage();
   const isRtl = lang === 'ar';
   
@@ -780,6 +782,13 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
       ? new Date(`${formData.date}T${formData.endTime}:00`)
       : addMinutes(start, duration);
     
+    // --- TESTING BYPASS: Allow Admin to book in the past for tests ---
+    // Remove this check after pilot if you want to lock it for everyone including Admin
+    if (!isAdmin && start < new Date()) {
+       toast({ variant: "destructive", title: isRtl ? "تنبيه: لا يمكن الحجز في وقت سابق" : "Alert: Cannot book in the past" });
+       return;
+    }
+
     const targetClientId = isNewClient ? 'NEW_CLIENT' : formData.clientId;
     
     for (const appt of existingAppts) {
@@ -1021,7 +1030,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                                  <SelectTrigger className="h-12 rounded-xl border-2 font-black text-xs bg-white shadow-sm">
                                     <SelectValue placeholder={isRtl ? "اختر المشروع المفتوح..." : "Select Project..."} />
                                  </SelectTrigger>
-                                 <SelectContent className="rounded-xl z-[151]">
+                                 <SelectContent className="rounded-xl z-[161]">
                                     {clientTransactions.map(t => (
                                        <SelectItem key={t.id} value={t.id} className="font-bold text-[11px] py-3">
                                           <div className="flex flex-col text-start">

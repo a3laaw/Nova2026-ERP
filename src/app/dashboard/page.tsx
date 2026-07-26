@@ -39,7 +39,6 @@ import { paths } from '@/firebase/multi-tenant';
 import { Appointment } from '@/types/appointment';
 import { startOfDay, isBefore, parseISO, format, differenceInDays } from 'date-fns';
 import { useRouter } from 'next/navigation';
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const data = [
   { name: "Jan", revenue: 4500, expenses: 2400 },
