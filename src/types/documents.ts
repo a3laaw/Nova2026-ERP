@@ -1,5 +1,7 @@
+'use client';
 /**
  * @fileOverview تعريف واجهات البيانات للمستندات الحية (Instantiated Documents).
+ * تم تحديث الهيكل لدعم تفاصيل العمالة والمعدات المستخدمة في التنفيذ الميداني.
  */
 
 import { BaseReference } from './reference';
@@ -19,7 +21,6 @@ export interface BaseDocument extends BaseReference {
   version: number;
   createdBy: string;
   updatedBy: string;
-  // السياق التشغيلي الموروث من القالب لضمان ربط المسارات الفنية
   activityTypeId?: string;
   serviceId?: string;
   subServiceId?: string;
@@ -75,17 +76,40 @@ export interface BOQItem extends BaseReference {
   order: number;
 }
 
+/**
+ * سجل تفاصيل العمالة (Labor Breakdown)
+ */
+export interface LaborDetail {
+  trade: string;    // التخصص (نجار، حداد، عمالة عامة...)
+  count: number;    // العدد
+  hours?: number;   // ساعات العمل
+}
+
+/**
+ * سجل المعدات المستخدمة
+ */
+export interface EquipmentUsed {
+  equipmentId: string;
+  name: string;
+  hoursUsed: number;
+}
+
 export interface BOQItemExecutionEntry extends BaseReference {
   id?: string;
   boqId: string;
   boqItemId: string;
   transactionId?: string;
-  appointmentId?: string; // المرجع الزمني للزيارة
+  appointmentId?: string; 
   technicalStageId: string;
   quantity: number;
   notes?: string;
+  
+  // حقول محرك الموارد الجديد
+  laborDetails?: LaborDetail[];
+  equipmentUsed?: EquipmentUsed[];
+  
   recordedBy: string;
-  recordedByName?: string;
+  recordedByName: string;
   isArchived?: boolean;
   archivedAt?: any;
 }

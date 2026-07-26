@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "Client": {
@@ -42,6 +41,37 @@
         "status": { "type": "string", "enum": ["new", "reviewing", "interview", "rejected", "hired"] },
         "companyId": { "type": "string" }
       }
+    },
+    "FieldExecution": {
+      "title": "Field Execution Log",
+      "description": "سجل الإنجاز الميداني متضمناً الموارد المستخدمة من عمالة ومعدات.",
+      "type": "object",
+      "properties": {
+        "boqItemId": { "type": "string" },
+        "quantity": { "type": "number" },
+        "laborDetails": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "trade": { "type": "string" },
+              "count": { "type": "number" }
+            }
+          }
+        },
+        "equipmentUsed": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "equipmentId": { "type": "string" },
+              "hoursUsed": { "type": "number" }
+            }
+          }
+        },
+        "appointmentId": { "type": "string" },
+        "recordedBy": { "type": "string" }
+      }
     }
   },
   "auth": {
@@ -50,6 +80,7 @@
   "firestore": {
     "/companies/{companyId}/clients/{clientId}": { "schema": "#/entities/Client", "description": "سجلات العملاء" },
     "/companies/{companyId}/employees/{empId}": { "schema": "#/entities/Employee", "description": "سجلات الموظفين" },
-    "/companies/{companyId}/applications/{appId}": { "schema": "#/entities/JobApplication", "description": "طلبات التوظيف المستلمة" }
+    "/companies/{companyId}/applications/{appId}": { "schema": "#/entities/JobApplication", "description": "طلبات التوظيف المستلمة" },
+    "/companies/{companyId}/executions/{execId}": { "schema": "#/entities/FieldExecution", "description": "سجلات التنفيذ والموارد الميدانية" }
   }
 }

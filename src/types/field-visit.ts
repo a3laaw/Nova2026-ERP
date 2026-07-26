@@ -1,4 +1,5 @@
 import { BaseReference } from './reference';
+import { LaborDetail, EquipmentUsed } from './documents';
 
 export type FieldVisitStatus = 'draft' | 'submitted' | 'approved';
 
@@ -19,7 +20,12 @@ export interface FieldVisit extends BaseReference {
     accuracy?: number;
   } | null;
   progressPercentage?: number;
+  
+  // تحديث لدعم تفاصيل الموارد
   workersCount?: number;
+  laborDetails?: LaborDetail[];
+  equipmentUsed?: EquipmentUsed[];
+  
   completedWork?: string;
   issues?: string;
   photoUrls?: string[];

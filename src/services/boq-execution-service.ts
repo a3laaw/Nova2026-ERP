@@ -14,7 +14,7 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
-import { BOQItem, BOQItemExecutionEntry } from '@/types/documents';
+import { BOQItem, BOQItemExecutionEntry, LaborDetail, EquipmentUsed } from '@/types/documents';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { ensureActionPermission } from '@/lib/permissions/engine';
@@ -60,7 +60,11 @@ export class BOQExecutionService {
     notes?: string,
     stageInstanceId?: string,
     isForced: boolean = false,
-    appointmentId?: string
+    appointmentId?: string,
+    resources?: {
+       laborDetails?: LaborDetail[];
+       equipmentUsed?: EquipmentUsed[];
+    }
   ) {
     ensureActionPermission(this.permissions, 'projects:edit');
 
@@ -96,6 +100,8 @@ export class BOQExecutionService {
       technicalStageId,
       quantity,
       notes: notes || '',
+      laborDetails: resources?.laborDetails || [],
+      equipmentUsed: resources?.equipmentUsed || [],
       recordedBy: userId,
       recordedByName: userName,
       isArchived: false,
@@ -124,6 +130,9 @@ export class BOQExecutionService {
         timelineContent = `🛑 تنبيه تجاوز: تم تسجيل كمية (${quantity}) للبند [${itemData.referenceTitle}] بما يتجاوز المخطط المتبقي (${remainingBeforeThis.toFixed(2)}) بناءً على إقرار وموافقة المسؤول: ${userName}`;
       }
 
+      const workersCount = resources?.laborDetails?.reduce((acc, l) => acc + l.count, 0) || 0;
+      const equipCount = resources?.equipmentUsed?.length || 0;
+
       await addDoc(timelineRef, {
         transactionId: itemData.transactionId,
         stageId: stageInstanceId || '', 
@@ -134,6 +143,8 @@ export class BOQExecutionService {
         notes: notes || '', 
         quantity,
         boqItemId: itemId,
+        workersCount,
+        equipCount,
         userId,
         userName,
         isArchived: false,
@@ -146,9 +157,6 @@ export class BOQExecutionService {
     return { success: true };
   }
 
-  /**
-   * أرشفة كافة سجلات الإنجاز لمرحلة معينة عند التراجع (The Purge)
-   */
   async archiveStageExecutions(transactionId: string, technicalStageId: string, isReset: boolean = false) {
     ensureActionPermission(this.permissions, 'projects:edit');
     
@@ -182,7 +190,6 @@ export class BOQExecutionService {
 
     await batch.commit();
 
-    // إعادة حساب الكميات لكل البنود المتأثرة لإلغاء أثر المرحلة المشفقة
     for (const boqId of Array.from(boqIds)) {
       for (const itemId of Array.from(affectedItemIds)) {
         await this.recalculateItemQuantity(boqId, itemId);
