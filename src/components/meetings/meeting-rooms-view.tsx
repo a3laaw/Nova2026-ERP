@@ -62,6 +62,10 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 
+/**
+ * @fileOverview رادار حجز القاعات والاجتماعات (Halls Radar V2.5).
+ * تم توحيد الإجراءات مع الرادار المعماري: النقر يوجه للرادار الفني، والخيارات تشمل العرض والتعديل والحذف.
+ */
 export function MeetingRoomsView() {
   const { globalUser, user } = useAuthContext();
   const { lang, dir, t } = useLanguage();
@@ -69,6 +73,7 @@ export function MeetingRoomsView() {
   const db = useFirestore();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
+  const router = useRouter();
 
   const [mounted, setMounted] = useState(false);
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
@@ -156,7 +161,7 @@ export function MeetingRoomsView() {
       {/* 3-Day Strip Selector */}
       <div className="flex justify-center print:hidden">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => setCurrentDate(subDays(currentDate, 1))} className="h-10 w-10 rounded-xl bg-white shadow-sm border-2 border-slate-100 text-slate-400 hover:text-primary"><ChevronLeft className={cn("h-5 w-5", !isRtl && "rotate-180")} /></Button>
+          <Button variant="ghost" size="icon" onClick={() => setCurrentDate(subDays(currentDate, 1))} className="h-10 w-10 rounded-xl bg-white shadow-sm border-2 border-slate-100"><ChevronLeft className={cn("h-5 w-5", !isRtl && "rotate-180")} /></Button>
           <div className="flex gap-2">
             {[-1, 0, 1].map((offset) => {
               const d = addDays(currentDate, offset);
@@ -177,7 +182,7 @@ export function MeetingRoomsView() {
               );
             })}
           </div>
-          <Button variant="ghost" size="icon" onClick={() => setCurrentDate(addDays(currentDate, 1))} className="h-10 w-10 rounded-xl bg-white shadow-sm border-2 border-slate-100 text-slate-400 hover:text-primary"><ChevronRight className={cn("h-5 w-5", !isRtl && "rotate-180")} /></Button>
+          <Button variant="ghost" size="icon" onClick={() => setCurrentDate(addDays(currentDate, 1))} className="h-10 w-10 rounded-xl bg-white shadow-sm border-2 border-slate-100"><ChevronRight className={cn("h-5 w-5", !isRtl && "rotate-180")} /></Button>
         </div>
       </div>
 
@@ -204,11 +209,12 @@ export function MeetingRoomsView() {
            rooms={allRooms} 
            appts={filteredAppointments}
            onAction={handleAction}
-           onDelete={confirmDelete}
+           onDelete={setDeletingId}
            isRtl={isRtl}
            t={t}
            settings={settings}
            dateStr={dateStr}
+           router={router}
          />
       </div>
 
@@ -255,7 +261,7 @@ export function MeetingRoomsView() {
   );
 }
 
-function HallGridSection({ title, slots, rooms, appts, onAction, onDelete, isRtl, t, settings, dateStr }: any) {
+function HallGridSection({ title, slots, rooms, appts, onAction, onDelete, isRtl, t, settings, dateStr, router }: any) {
   if (slots.length === 0) return null;
 
   return (
@@ -301,14 +307,13 @@ function HallGridSection({ title, slots, rooms, appts, onAction, onDelete, isRtl
                           if (appt) {
                              const isCompleted = appt.status === 'completed';
                              const apptStart = parseISO(appt.start);
-                             // الموعد يبدأ ضمن هذه الخانة الزمنية
                              const isStartSlot = apptStart >= slotStart && apptStart < slotEnd;
 
                              return (
                                <td key={room.id} className="p-0.5 border-b border-slate-50 border-s border-s-slate-50 align-top">
                                   <div className="relative h-full">
                                     <Card 
-                                      onClick={() => onAction('edit', room, slot, appt)}
+                                      onClick={() => router.push('/dashboard/appointments/' + appt.id)}
                                       className={cn(
                                         "p-1.5 rounded-lg h-full transition-all cursor-pointer min-h-[44px] border-2 hover:shadow-lg",
                                         isCompleted ? "bg-emerald-50/50 border-emerald-500/20" : "bg-white shadow-sm"
@@ -336,12 +341,15 @@ function HallGridSection({ title, slots, rooms, appts, onAction, onDelete, isRtl
                                             </Button>
                                           </DropdownMenuTrigger>
                                           <DropdownMenuContent className="rounded-xl border-2 shadow-2xl" align="end">
+                                            <DropdownMenuItem className="font-bold text-xs gap-2" onClick={() => router.push('/dashboard/appointments/' + appt.id)}>
+                                              <Eye className="h-3.5 w-3.5" /> {isRtl ? 'عرض الرادار الفني' : 'View Tech Radar'}
+                                            </DropdownMenuItem>
                                             <DropdownMenuItem className="font-bold text-xs gap-2" onClick={() => onAction('edit', room, slot, appt)}>
-                                              <Edit3 className="h-3.5 w-3.5" /> {isRtl ? 'تعديل الحجز' : 'Edit Booking'}
+                                              <Edit3 className="h-3.5 w-3.5" /> {isRtl ? 'تعديل بيانات الحجز' : 'Edit Booking'}
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator />
                                             <DropdownMenuItem className="font-black text-xs gap-2 text-rose-600" onClick={() => onDelete(appt.id)}>
-                                              <Trash2 className="h-3.5 w-3.5" /> {isRtl ? 'حذف الحجز' : 'Cancel Booking'}
+                                              <Trash2 className="h-3.5 w-3.5" /> {isRtl ? 'حذف وإلغاء الحجز' : 'Cancel Booking'}
                                             </DropdownMenuItem>
                                           </DropdownMenuContent>
                                         </DropdownMenu>
@@ -403,17 +411,22 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
              notes: appt.notes || ''
           });
        } else if (data.room) {
+          const startTime = data.slot || '08:00';
+          const start = parse(startTime, 'HH:mm', new Date());
+          const duration = settings?.meetingRooms?.slotDurationMinutes || 60;
+          const endTime = format(addMinutes(start, duration), 'HH:mm');
+
           setFormData(prev => ({
             ...prev,
             date: format(new Date(), 'yyyy-MM-dd'),
-            time: data.slot || '08:00',
-            endTime: '',
+            time: startTime,
+            endTime: endTime,
             engineerId: '', additionalEngineerIds: [],
             clientId: '', departmentId: ''
           }));
        }
     }
-  }, [isOpen, data, isEdit]);
+  }, [isOpen, data, isEdit, settings]);
 
   const handleSave = async () => {
     if (!db || !companyId || !formData.clientId || !formData.engineerId || !data) return;
@@ -424,7 +437,6 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
       ? new Date(`${formData.date}T${formData.endTime}:00`)
       : addMinutes(start, duration);
     
-    // محرك التحقق السيادي الشامل (Sovereign Global Validator)
     const targetEngineers = [formData.engineerId, ...formData.additionalEngineerIds];
     
     for (const appt of existingAppts) {
@@ -435,28 +447,22 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
           ? new Date(appt.end) 
           : addMinutes(apptStart, settings?.meetingRooms?.slotDurationMinutes || 60);
 
-        // فحص تداخل الفترات: (Start1 < End2) AND (Start2 < End1)
         const isOverlapping = start < apptEnd && apptStart < end;
 
         if (isOverlapping) {
-            // 1. فحص تعارض القاعة
             if (appt.hallId === data.room?.id) {
-               toast({ variant: "destructive", title: isRtl ? "القاعة مشغولة" : "Hall Busy", description: isRtl ? `هذه القاعة محجوزة مسبقاً في الفترة ${format(apptStart, 'HH:mm')} - ${format(apptEnd, 'HH:mm')}` : "This hall is reserved for another meeting." });
+               toast({ variant: "destructive", title: isRtl ? "القاعة مشغولة" : "Hall Busy", description: isRtl ? `هذه القاعة محجوزة مسبقاً في الفترة ${format(apptStart, 'HH:mm')} - ${format(apptEnd, 'HH:mm')}` : "This hall is reserved." });
                return;
             }
-
-            // 2. فحص تعارض العميل
             if (appt.clientId === formData.clientId) {
-               toast({ variant: "destructive", title: isRtl ? "تعارض للعميل" : "Client Conflict", description: isRtl ? `العميل لديه موعد آخر في نفس الفترة (${format(apptStart, 'HH:mm')} - ${format(apptEnd, 'HH:mm')})` : "Client has another appointment at this time." });
+               toast({ variant: "destructive", title: isRtl ? "تعارض للعميل" : "Client Conflict", description: isRtl ? `العميل لديه موعد آخر في نفس الفترة (${format(apptStart, 'HH:mm')} - ${format(apptEnd, 'HH:mm')})` : "Client busy." });
                return;
             }
-
-            // 3. فحص تعارض المهندسين
             const apptEngineers = [appt.engineerId, ...(appt.additionalEngineerIds || [])];
             const overlappingEng = targetEngineers.find(id => apptEngineers.includes(id));
             if (overlappingEng) {
                const engName = employees.find((e:any) => e.id === overlappingEng)?.fullName || 'المهندس';
-               toast({ variant: "destructive", title: isRtl ? "تعارض للمهندس" : "Engineer Conflict", description: isRtl ? `${engName} لديه ارتباط مسبق في الفترة المذكورة.` : `${engName} is already assigned.` });
+               toast({ variant: "destructive", title: isRtl ? "تعارض للمهندس" : "Engineer Conflict", description: isRtl ? `${engName} لديه ارتباط مسبق في الفترة المذكورة.` : `${engName} is busy.` });
                return;
             }
         }
@@ -509,6 +515,8 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
     }
   };
 
+  if (!isOpen || !data) return null;
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-2xl text-start" dir={dir}>
@@ -520,7 +528,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
                     {isEdit ? (isRtl ? 'تعديل حجز القاعة' : 'Edit Booking') : (isRtl ? 'حجز قاعة اجتماع' : 'Room Booking')}
                  </DialogTitle>
                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                    {data?.room ? (isRtl ? `القاعة: ${data.room.name}` : `Room: ${data.room.nameEn}`) : ''}
+                    {isRtl ? `القاعة: ${data.room?.name || data.appointment?.hallName}` : `Room: ${data.room?.nameEn || data.appointment?.hallName}`}
                  </p>
               </div>
            </div>
@@ -553,7 +561,10 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
               </div>
               <div className="space-y-2">
                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'القسم المختص (لتحديد اللون)' : 'Department (Coloring)'}</Label>
-                 <Select value={formData.departmentId} onValueChange={v => setFormData({...formData, departmentId: v})}>
+                 <Select value={formData.departmentId} onValueChange={v => {
+                    const d = departments.find((x:any) => x.id === v);
+                    setFormData({...formData, departmentId: v, departmentName: d?.name || '', departmentColor: d?.color || '#FFA000'});
+                 }}>
                     <SelectTrigger className="h-12 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
                     <SelectContent className="rounded-xl z-[160]">
                        {departments.map((d: any) => (
@@ -610,7 +621,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
            </div>
         </div>
 
-        <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4 shrink-0 shadow-lg">
+        <DialogFooter className="p-8 bg-slate-50/50 border-t flex flex-row gap-4 shrink-0 shadow-lg">
            <div className="flex-1 flex gap-3">
               <Button variant="outline" onClick={onClose} className="flex-1 h-14 rounded-2xl font-bold border-2 bg-white">
                 إلغاء
@@ -639,3 +650,4 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
     </Dialog>
   );
 }
+
