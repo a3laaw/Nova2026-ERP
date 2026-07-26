@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { 
   UserCog, ShieldCheck, Mail, Key, 
   Loader2, Save, UserCircle,
-  Camera, X, CheckCircle2, Lock
+  Camera, X, CheckCircle2, Lock, Info
 } from "lucide-react";
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
