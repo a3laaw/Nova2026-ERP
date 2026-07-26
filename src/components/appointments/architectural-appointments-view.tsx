@@ -103,6 +103,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
+import { StageInstance } from '@/types/transaction';
 
 function getVisitColor(visitCount: number, status?: string, apptType?: string, apptStatus?: string): string {
   if (apptStatus === 'completed') return '#10b981'; 
@@ -216,8 +217,15 @@ export function ArchitecturalAppointmentsView() {
     }
   }, [db, companyId]);
 
+  // بروتوكول العزل السيادي: حصر القائمة في المهندسين المعماريين فقط واستبعاد الإنشائيين وغيرهم
   const archEngineers = useMemo(() => {
-    const list = (allEmployees || []).filter(e => e.departmentName?.includes('معماري') || e.departmentName?.includes('Arch') || e.departmentName?.includes('إنشائي') || e.departmentName?.includes('Structural'));
+    const list = (allEmployees || []).filter(e => 
+      e.departmentName?.includes('معماري') || 
+      e.departmentName?.includes('Arch') ||
+      e.jobTitle?.includes('معماري') ||
+      e.jobTitle?.includes('Arch')
+    );
+    
     if (!isAdmin && globalUser?.employeeId) {
        return list.filter(e => e.id === globalUser.employeeId);
     }
@@ -237,11 +245,12 @@ export function ArchitecturalAppointmentsView() {
       isSameDay(parseISO(a.start), currentDate)
     );
     
-    if (!isAdmin && globalUser?.employeeId) {
-      list = list.filter(a => a.engineerId === globalUser.employeeId);
-    }
+    // ربط الفلترة بالمهندسين المعماريين فقط
+    const archIds = archEngineers.map(e => e.id);
+    list = list.filter(a => archIds.includes(a.engineerId));
+
     return list;
-  }, [rawAppointments, currentDate, isAdmin, globalUser?.employeeId]);
+  }, [rawAppointments, currentDate, archEngineers]);
 
   const apptMeta = useMemo(() => computeMeta(rawAppointments, clientsMap), [rawAppointments, clientsMap]);
 
@@ -408,6 +417,7 @@ export function ArchitecturalAppointmentsView() {
           onDelete={confirmDelete}
           existingAppts={rawAppointments || []}
           employees={allEmployees || []}
+          archEngineers={archEngineers}
         />
       )}
 
@@ -536,7 +546,6 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
                              const isBusy = appt.type === 'busy_blocked';
                              const isCompleted = appt.status === 'completed';
                              const apptStart = parseISO(appt.start);
-                             // الموعد يبدأ ضمن هذه الخانة الزمنية
                              const isStartSlot = apptStart >= slotStart && apptStart < slotEnd;
 
                              return (
@@ -615,7 +624,7 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
   );
 }
 
-function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates, departments, companyId, userId, userName, db, settings, onDelete, existingAppts, employees }: any) {
+function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates, departments, companyId, userId, userName, db, settings, onDelete, existingAppts, employees, archEngineers }: any) {
   const { dir, lang, t } = useLanguage();
   const isRtl = lang === 'ar';
   
@@ -636,6 +645,15 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
   const [eligibilityBlocker, setEligibilityBlocker] = useState<string | null>(null);
 
   const targetEngineerId = data?.engineer?.id || data?.appointment?.engineerId;
+
+  // بروتوكول الرقابة المصلحية: حصر القائمة في القسم المعماري فقط
+  const filteredDepartments = useMemo(() => {
+     return (departments || []).filter((d: any) => {
+        const nAr = d.name || '';
+        const nEn = d.nameEn || '';
+        return nAr.includes('معماري') || nEn.toLowerCase().includes('arch');
+     });
+  }, [departments]);
 
   const isSelectedDateHoliday = useMemo(() => {
      if (!settings || !formData.date) return false;
@@ -805,7 +823,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         finalClientName = formData.newClientName;
       }
 
-      const selectedDept = departments.find((d: any) => d.id === formData.departmentId);
+      const selectedDept = filteredDepartments.find((d: any) => d.id === formData.departmentId);
 
       const savePayload = {
         title: formData.title || (isBusyBlock ? (isRtl ? 'مشغول' : 'BUSY') : (isRtl ? 'زيارة ميدانية' : 'Site Visit')),
@@ -893,10 +911,10 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                    </Label>
                    <Select value={formData.departmentId} onValueChange={v => setFormData({...formData, departmentId: v})}>
                       <SelectTrigger className="h-10 rounded-xl border-2 font-bold bg-white">
-                         <SelectValue placeholder={isRtl ? "تحديد التخصص..." : "Select specialty..."} />
+                         <SelectValue placeholder={isRtl ? "تحديد التخصص المعماري..." : "Select arch specialty..."} />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl z-[150]">
-                         {departments?.map((d: any) => <SelectItem key={d.id} value={d.id!} className="font-bold text-xs">{isRtl ? d.name : d.nameEn}</SelectItem>)}
+                         {filteredDepartments?.map((d: any) => <SelectItem key={d.id} value={d.id!} className="font-bold text-xs">{isRtl ? d.name : d.nameEn}</SelectItem>)}
                       </SelectContent>
                    </Select>
                 </div>
