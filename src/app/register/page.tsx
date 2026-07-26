@@ -73,6 +73,7 @@ export default function RegisterPage() {
       batch.set(globalUserRef, {
         companyId,
         role: 'admin',
+        fullName: formData.contactName, // تخزين الاسم الكامل السيادي
         username: formData.username || formData.email.split('@')[0],
         isDeveloper: false,
         email: formData.email,

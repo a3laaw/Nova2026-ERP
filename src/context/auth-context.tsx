@@ -13,9 +13,10 @@ interface GlobalUserData {
   roleId?: string;
   roleCode?: string;
   departmentId?: string;
-  employeeId?: string; // مضاف لتمكين الوصول لملفات الموظفين
+  employeeId?: string; 
   isDeveloper?: boolean;
   username: string;
+  fullName?: string; // مضاف لضمان ظهور الأسماء بدلاً من الايميلات
 }
 
 interface AuthContextType {
@@ -62,6 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role: 'developer',
         isDeveloper: true,
         username: 'super_dev',
+        fullName: 'Super Developer',
         departmentId: 'HQ'
       });
       setRoleData({ permissions: ['*'], code: 'ADMIN' } as any);
@@ -74,7 +76,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (snap.exists()) {
         const data = snap.data() as GlobalUserData;
         setGlobalUser({ ...data, uid: user.uid });
-        // إذا لم يكن هناك دور مركب، ننهي التحميل هنا
         if (!data.roleId) {
           setLoading(false);
         }
@@ -92,7 +93,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // تأثير 2: جلب بيانات الصلاحيات (Role Data)
   useEffect(() => {
-    // إصلاح سيادي: إذا كانت البيانات غير مكتملة، ننهي التحميل فوراً لمنع التعليق
     if (!db || !globalUser) return;
 
     if (!globalUser.companyId || !globalUser.roleId) {

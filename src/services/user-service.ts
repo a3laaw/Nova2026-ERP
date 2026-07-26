@@ -69,6 +69,7 @@ export class UserService {
         companyId: this.companyId,
         roleId: data.roleId,
         role: data.roleCode,
+        fullName: data.employeeName, // تخزين الاسم الكامل السيادي
         departmentId: data.departmentId,
         employeeId: data.employeeId,
         username: data.username,
@@ -136,6 +137,7 @@ export class UserService {
       // تحديث السجل العالمي
       batch.update(globalUserRef, {
         username: data.username,
+        fullName: data.displayName, // تحديث الاسم الكامل الموازي
         roleId: data.roleId,
         role: data.roleCode,
         updatedAt: serverTimestamp()

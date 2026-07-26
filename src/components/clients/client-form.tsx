@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -56,7 +55,7 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
       houseNumber: '',
       locationUrl: '',
       assignedEngineerId: globalUser?.employeeId || '',
-      assignedEngineerName: globalUser?.username || ''
+      assignedEngineerName: globalUser?.fullName || globalUser?.username || '' // تصحيح: استخدام fullName بدلاً من البريد
     }
   });
 
@@ -75,7 +74,6 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
   const { data: areas } = useCollection<Area>(areasQuery);
   const { data: employees } = useCollection<Employee>(empsQuery);
 
-  // حصر قائمة الموظفين في "المهندسين" فقط لغرض التعيين
   const engineers = useMemo(() => {
     return (employees || []).filter(e => e.departmentName?.includes('معماري') || e.departmentName?.includes('Arch'));
   }, [employees]);
@@ -112,7 +110,6 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 text-start pb-20">
       
-      {/* القسم الأول: الهوية والتعريف */}
       <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/[0.02]">
         <div className="bg-primary/5 p-6 border-b flex items-center justify-between">
            <h3 className="text-base font-black font-headline text-slate-800">{isRtl ? 'البيانات الأساسية والقانونية' : 'Identity & Legal'}</h3>
@@ -158,7 +155,6 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
             </div>
           </div>
 
-          {/* التعيين السيادي: يظهر للمدير فقط أو عند تسجيل موظف لعميل */}
           <div className="pt-6 border-t border-slate-50">
              <div className="bg-orange-50/50 p-6 rounded-3xl border-2 border-orange-100 flex flex-col md:flex-row items-center gap-6">
                 <div className="flex items-center gap-4 shrink-0">
@@ -201,7 +197,6 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
         </CardContent>
       </Card>
 
-      {/* القسم الثاني: الموقع الجغرافي المطور */}
       <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/[0.02]">
         <div className="bg-blue-50/30 p-6 border-b flex items-center justify-between">
            <h3 className="text-base font-black font-headline text-slate-800">{isRtl ? 'رادار الموقع والعنوان الذكي' : 'Smart Location Radar'}</h3>
@@ -247,7 +242,7 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">المنطقة</Label>
                 <Select disabled={!selectedGovId} value={selectedAreaId} onValueChange={(v) => form.setValue('areaId', v)}>
                    <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/30"><SelectValue placeholder="..." /></SelectTrigger>
-                   <SelectContent className="rounded-2xl">
+                   <SelectContent className="rounded-xl">
                       {areas?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{isRtl ? a.name : a.nameEn}</SelectItem>)}
                    </SelectContent>
                 </Select>

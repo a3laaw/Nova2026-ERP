@@ -77,9 +77,10 @@ export default function NewPermissionPage() {
     if (!permService || !user) return;
     setLoading(true);
     try {
+      // تصحيح: استخدام fullName لضمان عدم ظهور الايميل في سجلات الاستئذان
       await permService.submitRequest({
         userId: user.uid,
-        userName: user.displayName || user.email || 'User',
+        userName: globalUser?.fullName || user.displayName || user.email || 'User',
         type: form.type,
         date: form.date,
         startTime: form.startTime,

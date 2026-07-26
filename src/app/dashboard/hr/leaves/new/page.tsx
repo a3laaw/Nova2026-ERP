@@ -146,10 +146,11 @@ export default function NewLeaveRequestPage() {
 
     setIsSubmitting(true);
     try {
+      // تصحيح السيادة: استخدام fullName من سجل الموظف حصراً لضمان عدم ظهور الايميل
       await leaveService.submitRequest({
-        userId: user.uid, // الشخص الذي قام بالإدخال
+        userId: user.uid, 
         employeeId: targetEmpId,
-        userName: employee.fullName,
+        userName: employee.fullName || globalUser?.fullName || globalUser?.username || 'User',
         type: form.type,
         startDate: form.startDate,
         endDate: form.endDate,
