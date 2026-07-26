@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
@@ -46,7 +45,8 @@ import {
   AlertCircle, 
   ArrowRight, 
   ShieldAlert, 
-  Eye 
+  Eye,
+  ShieldX
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs, updateDoc, deleteDoc, serverTimestamp, addDoc, setDoc } from 'firebase/firestore';
@@ -579,7 +579,7 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
                                               <Eye className="h-3.5 w-3.5" /> {isRtl ? 'عرض الرادار' : 'View Radar'}
                                             </DropdownMenuItem>
                                             <DropdownMenuItem className="font-bold text-xs gap-2" onClick={() => onAction('edit', eng, slot, appt)}>
-                                              <Edit3 className="h-3.5 w-3.5" /> {isRtl ? 'تعديل الموعد' : 'Edit Booking'}
+                                              <Edit3 className="h-3.5 w-3.5" /> {isRtl ? 'تعديل Booking' : 'Edit Booking'}
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator />
                                             <DropdownMenuItem className="font-black text-xs gap-2 text-rose-600" onClick={() => onDelete(appt.id)}>
@@ -622,6 +622,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
   const [loading, setLoading] = useState(false);
   const [isNewClient, setIsNewClient] = useState(false);
   const [isBusyBlock, setIsBusyBlock] = useState(false);
+  const [eligibilityLoading, setEligibilityLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '', clientId: '', clientName: '', departmentId: '', departmentName: '',
@@ -632,6 +633,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
   });
 
   const [clientTransactions, setClientTransactions] = useState<any[]>([]);
+  const [eligibilityBlocker, setEligibilityBlocker] = useState<string | null>(null);
 
   const targetEngineerId = data?.engineer?.id || data?.appointment?.engineerId;
 
@@ -660,6 +662,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
        setIsNewClient(false);
        setIsBusyBlock(false);
        setClientTransactions([]);
+       setEligibilityBlocker(null);
     }
   }, [isOpen]);
 
@@ -689,6 +692,41 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     }
   }, [isOpen, data]);
 
+  const checkEligibility = async (transId: string, deptId: string) => {
+    if (!db || !companyId || !transId || !deptId) {
+      setEligibilityBlocker(null);
+      return;
+    }
+    setEligibilityLoading(true);
+    try {
+      const stagesSnap = await getDocs(query(collection(db, paths.transactionStages(companyId, transId)), orderBy('order')));
+      const allStages = stagesSnap.docs.map(d => d.data() as StageInstance);
+      const deptStages = allStages.filter(s => s.allowedDepartmentIds?.includes(deptId));
+
+      if (deptStages.length > 0) {
+        const firstDeptOrder = deptStages[0].order;
+        const previousIncomplete = allStages.find(s => s.order < firstDeptOrder && s.status !== 'completed');
+        if (previousIncomplete) {
+          setEligibilityBlocker(previousIncomplete.name);
+        } else {
+          setEligibilityBlocker(null);
+        }
+      } else {
+        setEligibilityBlocker(null);
+      }
+    } finally {
+      setEligibilityLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (formData.transactionId && formData.departmentId) {
+      checkEligibility(formData.transactionId, formData.departmentId);
+    } else {
+      setEligibilityBlocker(null);
+    }
+  }, [formData.transactionId, formData.departmentId]);
+
   const fetchClientTransactions = async (cid: string) => {
     if (!db || !companyId) return;
     const q = query(collection(db, paths.transactions(companyId)), where('clientId', '==', cid));
@@ -696,7 +734,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     const trans = snap.docs.map(d => ({id: d.id, ...d.data()}));
     setClientTransactions(trans);
 
-    // ذكاء الربط التلقائي: إذا كان هناك مشروع واحد نشط، يتم اختياره آلياً
     if (!formData.transactionId && trans.length === 1) {
        const t = trans[0];
        setFormData(prev => ({ ...prev, transactionId: t.id, transactionNumber: t.transactionNumber }));
@@ -704,7 +741,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
   };
 
   const handleSave = async () => {
-    if (!data || isSelectedDateHoliday) return;
+    if (!data || isSelectedDateHoliday || eligibilityBlocker) return;
     
     const start = new Date(`${formData.date}T${formData.time}:00`);
     const duration = settings?.architectural?.slotDurationMinutes || 60;
@@ -933,6 +970,20 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                                  </SelectContent>
                               </Select>
                            </div>
+
+                           {eligibilityBlocker && (
+                              <div className="p-4 bg-rose-50 border-2 border-rose-100 rounded-xl flex items-start gap-3 animate-in shake-in duration-300">
+                                 <ShieldX className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
+                                 <div className="text-start">
+                                    <p className="text-[10px] font-black text-rose-900 uppercase">قيد تسلسلي (Locked)</p>
+                                    <p className="text-[9px] font-bold text-rose-700 leading-relaxed">
+                                       {isRtl 
+                                         ? `لا يمكن بدء أعمال هذا القسم قبل إنجاز مرحلة "${eligibilityBlocker}" السابقة.` 
+                                         : `Cannot start work until "${eligibilityBlocker}" is completed.`}
+                                    </p>
+                                 </div>
+                              </div>
+                           )}
                         </div>
                       )}
                    </div>
@@ -964,10 +1015,10 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
            </div>
            <Button 
              onClick={handleSave} 
-             disabled={loading || isSelectedDateHoliday || (!isBusyBlock && !formData.clientId)} 
+             disabled={loading || isSelectedDateHoliday || (!isBusyBlock && !formData.clientId) || !!eligibilityBlocker || eligibilityLoading} 
              className="flex-1 h-12 rounded-xl font-black gap-2 shadow-xl shadow-primary/20"
            >
-              {loading ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
+              {loading || eligibilityLoading ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
               {isRtl ? 'تأكيد' : 'Confirm'}
            </Button>
         </DialogFooter>

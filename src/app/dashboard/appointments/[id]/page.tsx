@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
@@ -11,7 +10,7 @@ import {
   AlertTriangle, Hammer, Check, Layers, Save,
   Target, X, RotateCcw, Lock, Info, AlertCircle, Play,
   Users, Truck, Plus, Trash2, HardHat, Link as LinkIcon,
-  ShieldAlert, Settings2, History
+  ShieldAlert, Settings2, History, ShieldX
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, where, orderBy, limit, updateDoc, serverTimestamp, getDocs } from 'firebase/firestore';
@@ -50,13 +49,11 @@ export default function AppointmentDetailPage() {
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
-  // الحالات الفنية
   const [selectedStageId, setSelectedStageId] = useState("");
   const [selectedItemId, setSelectedItemId] = useState("");
   const [progressQty, setProgressQty] = useState<number | "">(""); 
   const [progressNotes, setProgressNotes] = useState("");
   
-  // حالات الموارد (Labor & Equipment)
   const [laborDetails, setLaborDetails] = useState<LaborDetail[]>([{ trade: '', count: 1 }]);
   const [equipmentUsed, setEquipmentUsed] = useState<EquipmentUsed[]>([]);
 
@@ -82,26 +79,30 @@ export default function AppointmentDetailPage() {
   const { data: rawStages } = useCollection<StageInstance>(stagesQuery);
 
   /**
-   * محرك الفلترة السيادي المطور (Strict Dept Focus):
-   * يعرض حصراً المراحل المرتبطة بقسم الموعد.
+   * محرك الفلترة والتحقق من الأهلية (Eligibility & Filtering Engine)
    */
-  const stages = useMemo(() => {
-    const list = (rawStages || []).sort((a, b) => (a.order || 0) - (b.order || 0));
+  const { stages, isEligible, blockerStage } = useMemo(() => {
+    const allStages = (rawStages || []).sort((a, b) => (a.order || 0) - (b.order || 0));
     const apptDeptId = appt?.departmentId;
 
-    if (apptDeptId) {
-      return list.filter(stage => 
-        stage.allowedDepartmentIds?.includes(apptDeptId)
-      );
-    }
-    
-    if (isAdmin) return list;
-    const userDeptId = globalUser?.departmentId;
-    return list.filter(stage => {
-       if (!stage.allowedDepartmentIds || stage.allowedDepartmentIds.length === 0) return true;
-       return userDeptId && stage.allowedDepartmentIds.includes(userDeptId);
-    });
-  }, [rawStages, isAdmin, globalUser?.departmentId, appt?.departmentId]);
+    if (!apptDeptId) return { stages: allStages, isEligible: true };
+
+    // 1. فلترة المراحل التي تنتمي لهذا القسم
+    const filteredStages = allStages.filter(s => s.allowedDepartmentIds?.includes(apptDeptId));
+
+    if (filteredStages.length === 0) return { stages: [], isEligible: false };
+
+    // 2. فحص الأهلية (هل اكتملت كافة المراحل التي تسبق أول مرحلة في هذا القسم؟)
+    const firstDeptStageOrder = filteredStages[0].order;
+    const previousStages = allStages.filter(s => s.order < firstDeptStageOrder);
+    const incompleteBlocker = previousStages.find(s => s.status !== 'completed');
+
+    return {
+      stages: filteredStages,
+      isEligible: !incompleteBlocker,
+      blockerStage: incompleteBlocker
+    };
+  }, [rawStages, appt?.departmentId]);
 
   const boqQuery = useMemo(() => 
     companyId && db && appt?.transactionId ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', appt.transactionId), limit(1)) : null,
@@ -289,7 +290,7 @@ export default function AppointmentDetailPage() {
                        {isRtl ? `رادار التنفيذ (${appt.departmentName || 'عام'})` : `${appt.departmentName || 'General'} Radar`}
                     </CardTitle>
                  </div>
-                 {appt.status !== 'completed' && appt.transactionId && (
+                 {appt.status !== 'completed' && appt.transactionId && isEligible && (
                     <Button onClick={() => setIsRecordOpen(true)} className="btn-gradient h-12 px-8 rounded-xl gap-2 shadow-lg">
                        <Hammer className="h-4 w-4" /> {isRtl ? 'تسجيل إنجاز فني' : 'Log Progress'}
                     </Button>
@@ -307,8 +308,24 @@ export default function AppointmentDetailPage() {
                             {isRtl ? 'هذا الموعد غير مرتبط بمعاملة فنية. قم بربطه بمشروع لعرض مراحل التنفيذ والمقايسة.' : 'This appointment is not linked to a technical transaction. Link it to view stages.'}
                          </p>
                       </div>
-                      <Button onClick={() => setIsLinkOpen(true)} variant="outline" className="rounded-xl border-2 font-black h-11 px-8 gap-2">
-                         <LinkIcon className="h-4 w-4" /> {isRtl ? 'ربط الموعد بمعاملة الآن' : 'Link to Project'}
+                   </div>
+                 ) : !isEligible ? (
+                   <div className="py-24 text-center flex flex-col items-center gap-6">
+                      <div className="w-24 h-24 bg-rose-50 rounded-[3rem] flex items-center justify-center text-rose-500 shadow-inner ring-8 ring-rose-50/50">
+                         <ShieldX className="h-12 w-12" />
+                      </div>
+                      <div className="space-y-3">
+                         <p className="text-xl font-black text-rose-900">
+                            {isRtl ? 'العميل لم يصل لهذه المرحلة بعد' : 'Project Sequence Violation'}
+                         </p>
+                         <p className="text-sm font-bold text-slate-400 max-w-sm mx-auto leading-relaxed">
+                            {isRtl 
+                              ? `تنبيه: لا يمكن بدء أعمال ${appt.departmentName} قبل إنجاز مرحلة "${blockerStage?.name}" السابقة. يرجى مراجعة الجدول الزمني للمشروع.` 
+                              : `Cannot start ${appt.departmentName} work until "${blockerStage?.name}" is completed. Review project schedule.`}
+                         </p>
+                      </div>
+                      <Button variant="outline" onClick={() => router.push(`/dashboard/clients/${appt.clientId}/transactions/${appt.transactionId}`)} className="rounded-xl border-2 font-black h-11 px-8 gap-2">
+                         <Target className="h-4 w-4" /> {isRtl ? 'عرض الجدول الزمني للمشروع' : 'View Schedule'}
                       </Button>
                    </div>
                  ) : stages.length === 0 ? (
@@ -326,11 +343,6 @@ export default function AppointmentDetailPage() {
                               : `No stages for the selected department (${appt.departmentName}) found. Check path settings.`}
                          </p>
                       </div>
-                      {isAdmin && (
-                        <Button onClick={() => router.push('/dashboard/settings/checklists')} variant="ghost" className="text-primary font-black text-[10px] uppercase gap-2 hover:bg-primary/5">
-                           <Settings2 className="h-3 w-3" /> Fix Path Engineering
-                        </Button>
-                      )}
                    </div>
                  ) : stages.map((stage, idx) => {
                     const isSelected = stage.id === selectedStageId;
@@ -360,7 +372,6 @@ export default function AppointmentDetailPage() {
 
         <div className="lg:col-span-5 flex flex-col h-[700px]">
            <div className="bg-white rounded-[3rem] shadow-2xl border border-primary/10 overflow-hidden flex-1 flex flex-col">
-              {/* تم إلغاء onlyComments=true لتمكين عرض التايم لاين والتعليقات السابقة معاً لمعرفة حالة المعاملة بالكامل */}
               <CommentSection 
                 transactionId={appt.transactionId || apptId} 
                 appointmentId={apptId} 
@@ -500,3 +511,4 @@ export default function AppointmentDetailPage() {
     </div>
   );
 }
+
