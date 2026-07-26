@@ -226,6 +226,33 @@ export function ConstructionBookingsView() {
       </div>
 
       {/* عرض الرادار الميداني */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 print:gap-1">
+         <Card className="border-0 shadow-md rounded-xl bg-white border-b-4 border-b-slate-900 print:shadow-none print:border-b-2">
+            <CardContent className="p-3 print:p-1 flex flex-col items-center justify-center text-center h-20 print:h-12">
+               <p className="text-[8px] print:text-[6px] font-black text-slate-400 uppercase tracking-tighter mb-1">{isRtl ? 'إجمالي المواعيد' : 'Total Today'}</p>
+               <h3 className="text-xl print:text-xs font-black text-slate-900" style={{ fontVariantNumeric: 'tabular-nums' }}>{filteredAppointments.length.toLocaleString('en-US')}</h3>
+            </CardContent>
+         </Card>
+         <Card className="border-0 shadow-md rounded-xl bg-white border-b-4 border-b-yellow-400 print:shadow-none print:border-b-2">
+            <CardContent className="p-3 print:p-1 flex flex-col items-center justify-center text-center h-20 print:h-12">
+               <p className="text-[8px] print:text-[6px] font-black text-slate-400 uppercase tracking-tighter mb-1">{isRtl ? 'قيد التنفيذ' : 'In Progress'}</p>
+               <h3 className="text-xl print:text-xs font-black text-yellow-500" style={{ fontVariantNumeric: 'tabular-nums' }}>{filteredAppointments.filter(a => a.status === 'scheduled').length.toLocaleString('en-US')}</h3>
+            </CardContent>
+         </Card>
+         <Card className="border-0 shadow-md rounded-xl bg-white border-b-4 border-b-emerald-500 print:shadow-none print:border-b-2">
+            <CardContent className="p-3 print:p-1 flex flex-col items-center justify-center text-center h-20 print:h-12">
+               <p className="text-[8px] print:text-[6px] font-black text-slate-400 uppercase tracking-tighter mb-1">{isRtl ? 'مكتملة' : 'Completed'}</p>
+               <h3 className="text-xl print:text-xs font-black text-emerald-600" style={{ fontVariantNumeric: 'tabular-nums' }}>{filteredAppointments.filter(a => a.status === 'completed').length.toLocaleString('en-US')}</h3>
+            </CardContent>
+         </Card>
+         <Card className="border-0 shadow-md rounded-xl bg-white border-b-4 border-b-blue-500 print:shadow-none print:border-b-2">
+            <CardContent className="p-3 print:p-1 flex flex-col items-center justify-center text-center h-20 print:h-12">
+               <p className="text-[8px] print:text-[6px] font-black text-slate-400 uppercase tracking-tighter mb-1">{isRtl ? 'القوى الميدانية' : 'Field Force'}</p>
+               <h3 className="text-xl print:text-xs font-black text-blue-600" style={{ fontVariantNumeric: 'tabular-nums' }}>{fieldEngineers.length.toLocaleString('en-US')}</h3>
+            </CardContent>
+         </Card>
+      </div>
+
       <div className="space-y-12 pb-20 print:pb-0 print:space-y-4">
          <GridSection 
            title={isRtl ? "الفترة الميدانية الأولى ☀️" : "Morning Ops"} 
@@ -360,7 +387,7 @@ function GridSection({ title, slots, engineers, grid, onAction, isRtl, t, router
                             className="p-1 border-b-2 border-slate-200 border-s-2 border-s-slate-100 group-hover/row:bg-primary/[0.03] transition-colors cursor-pointer print:bg-white print:border-s print:border-b"
                           >
                              <div className="h-10 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity print:hidden">
-                                <div className="h-7 w-7 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                                <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                                    <Plus className="h-3 w-3" />
                                 </div>
                              </div>

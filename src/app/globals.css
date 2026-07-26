@@ -32,7 +32,17 @@
 
 @layer base {
   * { @apply border-border; }
-  body { @apply bg-background text-foreground font-body antialiased; }
+  
+  /* Fluid Text Management */
+  html {
+    font-size: 16px; /* Base for rem scaling */
+  }
+  
+  body { 
+    @apply bg-background text-foreground font-body antialiased; 
+    overflow-x: hidden; /* Avoid horizontal scroll at root */
+  }
+  
   h1, h2, h3, h4, h5, h6 { @apply font-headline tracking-tight font-bold text-slate-900; }
   
   input::-webkit-outer-spin-button,
@@ -63,7 +73,7 @@
 @media print {
   @page {
     size: landscape;
-    margin: 5mm !important; 
+    margin: 0 !important; /* Zero margin to reclaim space */
   }
   
   body {
@@ -72,49 +82,33 @@
     print-color-adjust: exact !important;
     margin: 0 !important;
     padding: 0 !important;
+    font-size: 10px !important; /* Global shrink for print */
   }
 
-  /* حجب العناصر التفاعلية فقط */
   .sidebar, header, nav, .print-ui-only,
   [data-sidebar="sidebar"], [data-sidebar="header"], [data-sidebar="trigger"],
   [data-sidebar="footer"], .breadcrumb-nav {
     display: none !important;
-    height: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
   }
 
   main {
-    padding: 0 !important;
+    padding: 2mm !important;
     margin: 0 !important;
     width: 100% !important;
   }
 
-  .container {
-    max-width: 100% !important;
-    width: 100% !important;
-    padding: 0 !important;
-    margin: 0 !important;
-  }
-
-  /* ضغط المسافات العمودية العنيف لاستغلال المساحة */
+  /* Extreme compression for print */
   .space-y-4, .space-y-6, .space-y-8, .space-y-10, .space-y-12 {
     margin-top: 0 !important;
     margin-bottom: 0 !important;
-    gap: 0 !important;
-  }
-
-  /* تقليص الفجوات بين البطاقات والجداول */
-  div, section, article {
-    margin-top: 1mm !important;
-    margin-bottom: 1mm !important;
+    gap: 1mm !important;
   }
 
   .card {
     box-shadow: none !important;
     border: 1px solid #eee !important;
     border-radius: 4px !important;
-    break-inside: avoid;
+    break-inside: avoid; /* Prevent card splitting */
     padding: 2mm !important;
   }
 
@@ -122,7 +116,6 @@
     width: 100% !important;
     border-collapse: collapse !important;
     table-layout: auto !important;
-    page-break-inside: auto;
   }
 
   tr {
@@ -135,29 +128,11 @@
     font-size: 8px !important;
     border: 1px solid #eee !important;
   }
-
-  /* تصغير رؤوس المهندسين */
-  th .flex {
-    gap: 1mm !important;
-  }
   
-  th .h-12, th .w-12 {
-    width: 24px !important;
-    height: 24px !important;
-  }
-
-  h1 {
-    font-size: 12px !important;
-    margin-bottom: 1mm !important;
-    margin-top: 0 !important;
-  }
-
-  p {
-    font-size: 8px !important;
-    margin: 0 !important;
-  }
-
-  /* ضمان ظهور الأرقام 123 بوضوح */
+  /* Micro-scaling for icons/avatars */
+  .h-12, .w-12 { width: 24px !important; height: 24px !important; }
+  .h-10, .w-10 { width: 20px !important; height: 20px !important; }
+  
   .font-black, .font-bold {
     font-weight: 900 !important;
     color: black !important;

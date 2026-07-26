@@ -447,7 +447,7 @@ export function ArchitecturalAppointmentsView() {
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-4 print:gap-1">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 print:gap-1">
          <Card className="border-0 shadow-md rounded-xl bg-white border-b-4 border-b-slate-900 print:shadow-none print:border-b-2">
             <CardContent className="p-3 print:p-1 flex flex-col items-center justify-center text-center h-20 print:h-12">
                <p className="text-[8px] print:text-[6px] font-black text-slate-400 uppercase tracking-tighter mb-1">{isRtl ? 'إجمالي المواعيد' : 'Total Today'}</p>
