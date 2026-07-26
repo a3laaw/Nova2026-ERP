@@ -326,6 +326,14 @@ export default function QuotationViewPage() {
                                       <div className="space-y-1">
                                          <Input value={item.label} onChange={e => updateItem(originalIdx, 'label', e.target.value)} className="h-7 rounded-md font-black text-[10px]" />
                                          <Input value={item.description} onChange={e => updateItem(originalIdx, 'description', e.target.value)} className="h-7 text-[8px] font-medium opacity-70" placeholder={isRtl ? "وصف إضافي..." : "Add detail..."} />
+                                         
+                                         {/* عرض الوصف المولد في وضع التعديل لضمان المعاينة الفورية */}
+                                         {item.technicalStageId && item.technicalStageId !== 'NONE' && (
+                                            <p className="text-[7px] font-black text-primary/60 italic flex items-center gap-1 mt-1">
+                                               <Clock className="h-2 w-2" />
+                                               {getTimingLabel(item.timing || 'at')} {item.technicalStageId === 'SIGNING' ? (isRtl ? 'توقيع العقد' : 'Contract Signing') : linkedStageName}
+                                            </p>
+                                         )}
                                       </div>
                                    ) : (
                                       <div className="space-y-1">

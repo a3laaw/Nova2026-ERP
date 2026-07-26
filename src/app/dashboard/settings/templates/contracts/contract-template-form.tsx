@@ -298,14 +298,11 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                       <td className="p-2">
                                          <div className="space-y-1">
                                             <Input value={m.name} onChange={e => updateMilestone(idx, 'name', e.target.value)} className="h-8 rounded-lg font-bold text-[10px] bg-slate-50/50" />
-                                            {!isRtl && m.technicalStageId && m.technicalStageId !== 'SIGNING' && (
-                                              <p className="text-[7px] text-slate-400 italic">
-                                                {t(m.timing || 'at')} {linkedStageName}
-                                              </p>
-                                            )}
-                                            {isRtl && m.technicalStageId && m.technicalStageId !== 'SIGNING' && (
-                                              <p className="text-[7px] text-slate-400 italic">
-                                                {t(m.timing || 'at')} {linkedStageName}
+                                            {/* عرض الوصف المولد في وضع التعديل لضمان المعاينة الفورية */}
+                                            {m.technicalStageId && m.technicalStageId !== 'NONE' && (
+                                              <p className="text-[7px] font-black text-primary/60 italic flex items-center gap-1 mt-1">
+                                                <Clock className="h-2 w-2" />
+                                                {t(m.timing || 'at')} {m.technicalStageId === 'SIGNING' ? (isRtl ? 'توقيع العقد' : 'Contract Signing') : linkedStageName}
                                               </p>
                                             )}
                                          </div>

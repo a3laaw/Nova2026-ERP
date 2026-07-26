@@ -172,7 +172,7 @@ export default function ContractViewPage() {
     return `${base} ${ordinal}`;
   };
 
-  const handleMarkAsPaid = async () => {
+  const handleMarkAsPaid = async (docId: string) => {
     if (!db || !companyId) return;
     setSaving(true);
     try {
@@ -213,7 +213,7 @@ export default function ContractViewPage() {
                  <h1 className="text-xl font-black text-slate-900">{isRtl ? 'عقد خدمات هندسية رسمي' : 'Official Engineering Contract'}</h1>
                  <Badge className={cn(
                    "font-black px-4 py-1 rounded-xl shadow-sm uppercase text-[9px]",
-                   (editData.status || contract.status) === 'paid' ? 'bg-emerald-500 text-white' : 'bg-blue-500 text-white'
+                   (editData.status || contract.status) === 'paid' ? 'bg-emerald-500 text-white' : 'bg-blue-50 text-white'
                  )}>
                     {editData.status || contract.status}
                  </Badge>
@@ -223,7 +223,7 @@ export default function ContractViewPage() {
         </div>
         <div className="flex gap-2">
            {!isEditing && contract.status !== 'paid' && isAdmin && (
-              <Button onClick={handleMarkAsPaid} disabled={saving} variant="outline" className="rounded-xl h-10 px-6 font-black gap-2 bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100">
+              <Button onClick={() => handleMarkAsPaid(contract.id)} disabled={saving} variant="outline" className="rounded-xl h-10 px-6 font-black gap-2 bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100">
                  <Wallet className="h-4 w-4" /> {isRtl ? 'توثيق السداد' : 'Mark Paid'}
               </Button>
            )}
@@ -340,7 +340,15 @@ export default function ContractViewPage() {
                                 <td className="p-4 font-black text-slate-300">{idx + 1}</td>
                                 <td className="p-4 text-start">
                                    {isEditing ? (
-                                      <Input value={m.name} onChange={e => updateMilestone(idx, 'name', e.target.value)} className="h-8 rounded-lg font-bold text-[11px]" />
+                                      <div className="space-y-1">
+                                         <Input value={m.name} onChange={e => updateMilestone(idx, 'name', e.target.value)} className="h-8 rounded-lg font-bold text-[11px]" />
+                                         {m.technicalStageId && m.technicalStageId !== 'NONE' && (
+                                            <p className="text-[7px] font-black text-primary/60 italic flex items-center gap-1">
+                                               <Clock className="h-2 w-2" />
+                                               {getTimingLabel(m.timing || 'at')} {m.technicalStageId === 'SIGNING' ? (isRtl ? 'توقيع العقد' : 'Contract Signing') : linkedStageName}
+                                            </p>
+                                         )}
+                                      </div>
                                    ) : (
                                       <div className="space-y-1">
                                          <span className="font-black text-slate-800 block">{m.name}</span>

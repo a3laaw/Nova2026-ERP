@@ -301,9 +301,9 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                       <td className="p-2">
                                          <div className="space-y-1">
                                             <Input value={m.label} onChange={e => updateItem(idx, 'label', e.target.value)} className="h-8 rounded-lg font-bold text-[10px] bg-slate-50/50" />
-                                            {m.technicalStageId && m.technicalStageId !== 'SIGNING' && (
+                                            {m.technicalStageId && m.technicalStageId !== 'NONE' && (
                                               <p className="text-[7px] text-slate-400 italic">
-                                                {t(m.timing || 'at')} {linkedStageName}
+                                                {t(m.timing || 'at')} {m.technicalStageId === 'SIGNING' ? (isRtl ? 'توقيع العقد' : 'Contract Signing') : linkedStageName}
                                               </p>
                                             )}
                                          </div>
@@ -346,7 +346,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                             </SelectContent>
                                          </Select>
                                       </td>
-                                      <td className="p-2 text-end pe-6">
+                                      <td className="p-2 text-end pe-6 w-32">
                                          {formData.pricingMode === 'itemized' ? (
                                             <Input type="number" step="0.001" value={m.unitPrice === 0 ? "" : m.unitPrice} onChange={e => updateItem(idx, 'unitPrice', e.target.value === "" ? 0 : Number(e.target.value))} className="h-8 w-24 ms-auto text-end font-black text-emerald-600 text-[10px]" />
                                          ) : (
