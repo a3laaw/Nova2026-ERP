@@ -17,30 +17,30 @@ import {
   Plus, 
   ChevronLeft, 
   ChevronRight, 
-  Edit3,
-  Loader2,
-  CheckCircle2,
-  MapPin,
-  X,
-  Save,
-  Trash2,
-  Users,
-  ShieldCheck,
-  CalendarX,
-  Plane,
-  Timer,
-  Ban,
-  MessageSquare,
-  Link as LinkIcon,
-  PlusCircle,
-  MoreVertical,
-  Workflow,
-  ShieldAlert,
-  Sun,
-  MoonStar,
-  HardHat,
-  Target,
-  CalendarDays
+  Edit3, 
+  Loader2, 
+  CheckCircle2, 
+  MapPin, 
+  X, 
+  Save, 
+  Trash2, 
+  Users, 
+  ShieldCheck, 
+  CalendarX, 
+  Plane, 
+  Timer, 
+  Ban, 
+  MessageSquare, 
+  Link as LinkIcon, 
+  PlusCircle, 
+  MoreVertical, 
+  Workflow, 
+  ShieldAlert, 
+  Sun, 
+  MoonStar, 
+  HardHat, 
+  Target, 
+  CalendarDays 
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs, serverTimestamp } from 'firebase/firestore';
@@ -138,7 +138,12 @@ export function ConstructionBookingsView() {
   }, [allEmployees, isAdmin, globalUser]);
 
   const filteredAppointments = useMemo(() => {
-    let list = (rawAppointments || []).filter(a => a.status !== 'cancelled' && isSameDay(parseISO(a.start), currentDate));
+    // الإنفاذ السيادي للفصل الراداري: استبعاد hall_meeting
+    let list = (rawAppointments || []).filter(a => 
+      a.status !== 'cancelled' && 
+      a.type !== 'hall_meeting' && 
+      isSameDay(parseISO(a.start), currentDate)
+    );
     if (!isAdmin && globalUser?.employeeId) {
       list = list.filter(a => a.engineerId === globalUser.employeeId);
     }
@@ -166,7 +171,7 @@ export function ConstructionBookingsView() {
       
       <div className="flex justify-center print:hidden">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => setCurrentDate(subDays(currentDate, 1))} className="h-10 w-10 rounded-xl bg-white shadow-sm border-2 border-slate-100 text-slate-400 hover:text-primary"><ChevronLeft className={cn("h-5 w-5", !isRtl && "rotate-180")} /></Button>
+          <Button variant="ghost" size="icon" onClick={() => setCurrentDate(subDays(currentDate, 1))} className="h-10 w-10 rounded-xl bg-white shadow-sm border-2 border-slate-100"><ChevronLeft className={cn("h-5 w-5", !isRtl && "rotate-180")} /></Button>
           <div className="flex gap-2">
             {[-1, 0, 1].map((offset) => {
               const d = addDays(currentDate, offset);
@@ -187,11 +192,11 @@ export function ConstructionBookingsView() {
               );
             })}
           </div>
-          <Button variant="ghost" size="icon" onClick={() => setCurrentDate(addDays(currentDate, 1))} className="h-10 w-10 rounded-xl bg-white shadow-sm border-2 border-slate-100 text-slate-400 hover:text-primary"><ChevronRight className={cn("h-5 w-5", !isRtl && "rotate-180")} /></Button>
+          <Button variant="ghost" size="icon" onClick={() => setCurrentDate(addDays(currentDate, 1))} className="h-10 w-10 rounded-xl bg-white shadow-sm border-2 border-slate-100"><ChevronRight className={cn("h-5 w-5", !isRtl && "rotate-180")} /></Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-3 print:gap-1">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 print:gap-1">
          <Card className="border-0 shadow-md rounded-xl bg-white border-b-4 border-b-slate-900 print:shadow-none print:border-b-2">
             <CardContent className="p-3 print:p-1 flex flex-col items-center justify-center text-center h-16 print:h-12">
                <p className="text-[8px] print:text-[6px] font-black text-slate-400 uppercase tracking-tighter">{isRtl ? 'إجمالي اليوم' : 'Total'}</p>
@@ -329,3 +334,4 @@ function GridSection({ title, slots, engineers, grid, onAction, isRtl, router, t
     </div>
   );
 }
+

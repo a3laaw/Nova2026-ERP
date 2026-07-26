@@ -6,11 +6,11 @@ import {
   format, 
   isSameDay, 
   parseISO, 
-  addDays,
-  subDays,
-  parse,
-  isBefore,
-  startOfDay
+  addDays, 
+  subDays, 
+  parse, 
+  isBefore, 
+  startOfDay 
 } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import { 
@@ -19,33 +19,33 @@ import {
   Plus, 
   ChevronLeft, 
   ChevronRight, 
-  Edit3,
-  Loader2,
-  CheckCircle2,
-  MapPin,
-  X,
-  Save,
-  Trash2,
-  Users,
-  Building2,
-  CalendarX,
-  Plane,
-  Timer,
-  Ban,
-  MessageSquare,
-  Link as LinkIcon,
-  PlusCircle,
-  MoreVertical,
-  Zap,
-  RotateCcw,
-  Workflow,
-  Target,
-  LayoutGrid,
-  AlertTriangle,
-  AlertCircle,
-  ArrowRight,
-  ShieldAlert,
-  Eye
+  Edit3, 
+  Loader2, 
+  CheckCircle2, 
+  MapPin, 
+  X, 
+  Save, 
+  Trash2, 
+  Users, 
+  Building2, 
+  CalendarX, 
+  Plane, 
+  Timer, 
+  Ban, 
+  MessageSquare, 
+  Link as LinkIcon, 
+  PlusCircle, 
+  MoreVertical, 
+  Zap, 
+  RotateCcw, 
+  Workflow, 
+  Target, 
+  LayoutGrid, 
+  AlertTriangle, 
+  AlertCircle, 
+  ArrowRight, 
+  ShieldAlert, 
+  Eye 
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs, updateDoc, deleteDoc, serverTimestamp, addDoc, setDoc } from 'firebase/firestore';
@@ -227,7 +227,13 @@ export function ArchitecturalAppointmentsView() {
   }, [allClients]);
 
   const filteredAppointments = useMemo(() => {
-    let list = (rawAppointments || []).filter(a => a.status !== 'cancelled' && isSameDay(parseISO(a.start), currentDate));
+    // الإنفاذ السيادي للفصل الراداري: استبعاد hall_meeting
+    let list = (rawAppointments || []).filter(a => 
+      a.status !== 'cancelled' && 
+      a.type !== 'hall_meeting' && 
+      isSameDay(parseISO(a.start), currentDate)
+    );
+    
     if (!isAdmin && globalUser?.employeeId) {
       list = list.filter(a => a.engineerId === globalUser.employeeId);
     }
@@ -297,7 +303,7 @@ export function ArchitecturalAppointmentsView() {
   return (
     <div className="space-y-6 animate-in fade-in duration-700 print:space-y-1 print:pt-0" dir={dir}>
       
-      {/* 1. الأيام الثلاثية */}
+      {/* 3-Day Strip Selector */}
       <div className="flex justify-center print:hidden">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => setCurrentDate(subDays(currentDate, 1))} className="h-10 w-10 rounded-xl bg-white shadow-sm border-2 border-slate-100 text-slate-400 hover:text-primary"><ChevronLeft className={cn("h-5 w-5", !isRtl && "rotate-180")} /></Button>
@@ -325,7 +331,7 @@ export function ArchitecturalAppointmentsView() {
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-3 print:gap-1">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 print:gap-1">
          {[
            { label: isRtl ? 'إجمالي اليوم' : 'Total', val: stats.total, color: 'text-slate-900', b: 'border-b-slate-900' },
            { label: isRtl ? 'زيارة أولى' : 'New', val: stats.yellow, color: 'text-yellow-600', b: 'border-b-yellow-400' },
@@ -470,7 +476,7 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
                       });
 
                       return (
-                        <th key={eng.id} className="p-3 border-b border-slate-100 border-s border-s-slate-50 min-w-[120px] print:p-1">
+                        <th key={eng.id} className="p-3 border-b border-slate-100 border-s border-s-slate-50 min-w-[180px] print:p-1">
                            <div className="flex flex-col items-center text-center">
                               <Avatar className="h-8 w-8 rounded-lg shrink-0 print:h-6 print:w-6 mb-2">
                                  <AvatarFallback className="bg-primary/10 text-primary font-black text-[10px]">{eng.fullName.charAt(0)}</AvatarFallback>
@@ -686,20 +692,17 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     
     const start = new Date(`${formData.date}T${formData.time}:00`).toISOString();
     
-    // --- محرك التحقق السيادي الشامل (Sovereign Global Validator) ---
     const targetClientId = isNewClient ? 'NEW_CLIENT' : formData.clientId;
     
     for (const appt of existingAppts) {
         if (appt.status === 'cancelled' || appt.id === data.appointment?.id) continue;
         
         if (appt.start === start) {
-            // 1. فحص تعارض العميل (عابر للرادارات)
             if (appt.clientId === targetClientId && targetClientId !== 'NEW_CLIENT') {
                toast({ variant: "destructive", title: isRtl ? "تعارض للعميل" : "Client Conflict", description: isRtl ? `العميل لديه موعد مسبق في ${appt.type === 'hall_meeting' ? 'قاعة اجتماعات' : 'الميدان'} في هذا التوقيت.` : "Client has another appointment at this time." });
                return;
             }
 
-            // 2. فحص تعارض المهندس (عابر للرادارات)
             const apptEngineers = [appt.engineerId, ...(appt.additionalEngineerIds || [])];
             if (apptEngineers.includes(targetEngineerId)) {
                toast({ variant: "destructive", title: isRtl ? "تعارض للمهندس" : "Engineer Conflict", description: isRtl ? `المهندس لديه ارتباط مسبق في ${appt.type === 'hall_meeting' ? 'قاعة اجتماعات' : 'الميدان'} في هذا التوقيت.` : "Engineer is already assigned at this time." });
@@ -768,7 +771,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
   };
 
   const isEdit = data?.mode === 'edit';
-  const isCreateFromGrid = data?.mode === 'create' && data.slot;
 
   return (
     <Dialog open={isOpen} onOpenChange={(v) => { if(!v) onClose(); }}>
@@ -927,3 +929,4 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     </Dialog>
   );
 }
+
