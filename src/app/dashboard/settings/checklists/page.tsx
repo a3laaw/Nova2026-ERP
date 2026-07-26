@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Database, Building2, MapPin, Workflow, 
-  ListTree, GitBranch, Settings2
+  ListTree, GitBranch, Settings2, Landmark
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import DepartmentsPage from './departments/page';
@@ -13,6 +13,7 @@ import GeoPage from './geo/page';
 import TechnicalPathsPage from './technical-paths/page';
 import GeneralListsPage from './general-lists/page';
 import BOQNodesPage from './boq-nodes/page';
+import HallsPage from './halls/page';
 import { SeedTool } from './seed-tool';
 
 /**
@@ -54,6 +55,12 @@ export default function TechnicalSetupPage() {
               <GitBranch className="h-4 w-4" /> {isRtl ? 'شجرة الأعمال' : 'BOQ Master Tree'}
             </TabsTrigger>
             <TabsTrigger 
+              value="halls" 
+              className="tab-sovereign rounded-lg font-black gap-2 transition-all data-[state=active]:bg-[#F57C00] data-[state=active]:text-white data-[state=active]:shadow-lg flex items-center justify-center px-6 h-full flex-1"
+            >
+              <Landmark className="h-4 w-4" /> {isRtl ? 'القاعات' : 'Halls'}
+            </TabsTrigger>
+            <TabsTrigger 
               value="org" 
               className="tab-sovereign rounded-lg font-black gap-2 transition-all data-[state=active]:bg-[#F57C00] data-[state=active]:text-white data-[state=active]:shadow-lg flex items-center justify-center px-6 h-full flex-1"
             >
@@ -86,6 +93,10 @@ export default function TechnicalSetupPage() {
 
         <TabsContent value="boq_nodes" className="mt-8">
           <BOQNodesPage />
+        </TabsContent>
+
+        <TabsContent value="halls" className="mt-8">
+          <HallsPage />
         </TabsContent>
 
         <TabsContent value="org" className="mt-8">
