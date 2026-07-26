@@ -52,7 +52,7 @@ export default function UsersManagementPage() {
   });
 
   const [editForm, setEditForm] = useState({
-    displayName: '',
+    fullName: '',
     username: '',
     roleId: '',
     newPassword: ''
@@ -73,7 +73,7 @@ export default function UsersManagementPage() {
   useEffect(() => {
     if (editingUser) {
       setEditForm({
-        displayName: editingUser.displayName || '',
+        fullName: editingUser.displayName || editingUser.fullName || '',
         username: editingUser.username || '',
         roleId: editingUser.roleId || '',
         newPassword: ''
@@ -118,7 +118,7 @@ export default function UsersManagementPage() {
       if (!role) return;
 
       await userService.updateUserAccount(editingUser.id, {
-        displayName: editForm.displayName,
+        displayName: editForm.fullName,
         username: editForm.username,
         roleId: role.id!,
         roleCode: role.code,
@@ -264,7 +264,7 @@ export default function UsersManagementPage() {
                   <TableCell className="py-6 ps-8 text-start">
                      <div className="flex items-center gap-4">
                         <Avatar className="h-14 w-14 rounded-2xl border-2 border-white shadow-lg ring-1 ring-slate-100">
-                           <AvatarImage src={`https://picsum.photos/seed/${u.id}/100/100`} />
+                           <AvatarImage src={u.photoUrl || `https://picsum.photos/seed/${u.id}/100/100`} />
                            <AvatarFallback className="bg-primary/10 text-primary font-black uppercase text-xl">{u.displayName?.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div className="text-start">
@@ -300,7 +300,7 @@ export default function UsersManagementPage() {
                   </TableCell>
                   <TableCell className="pe-8 text-end">
                      <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="icon" className="rounded-xl h-10 w-10 text-primary hover:bg-primary hover:text-white" onClick={() => setEditingUser(u)}>
+                        <Button variant="outline" size="icon" className="rounded-xl h-10 w-10 text-primary border-primary/20 hover:bg-primary hover:text-white" onClick={() => setEditingUser(u)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button 
@@ -334,7 +334,7 @@ export default function UsersManagementPage() {
             <div className="p-10 space-y-6 text-start bg-white">
                <div className="space-y-2">
                   <Label className="text-xs font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'الاسم المعروض' : 'Display Name'}</Label>
-                  <Input value={editForm.displayName} onChange={e => setEditForm({...editForm, displayName: e.target.value})} className="h-12 rounded-xl border-2 font-bold" />
+                  <Input value={editForm.fullName} onChange={e => setEditForm({...editForm, fullName: e.target.value})} className="h-12 rounded-xl border-2 font-bold" />
                </div>
 
                <div className="grid grid-cols-2 gap-4 text-start">

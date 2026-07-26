@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useState, useEffect, useRef } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { 
   UserCog, ShieldCheck, Mail, Key, 
   Loader2, Save, UserCircle,
-  CheckCircle2
+  Camera, X, CheckCircle2, Lock
 } from "lucide-react";
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
@@ -27,41 +27,68 @@ export default function ProfilePage() {
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
-    displayName: '',
+    fullName: '',
     username: '',
+    photoUrl: ''
   });
 
   useEffect(() => {
     if (globalUser) {
       setFormData({
-        displayName: user?.displayName || '',
+        fullName: globalUser.fullName || user?.displayName || '',
         username: globalUser.username || '',
+        photoUrl: globalUser.photoUrl || ''
       });
     }
   }, [globalUser, user]);
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 1024 * 1024) {
+      toast({ variant: "destructive", title: isRtl ? "حجم الصورة كبير" : "Image too large", description: "Max 1MB" });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setFormData(prev => ({ ...prev, photoUrl: reader.result as string }));
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleSave = async () => {
     if (!db || !user?.uid || !globalUser?.companyId) return;
     setSaving(true);
     try {
+      // تحديث السجل العالمي السيادي
       const globalUserRef = doc(db, 'global_users', user.uid);
       await updateDoc(globalUserRef, {
-        username: formData.username,
+        fullName: formData.fullName,
+        photoUrl: formData.photoUrl,
         updatedAt: serverTimestamp(),
       });
 
+      // مزامنة الاسم مع السجل الداخلي للشركة
       const tenantUserRef = doc(db, 'companies', globalUser.companyId, 'users', user.uid);
       await updateDoc(tenantUserRef, {
-        displayName: formData.displayName,
+        displayName: formData.fullName,
+        photoUrl: formData.photoUrl,
         updatedAt: serverTimestamp(),
       });
 
-      toast({ title: t('saved'), description: t('entryAdded') });
+      toast({ title: t('saved') });
     } catch (error) {
-      toast({ variant: "destructive", title: t('error'), description: t('saveFailed') });
+      toast({ variant: "destructive", title: t('error') });
     } finally {
       setSaving(false);
     }
@@ -69,80 +96,121 @@ export default function ProfilePage() {
 
   if (authLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
+  const isAdmin = globalUser?.role?.toLowerCase() === 'admin';
+
   return (
-    <div className="space-y-8 max-w-4xl mx-auto" dir={dir}>
-      <div className="flex items-center gap-4">
-        <div className="text-start">
-          <h1 className="text-4xl font-black font-headline flex items-center gap-3">
-            <UserCog className="h-10 w-10 text-primary" />
-            {t('profile')}
-          </h1>
-          <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-            {isRtl ? 'إدارة بياناتك الشخصية وتفضيلات الأمان' : 'Manage your personal data and security preferences'}
-          </p>
-        </div>
+    <div className="space-y-8 max-w-4xl mx-auto pb-20" dir={dir}>
+      <div className="text-start">
+        <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
+          <UserCog className="h-10 w-10 text-primary" />
+          {t('profile')}
+        </h1>
+        <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
+          {isRtl ? 'إدارة هويتك الفنية وبياناتك الشخصية' : 'Manage your technical identity and profile data'}
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         <div className="lg:col-span-1 space-y-6">
           <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
-             <div className="h-24 bg-primary/10 relative" />
+             <div className="h-24 bg-gradient-to-br from-primary to-accent relative" />
              <CardContent className="p-8 -mt-12 text-center flex flex-col items-center">
-                <div className="relative group">
-                   <Avatar className="h-24 w-24 rounded-[2rem] border-4 border-white shadow-2xl ring-4 ring-primary/5">
-                      <AvatarImage src={`https://picsum.photos/seed/${user?.uid}/100/100`} />
+                <div className="relative group cursor-pointer" onClick={handleAvatarClick}>
+                   <Avatar className="h-28 w-28 rounded-[2rem] border-4 border-white shadow-2xl ring-4 ring-primary/5 transition-transform group-hover:scale-105">
+                      <AvatarImage src={formData.photoUrl || `https://picsum.photos/seed/${user?.uid}/100/100`} className="object-cover" />
                       <AvatarFallback className="bg-slate-100 text-slate-400 font-black text-2xl uppercase">
-                         {user?.email?.charAt(0)}
+                         {formData.fullName?.charAt(0)}
                       </AvatarFallback>
                    </Avatar>
+                   <div className="absolute inset-0 bg-black/40 rounded-[2rem] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Camera className="h-8 w-8 text-white" />
+                   </div>
+                   <input 
+                     type="file" 
+                     ref={fileInputRef} 
+                     onChange={handleFileChange} 
+                     className="hidden" 
+                     accept="image/*" 
+                   />
                 </div>
                 <div className="mt-6 space-y-2">
-                   <h3 className="text-xl font-black font-headline text-slate-900">{user?.displayName || 'Nova User'}</h3>
-                   <Badge className="bg-blue-50 text-blue-600 font-black border-0 uppercase text-[9px] tracking-widest px-4">
+                   <h3 className="text-xl font-black font-headline text-slate-900 leading-tight">{formData.fullName}</h3>
+                   <Badge className="bg-primary/5 text-primary font-black border-primary/20 uppercase text-[9px] tracking-widest px-4 py-1 rounded-full">
                       {globalUser?.role || 'User'}
                    </Badge>
                 </div>
              </CardContent>
           </Card>
+          
+          <div className="p-6 rounded-[2rem] bg-blue-50/50 border-2 border-dashed border-blue-100 flex items-start gap-4 text-start">
+             <Info className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
+             <p className="text-[10px] font-bold text-blue-700 leading-relaxed italic">
+                {isRtl 
+                  ? 'يتم استخدام الاسم الكامل في كافة المراسلات الرسمية والتقارير الميدانية بدلاً من البريد الإلكتروني.' 
+                  : 'Full name is used in all official communications and field reports instead of email.'}
+             </p>
+          </div>
         </div>
 
         <div className="lg:col-span-2 space-y-6">
            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
               <CardHeader className="bg-slate-50/50 border-b p-8 text-start">
-                 <CardTitle className="text-lg font-black font-headline flex items-center gap-2">
+                 <CardTitle className="text-lg font-black font-headline flex items-center gap-2 text-slate-800">
                     <UserCircle className="h-5 w-5 text-primary" />
                     {t('personalInfo')}
                  </CardTitle>
               </CardHeader>
-              <CardContent className="p-8 space-y-6 text-start">
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <CardContent className="p-8 space-y-8 text-start">
+                 <div className="space-y-2">
+                    <Label className="font-black text-[10px] text-slate-400 uppercase tracking-widest">{isRtl ? 'الاسم الكامل المعتمد' : 'Official Full Name'}</Label>
+                    <Input 
+                      value={formData.fullName} 
+                      onChange={e => setFormData({...formData, fullName: e.target.value})}
+                      className="h-14 rounded-2xl bg-slate-50/50 border-2 font-black text-lg focus:bg-white transition-all shadow-inner"
+                      placeholder="..."
+                    />
+                 </div>
+
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-50">
                     <div className="space-y-2">
-                       <Label className="font-black text-xs text-slate-500 uppercase tracking-widest">{t('displayName')}</Label>
-                       <Input 
-                         value={formData.displayName} 
-                         onChange={e => setFormData({...formData, displayName: e.target.value})}
-                         className="h-12 rounded-xl bg-slate-50/50 border-slate-100"
-                       />
+                       <div className="flex items-center justify-between">
+                          <Label className="font-black text-[10px] text-slate-400 uppercase tracking-widest">{t('username')}</Label>
+                          <Badge variant="outline" className="text-[7px] font-black uppercase text-slate-300">ADMIN CONTROL ONLY</Badge>
+                       </div>
+                       <div className="relative">
+                          <Input 
+                            value={formData.username} 
+                            readOnly={!isAdmin}
+                            className={cn(
+                              "h-12 rounded-xl border-2 font-mono font-bold",
+                              !isAdmin ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed" : "bg-white"
+                            )}
+                          />
+                          {!isAdmin && <Lock className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-200" />}
+                       </div>
                     </div>
                     <div className="space-y-2">
-                       <Label className="font-black text-xs text-slate-500 uppercase tracking-widest">{t('username')}</Label>
-                       <Input 
-                         value={formData.username} 
-                         onChange={e => setFormData({...formData, username: e.target.value})}
-                         className="h-12 rounded-xl bg-slate-50/50 border-slate-100 font-mono"
-                       />
+                       <Label className="font-black text-[10px] text-slate-400 uppercase tracking-widest">{isRtl ? 'البريد الإلكتروني (للقراءة)' : 'Email (Read-only)'}</Label>
+                       <div className="relative">
+                          <Input 
+                            value={user?.email || ''} 
+                            readOnly
+                            className="h-12 rounded-xl bg-slate-100 border-slate-200 text-slate-400 font-bold font-mono text-xs cursor-not-allowed"
+                          />
+                          <Mail className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-200" />
+                       </div>
                     </div>
                  </div>
               </CardContent>
            </Card>
 
-           <div className="flex justify-end gap-4">
+           <div className="flex justify-end pt-4">
               <Button 
                 onClick={handleSave} 
                 disabled={saving}
-                className="h-14 rounded-2xl px-12 bg-primary font-black text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                className="h-16 rounded-2xl px-16 bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all gap-4 border-b-8 border-orange-700"
               >
-                {saving ? <Loader2 className="animate-spin me-2" /> : <Save className="me-2 h-5 w-5" />}
+                {saving ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
                 {t('saveChanges')}
               </Button>
            </div>
