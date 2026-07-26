@@ -8,15 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, CheckCircle2, Workflow } from "lucide-react";
+import { Loader2, CheckCircle2, Workflow, Building2 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
-import { doc, collection, query, orderBy, where } from 'firebase/firestore';
+import { collection, query, orderBy, where } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { Client } from '@/types/client';
-import { ActivityType, Service, SubService } from '@/types/reference';
+import { ActivityType, Service, SubService, Department } from '@/types/reference';
 import { Employee } from '@/types/hr';
 import { TransactionService } from '@/services/transaction-service';
 import { toast } from '@/hooks/use-toast';
@@ -33,21 +33,29 @@ export default function NewTransactionPage() {
 
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ 
-    activityTypeId: '', serviceId: '', subServiceId: '', description: '', assignedEngineerId: '' 
+    activityTypeId: '', serviceId: '', subServiceId: '', departmentId: '', description: '', assignedEngineerId: '' 
   });
 
   const clientRef = useMemo(() => companyId && db ? doc(db, paths.clients(companyId), clientId) : null, [db, companyId, clientId]);
   const { data: client, loading: cLoading } = useDoc<Client>(clientRef);
 
-  const actQuery = useMemo(() => companyId && db ? query(collection(db, paths.activityTypes(companyId)), orderBy('name')) : null, [db, companyId]);
-  const srvQuery = useMemo(() => companyId && db && form.activityTypeId ? query(collection(db, paths.services(companyId, form.activityTypeId)), orderBy('name')) : null, [db, companyId, form.activityTypeId]);
-  const subQuery = useMemo(() => companyId && db && form.activityTypeId && form.serviceId ? query(collection(db, paths.subServices(companyId, form.activityTypeId, form.serviceId)), orderBy('name')) : null, [db, companyId, form.activityTypeId, form.serviceId]);
+  const actQuery = useMemo(() => companyId && db ? query(collection(db, paths.activityTypes(companyId)), orderBy('order')) : null, [db, companyId]);
+  const srvQuery = useMemo(() => companyId && db && form.activityTypeId ? query(collection(db, paths.services(companyId, form.activityTypeId)), orderBy('order')) : null, [db, companyId, form.activityTypeId]);
+  const subQuery = useMemo(() => companyId && db && form.activityTypeId && form.serviceId ? query(collection(db, paths.subServices(companyId, form.activityTypeId, form.serviceId)), orderBy('order')) : null, [db, companyId, form.activityTypeId, form.serviceId]);
+  const deptsQuery = useMemo(() => companyId && db ? query(collection(db, paths.departments(companyId)), orderBy('order')) : null, [db, companyId]);
   const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
 
   const { data: activities } = useCollection<ActivityType>(actQuery);
   const { data: services } = useCollection<Service>(srvQuery);
   const { data: subServices } = useCollection<SubService>(subQuery);
+  const { data: departments } = useCollection<Department>(deptsQuery);
   const { data: employees } = useCollection<Employee>(empsQuery);
+
+  // تصفية المهندسين بناءً على القسم المختار
+  const filteredEngineers = useMemo(() => {
+    if (!form.departmentId) return employees;
+    return employees.filter(e => e.departmentId === form.departmentId);
+  }, [employees, form.departmentId]);
 
   const handleCreate = async () => {
     if (!db || !companyId || !user || !form.subServiceId || !form.assignedEngineerId) return;
@@ -132,14 +140,34 @@ export default function NewTransactionPage() {
               </div>
            </div>
 
-           <div className="space-y-2 pt-6 border-t border-slate-50">
-              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">المهندس المسؤول عن التنفيذ</Label>
-              <Select value={form.assignedEngineerId} onValueChange={(v) => setForm({...form, assignedEngineerId: v})}>
-                 <SelectTrigger className="h-14 rounded-2xl border-2 font-black bg-white text-sm shadow-inner">
-                    <SelectValue placeholder={isRtl ? "تحديد المهندس المنفذ من القائمة..." : "Assign Field Engineer..."} />
-                 </SelectTrigger>
-                 <SelectContent className="rounded-2xl">{employees?.map(emp => (<SelectItem key={emp.id} value={emp.id!} className="font-bold text-xs">{emp.fullName}</SelectItem>))}</SelectContent>
-              </Select>
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-slate-50">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5">
+                   <Building2 className="h-3 w-3" /> {isRtl ? 'القسم المسؤول' : 'Target Department'}
+                </Label>
+                <Select value={form.departmentId} onValueChange={(v) => setForm({...form, departmentId: v, assignedEngineerId: ''})}>
+                   <SelectTrigger className="h-14 rounded-2xl border-2 font-black bg-white shadow-sm">
+                      <SelectValue placeholder={isRtl ? "اختر القسم أولاً..." : "Select Department..."} />
+                   </SelectTrigger>
+                   <SelectContent className="rounded-2xl">
+                      {departments?.map(dept => <SelectItem key={dept.id} value={dept.id!} className="font-bold text-xs">{isRtl ? dept.name : dept.nameEn}</SelectItem>)}
+                   </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5">
+                   <Briefcase className="h-3 w-3" /> {isRtl ? 'المهندس المسؤول عن التنفيذ' : 'Assigned Engineer'}
+                </Label>
+                <Select disabled={!form.departmentId} value={form.assignedEngineerId} onValueChange={(v) => setForm({...form, assignedEngineerId: v})}>
+                   <SelectTrigger className="h-14 rounded-2xl border-2 font-black bg-white shadow-sm">
+                      <SelectValue placeholder={isRtl ? "تحديد المهندس المختص..." : "Assign Specialist..."} />
+                   </SelectTrigger>
+                   <SelectContent className="rounded-2xl">
+                      {filteredEngineers?.map(emp => (<SelectItem key={emp.id} value={emp.id!} className="font-bold text-xs">{emp.fullName}</SelectItem>))}
+                   </SelectContent>
+                </Select>
+              </div>
            </div>
 
            <div className="space-y-2">

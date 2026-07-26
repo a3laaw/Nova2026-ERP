@@ -65,7 +65,7 @@ import {
 
 /**
  * @fileOverview رادار حجز القاعات والاجتماعات (Halls Radar V2.5).
- * تم توحيد الإجراءات مع الرادار المعماري: النقر يوجه للرادار الفني، والخيارات تشمل العرض والتعديل والحذف.
+ * تم توحيد الإجراءات وتطبيق الفلترة المصلحية للمهندسين.
  */
 export function MeetingRoomsView() {
   const { globalUser, user } = useAuthContext();
@@ -159,7 +159,6 @@ export function MeetingRoomsView() {
   return (
     <div className="space-y-6 animate-in fade-in duration-700 print:space-y-1 print:pt-0" dir={dir}>
       
-      {/* 3-Day Strip Selector */}
       <div className="flex justify-center print:hidden">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => setCurrentDate(subDays(currentDate, 1))} className="h-10 w-10 rounded-xl bg-white shadow-sm border-2 border-slate-100"><ChevronLeft className={cn("h-5 w-5", !isRtl && "rotate-180")} /></Button>
@@ -392,6 +391,12 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
 
   const isEdit = data?.mode === 'edit';
 
+  // تصفية المهندسين بناءً على القسم المختار للقيادة الرئيسية فقط
+  const specializedEngineers = useMemo(() => {
+    if (!formData.departmentId) return employees;
+    return employees.filter((e: any) => e.departmentId === formData.departmentId);
+  }, [employees, formData.departmentId]);
+
   useEffect(() => {
     if (isOpen && data) {
        if (isEdit && data.appointment) {
@@ -564,7 +569,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'القسم المختص (لتحديد اللون)' : 'Department (Coloring)'}</Label>
                  <Select value={formData.departmentId} onValueChange={v => {
                     const d = departments.find((x:any) => x.id === v);
-                    setFormData({...formData, departmentId: v, departmentName: d?.name || '', departmentColor: d?.color || '#FFA000'});
+                    setFormData({...formData, departmentId: v, departmentName: d?.name || '', departmentColor: d?.color || '#FFA000', engineerId: ''});
                  }}>
                     <SelectTrigger className="h-12 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
                     <SelectContent className="rounded-xl z-[160]">
@@ -583,17 +588,23 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
 
            <div className="p-6 bg-slate-50 rounded-[2rem] border-2 border-slate-100 space-y-6">
               <div className="space-y-2">
-                 <Label className="text-[11px] font-black uppercase text-primary flex items-center gap-2"><Briefcase className="h-4 w-4" /> {isRtl ? 'المهندس المسؤول عن الاجتماع' : 'Lead Engineer'}</Label>
+                 <Label className="text-[11px] font-black uppercase text-primary flex items-center gap-2">
+                   <Briefcase className="h-4 w-4" /> 
+                   {isRtl ? 'المهندس المسؤول (المباشر للقسم)' : 'Lead Specialized Engineer'}
+                 </Label>
                  <Select value={formData.engineerId} onValueChange={v => setFormData({...formData, engineerId: v})}>
-                    <SelectTrigger className="h-12 rounded-xl border-2 bg-white font-bold"><SelectValue placeholder="..." /></SelectTrigger>
+                    <SelectTrigger className="h-12 rounded-xl border-2 bg-white font-black">
+                       <SelectValue placeholder={isRtl ? "تحديد المهندس المختص..." : "Select Lead..."} />
+                    </SelectTrigger>
                     <SelectContent className="rounded-xl z-[160]">
-                       {employees.map((e: any) => <SelectItem key={e.id} value={e.id} className="font-bold">{e.fullName}</SelectItem>)}
+                       {specializedEngineers.map((e: any) => <SelectItem key={e.id} value={e.id} className="font-bold">{e.fullName}</SelectItem>)}
                     </SelectContent>
                  </Select>
+                 {!formData.departmentId && <p className="text-[8px] text-slate-400 italic">*{isRtl ? 'يرجى اختيار القسم أولاً لفلترة القائمة.' : 'Select department first to filter list.'}</p>}
               </div>
 
               <div className="space-y-3">
-                 <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'مهندسين مشاركين (ورشة عمل)' : 'Co-Engineers (Workshop)'}</Label>
+                 <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'مهندسين مشاركين (فريق العمل)' : 'Supporting Team (All Engineers)'}</Label>
                  <ScrollArea className="h-32 rounded-xl bg-white border-2 p-3 shadow-inner">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                        {employees.filter((e: any) => e.id !== formData.engineerId).map((e: any) => (
