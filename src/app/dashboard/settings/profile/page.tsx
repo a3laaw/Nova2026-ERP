@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -81,12 +80,14 @@ export default function ProfilePage() {
 
     const globalPayload = {
       fullName: formData.fullName,
+      username: formData.username,
       photoUrl: formData.photoUrl,
       updatedAt: serverTimestamp(),
     };
 
     const tenantPayload = {
       displayName: formData.fullName,
+      username: formData.username,
       photoUrl: formData.photoUrl,
       updatedAt: serverTimestamp(),
     };
@@ -205,6 +206,7 @@ export default function ProfilePage() {
                           <Input 
                             value={formData.username} 
                             readOnly={!isAdmin}
+                            onChange={e => isAdmin && setFormData({...formData, username: e.target.value})}
                             className={cn(
                               "h-12 rounded-xl border-2 font-mono font-bold",
                               !isAdmin ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed" : "bg-white"
