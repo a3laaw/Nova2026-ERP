@@ -9,7 +9,8 @@ import {
   Landmark, Clock, Plus, ChevronLeft, ChevronRight, 
   Edit3, Loader2, CheckCircle2, MapPin, X, Save, 
   Trash2, Users, ShieldCheck, PlusCircle, Workflow,
-  Target, Info, AlertCircle, Play, UserPlus, Briefcase
+  Target, Info, AlertCircle, Play, UserPlus, Briefcase,
+  ArrowRight
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs, serverTimestamp, addDoc, updateDoc } from 'firebase/firestore';
@@ -39,10 +40,21 @@ import {
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { AppointmentService } from '@/services/appointment-service';
 
 /**
- * @fileOverview رادار حجز القاعات (Halls Radar View).
- * تم إصلاح مشكلة عدم ظهور المواعيد عبر تبسيط الاستعلام وضمان المزامنة اللحظية.
+ * @fileOverview رادار حجز القاعات المطور (Sovereign Halls Radar V2).
+ * تم إضافة كافة إجراءات التعديل والحذف لتماثل تجربة الرادار المعماري.
  */
 export function MeetingRoomsView() {
   const { globalUser, user } = useAuthContext();
@@ -57,24 +69,22 @@ export function MeetingRoomsView() {
   const [settings, setSettings] = useState<any>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogData, setDialogData] = useState<any>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
 
   const dateStr = useMemo(() => format(currentDate, 'yyyy-MM-dd'), [currentDate]);
 
-  // 1. استعلام القاعات
   const roomsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.meetingRooms(companyId)), orderBy('order')) : null, 
   [db, companyId]);
   const { data: allRooms, loading: roomsLoading } = useCollection<MeetingRoom>(roomsQuery);
 
-  // 2. استعلام المواعيد (استعلام بسيط لضمان العمل الفوري بدون فهارس مركبة)
   const apptsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.appointments(companyId)), orderBy('start', 'asc')) : null, 
   [db, companyId]);
   const { data: rawAppointments, loading: apptsLoading } = useCollection<Appointment>(apptsQuery);
 
-  // 3. استعلام البيانات المساعدة (للحجز)
   const deptsQuery = useMemo(() => companyId && db ? query(collection(db, paths.departments(companyId)), orderBy('order')) : null, [db, companyId]);
   const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
   const clientsQuery = useMemo(() => companyId && db ? query(collection(db, paths.clients(companyId))) : null, [db, companyId]);
@@ -90,7 +100,6 @@ export function MeetingRoomsView() {
     }
   }, [db, companyId]);
 
-  // الفلترة في الذاكرة لضمان استجابة الرادار
   const filteredAppointments = useMemo(() => {
     return (rawAppointments || []).filter(a => 
       a.status !== 'cancelled' && 
@@ -108,6 +117,29 @@ export function MeetingRoomsView() {
   const handleAction = (mode: 'create' | 'edit', room?: MeetingRoom, slot?: string, appt?: Appointment) => {
     setDialogData({ mode, room, slot, appointment: appt });
     setDialogOpen(true);
+  };
+
+  const forceThaw = useCallback(() => {
+    if (typeof document !== 'undefined') {
+       document.body.style.pointerEvents = 'auto';
+       document.body.style.overflow = 'auto';
+       document.body.removeAttribute('data-scroll-locked');
+    }
+  }, []);
+
+  const confirmDelete = async (id?: string) => {
+    const targetId = id || deletingId;
+    if (!targetId || !db || !companyId) return;
+    const service = new AppointmentService(db, companyId);
+    try {
+       await service.deleteAppointment(targetId);
+       toast({ title: isRtl ? "تم الحذف بنجاح" : "Deleted Successfully" });
+       setDeletingId(null);
+       setDialogOpen(false);
+       forceThaw();
+    } catch (e) {
+       toast({ variant: "destructive", title: t('error') });
+    }
   };
 
   if (!mounted || apptsLoading || roomsLoading || !settings) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
@@ -174,7 +206,7 @@ export function MeetingRoomsView() {
       {dialogOpen && (
         <HallBookingDialog 
           isOpen={dialogOpen}
-          onClose={() => setDialogOpen(false)}
+          onClose={() => { setDialogOpen(false); forceThaw(); }}
           data={dialogData}
           companyId={companyId!}
           db={db}
@@ -185,8 +217,29 @@ export function MeetingRoomsView() {
           existingAppts={rawAppointments || []}
           isRtl={isRtl}
           t={t}
+          onDelete={setDeletingId}
         />
       )}
+
+      <AlertDialog open={!!deletingId} onOpenChange={(v) => { if(!v) setDeletingId(null); forceThaw(); }}>
+         <AlertDialogContent className="rounded-xl p-10 border-0 shadow-3xl bg-white z-[200]" dir={dir}>
+            <AlertDialogHeader>
+               <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50">
+                  <Trash2 className="h-10 w-10" />
+               </div>
+               <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900">{isRtl ? 'حذف حجز القاعة' : 'Cancel Hall Booking'}</AlertDialogTitle>
+               <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">
+                  {isRtl ? 'هل أنت متأكد؟ سيتم إزالة هذا الاجتماع من رادار القاعات نهائياً. لا يمكن التراجع عن هذا الإجراء.' : 'Are you sure? This meeting will be permanently removed from the halls radar. This cannot be undone.'}
+               </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="mt-12 gap-4 flex flex-row">
+               <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white" onClick={() => { setDeletingId(null); forceThaw(); }}>إلغاء</AlertDialogCancel>
+               <AlertDialogAction onClick={() => confirmDelete()} className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl">
+                  {isRtl ? 'نعم، احذف الحجز' : 'Confirm Delete'}
+               </AlertDialogAction>
+            </AlertDialogFooter>
+         </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -230,8 +283,9 @@ function HallGridSection({ title, slots, rooms, appts, onAction, isRtl, t }: any
                            return (
                              <td key={room.id} className="p-0.5 border-b border-slate-50 border-s border-s-slate-50 align-top">
                                 <Card 
+                                  onClick={() => onAction('edit', room, slot, appt)}
                                   className={cn(
-                                    "p-1.5 rounded-lg h-full transition-all cursor-pointer min-h-[44px] border-2",
+                                    "p-1.5 rounded-lg h-full transition-all cursor-pointer min-h-[44px] border-2 hover:shadow-lg hover:-translate-y-0.5",
                                     appt.status === 'completed' ? "bg-emerald-50/50 border-emerald-500/20" : "bg-white shadow-sm"
                                   )}
                                   style={{ borderInlineStartColor: appt.departmentColor || '#FFA000', borderInlineStartWidth: '6px' }}
@@ -268,7 +322,7 @@ function HallGridSection({ title, slots, rooms, appts, onAction, isRtl, t }: any
   );
 }
 
-function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, employees, departments, rooms, existingAppts, isRtl, t }: any) {
+function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, employees, departments, rooms, existingAppts, isRtl, t, onDelete }: any) {
   const { dir } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -277,59 +331,50 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
     date: '', time: '', notes: ''
   });
 
+  const isEdit = data?.mode === 'edit';
+
   useEffect(() => {
     if (isOpen && data) {
-       setFormData(prev => ({
-         ...prev,
-         date: format(new Date(), 'yyyy-MM-dd'),
-         time: data.slot || '08:00',
-         engineerId: '', additionalEngineerIds: [],
-         clientId: '', departmentId: ''
-       }));
+       if (isEdit && data.appointment) {
+          const appt = data.appointment;
+          setFormData({
+             title: appt.title || '',
+             clientId: appt.clientId || '',
+             clientName: appt.clientName || '',
+             departmentId: appt.departmentId || '',
+             departmentName: appt.departmentName || '',
+             departmentColor: appt.departmentColor || '',
+             engineerId: appt.engineerId || '',
+             engineerName: appt.engineerName || '',
+             additionalEngineerIds: appt.additionalEngineerIds || [],
+             date: format(parseISO(appt.start), 'yyyy-MM-dd'),
+             time: format(parseISO(appt.start), 'HH:mm'),
+             notes: appt.notes || ''
+          });
+       } else {
+          setFormData(prev => ({
+            ...prev,
+            date: format(new Date(), 'yyyy-MM-dd'),
+            time: data.slot || '08:00',
+            engineerId: '', additionalEngineerIds: [],
+            clientId: '', departmentId: ''
+          }));
+       }
     }
-  }, [isOpen, data]);
+  }, [isOpen, data, isEdit]);
 
   const handleSave = async () => {
     if (!db || !companyId || !formData.clientId || !formData.engineerId) return;
 
-    // --- نظام التحقق الثلاثي السيادي ---
     const start = new Date(`${formData.date}T${formData.time}:00`).toISOString();
     
-    // 1. فحص القاعة
-    const hallBusy = existingAppts.some((a: any) => a.hallId === data.room.id && a.start === start && a.status !== 'cancelled');
-    if (hallBusy) {
-       toast({ 
-         variant: "destructive", 
-         title: isRtl ? "تنبيه: القاعة مشغولة" : "Hall Busy",
-         description: isRtl ? `هذه القاعة محجوزة مسبقاً في توقيت ${formData.time}.` : `This room is already booked at ${formData.time}.`
-       });
-       return;
-    }
-
-    // 2. فحص العميل
-    const clientBusy = existingAppts.some((a: any) => a.clientId === formData.clientId && a.start === start && a.status !== 'cancelled');
-    if (clientBusy) {
-       toast({ 
-         variant: "destructive", 
-         title: isRtl ? "تنبيه: العميل مرتبط بموعد" : "Client Busy",
-         description: isRtl ? "العميل لديه موعد آخر في نفس التوقيت المختار." : "The client has another appointment at this time."
-       });
-       return;
-    }
-
-    // 3. فحص المهندس الرئيسي والمهندسين الإضافيين
-    const allEngIds = [formData.engineerId, ...formData.additionalEngineerIds];
-    const engBusy = existingAppts.some((a: any) => {
-       if (a.start !== start || a.status === 'cancelled') return false;
-       return allEngIds.includes(a.engineerId) || (a.additionalEngineerIds || []).some((id: string) => allEngIds.includes(id));
-    });
-    if (engBusy) {
-       toast({ 
-         variant: "destructive", 
-         title: isRtl ? "تنبيه: المهندس مشغول" : "Engineer Busy",
-         description: isRtl ? "أحد المهندسين المختارين لديه موعد متعارض في هذا الوقت." : "One of the selected engineers is busy at this time."
-       });
-       return;
+    // فحص التعارض (فقط عند الإنشاء أو عند تغيير الوقت في التعديل)
+    if (!isEdit || start !== data.appointment?.start) {
+        const hallBusy = existingAppts.some((a: any) => a.id !== data.appointment?.id && a.hallId === data.room.id && a.start === start && a.status !== 'cancelled');
+        if (hallBusy) {
+           toast({ variant: "destructive", title: isRtl ? "تنبيه: القاعة مشغولة" : "Hall Busy" });
+           return;
+        }
     }
 
     setLoading(true);
@@ -337,16 +382,10 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
       const client = clients.find((c: any) => c.id === formData.clientId);
       const dept = departments.find((d: any) => d.id === formData.departmentId);
       const eng = employees.find((e: any) => e.id === formData.engineerId);
-      const addEngNames = formData.additionalEngineerIds.map(id => employees.find((e: any) => e.id === id)?.fullName || '');
+      const addEngNames = formData.additionalEngineerIds.map((id: string) => employees.find((e: any) => e.id === id)?.fullName || '');
 
-      const payload: Partial<Appointment> = {
-        companyId,
-        type: 'hall_meeting',
-        status: 'scheduled',
-        start,
+      const payload: any = {
         title: formData.title || (isRtl ? 'اجتماع فني' : 'Professional Meeting'),
-        hallId: data.room.id,
-        hallName: data.room.name,
         clientId: formData.clientId,
         clientName: client?.nameAr || '',
         departmentId: formData.departmentId,
@@ -357,11 +396,24 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
         additionalEngineerIds: formData.additionalEngineerIds,
         additionalEngineerNames: addEngNames,
         notes: formData.notes,
-        createdAt: serverTimestamp(),
+        start,
         updatedAt: serverTimestamp()
       };
 
-      await addDoc(collection(db, paths.appointments(companyId)), payload);
+      if (isEdit) {
+        await updateDoc(doc(db, paths.appointments(companyId), data.appointment.id), payload);
+      } else {
+        await addDoc(collection(db, paths.appointments(companyId)), {
+          ...payload,
+          companyId,
+          type: 'hall_meeting',
+          status: 'scheduled',
+          hallId: data.room.id,
+          hallName: data.room.name,
+          createdAt: serverTimestamp()
+        });
+      }
+      
       toast({ title: t('saved') });
       onClose();
     } catch (e) {
@@ -378,7 +430,9 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
            <div className="flex items-center gap-4">
               <div className="h-12 w-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary shadow-sm"><Landmark className="h-6 w-6" /></div>
               <div>
-                 <DialogTitle className="text-2xl font-black font-headline">{isRtl ? 'حجز قاعة اجتماع' : 'Room Booking'}</DialogTitle>
+                 <DialogTitle className="text-2xl font-black font-headline">
+                    {isEdit ? (isRtl ? 'تعديل حجز القاعة' : 'Edit Booking') : (isRtl ? 'حجز قاعة اجتماع' : 'Room Booking')}
+                 </DialogTitle>
                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{isRtl ? `القاعة: ${data.room.name}` : `Room: ${data.room.nameEn}`}</p>
               </div>
            </div>
@@ -437,7 +491,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
                               onCheckedChange={(checked) => {
                                  const ids = checked 
                                    ? [...formData.additionalEngineerIds, e.id]
-                                   : formData.additionalEngineerIds.filter(id => id !== e.id);
+                                   : formData.additionalEngineerIds.filter((id: string) => id !== e.id);
                                  setFormData({...formData, additionalEngineerIds: ids});
                               }}
                             />
@@ -456,10 +510,28 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
         </div>
 
         <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4 shrink-0">
-           <Button variant="outline" onClick={onClose} className="flex-1 h-14 rounded-2xl border-2 font-black">إلغاء</Button>
-           <Button onClick={handleSave} disabled={loading || !formData.clientId || !formData.engineerId} className="flex-[2] h-14 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 border-b-8 border-orange-700">
-              {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
-              {isRtl ? 'تأكيد الحجز السيادي' : 'Confirm Sovereign Booking'}
+           <div className="flex-1 flex gap-3">
+              <Button variant="outline" onClick={onClose} className="flex-1 h-14 rounded-2xl border-2 font-black bg-white">
+                إلغاء
+              </Button>
+              {isEdit && (
+                <Button 
+                  variant="ghost" 
+                  onClick={() => onDelete(data.appointment?.id)} 
+                  className="flex-1 h-14 rounded-2xl font-black text-rose-600 bg-rose-50 border-2 border-rose-100 hover:bg-rose-100 gap-2 shadow-sm"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  {isRtl ? 'حذف' : 'Delete'}
+                </Button>
+              )}
+           </div>
+           <Button 
+             onClick={handleSave} 
+             disabled={loading || !formData.clientId || !formData.engineerId} 
+             className="flex-1 h-14 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 border-b-8 border-orange-700 hover:scale-[1.02] transition-all"
+           >
+              {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />}
+              {isRtl ? 'تأكيد الحفظ' : 'Save Changes'}
            </Button>
         </DialogFooter>
       </DialogContent>
