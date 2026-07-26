@@ -69,7 +69,7 @@ import { StageInstance } from '@/types/transaction';
 export function MeetingRoomsView() {
   const { globalUser, user } = useAuthContext();
   const { lang, dir, t } = useLanguage();
-  const { isAdmin } = usePermissions();
+  const { isAdmin, check } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
@@ -104,6 +104,9 @@ export function MeetingRoomsView() {
   const { data: employees } = useCollection<Employee>(empsQuery);
   const { data: clients } = useCollection<any>(clientsQuery);
 
+  // صلاحية حجز القاعات (Sovereign Guard)
+  const canBook = isAdmin || check('ref', 'create').can;
+
   useEffect(() => {
     if (db && companyId) {
       const whService = new WorkHoursService(db, companyId);
@@ -126,6 +129,10 @@ export function MeetingRoomsView() {
   }, [settings, currentDate]);
 
   const handleAction = (mode: 'create' | 'edit', room?: MeetingRoom, slot?: string, appt?: Appointment) => {
+    if (!canBook && mode === 'create') {
+      toast({ variant: "destructive", title: isRtl ? "صلاحيات محدودة" : "Insufficient Permissions" });
+      return;
+    }
     setDialogData({ mode, room, slot, appointment: appt });
     setDialogOpen(true);
   };
@@ -225,6 +232,7 @@ export function MeetingRoomsView() {
            settings={settings}
            dateStr={dateStr}
            router={router}
+           isAdmin={isAdmin}
          />
       </div>
 
@@ -245,6 +253,8 @@ export function MeetingRoomsView() {
           onDelete={confirmDelete}
           dir={dir}
           settings={settings}
+          isAdmin={isAdmin}
+          officialUserName={globalUser?.fullName || user.displayName || 'Admin'}
         />
       )}
 
@@ -271,7 +281,7 @@ export function MeetingRoomsView() {
   );
 }
 
-function HallGridSection({ title, slots, rooms, appts, onAction, onDelete, isRtl, t, settings, dateStr, router }: any) {
+function HallGridSection({ title, slots, rooms, appts, onAction, onDelete, isRtl, t, settings, dateStr, router, isAdmin }: any) {
   if (slots.length === 0) return null;
 
   return (
@@ -391,7 +401,7 @@ function HallGridSection({ title, slots, rooms, appts, onAction, onDelete, isRtl
   );
 }
 
-function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, employees, departments, rooms, existingAppts, isRtl, t, onDelete, dir, settings }: any) {
+function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, employees, departments, rooms, existingAppts, isRtl, t, onDelete, dir, settings, isAdmin, officialUserName }: any) {
   const [loading, setLoading] = useState(false);
   const [eligibilityLoading, setEligibilityLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -405,7 +415,6 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
 
   const isEdit = data?.mode === 'edit';
 
-  // بروتوكول الفصل المصلحي: استبعاد القسم المعماري من حجز القاعات
   const filteredDepartments = useMemo(() => {
     return (departments || []).filter((d: any) => {
        const nAr = d.name || '';
@@ -513,6 +522,12 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
       ? new Date(`${formData.date}T${formData.endTime}:00`)
       : addMinutes(start, duration);
     
+    // --- TESTING BYPASS: Allow Admin to book in the past for tests ---
+    if (!isAdmin && start < new Date()) {
+       toast({ variant: "destructive", title: isRtl ? "تنبيه: لا يمكن الحجز في وقت سابق" : "Alert: Cannot book in the past" });
+       return;
+    }
+
     const targetEngineers = [formData.engineerId, ...formData.additionalEngineerIds];
     
     for (const appt of existingAppts) {
@@ -553,7 +568,9 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
         end: end.toISOString(),
         transactionId: formData.transactionId,
         transactionNumber: formData.transactionNumber,
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
+        // السيادة الاسمية: تسجيل صاحب الفعل باسمه الكامل المعتمد
+        recordedByName: officialUserName 
       };
 
       if (isEdit) {
@@ -566,7 +583,8 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
           status: 'scheduled',
           hallId: data.room.id,
           hallName: data.room.name,
-          createdAt: serverTimestamp()
+          createdAt: serverTimestamp(),
+          createdBy: officialUserName 
         });
       }
       

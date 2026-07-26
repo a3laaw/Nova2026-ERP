@@ -5,10 +5,11 @@
 
 | الميزة / القيد | الموقع البرمجي | الحالة الحالية | الإجراء المطلوب عند الإنتاج |
 | :--- | :--- | :--- | :--- |
-| الحجز في الماضي | `src/components/appointments/architectural-appointments-view.tsx` | مسموح للمدير فقط | تفعيل القيد الزمني على كافة الرتب |
+| الحجز في الماضي (رادار معماري) | `src/components/appointments/architectural-appointments-view.tsx` | مسموح للمدير فقط | تفعيل القيد الزمني على كافة الرتب |
+| الحجز في الماضي (رادار القاعات) | `src/components/meetings/meeting-rooms-view.tsx` | مسموح للمدير فقط | تفعيل القيد الزمني الصارم |
 | تجاوز قيد الـ 6 أشهر للإجازة | `src/app/dashboard/hr/leaves/new/page.tsx` | مسموح للمدير | إعادة تفعيل القيد الصارم |
 | تعديل ميزانية BOQ المعتمدة | `src/app/dashboard/clients/[id]/transactions/[tId]/boq/page.tsx` | متاح عبر "تعديل استثنائي" | قصر التعديل على الأوامر التغييرية فقط |
 | حذف المخططات الزمنية | `src/services/transaction-service.ts` | متاح للمدير | تجميد الحذف بعد بدء التنفيذ |
 
 ---
-*آخر تحديث: 2026-01-20*
+*آخر تحديث: 2026-07-26*
