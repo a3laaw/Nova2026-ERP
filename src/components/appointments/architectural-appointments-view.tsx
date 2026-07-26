@@ -46,7 +46,8 @@ import {
   ArrowRight, 
   ShieldAlert, 
   Eye,
-  ShieldX
+  ShieldX,
+  User
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs, updateDoc, deleteDoc, serverTimestamp, addDoc, setDoc } from 'firebase/firestore';
@@ -217,7 +218,6 @@ export function ArchitecturalAppointmentsView() {
     }
   }, [db, companyId]);
 
-  // بروتوكول العزل السيادي: حصر القائمة في المهندسين المعماريين فقط واستبعاد الإنشائيين وغيرهم
   const archEngineers = useMemo(() => {
     const list = (allEmployees || []).filter(e => 
       e.departmentName?.includes('معماري') || 
@@ -244,11 +244,8 @@ export function ArchitecturalAppointmentsView() {
       a.type !== 'hall_meeting' && 
       isSameDay(parseISO(a.start), currentDate)
     );
-    
-    // ربط الفلترة بالمهندسين المعماريين فقط
     const archIds = archEngineers.map(e => e.id);
     list = list.filter(a => archIds.includes(a.engineerId));
-
     return list;
   }, [rawAppointments, currentDate, archEngineers]);
 
@@ -647,7 +644,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
   const targetEngineerId = data?.engineer?.id || data?.appointment?.engineerId;
 
-  // بروتوكول الرقابة المصلحية: حصر القائمة في القسم المعماري فقط
   const filteredDepartments = useMemo(() => {
      return (departments || []).filter((d: any) => {
         const nAr = d.name || '';
@@ -748,7 +744,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
   const fetchClientTransactions = async (cid: string) => {
     if (!db || !companyId) return;
-    const q = query(collection(this.db, paths.transactions(this.companyId)), where('clientId', '==', cid));
+    const q = query(collection(db, paths.transactions(companyId)), where('clientId', '==', cid));
     const snap = await getDocs(q);
     const trans = snap.docs.map(d => ({id: d.id, ...d.data()}));
     setClientTransactions(trans);
@@ -1025,7 +1021,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                 <Button 
                   variant="ghost" 
                   onClick={() => onDelete(data.appointment?.id)} 
-                  className="flex-1 h-12 rounded-xl font-black text-rose-600 bg-rose-50 border-2 border-rose-100 hover:bg-rose-100 gap-2 shadow-sm"
+                  className="flex-1 h-12 rounded-xl font-black text-rose-600 bg-rose-50 border-2 border-rose-100 gap-2 shadow-sm"
                 >
                   <Trash2 className="h-4 w-4" />
                   {isRtl ? 'حذف' : 'Delete'}

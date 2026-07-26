@@ -116,8 +116,19 @@ export function ConstructionBookingsView() {
     companyId && db ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active')) : null, 
   [db, companyId]);
 
+  const clientsQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.clients(companyId))) : null, 
+  [db, companyId]);
+
   const { data: rawAppointments, loading: apptsLoading } = useCollection<Appointment>(apptsQuery);
   const { data: allEmployees, loading: empsLoading } = useCollection<Employee>(empsQuery);
+  const { data: allClients } = useCollection<any>(clientsQuery);
+
+  const clientsMap = useMemo(() => {
+    const m = new Map<string, any>();
+    (allClients || []).forEach(c => { if (c.id) m.set(c.id, c); });
+    return m;
+  }, [allClients]);
 
   useEffect(() => {
     if (db && companyId) {
@@ -145,11 +156,30 @@ export function ConstructionBookingsView() {
       a.type !== 'hall_meeting' && 
       isSameDay(parseISO(a.start), currentDate)
     );
-    if (!isAdmin && globalUser?.employeeId) {
-      list = list.filter(a => a.engineerId === globalUser.employeeId);
-    }
+    
+    const fieldIds = fieldEngineers.map(e => e.id);
+    list = list.filter(a => fieldIds.includes(a.engineerId));
+
     return list;
-  }, [rawAppointments, currentDate, isAdmin, globalUser?.employeeId]);
+  }, [rawAppointments, currentDate, fieldEngineers]);
+
+  const computeMeta = (list: Appointment[]) => {
+    const byClient = new Map<string, Appointment[]>();
+    list.forEach(a => {
+      if (!a.clientId || !a.id) return;
+      const arr = byClient.get(a.clientId) || [];
+      arr.push(a);
+      byClient.set(a.clientId, arr);
+    });
+    const out = new Map<string, number>();
+    byClient.forEach((arr) => {
+      const sorted = [...arr].sort((x, y) => (x.start || '').localeCompare(y.start || ''));
+      sorted.forEach((a, i) => { out.set(a.id!, i + 1); });
+    });
+    return out;
+  };
+
+  const apptVisitCounts = useMemo(() => computeMeta(rawAppointments || []), [rawAppointments]);
 
   const timeSlots = useMemo(() => {
     if (!settings) return { morning: [], evening: [] };
@@ -230,6 +260,7 @@ export function ConstructionBookingsView() {
            slots={timeSlots.morning} 
            engineers={fieldEngineers} 
            grid={filteredAppointments} 
+           visitCounts={apptVisitCounts}
            onAction={handleAction}
            isRtl={isRtl}
            router={router}
@@ -243,6 +274,7 @@ export function ConstructionBookingsView() {
              slots={timeSlots.evening} 
              engineers={fieldEngineers} 
              grid={filteredAppointments} 
+             visitCounts={apptVisitCounts}
              onAction={handleAction}
              isRtl={isRtl}
              router={router}
@@ -256,7 +288,7 @@ export function ConstructionBookingsView() {
   );
 }
 
-function GridSection({ title, slots, engineers, grid, onAction, isRtl, router, t, settings, dateStr }: any) {
+function GridSection({ title, slots, engineers, grid, visitCounts, onAction, isRtl, router, t, settings, dateStr }: any) {
   if (slots.length === 0) return null;
 
   return (
@@ -312,6 +344,7 @@ function GridSection({ title, slots, engineers, grid, onAction, isRtl, router, t
                              const isCompleted = appt.status === 'completed';
                              const apptStart = parseISO(appt.start);
                              const isStartSlot = apptStart >= slotStart && apptStart < slotEnd;
+                             const visitCount = visitCounts.get(appt.id);
 
                              return (
                                <td key={eng.id} className="p-0.5 border-b border-slate-50 border-s border-s-slate-50 align-top">
@@ -327,7 +360,11 @@ function GridSection({ title, slots, engineers, grid, onAction, isRtl, router, t
                                           {isStartSlot && (
                                             <>
                                               <div className="flex items-center gap-1.5">
-                                                 {isCompleted && <CheckCircle2 className="h-2.5 w-2.5 text-emerald-600 shrink-0" />}
+                                                 {isCompleted ? (
+                                                    <CheckCircle2 className="h-2.5 w-2.5 text-emerald-600 shrink-0" />
+                                                 ) : (
+                                                    <Badge className="h-3.5 px-1 bg-black/5 text-[7px] font-black border-0">V{visitCount}</Badge>
+                                                 )}
                                                  <p className={cn("font-black text-[9px] leading-tight truncate", isCompleted ? "text-emerald-900" : "text-slate-900")}>
                                                    {appt.clientName}
                                                  </p>

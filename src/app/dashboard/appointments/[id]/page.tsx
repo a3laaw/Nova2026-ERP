@@ -10,7 +10,7 @@ import {
   AlertTriangle, Hammer, Check, Layers, Save,
   Target, X, RotateCcw, Lock, Info, AlertCircle, Play,
   Users, Truck, Plus, Trash2, HardHat, Link as LinkIcon,
-  ShieldAlert, Settings2, History, ShieldX
+  ShieldAlert, Settings2, History, ShieldX, Sparkles
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, where, orderBy, limit, updateDoc, serverTimestamp, getDocs } from 'firebase/firestore';
@@ -119,16 +119,14 @@ export default function AppointmentDetailPage() {
   [db, companyId, activeBoq]);
   const { data: boqItems } = useCollection<BOQItem>(itemsQuery);
 
-  const inventoryQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.inventoryItems(companyId)), where('isActive', '==', true)) : null,
-  [db, companyId]);
-  const { data: inventory } = useCollection<any>(inventoryQuery);
-  const equipmentItems = useMemo(() => (inventory || []).filter((i: any) => i.category === 'EQUIPMENT' || i.itemType === 'equipment'), [inventory]);
-
   const execsQuery = useMemo(() => 
     companyId && db && appt?.transactionId ? query(collection(db, paths.executions(companyId)), where('transactionId', '==', appt.transactionId)) : null,
   [db, companyId, appt?.transactionId]);
   const { data: allExecutions } = useCollection<BOQItemExecutionEntry>(execsQuery);
+
+  const hasMadeProgress = useMemo(() => {
+     return (allExecutions || []).some(e => e.appointmentId === apptId);
+  }, [allExecutions, apptId]);
 
   const executionService = useMemo(() => (db && companyId) ? new BOQExecutionService(db, companyId, permissions) : null, [db, companyId, permissions]);
   const transactionService = useMemo(() => (db && companyId) ? new TransactionService(db, companyId, permissions) : null, [db, companyId, permissions]);
@@ -288,6 +286,7 @@ export default function AppointmentDetailPage() {
         
         {appt.status !== 'completed' && (
            <Button 
+             disabled={appt.transactionId && !hasMadeProgress}
              onClick={() => {
                 if (db && companyId && user) {
                    const service = new AppointmentService(db, companyId);
@@ -297,10 +296,17 @@ export default function AppointmentDetailPage() {
                    });
                 }
              }} 
-             className="h-14 px-10 rounded-2xl font-black text-lg bg-emerald-600 text-white shadow-xl shadow-emerald-100 gap-3 border-b-8 border-emerald-800"
+             className={cn(
+               "h-14 px-10 rounded-2xl font-black text-lg shadow-xl gap-3 border-b-8 transition-all",
+               (appt.transactionId && !hasMadeProgress) 
+                ? "bg-slate-200 text-slate-400 border-slate-300 cursor-not-allowed opacity-50"
+                : "bg-emerald-600 text-white shadow-emerald-100 border-emerald-800"
+             )}
            >
-               <CheckCircle2 className="h-6 w-6" />
-               {isRtl ? 'إغلاق وإنجاز الموعد' : 'Complete Appointment'}
+               {appt.transactionId && !hasMadeProgress ? <ShieldAlert className="h-6 w-6" /> : <CheckCircle2 className="h-6 w-6" />}
+               {isRtl 
+                 ? (appt.transactionId && !hasMadeProgress ? 'يرجى تسجيل إنجاز فني أولاً' : 'إغلاق وإنجاز الموعد') 
+                 : (appt.transactionId && !hasMadeProgress ? 'Log progress to complete' : 'Complete Appointment')}
            </Button>
         )}
       </div>
@@ -516,7 +522,7 @@ export default function AppointmentDetailPage() {
 
                <div className="space-y-4">
                   <div className="flex items-center justify-between border-b pb-2">
-                     <h4 className="text-xs font-black uppercase text-slate-500 flex items-center gap-2"><Users className="h-4 w-4 text-blue-500" /> {isRtl ? 'العمالة والمهن المشاركة' : 'Labor Resources'}</h4>
+                     <h4 className="text-xs font-black uppercase text-slate-500 flex items-center gap-2"><Users className="h-4 w-4 text-blue-500" /> {isRtl ? 'العمالة والمهنة المشاركة' : 'Labor Resources'}</h4>
                      <Button type="button" variant="ghost" size="sm" onClick={() => setLaborDetails([...laborDetails, { trade: '', count: 1 }])} className="h-7 text-[10px] font-black gap-1 text-primary"><Plus className="h-3 w-3" /> {isRtl ? 'إضافة فئة' : 'Add Trade'}</Button>
                   </div>
                   <div className="grid grid-cols-1 gap-3">
