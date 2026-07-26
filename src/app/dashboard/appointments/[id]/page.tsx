@@ -10,10 +10,10 @@ import {
   ArrowRight, Loader2, Workflow, CheckCircle2,
   AlertTriangle, Hammer, Check, Layers, Save,
   Target, X, RotateCcw, Lock, Info, AlertCircle, Play,
-  Users, Truck, Plus, Trash2, HardHat
+  Users, Truck, Plus, Trash2, HardHat, Link as LinkIcon
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
-import { doc, collection, query, where, orderBy, limit } from 'firebase/firestore';
+import { doc, collection, query, where, orderBy, limit, updateDoc, serverTimestamp, getDocs } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -39,10 +39,6 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
-/**
- * @fileOverview صفحة الزيارة الميدانية المدمجة مع محرك العمالة والمعدات.
- * تم تحديثها لفلترة مراحل العمل بناءً على "شرط القسم" المعتمد في الإعدادات.
- */
 export default function AppointmentDetailPage() {
   const apptId = useParams().id as string;
   const { globalUser, user } = useAuthContext();
@@ -67,6 +63,7 @@ export default function AppointmentDetailPage() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [stageProgressMap, setStageProgressMap] = useState<Record<string, StageProgressResult>>({});
   const [isRecordOpen, setIsRecordOpen] = useState(false);
+  const [isLinkOpen, setIsLinkOpen] = useState(false);
 
   const apptRef = useMemo(() => 
     companyId && db ? doc(db, paths.appointments(companyId), apptId) : null, 
@@ -83,14 +80,9 @@ export default function AppointmentDetailPage() {
   [db, companyId, appt?.transactionId]);
   const { data: rawStages } = useCollection<StageInstance>(stagesQuery);
 
-  // --- بروتوكول فلترة المراحل السيادي (Sovereign Stage Filtering) ---
   const stages = useMemo(() => {
     const list = (rawStages || []).sort((a, b) => (a.order || 0) - (b.order || 0));
-    
-    // المدير يرى كل شيء للرقابة
     if (isAdmin) return list;
-
-    // الموظف يرى حصراً ما يخص قسمه أو المراحل العامة
     const userDeptId = globalUser?.departmentId;
     return list.filter(stage => {
        if (!stage.allowedDepartmentIds || stage.allowedDepartmentIds.length === 0) return true;
@@ -113,10 +105,7 @@ export default function AppointmentDetailPage() {
     companyId && db ? query(collection(db, paths.inventoryItems(companyId)), where('isActive', '==', true)) : null,
   [db, companyId]);
   const { data: inventory } = useCollection<any>(inventoryQuery);
-
-  const equipmentItems = useMemo(() => 
-    (inventory || []).filter((i: any) => i.category === 'EQUIPMENT' || i.itemType === 'equipment'), 
-  [inventory]);
+  const equipmentItems = useMemo(() => (inventory || []).filter((i: any) => i.category === 'EQUIPMENT' || i.itemType === 'equipment'), [inventory]);
 
   const execsQuery = useMemo(() => 
     companyId && db && appt?.transactionId ? query(collection(db, paths.executions(companyId)), where('transactionId', '==', appt.transactionId)) : null,
@@ -127,6 +116,15 @@ export default function AppointmentDetailPage() {
     companyId && db && appt?.transactionId ? query(collection(db, paths.transactionComments(companyId, appt.transactionId))) : null,
   [db, companyId, appt?.transactionId]);
   const { data: comments } = useCollection<any>(commentsQuery);
+
+  const [availableTransactions, setAvailableTransactions] = useState<any[]>([]);
+  useEffect(() => {
+    if (isLinkOpen && db && companyId && appt?.clientId) {
+      getDocs(query(collection(db, paths.transactions(companyId)), where('clientId', '==', appt.clientId)))
+        .then(snap => setAvailableTransactions(snap.docs.map(d => ({id: d.id, ...d.data()}))))
+        .catch(() => setAvailableTransactions([]));
+    }
+  }, [isLinkOpen, db, companyId, appt?.clientId]);
 
   const executionService = useMemo(() => (db && companyId) ? new BOQExecutionService(db, companyId, permissions) : null, [db, companyId, permissions]);
   const transactionService = useMemo(() => (db && companyId) ? new TransactionService(db, companyId, permissions) : null, [db, companyId, permissions]);
@@ -148,22 +146,24 @@ export default function AppointmentDetailPage() {
     return () => { active = false; };
   }, [executionService, stages, appt?.transactionId, allExecutions]);
 
-  const isConsulting = useMemo(() => {
-    const name = transaction?.activityTypeName || '';
-    return name.includes('استشارات') || name.includes('Consulting') || name.includes('تصميم') || name.includes('Design');
-  }, [transaction]);
-
-  const checkResults = useMemo(() => {
-    if (!appt?.transactionId) return { hasAchievement: true, hasComment: true, ready: true };
-    const hasProgressLogs = (allExecutions || []).some(e => e.appointmentId === apptId);
-    const hasRevisionsInWarRoom = (comments || []).some((c: any) => c.appointmentId === apptId && c.commentType === 'note');
-    const hasStageCompletion = (rawStages || []).some(s => s.completedByApptId === apptId);
-    
-    const hasAchievement = hasProgressLogs || hasRevisionsInWarRoom || hasStageCompletion;
-    const hasComment = (comments || []).some((c: any) => c.appointmentId === apptId && c.createdBy === user?.uid);
-
-    return { hasAchievement, hasComment, ready: hasAchievement && hasComment };
-  }, [allExecutions, comments, apptId, appt?.transactionId, user?.uid, rawStages]);
+  const handleLinkToProject = async (transId: string) => {
+    if (!db || !companyId || !apptId) return;
+    setLoadingAction('linking');
+    try {
+      const trans = availableTransactions.find(t => t.id === transId);
+      await updateDoc(doc(db, paths.appointments(companyId), apptId), {
+        transactionId: transId,
+        transactionNumber: trans?.transactionNumber || '',
+        updatedAt: serverTimestamp()
+      });
+      toast({ title: isRtl ? "تم ربط الموعد بالمعاملة بنجاح" : "Appointment linked to project" });
+      setIsLinkOpen(false);
+    } catch (e) {
+      toast({ variant: "destructive", title: t('error') });
+    } finally {
+      setLoadingAction(null);
+    }
+  };
 
   const handleStartStage = async (stageId: string) => {
     if (!transactionService || !user || !appt?.transactionId) return;
@@ -180,13 +180,6 @@ export default function AppointmentDetailPage() {
 
   const handleCompleteStage = async (stage: StageInstance, force: boolean = false) => {
     if (!transactionService || !user || !stage.id || !appt?.transactionId) return;
-    if (!isConsulting && !force) {
-      const progress = stageProgressMap[stage.technicalStageId];
-      if (progress && !progress.canComplete) {
-         toast({ variant: "destructive", title: isRtl ? "المرحلة غير مكتملة فنيًا" : "Incomplete", description: progress.reason });
-         return;
-      }
-    }
     setProcessingId(stage.id);
     try {
       await transactionService.completeStage(appt.transactionId, stage.id, user.uid, globalUser?.username || 'User', force, apptId);
@@ -239,7 +232,6 @@ export default function AppointmentDetailPage() {
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-20 text-start" dir={dir}>
       
-      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-6">
         <div className="flex items-center gap-4">
            <button onClick={() => router.back()} className="h-12 w-12 border-2 rounded-2xl bg-white shadow-sm flex items-center justify-center hover:bg-slate-50 transition-all text-slate-400">
@@ -247,34 +239,35 @@ export default function AppointmentDetailPage() {
            </button>
            <div className="text-start">
              <h1 className="text-3xl font-black font-headline text-slate-900">{appt.title}</h1>
-             <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-[0.2em] opacity-60">
-               {appt.clientName} | {transaction?.transactionNumber || 'External'}
-             </p>
+             <div className="flex items-center gap-2 mt-1">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] opacity-60">
+                  {appt.clientName} | {transaction?.transactionNumber || 'External Mission'}
+                </span>
+                {!appt.transactionId && (
+                  <Button variant="ghost" size="sm" onClick={() => setIsLinkOpen(true)} className="h-5 px-2 rounded-md text-[8px] font-black bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all gap-1">
+                     <LinkIcon className="h-2 w-2" /> {isRtl ? 'ربط بمعاملة' : 'Link Project'}
+                  </Button>
+                )}
+             </div>
            </div>
         </div>
         
         {appt.status !== 'completed' && (
-           <div className="flex flex-col items-end gap-2">
-              <Button 
-                onClick={() => {
-                   if (db && companyId && user) {
-                      const service = new AppointmentService(db, companyId);
-                      service.updateStatus(apptId, 'completed', user.uid).then(() => {
-                        toast({ title: isRtl ? "تم إنجاز الموعد وإغلاق الملف" : "Appt Completed" });
-                        router.push('/dashboard/appointments');
-                      });
-                   }
-                }} 
-                disabled={!checkResults.ready}
-                className={cn(
-                  "h-14 px-10 rounded-2xl font-black text-lg transition-all gap-3 border-b-8 shadow-xl",
-                  checkResults.ready ? "bg-emerald-600 text-white border-emerald-800 shadow-emerald-100" : "bg-slate-200 text-slate-400 border-slate-400"
-                )}
-              >
-                  <CheckCircle2 className="h-6 w-6" />
-                  {isRtl ? 'إغلاق وإنجاز الموعد' : 'Complete Appointment'}
-              </Button>
-           </div>
+           <Button 
+             onClick={() => {
+                if (db && companyId && user) {
+                   const service = new AppointmentService(db, companyId);
+                   service.updateStatus(apptId, 'completed', user.uid).then(() => {
+                     toast({ title: isRtl ? "تم إنجاز الموعد وإغلاق الملف" : "Appt Completed" });
+                     router.push('/dashboard/appointments');
+                   });
+                }
+             }} 
+             className="h-14 px-10 rounded-2xl font-black text-lg bg-emerald-600 text-white shadow-xl shadow-emerald-100 gap-3 border-b-8 border-emerald-800"
+           >
+               <CheckCircle2 className="h-6 w-6" />
+               {isRtl ? 'إغلاق وإنجاز الموعد' : 'Complete Appointment'}
+           </Button>
         )}
       </div>
 
@@ -288,25 +281,51 @@ export default function AppointmentDetailPage() {
                        {isRtl ? 'رادار المسار الفني' : 'Technical Radar'}
                     </CardTitle>
                  </div>
-                 {appt.status !== 'completed' && !isConsulting && (
+                 {appt.status !== 'completed' && appt.transactionId && (
                     <Button onClick={() => setIsRecordOpen(true)} className="btn-gradient h-12 px-8 rounded-xl gap-2 shadow-lg">
                        <Hammer className="h-4 w-4" /> {isRtl ? 'تسجيل إنجاز فني' : 'Log Progress'}
                     </Button>
                  )}
               </CardHeader>
               <CardContent className="p-8 space-y-4">
-                 {stages.length === 0 ? (
-                   <div className="py-20 text-center flex flex-col items-center gap-4 opacity-30">
-                      <Workflow className="h-12 w-12 text-slate-200" />
-                      <p className="text-xs font-bold text-slate-400">
-                        {isRtl ? 'لا توجد مراحل مرتبطة بقسمك حالياً.' : 'No stages associated with your department.'}
-                      </p>
+                 {!appt.transactionId ? (
+                   <div className="py-24 text-center flex flex-col items-center gap-6 opacity-30">
+                      <div className="w-20 h-20 bg-slate-100 rounded-[2rem] flex items-center justify-center text-slate-300">
+                         <Workflow className="h-10 w-10" />
+                      </div>
+                      <div className="space-y-2">
+                         <p className="text-lg font-black text-slate-800">{isRtl ? 'موعد خارجي (بدون مسار فني)' : 'External Mission'}</p>
+                         <p className="text-xs font-bold text-slate-400 max-w-xs mx-auto">
+                            {isRtl ? 'هذا الموعد غير مرتبط بمعاملة فنية. قم بربطه بمشروع لعرض مراحل التنفيذ والمقايسة.' : 'This appointment is not linked to a technical transaction. Link it to view stages.'}
+                         </p>
+                      </div>
+                      <Button onClick={() => setIsLinkOpen(true)} variant="outline" className="rounded-xl border-2 font-black h-11 px-8 gap-2">
+                         <LinkIcon className="h-4 w-4" /> {isRtl ? 'ربط الموعد بمعاملة الآن' : 'Link to Project'}
+                      </Button>
+                   </div>
+                 ) : stages.length === 0 ? (
+                   <div className="py-24 text-center flex flex-col items-center gap-6">
+                      <div className="w-20 h-20 bg-amber-50 rounded-[2rem] flex items-center justify-center text-amber-500 shadow-inner">
+                         <ShieldAlert className="h-10 w-10" />
+                      </div>
+                      <div className="space-y-2">
+                         <p className="text-lg font-black text-slate-800">
+                            {isRtl ? 'تنبيه: مراحل مخفية أو غير مفعمة' : 'Stages Restricted or Not Active'}
+                         </p>
+                         <p className="text-xs font-bold text-slate-400 max-w-xs mx-auto leading-relaxed">
+                            {isRtl 
+                              ? `لا توجد مراحل تتبع قسمك (${globalUser?.departmentId || '---'}) في هذا المسار. يرجى مراجعة "هندسة المسارات" في الإعدادات للتأكد من تعيين القسم الإنشائي لهذه المراحل.` 
+                              : `No stages for your department (${globalUser?.departmentId}) found. Check path settings.`}
+                         </p>
+                      </div>
+                      {isAdmin && (
+                        <Button onClick={() => router.push('/dashboard/settings/checklists')} variant="ghost" className="text-primary font-black text-[10px] uppercase gap-2 hover:bg-primary/5">
+                           <Settings2 className="h-3 w-3" /> Fix Path Engineering
+                        </Button>
+                      )}
                    </div>
                  ) : stages.map((stage, idx) => {
                     const isSelected = stage.id === selectedStageId;
-                    const isPreviousCompleted = idx === 0 || stages[idx-1].status === 'completed';
-                    const isFrontier = stage.status === 'in-progress' || (stage.status === 'pending' && isPreviousCompleted && !checkResults.hasAchievement);
-                    
                     return (
                        <div key={stage.id} onClick={() => setSelectedStageId(stage.id!)} className={cn("p-5 rounded-3xl border-2 transition-all cursor-pointer flex flex-col gap-4 group", isSelected ? "bg-primary/5 border-primary shadow-lg scale-[1.01]" : "bg-white border-slate-100 hover:border-slate-200")}>
                           <div className="flex items-center justify-between">
@@ -318,7 +337,7 @@ export default function AppointmentDetailPage() {
                                 </div>
                              </div>
                           </div>
-                          {isSelected && isFrontier && (
+                          {isSelected && (stage.status === 'pending' || stage.status === 'in-progress') && (
                              <div className="flex gap-3 animate-in slide-in-from-top-1" onClick={e => e.stopPropagation()}>
                                 {stage.status === 'pending' && <Button onClick={() => handleStartStage(stage.id!)} disabled={!!processingId} className="flex-1 h-12 rounded-2xl bg-blue-600 text-white font-black text-xs gap-2 shadow-lg">{processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Play className="h-4 w-4" />}{isRtl ? 'بدء العمل' : 'Start'}</Button>}
                                 {stage.status === 'in-progress' && <Button onClick={() => handleCompleteStage(stage)} disabled={!!processingId} className="flex-1 h-12 rounded-2xl bg-emerald-600 text-white font-black text-xs gap-2 shadow-lg">{processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}{isRtl ? 'إنجاز' : 'Done'}</Button>}
@@ -337,6 +356,39 @@ export default function AppointmentDetailPage() {
            </div>
         </div>
       </div>
+
+      {/* مودال الربط بالمعاملة */}
+      <Dialog open={isLinkOpen} onOpenChange={(v) => { if(!v) setIsLinkOpen(false); forceThaw(); }}>
+         <DialogContent className="rounded-xl p-0 overflow-hidden max-w-lg border-0 shadow-3xl bg-white" dir={dir}>
+            <div className="bg-slate-900 p-8 text-white text-start">
+               <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3">
+                  <LinkIcon className="h-7 w-7 text-primary" />
+                  {isRtl ? 'ربط الموعد بمشروع قائم' : 'Link to Existing Project'}
+               </DialogTitle>
+            </div>
+            <div className="p-8 space-y-6 text-start">
+               <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اختر المعاملة الفنية' : 'Select Transaction'}</Label>
+               <div className="space-y-2">
+                  {availableTransactions.length === 0 ? (
+                    <div className="p-10 text-center border-2 border-dashed rounded-2xl bg-slate-50">
+                       <p className="text-xs font-bold text-slate-400">{isRtl ? 'لا يوجد معاملات جارية لهذا العميل.' : 'No active projects for this client.'}</p>
+                    </div>
+                  ) : availableTransactions.map(t => (
+                    <div key={t.id} onClick={() => handleLinkToProject(t.id)} className="p-4 rounded-xl border-2 border-slate-100 hover:border-primary/20 hover:bg-primary/5 cursor-pointer transition-all flex justify-between items-center group">
+                       <div className="text-start">
+                          <p className="font-black text-sm text-slate-800 group-hover:text-primary">{t.subServiceName}</p>
+                          <p className="text-[10px] font-mono text-slate-400 uppercase">#{t.transactionNumber}</p>
+                       </div>
+                       <ArrowRight className={cn("h-4 w-4 text-slate-200 group-hover:text-primary transition-all", isRtl && "rotate-180")} />
+                    </div>
+                  ))}
+               </div>
+            </div>
+            <DialogFooter className="p-6 bg-slate-50 border-t">
+               <Button variant="outline" onClick={() => setIsLinkOpen(false)} className="w-full h-12 rounded-xl font-bold">إلغاء</Button>
+            </DialogFooter>
+         </DialogContent>
+      </Dialog>
 
       <Dialog open={isRecordOpen} onOpenChange={(v) => { if(!v) setIsRecordOpen(false); forceThaw(); }}>
          <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-2xl flex flex-col max-h-[95vh]" dir={dir}>
@@ -369,7 +421,6 @@ export default function AppointmentDetailPage() {
                   <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-primary tracking-widest">Quantity Executed Today</Label><Input type="number" step="0.01" value={progressQty} onChange={e => setProgressQty(e.target.value === '' ? '' : Number(e.target.value))} className="h-14 rounded-xl border-2 font-black text-4xl text-center bg-white shadow-inner" /></div>
                </div>
 
-               {/* محرك العمالة */}
                <div className="space-y-4">
                   <div className="flex items-center justify-between border-b pb-2">
                      <h4 className="text-xs font-black uppercase text-slate-500 flex items-center gap-2"><Users className="h-4 w-4 text-blue-500" /> {isRtl ? 'القوى العاملة المشاركة' : 'Labor Resources'}</h4>
@@ -390,7 +441,6 @@ export default function AppointmentDetailPage() {
                   </div>
                </div>
 
-               {/* محرك المعدات */}
                <div className="space-y-4 pt-4">
                   <div className="flex items-center justify-between border-b pb-2">
                      <h4 className="text-xs font-black uppercase text-slate-500 flex items-center gap-2"><Truck className="h-4 w-4 text-orange-500" /> {isRtl ? 'الآليات والمعدات المستخدمة' : 'Equipment & Tools'}</h4>
@@ -436,4 +486,3 @@ export default function AppointmentDetailPage() {
     </div>
   );
 }
-
