@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   ArrowRight, Loader2, Workflow, CheckCircle2,
-  AlertTriangle, Hammer, Check, Layers, Save,
-  Target, X, RotateCcw, Lock, Info, AlertCircle, Play,
-  Users, Truck, Plus, Trash2, HardHat, Link as LinkIcon,
-  ShieldAlert, Settings2, History, ShieldX, Sparkles
+  Hammer, Check, Save,
+  Target, X, RotateCcw, Lock, Info, Play,
+  Users, Truck, Plus, Trash2, Link as LinkIcon,
+  ShieldAlert, ShieldX, Sparkles
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, where, orderBy, limit, updateDoc, serverTimestamp, getDocs } from 'firebase/firestore';
@@ -63,7 +63,6 @@ export default function AppointmentDetailPage() {
   const [isRecordOpen, setIsRecordOpen] = useState(false);
   const [isLinkOpen, setIsLinkOpen] = useState(false);
 
-  // حالات تسجيل المراجعة (Revision) الموحدة
   const [isRevisionOpen, setIsRevisionOpen] = useState(false);
   const [revisionStage, setRevisionStage] = useState<StageInstance | null>(null);
   const [revisionComment, setRevisionComment] = useState("");
@@ -258,6 +257,13 @@ export default function AppointmentDetailPage() {
     }
   }, [isLinkOpen, db, companyId, appt?.clientId]);
 
+  const commentPath = useMemo(() => {
+    if (!companyId || !appt) return null;
+    return appt.transactionId 
+      ? paths.transactionComments(companyId, appt.transactionId) 
+      : `companies/${companyId}/appointments/${apptId}/comments`;
+  }, [companyId, appt, apptId]);
+
   if (apptLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
   if (!appt) return <div className="p-20 text-center font-black">404 - Not Found</div>;
 
@@ -380,7 +386,6 @@ export default function AppointmentDetailPage() {
                     const isPreviousCompleted = idx === 0 || stages[idx-1].status === 'completed';
                     const isReadyToStart = stage.status === 'pending' && isPreviousCompleted;
                     
-                    // قفل تخصصي إضافي في الواجهة: هل يحق للموظف لمس هذه المرحلة؟
                     const isDeptAllowed = !stage.allowedDepartmentIds?.length || (globalUser?.departmentId && stage.allowedDepartmentIds.includes(globalUser.departmentId));
 
                     return (
@@ -455,17 +460,18 @@ export default function AppointmentDetailPage() {
 
         <div className="lg:col-span-5 flex flex-col h-[700px]">
            <div className="bg-white rounded-[3rem] shadow-2xl border border-primary/10 overflow-hidden flex-1 flex flex-col">
-              <CommentSection 
-                transactionId={appt.transactionId || apptId} 
-                appointmentId={apptId} 
-                path={appt.transactionId ? paths.transactionComments(companyId!, appt.transactionId) : `companies/${companyId}/appointments/${apptId}/comments`} 
-                title={isRtl ? 'غرفة عمليات المعاملة' : 'Transaction War Room'} 
-              />
+              {commentPath && (
+                <CommentSection 
+                  transactionId={appt.transactionId || apptId} 
+                  appointmentId={apptId} 
+                  path={commentPath} 
+                  title={isRtl ? 'غرفة عمليات المعاملة' : 'Transaction War Room'} 
+                />
+              )}
            </div>
         </div>
       </div>
 
-      {/* مودال تسجيل مراجعة التصميم الموحد */}
       <Dialog open={isRevisionOpen} onOpenChange={(v) => { if(!v) setIsRevisionOpen(false); forceThaw(); }}>
          <DialogContent className="rounded-xl p-0 max-w-lg border-0 shadow-3xl bg-white" dir={dir}>
             <div className="bg-orange-50 p-6 border-b text-orange-900 text-start">
@@ -487,7 +493,6 @@ export default function AppointmentDetailPage() {
          </DialogContent>
       </Dialog>
 
-      {/* مودال الربط بالمعاملة */}
       <Dialog open={isLinkOpen} onOpenChange={(v) => { if(!v) setIsLinkOpen(false); forceThaw(); }}>
          <DialogContent className="rounded-xl p-0 overflow-hidden max-w-lg border-0 shadow-3xl bg-white" dir={dir}>
             <div className="bg-slate-900 p-8 text-white text-start">
