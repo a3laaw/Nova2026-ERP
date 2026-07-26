@@ -106,7 +106,7 @@ export function DashboardSidebar() {
           { title: t('myProfile'), url: globalUser?.employeeId ? `/dashboard/hr/reports/dossier/${globalUser.employeeId}` : '/dashboard/hr', icon: ShieldCheck },
           { title: t('staffRecords'), url: "/dashboard/hr/employees", icon: Users, hideIfOwnScope: true },
           { title: t('leaves'), url: "/dashboard/hr/leaves", icon: Calendar },
-          { title: t('payroll'), url: "/dashboard/hr/payroll", icon: Calculator, requiredAction: 'approve' as const },
+          { title: t('payroll'), url: "/dashboard/hr/payroll", icon: Calculator, requiredAction: 'approve' as const, hideIfOwnScope: true },
         ]
       },
       { 

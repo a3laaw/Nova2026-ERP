@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -8,11 +9,12 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   Calculator, Sparkles, Loader2, Save, X, 
-  RefreshCw, DatabaseZap, AlertTriangle, CalendarDays
+  RefreshCw, DatabaseZap, AlertTriangle, CalendarDays, Lock
 } from "lucide-react";
 import { useFirestore } from '@/firebase';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
+import { usePermissions } from '@/hooks/use-permissions';
 import { PayrollService } from '@/services/payroll-service';
 import { PayrollRecord } from '@/types/payroll';
 import { toast } from '@/hooks/use-toast';
@@ -22,19 +24,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 export default function NewPayrollBatchPage() {
   const { globalUser, user } = useAuthContext();
   const { t, lang, dir } = useLanguage();
+  const { check, isAdmin } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
-  // الحالات الأساسية (الشهر والسنة)
+  // القفل المالي المسبق
+  const payrollAccess = check('hr', 'approve');
+
+  useEffect(() => {
+    if (!isAdmin && !payrollAccess.can) {
+       router.replace('/dashboard/hr');
+    }
+  }, [isAdmin, payrollAccess, router]);
+
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [month, setMonth] = useState(new Date().getMonth().toString()); // 0-indexed
+  const [month, setMonth] = useState(new Date().getMonth().toString()); 
   const [year, setYear] = useState(new Date().getFullYear().toString());
   const [drafts, setDrafts] = useState<Partial<PayrollRecord>[] | null>(null);
   
-  // حالة التحقق من البيانات
   const [dataStatus, setDataStatus] = useState<{ checked: boolean; hasData: boolean; count: number }>({ 
     checked: false, 
     hasData: false, 
@@ -42,7 +52,6 @@ export default function NewPayrollBatchPage() {
   });
   const [checkingData, setCheckingData] = useState(false);
 
-  // توليد قائمة السنوات ديناميكياً (تبدأ من 2026 وتتجدد تلقائياً مع الزمن)
   const yearsList = useMemo(() => {
     const currentYear = new Date().getFullYear();
     const startYear = 2026; 
@@ -51,19 +60,17 @@ export default function NewPayrollBatchPage() {
     for (let y = startYear; y <= limitYear; y++) {
       years.push(y);
     }
-    return years; // تمت إزالة الترتيب التنازلي لإظهار الأقدم أولاً
+    return years;
   }, []);
 
   const payrollService = useMemo(() => 
     db && companyId ? new PayrollService(db, companyId) : null, 
   [db, companyId]);
 
-  // وظيفة التحقق من توفر بيانات البصمة
   const verifyData = useCallback(async () => {
     if (!payrollService || !companyId) return;
     setCheckingData(true);
     try {
-      // نرسل الشهر بصيغة 1-indexed للخدمة
       const res = await payrollService.checkDataAvailability(Number(month) + 1, Number(year));
       setDataStatus({ checked: true, hasData: res.hasAttendance, count: res.count });
     } catch (e) {
@@ -73,7 +80,6 @@ export default function NewPayrollBatchPage() {
     }
   }, [month, year, payrollService, companyId]);
 
-  // إعادة التشغيل عند تغيير الشهر أو السنة
   useEffect(() => {
     verifyData();
   }, [verifyData]);
@@ -127,6 +133,10 @@ export default function NewPayrollBatchPage() {
 
   const monthName = new Date(0, Number(month)).toLocaleString(isRtl ? 'ar-KW' : 'en-US', { month: 'long' });
 
+  if (!isAdmin && !payrollAccess.can) {
+    return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
+  }
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -143,7 +153,6 @@ export default function NewPayrollBatchPage() {
 
       <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
         <CardContent className="p-10 flex flex-col md:flex-row items-end gap-6 bg-slate-50/50">
-           {/* القائمة اليدوية للأشهر */}
            <div className="space-y-2 text-start flex-1">
               <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اختيار الشهر' : 'Target Month'}</label>
               <Select value={month} onValueChange={setMonth}>
@@ -160,7 +169,6 @@ export default function NewPayrollBatchPage() {
               </Select>
            </div>
 
-           {/* القائمة اليدوية للسنوات */}
            <div className="space-y-2 text-start flex-1">
               <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'السنة المالية' : 'Fiscal Year'}</label>
               <Select value={year} onValueChange={setYear}>

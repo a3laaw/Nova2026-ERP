@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,12 +10,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { 
   Calculator, Plus, Loader2, Search, 
   CalendarDays, FileText, ArrowRight,
-  TrendingDown, TrendingUp, Filter
+  TrendingDown, TrendingUp, Filter, Lock
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
+import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { PayrollBatch } from '@/types/payroll';
 import { cn } from '@/lib/utils';
@@ -23,11 +25,21 @@ import { Input } from '@/components/ui/input';
 export default function PayrollBatchesPage() {
   const { globalUser } = useAuthContext();
   const { t, lang, dir } = useLanguage();
+  const { check, isAdmin } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
+
+  // القفل السيادي: فحص صلاحية الاعتماد (Approve) قبل العرض
+  const payrollAccess = check('hr', 'approve');
+
+  useEffect(() => {
+    if (!isAdmin && !payrollAccess.can) {
+       router.replace('/dashboard/hr');
+    }
+  }, [isAdmin, payrollAccess, router]);
 
   const batchesQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.payroll(companyId)), orderBy('year', 'desc')) : null, 
@@ -39,6 +51,18 @@ export default function PayrollBatchesPage() {
     `${b.month}/${b.year}`.includes(searchTerm) || 
     b.status.includes(searchTerm.toLowerCase())
   );
+
+  if (!isAdmin && !payrollAccess.can) {
+    return (
+      <div className="h-[60vh] flex flex-col items-center justify-center gap-4 text-center">
+         <div className="h-20 w-20 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center shadow-inner">
+            <Lock className="h-10 w-10" />
+         </div>
+         <h2 className="text-xl font-black text-slate-800">{isRtl ? 'وصول محجوب' : 'Access Restricted'}</h2>
+         <p className="text-xs font-bold text-slate-400">{isRtl ? 'لا تملك صلاحية عرض مسيرات الرواتب.' : 'You lack permissions to view payroll batches.'}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500" dir={dir}>
@@ -131,7 +155,7 @@ export default function PayrollBatchesPage() {
                         </TableCell>
                         <TableCell className="text-start">
                            <Badge variant="outline" className={cn(
-                             "font-black px-3 py-1 border-0 shadow-sm uppercase text-[9px]",
+                             "font-black px-3 py-1 rounded-lg border-0 shadow-sm uppercase text-[9px] gap-1",
                              batch.status === 'paid' ? 'bg-[#039BE5]/10 text-[#039BE5]' :
                              batch.status === 'approved' ? 'bg-emerald-50 text-emerald-600' :
                              'bg-[#FFCA28]/10 text-[#FFCA28]'

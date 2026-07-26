@@ -42,7 +42,10 @@ export default function HRDashboard() {
   // فحص الصلاحيات
   const hrView = check('hr', 'view');
   const canHire = check('hr', 'create').can && check('hr', 'create').scope !== 'own';
+  
+  // قفل الرواتب: لا يظهر الزر إلا لمن يملك صلاحية الاعتماد (Admin/HR Manager)
   const canSeePayroll = check('hr', 'approve').can;
+  
   const canSeeCompliance = check('hr', 'edit').can && check('hr', 'edit').scope !== 'own';
 
   // --- بروتوكول التوجيه التلقائي للموظفين (The Auto-Dossier Redirect) ---
