@@ -147,11 +147,14 @@ export function CommentSection({
     if (!commentService || !user || !content.trim()) return;
     setLoading(true);
     try {
+      // فرض الاسم الكامل (FullName) بشكل صارم لمنع ظهور اليوزر أو البريد
+      const officialName = globalUser?.fullName || user.displayName || globalUser?.username || 'مهندس غير معرف';
+      
       await commentService.addTransactionComment(
         transactionId, 
         content, 
         user.uid, 
-        globalUser?.username || user.displayName || user.email || 'User',
+        officialName,
         filterStageId,
         selectedStageName,
         'general',
@@ -323,9 +326,6 @@ export function CommentSection({
 }
 
 function PaginationControl({ current, total, onPageChange, isRtl }: any) {
-  // بروتوكول تصحيح الاتجاه (Logical Direction Fix): 
-  // في العربية (RTL)، زر "التقدم" للأمام هو السهم المتجه لليسار.
-  // زر "الرجوع" للخلف هو السهم المتجه لليمين.
   return (
     <div className={cn("flex items-center justify-center gap-3 pt-6 pb-4", isRtl ? "flex-row-reverse" : "flex-row")}>
       <Button 

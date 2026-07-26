@@ -49,8 +49,8 @@ export default function AppointmentDetailPage() {
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
-  // فرض الاسم الكامل السيادي لضمان الاحترافية في السجلات
-  const currentUserName = useMemo(() => globalUser?.fullName || user?.displayName || 'User', [globalUser, user]);
+  // فرض الاسم الكامل السيادي لضمان الاحترافية في السجلات وعدم ظهور اليوزر
+  const currentUserName = useMemo(() => globalUser?.fullName || user?.displayName || globalUser?.username || 'مهندس غير معرف', [globalUser, user]);
 
   const [selectedStageId, setSelectedStageId] = useState("");
   const [selectedItemId, setSelectedItemId] = useState("");
@@ -397,7 +397,7 @@ export default function AppointmentDetailPage() {
                        <div key={stage.id} onClick={() => setSelectedStageId(stage.id!)} className={cn("p-5 rounded-3xl border-2 transition-all cursor-pointer flex flex-col gap-4 group", isSelected ? "bg-primary/5 border-primary shadow-lg scale-[1.01]" : "bg-white border-slate-100 hover:border-slate-200")}>
                           <div className="flex items-center justify-between">
                              <div className="flex items-center gap-4">
-                                <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center font-black text-xs border shadow-sm", stage.status === 'completed' ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-white text-slate-400")}>{stage.status === 'completed' ? <Check className="h-5 w-5" /> : (idx + 1)}</div>
+                                <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center font-black text-xs border shadow-sm", stage.status === 'completed' ? "bg-emerald-50 text-emerald-600" : "bg-white text-slate-400")}>{stage.status === 'completed' ? <Check className="h-5 w-5" /> : (idx + 1)}</div>
                                 <div className="text-start">
                                    <div className="flex items-center gap-2">
                                       <p className={cn("text-base font-black leading-tight", isSelected ? "text-primary" : "text-slate-800")}>{stage.name}</p>

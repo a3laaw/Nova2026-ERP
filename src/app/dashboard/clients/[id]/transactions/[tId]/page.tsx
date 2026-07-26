@@ -106,7 +106,7 @@ export default function TransactionDetailsPage() {
   const canSeeFinance = check('accounting', 'view').can || check('procurement', 'view').can;
 
   // خوارزمية استخراج الاسم السيادي (Sovereign Identity Resolver)
-  // تضمن عدم ظهور "اليوزر" أو "الإيميل" في السجلات الفنية
+  // فرض الاسم الكامل (fullName) من السجل العالمي لضمان عدم ظهور "اليوزر" أو "1004"
   const currentUserName = useMemo(() => {
     return globalUser?.fullName || user?.displayName || globalUser?.username || 'مهندس غير معرف';
   }, [globalUser, user]);
@@ -347,7 +347,7 @@ export default function TransactionDetailsPage() {
                         <div className="w-24 h-24 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto text-slate-200"><Workflow className="h-12 w-12" /></div>
                         <div className="space-y-2">
                            <h3 className="text-2xl font-black text-slate-900">{isRtl ? 'بانتظار إطلاق المسار الفني' : 'Awaiting Pipeline Launch'}</h3>
-                           <p className="text-sm font-bold text-slate-400 max-w-sm mx-auto">{isRtl ? 'لقد تم اعتماد العقد بنجاح. يمكنك الآن إطلاق مراحل العمل الفني المعتمدة لهذا المسار.' : 'Contract approved. You can now launch technical stages for this path.'}</p>
+                           <p className="text-sm font-bold text-slate-400 max-sm mx-auto">{isRtl ? 'لقد تم اعتماد العقد بنجاح. يمكنك الآن إطلاق مراحل العمل الفني المعتمدة لهذا المسار.' : 'Contract approved. You can now launch technical stages for this path.'}</p>
                         </div>
                         {isAdmin && (
                           <div className="flex flex-col items-center gap-3">
