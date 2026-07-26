@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -138,17 +139,19 @@ export default function TransactionDetailsPage() {
   const executionsQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.executions(companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
   const { data: allExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
 
-  // الفلترة السيادية للأقسام: المرحلة تظهر فقط لو كانت مسموح بها لقسم المستخدم
+  // --- بروتوكول فلترة المسار الفني بناءً على شرط القسم (Department Condition) ---
   const stages = useMemo(() => {
     const list = (rawStages || []).sort((a, b) => (a.order || 0) - (b.order || 0));
     
-    if (isAdmin) return list; // المدير يرى كافة المراحل دائماً
+    // المدير والمطور يملكان حق الوصول الشامل للرقابة
+    if (isAdmin) return list;
 
+    // الموظف يرى حصراً المراحل المسموح لقسمه بها، أو المراحل العامة (بدون قيود)
     const userDeptId = globalUser?.departmentId;
     return list.filter(stage => {
-       // إذا لم تكن هناك قيود (المصفوفة فارغة)، فهي مرحلة عامة
+       // إذا لم تكن هناك قيود (المصفوفة فارغة)، فهي مرحلة عامة تظهر للكل
        if (!stage.allowedDepartmentIds || stage.allowedDepartmentIds.length === 0) return true;
-       // خلاف ذلك، يجب أن يكون قسم المستخدم ضمن القائمة المسموح بها
+       // خلاف ذلك، يجب أن يكون قسم المستخدم ضمن القائمة المسموح بها لهذه المرحلة
        return userDeptId && stage.allowedDepartmentIds.includes(userDeptId);
     });
   }, [rawStages, isAdmin, globalUser?.departmentId]);
@@ -178,23 +181,6 @@ export default function TransactionDetailsPage() {
     fetchAllProgress();
     return () => { active = false; };
   }, [executionService, stages, transactionId, allExecutions, isConsulting]);
-
-  const handleCreateBOQ = async () => {
-    if (!db || !companyId || !user || !selectedTemplateId) return;
-    setLoadingAction('creating_boq');
-    try {
-      const docService = new DocumentService(db, companyId, permissions);
-      await docService.instantiateBoqFromTemplate(selectedTemplateId, {
-        transactionId, clientId, clientName: transaction?.clientName || '',
-        activityTypeId: transaction?.activityTypeId || '', serviceId: transaction?.serviceId || '',
-        subServiceId: transaction?.subServiceId || '', name: transaction?.subServiceName || ''
-      }, user.uid, currentUserName);
-      toast({ title: isRtl ? "تم استنساخ المقايسة بنجاح" : "BOQ Template Instantiated" });
-      setIsBoqInitOpen(false);
-    } catch (e: any) {
-      toast({ variant: "destructive", title: t('error'), description: e.message });
-    } finally { setLoadingAction(null); }
-  };
 
   const handleStartStage = async (stageId: string) => {
     if (!transactionService || !user) return;
@@ -293,7 +279,7 @@ export default function TransactionDetailsPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4">
         <div className="flex items-center gap-4 text-start">
            <div className="h-11 px-4 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black text-sm border-2 border-primary/20 shadow-inner">{transaction?.transactionNumber}</div>
-           <div>
+           <div className="text-start">
               <h1 className="text-xl font-black text-slate-900 leading-tight">{transaction?.subServiceName}</h1>
               <div className="flex items-center gap-3 mt-0.5">
                  <Badge className={cn("font-black px-2 py-0.5 rounded-lg border-0 shadow-sm uppercase text-[8px]", transaction?.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600')}>{transaction?.status}</Badge>
@@ -338,7 +324,7 @@ export default function TransactionDetailsPage() {
                         {!isConsulting && !activeBoq && isAdmin && <Button onClick={() => setIsBoqInitOpen(true)} className="h-14 px-10 rounded-2xl gap-3"><Sparkles className="h-5 w-5" /> {isRtl ? 'إنشاء مقايسة للمشروع' : 'Create BOQ'}</Button>}
                       </div>
                    ) : (
-                     <div className="space-y-6">
+                     <div className="space-y-6 text-start">
                         <div className="flex justify-between items-end px-2">
                            <h3 className="text-lg font-black font-headline text-slate-800 flex items-center gap-2">
                               <Workflow className="h-5 w-5 text-primary" /> {isRtl ? 'رادار المسار الميداني' : 'Field Pipeline'}
@@ -361,7 +347,7 @@ export default function TransactionDetailsPage() {
                                   <CardContent className="p-5 flex flex-col md:flex-row items-center justify-between gap-6">
                                      <div className="flex items-center gap-5 flex-1 text-start">
                                         <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center font-black shadow-sm border", stage.status === 'completed' ? "bg-emerald-50 text-emerald-600" : "bg-white")}>{stage.status === 'completed' ? <CheckCircle2 className="h-5 w-5" /> : (idx + 1)}</div>
-                                        <div className="space-y-1 flex-1">
+                                        <div className="space-y-1 flex-1 text-start">
                                            <div className="flex items-center gap-2">
                                               <h4 className="font-black text-base text-slate-900 tracking-tight">{stage.name}</h4>
                                               {isConsulting && (stage.revisionCount || 0) > 0 && (
@@ -409,7 +395,7 @@ export default function TransactionDetailsPage() {
           </div>
       </div>
 
-      {/* مودال تسجيل المراجعة (إلزامي بالتعليق) */}
+      {/* مودال تسجيل المراجعة */}
       <Dialog open={isRevisionOpen} onOpenChange={setIsRevisionOpen}>
          <DialogContent className="rounded-xl p-0 max-w-lg border-0 shadow-3xl bg-white" dir={dir}>
             <div className="bg-orange-50 p-6 border-b text-orange-900 text-start">
@@ -446,7 +432,6 @@ export default function TransactionDetailsPage() {
          </DialogContent>
       </Dialog>
 
-      {/* مودالات فرعية أخرى */}
       <Dialog open={isBoqInitOpen} onOpenChange={setIsBoqInitOpen}>
          <DialogContent className="rounded-[2.5rem] p-0 max-w-lg" dir={dir}>
             <div className="bg-slate-50 p-10 text-slate-900 border-b"><DialogTitle className="text-2xl font-black font-headline flex items-center gap-4"><FilePlus className="h-8 w-8 text-primary" />{isRtl ? 'استنساخ مقايسة' : 'Create BOQ'}</DialogTitle></div>
@@ -464,16 +449,16 @@ export default function TransactionDetailsPage() {
 
       <Dialog open={isRecordOpen} onOpenChange={setIsRecordOpen}>
          <DialogContent className="rounded-xl p-0 max-w-md border-0 shadow-3xl bg-white" dir={dir}>
-            <div className="bg-slate-50 p-6 text-slate-900 border-b"><DialogTitle className="text-lg font-black flex items-center gap-3"><Hammer className="h-5 w-5 text-primary" />{isRtl ? 'تسجيل إنجاز فني' : 'Log Progress'}</DialogTitle></div>
+            <div className="bg-slate-50 p-6 text-slate-900 border-b text-start"><DialogTitle className="text-lg font-black flex items-center gap-3"><Hammer className="h-5 w-5 text-primary" />{isRtl ? 'تسجيل إنجاز فني' : 'Log Progress'}</DialogTitle></div>
             <div className="p-6 space-y-6 text-start">
                <Label className="text-[11px] font-black uppercase text-slate-400">Target Item</Label>
-               <Select value={selectedItemId} onValueChange={setSelectedItemId}><SelectTrigger className="h-10 rounded-lg border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger><SelectContent className="rounded-xl border shadow-2xl">{boqItems?.filter(i => (i.plannedQuantity || 0) > 0 && (i.technicalStageIds?.includes(targetStage?.technicalStageId!) || i.technicalStageId === targetStage?.technicalStageId)).map(i => (<SelectItem key={i.id} value={i.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50"><div className="flex flex-col text-start"><span className="font-black text-slate-800">{i.referenceTitle}</span><span className="text-[8px] text-slate-400">#{i.referenceCode}</span></div></SelectItem>))}</SelectContent></Select>
+               <Select value={selectedItemId} onValueChange={setSelectedItemId}><SelectTrigger className="h-10 rounded-lg border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger><SelectContent className="rounded-xl border shadow-2xl">{boqItems?.filter(i => (i.plannedQuantity || 0) > 0 && (i.technicalStageIds?.includes(targetStage?.technicalStageId!) || i.technicalStageId === targetStage?.technicalStageId)).map(i => (<SelectItem key={i.id} value={i.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50 text-start"><div className="flex flex-col text-start"><span className="font-black text-slate-800">{i.referenceTitle}</span><span className="text-[8px] text-slate-400">#{i.referenceCode}</span></div></SelectItem>))}</SelectContent></Select>
                <div className="space-y-4 pt-2">
                   <div className="space-y-2"><Label className="text-[11px] font-black uppercase text-slate-400">Quantity Executed</Label><Input type="number" step="0.01" value={progressQty} onChange={e => setProgressQty(e.target.value === '' ? '' : Number(e.target.value))} className="h-12 rounded-lg border-2 font-black text-2xl text-center shadow-inner" /></div>
                   <div className="space-y-1.5"><Label className="text-[11px] font-black uppercase text-slate-400">Field Notes</Label><Textarea value={progressNotes} onChange={e => setProgressNotes(e.target.value)} className="min-h-[100px] rounded-lg bg-slate-50/50 border-2 text-xs font-bold resize-none" /></div>
                </div>
             </div>
-            <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-3"><Button variant="outline" onClick={() => setIsRecordOpen(false)} className="flex-1 h-12 rounded-xl font-bold border-2 bg-white">إلغاء</Button><Button onClick={() => handleRecordProgress()} disabled={loadingAction === 'recording' || !selectedItemId} className="flex-[2] btn-gradient h-12 rounded-xl text-lg gap-2 shadow-xl shadow-orange-500/20">{isRtl ? 'حفظ السجل الميداني' : 'Commit'}</Button></DialogFooter>
+            <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-3 text-start"><Button variant="outline" onClick={() => setIsRecordOpen(false)} className="flex-1 h-12 rounded-xl font-bold border-2 bg-white">إلغاء</Button><Button onClick={() => handleRecordProgress()} disabled={loadingAction === 'recording' || !selectedItemId} className="flex-[2] btn-gradient h-12 rounded-xl text-lg gap-2 shadow-xl shadow-orange-500/20">{isRtl ? 'حفظ السجل الميداني' : 'Commit'}</Button></DialogFooter>
          </DialogContent>
       </Dialog>
 

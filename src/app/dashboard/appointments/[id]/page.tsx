@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
@@ -39,14 +40,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 
 /**
- * @fileOverview صفحة الزيارة الميدانية المدمجة مع محرك العمالة والمعدات (Sovereign Resource Radar).
- * تسمح للمهندس بربط الموارد البشرية والآليات المستخدمة بكل بند إنجاز.
+ * @fileOverview صفحة الزيارة الميدانية المدمجة مع محرك العمالة والمعدات.
+ * تم تحديثها لفلترة مراحل العمل بناءً على "شرط القسم" المعتمد في الإعدادات.
  */
 export default function AppointmentDetailPage() {
   const apptId = useParams().id as string;
   const { globalUser, user } = useAuthContext();
   const { lang, dir, t } = useLanguage();
-  const { permissions, check } = usePermissions();
+  const { permissions, check, isAdmin } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
@@ -66,9 +67,6 @@ export default function AppointmentDetailPage() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [stageProgressMap, setStageProgressMap] = useState<Record<string, StageProgressResult>>({});
   const [isRecordOpen, setIsRecordOpen] = useState(false);
-  const [isRevisionOpen, setIsRevisionOpen] = useState(false);
-  const [revisionStage, setRevisionStage] = useState<StageInstance | null>(null);
-  const [revisionComment, setRevisionComment] = useState("");
 
   const apptRef = useMemo(() => 
     companyId && db ? doc(db, paths.appointments(companyId), apptId) : null, 
@@ -84,7 +82,21 @@ export default function AppointmentDetailPage() {
     companyId && db && appt?.transactionId ? query(collection(db, paths.transactionStages(companyId, appt.transactionId)), orderBy('order')) : null,
   [db, companyId, appt?.transactionId]);
   const { data: rawStages } = useCollection<StageInstance>(stagesQuery);
-  const stages = useMemo(() => (rawStages || []).sort((a,b) => (a.order || 0) - (b.order || 0)), [rawStages]);
+
+  // --- بروتوكول فلترة المراحل السيادي (Sovereign Stage Filtering) ---
+  const stages = useMemo(() => {
+    const list = (rawStages || []).sort((a, b) => (a.order || 0) - (b.order || 0));
+    
+    // المدير يرى كل شيء للرقابة
+    if (isAdmin) return list;
+
+    // الموظف يرى حصراً ما يخص قسمه أو المراحل العامة
+    const userDeptId = globalUser?.departmentId;
+    return list.filter(stage => {
+       if (!stage.allowedDepartmentIds || stage.allowedDepartmentIds.length === 0) return true;
+       return userDeptId && stage.allowedDepartmentIds.includes(userDeptId);
+    });
+  }, [rawStages, isAdmin, globalUser?.departmentId]);
 
   const boqQuery = useMemo(() => 
     companyId && db && appt?.transactionId ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', appt.transactionId), limit(1)) : null,
@@ -283,7 +295,14 @@ export default function AppointmentDetailPage() {
                  )}
               </CardHeader>
               <CardContent className="p-8 space-y-4">
-                 {stages.map((stage, idx) => {
+                 {stages.length === 0 ? (
+                   <div className="py-20 text-center flex flex-col items-center gap-4 opacity-30">
+                      <Workflow className="h-12 w-12 text-slate-200" />
+                      <p className="text-xs font-bold text-slate-400">
+                        {isRtl ? 'لا توجد مراحل مرتبطة بقسمك حالياً.' : 'No stages associated with your department.'}
+                      </p>
+                   </div>
+                 ) : stages.map((stage, idx) => {
                     const isSelected = stage.id === selectedStageId;
                     const isPreviousCompleted = idx === 0 || stages[idx-1].status === 'completed';
                     const isFrontier = stage.status === 'in-progress' || (stage.status === 'pending' && isPreviousCompleted && !checkResults.hasAchievement);
@@ -341,7 +360,7 @@ export default function AppointmentDetailPage() {
                         <SelectContent className="rounded-xl">{boqItems?.filter(i => {
                            const stage = stages?.find(s => s.id === selectedStageId);
                            return (i.plannedQuantity || 0) > 0 && (i.technicalStageIds?.includes(stage?.technicalStageId!) || i.technicalStageId === stage?.technicalStageId);
-                        }).map(i => (<SelectItem key={i.id} value={i.id!} className="font-bold py-3"><div className="text-start flex flex-col"><span className="font-black text-slate-800">{i.referenceTitle}</span><span className="text-[8px] text-slate-400">#{i.referenceCode}</span></div></SelectItem>))}</SelectContent>
+                        }).map(i => (<SelectItem key={i.id} value={i.id!} className="font-bold text-xs py-3 text-start"><div className="text-start flex flex-col"><span className="font-black text-slate-800">{i.referenceTitle}</span><span className="text-[8px] text-slate-400">#{i.referenceCode}</span></div></SelectItem>))}</SelectContent>
                      </Select>
                   </div>
                </div>
@@ -350,7 +369,7 @@ export default function AppointmentDetailPage() {
                   <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-primary tracking-widest">Quantity Executed Today</Label><Input type="number" step="0.01" value={progressQty} onChange={e => setProgressQty(e.target.value === '' ? '' : Number(e.target.value))} className="h-14 rounded-xl border-2 font-black text-4xl text-center bg-white shadow-inner" /></div>
                </div>
 
-               {/* محرك العمالة (Labor Engine) */}
+               {/* محرك العمالة */}
                <div className="space-y-4">
                   <div className="flex items-center justify-between border-b pb-2">
                      <h4 className="text-xs font-black uppercase text-slate-500 flex items-center gap-2"><Users className="h-4 w-4 text-blue-500" /> {isRtl ? 'القوى العاملة المشاركة' : 'Labor Resources'}</h4>
@@ -359,7 +378,7 @@ export default function AppointmentDetailPage() {
                   <div className="grid grid-cols-1 gap-3">
                      {laborDetails.map((labor, i) => (
                         <div key={i} className="flex items-center gap-3 animate-in slide-in-from-top-1">
-                           <Input placeholder={isRtl ? "التخصص (مثلاً: نجار)" : "Trade (e.g. Carpenter)"} value={labor.trade} onChange={e => {
+                           <Input placeholder={isRtl ? "التخصص" : "Trade"} value={labor.trade} onChange={e => {
                               const newL = [...laborDetails]; newL[i].trade = e.target.value; setLaborDetails(newL);
                            }} className="h-10 rounded-lg font-bold text-xs" />
                            <Input type="number" value={labor.count} onChange={e => {
@@ -371,7 +390,7 @@ export default function AppointmentDetailPage() {
                   </div>
                </div>
 
-               {/* محرك المعدات (Equipment Engine) */}
+               {/* محرك المعدات */}
                <div className="space-y-4 pt-4">
                   <div className="flex items-center justify-between border-b pb-2">
                      <h4 className="text-xs font-black uppercase text-slate-500 flex items-center gap-2"><Truck className="h-4 w-4 text-orange-500" /> {isRtl ? 'الآليات والمعدات المستخدمة' : 'Equipment & Tools'}</h4>
@@ -399,8 +418,8 @@ export default function AppointmentDetailPage() {
                   </div>
                </div>
 
-               <div className="space-y-2 pt-4">
-                  <Label className="text-[10px] font-black uppercase text-slate-400">Site Notes (Technical Disclaimer)</Label>
+               <div className="space-y-2 pt-4 text-start">
+                  <Label className="text-[10px] font-black uppercase text-slate-400">Site Notes</Label>
                   <Textarea value={progressNotes} onChange={e => setProgressNotes(e.target.value)} className="min-h-[100px] rounded-xl bg-slate-50/50 border-2 font-bold" />
                </div>
             </div>
@@ -417,3 +436,4 @@ export default function AppointmentDetailPage() {
     </div>
   );
 }
+
