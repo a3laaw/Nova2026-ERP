@@ -140,7 +140,7 @@ export class TransactionService {
         isRequired: !!stage.isRequired,
         isEditable: stage.isEditable !== false,
         nextStageIds: stage.nextStageIds || [],
-        allowedDepartmentIds: stage.allowedDepartmentIds || [], // نسخ رابط الأقسام للنسخة الحية
+        allowedDepartmentIds: stage.allowedDepartmentIds || [],
         status: 'pending',
         activityTypeId: activityId,
         serviceId: serviceId,
@@ -232,6 +232,9 @@ export class TransactionService {
     });
   }
 
+  /**
+   * إكمال المرحلة مع تفعيل المرحلة التالية تلقائياً (Auto-Flow Logic)
+   */
   async completeStage(transactionId: string, stageId: string, userId: string, userName: string, force: boolean = false, appointmentId?: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
     
@@ -249,7 +252,10 @@ export class TransactionService {
       }
     }
 
-    await updateDoc(stageRef, {
+    const batch = writeBatch(this.db);
+    
+    // 1. تحديث حالة المرحلة الحالية إلى مكتملة
+    batch.update(stageRef, {
       status: 'completed',
       completedAt: serverTimestamp(),
       completedByApptId: appointmentId || null,
@@ -258,8 +264,35 @@ export class TransactionService {
       isForceClosed: force || false
     });
 
+    // 2. البحث عن المرحلة التالية وبدؤها تلقائياً (The Sovereign Auto-Start)
+    const nextStagesQuery = query(
+      collection(this.db, paths.transactionStages(this.companyId, transactionId)),
+      where('order', '==', (stageData.order || 0) + 1),
+      limit(1)
+    );
+    
+    const nextSnap = await getDocs(nextStagesQuery);
+    let autoStartedStageName = "";
+
+    if (!nextSnap.empty) {
+      const nextDoc = nextSnap.docs[0];
+      const nextData = nextDoc.data() as StageInstance;
+      if (nextData.status === 'pending') {
+         batch.update(nextDoc.ref, {
+           status: 'in-progress',
+           startedAt: serverTimestamp(),
+           updatedAt: serverTimestamp(),
+           updatedBy: 'SYSTEM_AUTO'
+         });
+         autoStartedStageName = nextData.name;
+      }
+    }
+
+    // 3. توثيق الأحداث في التايم لاين
     const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
-    await addDoc(timelineRef, {
+    
+    const completeLogRef = doc(timelineRef);
+    batch.set(completeLogRef, {
       transactionId,
       stageId,
       appointmentId: appointmentId || null,
@@ -274,12 +307,24 @@ export class TransactionService {
       companyId: this.companyId,
       createdAt: serverTimestamp()
     });
+
+    if (autoStartedStageName) {
+      const autoStartLogRef = doc(timelineRef);
+      batch.set(autoStartLogRef, {
+        transactionId,
+        type: 'stage_start',
+        content: `تنشيط تلقائي: تم بدء العمل في المرحلة التالية (${autoStartedStageName}) فور إنجاز سابقتها لضمان استمرارية التدفق.`,
+        userId: 'SYSTEM',
+        userName: 'NovaFlow Auto',
+        isArchived: false,
+        companyId: this.companyId,
+        createdAt: serverTimestamp()
+      });
+    }
+
+    await batch.commit();
   }
 
-  /**
-   * إعادة فتح مرحلة فنية (The Sovereign Reset)
-   * يقوم بتصفية كافة السجلات المرتبطة بالمرحلة والمراحل اللاحقة.
-   */
   async reopenStage(transactionId: string, stageId: string, userId: string, userName: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
     
@@ -290,7 +335,6 @@ export class TransactionService {
 
     const batch = writeBatch(this.db);
     
-    // 1. إعادة حالة المرحلة الحالية
     batch.update(stageRef, {
       status: 'in-progress',
       completedAt: null,
@@ -300,7 +344,6 @@ export class TransactionService {
       updatedBy: userId
     });
 
-    // 2. تجميد وإعادة تصفير المراحل اللاحقة (Cascade Freeze)
     const allStagesSnap = await getDocs(collection(this.db, paths.transactionStages(this.companyId, transactionId)));
     const affectedStageIds: string[] = [stageId];
 
@@ -320,7 +363,6 @@ export class TransactionService {
        }
     });
 
-    // 3. أرشفة التعليقات والإنجازات للمراحل المتأثرة
     const commentService = new CommentService(this.db, this.companyId, this.permissions);
     const boqService = new BOQExecutionService(this.db, this.companyId, this.permissions);
 
@@ -332,7 +374,6 @@ export class TransactionService {
        }
     }
 
-    // 4. توثيق الحدث الإداري في التايم لاين
     const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
     batch.set(timelineRef, {
       transactionId,
