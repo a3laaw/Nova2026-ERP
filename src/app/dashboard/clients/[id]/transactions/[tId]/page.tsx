@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,10 +17,12 @@ import {
   Info, Sparkles, FilePlus, ShieldCheck,
   Pencil, FileText, LayoutGrid, Lock, Wallet,
   Gavel, Receipt, Trash2, RotateCcw,
-  PencilLine, History as HistoryIcon
+  PencilLine, History as HistoryIcon,
+  ChevronRight,
+  ShieldAlert
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
-import { collection, query, orderBy, where, limit, doc, addDoc } from 'firebase/firestore';
+import { collection, query, orderBy, where, limit, doc, addDoc, getDocs } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -109,7 +110,12 @@ export default function TransactionDetailsPage() {
 
   const contractsQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.contracts(companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
   const { data: contracts, loading: contractsLoading } = useCollection<Contract>(contractsQuery);
-  const activeContract = contracts?.find(c => c.status === 'paid' || c.isPaid);
+  
+  // المنطق المطور لفك القفل المالي: العقد المعتمد يكفي لبدء التنفيذ
+  const activeContract = useMemo(() => 
+    contracts?.find(c => ['approved', 'paid', 'active'].includes(c.status || '') || c.isPaid),
+  [contracts]);
+  
   const isFinancialLockActive = !activeContract;
 
   const isConsulting = useMemo(() => {
@@ -139,19 +145,12 @@ export default function TransactionDetailsPage() {
   const executionsQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.executions(companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
   const { data: allExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
 
-  // --- بروتوكول فلترة المسار الفني بناءً على شرط القسم (Department Condition) ---
   const stages = useMemo(() => {
     const list = (rawStages || []).sort((a, b) => (a.order || 0) - (b.order || 0));
-    
-    // المدير والمطور يملكان حق الوصول الشامل للرقابة
     if (isAdmin) return list;
-
-    // الموظف يرى حصراً المراحل المسموح لقسمه بها، أو المراحل العامة (بدون قيود)
     const userDeptId = globalUser?.departmentId;
     return list.filter(stage => {
-       // إذا لم تكن هناك قيود (المصفوفة فارغة)، فهي مرحلة عامة تظهر للكل
        if (!stage.allowedDepartmentIds || stage.allowedDepartmentIds.length === 0) return true;
-       // خلاف ذلك، يجب أن يكون قسم المستخدم ضمن القائمة المسموح بها لهذه المرحلة
        return userDeptId && stage.allowedDepartmentIds.includes(userDeptId);
     });
   }, [rawStages, isAdmin, globalUser?.departmentId]);
@@ -181,26 +180,6 @@ export default function TransactionDetailsPage() {
     fetchAllProgress();
     return () => { active = false; };
   }, [executionService, stages, transactionId, allExecutions, isConsulting]);
-
-  const handleStartStage = async (stageId: string) => {
-    if (!transactionService || !user) return;
-    setProcessingId(stageId);
-    try { await transactionService.startStage(transactionId, stageId, user.uid, currentUserName); toast({ title: isRtl ? "تم بدء العمل" : "Stage Started" }); }
-    catch (e: any) { toast({ variant: "destructive", title: t('error'), description: e.message }); }
-    finally { setProcessingId(null); }
-  };
-
-  const handleCompleteStage = async (stage: StageInstance, force: boolean = false) => {
-    if (!transactionService || !user || !stage.id) return;
-    if (!isConsulting && !force) {
-      const progress = stageProgressMap[stage.technicalStageId];
-      if (progress && !progress.canComplete) { setIncompleteStage({ stage, progress }); return; }
-    }
-    setProcessingId(stage.id);
-    try { await transactionService.completeStage(transactionId, stage.id, user.uid, currentUserName, force); toast({ title: isRtl ? "تم إنجاز المرحلة بنجاح" : "Stage Completed" }); setIncompleteStage(null); }
-    catch (e: any) { toast({ variant: "destructive", title: isRtl ? "تعذر إغلاق المرحلة" : "Cannot Close", description: e.message }); }
-    finally { setProcessingId(null); }
-  };
 
   const handleCreateBOQ = async () => {
     if (!db || !companyId || !user || !selectedTemplateId || !transaction) return;
@@ -234,6 +213,45 @@ export default function TransactionDetailsPage() {
     }
   };
 
+  const handleManualInitialize = async () => {
+    if (!transactionService || !transaction || !user) return;
+    setLoadingAction('init');
+    try {
+      await transactionService.initializeTechnicalPath(
+        transactionId,
+        transaction.activityTypeId,
+        transaction.serviceId,
+        transaction.subServiceId,
+        user.uid
+      );
+      toast({ title: isRtl ? "تم تنشيط المسار الفني" : "Path Initialized" });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('error'), description: e.message });
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  const handleStartStage = async (stageId: string) => {
+    if (!transactionService || !user) return;
+    setProcessingId(stageId);
+    try { await transactionService.startStage(transactionId, stageId, user.uid, currentUserName); toast({ title: isRtl ? "تم بدء العمل" : "Stage Started" }); }
+    catch (e: any) { toast({ variant: "destructive", title: t('error'), description: e.message }); }
+    finally { setProcessingId(null); }
+  };
+
+  const handleCompleteStage = async (stage: StageInstance, force: boolean = false) => {
+    if (!transactionService || !user || !stage.id) return;
+    if (!isConsulting && !force) {
+      const progress = stageProgressMap[stage.technicalStageId];
+      if (progress && !progress.canComplete) { setIncompleteStage({ stage, progress }); return; }
+    }
+    setProcessingId(stage.id);
+    try { await transactionService.completeStage(transactionId, stage.id, user.uid, currentUserName, force); toast({ title: isRtl ? "تم إنجاز المرحلة بنجاح" : "Stage Completed" }); setIncompleteStage(null); }
+    catch (e: any) { toast({ variant: "destructive", title: isRtl ? "تعذر إغلاق المرحلة" : "Cannot Close", description: e.message }); }
+    finally { setProcessingId(null); }
+  };
+
   const handleOpenRevisionDialog = (stage: StageInstance) => {
      setRevisionStage(stage);
      setRevisionComment("");
@@ -242,17 +260,10 @@ export default function TransactionDetailsPage() {
 
   const handleConfirmRevision = async () => {
     if (!transactionService || !user || !revisionStage || !revisionComment.trim()) return;
-    
     setProcessingId(`rev_${revisionStage.id}`);
     setIsRevisionOpen(false);
     try {
-      await transactionService.incrementStageRevision(
-        transactionId, 
-        revisionStage.id!, 
-        user.uid, 
-        currentUserName, 
-        revisionComment
-      );
+      await transactionService.incrementStageRevision(transactionId, revisionStage.id!, user.uid, currentUserName, revisionComment);
       toast({ title: isRtl ? "تم تسجيل دورة مراجعة جديدة بنجاح" : "Revision Cycle Logged" });
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
@@ -293,10 +304,7 @@ export default function TransactionDetailsPage() {
     setLoadingAction('recording');
     setTimeout(async () => {
         try {
-            await executionService.recordBOQItemExecution(
-              activeBoq!.id, selectedItemId, targetStage.technicalStageId, 
-              qtyInput, user.uid, currentUserName, progressNotes, targetStage.id!, force 
-            );
+            await executionService.recordBOQItemExecution(activeBoq!.id, selectedItemId, targetStage.technicalStageId, qtyInput, user.uid, currentUserName, progressNotes, targetStage.id!, force);
             toast({ title: isRtl ? "تم تسجيل الإنجاز" : "Progress Logged" });
             setProgressQty(""); setProgressNotes(""); setSelectedItemId("");
         } catch (e: any) { toast({ variant: "destructive", title: t('error'), description: e.message }); }
@@ -345,26 +353,49 @@ export default function TransactionDetailsPage() {
                       <Card className="border-4 border-dashed border-rose-100 rounded-[3rem] bg-rose-50/30 p-20 text-center">
                          <div className="w-24 h-24 bg-white rounded-[2rem] flex items-center justify-center mx-auto text-rose-500 shadow-xl mb-8 ring-8 ring-rose-50/50"><Lock className="h-12 w-12" /></div>
                          <h3 className="text-3xl font-black text-rose-900 font-headline">{isRtl ? 'رادار التنفيذ مغلق مالياً' : 'Pipeline Locked'}</h3>
+                         <p className="text-slate-400 font-bold mt-2">{isRtl ? 'يرجى اعتماد عقد المشروع لفتح مسار العمل.' : 'Approve contract to launch pipeline.'}</p>
                          <Button onClick={() => setActiveTab('documents')} variant="outline" className="rounded-xl border-2 font-bold px-10 h-14 mt-6 gap-2"><ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} /> {isRtl ? 'الذهاب لإدارة العقود والسداد' : 'Go to Finance'}</Button>
                       </Card>
-                   ) : stages.length === 0 ? (
+                   ) : (rawStages || []).length === 0 ? (
                       <div className="py-24 text-center bg-white rounded-[3rem] border-4 border-dashed border-slate-100 space-y-6">
                         <div className="w-24 h-24 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto text-slate-200"><Workflow className="h-12 w-12" /></div>
-                        <h3 className="text-2xl font-black text-slate-400">
-                          {isRtl ? (isAdmin ? 'بانتظار هندسة المسار الفني' : 'لا توجد مراحل مرتبطة بقسمك حالياً') : 'Awaiting Pipeline'}
-                        </h3>
-                        {!isConsulting && !activeBoq && isAdmin && <Button onClick={() => setIsBoqInitOpen(true)} className="h-14 px-10 rounded-2xl gap-3"><Sparkles className="h-5 w-5" /> {isRtl ? 'إنشاء مقايسة للمشروع' : 'Create BOQ'}</Button>}
+                        <div className="space-y-2">
+                           <h3 className="text-2xl font-black text-slate-900">
+                             {isRtl ? 'بانتظار إطلاق المسار الفني' : 'Awaiting Pipeline Launch'}
+                           </h3>
+                           <p className="text-sm font-bold text-slate-400 max-w-sm mx-auto">
+                              {isRtl ? 'لقد تم اعتماد العقد بنجاح. يمكنك الآن إطلاق مراحل العمل الفني المعتمدة لهذا المسار.' : 'Contract approved. You can now launch technical stages for this path.'}
+                           </p>
+                        </div>
+                        {isAdmin && (
+                          <div className="flex flex-col items-center gap-3">
+                             <Button onClick={handleManualInitialize} disabled={loadingAction === 'init'} className="h-14 px-12 rounded-2xl gap-3 shadow-xl bg-primary">
+                                {loadingAction === 'init' ? <Loader2 className="animate-spin" /> : <Zap className="h-5 w-5" />}
+                                {isRtl ? 'إطلاق المسار الفني الآن' : 'Launch Technical Path'}
+                             </Button>
+                             {!isConsulting && !activeBoq && (
+                               <Button onClick={() => setIsBoqInitOpen(true)} variant="outline" className="h-12 border-2 px-8 rounded-xl gap-2">
+                                  <FilePlus className="h-4 w-4" /> {isRtl ? 'إنشاء مقايسة للمشروع' : 'Create BOQ'}
+                               </Button>
+                             )}
+                          </div>
+                        )}
+                      </div>
+                   ) : stages.length === 0 ? (
+                      <div className="py-24 text-center bg-white rounded-[3rem] border-2 border-amber-100 bg-amber-50/30 space-y-6">
+                         <div className="w-20 h-20 bg-white rounded-[2rem] flex items-center justify-center mx-auto text-amber-500 shadow-md ring-8 ring-amber-50"><ShieldAlert className="h-10 w-10" /></div>
+                         <div className="space-y-2">
+                            <h3 className="text-xl font-black text-amber-900">{isRtl ? 'عذراً، لا تملك صلاحية القسم' : 'Department View Restricted'}</h3>
+                            <p className="text-xs font-bold text-amber-700 max-w-xs mx-auto">
+                               {isRtl ? 'يوجد مراحل عمل مفعلة ولكنها غير مرتبطة بقسمك الحالي وفق مصفوفة التوجيه.' : 'Active stages exist but are not assigned to your department.'}
+                            </p>
+                         </div>
                       </div>
                    ) : (
                      <div className="space-y-6 text-start">
                         <div className="flex justify-between items-end px-2">
                            <h3 className="text-lg font-black font-headline text-slate-800 flex items-center gap-2">
                               <Workflow className="h-5 w-5 text-primary" /> {isRtl ? 'رادار المسار الميداني' : 'Field Pipeline'}
-                              {!isAdmin && (
-                                <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-100 text-[8px] font-black h-5 uppercase px-2">
-                                  {isRtl ? 'عرض معزول للقسم' : 'Dept View Only'}
-                                </Badge>
-                              )}
                            </h3>
                            <span className="text-3xl font-black font-headline text-primary">{progressPercent}%</span>
                         </div>
@@ -427,7 +458,7 @@ export default function TransactionDetailsPage() {
           </div>
       </div>
 
-      {/* مودال تسجيل المراجعة */}
+      {/* مودالات الحوار الفرعية */}
       <Dialog open={isRevisionOpen} onOpenChange={setIsRevisionOpen}>
          <DialogContent className="rounded-xl p-0 max-w-lg border-0 shadow-3xl bg-white" dir={dir}>
             <div className="bg-orange-50 p-6 border-b text-orange-900 text-start">
@@ -438,26 +469,11 @@ export default function TransactionDetailsPage() {
             </div>
             <div className="p-8 space-y-4 text-start">
                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'أسباب أو تفاصيل التعديل' : 'Revision Notes / Reason'}</Label>
-               <Textarea 
-                 value={revisionComment} 
-                 onChange={e => setRevisionComment(e.target.value)}
-                 placeholder={isRtl ? "اكتب هنا تفاصيل التعديلات التي تمت على المخطط..." : "Describe the changes made..."}
-                 className="min-h-[120px] rounded-2xl border-2 p-5 text-sm font-bold bg-slate-50 focus:bg-white transition-all shadow-inner"
-               />
-               <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 flex items-start gap-3">
-                  <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
-                  <p className="text-[10px] text-blue-700 font-bold leading-relaxed">
-                     {isRtl ? 'سيتم زيادة عداد المراجعات لهذه المرحلة آلياً وحقن هذه الملاحظة في غرفة العمليات.' : 'Revision counter will be auto-incremented and this note will be logged in the War Room.'}
-                  </p>
-               </div>
+               <Textarea value={revisionComment} onChange={e => setRevisionComment(e.target.value)} placeholder={isRtl ? "اكتب هنا تفاصيل التعديلات التي تمت على المخطط..." : "Describe the changes made..."} className="min-h-[120px] rounded-2xl border-2 p-5 text-sm font-bold bg-slate-50 focus:bg-white transition-all shadow-inner" />
             </div>
             <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-3">
                <Button variant="outline" onClick={() => setIsRevisionOpen(false)} className="flex-1 h-12 rounded-xl font-bold">إلغاء</Button>
-               <Button 
-                 onClick={handleConfirmRevision} 
-                 disabled={!revisionComment.trim()} 
-                 className="flex-[2] h-12 rounded-xl bg-orange-600 text-white font-black text-lg shadow-xl shadow-orange-200"
-               >
+               <Button onClick={handleConfirmRevision} disabled={!revisionComment.trim()} className="flex-[2] h-12 rounded-xl bg-orange-600 text-white font-black text-lg shadow-xl shadow-orange-200">
                   <Save className="h-5 w-5" /> {isRtl ? 'اعتماد دورة التعديل' : 'Confirm Revision'}
                </Button>
             </DialogFooter>

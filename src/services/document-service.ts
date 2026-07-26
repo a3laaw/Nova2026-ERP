@@ -76,7 +76,7 @@ export class DocumentService {
       id: quoteRef.id,
       status: 'draft',
       version: 1,
-      totalAmount: template.baseAmount || 0, // Mapping baseAmount to totalAmount
+      totalAmount: template.baseAmount || 0,
       companyId: this.companyId,
       createdBy: userId,
       updatedBy: userId,
@@ -200,7 +200,6 @@ export class DocumentService {
 
     const contractRef = doc(collection(this.db, paths.contracts(this.companyId)));
     
-    // Mapping template fields to document fields
     const contractData: Contract = {
       ...template,
       ...payload,
@@ -208,7 +207,7 @@ export class DocumentService {
       status: 'draft',
       version: 1,
       totalAmount: template.baseAmount || 0,
-      milestones: template.defaultMilestones || [], // Critical Mapping
+      milestones: template.defaultMilestones || [], 
       companyId: this.companyId,
       createdBy: userId,
       updatedBy: userId,
@@ -225,14 +224,35 @@ export class DocumentService {
     ensureActionPermission(this.permissions, 'projects:edit');
     const docRef = doc(this.db, paths.contracts(this.companyId), id);
     const snap = await getDoc(docRef);
-    const currentData = snap.data();
+    if (!snap.exists()) return;
+    const currentData = snap.data() as Contract;
 
-    await updateDoc(docRef, {
+    const updates: any = {
       ...data,
       isHistoryRecorded: true,
       updatedBy: userId,
       updatedAt: serverTimestamp()
-    });
+    };
+
+    // بروتوكول الاعتماد التلقائي للمسودة عند الحفظ
+    if (currentData.status === 'draft' && !data.status) {
+       updates.status = 'approved';
+    }
+
+    await updateDoc(docRef, updates);
+
+    // التحقق من شرط تفعيل المسار الفني
+    const finalStatus = data.status || updates.status || currentData.status;
+    if (['approved', 'paid', 'active'].includes(finalStatus) && currentData.transactionId) {
+       const transService = new TransactionService(this.db, this.companyId, this.permissions);
+       await transService.initializeTechnicalPath(
+         currentData.transactionId,
+         currentData.activityTypeId || '',
+         currentData.serviceId || '',
+         currentData.subServiceId || '',
+         userId
+       );
+    }
 
     if (currentData && !currentData.isHistoryRecorded) {
       const clientService = new ClientService(this.db, this.companyId);
