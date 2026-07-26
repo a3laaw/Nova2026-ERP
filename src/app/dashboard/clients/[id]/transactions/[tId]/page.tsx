@@ -97,12 +97,15 @@ export default function TransactionDetailsPage() {
   const [incompleteStage, setIncompleteStage] = useState<{ stage: StageInstance, progress: StageProgressResult } | null>(null);
   const [isVOOpen, setIsVOOpen] = useState(false);
 
-  // حالات تسجيل المراجعة (Revision)
   const [isRevisionOpen, setIsRevisionOpen] = useState(false);
   const [revisionStage, setRevisionStage] = useState<StageInstance | null>(null);
   const [revisionComment, setRevisionComment] = useState("");
 
   const editAccess = check('projects', 'edit');
+  
+  // بروتوكول الرقابة المالية: التحقق من صلاحية رؤية المستندات والمالية
+  const canSeeFinance = check('accounting', 'view').can || check('procurement', 'view').can;
+
   const currentUserName = useMemo(() => globalUser?.username || user?.displayName || 'Admin', [globalUser, user]);
 
   const transRef = useMemo(() => (companyId && db && transactionId) ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
@@ -111,7 +114,6 @@ export default function TransactionDetailsPage() {
   const contractsQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.contracts(companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
   const { data: contracts, loading: contractsLoading } = useCollection<Contract>(contractsQuery);
   
-  // المنطق المطور لفك القفل المالي: العقد المعتمد يكفي لبدء التنفيذ
   const activeContract = useMemo(() => 
     contracts?.find(c => ['approved', 'paid', 'active', 'signed'].includes(c.status || '') || c.isPaid),
   [contracts]);
@@ -146,9 +148,7 @@ export default function TransactionDetailsPage() {
   const { data: allExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
 
   const stages = useMemo(() => {
-    const list = (rawStages || []).sort((a, b) => (a.order || 0) - (b.order || 0));
-    // في واجهة المعاملة، نظهر كافة المراحل للمراجعة، ولكن سنقيد "الأزرار" لاحقاً
-    return list;
+    return (rawStages || []).sort((a, b) => (a.order || 0) - (b.order || 0));
   }, [rawStages]);
 
   const progressPercent = useMemo(() => {
@@ -183,25 +183,17 @@ export default function TransactionDetailsPage() {
     try {
       const service = new DocumentService(db, companyId, permissions);
       const template = templates?.find(t => t.id === selectedTemplateId);
-      
       await service.instantiateBoqFromTemplate(
         selectedTemplateId,
         {
-          transactionId,
-          clientId,
-          clientName: transaction.clientName,
-          activityTypeId: transaction.activityTypeId,
-          serviceId: transaction.serviceId,
-          subServiceId: transaction.subServiceId,
-          name: template?.name || ""
+          transactionId, clientId, clientName: transaction.clientName,
+          activityTypeId: transaction.activityTypeId, serviceId: transaction.serviceId,
+          subServiceId: transaction.subServiceId, name: template?.name || ""
         },
-        user.uid,
-        currentUserName
+        user.uid, currentUserName
       );
-
       toast({ title: isRtl ? "تم إنشاء المقايسة بنجاح" : "BOQ Created Successfully" });
       setIsBoqInitOpen(false);
-      setSelectedTemplateId("");
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
@@ -213,13 +205,7 @@ export default function TransactionDetailsPage() {
     if (!transactionService || !transaction || !user) return;
     setLoadingAction('init');
     try {
-      await transactionService.initializeTechnicalPath(
-        transactionId,
-        transaction.activityTypeId,
-        transaction.serviceId,
-        transaction.subServiceId,
-        user.uid
-      );
+      await transactionService.initializeTechnicalPath(transactionId, transaction.activityTypeId, transaction.serviceId, transaction.subServiceId, user.uid);
       toast({ title: isRtl ? "تم تنشيط المسار الفني" : "Path Initialized" });
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
@@ -234,8 +220,7 @@ export default function TransactionDetailsPage() {
     try { 
       await transactionService.startStage(transactionId, stageId, user.uid, currentUserName, globalUser?.departmentId); 
       toast({ title: isRtl ? "تم بدء العمل" : "Stage Started" }); 
-    }
-    catch (e: any) { toast({ variant: "destructive", title: t('error'), description: e.message }); }
+    } catch (e: any) { toast({ variant: "destructive", title: t('error'), description: e.message }); }
     finally { setProcessingId(null); }
   };
 
@@ -250,8 +235,7 @@ export default function TransactionDetailsPage() {
       await transactionService.completeStage(transactionId, stage.id, user.uid, currentUserName, globalUser?.departmentId, force); 
       toast({ title: isRtl ? "تم إنجاز المرحلة بنجاح" : "Stage Completed" }); 
       setIncompleteStage(null); 
-    }
-    catch (e: any) { toast({ variant: "destructive", title: isRtl ? "تعذر إغلاق المرحلة" : "Cannot Close", description: e.message }); }
+    } catch (e: any) { toast({ variant: "destructive", title: isRtl ? "تعذر إغلاق المرحلة" : "Cannot Close", description: e.message }); }
     finally { setProcessingId(null); }
   };
 
@@ -288,18 +272,6 @@ export default function TransactionDetailsPage() {
     }
   };
 
-  const handleDeleteStage = async (stageId: string) => {
-    if (!transactionService || !isAdmin) return;
-    if (!confirm(isRtl ? "هل تريد حذف نسخة هذه المرحلة نهائياً لتصحيح التكرار؟" : "Delete this stage instance permanently?")) return;
-    setProcessingId(stageId);
-    try {
-      await transactionService.deleteStageInstance(transactionId, stageId);
-      toast({ title: isRtl ? "تم حذف المرحلة لتصحيح المسار" : "Stage deleted" });
-    } finally {
-      setProcessingId(null);
-    }
-  };
-
   const handleRecordProgress = (force: boolean = false) => {
     if (!executionService || !user || !targetStage || !selectedItemId) return;
     const qtyInput = progressQty === "" ? 0 : Number(progressQty);
@@ -318,12 +290,12 @@ export default function TransactionDetailsPage() {
   if (transLoading || stagesLoading || contractsLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700 pb-20" dir={dir}>
+    <div className="space-y-8 animate-in fade-in duration-700" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4">
         <div className="flex items-center gap-4 text-start">
            <div className="h-11 px-4 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black text-sm border-2 border-primary/20 shadow-inner">{transaction?.transactionNumber}</div>
            <div className="text-start">
-              <h1 className="text-xl font-black text-slate-900 leading-tight">{transaction?.subServiceName}</h1>
+              <h1 className="text-xl font-black text-slate-900 leading-none">{transaction?.subServiceName}</h1>
               <div className="flex items-center gap-3 mt-0.5">
                  <Badge className={cn("font-black px-2 py-0.5 rounded-lg border-0 shadow-sm uppercase text-[8px]", transaction?.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600')}>{transaction?.status}</Badge>
                  <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1"><Activity className="h-2.5 w-2.5 text-primary" /> {transaction?.activityTypeName}</span>
@@ -346,9 +318,12 @@ export default function TransactionDetailsPage() {
                    <TabsTrigger value="pipeline" className="rounded-lg font-black text-xs px-8 data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2 h-full">
                       <Workflow className="h-4 w-4" /> {isRtl ? 'رادار التنفيذ' : 'Technical Radar'}
                    </TabsTrigger>
-                   <TabsTrigger value="documents" className="rounded-lg font-black text-xs px-8 data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2 h-full">
-                      <Receipt className="h-4 w-4" /> {isRtl ? 'المستندات والمالية' : 'Financial Docs'}
-                   </TabsTrigger>
+                   {/* تحصين تبويب المالية: يظهر فقط لمن يملك الصلاحية */}
+                   {canSeeFinance && (
+                     <TabsTrigger value="documents" className="rounded-lg font-black text-xs px-8 data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2 h-full">
+                        <Receipt className="h-4 w-4" /> {isRtl ? 'المستندات والمالية' : 'Financial Docs'}
+                     </TabsTrigger>
+                   )}
                 </TabsList>
 
                 <TabsContent value="pipeline" className="animate-in fade-in slide-in-from-bottom-2">
@@ -357,18 +332,21 @@ export default function TransactionDetailsPage() {
                          <div className="w-24 h-24 bg-white rounded-[2rem] flex items-center justify-center mx-auto text-rose-500 shadow-xl mb-8 ring-8 ring-rose-50/50"><Lock className="h-12 w-12" /></div>
                          <h3 className="text-3xl font-black text-rose-900 font-headline">{isRtl ? 'رادار التنفيذ مغلق مالياً' : 'Pipeline Locked'}</h3>
                          <p className="text-slate-400 font-bold mt-2">{isRtl ? 'يرجى اعتماد عقد المشروع لفتح مسار العمل.' : 'Approve contract to launch pipeline.'}</p>
-                         <Button onClick={() => setActiveTab('documents')} variant="outline" className="rounded-xl border-2 font-bold px-10 h-14 mt-6 gap-2"><ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} /> {isRtl ? 'الذهاب لإدارة العقود والسداد' : 'Go to Finance'}</Button>
+                         
+                         {/* إظهار زر التوجيه للمالية فقط إذا كان الموظف مخولاً برؤيتها */}
+                         {canSeeFinance && (
+                           <Button onClick={() => setActiveTab('documents')} variant="outline" className="rounded-xl border-2 font-bold px-10 h-14 mt-6 gap-2">
+                              <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} /> 
+                              {isRtl ? 'الذهاب لإدارة العقود والسداد' : 'Go to Finance'}
+                           </Button>
+                         )}
                       </Card>
                    ) : (rawStages || []).length === 0 ? (
                       <div className="py-24 text-center bg-white rounded-[3rem] border-4 border-dashed border-slate-100 space-y-6">
                         <div className="w-24 h-24 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto text-slate-200"><Workflow className="h-12 w-12" /></div>
                         <div className="space-y-2">
-                           <h3 className="text-2xl font-black text-slate-900">
-                             {isRtl ? 'بانتظار إطلاق المسار الفني' : 'Awaiting Pipeline Launch'}
-                           </h3>
-                           <p className="text-sm font-bold text-slate-400 max-w-sm mx-auto">
-                              {isRtl ? 'لقد تم اعتماد العقد بنجاح. يمكنك الآن إطلاق مراحل العمل الفني المعتمدة لهذا المسار.' : 'Contract approved. You can now launch technical stages for this path.'}
-                           </p>
+                           <h3 className="text-2xl font-black text-slate-900">{isRtl ? 'بانتظار إطلاق المسار الفني' : 'Awaiting Pipeline Launch'}</h3>
+                           <p className="text-sm font-bold text-slate-400 max-w-sm mx-auto">{isRtl ? 'لقد تم اعتماد العقد بنجاح. يمكنك الآن إطلاق مراحل العمل الفني المعتمدة لهذا المسار.' : 'Contract approved. You can now launch technical stages for this path.'}</p>
                         </div>
                         {isAdmin && (
                           <div className="flex flex-col items-center gap-3">
@@ -387,9 +365,7 @@ export default function TransactionDetailsPage() {
                    ) : (
                      <div className="space-y-6 text-start">
                         <div className="flex justify-between items-end px-2">
-                           <h3 className="text-lg font-black font-headline text-slate-800 flex items-center gap-2">
-                              <Workflow className="h-5 w-5 text-primary" /> {isRtl ? 'رادار المسار الميداني' : 'Field Pipeline'}
-                           </h3>
+                           <h3 className="text-lg font-black font-headline text-slate-800 flex items-center gap-2"><Workflow className="h-5 w-5 text-primary" /> {isRtl ? 'رادار المسار الميداني' : 'Field Pipeline'}</h3>
                            <span className="text-3xl font-black font-headline text-primary">{progressPercent}%</span>
                         </div>
                         <div className="space-y-4">
@@ -398,8 +374,6 @@ export default function TransactionDetailsPage() {
                               const isPreviousCompleted = idx === 0 || stages[idx-1].status === 'completed';
                               const isOperationalFrontier = stage.status === 'in-progress' || (stage.status === 'pending' && isPreviousCompleted);
                               const isReadyToStart = stage.status === 'pending' && isPreviousCompleted;
-                              
-                              // قفل التخصص: هل يحق للمستخدم لمس هذه المرحلة؟
                               const isDeptAllowed = !stage.allowedDepartmentIds?.length || (globalUser?.departmentId && stage.allowedDepartmentIds.includes(globalUser.departmentId));
 
                               return (
@@ -410,21 +384,9 @@ export default function TransactionDetailsPage() {
                                         <div className="space-y-1 flex-1 text-start">
                                            <div className="flex items-center gap-2">
                                               <h4 className="font-black text-base text-slate-900 tracking-tight">{stage.name}</h4>
-                                              {isReadyToStart && (
-                                                <Badge className="bg-orange-100 text-orange-700 border-0 font-black text-[7px] px-2 h-4 animate-ready-pulse uppercase">
-                                                   {isRtl ? 'جاهزة للبدء' : 'Ready to Start'}
-                                                </Badge>
-                                              )}
-                                              {isConsulting && (stage.revisionCount || 0) > 0 && (
-                                                <Badge className="bg-orange-100 text-orange-700 border-0 font-black text-[9px] px-2 h-5">
-                                                  {isRtl ? `مراجعة #${stage.revisionCount}` : `Rev #${stage.revisionCount}`}
-                                                </Badge>
-                                              )}
-                                              {!isAdmin && !isDeptAllowed && (
-                                                <Badge variant="outline" className="bg-rose-50 text-rose-600 border-rose-100 font-black text-[7px] gap-1 h-4">
-                                                   <Lock className="h-2 w-2" /> {isRtl ? 'خاص بقسم آخر' : 'Dept Locked'}
-                                                </Badge>
-                                              )}
+                                              {isReadyToStart && <Badge className="bg-orange-100 text-orange-700 border-0 font-black text-[7px] px-2 h-4 animate-ready-pulse uppercase">{isRtl ? 'جاهزة للبدء' : 'Ready to Start'}</Badge>}
+                                              {isConsulting && (stage.revisionCount || 0) > 0 && <Badge className="bg-orange-100 text-orange-700 border-0 font-black text-[9px] px-2 h-5">{isRtl ? `مراجعة #${stage.revisionCount}` : `Rev #${stage.revisionCount}`}</Badge>}
+                                              {!isAdmin && !isDeptAllowed && <Badge variant="outline" className="bg-rose-50 text-rose-600 border-rose-100 font-black text-[7px] gap-1 h-4"><Lock className="h-2 w-2" /> {isRtl ? 'خاص بقسم آخر' : 'Dept Locked'}</Badge>}
                                            </div>
                                            {boqProgress && boqProgress.linkedItemsCount > 0 && (<div className="mt-2 space-y-1.5"><div className="flex justify-between text-[8px] font-black uppercase text-slate-400"><span>{isRtl ? 'الإنجاز الفني' : 'Progress'}</span><span>{boqProgress.progressPercent}%</span></div><Progress value={boqProgress.progressPercent} className="h-1.5" /></div>)}
                                         </div>
@@ -434,12 +396,7 @@ export default function TransactionDetailsPage() {
                                               <>
                                                 {stage.status === 'pending' && <Button onClick={() => handleStartStage(stage.id!)} disabled={!!processingId || (!isAdmin && !isDeptAllowed)} className="h-10 px-6 rounded-xl bg-blue-600 text-white font-black text-[10px] gap-2 shadow-lg hover:scale-105 transition-all">{processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Play className="h-4 w-4" />} {isRtl ? 'بدء العمل' : 'Start'}</Button>}
                                                 {stage.status === 'in-progress' && <Button onClick={() => handleCompleteStage(stage)} disabled={!!processingId || (!isAdmin && !isDeptAllowed)} className="h-10 px-6 rounded-xl bg-emerald-600 text-white font-black text-[10px] gap-2 shadow-lg hover:scale-105 transition-all">{processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Check className="h-4 w-4" />} {isRtl ? 'إكمال' : 'Done'}</Button>}
-                                                {stage.status === 'in-progress' && isConsulting && (
-                                                  <Button onClick={() => handleOpenRevisionDialog(stage)} disabled={processingId === `rev_${stage.id}` || (!isAdmin && !isDeptAllowed)} variant="outline" className="h-10 px-4 rounded-xl border-orange-200 text-orange-600 font-black text-[10px] gap-2 hover:bg-orange-50">
-                                                    {processingId === `rev_${stage.id}` ? <Loader2 className="animate-spin h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
-                                                    {isRtl ? 'تسجيل دورة تعديل' : 'Log Revision'}
-                                                  </Button>
-                                                )}
+                                                {stage.status === 'in-progress' && isConsulting && (<Button onClick={() => handleOpenRevisionDialog(stage)} disabled={processingId === `rev_${stage.id}` || (!isAdmin && !isDeptAllowed)} variant="outline" className="h-10 px-4 rounded-xl border-orange-200 text-orange-600 font-black text-[10px] gap-2 hover:bg-orange-50">{processingId === `rev_${stage.id}` ? <Loader2 className="animate-spin h-4 w-4" /> : <RotateCcw className="h-4 w-4" />} {isRtl ? 'تسجيل دورة تعديل' : 'Log Revision'}</Button>)}
                                                 {stage.status === 'in-progress' && editAccess.can && !isConsulting && (<Button disabled={!isAdmin && !isDeptAllowed} onClick={() => { setTargetStage(stage); setIsRecordOpen(true); }} className="btn-gradient h-10 px-6 rounded-xl text-[10px] gap-2"><Hammer className="h-4 w-4" /> {isRtl ? 'تسجيل إنجاز' : 'Log'}</Button>)}
                                               </>
                                            )}
@@ -455,9 +412,11 @@ export default function TransactionDetailsPage() {
                    )}
                 </TabsContent>
 
-                <TabsContent value="documents" className="animate-in fade-in">
-                   <TransactionDocumentsView transaction={transaction} clientId={clientId} clientName={transaction?.clientName || ''} isAdmin={isAdmin} permissions={permissions} />
-                </TabsContent>
+                {canSeeFinance && (
+                  <TabsContent value="documents" className="animate-in fade-in">
+                     <TransactionDocumentsView transaction={transaction} clientId={clientId} clientName={transaction?.clientName || ''} isAdmin={isAdmin} permissions={permissions} />
+                  </TabsContent>
+                )}
              </Tabs>
           </div>
           <div className="lg:col-span-5">
@@ -465,13 +424,10 @@ export default function TransactionDetailsPage() {
           </div>
       </div>
 
-      {/* مودالات الحوار الفرعية */}
       <Dialog open={isRevisionOpen} onOpenChange={setIsRevisionOpen}>
          <DialogContent className="rounded-xl p-0 max-w-lg border-0 shadow-3xl bg-white" dir={dir}>
             <div className="bg-orange-50 p-6 border-b text-orange-900 text-start">
-               <DialogTitle className="text-xl font-black flex items-center gap-3">
-                  <RotateCcw className="h-6 w-6" /> {isRtl ? 'توثيق مراجعة وتعديل التصميم' : 'Log Design Revision'}
-               </DialogTitle>
+               <DialogTitle className="text-xl font-black flex items-center gap-3"><RotateCcw className="h-6 w-6" /> {isRtl ? 'توثيق مراجعة وتعديل التصميم' : 'Log Design Revision'}</DialogTitle>
                <p className="text-xs font-bold mt-1 opacity-70">{revisionStage?.name}</p>
             </div>
             <div className="p-8 space-y-4 text-start">
@@ -480,9 +436,7 @@ export default function TransactionDetailsPage() {
             </div>
             <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-3">
                <Button variant="outline" onClick={() => setIsRevisionOpen(false)} className="flex-1 h-12 rounded-xl font-bold">إلغاء</Button>
-               <Button onClick={handleConfirmRevision} disabled={!revisionComment.trim()} className="flex-[2] h-12 rounded-xl bg-orange-600 text-white font-black text-lg shadow-xl shadow-orange-200">
-                  <Save className="h-5 w-5" /> {isRtl ? 'اعتماد دورة التعديل' : 'Confirm Revision'}
-               </Button>
+               <Button onClick={handleConfirmRevision} disabled={!revisionComment.trim()} className="flex-[2] h-12 rounded-xl bg-orange-600 text-white font-black text-lg shadow-xl shadow-orange-200"><Save className="h-5 w-5" /> {isRtl ? 'اعتماد دورة التعديل' : 'Confirm Revision'}</Button>
             </DialogFooter>
          </DialogContent>
       </Dialog>
@@ -493,9 +447,7 @@ export default function TransactionDetailsPage() {
             <div className="p-10 space-y-8">
                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
                   <SelectTrigger className="h-14 rounded-2xl border-2 font-black text-lg"><SelectValue placeholder="..." /></SelectTrigger>
-                  <SelectContent className="rounded-2xl">
-                     {templates?.map(t => (<SelectItem key={t.id} value={t.id!} className="font-bold py-4">{t.name}</SelectItem>))}
-                  </SelectContent>
+                  <SelectContent className="rounded-2xl">{templates?.map(t => (<SelectItem key={t.id} value={t.id!} className="font-bold py-4">{t.name}</SelectItem>))}</SelectContent>
                </Select>
                <Button onClick={handleCreateBOQ} disabled={!selectedTemplateId || !!loadingAction} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl gap-3 shadow-xl shadow-primary/20 border-b-8 border-orange-700">{loadingAction ? <Loader2 className="animate-spin h-6 w-6" /> : <Sparkles className="h-6 w-6" />}{isRtl ? 'إنشاء المقايسة' : 'Generate'}</Button>
             </div>
