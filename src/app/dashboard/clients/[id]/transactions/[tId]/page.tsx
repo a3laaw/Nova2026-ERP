@@ -113,7 +113,7 @@ export default function TransactionDetailsPage() {
   
   // المنطق المطور لفك القفل المالي: العقد المعتمد يكفي لبدء التنفيذ
   const activeContract = useMemo(() => 
-    contracts?.find(c => ['approved', 'paid', 'active'].includes(c.status || '') || c.isPaid),
+    contracts?.find(c => ['approved', 'paid', 'active', 'signed'].includes(c.status || '') || c.isPaid),
   [contracts]);
   
   const isFinancialLockActive = !activeContract;
@@ -404,7 +404,8 @@ export default function TransactionDetailsPage() {
                               const boqProgress = stageProgressMap[stage.technicalStageId];
                               const isPreviousCompleted = idx === 0 || stages[idx-1].status === 'completed';
                               const isOperationalFrontier = stage.status === 'in-progress' || (stage.status === 'pending' && isPreviousCompleted);
-                              
+                              const isReadyToStart = stage.status === 'pending' && isPreviousCompleted;
+
                               return (
                                 <Card key={stage.id} onClick={() => setFilterStageId(filterStageId === stage.id ? null : stage.id!)} className={cn("border-0 shadow-lg rounded-2xl bg-white transition-all border-s-8 cursor-pointer", stage.status === 'completed' ? 'border-s-emerald-500' : stage.status === 'in-progress' ? 'border-s-blue-500' : isOperationalFrontier ? 'border-s-orange-300' : 'border-s-slate-100 opacity-50')}>
                                   <CardContent className="p-5 flex flex-col md:flex-row items-center justify-between gap-6">
@@ -413,6 +414,11 @@ export default function TransactionDetailsPage() {
                                         <div className="space-y-1 flex-1 text-start">
                                            <div className="flex items-center gap-2">
                                               <h4 className="font-black text-base text-slate-900 tracking-tight">{stage.name}</h4>
+                                              {isReadyToStart && (
+                                                <Badge className="bg-orange-100 text-orange-700 border-0 font-black text-[7px] px-2 h-4 animate-ready-pulse uppercase">
+                                                   {isRtl ? 'جاهزة للبدء' : 'Ready to Start'}
+                                                </Badge>
+                                              )}
                                               {isConsulting && (stage.revisionCount || 0) > 0 && (
                                                 <Badge className="bg-orange-100 text-orange-700 border-0 font-black text-[9px] px-2 h-5">
                                                   {isRtl ? `مراجعة #${stage.revisionCount}` : `Rev #${stage.revisionCount}`}
@@ -425,8 +431,8 @@ export default function TransactionDetailsPage() {
                                      <div className="flex gap-2" onClick={e => e.stopPropagation()}>
                                            {isOperationalFrontier && (
                                               <>
-                                                {stage.status === 'pending' && <Button onClick={() => handleStartStage(stage.id!)} disabled={!!processingId} className="h-10 px-6 rounded-xl bg-blue-600 text-white font-black text-[10px] gap-2">{processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Play className="h-4 w-4" />} {isRtl ? 'بدء العمل' : 'Start'}</Button>}
-                                                {stage.status === 'in-progress' && <Button onClick={() => handleCompleteStage(stage)} disabled={!!processingId} className="h-10 px-6 rounded-xl bg-emerald-600 text-white font-black text-[10px] gap-2">{processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Check className="h-4 w-4" />} {isRtl ? 'إكمال' : 'Done'}</Button>}
+                                                {stage.status === 'pending' && <Button onClick={() => handleStartStage(stage.id!)} disabled={!!processingId} className="h-10 px-6 rounded-xl bg-blue-600 text-white font-black text-[10px] gap-2 shadow-lg hover:scale-105 transition-all">{processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Play className="h-4 w-4" />} {isRtl ? 'بدء العمل' : 'Start'}</Button>}
+                                                {stage.status === 'in-progress' && <Button onClick={() => handleCompleteStage(stage)} disabled={!!processingId} className="h-10 px-6 rounded-xl bg-emerald-600 text-white font-black text-[10px] gap-2 shadow-lg hover:scale-105 transition-all">{processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Check className="h-4 w-4" />} {isRtl ? 'إكمال' : 'Done'}</Button>}
                                                 {stage.status === 'in-progress' && isConsulting && (
                                                   <Button onClick={() => handleOpenRevisionDialog(stage)} disabled={processingId === `rev_${stage.id}`} variant="outline" className="h-10 px-4 rounded-xl border-orange-200 text-orange-600 font-black text-[10px] gap-2 hover:bg-orange-50">
                                                     {processingId === `rev_${stage.id}` ? <Loader2 className="animate-spin h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}

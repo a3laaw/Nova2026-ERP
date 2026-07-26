@@ -346,21 +346,31 @@ export default function AppointmentDetailPage() {
                    </div>
                  ) : stages.map((stage, idx) => {
                     const isSelected = stage.id === selectedStageId;
+                    const isPreviousCompleted = idx === 0 || stages[idx-1].status === 'completed';
+                    const isReadyToStart = stage.status === 'pending' && isPreviousCompleted;
+
                     return (
                        <div key={stage.id} onClick={() => setSelectedStageId(stage.id!)} className={cn("p-5 rounded-3xl border-2 transition-all cursor-pointer flex flex-col gap-4 group", isSelected ? "bg-primary/5 border-primary shadow-lg scale-[1.01]" : "bg-white border-slate-100 hover:border-slate-200")}>
                           <div className="flex items-center justify-between">
                              <div className="flex items-center gap-4">
                                 <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center font-black text-xs border shadow-sm", stage.status === 'completed' ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-white text-slate-400")}>{stage.status === 'completed' ? <Check className="h-5 w-5" /> : (idx + 1)}</div>
                                 <div className="text-start">
-                                   <p className={cn("text-base font-black leading-tight", isSelected ? "text-primary" : "text-slate-800")}>{stage.name}</p>
+                                   <div className="flex items-center gap-2">
+                                      <p className={cn("text-base font-black leading-tight", isSelected ? "text-primary" : "text-slate-800")}>{stage.name}</p>
+                                      {isReadyToStart && (
+                                         <Badge className="bg-orange-100 text-orange-700 border-0 font-black text-[7px] px-2 h-4 animate-ready-pulse uppercase">
+                                            {isRtl ? 'جاهزة للبدء' : 'Ready'}
+                                         </Badge>
+                                      )}
+                                   </div>
                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter mt-1">{stage.status}</p>
                                 </div>
                              </div>
                           </div>
                           {isSelected && (stage.status === 'pending' || stage.status === 'in-progress') && (
                              <div className="flex gap-3 animate-in slide-in-from-top-1" onClick={e => e.stopPropagation()}>
-                                {stage.status === 'pending' && <Button onClick={() => handleStartStage(stage.id!)} disabled={!!processingId} className="flex-1 h-12 rounded-2xl bg-blue-600 text-white font-black text-xs gap-2 shadow-lg">{processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Play className="h-4 w-4" />}{isRtl ? 'بدء العمل' : 'Start'}</Button>}
-                                {stage.status === 'in-progress' && <Button onClick={() => handleCompleteStage(stage)} disabled={!!processingId} className="flex-1 h-12 rounded-2xl bg-emerald-600 text-white font-black text-xs gap-2 shadow-lg">{processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}{isRtl ? 'إنجاز' : 'Done'}</Button>}
+                                {stage.status === 'pending' && <Button onClick={() => handleStartStage(stage.id!)} disabled={!!processingId} className="flex-1 h-12 rounded-2xl bg-blue-600 text-white font-black text-xs gap-2 shadow-lg hover:scale-105 transition-all">{processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Play className="h-4 w-4" />}{isRtl ? 'بدء العمل' : 'Start'}</Button>}
+                                {stage.status === 'in-progress' && <Button onClick={() => handleCompleteStage(stage)} disabled={!!processingId} className="flex-1 h-12 rounded-2xl bg-emerald-600 text-white font-black text-xs gap-2 shadow-lg hover:scale-105 transition-all">{processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}{isRtl ? 'إنجاز' : 'Done'}</Button>}
                              </div>
                           )}
                        </div>
@@ -511,4 +521,3 @@ export default function AppointmentDetailPage() {
     </div>
   );
 }
-
