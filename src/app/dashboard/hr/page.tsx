@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   UserCircle, FileSpreadsheet, Calculator, UserPlus, 
   Users, Calendar, Clock, ShieldCheck, TrendingUp,
-  AlertTriangle, ArrowUpRight, Sparkles, ShieldAlert
+  AlertTriangle, ArrowUpRight, Sparkles, ShieldAlert,
+  Loader2
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useRouter } from 'next/navigation';
@@ -22,6 +24,10 @@ import { Employee } from '@/types/hr';
 import { cn } from '@/lib/utils';
 import { addDays, isBefore, parseISO } from 'date-fns';
 
+/**
+ * لوحة تحكم الموارد البشرية (HR Management Dashboard)
+ * بروتوكول الحماية السيادي: إذا كان المستخدم يملك صلاحية 'own' فقط، يتم تحويله لملفه الشخصي.
+ */
 export default function HRDashboard() {
   const { t, lang, dir } = useLanguage();
   const router = useRouter();
@@ -33,14 +39,23 @@ export default function HRDashboard() {
 
   const companyId = globalUser?.companyId;
 
+  // فحص الصلاحيات
+  const hrView = check('hr', 'view');
   const canHire = check('hr', 'create').can && check('hr', 'create').scope !== 'own';
   const canSeePayroll = check('hr', 'approve').can;
   const canSeeCompliance = check('hr', 'edit').can && check('hr', 'edit').scope !== 'own';
 
+  // --- بروتوكول التوجيه التلقائي للموظفين (The Auto-Dossier Redirect) ---
+  useEffect(() => {
+    if (hrView.can && hrView.scope === 'own' && globalUser?.employeeId) {
+       router.replace(`/dashboard/hr/reports/dossier/${globalUser.employeeId}`);
+    }
+  }, [hrView, globalUser, router]);
+
   const empsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.employees(companyId))) : null, 
   [db, companyId]);
-  const { data: employees } = useCollection<Employee>(empsQuery);
+  const { data: employees, loading: empsLoading } = useCollection<Employee>(empsQuery);
 
   const expiringDocs = useMemo(() => {
     if (!employees) return [];
@@ -52,8 +67,20 @@ export default function HRDashboard() {
     });
   }, [employees]);
 
+  // واجهة انتظار التوجيه لضمان عدم وميض لوحة التحكم للموظفين غير المصرح لهم
+  if (hrView.scope === 'own' || empsLoading) {
+    return (
+      <div className="h-[60vh] flex flex-col items-center justify-center gap-4">
+        <Loader2 className="h-10 w-10 animate-spin text-primary/30" />
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">
+           Validating HR Access Scope...
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6" dir={dir}>
+    <div className="space-y-6 animate-in fade-in duration-500" dir={dir}>
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start">
           <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-2">

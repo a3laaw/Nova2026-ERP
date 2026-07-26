@@ -1,6 +1,7 @@
+
 /**
  * @fileOverview القائمة الجانبية (Sidebar) بتصميم الكبسولات البرتقالية كاملة الاستدارة مع تلميحات وقوائم منبثقة فاتحة ونظيفة.
- * تم تطهير اللون الكحلي بالكامل واستبداله بالأبيض النقي.
+ * تم تحديث منطق العرض ليكون "متكيفاً" مع صلاحيات الموظف الشخصية.
  */
 
 "use client"
@@ -43,98 +44,105 @@ export function DashboardSidebar() {
   const isRtl = lang === 'ar'
   const isCollapsed = state === "collapsed"
 
-  const menuItems = React.useMemo(() => [
-    { title: t('dashboard'), icon: LayoutDashboard, url: "/dashboard", resource: 'dashboard' },
-    { 
-      title: t('crm'), 
-      icon: Users, 
-      url: "/dashboard/crm", 
-      resource: 'crm',
-      subItems: [
-        { title: t('leads'), url: "/dashboard/crm", icon: Users },
-        { title: t('clients'), url: "/dashboard/clients", icon: UserCircle },
-      ]
-    },
-    { 
-      title: t('projects'), 
-      icon: HardHat, 
-      url: "/dashboard/projects", 
-      resource: 'projects',
-      subItems: [
-        { title: t('activeProjects'), url: "/dashboard/projects", icon: Layers },
-        { title: isRtl ? 'المواعيد والزيارات' : 'Appointments', url: "/dashboard/appointments", icon: CalendarDays },
-        { title: isRtl ? 'حجز القاعات والاجتماعات' : 'Halls & Meetings', url: "/dashboard/meetings", icon: Landmark },
-        { title: isRtl ? 'سجل تفاعل العملاء' : 'Visits Dossier', url: "/dashboard/projects/reports/client-visits", icon: MapPinned },
-        { title: t('boqExplorer'), url: "/dashboard/projects/boqs", icon: FileSpreadsheet },
-        { title: t('reports'), url: "/dashboard/reports", icon: FileText },
-      ]
-    },
-    { 
-      title: t('construction'), 
-      icon: Hammer, 
-      url: "/dashboard/construction/bookings", 
-      resource: 'projects',
-      subItems: [
-        { title: t('fieldRadar'), url: "/dashboard/construction/bookings", icon: MapPin },
-        { title: isRtl ? 'زيارات المواقع المنفذة' : 'Site Reports', url: "/dashboard/construction/field-visits", icon: FileText },
-      ]
-    },
-    { 
-      title: t('procurement'), 
-      icon: ShoppingCart, 
-      url: "/dashboard/procurement", 
-      resource: 'procurement',
-      subItems: [
-        { title: t('suppliers'), url: "/dashboard/procurement/suppliers", icon: Truck },
-        { title: t('contracts'), url: "/dashboard/procurement/contracts", icon: Gavel },
-        { title: t('quoteAnalysis'), url: "/dashboard/ai", icon: FileSearch },
-      ]
-    },
-    { 
-      title: t('hr'), 
-      icon: UserCircle, 
-      url: "/dashboard/hr", 
-      resource: 'hr',
-      subItems: [
-        { title: t('myProfile'), url: globalUser?.employeeId ? `/dashboard/hr/reports/dossier/${globalUser.employeeId}` : '/dashboard/hr', icon: ShieldCheck },
-        { title: t('staffRecords'), url: "/dashboard/hr/employees", icon: Users, hideIfOwnScope: true },
-        { title: t('leaves'), url: "/dashboard/hr/leaves", icon: Calendar },
-        { title: t('payroll'), url: "/dashboard/hr/payroll", icon: Calculator, requiredAction: 'approve' as const },
-      ]
-    },
-    { 
-      title: t('accounting'), 
-      icon: Calculator, 
-      url: "/dashboard/accounting", 
-      resource: 'accounting',
-      subItems: [
-        { title: t('reconciliation'), url: "/dashboard/accounting", icon: Sparkles },
-      ]
-    },
-    { 
-      title: t('inventory'), 
-      icon: Package, 
-      url: "/dashboard/inventory", 
-      resource: 'inventory',
-      subItems: [
-        { title: t('warehouses'), url: "/dashboard/inventory", icon: Building2 },
-      ]
-    },
-    { 
-      title: t('settings'), 
-      icon: Settings2, 
-      url: "/dashboard/settings", 
-      resource: 'settings',
-      subItems: [
-        { title: t('users'), url: "/dashboard/settings/users", icon: Users },
-        { title: t('companyIdentity'), url: "/dashboard/settings/company", icon: Building2 },
-        { title: t('checklists'), url: "/dashboard/settings/checklists", icon: Database },
-        { title: t('rolesRef'), url: "/dashboard/settings/roles", icon: ShieldCheck },
-        { title: t('workHours'), url: "/dashboard/settings/work-hours", icon: Clock },
-        { title: t('profile'), url: "/dashboard/settings/profile", icon: UserCircle },
-      ]
-    }
-  ], [t, isRtl, globalUser]);
+  const menuItems = React.useMemo(() => {
+    // تحديد نطاق الوصول لـ HR لتغيير المسمى إذا كان الموظف يرى نفسه فقط
+    const hrAccess = check('hr', 'view');
+    const isHrManager = hrAccess.can && hrAccess.scope !== 'own';
+
+    return [
+      { title: t('dashboard'), icon: LayoutDashboard, url: "/dashboard", resource: 'dashboard' },
+      { 
+        title: t('crm'), 
+        icon: Users, 
+        url: "/dashboard/crm", 
+        resource: 'crm',
+        subItems: [
+          { title: t('leads'), url: "/dashboard/crm", icon: Users },
+          { title: t('clients'), url: "/dashboard/clients", icon: UserCircle },
+        ]
+      },
+      { 
+        title: t('projects'), 
+        icon: HardHat, 
+        url: "/dashboard/projects", 
+        resource: 'projects',
+        subItems: [
+          { title: t('activeProjects'), url: "/dashboard/projects", icon: Layers },
+          { title: isRtl ? 'المواعيد والزيارات' : 'Appointments', url: "/dashboard/appointments", icon: CalendarDays },
+          { title: isRtl ? 'حجز القاعات والاجتماعات' : 'Halls & Meetings', url: "/dashboard/meetings", icon: Landmark },
+          { title: isRtl ? 'سجل تفاعل العملاء' : 'Visits Dossier', url: "/dashboard/projects/reports/client-visits", icon: MapPinned },
+          { title: t('boqExplorer'), url: "/dashboard/projects/boqs", icon: FileSpreadsheet },
+          { title: t('reports'), url: "/dashboard/reports", icon: FileText },
+        ]
+      },
+      { 
+        title: t('construction'), 
+        icon: Hammer, 
+        url: "/dashboard/construction/bookings", 
+        resource: 'projects',
+        subItems: [
+          { title: t('fieldRadar'), url: "/dashboard/construction/bookings", icon: MapPin },
+          { title: isRtl ? 'زيارات المواقع المنفذة' : 'Site Reports', url: "/dashboard/construction/field-visits", icon: FileText },
+        ]
+      },
+      { 
+        title: t('procurement'), 
+        icon: ShoppingCart, 
+        url: "/dashboard/procurement", 
+        resource: 'procurement',
+        subItems: [
+          { title: t('suppliers'), url: "/dashboard/procurement/suppliers", icon: Truck },
+          { title: t('contracts'), url: "/dashboard/procurement/contracts", icon: Gavel },
+          { title: t('quoteAnalysis'), url: "/dashboard/ai", icon: FileSearch },
+        ]
+      },
+      { 
+        // الميزة المطلوبة: تغيير المسمى إذا كان الموظف يرى سجلاته الشخصية فقط
+        title: isHrManager ? t('hr') : (isRtl ? 'شؤوني الوظيفية' : 'Personal Workspace'), 
+        icon: UserCircle, 
+        url: "/dashboard/hr", 
+        resource: 'hr',
+        subItems: [
+          { title: t('myProfile'), url: globalUser?.employeeId ? `/dashboard/hr/reports/dossier/${globalUser.employeeId}` : '/dashboard/hr', icon: ShieldCheck },
+          { title: t('staffRecords'), url: "/dashboard/hr/employees", icon: Users, hideIfOwnScope: true },
+          { title: t('leaves'), url: "/dashboard/hr/leaves", icon: Calendar },
+          { title: t('payroll'), url: "/dashboard/hr/payroll", icon: Calculator, requiredAction: 'approve' as const },
+        ]
+      },
+      { 
+        title: t('accounting'), 
+        icon: Calculator, 
+        url: "/dashboard/accounting", 
+        resource: 'accounting',
+        subItems: [
+          { title: t('reconciliation'), url: "/dashboard/accounting", icon: Sparkles },
+        ]
+      },
+      { 
+        title: t('inventory'), 
+        icon: Package, 
+        url: "/dashboard/inventory", 
+        resource: 'inventory',
+        subItems: [
+          { title: t('warehouses'), url: "/dashboard/inventory", icon: Building2 },
+        ]
+      },
+      { 
+        title: t('settings'), 
+        icon: Settings2, 
+        url: "/dashboard/settings", 
+        resource: 'settings',
+        subItems: [
+          { title: t('users'), url: "/dashboard/settings/users", icon: Users },
+          { title: t('companyIdentity'), url: "/dashboard/settings/company", icon: Building2 },
+          { title: t('checklists'), url: "/dashboard/settings/checklists", icon: Database },
+          { title: t('rolesRef'), url: "/dashboard/settings/roles", icon: ShieldCheck },
+          { title: t('workHours'), url: "/dashboard/settings/work-hours", icon: Clock },
+          { title: t('profile'), url: "/dashboard/settings/profile", icon: UserCircle },
+        ]
+      }
+    ];
+  }, [t, isRtl, globalUser, check]);
 
   const visibleItems = React.useMemo(() => {
     return menuItems.filter(item => {
@@ -229,7 +237,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                   <button className={collapsedStyle}>
                     <item.icon className="h-6 w-6" />
                   </button>
-                  {/* Floating Popover - NOW CLEAN LIGHT THEME */}
+                  {/* Floating Popover - CLEAN LIGHT THEME */}
                   <div className={cn(
                     "absolute top-0 z-[999] hidden group-hover:block animate-in fade-in zoom-in-95 duration-200",
                     isRtl ? "right-full mr-3" : "left-full ml-3"

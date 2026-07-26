@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -111,14 +112,49 @@ export class RoleService {
     }
   }
 
+  /**
+   * تهيئة الأدوار القياسية بنظام المصفوفة الجديد
+   * تم ضبط دور ENGINEER ليكون "خدمة ذاتية" في شؤون الموظفين
+   */
   async seedInitialRoles() {
     const batch = writeBatch(this.db);
     const rolesRef = collection(this.db, paths.roles(this.companyId));
     
     const initialRoles = [
-      { code: 'ADMIN', name: 'مدير النظام', nameEn: 'System Admin', permissions: ['*'], matrix: [], order: 1 },
-      { code: 'ENGINEER', name: 'مهندس تنفيذ', nameEn: 'Project Engineer', permissions: [], matrix: [], order: 2 },
-      { code: 'ACCOUNTANT', name: 'محاسب', nameEn: 'Accountant', permissions: [], matrix: [], order: 3 },
+      { 
+        code: 'ADMIN', 
+        name: 'مدير النظام', 
+        nameEn: 'System Admin', 
+        permissions: ['*'], 
+        matrix: [{ resourceId: '*', action: 'view', scope: 'all' }], 
+        order: 1 
+      },
+      { 
+        code: 'ENGINEER', 
+        name: 'مهندس تنفيذ', 
+        nameEn: 'Project Engineer', 
+        permissions: ['projects:view', 'projects:edit', 'hr:view', 'crm:view'], 
+        matrix: [
+           { resourceId: 'projects', action: 'view', scope: 'dept' },
+           { resourceId: 'projects', action: 'edit', scope: 'own' },
+           { resourceId: 'hr', action: 'view', scope: 'own' }, // يرى نفسه فقط
+           { resourceId: 'crm', action: 'view', scope: 'own' }
+        ],
+        order: 2 
+      },
+      { 
+        code: 'ACCOUNTANT', 
+        name: 'محاسب', 
+        nameEn: 'Accountant', 
+        permissions: ['accounting:view', 'accounting:post', 'hr:view', 'hr:approve'], 
+        matrix: [
+           { resourceId: 'accounting', action: 'view', scope: 'all' },
+           { resourceId: 'accounting', action: 'post', scope: 'all' },
+           { resourceId: 'hr', action: 'view', scope: 'all' },
+           { resourceId: 'hr', action: 'approve', scope: 'all' }
+        ],
+        order: 3 
+      },
     ];
 
     initialRoles.forEach(r => {
