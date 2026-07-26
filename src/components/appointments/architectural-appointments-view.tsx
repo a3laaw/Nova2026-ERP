@@ -1078,7 +1078,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
            </div>
            <Button 
              onClick={handleSave} 
-             disabled={loading || isSelectedDateHoliday || (!isBusyBlock && !formData.clientId) || !!eligibilityBlocker || eligibilityLoading} 
+             disabled={loading || isSelectedDateHoliday || (!isBusyBlock && !isNewClient && !formData.clientId) || (isNewClient && !formData.newClientName) || !!eligibilityBlocker || eligibilityLoading} 
              className="flex-1 h-12 rounded-xl font-black gap-2 shadow-xl shadow-primary/20"
            >
               {loading || eligibilityLoading ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
