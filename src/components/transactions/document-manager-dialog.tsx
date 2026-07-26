@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -23,7 +22,8 @@ import {
   History,
   Trash2,
   AlertTriangle,
-  X
+  X,
+  Workflow
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';

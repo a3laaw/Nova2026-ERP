@@ -15,7 +15,8 @@ import {
   Wallet,
   ArrowRight,
   Plus,
-  X
+  X,
+  Workflow
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, where, orderBy } from 'firebase/firestore';

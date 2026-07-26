@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -11,7 +10,8 @@ import {
   ShieldCheck, Clock, Wallet, Receipt, 
   Sparkles, CheckCircle2, ExternalLink,
   Info, History, Trash2, AlertTriangle,
-  X, Save, UserCircle, ArrowUpRight
+  X, Save, UserCircle, ArrowUpRight,
+  Workflow
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useFirestore, useCollection } from '@/firebase';
