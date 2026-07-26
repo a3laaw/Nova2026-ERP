@@ -24,12 +24,15 @@ import { cn } from '@/lib/utils';
 export default function ClientsListPage() {
   const { globalUser, user } = useAuthContext();
   const { lang, dir } = useLanguage();
-  const { isAdmin } = usePermissions();
+  const { isAdmin, check } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
+
+  // فحص صلاحية الإضافة (The Sovereign Guard)
+  const canRegisterClient = check('crm', 'create').can;
 
   const clientsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.clients(companyId)), orderBy('createdAt', 'desc')) : null, 
@@ -77,9 +80,12 @@ export default function ClientsListPage() {
              </div>
            )}
         </div>
-        <Button onClick={() => router.push('/dashboard/clients/new')} variant="default" className="h-11 px-8 shadow-xl shadow-primary/20">
-          <UserPlus className="h-4 w-4 me-2" /> {isRtl ? 'تسجيل عميل جديد' : 'New Registration'}
-        </Button>
+        
+        {canRegisterClient && (
+          <Button onClick={() => router.push('/dashboard/clients/new')} variant="default" className="h-11 px-8 shadow-xl shadow-primary/20">
+            <UserPlus className="h-4 w-4 me-2" /> {isRtl ? 'تسجيل عميل جديد' : 'New Registration'}
+          </Button>
+        )}
       </div>
 
       <Card className="border-0 shadow-sm rounded-xl bg-white mb-4 overflow-hidden ring-1 ring-black/[0.02]">

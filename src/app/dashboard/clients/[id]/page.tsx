@@ -58,6 +58,10 @@ export default function ClientDetailsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // فحص صلاحيات الأكشن (Sovereign Guard)
+  const canEditClient = check('crm', 'edit').can;
+  const canOpenTransaction = check('projects', 'create').can;
+
   const clientRef = useMemo(() => companyId && db ? doc(db, paths.clients(companyId), clientId) : null, [db, companyId, clientId]);
   const historyQuery = useMemo(() => companyId && db ? query(collection(db, paths.clientHistory(companyId, clientId))) : null, [db, companyId, clientId]);
   const transQuery = useMemo(() => companyId && db ? query(collection(db, paths.transactions(companyId)), where('clientId', '==', clientId)) : null, [db, companyId, clientId]);
@@ -83,6 +87,7 @@ export default function ClientDetailsPage() {
     } catch (e: any) {
       toast({ variant: "destructive", title: translate('error'), description: e.message });
     } finally {
+      setDeletingId(null);
       setIsDeleting(false);
     }
   };
@@ -104,13 +109,19 @@ export default function ClientDetailsPage() {
              </div>
           </div>
         </div>
+        
+        {/* شريط الإجراءات السيادي: يتم إخفاؤه عن الموظف العادي */}
         <div className="flex gap-2">
-           <Button onClick={() => router.push(`/dashboard/clients/${clientId}/edit`)} variant="outline" className="h-9 px-4 rounded-lg font-bold text-[10px] gap-2">
-             <Edit3 className="h-3.5 w-3.5" /> {isRtl ? 'تعديل' : 'Edit'}
-           </Button>
-           <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/new`)} className="h-9 px-4 rounded-lg bg-primary text-white font-black text-[10px] gap-2 shadow-lg shadow-primary/10">
-             <Activity className="h-3.5 w-3.5" /> {isRtl ? 'فتح معاملة' : 'New Trans'}
-           </Button>
+           {canEditClient && (
+             <Button onClick={() => router.push(`/dashboard/clients/${clientId}/edit`)} variant="outline" className="h-9 px-4 rounded-lg font-bold text-[10px] gap-2">
+               <Edit3 className="h-3.5 w-3.5" /> {isRtl ? 'تعديل' : 'Edit'}
+             </Button>
+           )}
+           {canOpenTransaction && (
+             <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/new`)} className="h-9 px-4 rounded-lg bg-primary text-white font-black text-[10px] gap-2 shadow-lg shadow-primary/10">
+               <Activity className="h-3.5 w-3.5" /> {isRtl ? 'فتح معاملة' : 'New Trans'}
+             </Button>
+           )}
         </div>
       </div>
 
@@ -238,7 +249,7 @@ export default function ClientDetailsPage() {
              </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-12 gap-4 flex flex-row items-center justify-center">
-            <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel>
+            <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white">إلغاء</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleDeleteTransaction} 
               disabled={isDeleting}
