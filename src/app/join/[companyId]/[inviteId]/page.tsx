@@ -54,14 +54,17 @@ export default function EmployeeJoinPage() {
       const cred = await createUserWithEmailAndPassword(auth, invite.email, password);
       const uid = cred.user.uid;
 
+      // تحديث ملف Auth الأساسي
       await updateProfile(cred.user, { displayName: invite.employeeName });
 
       const batch = writeBatch(db);
 
+      // 1. السجل العالمي (Global Identity) - فرض fullName لضمان السيادة الاسمية
       batch.set(doc(db, 'global_users', uid), {
         companyId: invite.companyId,
         roleId: invite.roleId,
         role: invite.roleCode,
+        fullName: invite.employeeName, // تم التصحيح لضمان الربط الشامل
         departmentId: invite.departmentId,
         employeeId: invite.employeeId,
         username: invite.email.split('@')[0],
@@ -71,7 +74,9 @@ export default function EmployeeJoinPage() {
         updatedAt: serverTimestamp()
       });
 
+      // 2. السجل المحلي داخل الشركة
       batch.set(doc(db, 'companies', invite.companyId, 'users', uid), {
+        id: uid,
         displayName: invite.employeeName,
         email: invite.email,
         employeeId: invite.employeeId,
@@ -81,6 +86,7 @@ export default function EmployeeJoinPage() {
         isActive: true
       });
 
+      // 3. إغلاق الدعوة
       batch.update(doc(db, 'companies', invite.companyId, 'invitations', invite.id), {
         status: 'accepted',
         acceptedAt: serverTimestamp(),

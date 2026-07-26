@@ -105,8 +105,11 @@ export default function TransactionDetailsPage() {
   
   const canSeeFinance = check('accounting', 'view').can || check('procurement', 'view').can;
 
-  // فرض الاسم الكامل السيادي لضمان الاحترافية في السجلات
-  const currentUserName = useMemo(() => globalUser?.fullName || user?.displayName || 'User', [globalUser, user]);
+  // خوارزمية استخراج الاسم السيادي (Sovereign Identity Resolver)
+  // تضمن عدم ظهور "اليوزر" أو "الإيميل" في السجلات الفنية
+  const currentUserName = useMemo(() => {
+    return globalUser?.fullName || user?.displayName || globalUser?.username || 'مهندس غير معرف';
+  }, [globalUser, user]);
 
   const transRef = useMemo(() => (companyId && db && transactionId) ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
   const { data: transaction, loading: transLoading } = useDoc<Transaction>(transRef);
