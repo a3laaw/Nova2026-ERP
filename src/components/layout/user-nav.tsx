@@ -3,6 +3,7 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { useLanguage } from "@/context/language-context"
 import { useAuthContext } from "@/context/auth-context"
 import { usePermissions } from "@/hooks/use-permissions"
