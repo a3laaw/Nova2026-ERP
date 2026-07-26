@@ -293,11 +293,20 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                    ? ((formData.baseAmount || 0) * (m.percentage || 0)) / 100 
                                    : (m.unitPrice || 0);
                                  
+                                 const linkedStageName = pathStages.find(s => s.id === m.technicalStageId)?.name;
+
                                  return (
                                    <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
                                       <td className="p-3 font-black text-slate-300 text-start">{idx + 1}</td>
                                       <td className="p-2">
-                                         <Input value={m.label} onChange={e => updateItem(idx, 'label', e.target.value)} className="h-8 rounded-lg font-bold text-[10px] bg-slate-50/50" />
+                                         <div className="space-y-1">
+                                            <Input value={m.label} onChange={e => updateItem(idx, 'label', e.target.value)} className="h-8 rounded-lg font-bold text-[10px] bg-slate-50/50" />
+                                            {m.technicalStageId && m.technicalStageId !== 'SIGNING' && (
+                                              <p className="text-[7px] text-slate-400 italic">
+                                                {t(m.timing || 'at')} {linkedStageName}
+                                              </p>
+                                            )}
+                                         </div>
                                       </td>
                                       {formData.pricingMode === 'percentage' && (
                                         <td className="p-2">
@@ -311,10 +320,10 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                          <Select value={m.timing || 'at'} onValueChange={v => updateItem(idx, 'timing', v)}>
                                             <SelectTrigger className="h-8 rounded-lg border-2 font-black text-[9px] bg-white"><SelectValue /></SelectTrigger>
                                             <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
-                                               <SelectItem value="at" className="font-bold text-[10px]">{isRtl ? 'عند' : 'At'}</SelectItem>
-                                               <SelectItem value="before" className="font-bold text-[10px]">{isRtl ? 'قبل' : 'Before'}</SelectItem>
-                                               <SelectItem value="during" className="font-bold text-[10px]">{isRtl ? 'أثناء' : 'During'}</SelectItem>
-                                               <SelectItem value="after" className="font-bold text-[10px]">{isRtl ? 'بعد' : 'After'}</SelectItem>
+                                               <SelectItem value="at" className="font-bold text-[10px]">{t('at')}</SelectItem>
+                                               <SelectItem value="before" className="font-bold text-[10px]">{t('before')}</SelectItem>
+                                               <SelectItem value="during" className="font-bold text-[10px]">{t('during')}</SelectItem>
+                                               <SelectItem value="after" className="font-bold text-[10px]">{t('after')}</SelectItem>
                                             </SelectContent>
                                          </Select>
                                       </td>

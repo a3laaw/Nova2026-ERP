@@ -198,9 +198,8 @@ export default function QuotationViewPage() {
     ? (editData.pricingMode === 'itemized' ? stats.totalItemizedAmount : (editData.totalAmount || quote.totalAmount || 0))
     : (quote.totalAmount || 0);
 
-  const getTimingLabel = (t: MilestoneTiming) => {
-    const map = { at: 'عند', before: 'قبل', during: 'أثناء', after: 'بعد' };
-    return isRtl ? map[t] : t.toUpperCase();
+  const getTimingLabel = (time: MilestoneTiming) => {
+    return t(time);
   };
 
   return (
@@ -356,10 +355,10 @@ export default function QuotationViewPage() {
                                       <Select value={item.timing || 'at'} onValueChange={v => updateItem(originalIdx, 'timing', v)}>
                                          <SelectTrigger className="h-7 rounded-md border-2 font-black text-[9px] bg-white"><SelectValue /></SelectTrigger>
                                          <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
-                                            <SelectItem value="at" className="font-bold text-[10px]">{isRtl ? 'عند' : 'At'}</SelectItem>
-                                            <SelectItem value="before" className="font-bold text-[10px]">{isRtl ? 'قبل' : 'Before'}</SelectItem>
-                                            <SelectItem value="during" className="font-bold text-[10px]">{isRtl ? 'أثناء' : 'During'}</SelectItem>
-                                            <SelectItem value="after" className="font-bold text-[10px]">{isRtl ? 'بعد' : 'After'}</SelectItem>
+                                            <SelectItem value="at" className="font-bold text-[10px]">{t('at')}</SelectItem>
+                                            <SelectItem value="before" className="font-bold text-[10px]">{t('before')}</SelectItem>
+                                            <SelectItem value="during" className="font-bold text-[10px]">{t('during')}</SelectItem>
+                                            <SelectItem value="after" className="font-bold text-[10px]">{t('after')}</SelectItem>
                                          </SelectContent>
                                       </Select>
                                    </td>
@@ -397,7 +396,7 @@ export default function QuotationViewPage() {
                                       </Badge>
                                    )}
                                 </td>
-                                <td className="p-3 text-end pe-6">
+                                <td className="p-3 text-end pe-6 w-32">
                                    {isEditing && editData.pricingMode !== 'percentage' ? (
                                       <Input type="number" step="0.001" value={item.unitPrice === 0 ? "" : item.unitPrice} onChange={e => updateItem(originalIdx, 'unitPrice', e.target.value === "" ? 0 : Number(e.target.value))} className="h-7 w-24 ms-auto text-end font-black text-emerald-600 text-[10px]" />
                                    ) : (

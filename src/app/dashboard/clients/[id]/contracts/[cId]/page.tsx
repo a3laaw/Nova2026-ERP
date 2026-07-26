@@ -186,9 +186,8 @@ export default function ContractViewPage() {
     }
   };
 
-  const getTimingLabel = (t: MilestoneTiming) => {
-    const map = { at: 'عند', before: 'قبل', during: 'أثناء', after: 'بعد' };
-    return isRtl ? map[t] : t.toUpperCase();
+  const getTimingLabel = (time: MilestoneTiming) => {
+    return t(time);
   };
 
   if (loading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
@@ -369,10 +368,10 @@ export default function ContractViewPage() {
                                       <Select value={m.timing || 'at'} onValueChange={v => updateMilestone(idx, 'timing', v)}>
                                          <SelectTrigger className="h-8 rounded-lg border-2 font-black text-[9px] bg-white"><SelectValue /></SelectTrigger>
                                          <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
-                                            <SelectItem value="at" className="font-bold text-[10px]">{isRtl ? 'عند' : 'At'}</SelectItem>
-                                            <SelectItem value="before" className="font-bold text-[10px]">{isRtl ? 'قبل' : 'Before'}</SelectItem>
-                                            <SelectItem value="during" className="font-bold text-[10px]">{isRtl ? 'أثناء' : 'During'}</SelectItem>
-                                            <SelectItem value="after" className="font-bold text-[10px]">{isRtl ? 'بعد' : 'After'}</SelectItem>
+                                            <SelectItem value="at" className="font-bold text-[10px]">{t('at')}</SelectItem>
+                                            <SelectItem value="before" className="font-bold text-[10px]">{t('before')}</SelectItem>
+                                            <SelectItem value="during" className="font-bold text-[10px]">{t('during')}</SelectItem>
+                                            <SelectItem value="after" className="font-bold text-[10px]">{t('after')}</SelectItem>
                                          </SelectContent>
                                       </Select>
                                    </td>
@@ -380,7 +379,7 @@ export default function ContractViewPage() {
                                 <td className="p-4 text-start">
                                    {isEditing ? (
                                       <Select value={m.technicalStageId || 'SIGNING'} onValueChange={v => updateMilestone(idx, 'technicalStageId', v)}>
-                                         <SelectTrigger className="h-8 rounded-lg border-2 font-bold text-[9px] bg-white"><SelectValue /></SelectTrigger>
+                                         <SelectTrigger className="h-8 rounded-lg border-2 font-black text-[9px] bg-white"><SelectValue /></SelectTrigger>
                                          <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
                                             <SelectItem value="SIGNING" className="font-bold text-[10px]">توقيع العقد</SelectItem>
                                             {stages?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-[10px] py-2 border-b last:border-0 border-slate-50">
@@ -397,7 +396,7 @@ export default function ContractViewPage() {
                                       </Badge>
                                    )}
                                 </td>
-                                <td className="p-4 text-end pe-8">
+                                <td className="p-4 text-end pe-8 w-32">
                                    {isEditing && editData.pricingMode === 'itemized' ? (
                                       <Input type="number" step="0.001" value={m.amount === 0 ? "" : m.amount} onChange={e => updateMilestone(idx, 'amount', e.target.value === "" ? 0 : Number(e.target.value))} className="h-8 w-24 ms-auto text-end font-black text-emerald-600 text-[10px]" />
                                    ) : (
