@@ -49,6 +49,10 @@ interface Props {
   boqItems: BOQItem[];
 }
 
+/**
+ * مدير الأوامر التغييرية (VO Manager).
+ * تم تحديث الألوان لتصبح فاتحة ومشرقة.
+ */
 export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumber, boqItems }: Props) {
   const { lang, dir, t } = useLanguage();
   const { user, globalUser } = useAuthContext();
@@ -170,31 +174,31 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-7xl rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
-        <div className="bg-[#1e1b4b] p-8 text-white text-start flex justify-between items-center relative overflow-hidden shrink-0">
-           <div className="absolute top-0 right-0 p-8 opacity-5"><Calculator className="h-48 w-48" /></div>
+      <DialogContent className="max-w-7xl rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
+        <div className="bg-primary/5 p-8 text-slate-900 text-start flex justify-between items-center relative overflow-hidden shrink-0 border-b">
+           <div className="absolute top-0 right-0 p-8 opacity-5"><Calculator className="h-48 w-48 text-primary" /></div>
            <div className="flex items-center gap-6 relative z-10">
-              <div className="h-14 w-14 bg-primary/20 rounded-2xl flex items-center justify-center text-primary shadow-2xl ring-4 ring-primary/5">
+              <div className="h-14 w-14 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg ring-4 ring-primary/5">
                  <Calculator className="h-7 w-7" />
               </div>
               <div>
                  <DialogTitle className="text-2xl font-black font-headline">{isRtl ? 'أمر تغييري (VO)' : 'Variation Order'}</DialogTitle>
-                 <p className="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-widest">Linked to BOQ: {boqNumber}</p>
+                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Linked to BOQ: {boqNumber}</p>
               </div>
            </div>
            <div className="text-end relative z-10">
               <p className="text-[9px] font-black text-primary uppercase mb-1">Net Change Value</p>
-              <h3 className={cn("text-3xl font-black font-mono", netTotal >= 0 ? "text-emerald-400" : "text-rose-400")}>
+              <h3 className={cn("text-3xl font-black font-mono", netTotal >= 0 ? "text-emerald-600" : "text-rose-600")}>
                  {netTotal.toLocaleString()} <span className="text-xs opacity-40">KWD</span>
               </h3>
            </div>
         </div>
 
-        <div className="p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 max-h-[70vh] overflow-y-auto scrollbar-hide text-start">
+        <div className="p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 max-h-[70vh] overflow-y-auto scrollbar-hide text-start bg-white">
            <div className="lg:col-span-3 space-y-6">
               <div className="space-y-2">
                  <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'عنوان التعديل' : 'VO Title'}</Label>
-                 <Input value={title} onChange={e => setTitle(e.target.value)} className="h-11 rounded-xl border-2 font-bold" placeholder="..." />
+                 <Input value={title} onChange={e => setTitle(e.target.value)} className="h-11 rounded-xl border-2 font-bold bg-slate-50/50" placeholder="..." />
               </div>
               <div className="space-y-2">
                  <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'المبرر الفني' : 'Justification'}</Label>
@@ -205,7 +209,9 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
            <div className="lg:col-span-9 space-y-6">
               <div className="flex justify-between items-center px-2">
                  <h4 className="text-base font-black flex items-center gap-2 text-slate-800"><LayoutGrid className="h-4 w-4 text-primary" /> {isRtl ? 'جدول تعديلات النطاق' : 'Scope Adjustments Grid'}</h4>
-                 <Button onClick={addItem} variant="outline" className="rounded-xl font-black h-10 border-2 gap-2 shadow-sm text-xs"><PlusCircle className="h-4 w-4" /> {isRtl ? 'إضافة تعديل' : 'Add Adjustment'}</Button>
+                 <Button onClick={addItem} variant="outline" className="rounded-xl font-black h-10 border-2 gap-2 shadow-sm text-xs bg-white hover:bg-primary/5">
+                   <PlusCircle className="h-4 w-4" /> {isRtl ? 'إضافة تعديل' : 'Add Adjustment'}
+                 </Button>
               </div>
 
               <div className="space-y-4 pb-6">
@@ -213,20 +219,20 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                     const isNewItem = item.type === 'new_item';
                     return (
                       <Card key={idx} className={cn(
-                        "border-0 shadow-lg rounded-2xl bg-white ring-1 ring-black/5 group hover:ring-2 transition-all overflow-hidden",
-                        isNewItem ? "border-s-8 border-s-[#FFA000]" : "border-s-8 border-s-slate-100"
+                        "border-0 shadow-lg rounded-[2rem] bg-white ring-1 ring-black/5 group hover:ring-2 transition-all overflow-hidden",
+                        isNewItem ? "border-s-8 border-s-primary" : "border-s-8 border-s-slate-100"
                       )}>
                          <CardContent className="p-6 space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
                                <div className="md:col-span-2 space-y-2">
                                   <Label className="text-10px font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'الإجراء' : 'Action'}</Label>
                                   <Select value={item.type} onValueChange={(v: any) => updateItem(idx, 'type', v)}>
-                                     <SelectTrigger className="h-10 rounded-lg border-2 font-black text-[10px] bg-slate-50/30"><SelectValue /></SelectTrigger>
+                                     <SelectTrigger className="h-10 rounded-lg border-2 font-black text-[10px] bg-slate-50/50"><SelectValue /></SelectTrigger>
                                      <SelectContent className="rounded-xl">
                                         <SelectItem value="increase_quantity" className="font-bold text-emerald-600">زيادة كمية</SelectItem>
                                         <SelectItem value="decrease_quantity" className="font-bold text-rose-600">نقص كمية</SelectItem>
                                         <SelectItem value="omit_item" className="font-bold text-slate-500">حذف بند</SelectItem>
-                                        <SelectItem value="new_item" className="font-bold text-orange-600">بند مستجد</SelectItem>
+                                        <SelectItem value="new_item" className="font-bold text-primary">بند مستجد</SelectItem>
                                      </SelectContent>
                                   </Select>
                                </div>
@@ -256,13 +262,13 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
 
                                <div className="md:col-span-2 space-y-2">
                                   <Label className="text-10px font-black uppercase text-primary">Delta Qty</Label>
-                                  <Input type="number" value={item.quantityDelta} onChange={e => updateItem(idx, 'quantityDelta', e.target.value)} className="h-10 rounded-lg border-2 font-black text-center text-xs" placeholder="..." />
+                                  <Input type="number" value={item.quantityDelta} onChange={e => updateItem(idx, 'quantityDelta', e.target.value)} className="h-10 rounded-lg border-2 font-black text-center text-xs bg-slate-50/30" placeholder="..." />
                                </div>
 
                                <div className="md:col-span-3 space-y-2">
                                   <Label className="text-10px font-black text-slate-400">Rate & Total</Label>
                                   <div className="flex items-center gap-3">
-                                     <Input type="number" step="0.001" value={item.rate} onChange={e => updateItem(idx, 'rate', e.target.value)} className="h-10 rounded-lg border-2 font-black text-emerald-600 text-xs text-center" placeholder="..." />
+                                     <Input type="number" step="0.001" value={item.rate} onChange={e => updateItem(idx, 'rate', e.target.value)} className="h-10 rounded-lg border-2 font-black text-emerald-600 text-xs text-center bg-slate-50/30" placeholder="..." />
                                      <div className="text-end min-w-[70px]"><p className={cn("text-[10px] font-black", (Number(item.total) || 0) >= 0 ? "text-emerald-500" : "text-rose-500")}>{(Number(item.total) || 0).toLocaleString()}</p></div>
                                   </div>
                                </div>
@@ -296,11 +302,11 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
 
                                 {item.stageMode === 'existing_stage' && (
                                    <div className="space-y-2 animate-in fade-in duration-300 text-start">
-                                      <Label className="text-10px font-black uppercase text-blue-600 flex items-center gap-2">
+                                      <Label className="text-10px font-black uppercase text-secondary flex items-center gap-2">
                                          <Workflow className="h-3 w-3" /> {isRtl ? 'اختر المرحلة التنفيذية المرتبطة بهذا البند' : 'Select Linked Execution Stage'}
                                       </Label>
                                       <Select value={item.technicalStageId} onValueChange={v => updateItem(idx, 'technicalStageId', v)}>
-                                         <SelectTrigger className="h-10 rounded-lg border-2 font-bold bg-blue-50/30 border-blue-100"><SelectValue placeholder="..." /></SelectTrigger>
+                                         <SelectTrigger className="h-10 rounded-lg border-2 font-bold bg-secondary/5 border-secondary/20"><SelectValue placeholder="..." /></SelectTrigger>
                                          <SelectContent className="rounded-xl">
                                             {availableStages.map(s => (
                                                <SelectItem key={s.id} value={s.technicalStageId} className="font-bold text-xs py-2">

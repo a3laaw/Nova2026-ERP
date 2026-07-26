@@ -56,6 +56,10 @@ interface Props {
   clientName: string;
 }
 
+/**
+ * مدير المستندات الفنية والمالية.
+ * تم تطهير اللون الكحلي بالكامل واستبداله بتصميم فاتح ومشرق بالألوان الجديدة.
+ */
 export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction, clientId, clientName }: Props) {
   const { lang, dir, t } = useLanguage();
   const { globalUser, user } = useAuthContext();
@@ -183,39 +187,39 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(v) => { if(!v) onClose(); }}>
-        <DialogContent className="max-w-4xl rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
-          <div className="bg-slate-50 p-6 text-slate-900 text-start border-b flex justify-between items-center shrink-0">
+        <DialogContent className="max-w-4xl rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
+          <div className="bg-primary/5 p-8 text-slate-900 text-start border-b flex justify-between items-center shrink-0">
              <div className="flex items-center gap-4">
-                <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary border border-primary/20">
-                   {type === 'quotation' ? <FileText className="h-5 w-5" /> : <Gavel className="h-5 w-5" />}
+                <div className="h-14 w-14 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg ring-4 ring-primary/5">
+                   {type === 'quotation' ? <FileText className="h-7 w-7" /> : <Gavel className="h-7 w-7" />}
                 </div>
                 <div>
-                   <DialogTitle className="text-lg font-black font-headline text-slate-900">
+                   <DialogTitle className="text-2xl font-black font-headline text-slate-900">
                       {type === 'quotation' ? (isRtl ? 'عروض الأسعار' : 'Quotations') : (isRtl ? 'العقود الرسمية' : 'Formal Contracts')}
                    </DialogTitle>
-                   <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{transaction.transactionNumber}</p>
+                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{transaction.transactionNumber}</p>
                 </div>
              </div>
-             <Badge variant="secondary" className="bg-white border text-slate-600 border-slate-200 font-black h-7 px-3 rounded-lg text-[9px]">{clientName}</Badge>
+             <Badge variant="secondary" className="bg-white border-2 text-primary border-primary/20 font-black h-9 px-6 rounded-xl text-xs shadow-sm">{clientName}</Badge>
           </div>
 
-          <div className="p-8 grid grid-cols-1 lg:grid-cols-2 gap-8 max-h-[65vh] overflow-y-auto scrollbar-hide text-start bg-white">
+          <div className="p-10 grid grid-cols-1 lg:grid-cols-2 gap-12 max-h-[65vh] overflow-y-auto scrollbar-hide text-start bg-white">
              
-             <div className="space-y-4">
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b pb-2 flex items-center gap-2">
-                   <Plus className="h-3 w-3 text-primary" /> {isRtl ? 'إصدار جديد' : 'New Document'}
+             <div className="space-y-6">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest border-b-2 border-slate-50 pb-3 flex items-center gap-2">
+                   <Plus className="h-4 w-4 text-primary" /> {isRtl ? 'إصدار مسودة جديدة' : 'New Draft Issuance'}
                 </h3>
                 
-                <div className="p-6 rounded-2xl bg-slate-50 border-2 border-slate-100 space-y-4">
+                <div className="p-8 rounded-[2rem] bg-slate-50 border-2 border-slate-100 space-y-6 shadow-inner">
                    <div className="space-y-2">
-                      <Label className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'اختر القالب' : 'Template'}</Label>
+                      <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اختيار القالب المرجعي' : 'Choose Base Template'}</Label>
                       <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-                         <SelectTrigger className="h-10 rounded-lg border-2 bg-white font-bold text-xs">
+                         <SelectTrigger className="h-12 rounded-xl border-2 bg-white font-bold text-sm">
                             <SelectValue placeholder="..." />
                          </SelectTrigger>
-                         <SelectContent className="rounded-xl border-0 shadow-2xl z-[151]">
+                         <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
                             {templates?.map(temp => (
-                              <SelectItem key={temp.id} value={temp.id!} className="font-bold py-2 text-xs">{temp.name}</SelectItem>
+                              <SelectItem key={temp.id} value={temp.id!} className="font-bold py-3 text-xs border-b last:border-0 border-slate-50">{temp.name}</SelectItem>
                             ))}
                          </SelectContent>
                       </Select>
@@ -224,69 +228,69 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
                    <Button 
                      onClick={handleCreate} 
                      disabled={loading || !selectedTemplateId}
-                     className="w-full h-10 rounded-xl bg-primary text-white font-black text-xs gap-2"
+                     className="w-full h-14 rounded-2xl bg-primary text-white font-black text-sm gap-3 shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all border-b-4 border-orange-700"
                    >
-                      {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
-                      {isRtl ? 'تجهيز المسودة' : 'Generate'}
+                      {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Sparkles className="h-5 w-5" />}
+                      {isRtl ? 'تجهيز المسودة للمراجعة' : 'Generate & Design'}
                    </Button>
                 </div>
              </div>
 
-             <div className="space-y-4">
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b pb-2 flex items-center gap-2">
-                   <History className="h-3 w-3 text-primary" /> {isRtl ? 'الأرشيف المستندي' : 'Doc Archive'}
+             <div className="space-y-6">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest border-b-2 border-slate-50 pb-3 flex items-center gap-2">
+                   <History className="h-4 w-4 text-primary" /> {isRtl ? 'الأرشيف المستندي' : 'Document History'}
                 </h3>
 
-                <div className="space-y-2">
+                <div className="space-y-3">
                    {docsLoading ? (
-                     <div className="py-10 text-center"><Loader2 className="animate-spin h-6 w-6 mx-auto text-primary/30" /></div>
+                     <div className="py-20 text-center"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></div>
                    ) : documents?.length === 0 ? (
-                     <div className="py-10 text-center border-2 border-dashed rounded-xl bg-slate-50/50 text-slate-300 font-bold italic text-[10px]">
-                        {isRtl ? 'لا يوجد مستندات.' : 'Empty archive.'}
+                     <div className="py-20 text-center border-4 border-dashed rounded-3xl bg-slate-50/50 text-slate-300 font-bold italic text-sm">
+                        {isRtl ? 'لا يوجد سجلات سابقة.' : 'No historical documents found.'}
                      </div>
                    ) : (
                      documents?.map((doc: any) => (
-                       <div key={doc.id} className="p-3 rounded-xl bg-white border border-slate-100 flex items-center justify-between gap-3 shadow-sm hover:shadow-md transition-all">
-                          <div className="flex items-center gap-3 text-start truncate">
+                       <div key={doc.id} className="p-5 rounded-2xl bg-white border-2 border-slate-50 flex items-center justify-between gap-4 shadow-sm hover:shadow-xl hover:border-primary/20 transition-all group">
+                          <div className="flex items-center gap-4 text-start truncate">
                              <div className={cn(
-                               "h-8 w-8 rounded-lg flex items-center justify-center shrink-0",
+                               "h-10 w-10 rounded-xl flex items-center justify-center shrink-0 shadow-inner",
                                (doc.status === 'paid' || doc.isPaid) ? "bg-emerald-50 text-emerald-600" : "bg-primary/5 text-primary"
                              )}>
-                                {type === 'quotation' ? <FileText className="h-4 w-4" /> : <Gavel className="h-4 w-4" />}
+                                {type === 'quotation' ? <FileText className="h-5 w-5" /> : <Gavel className="h-5 w-5" />}
                              </div>
                              <div className="truncate">
-                                <h5 className="font-black text-[10px] text-slate-800 truncate">{doc.name}</h5>
-                                <p className="text-[8px] font-mono text-slate-400">{(doc.totalAmount || 0).toLocaleString()} KWD</p>
+                                <h5 className="font-black text-xs text-slate-800 truncate">{doc.name}</h5>
+                                <p className="text-[10px] font-mono font-bold text-emerald-600">{(doc.totalAmount || 0).toLocaleString()} KWD</p>
                              </div>
                           </div>
                           
-                          <div className="flex items-center gap-1 shrink-0">
+                          <div className="flex items-center gap-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                              {type === 'contract' && !doc.isPaid && doc.status !== 'paid' && isAdmin && (
                                <Button 
                                  onClick={() => handleMarkAsPaid(doc.id)}
                                  disabled={loading}
                                  variant="outline" 
-                                 className="h-7 px-2 rounded-lg bg-emerald-50 text-emerald-600 border-emerald-100 font-black text-[8px] gap-1 hover:bg-emerald-600 hover:text-white"
+                                 className="h-8 px-3 rounded-lg bg-emerald-50 text-emerald-600 border-emerald-100 font-black text-[9px] gap-2 hover:bg-emerald-600 hover:text-white"
                                >
-                                  <Wallet className="h-3 w-3" /> {isRtl ? 'دفع' : 'Paid'}
+                                  <Wallet className="h-3.5 w-3.5" /> {isRtl ? 'دفع' : 'Paid'}
                                </Button>
                              )}
                              <Button 
                                onClick={() => viewDoc(doc.id)}
-                               variant="ghost" 
+                               variant="outline" 
                                size="icon" 
-                               className="h-7 w-7 rounded-lg bg-slate-50 text-slate-400 hover:bg-primary hover:text-white transition-all"
+                               className="h-8 w-8 rounded-lg bg-white text-slate-400 hover:text-primary hover:border-primary/40 shadow-sm"
                              >
-                                <ExternalLink className="h-3.5 w-3.5" />
+                                <ExternalLink className="h-4 w-4" />
                              </Button>
                              {isAdmin && (
                                 <Button 
                                   onClick={() => setDeletingId(doc.id)}
                                   variant="ghost" 
                                   size="icon" 
-                                  className="h-7 w-7 rounded-lg bg-slate-50 text-rose-300 hover:bg-rose-600 hover:text-white transition-all"
+                                  className="h-8 w-8 rounded-lg text-rose-300 hover:text-rose-600 hover:bg-rose-50"
                                 >
-                                   <Trash2 className="h-3.5 w-3.5" />
+                                   <Trash2 className="h-4 w-4" />
                                 </Button>
                              )}
                           </div>
@@ -297,33 +301,33 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
              </div>
           </div>
 
-          <DialogFooter className="p-4 bg-slate-50 border-t shrink-0">
-             <Button variant="outline" onClick={onClose} className="rounded-lg font-bold h-9 px-6 bg-white border-2">إغلاق</Button>
+          <DialogFooter className="p-8 bg-slate-50 border-t shrink-0">
+             <Button variant="outline" onClick={onClose} className="rounded-xl font-black h-12 px-10 bg-white border-2">إغلاق النافذة</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <AlertDialog open={!!deletingId} onOpenChange={(v) => { if(!v) setDeletingId(null); forceThaw(); }}>
-        <AlertDialogContent className="rounded-xl p-8 border-0 shadow-3xl bg-white z-[200]" dir={dir}>
+        <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white z-[200]" dir={dir}>
           <AlertDialogHeader>
-             <div className="mx-auto w-16 h-16 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center mb-4 ring-8 ring-rose-50/50">
-                <AlertTriangle className="h-8 w-8" />
+             <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50">
+                <AlertTriangle className="h-10 w-10" />
              </div>
-             <AlertDialogTitle className="text-start font-black text-xl text-slate-900">{t('confirmDelete')}</AlertDialogTitle>
-             <AlertDialogDescription className="text-start font-bold text-slate-400 mt-2 text-sm leading-relaxed">
+             <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900 leading-tight">{t('confirmDelete')}</AlertDialogTitle>
+             <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">
                 {isRtl 
-                  ? 'سيتم حذف هذا المستند نهائياً من الأرشيف. هل أنت متأكد؟' 
-                  : 'Are you sure? This document will be permanently removed from the archive.'}
+                  ? 'سيتم حذف هذا المستند نهائياً من الأرشيف السحابي ولا يمكن التراجع عن هذا الإجراء.' 
+                  : 'Are you sure? This document will be permanently removed from the cloud archive.'}
              </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="mt-8 gap-3 flex flex-row">
-            <AlertDialogCancel className="flex-1 h-10 rounded-lg font-bold border-2 bg-white" onClick={() => { setDeletingId(null); forceThaw(); }}>إلغاء</AlertDialogCancel>
+          <AlertDialogFooter className="mt-12 gap-4 flex flex-row">
+            <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white" onClick={() => { setDeletingId(null); forceThaw(); }}>إلغاء</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleDelete} 
               disabled={loading}
-              className="flex-[2] h-10 rounded-lg font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200"
+              className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 text-white shadow-xl shadow-rose-200"
             >
-               {loading ? <Loader2 className="animate-spin h-4 w-4" /> : (isRtl ? 'نعم، احذف المستند' : 'Confirm')}
+               {loading ? <Loader2 className="animate-spin h-5 w-5" /> : (isRtl ? 'نعم، احذف المستند' : 'Confirm Deletion')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

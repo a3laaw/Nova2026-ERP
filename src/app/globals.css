@@ -6,41 +6,47 @@
 
 @layer base {
   :root {
-    --background: 210 20% 98%; 
+    --background: 30 20% 98%; /* خلفية دافئة خفيفة جداً */
     --foreground: 222 47% 11%;
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-    --primary: 36 100% 50%; /* #FFA000 */
+    
+    /* لوحة الألوان الجديدة بناءً على طلبك */
+    --primary: 24 95% 53%;    /* البرتقالي المشرق #f97316 */
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222 47% 11%;
+    
+    --secondary: 199 89% 48%;  /* الأزرق السماوي #0ea5e9 */
+    --secondary-foreground: 0 0% 100%;
+    
+    --accent: 48 96% 53%;     /* الأصفر الذهبي #facc15 */
+    --accent-foreground: 222 47% 11%;
+    
     --muted: 210 40% 96.1%;
     --muted-foreground: 215 16% 35%;
-    --accent: 45 100% 58%; /* Gold #FFCA28 */
-    --accent-foreground: 222 47% 11%;
-    --destructive: 0 84% 60%;
+    
+    --destructive: 14 100% 70%; /* المرجاني/الخوخي #ff8a65 */
     --destructive-foreground: 210 40% 98%;
-    --border: 36 100% 50% / 0.1;
+    
+    --border: 24 95% 53% / 0.1;
     --input: 214.3 31.8% 91.4%;
-    --ring: 36 100% 50%;
+    --ring: 24 95% 53%;
     --radius: 12px;
-    --sidebar-background: 210 20% 98%;
+    --sidebar-background: 30 20% 98%;
   }
 }
 
 @layer base {
   * { @apply border-border; }
   
-  /* Fluid Text Management */
   html {
-    font-size: 16px; /* Base for rem scaling */
+    font-size: 16px;
   }
   
   body { 
     @apply bg-background text-foreground font-body antialiased; 
-    overflow-x: hidden; /* Avoid horizontal scroll at root */
+    overflow-x: hidden;
   }
   
   h1, h2, h3, h4, h5, h6 { @apply font-headline tracking-tight font-bold text-slate-900; }
@@ -56,7 +62,7 @@
 }
 
 .btn-gradient {
-  @apply bg-gradient-to-r from-[#F57C00] to-[#FFB000] text-white shadow-lg shadow-orange-500/10 hover:brightness-110 active:scale-[0.98] transition-all border-b-2 border-orange-700/30 font-black;
+  @apply bg-gradient-to-r from-[#f97316] to-[#facc15] text-white shadow-lg shadow-orange-500/10 hover:brightness-110 active:scale-[0.98] transition-all border-b-2 border-orange-700/30 font-black;
 }
 
 .card-shadow {
@@ -67,7 +73,7 @@
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
 [data-state=active].tab-sovereign {
-  @apply bg-gradient-to-r from-[#F57C00] to-[#FFB000] text-white shadow-lg !important;
+  @apply bg-gradient-to-r from-[#f97316] to-[#facc15] text-white shadow-lg !important;
 }
 
 .animate-ready-pulse {
@@ -82,7 +88,7 @@
 @media print {
   @page {
     size: landscape;
-    margin: 0 !important; /* Zero margin to reclaim space */
+    margin: 0 !important;
   }
   
   body {
@@ -91,7 +97,7 @@
     print-color-adjust: exact !important;
     margin: 0 !important;
     padding: 0 !important;
-    font-size: 10px !important; /* Global shrink for print */
+    font-size: 10px !important;
   }
 
   .sidebar, header, nav, .print-ui-only,
@@ -106,18 +112,11 @@
     width: 100% !important;
   }
 
-  /* Extreme compression for print */
-  .space-y-4, .space-y-6, .space-y-8, .space-y-10, .space-y-12 {
-    margin-top: 0 !important;
-    margin-bottom: 0 !important;
-    gap: 1mm !important;
-  }
-
   .card {
     box-shadow: none !important;
     border: 1px solid #eee !important;
     border-radius: 4px !important;
-    break-inside: avoid; /* Prevent card splitting */
+    break-inside: avoid;
     padding: 2mm !important;
   }
 
@@ -137,10 +136,6 @@
     font-size: 8px !important;
     border: 1px solid #eee !important;
   }
-  
-  /* Micro-scaling for icons/avatars */
-  .h-12, .w-12 { width: 24px !important; height: 24px !important; }
-  .h-10, .w-10 { width: 20px !important; height: 20px !important; }
   
   .font-black, .font-bold {
     font-weight: 900 !important;

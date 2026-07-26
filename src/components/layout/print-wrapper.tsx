@@ -12,6 +12,10 @@ interface PrintWrapperProps {
   className?: string;
 }
 
+/**
+ * غطاء الطباعة السيادي (Sovereign Print Wrapper).
+ * تم تحديثه ليكون فاتحاً بالكامل تماشياً مع الهوية الجديدة.
+ */
 export function PrintWrapper({ children, title, className }: PrintWrapperProps) {
   const { company } = useCompanyContext();
   const { dir, isRtl } = useLanguage();
@@ -21,13 +25,13 @@ export function PrintWrapper({ children, title, className }: PrintWrapperProps) 
   return (
     <div className={cn("w-full transition-all", className)} dir={dir}>
       {/* المستند الفعلي المصمم كـ "ورقة" */}
-      <div className="mx-auto max-w-[210mm] bg-white shadow-[0_0_50px_rgba(0,0,0,0.1)] print:shadow-none min-h-[297mm] p-8 md:p-16 border border-slate-100 print:border-0 rounded-sm print:rounded-none relative overflow-hidden">
+      <div className="mx-auto max-w-[210mm] bg-white shadow-[0_0_50px_rgba(0,0,0,0.05)] print:shadow-none min-h-[297mm] p-8 md:p-16 border-2 border-slate-100 print:border-0 rounded-sm print:rounded-none relative overflow-hidden">
         
-        {/* شريط زينة علوي سيادي */}
-        <div className="absolute top-0 left-0 right-0 h-1.5 bg-primary print:hidden" />
+        {/* شريط زينة علوي سيادي بالألوان الجديدة */}
+        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-primary to-accent print:hidden" />
 
         {/* Header Section */}
-        <header className="mb-10 border-b-2 border-slate-900 pb-8">
+        <header className="mb-10 border-b-4 border-primary/20 pb-8">
           <div className="flex justify-between items-start mb-8">
             <div className="w-24 h-24 flex items-center justify-center border-2 border-slate-50 rounded-2xl overflow-hidden bg-white shadow-sm shrink-0">
               {company.logoUrl ? (
@@ -47,8 +51,8 @@ export function PrintWrapper({ children, title, className }: PrintWrapperProps) 
 
           {/* Visual Sub-Header */}
           {company.headerText && (
-            <div className="bg-slate-50/50 p-3 rounded-lg border border-slate-100">
-               <p className="text-[10px] font-bold text-slate-600 text-center leading-relaxed italic">{company.headerText}</p>
+            <div className="bg-primary/5 p-4 rounded-2xl border-2 border-white shadow-inner">
+               <p className="text-[10px] font-bold text-slate-700 text-center leading-relaxed italic">{company.headerText}</p>
             </div>
           )}
         </header>
@@ -57,7 +61,7 @@ export function PrintWrapper({ children, title, className }: PrintWrapperProps) 
         {title && (
           <div className="mb-12 text-center relative">
             <div className="absolute inset-0 flex items-center" aria-hidden="true">
-               <div className="w-full border-t border-slate-200"></div>
+               <div className="w-full border-t-2 border-dashed border-slate-100"></div>
             </div>
             <div className="relative flex justify-center">
                <span className="bg-white px-8">
@@ -78,7 +82,7 @@ export function PrintWrapper({ children, title, className }: PrintWrapperProps) 
         </main>
 
         {/* Footer Section */}
-        <footer className="mt-20 pt-8 border-t border-slate-100">
+        <footer className="mt-20 pt-8 border-t-2 border-slate-50">
           <div className="flex justify-between items-end gap-10">
             <div className="text-start space-y-1 opacity-40">
                <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'تاريخ الاستخراج' : 'Generated On'}</p>
@@ -94,7 +98,7 @@ export function PrintWrapper({ children, title, className }: PrintWrapperProps) 
             )}
 
             <div className="text-end opacity-20">
-               <Landmark className="h-10 w-10 text-slate-900" />
+               <Landmark className="h-10 w-10 text-primary" />
             </div>
           </div>
         </footer>
