@@ -297,11 +297,25 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
     
     // 1. فحص القاعة
     const hallBusy = existingAppts.some((a: any) => a.hallId === data.room.id && a.start === start && a.status !== 'cancelled');
-    if (hallBusy) return toast({ variant: "destructive", title: isRtl ? "القاعة مشغولة في هذا الوقت" : "Hall Busy" });
+    if (hallBusy) {
+       toast({ 
+         variant: "destructive", 
+         title: isRtl ? "تنبيه: القاعة مشغولة" : "Hall Busy",
+         description: isRtl ? `هذه القاعة محجوزة مسبقاً في توقيت ${formData.time}.` : `This room is already booked at ${formData.time}.`
+       });
+       return;
+    }
 
     // 2. فحص العميل
     const clientBusy = existingAppts.some((a: any) => a.clientId === formData.clientId && a.start === start && a.status !== 'cancelled');
-    if (clientBusy) return toast({ variant: "destructive", title: isRtl ? "العميل لديه موعد آخر في نفس الوقت" : "Client Busy" });
+    if (clientBusy) {
+       toast({ 
+         variant: "destructive", 
+         title: isRtl ? "تنبيه: العميل مرتبط بموعد" : "Client Busy",
+         description: isRtl ? "العميل لديه موعد آخر في نفس التوقيت المختار." : "The client has another appointment at this time."
+       });
+       return;
+    }
 
     // 3. فحص المهندس الرئيسي والمهندسين الإضافيين
     const allEngIds = [formData.engineerId, ...formData.additionalEngineerIds];
@@ -309,7 +323,14 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
        if (a.start !== start || a.status === 'cancelled') return false;
        return allEngIds.includes(a.engineerId) || (a.additionalEngineerIds || []).some((id: string) => allEngIds.includes(id));
     });
-    if (engBusy) return toast({ variant: "destructive", title: isRtl ? "أحد المهندسين لديه موعد متعارض" : "Engineer Busy" });
+    if (engBusy) {
+       toast({ 
+         variant: "destructive", 
+         title: isRtl ? "تنبيه: المهندس مشغول" : "Engineer Busy",
+         description: isRtl ? "أحد المهندسين المختارين لديه موعد متعارض في هذا الوقت." : "One of the selected engineers is busy at this time."
+       });
+       return;
+    }
 
     setLoading(true);
     try {
