@@ -165,15 +165,29 @@ export function ConstructionBookingsView() {
     <div className="space-y-6 animate-in fade-in duration-700 print:space-y-1 print:pt-0" dir={dir}>
       
       <div className="flex justify-center print:hidden">
-        <div className="bg-white p-2 rounded-2xl border-2 border-slate-100 shadow-sm flex items-center gap-4">
-           <Button variant="ghost" size="icon" onClick={() => setCurrentDate(subDays(currentDate, 1))} className="h-10 w-10 rounded-xl text-slate-400"><ChevronLeft className={cn("h-5 w-5", !isRtl && "rotate-180")} /></Button>
-           <div className="flex items-center gap-2 px-4 border-x-2 border-slate-50">
-              <CalendarDays className="h-5 w-5 text-primary" />
-              <span className="font-black text-lg text-slate-900 uppercase">
-                 {format(currentDate, 'EEEE, d MMM yyyy', { locale: isRtl ? ar : enUS })}
-              </span>
-           </div>
-           <Button variant="ghost" size="icon" onClick={() => setCurrentDate(addDays(currentDate, 1))} className="h-10 w-10 rounded-xl text-slate-400"><ChevronRight className={cn("h-5 w-5", !isRtl && "rotate-180")} /></Button>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => setCurrentDate(subDays(currentDate, 1))} className="h-10 w-10 rounded-xl bg-white shadow-sm border-2 border-slate-100 text-slate-400 hover:text-primary"><ChevronLeft className={cn("h-5 w-5", !isRtl && "rotate-180")} /></Button>
+          <div className="flex gap-2">
+            {[-1, 0, 1].map((offset) => {
+              const d = addDays(currentDate, offset);
+              const isActive = offset === 0;
+              return (
+                <Card 
+                  key={offset}
+                  onClick={() => setCurrentDate(d)}
+                  className={cn(
+                    "cursor-pointer transition-all border-2 rounded-2xl w-24 h-20 flex flex-col items-center justify-center text-center",
+                    isActive ? "bg-[#1e1b4b] border-[#1e1b4b] shadow-xl shadow-indigo-900/20 scale-105" : "bg-white border-slate-100 hover:border-primary/20"
+                  )}
+                >
+                  <p className={cn("text-[9px] font-black uppercase tracking-tighter", isActive ? "text-primary" : "text-slate-400")}>{format(d, 'EEEE', { locale: isRtl ? ar : enUS })}</p>
+                  <p className={cn("text-xl font-black mt-0.5", isActive ? "text-white" : "text-slate-900")}>{format(d, 'd')}</p>
+                  <p className={cn("text-[8px] font-bold uppercase", isActive ? "text-white/60" : "text-slate-400")}>{format(d, 'MMM')}</p>
+                </Card>
+              );
+            })}
+          </div>
+          <Button variant="ghost" size="icon" onClick={() => setCurrentDate(addDays(currentDate, 1))} className="h-10 w-10 rounded-xl bg-white shadow-sm border-2 border-slate-100 text-slate-400 hover:text-primary"><ChevronRight className={cn("h-5 w-5", !isRtl && "rotate-180")} /></Button>
         </div>
       </div>
 
@@ -251,13 +265,13 @@ function GridSection({ title, slots, engineers, grid, onAction, isRtl, router, t
                       const engAppts = grid.filter((a: any) => a.engineerId === eng.id);
                       return (
                         <th key={eng.id} className="p-3 border-b border-slate-100 border-s border-s-slate-50 min-w-[180px] print:p-1 print:min-w-[100px]">
-                           <div className="flex items-center gap-2">
-                              <Avatar className="h-8 w-8 rounded-lg shrink-0">
+                           <div className="flex flex-col items-center text-center">
+                              <Avatar className="h-8 w-8 rounded-lg shrink-0 mb-2">
                                  <AvatarFallback className="bg-primary/10 text-primary font-black text-[10px]">{eng.fullName.charAt(0)}</AvatarFallback>
                               </Avatar>
-                              <div className="text-start flex-1 min-w-0">
+                              <div className="text-center w-full">
                                  <span className="font-black text-slate-800 text-[11px] leading-none block truncate">{eng.fullName}</span>
-                                 <Badge className="bg-slate-100 text-slate-500 text-[7px] font-black h-4 px-1 border-0 mt-1 uppercase">{engAppts.length} TASK</Badge>
+                                 <Badge className="bg-slate-100 text-slate-500 text-[7px] font-black h-4 px-1 border-0 mt-1.5 uppercase">{engAppts.length} TASK</Badge>
                               </div>
                            </div>
                         </th>
@@ -282,12 +296,12 @@ function GridSection({ title, slots, engineers, grid, onAction, isRtl, router, t
                                 <Card 
                                   onClick={() => router.push(`/dashboard/appointments/${appt.id}`)}
                                   className={cn(
-                                    "p-2 rounded-lg h-full transition-all cursor-pointer",
+                                    "p-1.5 rounded-lg h-full transition-all cursor-pointer min-h-[40px]",
                                     isCompleted ? "bg-emerald-50/50 border-emerald-500/20" : "bg-primary/5 border-primary/20"
                                   )}
                                 >
                                    <div className="text-start">
-                                      <p className={cn("font-black text-[9px] leading-tight truncate", isCompleted && "text-emerald-900")}>
+                                      <p className={cn("font-black text-[8px] leading-tight truncate", isCompleted && "text-emerald-900")}>
                                         {appt.clientName}
                                       </p>
                                    </div>

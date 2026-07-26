@@ -87,10 +87,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
 import {
   AlertDialog,
@@ -105,7 +102,6 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
-// --- Helpers ---
 function getVisitColor(visitCount: number, status?: string, apptType?: string, apptStatus?: string): string {
   if (apptStatus === 'completed') return '#10b981'; 
   if (apptType === 'busy_blocked') return '#f57c00'; 
@@ -163,7 +159,7 @@ export function ArchitecturalAppointmentsView() {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [settings, setSettings] = useState<WorkHoursSettings | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogData, setDialogData] = useState<{ mode: 'create' | 'edit'; appointment?: Appointment; slot?: string; engineer?: Employee } | null>(null);
+  const [dialogData, setDialogData] = useState<any>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
@@ -300,21 +296,34 @@ export function ArchitecturalAppointmentsView() {
   return (
     <div className="space-y-6 animate-in fade-in duration-700 print:space-y-1 print:pt-0" dir={dir}>
       
-      {/* 1. التواريخ - شريط رشيق */}
+      {/* 1. التواريخ - شريط الأيام الثلاثي الذكي */}
       <div className="flex justify-center print:hidden">
-        <div className="bg-white p-2 rounded-2xl border-2 border-slate-100 shadow-sm flex items-center gap-4">
-           <Button variant="ghost" size="icon" onClick={() => setCurrentDate(subDays(currentDate, 1))} className="h-10 w-10 rounded-xl text-slate-400"><ChevronLeft className={cn("h-5 w-5", !isRtl && "rotate-180")} /></Button>
-           <div className="flex items-center gap-2 px-4 border-x-2 border-slate-50">
-              <CalendarDays className="h-5 w-5 text-primary" />
-              <span className="font-black text-lg text-slate-900 uppercase">
-                 {format(currentDate, 'EEEE, d MMM yyyy', { locale: isRtl ? ar : enUS })}
-              </span>
-           </div>
-           <Button variant="ghost" size="icon" onClick={() => setCurrentDate(addDays(currentDate, 1))} className="h-10 w-10 rounded-xl text-slate-400"><ChevronRight className={cn("h-5 w-5", !isRtl && "rotate-180")} /></Button>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => setCurrentDate(subDays(currentDate, 1))} className="h-10 w-10 rounded-xl bg-white shadow-sm border-2 border-slate-100 text-slate-400 hover:text-primary"><ChevronLeft className={cn("h-5 w-5", !isRtl && "rotate-180")} /></Button>
+          <div className="flex gap-2">
+            {[-1, 0, 1].map((offset) => {
+              const d = addDays(currentDate, offset);
+              const isActive = offset === 0;
+              return (
+                <Card 
+                  key={offset}
+                  onClick={() => setCurrentDate(d)}
+                  className={cn(
+                    "cursor-pointer transition-all border-2 rounded-2xl w-24 h-20 flex flex-col items-center justify-center text-center",
+                    isActive ? "bg-primary border-primary shadow-xl shadow-primary/20 scale-105" : "bg-white border-slate-100 hover:border-primary/20"
+                  )}
+                >
+                  <p className={cn("text-[9px] font-black uppercase tracking-tighter", isActive ? "text-white/70" : "text-slate-400")}>{format(d, 'EEEE', { locale: isRtl ? ar : enUS })}</p>
+                  <p className={cn("text-xl font-black mt-0.5", isActive ? "text-white" : "text-slate-900")}>{format(d, 'd')}</p>
+                  <p className={cn("text-[8px] font-bold uppercase", isActive ? "text-white/60" : "text-slate-400")}>{format(d, 'MMM')}</p>
+                </Card>
+              );
+            })}
+          </div>
+          <Button variant="ghost" size="icon" onClick={() => setCurrentDate(addDays(currentDate, 1))} className="h-10 w-10 rounded-xl bg-white shadow-sm border-2 border-slate-100 text-slate-400 hover:text-primary"><ChevronRight className={cn("h-5 w-5", !isRtl && "rotate-180")} /></Button>
         </div>
       </div>
 
-      {/* 2. الإحصائيات - كروت مربعة رشيقة في صف واحد */}
       <div className="grid grid-cols-4 gap-3 print:gap-1">
          {[
            { label: isRtl ? 'إجمالي اليوم' : 'Total', val: stats.total, color: 'text-slate-900', b: 'border-b-slate-900' },
@@ -331,7 +340,6 @@ export function ArchitecturalAppointmentsView() {
          ))}
       </div>
 
-      {/* 3. الجداول - هندسة الرشاقة الفائقة (Micro-Agility Grid) */}
       <div className="space-y-8 pb-10 print:pb-0 print:space-y-4">
          <GridSection 
            title={isRtl ? "الفترة الصباحية ☀️" : "Morning Session"} 
@@ -460,13 +468,13 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
 
                       return (
                         <th key={eng.id} className="p-3 border-b border-slate-100 border-s border-s-slate-50 min-w-[180px] print:p-1 print:min-w-[100px]">
-                           <div className="flex items-center gap-2">
-                              <Avatar className="h-8 w-8 rounded-lg shrink-0 print:h-6 print:w-6">
+                           <div className="flex flex-col items-center text-center">
+                              <Avatar className="h-8 w-8 rounded-lg shrink-0 print:h-6 print:w-6 mb-2">
                                  <AvatarFallback className="bg-primary/10 text-primary font-black text-[10px]">{eng.fullName.charAt(0)}</AvatarFallback>
                               </Avatar>
-                              <div className="text-start flex-1 min-w-0">
+                              <div className="text-center w-full">
                                  <span className="font-black text-slate-800 text-[11px] leading-none block truncate">{eng.fullName}</span>
-                                 <div className="flex gap-0.5 mt-1">
+                                 <div className="flex justify-center gap-0.5 mt-1.5">
                                     <Badge className="bg-yellow-50 text-yellow-600 text-[7px] font-black h-4 px-1 border-0">{v1}</Badge>
                                     <Badge className="bg-emerald-50 text-emerald-600 text-[7px] font-black h-4 px-1 border-0">{follow}</Badge>
                                     <Badge className="bg-blue-50 text-blue-600 text-[7px] font-black h-4 px-1 border-0">{cont}</Badge>
@@ -515,21 +523,21 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
                                 <Card 
                                   onClick={() => router.push(`/dashboard/appointments/${appt.id}`)}
                                   className={cn(
-                                    "p-2 rounded-lg h-full transition-all cursor-pointer print:p-1", 
+                                    "p-1.5 rounded-lg h-full transition-all cursor-pointer print:p-1 min-h-[40px]", 
                                     cardGradient(m?.color || '', isCompleted)
                                   )}
                                 >
                                    <div className="text-start relative">
                                       {isStart && (
                                         <div className="flex items-center gap-1">
-                                           {isCompleted && <CheckCircle2 className="h-2.5 w-2.5 text-emerald-600 shrink-0" />}
-                                           <p className={cn("font-black text-[9px] leading-tight truncate", isCompleted && "text-emerald-900")}>
+                                           {isCompleted && <CheckCircle2 className="h-2 w-2 text-emerald-600 shrink-0" />}
+                                           <p className={cn("font-black text-[8px] leading-tight truncate", isCompleted && "text-emerald-900")}>
                                              {isBusy ? (isRtl ? 'مشغول' : 'BUSY') : appt.clientName}
                                            </p>
                                         </div>
                                       )}
                                       {!isBusy && isStart && (
-                                        <div className="flex items-center gap-1 text-[7px] font-bold opacity-60 mt-0.5">
+                                        <div className="flex items-center gap-1 text-[6px] font-bold opacity-60 mt-0.5">
                                            <MapPin className="h-2 w-2" /> {appt.governorateName?.slice(0, 10)}
                                         </div>
                                       )}
