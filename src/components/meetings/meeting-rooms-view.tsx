@@ -14,10 +14,11 @@ import {
   ArrowRight,
   Eye,
   MoreVertical,
-  ShieldX
+  ShieldX,
+  ChevronDown
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, where, doc, getDocs, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, where, doc, getDocs, serverTimestamp, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
@@ -404,6 +405,16 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
 
   const isEdit = data?.mode === 'edit';
 
+  // بروتوكول الفصل المصلحي: استبعاد القسم المعماري من حجز القاعات
+  const filteredDepartments = useMemo(() => {
+    return (departments || []).filter((d: any) => {
+       const nAr = d.name || '';
+       const nEn = d.nameEn || '';
+       const isArch = nAr.includes('معماري') || nEn.toLowerCase().includes('arch');
+       return !isArch;
+    });
+  }, [departments]);
+
   const specializedEngineers = useMemo(() => {
     if (!formData.departmentId) return employees;
     return employees.filter((e: any) => e.departmentId === formData.departmentId);
@@ -611,7 +622,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
                  }}>
                     <SelectTrigger className="h-12 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
                     <SelectContent className="rounded-xl z-[160]">
-                       {departments.map((d: any) => (
+                       {filteredDepartments.map((d: any) => (
                          <SelectItem key={d.id} value={d.id} className="font-bold">
                             <div className="flex items-center gap-2">
                                <div className="h-2 w-2 rounded-full" style={{ backgroundColor: d.color || '#ccc' }} />
@@ -702,9 +713,9 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
 
         <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4 shrink-0 shadow-lg">
            <div className="flex-1 flex gap-3">
-              <Button variant="outline" onClick={onClose} className="flex-1 h-14 rounded-2xl font-bold border-2 bg-white">إلغاء</Button>
+              <Button variant="outline" onClick={onClose} className="flex-1 h-12 rounded-xl font-bold border-2 bg-white">إلغاء</Button>
               {isEdit && (
-                <Button variant="ghost" onClick={() => onDelete(data?.appointment?.id)} className="flex-1 h-14 rounded-2xl font-black text-rose-600 bg-rose-50 border-2 border-rose-100 gap-2"><Trash2 className="h-4 w-4" />{isRtl ? 'حذف' : 'Delete'}</Button>
+                <Button variant="ghost" onClick={() => onDelete(data?.appointment?.id)} className="flex-1 h-12 rounded-xl font-black text-rose-600 bg-rose-50 border-2 border-rose-100 gap-2"><Trash2 className="h-4 w-4" />{isRtl ? 'حذف' : 'Delete'}</Button>
               )}
            </div>
            <Button onClick={handleSave} disabled={loading || eligibilityLoading || !formData.clientId || !formData.engineerId || !!eligibilityBlocker} className="flex-1 h-14 rounded-2xl bg-primary text-white font-black text-xl shadow-xl gap-3">
