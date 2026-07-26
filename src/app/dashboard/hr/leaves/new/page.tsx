@@ -43,7 +43,6 @@ export default function NewLeaveRequestPage() {
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
-  // معرف الموظف المستهدف (نفسي افتراضياً، أو اختيار آخر للمدير)
   const [targetEmpId, setTargetEmpId] = useState<string>(globalUser?.employeeId || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [workingDays, setWorkingDays] = useState(0);
@@ -58,13 +57,11 @@ export default function NewLeaveRequestPage() {
     reason: '',
   });
 
-  // جلب كافة الموظفين للمديرين فقط
   const allEmpsQuery = useMemo(() => 
     companyId && db && isAdmin ? query(collection(db, paths.employees(companyId)), orderBy('fullName')) : null, 
   [db, companyId, isAdmin]);
   const { data: employees } = useCollection<Employee>(allEmpsQuery);
 
-  // جلب بيانات الموظف المختار حالياً
   const empRef = useMemo(() => 
     companyId && db && targetEmpId ? doc(db, paths.employees(companyId), targetEmpId) : null, 
   [db, companyId, targetEmpId]);
@@ -115,7 +112,6 @@ export default function NewLeaveRequestPage() {
   const handleSubmit = async () => {
     if (!leaveService || !user || !targetEmpId || !form.startDate || !form.endDate || !employee) return;
 
-    // المادة 70: لا يجوز القيام بالإجازة السنوية قبل مضي 6 أشهر
     if (form.type === 'annual' && !eligibility.eligible && !isAdmin) {
       toast({ 
         variant: "destructive", 
@@ -130,8 +126,7 @@ export default function NewLeaveRequestPage() {
     setIsSubmitting(true);
     try {
       await leaveService.submitRequest({
-        // userId يمثل هوية الشخص الذي يخصه الطلب (صاحب الإجازة)
-        userId: employee.id!, // نستخدم ID الموظف كمرجع أولي إذا لم نتمكن من جلب UID الخاص به
+        userId: employee.id!, 
         employeeId: targetEmpId,
         userName: employee.fullName,
         type: form.type,
@@ -177,18 +172,18 @@ export default function NewLeaveRequestPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         <div className="lg:col-span-1 space-y-6">
            {isAdmin && (
-             <Card className="border-0 shadow-xl rounded-[1.5rem] bg-[#1e1b4b] text-white overflow-hidden text-start">
-                <CardHeader className="bg-white/5 border-b border-white/10 p-6">
-                   <CardTitle className="text-sm font-black flex items-center gap-2">
+             <Card className="border-0 shadow-xl rounded-[1.5rem] bg-white ring-1 ring-black/5 overflow-hidden text-start">
+                <CardHeader className="bg-primary/5 border-b p-6">
+                   <CardTitle className="text-sm font-black flex items-center gap-2 text-slate-800">
                       <Users className="h-4 w-4 text-primary" />
                       {isRtl ? 'تقديم بالنيابة عن موظف' : 'Apply on behalf of'}
                    </CardTitle>
                 </CardHeader>
                 <CardContent className="p-6 space-y-4">
                    <div className="space-y-2">
-                      <Label className="text-[9px] font-black uppercase text-white/40">{isRtl ? 'اختر الموظف المستهدف' : 'Target Employee'}</Label>
+                      <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اختر الموظف المستهدف' : 'Target Employee'}</Label>
                       <Select value={targetEmpId} onValueChange={setTargetEmpId}>
-                         <SelectTrigger className="h-11 rounded-xl bg-white/10 border-white/20 text-white font-bold">
+                         <SelectTrigger className="h-11 rounded-xl bg-white border-2 font-bold">
                             <SelectValue placeholder="..." />
                          </SelectTrigger>
                          <SelectContent className="rounded-xl border-0 shadow-2xl">
@@ -196,9 +191,9 @@ export default function NewLeaveRequestPage() {
                          </SelectContent>
                       </Select>
                    </div>
-                   <div className="p-3 bg-white/5 rounded-xl flex items-start gap-2 border border-white/10">
+                   <div className="p-3 bg-slate-50 rounded-xl flex items-start gap-2 border border-slate-100">
                       <Info className="h-3 w-3 text-primary mt-0.5 shrink-0" />
-                      <p className="text-[8px] font-bold text-white/60 leading-relaxed">
+                      <p className="text-[8px] font-bold text-slate-600 leading-relaxed">
                          {isRtl ? 'تنبيه: كمدير، يمكنك تجاوز قيد الـ 6 أشهر عند الضرورة.' : 'Note: As Admin, you can override the 6-month rule if needed.'}
                       </p>
                    </div>
@@ -259,7 +254,7 @@ export default function NewLeaveRequestPage() {
                        <SmartDateInput value={form.startDate} onChange={v => setForm({...form, startDate: v})} />
                     </div>
                     <div className="space-y-1.5">
-                       <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'تاريخ العودة للعمل' : 'Return to Work Date'}</Label>
+                       <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'تاريخ العودة للعودة' : 'Return to Work Date'}</Label>
                        <SmartDateInput value={form.endDate} onChange={v => setForm({...form, endDate: v})} />
                     </div>
                  </div>
