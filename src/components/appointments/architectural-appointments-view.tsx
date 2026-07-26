@@ -61,7 +61,7 @@ import { AppointmentService } from '@/services/appointment-service';
 import { ClientService } from '@/services/client-service';
 import { Employee, LeaveRequest, PermissionRequest, AttendanceRecord } from '@/types/hr';
 import { DayOfWeek, WorkHoursSettings } from '@/types/work-hours';
-import { Governorate } from '@/types/reference';
+import { Governorate, Department } from '@/types/reference';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -185,6 +185,8 @@ export function ArchitecturalAppointmentsView() {
     companyId && db ? query(collection(db, paths.governorates(companyId)), orderBy('order')) : null, 
   [db, companyId]);
 
+  const deptsQuery = useMemo(() => companyId && db ? query(collection(db, paths.departments(companyId)), orderBy('order')) : null, [db, companyId]);
+
   const leavesQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.leaveRequests(companyId)), where('status', 'in', ['approved', 'on-leave', 'commenced'])) : null, 
   [db, companyId]);
@@ -201,6 +203,7 @@ export function ArchitecturalAppointmentsView() {
   const { data: allEmployees, loading: empsLoading } = useCollection<Employee>(empsQuery);
   const { data: allClients, loading: clientsLoading } = useCollection<any>(clientsQuery);
   const { data: governorates } = useCollection<Governorate>(govsQuery);
+  const { data: departments } = useCollection<Department>(deptsQuery);
   
   const { data: approvedLeaves } = useCollection<LeaveRequest>(leavesQuery);
   const { data: approvedPermissions } = useCollection<PermissionRequest>(permsQuery);
@@ -228,7 +231,6 @@ export function ArchitecturalAppointmentsView() {
   }, [allClients]);
 
   const filteredAppointments = useMemo(() => {
-    // الإنفاذ السيادي للفصل الراداري: استبعاد hall_meeting
     let list = (rawAppointments || []).filter(a => 
       a.status !== 'cancelled' && 
       a.type !== 'hall_meeting' && 
@@ -304,7 +306,6 @@ export function ArchitecturalAppointmentsView() {
   return (
     <div className="space-y-6 animate-in fade-in duration-700 print:space-y-1 print:pt-0" dir={dir}>
       
-      {/* 3-Day Strip Selector */}
       <div className="flex justify-center print:hidden">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => setCurrentDate(subDays(currentDate, 1))} className="h-10 w-10 rounded-xl bg-white shadow-sm border-2 border-slate-100 text-slate-400 hover:text-primary"><ChevronLeft className={cn("h-5 w-5", !isRtl && "rotate-180")} /></Button>
@@ -398,6 +399,7 @@ export function ArchitecturalAppointmentsView() {
           data={dialogData} 
           clients={allClients || []}
           governorates={governorates || []}
+          departments={departments || []}
           companyId={companyId!}
           userId={user.uid}
           userName={user.displayName || user.email || 'User'}
@@ -613,7 +615,7 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
   );
 }
 
-function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates, companyId, userId, userName, db, settings, onDelete, existingAppts, employees }: any) {
+function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates, departments, companyId, userId, userName, db, settings, onDelete, existingAppts, employees }: any) {
   const { dir, lang, t } = useLanguage();
   const isRtl = lang === 'ar';
   
@@ -622,7 +624,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
   const [isBusyBlock, setIsBusyBlock] = useState(false);
 
   const [formData, setFormData] = useState({
-    title: '', clientId: '', clientName: '', 
+    title: '', clientId: '', clientName: '', departmentId: '', departmentName: '',
     newClientName: '', newClientPhone: '', newClientGovId: '', newClientGovName: '', 
     transactionId: '', transactionNumber: '',
     date: '', time: '', notes: '',
@@ -646,16 +648,10 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     return list;
   }, [clients, targetEngineerId]);
 
-  const availableSlots = useMemo(() => {
-    if (!settings || !formData.date) return [];
-    const res = WorkHoursEngine.buildDaySlots(parseISO(formData.date), settings, 'architectural');
-    return [...res.morningSlots, ...res.eveningSlots];
-  }, [settings, formData.date]);
-
   useEffect(() => {
     if (!isOpen) {
        setFormData({
-         title: '', clientId: '', clientName: '', 
+         title: '', clientId: '', clientName: '', departmentId: '', departmentName: '',
          newClientName: '', newClientPhone: '', newClientGovId: '', newClientGovName: '', 
          transactionId: '', transactionNumber: '',
          date: '', time: '', notes: '',
@@ -676,6 +672,8 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         title: data.appointment?.title || '',
         clientId: data.appointment?.clientId || '',
         clientName: data.appointment?.clientName || '',
+        departmentId: data.appointment?.departmentId || '',
+        departmentName: data.appointment?.departmentName || '',
         transactionId: data.appointment?.transactionId || '',
         transactionNumber: data.appointment?.transactionNumber || '',
         date: data.appointment ? format(parseISO(data.appointment.start), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
@@ -717,18 +715,17 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
           ? new Date(appt.end) 
           : addMinutes(apptStart, settings?.architectural?.slotDurationMinutes || 60);
 
-        // فحص تداخل الفترات: (Start1 < End2) AND (Start2 < End1)
         const isOverlapping = start < apptEnd && apptStart < end;
 
         if (isOverlapping) {
             if (appt.clientId === targetClientId && targetClientId !== 'NEW_CLIENT') {
-               toast({ variant: "destructive", title: isRtl ? "تعارض للعميل" : "Client Conflict", description: isRtl ? `العميل لديه موعد مسبق في نفس الفترة (${format(apptStart, 'HH:mm')} - ${format(apptEnd, 'HH:mm')}).` : "Client has another appointment at this time." });
+               toast({ variant: "destructive", title: isRtl ? "تعارض للعميل" : "Client Conflict" });
                return;
             }
 
             const apptEngineers = [appt.engineerId, ...(appt.additionalEngineerIds || [])];
             if (apptEngineers.includes(targetEngineerId)) {
-               toast({ variant: "destructive", title: isRtl ? "تعارض للمهندس" : "Engineer Conflict", description: isRtl ? `المهندس لديه ارتباط مسبق في نفس الفترة (${format(apptStart, 'HH:mm')} - ${format(apptEnd, 'HH:mm')}).` : "Engineer is already assigned." });
+               toast({ variant: "destructive", title: isRtl ? "تعارض للمهندس" : "Engineer Conflict" });
                return;
             }
         }
@@ -764,10 +761,14 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         finalClientName = formData.newClientName;
       }
 
+      const selectedDept = departments.find((d: any) => d.id === formData.departmentId);
+
       const savePayload = {
         title: formData.title || (isBusyBlock ? (isRtl ? 'مشغول' : 'BUSY') : (isRtl ? 'زيارة ميدانية' : 'Site Visit')),
         clientId: finalClientId,
         clientName: finalClientName,
+        departmentId: formData.departmentId,
+        departmentName: selectedDept?.name || '',
         transactionId: formData.transactionId,
         transactionNumber: formData.transactionNumber,
         engineerId: targetEngineerId,
@@ -842,6 +843,20 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
            {!isBusyBlock && (
              <div className="space-y-4">
+                <div className="space-y-1.5">
+                   <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5">
+                      <Building2 className="h-3 w-3" /> {isRtl ? 'القسم المختص بالزيارة' : 'Assign Department'}
+                   </Label>
+                   <Select value={formData.departmentId} onValueChange={v => setFormData({...formData, departmentId: v})}>
+                      <SelectTrigger className="h-10 rounded-xl border-2 font-bold bg-white">
+                         <SelectValue placeholder={isRtl ? "تحديد التخصص..." : "Select specialty..."} />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl z-[150]">
+                         {departments?.map((d: any) => <SelectItem key={d.id} value={d.id!} className="font-bold text-xs">{isRtl ? d.name : d.nameEn}</SelectItem>)}
+                      </SelectContent>
+                   </Select>
+                </div>
+
                 {isNewClient ? (
                    <div className="space-y-4 p-5 rounded-2xl border-2 border-slate-100 bg-slate-50/30 animate-in fade-in">
                       <div className="space-y-1.5">

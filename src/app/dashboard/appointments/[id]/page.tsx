@@ -81,15 +81,27 @@ export default function AppointmentDetailPage() {
   [db, companyId, appt?.transactionId]);
   const { data: rawStages } = useCollection<StageInstance>(stagesQuery);
 
+  /**
+   * محرك الفلترة السيادي المطور:
+   * يعرض المراحل بناءً على (قسم الموظف) أو (القسم المخصص للموعد نفسه).
+   * هذا يضمن ظهور مسار "الأعمدة" للموعد الإنشائي حتى لو كان المستخدم مديراً عاماً.
+   */
   const stages = useMemo(() => {
     const list = (rawStages || []).sort((a, b) => (a.order || 0) - (b.order || 0));
     if (isAdmin) return list;
+    
     const userDeptId = globalUser?.departmentId;
+    const apptDeptId = appt?.departmentId;
+
     return list.filter(stage => {
+       // إذا كانت المرحلة عامة (بدون قسم محدد) تظهر للكل
        if (!stage.allowedDepartmentIds || stage.allowedDepartmentIds.length === 0) return true;
-       return userDeptId && stage.allowedDepartmentIds.includes(userDeptId);
+       
+       // تظهر إذا كان قسم المستخدم مسموحاً له، أو إذا كان هذا الموعد مخصصاً لهذا القسم تشغيلياً
+       return (userDeptId && stage.allowedDepartmentIds.includes(userDeptId)) || 
+              (apptDeptId && stage.allowedDepartmentIds.includes(apptDeptId));
     });
-  }, [rawStages, isAdmin, globalUser?.departmentId]);
+  }, [rawStages, isAdmin, globalUser?.departmentId, appt?.departmentId]);
 
   const boqQuery = useMemo(() => 
     companyId && db && appt?.transactionId ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', appt.transactionId), limit(1)) : null,
@@ -315,8 +327,8 @@ export default function AppointmentDetailPage() {
                          </p>
                          <p className="text-xs font-bold text-slate-400 max-w-xs mx-auto leading-relaxed">
                             {isRtl 
-                              ? `لا توجد مراحل تتبع قسمك (${globalUser?.departmentId || '---'}) في هذا المسار. يرجى مراجعة "هندسة المسارات" في الإعدادات للتأكد من تعيين القسم الإنشائي لهذه المراحل.` 
-                              : `No stages for your department (${globalUser?.departmentId}) found. Check path settings.`}
+                              ? `لا توجد مراحل تتبع قسمك (${appt.departmentName || globalUser?.departmentId || '---'}) في هذا المسار. يرجى مراجعة "هندسة المسارات" في الإعدادات للتأكد من تعيين القسم الإنشائي لهذه المراحل.` 
+                              : `No stages for your department found. Check path settings.`}
                          </p>
                       </div>
                       {isAdmin && (
@@ -424,7 +436,7 @@ export default function AppointmentDetailPage() {
 
                <div className="space-y-4">
                   <div className="flex items-center justify-between border-b pb-2">
-                     <h4 className="text-xs font-black uppercase text-slate-500 flex items-center gap-2"><Users className="h-4 w-4 text-blue-500" /> {isRtl ? 'القوى العاملة المشاركة' : 'Labor Resources'}</h4>
+                     <h4 className="text-xs font-black uppercase text-slate-500 flex items-center gap-2"><Users className="h-4 w-4 text-blue-500" /> {isRtl ? 'العمالة والمهن المشاركة' : 'Labor Resources'}</h4>
                      <Button variant="ghost" size="sm" onClick={() => setLaborDetails([...laborDetails, { trade: '', count: 1 }])} className="h-7 text-[10px] font-black gap-1 text-primary"><Plus className="h-3 w-3" /> {isRtl ? 'إضافة فئة' : 'Add Trade'}</Button>
                   </div>
                   <div className="grid grid-cols-1 gap-3">
