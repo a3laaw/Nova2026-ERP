@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -14,7 +13,8 @@ import {
   AlertTriangle,
   Loader2,
   Users,
-  UserCircle
+  UserCircle,
+  Info
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where } from 'firebase/firestore';
