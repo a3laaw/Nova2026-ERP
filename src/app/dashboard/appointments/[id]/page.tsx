@@ -11,7 +11,7 @@ import {
   AlertTriangle, Hammer, Check, Layers, Save,
   Target, X, RotateCcw, Lock, Info, AlertCircle, Play,
   Users, Truck, Plus, Trash2, HardHat, Link as LinkIcon,
-  ShieldAlert, Settings2
+  ShieldAlert, Settings2, History
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, where, orderBy, limit, updateDoc, serverTimestamp, getDocs } from 'firebase/firestore';
@@ -84,20 +84,17 @@ export default function AppointmentDetailPage() {
   /**
    * محرك الفلترة السيادي المطور (Strict Dept Focus):
    * يعرض حصراً المراحل المرتبطة بقسم الموعد.
-   * إذا كان موعد إنشائي، لن يرى المهندس إلا مراحل الإنشاء (الأعمدة، القواعد).
    */
   const stages = useMemo(() => {
     const list = (rawStages || []).sort((a, b) => (a.order || 0) - (b.order || 0));
     const apptDeptId = appt?.departmentId;
 
-    // إذا كان الموعد يخص قسماً معيناً، نفلت المسار الفني بناءً عليه حصراً
     if (apptDeptId) {
       return list.filter(stage => 
         stage.allowedDepartmentIds?.includes(apptDeptId)
       );
     }
     
-    // Fallback: إذا لم يحدد قسم للموعد، نعرض بناءً على صلاحية المستخدم
     if (isAdmin) return list;
     const userDeptId = globalUser?.departmentId;
     return list.filter(stage => {
@@ -127,15 +124,6 @@ export default function AppointmentDetailPage() {
     companyId && db && appt?.transactionId ? query(collection(db, paths.executions(companyId)), where('transactionId', '==', appt.transactionId)) : null,
   [db, companyId, appt?.transactionId]);
   const { data: allExecutions } = useCollection<BOQItemExecutionEntry>(execsQuery);
-
-  const [availableTransactions, setAvailableTransactions] = useState<any[]>([]);
-  useEffect(() => {
-    if (isLinkOpen && db && companyId && appt?.clientId) {
-      getDocs(query(collection(db, paths.transactions(companyId)), where('clientId', '==', appt.clientId)))
-        .then(snap => setAvailableTransactions(snap.docs.map(d => ({id: d.id, ...d.data()}))))
-        .catch(() => setAvailableTransactions([]));
-    }
-  }, [isLinkOpen, db, companyId, appt?.clientId]);
 
   const executionService = useMemo(() => (db && companyId) ? new BOQExecutionService(db, companyId, permissions) : null, [db, companyId, permissions]);
   const transactionService = useMemo(() => (db && companyId) ? new TransactionService(db, companyId, permissions) : null, [db, companyId, permissions]);
@@ -236,6 +224,15 @@ export default function AppointmentDetailPage() {
        document.body.removeAttribute('data-scroll-locked');
     }
   }, []);
+
+  const [availableTransactions, setAvailableTransactions] = useState<any[]>([]);
+  useEffect(() => {
+    if (isLinkOpen && db && companyId && appt?.clientId) {
+      getDocs(query(collection(db, paths.transactions(companyId)), where('clientId', '==', appt.clientId)))
+        .then(snap => setAvailableTransactions(snap.docs.map(d => ({id: d.id, ...d.data()}))))
+        .catch(() => setAvailableTransactions([]));
+    }
+  }, [isLinkOpen, db, companyId, appt?.clientId]);
 
   if (apptLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
   if (!appt) return <div className="p-20 text-center font-black">404 - Not Found</div>;
@@ -363,7 +360,13 @@ export default function AppointmentDetailPage() {
 
         <div className="lg:col-span-5 flex flex-col h-[700px]">
            <div className="bg-white rounded-[3rem] shadow-2xl border border-primary/10 overflow-hidden flex-1 flex flex-col">
-              <CommentSection transactionId={appt.transactionId || apptId} appointmentId={apptId} path={appt.transactionId ? paths.transactionComments(companyId!, appt.transactionId) : `companies/${companyId}/appointments/${apptId}/comments`} title={isRtl ? 'غرفة عمليات الزيارة' : 'Visit War Room'} onlyComments={true} />
+              {/* تم إلغاء onlyComments=true لتمكين عرض التايم لاين والتعليقات السابقة معاً لمعرفة حالة المعاملة بالكامل */}
+              <CommentSection 
+                transactionId={appt.transactionId || apptId} 
+                appointmentId={apptId} 
+                path={appt.transactionId ? paths.transactionComments(companyId!, appt.transactionId) : `companies/${companyId}/appointments/${apptId}/comments`} 
+                title={isRtl ? 'غرفة عمليات المعاملة' : 'Transaction War Room'} 
+              />
            </div>
         </div>
       </div>
