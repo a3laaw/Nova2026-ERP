@@ -297,7 +297,7 @@ export function ArchitecturalAppointmentsView() {
   return (
     <div className="space-y-6 animate-in fade-in duration-700 print:space-y-1 print:pt-0" dir={dir}>
       
-      {/* 1. التواريخ - شريط الأيام الثلاثي الذكي */}
+      {/* 1. الأيام الثلاثية */}
       <div className="flex justify-center print:hidden">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => setCurrentDate(subDays(currentDate, 1))} className="h-10 w-10 rounded-xl bg-white shadow-sm border-2 border-slate-100 text-slate-400 hover:text-primary"><ChevronLeft className={cn("h-5 w-5", !isRtl && "rotate-180")} /></Button>
@@ -395,6 +395,8 @@ export function ArchitecturalAppointmentsView() {
           db={db}
           settings={settings}
           onDelete={confirmDelete}
+          existingAppts={rawAppointments || []}
+          employees={allEmployees || []}
         />
       )}
 
@@ -452,7 +454,7 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
           <div className="h-[1px] flex-1 bg-slate-100" />
        </div>
 
-       <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white shadow-sm print:border-0 print:shadow-none">
+       <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white shadow-sm print:border-0 print:shadow-none scrollbar-hide">
           <table className="w-full border-collapse">
              <thead>
                 <tr className="bg-slate-50/50 print:bg-white">
@@ -468,7 +470,7 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
                       });
 
                       return (
-                        <th key={eng.id} className="p-3 border-b border-slate-100 border-s border-s-slate-50 min-w-[180px] print:p-1 print:min-w-[100px]">
+                        <th key={eng.id} className="p-3 border-b border-slate-100 border-s border-s-slate-50 min-w-[120px] print:p-1">
                            <div className="flex flex-col items-center text-center">
                               <Avatar className="h-8 w-8 rounded-lg shrink-0 print:h-6 print:w-6 mb-2">
                                  <AvatarFallback className="bg-primary/10 text-primary font-black text-[10px]">{eng.fullName.charAt(0)}</AvatarFallback>
@@ -594,7 +596,7 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
   );
 }
 
-function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates, companyId, userId, userName, db, settings, onDelete }: any) {
+function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates, companyId, userId, userName, db, settings, onDelete, existingAppts, employees }: any) {
   const { dir, lang, t } = useLanguage();
   const isRtl = lang === 'ar';
   
@@ -632,13 +634,6 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     const res = WorkHoursEngine.buildDaySlots(parseISO(formData.date), settings, 'architectural');
     return [...res.morningSlots, ...res.eveningSlots];
   }, [settings, formData.date]);
-
-  const availableEndTimes = useMemo(() => {
-     if (!settings || !formData.date || !formData.time) return [];
-     const res = WorkHoursEngine.buildDaySlots(parseISO(formData.date), settings, 'architectural');
-     const allSlots = [...res.morningSlots, ...res.eveningSlots];
-     return allSlots.filter(s => s > formData.time);
-  }, [settings, formData.date, formData.time]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -688,28 +683,49 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
 
   const handleSave = async () => {
     if (!data || isSelectedDateHoliday) return;
-    const isCreate = data.mode === 'create';
-    const start = new Date(`${formData.date}T${formData.time}:00`).toISOString();
-    const end = formData.endTime ? new Date(`${formData.date}T${formData.endTime}:00`).toISOString() : null;
     
+    const start = new Date(`${formData.date}T${formData.time}:00`).toISOString();
+    
+    // --- محرك التحقق السيادي الشامل (Sovereign Global Validator) ---
+    const targetClientId = isNewClient ? 'NEW_CLIENT' : formData.clientId;
+    
+    for (const appt of existingAppts) {
+        if (appt.status === 'cancelled' || appt.id === data.appointment?.id) continue;
+        
+        if (appt.start === start) {
+            // 1. فحص تعارض العميل (عابر للرادارات)
+            if (appt.clientId === targetClientId && targetClientId !== 'NEW_CLIENT') {
+               toast({ variant: "destructive", title: isRtl ? "تعارض للعميل" : "Client Conflict", description: isRtl ? `العميل لديه موعد مسبق في ${appt.type === 'hall_meeting' ? 'قاعة اجتماعات' : 'الميدان'} في هذا التوقيت.` : "Client has another appointment at this time." });
+               return;
+            }
+
+            // 2. فحص تعارض المهندس (عابر للرادارات)
+            const apptEngineers = [appt.engineerId, ...(appt.additionalEngineerIds || [])];
+            if (apptEngineers.includes(targetEngineerId)) {
+               toast({ variant: "destructive", title: isRtl ? "تعارض للمهندس" : "Engineer Conflict", description: isRtl ? `المهندس لديه ارتباط مسبق في ${appt.type === 'hall_meeting' ? 'قاعة اجتماعات' : 'الميدان'} في هذا التوقيت.` : "Engineer is already assigned at this time." });
+               return;
+            }
+        }
+    }
+
     setLoading(true);
     try {
       const appService = new AppointmentService(db, companyId);
       const clientService = new ClientService(db, companyId);
       
-      let targetClientId = formData.clientId;
-      let targetClientName = formData.clientName;
-      let apptType: any = 'client_meeting';
+      let finalClientId = formData.clientId;
+      let finalClientName = formData.clientName;
+      let apptType: any = 'site_visit';
 
       if (isBusyBlock) {
          apptType = 'busy_blocked';
-         targetClientId = 'SYSTEM_BLOCK';
-         targetClientName = isRtl ? 'مشغول' : 'BUSY';
-      } else if (isCreate && isNewClient) {
+         finalClientId = 'SYSTEM_BLOCK';
+         finalClientName = isRtl ? 'مشغول' : 'BUSY';
+      } else if (data.mode === 'create' && isNewClient) {
         const gov = governorates?.find((g: any) => g.id === formData.newClientGovId);
         const nextFileNum = await clientService.getNextFileNumber();
         
-        targetClientId = await clientService.addClient({
+        finalClientId = await clientService.addClient({
           nameAr: formData.newClientName,
           mobile: formData.newClientPhone,
           governorateId: formData.newClientGovId,
@@ -719,26 +735,25 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
           assignedEngineerId: targetEngineerId,
           assignedEngineerName: data.engineer?.fullName || data.appointment?.engineerName
         }, userId, userName);
-        targetClientName = formData.newClientName;
+        finalClientName = formData.newClientName;
       }
 
       const savePayload = {
-        title: formData.title || (isBusyBlock ? (isRtl ? 'مشغول' : 'BUSY') : (isRtl ? 'موعد فني' : 'Appt')),
-        clientId: targetClientId,
-        clientName: targetClientName,
+        title: formData.title || (isBusyBlock ? (isRtl ? 'مشغول' : 'BUSY') : (isRtl ? 'زيارة ميدانية' : 'Site Visit')),
+        clientId: finalClientId,
+        clientName: finalClientName,
         transactionId: formData.transactionId,
         transactionNumber: formData.transactionNumber,
-        engineerId: data.engineer?.id || data.appointment?.engineerId,
+        engineerId: targetEngineerId,
         engineerName: data.engineer?.fullName || data.appointment?.engineerName,
         type: apptType,
         start,
-        end,
         status: 'scheduled' as AppointmentStatus,
         companyId,
         notes: formData.notes
       };
 
-      if (isCreate) {
+      if (data.mode === 'create') {
         await appService.createAppointment(savePayload, userId);
       } else if (data.appointment?.id) {
         await appService.updateAppointment(data.appointment.id, savePayload);
@@ -762,55 +777,25 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         <div className="bg-slate-50/50 p-6 text-slate-900 text-start border-b shrink-0 relative">
            <DialogTitle className="text-lg font-black font-headline truncate flex items-center gap-3 text-slate-900">
               {isEdit ? <Edit3 className="h-5 w-5 text-primary" /> : <PlusCircle className="h-5 w-5 text-primary" />}
-              {isEdit ? (isRtl ? 'تعديل بيانات الموعد' : 'Edit Appointment') : (isRtl ? 'حجز موعد جديد' : 'New Appointment')}
+              {isEdit ? (isRtl ? 'تعديل بيانات الزيارة' : 'Edit Visit') : (isRtl ? 'حجز موعد ميداني جديد' : 'New Site Visit')}
            </DialogTitle>
         </div>
 
         <div className="flex-1 overflow-y-auto p-8 space-y-6 text-start scrollbar-hide bg-white">
            <div className="p-6 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] shadow-sm relative overflow-hidden animate-in zoom-in-95">
-              {isCreateFromGrid ? (
-                 <div className="flex justify-between items-center">
-                    <div className="space-y-1">
-                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'تاريخ الموعد المؤكد' : 'Confirmed Date'}</p>
-                       <p className="text-xl font-black text-slate-900">{formData.date}</p>
-                    </div>
-                    <div className="text-end space-y-1">
-                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'وقت البدء' : 'Start Time'}</p>
-                       <Badge className="bg-primary text-white font-black text-lg h-10 px-4 rounded-xl">{formData.time}</Badge>
-                    </div>
+              <div className="flex justify-between items-center">
+                 <div className="space-y-1">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'تاريخ الموعد المؤكد' : 'Confirmed Date'}</p>
+                    <p className="text-xl font-black text-slate-900">{formData.date}</p>
                  </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2 relative z-10">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'تاريخ الموعد' : 'Appointment Date'}</Label>
-                    <Input 
-                      type="date" 
-                      value={formData.date} 
-                      onChange={e => setFormData({...formData, date: e.target.value})} 
-                      className={cn(
-                        "h-11 rounded-xl bg-white border-2 font-black text-lg focus:ring-2 shadow-sm",
-                        isSelectedDateHoliday ? "border-rose-500 ring-rose-50" : "border-slate-200 text-slate-900"
-                      )}
-                    />
-                  </div>
-                  <div className="space-y-2 relative z-10">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'وقت البدء' : 'Start Time'}</Label>
-                    <Select disabled={isSelectedDateHoliday} value={formData.time} onValueChange={v => setFormData({...formData, time: v})}>
-                        <SelectTrigger className="h-11 rounded-xl bg-white border-2 border-slate-200 text-slate-900 font-black text-lg shadow-sm">
-                          <SelectValue placeholder={isSelectedDateHoliday ? "---" : "..."} />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl border shadow-2xl z-[155]">
-                          {availableSlots.map(slot => (
-                            <SelectItem key={slot} value={slot} className="font-black py-3 border-b last:border-0 border-slate-50">{slot}</SelectItem>
-                          ))}
-                        </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              )}
+                 <div className="text-end space-y-1">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'وقت البدء' : 'Start Time'}</p>
+                    <Badge className="bg-primary text-white font-black text-lg h-10 px-4 rounded-xl">{formData.time}</Badge>
+                 </div>
+              </div>
            </div>
 
-           {!isEdit && !isSelectedDateHoliday && (
+           {!isEdit && (
              <div className="grid grid-cols-2 gap-4">
                 <div className={cn(
                   "flex items-center justify-between p-3 rounded-xl border-2 transition-all",
@@ -829,25 +814,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
              </div>
            )}
 
-           {isBusyBlock && !isSelectedDateHoliday && (
-              <div className="p-6 bg-white border-2 border-dashed border-primary/20 rounded-[1.5rem] space-y-4 animate-in slide-in-from-top-4 duration-500 shadow-sm">
-                 <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'سبب الانشغال' : 'Freeze Reason'}</Label>
-                    <Input value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="h-12 rounded-xl bg-slate-50/50 border-2 font-bold" />
-                 </div>
-                 <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'وقت الانتهاء' : 'End Time'}</Label>
-                    <Select value={formData.endTime} onValueChange={v => setFormData({...formData, endTime: v})}>
-                       <SelectTrigger className="h-12 rounded-xl bg-slate-50/50 border-2 font-black text-lg"><SelectValue placeholder="..." /></SelectTrigger>
-                       <SelectContent className="rounded-xl border shadow-2xl z-[155]">
-                          {availableEndTimes.map(slot => (<SelectItem key={slot} value={slot} className="font-black py-3">{slot}</SelectItem>))}
-                       </SelectContent>
-                    </Select>
-                 </div>
-              </div>
-           )}
-
-           {!isBusyBlock && !isSelectedDateHoliday && (
+           {!isBusyBlock && (
              <div className="space-y-4">
                 {isNewClient ? (
                    <div className="space-y-4 p-5 rounded-2xl border-2 border-slate-100 bg-slate-50/30 animate-in fade-in">
@@ -960,4 +927,3 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     </Dialog>
   );
 }
-

@@ -225,6 +225,7 @@ export function MeetingRoomsView() {
           isRtl={isRtl}
           t={t}
           onDelete={setDeletingId}
+          dir={dir}
         />
       )}
 
@@ -267,7 +268,7 @@ function HallGridSection({ title, slots, rooms, appts, onAction, onDelete, isRtl
                 <tr className="bg-slate-50/50 print:bg-white">
                    <th className="w-16 p-2 border-b border-slate-100 font-black text-[9px] text-slate-400 uppercase tracking-tighter bg-slate-50/50 print:p-1 print:w-10">Time</th>
                    {rooms.map((room: MeetingRoom) => (
-                      <th key={room.id} className="p-3 border-b border-slate-100 border-s border-s-slate-50 min-w-[180px] print:p-1 print:min-w-[120px]">
+                      <th key={room.id} className="p-3 border-b border-slate-100 border-s border-s-slate-50 min-w-[120px] print:p-1">
                          <div className="flex flex-col items-center text-center">
                             <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary mb-2 shrink-0"><Landmark className="h-4 w-4" /></div>
                             <span className="font-black text-slate-800 text-[11px] leading-none block truncate">{isRtl ? room.name : room.nameEn}</span>
@@ -303,7 +304,6 @@ function HallGridSection({ title, slots, rooms, appts, onAction, onDelete, isRtl
                                         <p className="font-black text-[9px] leading-tight truncate text-slate-900">{appt.clientName}</p>
                                         <div className="flex items-center gap-1 text-[7px] font-bold text-slate-400">
                                           <Users className="h-2.5 w-2.5" /> {appt.engineerName}
-                                          {(appt.additionalEngineerNames?.length || 0) > 0 && <span>+ {appt.additionalEngineerNames.length}</span>}
                                         </div>
                                     </div>
                                   </Card>
@@ -351,8 +351,7 @@ function HallGridSection({ title, slots, rooms, appts, onAction, onDelete, isRtl
   );
 }
 
-function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, employees, departments, rooms, existingAppts, isRtl, t, onDelete }: any) {
-  const { dir } = useLanguage();
+function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, employees, departments, rooms, existingAppts, isRtl, t, onDelete, dir }: any) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: '', clientId: '', clientName: '', departmentId: '', departmentName: '', departmentColor: '',
@@ -398,12 +397,35 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
 
     const start = new Date(`${formData.date}T${formData.time}:00`).toISOString();
     
-    // فحص التعارض (فقط عند الإنشاء أو عند تغيير الوقت في التعديل)
-    if (!isEdit || start !== data.appointment?.start) {
-        const hallBusy = existingAppts.some((a: any) => a.id !== data.appointment?.id && a.hallId === data.room.id && a.start === start && a.status !== 'cancelled');
-        if (hallBusy) {
-           toast({ variant: "destructive", title: isRtl ? "تنبيه: القاعة مشغولة" : "Hall Busy" });
-           return;
+    // --- محرك التحقق السيادي الشامل (Sovereign Global Validator) ---
+    // فحص كافة المواعيد في المنشأة لضمان عدم وجود تداخلات
+    const targetEngineers = [formData.engineerId, ...formData.additionalEngineerIds];
+    
+    for (const appt of existingAppts) {
+        if (appt.status === 'cancelled' || appt.id === data.appointment?.id) continue;
+        
+        // فحص تعارض الوقت (المطابقة بالدقيقة)
+        if (appt.start === start) {
+            // 1. فحص تعارض القاعة (لمنع حجز قاعة مشغولة)
+            if (appt.hallId === data.room?.id) {
+               toast({ variant: "destructive", title: isRtl ? "القاعة مشغولة" : "Hall Busy", description: isRtl ? "هذه القاعة محجوزة مسبقاً في هذا التوقيت." : "This hall is reserved for another meeting." });
+               return;
+            }
+
+            // 2. فحص تعارض العميل (لمنع وجود العميل في مكانين)
+            if (appt.clientId === formData.clientId) {
+               toast({ variant: "destructive", title: isRtl ? "تعارض للعميل" : "Client Conflict", description: isRtl ? `العميل لديه موعد آخر في ${appt.type === 'hall_meeting' ? 'قاعة أخرى' : 'الميدان'} في نفس الوقت.` : "Client has another appointment at this time." });
+               return;
+            }
+
+            // 3. فحص تعارض المهندسين (للمهندس الرئيسي والمشاركين)
+            const apptEngineers = [appt.engineerId, ...(appt.additionalEngineerIds || [])];
+            const overlappingEng = targetEngineers.find(id => apptEngineers.includes(id));
+            if (overlappingEng) {
+               const engName = employees.find((e:any) => e.id === overlappingEng)?.fullName || 'المهندس';
+               toast({ variant: "destructive", title: isRtl ? "تعارض للمهندس" : "Engineer Conflict", description: isRtl ? `${engName} لديه ارتباط مسبق في نفس التوقيت.` : `${engName} is already assigned to another meeting.` });
+               return;
+            }
         }
     }
 
@@ -456,14 +478,14 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-2xl text-start" dir={dir}>
-        <div className="bg-slate-50 p-8 border-b flex items-center justify-between">
+        <div className="bg-slate-50 p-8 border-b flex items-center justify-between shrink-0">
            <div className="flex items-center gap-4">
               <div className="h-12 w-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary shadow-sm"><Landmark className="h-6 w-6" /></div>
               <div>
                  <DialogTitle className="text-2xl font-black font-headline">
                     {isEdit ? (isRtl ? 'تعديل حجز القاعة' : 'Edit Booking') : (isRtl ? 'حجز قاعة اجتماع' : 'Room Booking')}
                  </DialogTitle>
-                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{isRtl ? `القاعة: ${data.room.name}` : `Room: ${data.room.nameEn}`}</p>
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{isRtl ? `القاعة: ${data.room?.name}` : `Room: ${data.room?.nameEn}`}</p>
               </div>
            </div>
            <Badge className="bg-slate-900 text-white font-black h-8 px-4 rounded-xl text-lg">{formData.time}</Badge>
@@ -471,34 +493,21 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
 
         <div className="p-8 space-y-6 max-h-[60vh] overflow-y-auto scrollbar-hide bg-white">
            <div className="p-6 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] shadow-sm animate-in zoom-in-95">
-              {isCreateFromGrid ? (
-                 <div className="flex justify-between items-center">
-                    <div className="space-y-1">
-                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'تاريخ الموعد المؤكد' : 'Confirmed Date'}</p>
-                       <p className="text-xl font-black text-slate-900">{formData.date}</p>
-                    </div>
-                    <div className="text-end space-y-1">
-                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'وقت البدء' : 'Start Time'}</p>
-                       <Badge className="bg-primary text-white font-black text-lg h-10 px-4 rounded-xl">{formData.time}</Badge>
-                    </div>
+              <div className="flex justify-between items-center">
+                 <div className="space-y-1">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'تاريخ الموعد المؤكد' : 'Confirmed Date'}</p>
+                    <p className="text-xl font-black text-slate-900">{formData.date}</p>
                  </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'التاريخ' : 'Date'}</Label>
-                    <Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="h-11 rounded-xl border-2 font-black" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'وقت البدء' : 'Start'}</Label>
-                    <Input type="time" value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} className="h-11 rounded-xl border-2 font-black" />
-                  </div>
-                </div>
-              )}
+                 <div className="text-end space-y-1">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'وقت البدء' : 'Start Time'}</p>
+                    <Badge className="bg-primary text-white font-black text-lg h-10 px-4 rounded-xl">{formData.time}</Badge>
+                 </div>
+              </div>
            </div>
 
            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                 <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'العميل المالك' : 'Client'}</Label>
+                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'العميل المالك' : 'Client'}</Label>
                  <Select value={formData.clientId} onValueChange={v => setFormData({...formData, clientId: v})}>
                     <SelectTrigger className="h-12 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
                     <SelectContent className="rounded-xl z-[160]">
@@ -507,7 +516,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
                  </Select>
               </div>
               <div className="space-y-2">
-                 <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'القسم المختص (لتحديد اللون)' : 'Department (Coloring)'}</Label>
+                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'القسم المختص (لتحديد اللون)' : 'Department (Coloring)'}</Label>
                  <Select value={formData.departmentId} onValueChange={v => setFormData({...formData, departmentId: v})}>
                     <SelectTrigger className="h-12 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
                     <SelectContent className="rounded-xl z-[160]">
@@ -565,9 +574,9 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
            </div>
         </div>
 
-        <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4 shrink-0">
+        <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4 shrink-0 shadow-lg">
            <div className="flex-1 flex gap-3">
-              <Button variant="outline" onClick={onClose} className="flex-1 h-14 rounded-2xl border-2 font-black bg-white">
+              <Button variant="outline" onClick={onClose} className="flex-1 h-14 rounded-2xl font-bold border-2 bg-white">
                 إلغاء
               </Button>
               {isEdit && (
@@ -594,4 +603,3 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
     </Dialog>
   );
 }
-
