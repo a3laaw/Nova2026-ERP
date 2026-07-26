@@ -2,6 +2,7 @@
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   format, isSameDay, parseISO, addDays, subDays, parse, addMinutes
 } from 'date-fns';
@@ -71,9 +72,9 @@ export function MeetingRoomsView() {
   const { lang, dir, t } = useLanguage();
   const { isAdmin } = usePermissions();
   const db = useFirestore();
+  const router = useRouter();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
-  const router = useRouter();
 
   const [mounted, setMounted] = useState(false);
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
@@ -642,7 +643,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
              disabled={loading || !formData.clientId || !formData.engineerId} 
              className="flex-1 h-14 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 border-b-8 border-orange-700 hover:scale-[1.02] transition-all"
            >
-              {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />}
+              {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
               {isRtl ? 'تأكيد الحفظ' : 'Save Changes'}
            </Button>
         </DialogFooter>
