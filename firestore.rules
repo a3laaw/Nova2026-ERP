@@ -38,29 +38,6 @@ service cloud.firestore {
       );
     }
 
-    // --- سجلات المجموعات المشتركة (Collection Groups) ---
-    
-    match /{path=**}/stages/{stageId} {
-      allow read: if belongsToCompany(resource.data.companyId);
-    }
-    
-    match /{path=**}/services/{serviceId} {
-      allow read: if belongsToCompany(resource.data.companyId);
-    }
-
-    match /{path=**}/executions/{execId} {
-      allow read: if belongsToCompany(resource.data.companyId);
-    }
-
-    match /{path=**}/items/{itemId} {
-      allow read: if belongsToCompany(resource.data.companyId);
-    }
-
-    // إضافة قاعدة للمجموعة المشتركة للأوامر التغييرية
-    match /{path=**}/variations/{voId} {
-      allow read: if belongsToCompany(resource.data.companyId);
-    }
-
     // --- سجلات المستخدمين العالمية ---
     
     match /global_users/{uid} {
@@ -79,14 +56,52 @@ service cloud.firestore {
     match /companies/{companyId} {
       allow read: if belongsToCompany(companyId);
       
-      // قواعد الموظفين
+      // قواعد الموظفين (رؤية الجميع وتعديل النفس للمدير)
       match /employees/{empId} {
         allow read: if belongsToCompany(companyId);
         allow create, delete: if isAdmin(companyId);
         allow update: if isAdmin(companyId) || (isAuthenticated() && getUserData().employeeId == empId);
       }
 
-      // الوصول العام للمدير على كافة المجموعات الأخرى
+      // قواعد الإجازات والاستئذانات (خدمة ذاتية)
+      match /leaveRequests/{reqId} {
+        allow read: if belongsToCompany(companyId);
+        allow create: if belongsToCompany(companyId) && request.resource.data.userId == request.auth.uid;
+        allow update, delete: if isAdmin(companyId);
+      }
+
+      match /permissionRequests/{reqId} {
+        allow read: if belongsToCompany(companyId);
+        allow create: if belongsToCompany(companyId) && request.resource.data.userId == request.auth.uid;
+        allow update, delete: if isAdmin(companyId);
+      }
+
+      // قواعد المشاريع والتنفيذ (للمهندسين)
+      match /transactions/{transId} {
+        allow read: if belongsToCompany(companyId);
+        allow write: if isAdmin(companyId);
+
+        match /stageInstances/{instId} {
+          allow read: if belongsToCompany(companyId);
+          allow write: if belongsToCompany(companyId); // السماح للمهندسين بتحديث حالة المرحلة (بدء/إكمال)
+        }
+        match /timeline/{logId} {
+          allow read: if belongsToCompany(companyId);
+          allow create: if belongsToCompany(companyId); // السماح بتوثيق الأحداث آلياً
+        }
+        match /comments/{commentId} {
+          allow read: if belongsToCompany(companyId);
+          allow create: if belongsToCompany(companyId);
+          allow update, delete: if isAdmin(companyId) || (isAuthenticated() && request.auth.uid == resource.data.createdBy);
+        }
+      }
+
+      match /executions/{execId} {
+        allow read: if belongsToCompany(companyId);
+        allow create: if belongsToCompany(companyId); // السماح للمهندسين بتسجيل الإنجاز الميداني
+      }
+
+      // باقي المجموعات محصورة للمدير
       match /{allSubCollections=**} {
         allow read: if belongsToCompany(companyId);
         allow write: if isAdmin(companyId);
