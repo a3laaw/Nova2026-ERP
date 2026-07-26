@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -8,9 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, CheckCircle2, Workflow, Building2 } from "lucide-react";
+import { Loader2, CheckCircle2, Workflow, Building2, Briefcase } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
-import { collection, query, orderBy, where } from 'firebase/firestore';
+import { collection, query, orderBy, where, doc } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -51,7 +50,7 @@ export default function NewTransactionPage() {
   const { data: departments } = useCollection<Department>(deptsQuery);
   const { data: employees } = useCollection<Employee>(empsQuery);
 
-  // تصفية المهندسين بناءً على القسم المختار
+  // تصفية المهندسين بناءً على القسم المختار (بروتوكول التوجيه التخصصي)
   const filteredEngineers = useMemo(() => {
     if (!form.departmentId) return employees;
     return employees.filter(e => e.departmentId === form.departmentId);
