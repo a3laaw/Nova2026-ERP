@@ -44,7 +44,8 @@ import {
   AlertTriangle,
   AlertCircle,
   ArrowRight,
-  ShieldAlert
+  ShieldAlert,
+  Eye
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs, updateDoc, deleteDoc, serverTimestamp, addDoc, setDoc } from 'firebase/firestore';
@@ -520,29 +521,55 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
 
                            return (
                              <td key={eng.id} className="p-0.5 border-b border-slate-50 border-s border-s-slate-50 align-top">
-                                <Card 
-                                  onClick={() => router.push(`/dashboard/appointments/${appt.id}`)}
-                                  className={cn(
-                                    "p-1.5 rounded-lg h-full transition-all cursor-pointer print:p-1 min-h-[40px]", 
-                                    cardGradient(m?.color || '', isCompleted)
+                                <div className="relative h-full">
+                                  <Card 
+                                    onClick={() => router.push(`/dashboard/appointments/${appt.id}`)}
+                                    className={cn(
+                                      "p-1.5 rounded-lg h-full transition-all cursor-pointer print:p-1 min-h-[40px]", 
+                                      cardGradient(m?.color || '', isCompleted)
+                                    )}
+                                  >
+                                    <div className="text-start relative pr-6">
+                                        {isStart && (
+                                          <div className="flex items-center gap-1">
+                                            {isCompleted && <CheckCircle2 className="h-2 w-2 text-emerald-600 shrink-0" />}
+                                            <p className={cn("font-black text-[8px] leading-tight truncate", isCompleted && "text-emerald-900")}>
+                                              {isBusy ? (isRtl ? 'مشغول' : 'BUSY') : appt.clientName}
+                                            </p>
+                                          </div>
+                                        )}
+                                        {!isBusy && isStart && (
+                                          <div className="flex items-center gap-1 text-[6px] font-bold opacity-60 mt-0.5">
+                                            <MapPin className="h-2 w-2" /> {appt.governorateName?.slice(0, 10)}
+                                          </div>
+                                        )}
+                                    </div>
+                                  </Card>
+
+                                  {isStart && (
+                                    <div className="absolute top-1 right-1 print:hidden" onClick={e => e.stopPropagation()}>
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <Button variant="ghost" size="icon" className="h-5 w-5 rounded-md hover:bg-black/5">
+                                            <MoreVertical className="h-3 w-3" />
+                                          </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent className="rounded-xl border-2 shadow-2xl" align="end">
+                                          <DropdownMenuItem className="font-bold text-xs gap-2" onClick={() => router.push(`/dashboard/appointments/${appt.id}`)}>
+                                            <Eye className="h-3.5 w-3.5" /> {isRtl ? 'عرض الرادار' : 'View Radar'}
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem className="font-bold text-xs gap-2" onClick={() => onAction('edit', eng, slot, appt)}>
+                                            <Edit3 className="h-3.5 w-3.5" /> {isRtl ? 'تعديل الموعد' : 'Edit Booking'}
+                                          </DropdownMenuItem>
+                                          <DropdownMenuSeparator />
+                                          <DropdownMenuItem className="font-black text-xs gap-2 text-rose-600" onClick={() => onDelete(appt.id)}>
+                                            <Trash2 className="h-3.5 w-3.5" /> {isRtl ? 'حذف' : 'Delete'}
+                                          </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    </div>
                                   )}
-                                >
-                                   <div className="text-start relative">
-                                      {isStart && (
-                                        <div className="flex items-center gap-1">
-                                           {isCompleted && <CheckCircle2 className="h-2 w-2 text-emerald-600 shrink-0" />}
-                                           <p className={cn("font-black text-[8px] leading-tight truncate", isCompleted && "text-emerald-900")}>
-                                             {isBusy ? (isRtl ? 'مشغول' : 'BUSY') : appt.clientName}
-                                           </p>
-                                        </div>
-                                      )}
-                                      {!isBusy && isStart && (
-                                        <div className="flex items-center gap-1 text-[6px] font-bold opacity-60 mt-0.5">
-                                           <MapPin className="h-2 w-2" /> {appt.governorateName?.slice(0, 10)}
-                                        </div>
-                                      )}
-                                   </div>
-                                </Card>
+                                </div>
                              </td>
                            );
                         }
@@ -726,6 +753,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
   };
 
   const isEdit = data?.mode === 'edit';
+  const isCreateFromGrid = data?.mode === 'create' && data.slot;
 
   return (
     <Dialog open={isOpen} onOpenChange={(v) => { if(!v) onClose(); }}>
@@ -739,32 +767,47 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         </div>
 
         <div className="flex-1 overflow-y-auto p-8 space-y-6 text-start scrollbar-hide bg-white">
-           <div className="grid grid-cols-2 gap-4 p-6 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] shadow-sm relative overflow-hidden animate-in zoom-in-95">
-              <div className="space-y-2 relative z-10">
-                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'تاريخ الموعد' : 'Appointment Date'}</Label>
-                 <Input 
-                   type="date" 
-                   value={formData.date} 
-                   onChange={e => setFormData({...formData, date: e.target.value})} 
-                   className={cn(
-                     "h-11 rounded-xl bg-white border-2 font-black text-lg focus:ring-2 shadow-sm",
-                     isSelectedDateHoliday ? "border-rose-500 ring-rose-50" : "border-slate-200 text-slate-900"
-                   )}
-                 />
-              </div>
-              <div className="space-y-2 relative z-10">
-                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'وقت البدء' : 'Start Time'}</Label>
-                 <Select disabled={isSelectedDateHoliday} value={formData.time} onValueChange={v => setFormData({...formData, time: v})}>
-                    <SelectTrigger className="h-11 rounded-xl bg-white border-2 border-slate-200 text-slate-900 font-black text-lg shadow-sm">
-                       <SelectValue placeholder={isSelectedDateHoliday ? "---" : "..."} />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl border shadow-2xl z-[155]">
-                      {availableSlots.map(slot => (
-                         <SelectItem key={slot} value={slot} className="font-black py-3 border-b last:border-0 border-slate-50">{slot}</SelectItem>
-                      ))}
-                    </SelectContent>
-                 </Select>
-              </div>
+           <div className="p-6 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] shadow-sm relative overflow-hidden animate-in zoom-in-95">
+              {isCreateFromGrid ? (
+                 <div className="flex justify-between items-center">
+                    <div className="space-y-1">
+                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'تاريخ الموعد المؤكد' : 'Confirmed Date'}</p>
+                       <p className="text-xl font-black text-slate-900">{formData.date}</p>
+                    </div>
+                    <div className="text-end space-y-1">
+                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'وقت البدء' : 'Start Time'}</p>
+                       <Badge className="bg-primary text-white font-black text-lg h-10 px-4 rounded-xl">{formData.time}</Badge>
+                    </div>
+                 </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2 relative z-10">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'تاريخ الموعد' : 'Appointment Date'}</Label>
+                    <Input 
+                      type="date" 
+                      value={formData.date} 
+                      onChange={e => setFormData({...formData, date: e.target.value})} 
+                      className={cn(
+                        "h-11 rounded-xl bg-white border-2 font-black text-lg focus:ring-2 shadow-sm",
+                        isSelectedDateHoliday ? "border-rose-500 ring-rose-50" : "border-slate-200 text-slate-900"
+                      )}
+                    />
+                  </div>
+                  <div className="space-y-2 relative z-10">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'وقت البدء' : 'Start Time'}</Label>
+                    <Select disabled={isSelectedDateHoliday} value={formData.time} onValueChange={v => setFormData({...formData, time: v})}>
+                        <SelectTrigger className="h-11 rounded-xl bg-white border-2 border-slate-200 text-slate-900 font-black text-lg shadow-sm">
+                          <SelectValue placeholder={isSelectedDateHoliday ? "---" : "..."} />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border shadow-2xl z-[155]">
+                          {availableSlots.map(slot => (
+                            <SelectItem key={slot} value={slot} className="font-black py-3 border-b last:border-0 border-slate-50">{slot}</SelectItem>
+                          ))}
+                        </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
            </div>
 
            {!isEdit && !isSelectedDateHoliday && (
@@ -917,3 +960,4 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     </Dialog>
   );
 }
+

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
@@ -10,7 +11,9 @@ import {
   Edit3, Loader2, CheckCircle2, MapPin, X, Save, 
   Trash2, Users, ShieldCheck, PlusCircle, Workflow,
   Target, Info, AlertCircle, Play, UserPlus, Briefcase,
-  ArrowRight
+  ArrowRight,
+  Eye,
+  MoreVertical
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs, serverTimestamp, addDoc, updateDoc } from 'firebase/firestore';
@@ -51,11 +54,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { AppointmentService } from '@/services/appointment-service';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
-/**
- * @fileOverview رادار حجز القاعات المطور (Sovereign Halls Radar V2).
- * تم إضافة كافة إجراءات التعديل والحذف لتماثل تجربة الرادار المعماري.
- */
 export function MeetingRoomsView() {
   const { globalUser, user } = useAuthContext();
   const { lang, dir, t } = useLanguage();
@@ -198,6 +204,7 @@ export function MeetingRoomsView() {
            rooms={allRooms} 
            appts={filteredAppointments}
            onAction={handleAction}
+           onDelete={setDeletingId}
            isRtl={isRtl}
            t={t}
          />
@@ -244,7 +251,7 @@ export function MeetingRoomsView() {
   );
 }
 
-function HallGridSection({ title, slots, rooms, appts, onAction, isRtl, t }: any) {
+function HallGridSection({ title, slots, rooms, appts, onAction, onDelete, isRtl, t }: any) {
   if (slots.length === 0) return null;
 
   return (
@@ -280,24 +287,46 @@ function HallGridSection({ title, slots, rooms, appts, onAction, isRtl, t }: any
                         });
 
                         if (appt) {
+                           const isCompleted = appt.status === 'completed';
                            return (
                              <td key={room.id} className="p-0.5 border-b border-slate-50 border-s border-s-slate-50 align-top">
-                                <Card 
-                                  onClick={() => onAction('edit', room, slot, appt)}
-                                  className={cn(
-                                    "p-1.5 rounded-lg h-full transition-all cursor-pointer min-h-[44px] border-2 hover:shadow-lg hover:-translate-y-0.5",
-                                    appt.status === 'completed' ? "bg-emerald-50/50 border-emerald-500/20" : "bg-white shadow-sm"
-                                  )}
-                                  style={{ borderInlineStartColor: appt.departmentColor || '#FFA000', borderInlineStartWidth: '6px' }}
-                                >
-                                   <div className="text-start space-y-0.5">
-                                      <p className="font-black text-[9px] leading-tight truncate text-slate-900">{appt.clientName}</p>
-                                      <div className="flex items-center gap-1 text-[7px] font-bold text-slate-400">
-                                         <Users className="h-2.5 w-2.5" /> {appt.engineerName}
-                                         {(appt.additionalEngineerNames?.length || 0) > 0 && <span>+ {appt.additionalEngineerNames.length}</span>}
-                                      </div>
-                                   </div>
-                                </Card>
+                                <div className="relative h-full">
+                                  <Card 
+                                    onClick={() => onAction('edit', room, slot, appt)}
+                                    className={cn(
+                                      "p-1.5 rounded-lg h-full transition-all cursor-pointer min-h-[44px] border-2 hover:shadow-lg",
+                                      isCompleted ? "bg-emerald-50/50 border-emerald-500/20" : "bg-white shadow-sm"
+                                    )}
+                                    style={{ borderInlineStartColor: appt.departmentColor || '#FFA000', borderInlineStartWidth: '6px' }}
+                                  >
+                                    <div className="text-start space-y-0.5 pr-6">
+                                        <p className="font-black text-[9px] leading-tight truncate text-slate-900">{appt.clientName}</p>
+                                        <div className="flex items-center gap-1 text-[7px] font-bold text-slate-400">
+                                          <Users className="h-2.5 w-2.5" /> {appt.engineerName}
+                                          {(appt.additionalEngineerNames?.length || 0) > 0 && <span>+ {appt.additionalEngineerNames.length}</span>}
+                                        </div>
+                                    </div>
+                                  </Card>
+
+                                  <div className="absolute top-1 right-1 print:hidden" onClick={e => e.stopPropagation()}>
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-5 w-5 rounded-md hover:bg-black/5">
+                                          <MoreVertical className="h-3 w-3" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent className="rounded-xl border-2 shadow-2xl" align="end">
+                                        <DropdownMenuItem className="font-bold text-xs gap-2" onClick={() => onAction('edit', room, slot, appt)}>
+                                          <Edit3 className="h-3.5 w-3.5" /> {isRtl ? 'تعديل الحجز' : 'Edit Booking'}
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem className="font-black text-xs gap-2 text-rose-600" onClick={() => onDelete(appt.id)}>
+                                          <Trash2 className="h-3.5 w-3.5" /> {isRtl ? 'حذف الحجز' : 'Cancel Booking'}
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </div>
+                                </div>
                              </td>
                            );
                         }
@@ -332,6 +361,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
   });
 
   const isEdit = data?.mode === 'edit';
+  const isCreateFromGrid = data?.mode === 'create' && data.slot;
 
   useEffect(() => {
     if (isOpen && data) {
@@ -439,7 +469,33 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
            <Badge className="bg-slate-900 text-white font-black h-8 px-4 rounded-xl text-lg">{formData.time}</Badge>
         </div>
 
-        <div className="p-8 space-y-6 max-h-[60vh] overflow-y-auto scrollbar-hide">
+        <div className="p-8 space-y-6 max-h-[60vh] overflow-y-auto scrollbar-hide bg-white">
+           <div className="p-6 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] shadow-sm animate-in zoom-in-95">
+              {isCreateFromGrid ? (
+                 <div className="flex justify-between items-center">
+                    <div className="space-y-1">
+                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'تاريخ الموعد المؤكد' : 'Confirmed Date'}</p>
+                       <p className="text-xl font-black text-slate-900">{formData.date}</p>
+                    </div>
+                    <div className="text-end space-y-1">
+                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'وقت البدء' : 'Start Time'}</p>
+                       <Badge className="bg-primary text-white font-black text-lg h-10 px-4 rounded-xl">{formData.time}</Badge>
+                    </div>
+                 </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'التاريخ' : 'Date'}</Label>
+                    <Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="h-11 rounded-xl border-2 font-black" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'وقت البدء' : 'Start'}</Label>
+                    <Input type="time" value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} className="h-11 rounded-xl border-2 font-black" />
+                  </div>
+                </div>
+              )}
+           </div>
+
            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                  <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'العميل المالك' : 'Client'}</Label>
@@ -538,3 +594,4 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
     </Dialog>
   );
 }
+
