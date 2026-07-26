@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -9,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { 
   CalendarDays, Plus, Loader2, CheckCircle2, 
   XCircle, ArrowRight, MessageSquare, Clock,
-  Calendar, Hash, Pencil
+  Calendar, Hash, Pencil, ShieldAlert,
+  AlertTriangle
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -40,6 +40,8 @@ export function LeavesManager() {
 
   const [processingLeave, setProcessingLeave] = useState<LeaveRequest | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [conflictData, setConflictData] = useState<{ count: number; peers: any[] } | null>(null);
+  const [loadingConflict, setLoadingConflict] = useState(false);
   
   const [editForm, setEditForm] = useState({
     comment: '',
@@ -78,8 +80,22 @@ export function LeavesManager() {
         endDate: processingLeave.endDate,
         workingDays: processingLeave.workingDays
       });
+
+      // فحص تداخل القسم
+      if (leaveService && (processingLeave as any).departmentId) {
+        setLoadingConflict(true);
+        leaveService.getDepartmentLeaveDensity(
+          (processingLeave as any).departmentId,
+          processingLeave.startDate,
+          processingLeave.endDate
+        ).then(res => {
+          setConflictData(res);
+        }).finally(() => setLoadingConflict(false));
+      }
+    } else {
+      setConflictData(null);
     }
-  }, [processingLeave]);
+  }, [processingLeave, leaveService]);
 
   const handleAction = async (status: 'approved' | 'rejected') => {
     if (!leaveService || !user || !processingLeave) return;
@@ -102,7 +118,7 @@ export function LeavesManager() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center px-1">
         <div className="text-start">
            <h3 className="text-xl font-black flex items-center gap-2">
              <CalendarDays className="h-6 w-6 text-primary" />
@@ -139,7 +155,7 @@ export function LeavesManager() {
                     <TableRow><TableCell colSpan={6} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
                   ) : (
                     leaves?.map((leave) => (
-                      <TableRow key={leave.id} className="hover:bg-slate-50 transition-colors group">
+                      <TableRow key={leave.id} className="hover:bg-slate-50 transition-colors group border-b-slate-100 cursor-pointer" onClick={() => canApprove && leave.status === 'pending' ? setProcessingLeave(leave) : router.push(`/dashboard/hr/leaves/${leave.id}`)}>
                          <TableCell className="py-6 ps-8 text-start font-black text-slate-800">{leave.userName}</TableCell>
                          <TableCell className="text-start">
                             <Badge variant="outline" className="bg-white font-black uppercase text-[9px] px-3">{leave.type}</Badge>
@@ -160,13 +176,13 @@ export function LeavesManager() {
                             <div className="flex justify-end gap-2">
                                {leave.status === 'pending' && canApprove ? (
                                   <Button 
-                                    onClick={() => setProcessingLeave(leave)} 
+                                    onClick={(e) => { e.stopPropagation(); setProcessingLeave(leave); }} 
                                     className="h-10 px-4 rounded-xl bg-primary text-white font-black text-xs gap-2 shadow-lg"
                                   >
                                      <Pencil className="h-3.5 w-3.5" /> {isRtl ? 'معالجة' : 'Process'}
                                   </Button>
                                ) : (
-                                  <Button variant="ghost" size="icon" onClick={() => router.push(`/dashboard/hr/leaves/${leave.id}`)} className="rounded-xl">
+                                  <Button variant="ghost" size="icon" className="rounded-xl">
                                      <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
                                   </Button>
                                )}
@@ -181,16 +197,41 @@ export function LeavesManager() {
       </Card>
 
       <Dialog open={!!processingLeave} onOpenChange={(open) => !open && setProcessingLeave(null)}>
-        <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-xl" dir={dir}>
+        <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-2xl" dir={dir}>
            <div className="bg-primary/5 p-10 text-slate-900 text-start border-b">
-              <DialogTitle className="text-3xl font-black font-headline flex items-center gap-3">
+              <DialogTitle className="text-3xl font-black font-headline flex items-center gap-3 text-slate-900">
                  <Clock className="h-9 w-9 text-primary" />
                  {isRtl ? 'قرار الإدارة وتصحيح البيانات' : 'Admin Decision & Correction'}
               </DialogTitle>
               <p className="text-slate-500 font-bold mt-2">{isRtl ? `طلب الموظف: ${processingLeave?.userName}` : `Employee: ${processingLeave?.userName}`}</p>
            </div>
            
-           <div className="p-10 space-y-8 text-start bg-white">
+           <div className="p-10 space-y-8 text-start bg-white max-h-[60vh] overflow-y-auto scrollbar-hide">
+              {/* قسم تحذير تداخل القسم المطور */}
+              {loadingConflict ? (
+                <div className="p-4 bg-slate-50 rounded-xl animate-pulse flex items-center gap-2">
+                   <Loader2 className="h-4 w-4 animate-spin text-slate-300" />
+                   <span className="text-[10px] font-bold text-slate-400">Analyzing Department Load...</span>
+                </div>
+              ) : conflictData && conflictData.count > 0 && (
+                <div className="p-6 bg-rose-50 border-2 border-rose-100 rounded-[1.5rem] space-y-3 animate-in shake-in duration-500">
+                   <div className="flex items-center gap-3 text-rose-600">
+                      <ShieldAlert className="h-6 w-6" />
+                      <h4 className="font-black text-sm uppercase tracking-widest">{isRtl ? 'تحذير تداخل تخصصي' : 'Departmental Overlap Warning'}</h4>
+                   </div>
+                   <p className="text-[11px] font-bold text-rose-700 leading-relaxed">
+                      {isRtl 
+                        ? `تنبيه: يوجد حالياً عدد (${conflictData.count}) موظفين آخرين من نفس القسم في إجازات معتمدة خلال هذه الفترة.` 
+                        : `Attention: There are (${conflictData.count}) other employees from the same department on approved leave during this period.`}
+                   </p>
+                   <div className="flex flex-wrap gap-2 pt-2">
+                      {conflictData.peers.map(p => (
+                        <Badge key={p.id} variant="outline" className="bg-white border-rose-200 text-rose-500 font-bold text-[8px] px-3">{p.name}</Badge>
+                      ))}
+                   </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-slate-50 rounded-2xl border-2 border-dashed border-primary/10">
                  <div className="space-y-2">
                     <Label className="text-[10px] font-black text-slate-400 uppercase flex items-center gap-2">
@@ -212,7 +253,7 @@ export function LeavesManager() {
                       type="number" 
                       value={editForm.workingDays} 
                       onChange={e => setEditForm({...editForm, workingDays: Number(e.target.value)})}
-                      className="h-14 rounded-2xl border-2 font-black text-primary text-lg"
+                      className="h-14 rounded-2xl border-2 font-black text-primary text-xl"
                     />
                  </div>
               </div>

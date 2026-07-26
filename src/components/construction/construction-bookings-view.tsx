@@ -120,9 +120,24 @@ export function ConstructionBookingsView() {
     companyId && db ? query(collection(db, paths.clients(companyId))) : null, 
   [db, companyId]);
 
+  const leavesQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.leaveRequests(companyId)), where('status', 'in', ['approved', 'on-leave', 'commenced'])) : null, 
+  [db, companyId]);
+
+  const permsQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.permissionRequests(companyId)), where('date', '==', dateStr), where('status', '==', 'approved')) : null, 
+  [db, companyId, dateStr]);
+
+  const attendanceQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.attendance(companyId)), where('date', '==', dateStr), where('status', '==', 'absent')) : null, 
+  [db, companyId, dateStr]);
+
   const { data: rawAppointments, loading: apptsLoading } = useCollection<Appointment>(apptsQuery);
   const { data: allEmployees, loading: empsLoading } = useCollection<Employee>(empsQuery);
   const { data: allClients } = useCollection<any>(clientsQuery);
+  const { data: approvedLeaves } = useCollection<LeaveRequest>(leavesQuery);
+  const { data: approvedPermissions } = useCollection<PermissionRequest>(permsQuery);
+  const { data: dailyAbsences } = useCollection<AttendanceRecord>(attendanceQuery);
 
   const clientsMap = useMemo(() => {
     const m = new Map<string, any>();
@@ -267,6 +282,9 @@ export function ConstructionBookingsView() {
            t={t}
            settings={settings}
            dateStr={dateStr}
+           leaves={approvedLeaves}
+           permissions={approvedPermissions}
+           absences={dailyAbsences}
          />
          {timeSlots.evening.length > 0 && (
            <GridSection 
@@ -281,6 +299,9 @@ export function ConstructionBookingsView() {
              t={t}
              settings={settings}
              dateStr={dateStr}
+             leaves={approvedLeaves}
+             permissions={approvedPermissions}
+             absences={dailyAbsences}
            />
          )}
       </div>
@@ -288,8 +309,27 @@ export function ConstructionBookingsView() {
   );
 }
 
-function GridSection({ title, slots, engineers, grid, visitCounts, onAction, isRtl, router, t, settings, dateStr }: any) {
+function GridSection({ title, slots, engineers, grid, visitCounts, onAction, isRtl, router, t, settings, dateStr, leaves, permissions, absences }: any) {
   if (slots.length === 0) return null;
+
+  const getBlockedReason = (engId: string, slotTime: string) => {
+     const leave = leaves?.find((l: any) => l.employeeId === engId && dateStr >= l.startDate && dateStr <= l.endDate);
+     if (leave) return { type: 'leave', label: isRtl ? 'إجازة' : 'Leave' };
+
+     const absence = absences?.find((a: any) => a.employeeId === engId);
+     if (absence) return { type: 'absent', label: isRtl ? 'غائب' : 'Absent' };
+
+     const perm = permissions?.find((p: any) => {
+        if (p.userId !== engId) return false;
+        const slot = parse(slotTime, 'HH:mm', new Date());
+        const pStart = parse(p.startTime, 'HH:mm', new Date());
+        const pEnd = parse(p.endTime, 'HH:mm', new Date());
+        return slot >= pStart && slot < pEnd;
+     });
+     if (perm) return { type: 'permission', label: isRtl ? 'استئذان' : 'Perm' };
+
+     return null;
+  };
 
   return (
     <div className="space-y-4 print:space-y-1">
@@ -339,6 +379,18 @@ function GridSection({ title, slots, engineers, grid, visitCounts, onAction, isR
                              
                              return apptStart < slotEnd && slotStart < apptEnd && a.engineerId === eng.id;
                           });
+
+                          const block = getBlockedReason(eng.id!, slot);
+
+                          if (block) {
+                             return (
+                               <td key={eng.id} className="p-0.5 border-b border-slate-50 border-s border-s-slate-50">
+                                  <div className="h-full flex items-center justify-center gap-1.5 text-[8px] font-black text-slate-300 uppercase italic opacity-40">
+                                     {block.label}
+                                  </div>
+                             </td>
+                             );
+                          }
 
                           if (appt) {
                              const isCompleted = appt.status === 'completed';

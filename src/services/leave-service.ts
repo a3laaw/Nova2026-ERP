@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -66,6 +65,29 @@ export class LeaveService {
       }));
       throw err;
     });
+  }
+
+  /**
+   * محرك تحليل كثافة الإجازات في القسم (Department Leave Density)
+   * يفحص عدد الموظفين من نفس القسم الذين يملكون إجازات معتمدة في نفس الفترة.
+   */
+  async getDepartmentLeaveDensity(departmentId: string, startDate: string, endDate: string) {
+    const q = query(
+      collection(this.db, paths.leaveRequests(this.companyId)),
+      where('departmentId', '==', departmentId),
+      where('status', 'in', ['approved', 'on-leave', 'commenced'])
+    );
+
+    const snap = await getDocs(q);
+    const peersOnLeave = snap.docs.filter(d => {
+       const data = d.data();
+       return (startDate <= data.endDate && endDate >= data.startDate);
+    });
+
+    return {
+      count: peersOnLeave.length,
+      peers: peersOnLeave.map(d => ({ id: d.id, name: d.data().userName }))
+    };
   }
 
   async updateRequestStatus(

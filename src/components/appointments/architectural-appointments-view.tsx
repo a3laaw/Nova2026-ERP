@@ -735,8 +735,8 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
       const deptStages = allStages.filter(s => s.allowedDepartmentIds?.includes(deptId));
 
       if (deptStages.length > 0) {
-        const firstDeptOrder = deptStages[0].order;
-        const previousIncomplete = allStages.find(s => s.order < firstDeptOrder && s.status !== 'completed');
+        const firstDeptStageOrder = deptStages[0].order;
+        const previousIncomplete = allStages.find(s => s.order < firstDeptStageOrder && s.status !== 'completed');
         if (previousIncomplete) {
           setEligibilityBlocker(previousIncomplete.name);
         } else {
