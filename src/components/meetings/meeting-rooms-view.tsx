@@ -265,6 +265,7 @@ function HallGridSection({ title, slots, rooms, appts, onAction, isRtl, t }: any
 }
 
 function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, employees, departments, rooms, existingAppts, isRtl, t }: any) {
+  const { dir } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: '', clientId: '', clientName: '', departmentId: '', departmentName: '', departmentColor: '',
@@ -429,7 +430,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
            </div>
         </div>
 
-        <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4">
+        <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4 shrink-0">
            <Button variant="outline" onClick={onClose} className="flex-1 h-14 rounded-2xl border-2 font-black">إلغاء</Button>
            <Button onClick={handleSave} disabled={loading || !formData.clientId || !formData.engineerId} className="flex-[2] h-14 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 border-b-8 border-orange-700">
               {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
