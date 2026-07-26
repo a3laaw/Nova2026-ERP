@@ -34,6 +34,22 @@ export class TransactionService {
     private permissions: string[] = []
   ) {}
 
+  /**
+   * دالة التحقق السيادي من مطابقة القسم (The Sovereign Dept Guard)
+   * تمنع التداخل بين المعماري والإنشائي وباقي الأقسام
+   */
+  private verifyDeptAccess(stage: StageInstance, userDeptId?: string) {
+    // 1. المدير له صلاحية مطلقة دوماً
+    if (this.permissions.includes('*')) return;
+
+    // 2. إذا كانت المرحلة مقيدة بأقسام معينة
+    if (stage.allowedDepartmentIds && stage.allowedDepartmentIds.length > 0) {
+      if (!userDeptId || !stage.allowedDepartmentIds.includes(userDeptId)) {
+        throw new Error('RESTRICTED_DEPARTMENT: عذراً، هذه المرحلة تتبع قسم آخر ولا يمكن المباشرة بها من قبلك.');
+      }
+    }
+  }
+
   async createTransaction(data: {
     clientId: string;
     clientName: string;
@@ -156,12 +172,15 @@ export class TransactionService {
     await batch.commit();
   }
 
-  async incrementStageRevision(transactionId: string, stageId: string, userId: string, userName: string, notes: string = "", appointmentId?: string) {
+  async incrementStageRevision(transactionId: string, stageId: string, userId: string, userName: string, notes: string = "", userDeptId?: string, appointmentId?: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
     const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
     const stageSnap = await getDoc(stageRef);
     if (!stageSnap.exists()) return;
     const stageData = stageSnap.data() as StageInstance;
+
+    // إنفاذ القيد التخصصي
+    this.verifyDeptAccess(stageData, userDeptId);
 
     const nextRev = (stageData.revisionCount || 0) + 1;
 
@@ -201,12 +220,15 @@ export class TransactionService {
     }
   }
 
-  async startStage(transactionId: string, stageId: string, userId: string, userName: string, appointmentId?: string) {
+  async startStage(transactionId: string, stageId: string, userId: string, userName: string, userDeptId?: string, appointmentId?: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
     const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
     const stageSnap = await getDoc(stageRef);
     if (!stageSnap.exists()) return;
     const stageData = stageSnap.data() as StageInstance;
+
+    // إنفاذ القيد التخصصي
+    this.verifyDeptAccess(stageData, userDeptId);
 
     await updateDoc(stageRef, {
       status: 'in-progress',
@@ -232,16 +254,16 @@ export class TransactionService {
     });
   }
 
-  /**
-   * إكمال المرحلة مع تفعيل المرحلة التالية تلقائياً (Auto-Flow Logic)
-   */
-  async completeStage(transactionId: string, stageId: string, userId: string, userName: string, force: boolean = false, appointmentId?: string) {
+  async completeStage(transactionId: string, stageId: string, userId: string, userName: string, userDeptId?: string, force: boolean = false, appointmentId?: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
     
     const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
     const stageSnap = await getDoc(stageRef);
     if (!stageSnap.exists()) return;
     const stageData = stageSnap.data() as StageInstance;
+
+    // إنفاذ القيد التخصصي
+    this.verifyDeptAccess(stageData, userDeptId);
 
     if (!force) {
       const boqService = new BOQExecutionService(this.db, this.companyId, this.permissions);
@@ -254,7 +276,6 @@ export class TransactionService {
 
     const batch = writeBatch(this.db);
     
-    // 1. تحديث حالة المرحلة الحالية إلى مكتملة
     batch.update(stageRef, {
       status: 'completed',
       completedAt: serverTimestamp(),
@@ -264,7 +285,6 @@ export class TransactionService {
       isForceClosed: force || false
     });
 
-    // 2. البحث عن المرحلة التالية وبدؤها تلقائياً (The Sovereign Auto-Start)
     const nextStagesQuery = query(
       collection(this.db, paths.transactionStages(this.companyId, transactionId)),
       where('order', '==', (stageData.order || 0) + 1),
@@ -288,7 +308,6 @@ export class TransactionService {
       }
     }
 
-    // 3. توثيق الأحداث في التايم لاين
     const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, transactionId));
     
     const completeLogRef = doc(timelineRef);

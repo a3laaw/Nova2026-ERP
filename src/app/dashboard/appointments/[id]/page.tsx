@@ -98,7 +98,7 @@ export default function AppointmentDetailPage() {
     if (filteredStages.length === 0) return { stages: [], isEligible: false };
 
     const firstDeptStageOrder = filteredStages[0].order;
-    const previousStages = allStages.filter(s => s.order < firstDeptStageOrder);
+    const previousStages = allStages.filter(s => s.order < firstDeptOrder);
     const incompleteBlocker = previousStages.find(s => s.status !== 'completed');
 
     return {
@@ -171,7 +171,7 @@ export default function AppointmentDetailPage() {
     if (!transactionService || !user || !appt?.transactionId) return;
     setProcessingId(stageId);
     try {
-      await transactionService.startStage(appt.transactionId, stageId, user.uid, globalUser?.username || 'User', apptId);
+      await transactionService.startStage(appt.transactionId, stageId, user.uid, globalUser?.username || 'User', globalUser?.departmentId, apptId);
       toast({ title: isRtl ? "تم بدء العمل" : "Stage Started" });
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
@@ -184,7 +184,7 @@ export default function AppointmentDetailPage() {
     if (!transactionService || !user || !stage.id || !appt?.transactionId) return;
     setProcessingId(stage.id);
     try {
-      await transactionService.completeStage(appt.transactionId, stage.id, user.uid, globalUser?.username || 'User', force, apptId);
+      await transactionService.completeStage(appt.transactionId, stage.id, user.uid, globalUser?.username || 'User', globalUser?.departmentId, force, apptId);
       toast({ title: isRtl ? "تم إنجاز المرحلة" : "Stage Completed" });
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
@@ -204,7 +204,7 @@ export default function AppointmentDetailPage() {
     setProcessingId(`rev_${revisionStage.id}`);
     setIsRevisionOpen(false);
     try {
-      await transactionService.incrementStageRevision(appt.transactionId, revisionStage.id!, user.uid, globalUser?.username || 'User', revisionComment, apptId);
+      await transactionService.incrementStageRevision(appt.transactionId, revisionStage.id!, user.uid, globalUser?.username || 'User', revisionComment, globalUser?.departmentId, apptId);
       toast({ title: isRtl ? "تم تسجيل دورة مراجعة جديدة" : "Revision Cycle Logged" });
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
@@ -379,6 +379,9 @@ export default function AppointmentDetailPage() {
                     const isSelected = stage.id === selectedStageId;
                     const isPreviousCompleted = idx === 0 || stages[idx-1].status === 'completed';
                     const isReadyToStart = stage.status === 'pending' && isPreviousCompleted;
+                    
+                    // قفل تخصصي إضافي في الواجهة: هل يحق للموظف لمس هذه المرحلة؟
+                    const isDeptAllowed = !stage.allowedDepartmentIds?.length || (globalUser?.departmentId && stage.allowedDepartmentIds.includes(globalUser.departmentId));
 
                     return (
                        <div key={stage.id} onClick={() => setSelectedStageId(stage.id!)} className={cn("p-5 rounded-3xl border-2 transition-all cursor-pointer flex flex-col gap-4 group", isSelected ? "bg-primary/5 border-primary shadow-lg scale-[1.01]" : "bg-white border-slate-100 hover:border-slate-200")}>
@@ -398,6 +401,11 @@ export default function AppointmentDetailPage() {
                                           {isRtl ? `مراجعة #${stage.revisionCount}` : `Rev #${stage.revisionCount}`}
                                         </Badge>
                                       )}
+                                      {!isAdmin && !isDeptAllowed && (
+                                         <Badge variant="outline" className="bg-rose-50 text-rose-600 border-rose-100 font-black text-[7px] gap-1 h-4">
+                                            <Lock className="h-2 w-2" /> {isRtl ? 'خاص بقسم آخر' : 'Locked'}
+                                         </Badge>
+                                      )}
                                    </div>
                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter mt-1">{stage.status}</p>
                                 </div>
@@ -405,10 +413,33 @@ export default function AppointmentDetailPage() {
                           </div>
                           {isSelected && (stage.status === 'pending' || stage.status === 'in-progress') && (
                              <div className="flex gap-3 animate-in slide-in-from-top-1" onClick={e => e.stopPropagation()}>
-                                {stage.status === 'pending' && <Button onClick={() => handleStartStage(stage.id!)} disabled={!!processingId} className="flex-1 h-12 rounded-2xl bg-blue-600 text-white font-black text-xs gap-2 shadow-lg hover:scale-105 transition-all">{processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Play className="h-4 w-4" />}{isRtl ? 'بدء العمل' : 'Start'}</Button>}
-                                {stage.status === 'in-progress' && <Button onClick={() => handleCompleteStage(stage)} disabled={!!processingId} className="flex-1 h-12 rounded-2xl bg-emerald-600 text-white font-black text-xs gap-2 shadow-lg hover:scale-105 transition-all">{processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}{isRtl ? 'إكمال' : 'Done'}</Button>}
+                                {stage.status === 'pending' && (
+                                   <Button 
+                                     onClick={() => handleStartStage(stage.id!)} 
+                                     disabled={!!processingId || (!isAdmin && !isDeptAllowed)} 
+                                     className="flex-1 h-12 rounded-2xl bg-blue-600 text-white font-black text-xs gap-2 shadow-lg hover:scale-105 transition-all"
+                                   >
+                                      {processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Play className="h-4 w-4" />}
+                                      {isRtl ? 'بدء العمل' : 'Start'}
+                                   </Button>
+                                )}
+                                {stage.status === 'in-progress' && (
+                                   <Button 
+                                     onClick={() => handleCompleteStage(stage)} 
+                                     disabled={!!processingId || (!isAdmin && !isDeptAllowed)} 
+                                     className="flex-1 h-12 rounded-2xl bg-emerald-600 text-white font-black text-xs gap-2 shadow-lg hover:scale-105 transition-all"
+                                   >
+                                      {processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+                                      {isRtl ? 'إكمال' : 'Done'}
+                                   </Button>
+                                )}
                                 {stage.status === 'in-progress' && isConsulting && (
-                                  <Button onClick={() => handleOpenRevisionDialog(stage)} disabled={!!processingId} variant="outline" className="flex-1 h-12 rounded-2xl border-orange-200 text-orange-600 font-black text-xs gap-2 hover:bg-orange-50">
+                                  <Button 
+                                    onClick={() => handleOpenRevisionDialog(stage)} 
+                                    disabled={!!processingId || (!isAdmin && !isDeptAllowed)} 
+                                    variant="outline" 
+                                    className="flex-1 h-12 rounded-2xl border-orange-200 text-orange-600 font-black text-xs gap-2 hover:bg-orange-50"
+                                  >
                                     {processingId === `rev_${stage.id}` ? <Loader2 className="animate-spin h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
                                     {isRtl ? 'تسجيل دورة تعديل' : 'Log Revision'}
                                   </Button>
@@ -549,11 +580,11 @@ export default function AppointmentDetailPage() {
                      {equipmentUsed.map((equip, i) => (
                         <div key={i} className="flex items-center gap-3 animate-in slide-in-from-top-1">
                            <Select value={equip.equipmentId} onValueChange={v => {
-                              const item = equipmentItems.find(x => x.id === v);
+                              const item = equipmentItems?.find((x:any) => x.id === v);
                               const newE = [...equipmentUsed]; newE[i].equipmentId = v; newE[i].name = item?.name || ''; setEquipmentUsed(newE);
                            }}>
                               <SelectTrigger className="h-10 rounded-lg font-bold text-xs bg-white"><SelectValue placeholder="..." /></SelectTrigger>
-                              <SelectContent className="rounded-xl z-[150]">{equipmentItems.map((e:any) => <SelectItem key={e.id} value={e.id!} className="font-bold text-xs">{e.name}</SelectItem>)}</SelectContent>
+                              <SelectContent className="rounded-xl z-[150]">{equipmentItems?.map((e:any) => <SelectItem key={e.id} value={e.id!} className="font-bold text-xs">{e.name}</SelectItem>)}</SelectContent>
                            </Select>
                            <div className="relative w-32 shrink-0">
                               <Input type="number" value={equip.hoursUsed} onChange={e => {
