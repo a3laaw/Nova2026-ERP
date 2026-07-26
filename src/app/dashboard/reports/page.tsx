@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { 
   BarChart3, FileText, Printer, Download, 
   MapPinned, Calculator, TrendingUp, CheckCircle2,
-  FolderSearch, ArrowUpRight, Sparkles, LayoutGrid
+  FolderSearch, ArrowUpRight, Sparkles, LayoutGrid,
+  PieChart, Activity
 } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/context/language-context';
@@ -19,22 +20,23 @@ export default function ReportsHubPage() {
 
   const reportCards = [
     {
+      id: 'analytics',
+      title: isRtl ? 'رادار الأداء المالي والإنتاجي' : 'Financial Performance Radar',
+      desc: isRtl ? 'تحليل ذكي لربط ميزانيات المقايسات بالمصروفات الفعلية ونسب الإنجاز.' : 'Smart analysis linking BOQ budgets to actual spending and progress.',
+      icon: Activity,
+      color: 'text-orange-600',
+      bg: 'bg-orange-50',
+      path: '/dashboard/reports/analytics',
+      primary: true
+    },
+    {
       id: 'visits',
       title: isRtl ? 'سجل تفاعل العملاء والزيارات' : 'Client Visit Dossier',
       desc: isRtl ? 'تحليل تاريخي لكل زيارة: الإنجاز الفني الموثق والملاحظات الميدانية.' : 'Visit-by-visit audit of technical progress and site notes.',
       icon: MapPinned,
-      color: 'text-[#e87c24]',
-      bg: 'bg-orange-50',
-      path: '/dashboard/projects/reports/client-visits'
-    },
-    {
-      id: 'ops',
-      title: isRtl ? 'تقرير حالة العمليات' : 'Operational Status Report',
-      desc: isRtl ? 'نظرة شاملة على تقدم المشاريع والميزانيات المعتمدة ونسب الإنجاز.' : 'Overview of project progress, budgets, and completion rates.',
-      icon: LayoutGrid,
       color: 'text-blue-600',
       bg: 'bg-blue-50',
-      path: '#'
+      path: '/dashboard/projects/reports/client-visits'
     },
     {
       id: 'boq',
@@ -43,7 +45,7 @@ export default function ReportsHubPage() {
       icon: Calculator,
       color: 'text-emerald-600',
       bg: 'bg-emerald-50',
-      path: '#'
+      path: '/dashboard/reports/analytics'
     }
   ];
 
@@ -63,7 +65,10 @@ export default function ReportsHubPage() {
         {reportCards.map((card) => (
           <Card 
             key={card.id} 
-            className="border-0 shadow-xl rounded-[3rem] bg-white hover:shadow-2xl transition-all cursor-pointer group overflow-hidden"
+            className={cn(
+              "border-0 shadow-xl rounded-[3rem] bg-white hover:shadow-2xl transition-all cursor-pointer group overflow-hidden border-b-8",
+              card.primary ? "border-b-primary shadow-primary/5" : "border-b-slate-100"
+            )}
             onClick={() => router.push(card.path)}
           >
             <CardHeader className="p-10 pb-6 text-start">
@@ -77,7 +82,7 @@ export default function ReportsHubPage() {
             </CardHeader>
             <CardContent className="p-10 pt-0 text-start">
                <div className={cn("flex items-center gap-2 font-black text-xs transition-all mt-8", card.color)}>
-                  {isRtl ? 'استخراج التقرير' : 'Generate Report'}
+                  {isRtl ? 'عرض التحليلات المتقدمة' : 'View Advanced Analytics'}
                   <ArrowUpRight className="h-4 w-4" />
                </div>
             </CardContent>
