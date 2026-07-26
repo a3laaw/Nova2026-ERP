@@ -6,27 +6,33 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 /**
- * خطاف محسن لجلب المجموعات يعالج مشكلة "دائرة التحميل اللانهائية" وأخطاء التضارب السحابي.
- * تم تنفيذ بروتوكول الحماية لضمان عدم تحديث الحالة بعد إلغاء الاشتراك.
+ * خطاف جلب المجموعات المطور (Hardened Collection Hook).
+ * يعالج مشكلة Assertion Failure عبر ضمان عدم تداخل الاشتراكات وتنظيف الذاكرة بشكل قطعي.
  */
 export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(!!query);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
   
-  // تثبيت مرجع الاستعلام (Stabilization) لمنع إعادة الاشتراك المتكرر
-  const memoQuery = useRef<Query<any, any> | null>(null);
-  if (query && (!memoQuery.current || !queryEqual(query as any, memoQuery.current as any))) {
-    memoQuery.current = query;
-  } else if (!query) {
-    memoQuery.current = null;
-  }
-  const stableQuery = memoQuery.current;
+  // مراجع لتتبع الحالة والاشتراك النشط بشكل سيادي
+  const unsubscribeRef = useRef<(() => void) | null>(null);
+  const activeQueryRef = useRef<Query<any, any> | null>(null);
 
   useEffect(() => {
-    let isMounted = true;
+    // بروتوكول الاستقرار: إذا كان الاستعلام منطقياً هو نفسه، لا نقم بإعادة الاشتراك
+    if (query && activeQueryRef.current && queryEqual(query, activeQueryRef.current)) {
+      return;
+    }
 
-    if (!stableQuery) {
+    // تنظيف أي اشتراك سابق فوراً قبل البدء بالجديد
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+      unsubscribeRef.current = null;
+    }
+    
+    activeQueryRef.current = query;
+
+    if (!query) {
       setData([]);
       setLoading(false);
       return;
@@ -35,8 +41,11 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
     setLoading(true);
     setError(null);
 
+    let isMounted = true;
+
+    // بدء الاشتراك الفوري مع حماية المحاذاة الداخلية لـ Firestore
     const unsubscribe = onSnapshot(
-      stableQuery,
+      query,
       (snapshot) => {
         if (!isMounted) return;
         
@@ -63,11 +72,17 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
       }
     );
 
+    unsubscribeRef.current = unsubscribe;
+
     return () => {
       isMounted = false;
-      unsubscribe();
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+      activeQueryRef.current = null;
     };
-  }, [stableQuery]);
+  }, [query]);
 
   return { data, loading, error };
 }

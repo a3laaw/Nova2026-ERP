@@ -6,27 +6,31 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 /**
- * خطاف محسن لجلب مستند واحد مع حماية من أخطاء التضارب (Race Conditions).
- * يضمن استقرار الواجهة حتى في حالات التحديث السريع (HMR).
+ * خطاف جلب المستندات المطور (Hardened Document Hook).
+ * يمنع تضارب الحالات الداخلية في محرك Firestore ويضمن سيولة عرض البيانات.
  */
 export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | null) {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(!!docRef);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
   
-  // تثبيت مرجع المستند (Stabilization)
-  const memoRef = useRef<DocumentReference<any, any> | null>(null);
-  if (docRef && (!memoRef.current || !refEqual(docRef as any, memoRef.current as any))) {
-    memoRef.current = docRef;
-  } else if (!docRef) {
-    memoRef.current = null;
-  }
-  const stableRef = memoRef.current;
+  const unsubscribeRef = useRef<(() => void) | null>(null);
+  const activeRef = useRef<DocumentReference<any, any> | null>(null);
 
   useEffect(() => {
-    let isMounted = true;
+    // التحقق من المطابقة المرجعية
+    if (docRef && activeRef.current && refEqual(docRef, activeRef.current)) {
+      return;
+    }
 
-    if (!stableRef) {
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+      unsubscribeRef.current = null;
+    }
+
+    activeRef.current = docRef;
+
+    if (!docRef) {
       setData(null);
       setLoading(false);
       return;
@@ -35,11 +39,12 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | n
     setLoading(true);
     setError(null);
 
+    let isMounted = true;
+
     const unsubscribe = onSnapshot(
-      stableRef,
+      docRef,
       (snapshot) => {
         if (!isMounted) return;
-        
         setData(snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as T) : null);
         setLoading(false);
       },
@@ -51,18 +56,24 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | n
         
         if (serverError.code === 'permission-denied') {
           errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: stableRef.path || 'document',
+            path: docRef.path || 'document',
             operation: 'get',
           } satisfies SecurityRuleContext));
         }
       }
     );
 
+    unsubscribeRef.current = unsubscribe;
+
     return () => {
       isMounted = false;
-      unsubscribe();
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+      activeRef.current = null;
     };
-  }, [stableRef]);
+  }, [docRef]);
 
   return { data, loading, error };
 }
