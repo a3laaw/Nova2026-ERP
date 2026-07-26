@@ -42,8 +42,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 
 /**
  * @fileOverview رادار حجز القاعات (Halls Radar View).
- * تم هندسته ليكون متوافقاً تماماً مع استايل الرادار المعماري.
- * الأعمدة = القاعات، الصفوف = التوقيتات.
+ * تم إصلاح مشكلة عدم ظهور المواعيد عبر تبسيط الاستعلام وضمان المزامنة اللحظية.
  */
 export function MeetingRoomsView() {
   const { globalUser, user } = useAuthContext();
@@ -69,9 +68,9 @@ export function MeetingRoomsView() {
   [db, companyId]);
   const { data: allRooms, loading: roomsLoading } = useCollection<MeetingRoom>(roomsQuery);
 
-  // 2. استعلام المواعيد (للقاعات فقط)
+  // 2. استعلام المواعيد (استعلام بسيط لضمان العمل الفوري بدون فهارس مركبة)
   const apptsQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.appointments(companyId)), where('type', '==', 'hall_meeting'), orderBy('start', 'asc')) : null, 
+    companyId && db ? query(collection(db, paths.appointments(companyId)), orderBy('start', 'asc')) : null, 
   [db, companyId]);
   const { data: rawAppointments, loading: apptsLoading } = useCollection<Appointment>(apptsQuery);
 
@@ -91,8 +90,13 @@ export function MeetingRoomsView() {
     }
   }, [db, companyId]);
 
+  // الفلترة في الذاكرة لضمان استجابة الرادار
   const filteredAppointments = useMemo(() => {
-    return (rawAppointments || []).filter(a => a.status !== 'cancelled' && isSameDay(parseISO(a.start), currentDate));
+    return (rawAppointments || []).filter(a => 
+      a.status !== 'cancelled' && 
+      a.type === 'hall_meeting' &&
+      isSameDay(parseISO(a.start), currentDate)
+    );
   }, [rawAppointments, currentDate]);
 
   const timeSlots = useMemo(() => {
@@ -142,7 +146,7 @@ export function MeetingRoomsView() {
       <div className="grid grid-cols-4 gap-3 print:gap-1">
          {[
            { label: isRtl ? 'إجمالي اجتماعات اليوم' : 'Daily Meetings', val: filteredAppointments.length, color: 'text-slate-900', b: 'border-b-slate-900' },
-           { label: isRtl ? 'إشغال القاعات' : 'Room Occupancy', val: `${Math.round((filteredAppointments.length / (allRooms.length * 8)) * 100)}%`, color: 'text-blue-600', b: 'border-b-blue-400' },
+           { label: isRtl ? 'إشغال القاعات' : 'Room Occupancy', val: `${Math.round((filteredAppointments.length / (allRooms.length * 8 || 1)) * 100)}%`, color: 'text-blue-600', b: 'border-b-blue-400' },
            { label: isRtl ? 'قيد التنفيذ' : 'In Progress', val: filteredAppointments.filter(a => a.status === 'scheduled').length, color: 'text-orange-600', b: 'border-b-orange-500' },
            { label: isRtl ? 'قاعات مفعلة' : 'Active Halls', val: allRooms.length, color: 'text-emerald-600', b: 'border-b-emerald-500' },
          ].map((s, i) => (
