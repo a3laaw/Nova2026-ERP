@@ -3,7 +3,7 @@
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { 
-  format, isSameDay, parseISO, addDays, subDays, parse,
+  format, isSameDay, parseISO, addDays, subDays, parse, addMinutes
 } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import { 
@@ -204,13 +204,15 @@ export function MeetingRoomsView() {
            rooms={allRooms} 
            appts={filteredAppointments}
            onAction={handleAction}
-           onDelete={setDeletingId}
+           onDelete={confirmDelete}
            isRtl={isRtl}
            t={t}
+           settings={settings}
+           dateStr={dateStr}
          />
       </div>
 
-      {dialogOpen && (
+      {user && (
         <HallBookingDialog 
           isOpen={dialogOpen}
           onClose={() => { setDialogOpen(false); forceThaw(); }}
@@ -226,6 +228,7 @@ export function MeetingRoomsView() {
           t={t}
           onDelete={setDeletingId}
           dir={dir}
+          settings={settings}
         />
       )}
 
@@ -252,7 +255,7 @@ export function MeetingRoomsView() {
   );
 }
 
-function HallGridSection({ title, slots, rooms, appts, onAction, onDelete, isRtl, t }: any) {
+function HallGridSection({ title, slots, rooms, appts, onAction, onDelete, isRtl, t, settings, dateStr }: any) {
   if (slots.length === 0) return null;
 
   return (
@@ -278,72 +281,91 @@ function HallGridSection({ title, slots, rooms, appts, onAction, onDelete, isRtl
                 </tr>
              </thead>
              <tbody>
-                {slots.map((slot: string) => (
-                  <tr key={slot} className="group/row">
-                     <td className="p-3 text-center border-b border-slate-50 border-e border-e-slate-50 font-mono font-black text-slate-300 text-[10px] bg-slate-50/20">{slot}</td>
-                     {rooms.map((room: MeetingRoom) => {
-                        const appt = appts.find((a: any) => {
-                           const start = format(parseISO(a.start), 'HH:mm');
-                           return start === slot && a.hallId === room.id;
-                        });
+                {slots.map((slot: string) => {
+                  const slotStart = parse(`${dateStr} ${slot}`, 'yyyy-MM-dd HH:mm', new Date());
+                  const slotEnd = addMinutes(slotStart, settings?.meetingRooms?.slotDurationMinutes || 60);
 
-                        if (appt) {
-                           const isCompleted = appt.status === 'completed';
-                           return (
-                             <td key={room.id} className="p-0.5 border-b border-slate-50 border-s border-s-slate-50 align-top">
-                                <div className="relative h-full">
-                                  <Card 
-                                    onClick={() => onAction('edit', room, slot, appt)}
-                                    className={cn(
-                                      "p-1.5 rounded-lg h-full transition-all cursor-pointer min-h-[44px] border-2 hover:shadow-lg",
-                                      isCompleted ? "bg-emerald-50/50 border-emerald-500/20" : "bg-white shadow-sm"
+                  return (
+                    <tr key={slot} className="group/row">
+                       <td className="p-3 text-center border-b border-slate-50 border-e border-e-slate-50 font-mono font-black text-slate-300 text-[10px] bg-slate-50/20">{slot}</td>
+                       {rooms.map((room: MeetingRoom) => {
+                          const appt = appts.find((a: any) => {
+                             const apptStart = parseISO(a.start);
+                             const apptEnd = a.end 
+                               ? parseISO(a.end) 
+                               : addMinutes(apptStart, settings?.meetingRooms?.slotDurationMinutes || 60);
+                             
+                             return apptStart < slotEnd && slotStart < apptEnd && a.hallId === room.id;
+                          });
+
+                          if (appt) {
+                             const isCompleted = appt.status === 'completed';
+                             const apptStart = parseISO(appt.start);
+                             // الموعد يبدأ ضمن هذه الخانة الزمنية
+                             const isStartSlot = apptStart >= slotStart && apptStart < slotEnd;
+
+                             return (
+                               <td key={room.id} className="p-0.5 border-b border-slate-50 border-s border-s-slate-50 align-top">
+                                  <div className="relative h-full">
+                                    <Card 
+                                      onClick={() => onAction('edit', room, slot, appt)}
+                                      className={cn(
+                                        "p-1.5 rounded-lg h-full transition-all cursor-pointer min-h-[44px] border-2 hover:shadow-lg",
+                                        isCompleted ? "bg-emerald-50/50 border-emerald-500/20" : "bg-white shadow-sm"
+                                      )}
+                                      style={{ borderInlineStartColor: appt.departmentColor || '#FFA000', borderInlineStartWidth: '6px' }}
+                                    >
+                                      <div className="text-start space-y-0.5 pr-6">
+                                          {isStartSlot && (
+                                            <>
+                                              <p className="font-black text-[9px] leading-tight truncate text-slate-900">{appt.clientName}</p>
+                                              <div className="flex items-center gap-1 text-[7px] font-bold text-slate-400">
+                                                <Users className="h-2.5 w-2.5" /> {appt.engineerName}
+                                              </div>
+                                            </>
+                                          )}
+                                      </div>
+                                    </Card>
+
+                                    {isStartSlot && (
+                                      <div className="absolute top-1 right-1 print:hidden" onClick={e => e.stopPropagation()}>
+                                        <DropdownMenu>
+                                          <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-5 w-5 rounded-md hover:bg-black/5">
+                                              <MoreVertical className="h-3 w-3" />
+                                            </Button>
+                                          </DropdownMenuTrigger>
+                                          <DropdownMenuContent className="rounded-xl border-2 shadow-2xl" align="end">
+                                            <DropdownMenuItem className="font-bold text-xs gap-2" onClick={() => onAction('edit', room, slot, appt)}>
+                                              <Edit3 className="h-3.5 w-3.5" /> {isRtl ? 'تعديل الحجز' : 'Edit Booking'}
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem className="font-black text-xs gap-2 text-rose-600" onClick={() => onDelete(appt.id)}>
+                                              <Trash2 className="h-3.5 w-3.5" /> {isRtl ? 'حذف الحجز' : 'Cancel Booking'}
+                                            </DropdownMenuItem>
+                                          </DropdownMenuContent>
+                                        </DropdownMenu>
+                                      </div>
                                     )}
-                                    style={{ borderInlineStartColor: appt.departmentColor || '#FFA000', borderInlineStartWidth: '6px' }}
-                                  >
-                                    <div className="text-start space-y-0.5 pr-6">
-                                        <p className="font-black text-[9px] leading-tight truncate text-slate-900">{appt.clientName}</p>
-                                        <div className="flex items-center gap-1 text-[7px] font-bold text-slate-400">
-                                          <Users className="h-2.5 w-2.5" /> {appt.engineerName}
-                                        </div>
-                                    </div>
-                                  </Card>
-
-                                  <div className="absolute top-1 right-1 print:hidden" onClick={e => e.stopPropagation()}>
-                                    <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-5 w-5 rounded-md hover:bg-black/5">
-                                          <MoreVertical className="h-3 w-3" />
-                                        </Button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent className="rounded-xl border-2 shadow-2xl" align="end">
-                                        <DropdownMenuItem className="font-bold text-xs gap-2" onClick={() => onAction('edit', room, slot, appt)}>
-                                          <Edit3 className="h-3.5 w-3.5" /> {isRtl ? 'تعديل الحجز' : 'Edit Booking'}
-                                        </DropdownMenuItem>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem className="font-black text-xs gap-2 text-rose-600" onClick={() => onDelete(appt.id)}>
-                                          <Trash2 className="h-3.5 w-3.5" /> {isRtl ? 'حذف الحجز' : 'Cancel Booking'}
-                                        </DropdownMenuItem>
-                                      </DropdownMenuContent>
-                                    </DropdownMenu>
                                   </div>
-                                </div>
-                             </td>
-                           );
-                        }
-                        return (
-                          <td 
-                            key={room.id} 
-                            onClick={() => onAction('create', room, slot)}
-                            className="p-0.5 border-b border-slate-50 border-s border-s-slate-50 group-hover/row:bg-primary/[0.02] cursor-pointer"
-                          >
-                             <div className="h-6 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
-                                <Plus className="h-3 w-3 text-primary/30" />
-                             </div>
-                          </td>
-                        );
-                     })}
-                  </tr>
-                ))}
+                               </td>
+                             );
+                          }
+                          return (
+                            <td 
+                              key={room.id} 
+                              onClick={() => onAction('create', room, slot)}
+                              className="p-0.5 border-b border-slate-50 border-s border-s-slate-50 group-hover/row:bg-primary/[0.02] cursor-pointer"
+                            >
+                               <div className="h-6 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
+                                  <Plus className="h-3 w-3 text-primary/30" />
+                               </div>
+                            </td>
+                          );
+                       })}
+                    </tr>
+                  );
+                })}
              </tbody>
           </table>
        </div>
@@ -351,16 +373,15 @@ function HallGridSection({ title, slots, rooms, appts, onAction, onDelete, isRtl
   );
 }
 
-function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, employees, departments, rooms, existingAppts, isRtl, t, onDelete, dir }: any) {
+function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, employees, departments, rooms, existingAppts, isRtl, t, onDelete, dir, settings }: any) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: '', clientId: '', clientName: '', departmentId: '', departmentName: '', departmentColor: '',
     engineerId: '', engineerName: '', additionalEngineerIds: [] as string[],
-    date: '', time: '', notes: ''
+    date: '', time: '', notes: '', endTime: ''
   });
 
   const isEdit = data?.mode === 'edit';
-  const isCreateFromGrid = data?.mode === 'create' && data.slot;
 
   useEffect(() => {
     if (isOpen && data) {
@@ -378,6 +399,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
              additionalEngineerIds: appt.additionalEngineerIds || [],
              date: format(parseISO(appt.start), 'yyyy-MM-dd'),
              time: format(parseISO(appt.start), 'HH:mm'),
+             endTime: appt.end ? format(parseISO(appt.end), 'HH:mm') : '',
              notes: appt.notes || ''
           });
        } else {
@@ -385,6 +407,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
             ...prev,
             date: format(new Date(), 'yyyy-MM-dd'),
             time: data.slot || '08:00',
+            endTime: '',
             engineerId: '', additionalEngineerIds: [],
             clientId: '', departmentId: ''
           }));
@@ -395,35 +418,45 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
   const handleSave = async () => {
     if (!db || !companyId || !formData.clientId || !formData.engineerId) return;
 
-    const start = new Date(`${formData.date}T${formData.time}:00`).toISOString();
+    const start = new Date(`${formData.date}T${formData.time}:00`);
+    const duration = settings?.meetingRooms?.slotDurationMinutes || 60;
+    const end = formData.endTime 
+      ? new Date(`${formData.date}T${formData.endTime}:00`)
+      : addMinutes(start, duration);
     
-    // --- محرك التحقق السيادي الشامل (Sovereign Global Validator) ---
-    // فحص كافة المواعيد في المنشأة لضمان عدم وجود تداخلات
+    // محرك التحقق السيادي الشامل (Sovereign Global Validator)
     const targetEngineers = [formData.engineerId, ...formData.additionalEngineerIds];
     
     for (const appt of existingAppts) {
         if (appt.status === 'cancelled' || appt.id === data.appointment?.id) continue;
         
-        // فحص تعارض الوقت (المطابقة بالدقيقة)
-        if (appt.start === start) {
-            // 1. فحص تعارض القاعة (لمنع حجز قاعة مشغولة)
+        const apptStart = new Date(appt.start);
+        const apptEnd = appt.end 
+          ? new Date(appt.end) 
+          : addMinutes(apptStart, settings?.meetingRooms?.slotDurationMinutes || 60);
+
+        // فحص تداخل الفترات: (Start1 < End2) AND (Start2 < End1)
+        const isOverlapping = start < apptEnd && apptStart < end;
+
+        if (isOverlapping) {
+            // 1. فحص تعارض القاعة
             if (appt.hallId === data.room?.id) {
-               toast({ variant: "destructive", title: isRtl ? "القاعة مشغولة" : "Hall Busy", description: isRtl ? "هذه القاعة محجوزة مسبقاً في هذا التوقيت." : "This hall is reserved for another meeting." });
+               toast({ variant: "destructive", title: isRtl ? "القاعة مشغولة" : "Hall Busy", description: isRtl ? `هذه القاعة محجوزة مسبقاً في الفترة ${format(apptStart, 'HH:mm')} - ${format(apptEnd, 'HH:mm')}` : "This hall is reserved for another meeting." });
                return;
             }
 
-            // 2. فحص تعارض العميل (لمنع وجود العميل في مكانين)
+            // 2. فحص تعارض العميل
             if (appt.clientId === formData.clientId) {
-               toast({ variant: "destructive", title: isRtl ? "تعارض للعميل" : "Client Conflict", description: isRtl ? `العميل لديه موعد آخر في ${appt.type === 'hall_meeting' ? 'قاعة أخرى' : 'الميدان'} في نفس الوقت.` : "Client has another appointment at this time." });
+               toast({ variant: "destructive", title: isRtl ? "تعارض للعميل" : "Client Conflict", description: isRtl ? `العميل لديه موعد آخر في نفس الفترة (${format(apptStart, 'HH:mm')} - ${format(apptEnd, 'HH:mm')})` : "Client has another appointment at this time." });
                return;
             }
 
-            // 3. فحص تعارض المهندسين (للمهندس الرئيسي والمشاركين)
+            // 3. فحص تعارض المهندسين
             const apptEngineers = [appt.engineerId, ...(appt.additionalEngineerIds || [])];
             const overlappingEng = targetEngineers.find(id => apptEngineers.includes(id));
             if (overlappingEng) {
                const engName = employees.find((e:any) => e.id === overlappingEng)?.fullName || 'المهندس';
-               toast({ variant: "destructive", title: isRtl ? "تعارض للمهندس" : "Engineer Conflict", description: isRtl ? `${engName} لديه ارتباط مسبق في نفس التوقيت.` : `${engName} is already assigned to another meeting.` });
+               toast({ variant: "destructive", title: isRtl ? "تعارض للمهندس" : "Engineer Conflict", description: isRtl ? `${engName} لديه ارتباط مسبق في الفترة المذكورة.` : `${engName} is already assigned.` });
                return;
             }
         }
@@ -448,7 +481,8 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
         additionalEngineerIds: formData.additionalEngineerIds,
         additionalEngineerNames: addEngNames,
         notes: formData.notes,
-        start,
+        start: start.toISOString(),
+        end: end.toISOString(),
         updatedAt: serverTimestamp()
       };
 

@@ -10,7 +10,8 @@ import {
   subDays, 
   parse, 
   isBefore, 
-  startOfDay 
+  startOfDay,
+  addMinutes
 } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import { 
@@ -365,6 +366,7 @@ export function ArchitecturalAppointmentsView() {
            dateStr={dateStr}
            router={router}
            t={t}
+           settings={settings}
          />
          {timeSlots.evening.length > 0 && (
            <GridSection 
@@ -384,6 +386,7 @@ export function ArchitecturalAppointmentsView() {
              dateStr={dateStr}
              router={router}
              t={t}
+             settings={settings}
            />
          )}
       </div>
@@ -429,7 +432,7 @@ export function ArchitecturalAppointmentsView() {
   );
 }
 
-function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelete, isRtl, isAdmin, currentEngineerId, leaves, permissions, absences, dateStr, router, t }: any) {
+function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelete, isRtl, isAdmin, currentEngineerId, leaves, permissions, absences, dateStr, router, t, settings }: any) {
   if (slots.length === 0) return null;
   
   const visibleEngineers = isAdmin ? engineers : engineers.filter((e: any) => e.id === currentEngineerId);
@@ -496,105 +499,113 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
                 </tr>
              </thead>
              <tbody>
-                {slots.map((slot: string) => (
-                  <tr key={slot} className="group/row">
-                     <td className="p-3 text-center border-b border-slate-50 border-e border-e-slate-50 font-mono font-black text-slate-300 text-[10px] bg-slate-50/20">{slot}</td>
-                     {visibleEngineers.map((eng: Employee) => {
-                        const engAppts = gridMap.get(eng.id!) || [];
-                        const appt = engAppts.find((a: any) => {
-                           const start = format(parseISO(a.start), 'HH:mm');
-                           const end = a.end ? format(parseISO(a.end), 'HH:mm') : start;
-                           if (start === slot) return true;
-                           if (a.type === 'busy_blocked') return slot >= start && slot < end;
-                           return false;
-                        });
-                        
-                        const block = getBlockedReason(eng.id!, slot);
+                {slots.map((slot: string) => {
+                  const slotStart = parse(`${dateStr} ${slot}`, 'yyyy-MM-dd HH:mm', new Date());
+                  const slotEnd = addMinutes(slotStart, settings?.architectural?.slotDurationMinutes || 60);
 
-                        if (block) {
-                           return (
-                             <td key={eng.id} className="p-0.5 border-b border-slate-50 border-s border-s-slate-50">
-                                <div className="h-full flex items-center justify-center gap-1.5 text-[8px] font-black text-slate-300 uppercase italic opacity-40">
-                                   {block.label}
-                                </div>
-                           </td>
-                           );
-                        }
+                  return (
+                    <tr key={slot} className="group/row">
+                       <td className="p-3 text-center border-b border-slate-50 border-e border-e-slate-50 font-mono font-black text-slate-300 text-[10px] bg-slate-50/20">{slot}</td>
+                       {visibleEngineers.map((eng: Employee) => {
+                          const engAppts = gridMap.get(eng.id!) || [];
+                          const appt = engAppts.find((a: any) => {
+                             const apptStart = parseISO(a.start);
+                             const apptEnd = a.end 
+                               ? parseISO(a.end) 
+                               : addMinutes(apptStart, settings?.architectural?.slotDurationMinutes || 60);
+                             
+                             return apptStart < slotEnd && slotStart < apptEnd;
+                          });
+                          
+                          const block = getBlockedReason(eng.id!, slot);
 
-                        if (appt) {
-                           const m = meta.get(appt.id);
-                           const isBusy = appt.type === 'busy_blocked';
-                           const isCompleted = appt.status === 'completed';
-                           const isStart = format(parseISO(appt.start), 'HH:mm') === slot;
-
-                           return (
-                             <td key={eng.id} className="p-0.5 border-b border-slate-50 border-s border-s-slate-50 align-top">
-                                <div className="relative h-full">
-                                  <Card 
-                                    onClick={() => router.push(`/dashboard/appointments/${appt.id}`)}
-                                    className={cn(
-                                      "p-1.5 rounded-lg h-full transition-all cursor-pointer print:p-1 min-h-[40px]", 
-                                      cardGradient(m?.color || '', isCompleted)
-                                    )}
-                                  >
-                                    <div className="text-start relative pr-6">
-                                        {isStart && (
-                                          <div className="flex items-center gap-1">
-                                            {isCompleted && <CheckCircle2 className="h-2 w-2 text-emerald-600 shrink-0" />}
-                                            <p className={cn("font-black text-[8px] leading-tight truncate", isCompleted && "text-emerald-900")}>
-                                              {isBusy ? (isRtl ? 'مشغول' : 'BUSY') : appt.clientName}
-                                            </p>
-                                          </div>
-                                        )}
-                                        {!isBusy && isStart && (
-                                          <div className="flex items-center gap-1 text-[6px] font-bold opacity-60 mt-0.5">
-                                            <MapPin className="h-2 w-2" /> {appt.governorateName?.slice(0, 10)}
-                                          </div>
-                                        )}
-                                    </div>
-                                  </Card>
-
-                                  {isStart && (
-                                    <div className="absolute top-1 right-1 print:hidden" onClick={e => e.stopPropagation()}>
-                                      <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                          <Button variant="ghost" size="icon" className="h-5 w-5 rounded-md hover:bg-black/5">
-                                            <MoreVertical className="h-3 w-3" />
-                                          </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent className="rounded-xl border-2 shadow-2xl" align="end">
-                                          <DropdownMenuItem className="font-bold text-xs gap-2" onClick={() => router.push(`/dashboard/appointments/${appt.id}`)}>
-                                            <Eye className="h-3.5 w-3.5" /> {isRtl ? 'عرض الرادار' : 'View Radar'}
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem className="font-bold text-xs gap-2" onClick={() => onAction('edit', eng, slot, appt)}>
-                                            <Edit3 className="h-3.5 w-3.5" /> {isRtl ? 'تعديل الموعد' : 'Edit Booking'}
-                                          </DropdownMenuItem>
-                                          <DropdownMenuSeparator />
-                                          <DropdownMenuItem className="font-black text-xs gap-2 text-rose-600" onClick={() => onDelete(appt.id)}>
-                                            <Trash2 className="h-3.5 w-3.5" /> {isRtl ? 'حذف' : 'Delete'}
-                                          </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                      </DropdownMenu>
-                                    </div>
-                                  )}
-                                </div>
+                          if (block) {
+                             return (
+                               <td key={eng.id} className="p-0.5 border-b border-slate-50 border-s border-s-slate-50">
+                                  <div className="h-full flex items-center justify-center gap-1.5 text-[8px] font-black text-slate-300 uppercase italic opacity-40">
+                                     {block.label}
+                                  </div>
                              </td>
-                           );
-                        }
-                        return (
-                          <td 
-                            key={eng.id} 
-                            onClick={() => onAction('create', eng, slot)}
-                            className="p-0.5 border-b border-slate-50 border-s border-s-slate-50 group-hover/row:bg-primary/[0.02] cursor-pointer"
-                          >
-                             <div className="h-6 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
-                                <Plus className="h-3 w-3 text-primary/30" />
-                             </div>
-                          </td>
-                        );
-                     })}
-                  </tr>
-                ))}
+                             );
+                          }
+
+                          if (appt) {
+                             const m = meta.get(appt.id);
+                             const isBusy = appt.type === 'busy_blocked';
+                             const isCompleted = appt.status === 'completed';
+                             const apptStart = parseISO(appt.start);
+                             // الموعد يبدأ ضمن هذه الخانة الزمنية
+                             const isStartSlot = apptStart >= slotStart && apptStart < slotEnd;
+
+                             return (
+                               <td key={eng.id} className="p-0.5 border-b border-slate-50 border-s border-s-slate-50 align-top">
+                                  <div className="relative h-full">
+                                    <Card 
+                                      onClick={() => router.push(`/dashboard/appointments/${appt.id}`)}
+                                      className={cn(
+                                        "p-1.5 rounded-lg h-full transition-all cursor-pointer print:p-1 min-h-[40px]", 
+                                        cardGradient(m?.color || '', isCompleted)
+                                      )}
+                                    >
+                                      <div className="text-start relative pr-6">
+                                          {isStartSlot && (
+                                            <div className="flex items-center gap-1">
+                                              {isCompleted && <CheckCircle2 className="h-2 w-2 text-emerald-600 shrink-0" />}
+                                              <p className={cn("font-black text-[8px] leading-tight truncate", isCompleted && "text-emerald-900")}>
+                                                {isBusy ? (isRtl ? 'مشغول' : 'BUSY') : appt.clientName}
+                                              </p>
+                                            </div>
+                                          )}
+                                          {!isBusy && isStartSlot && (
+                                            <div className="flex items-center gap-1 text-[6px] font-bold opacity-60 mt-0.5">
+                                              <MapPin className="h-2 w-2" /> {appt.governorateName?.slice(0, 10)}
+                                            </div>
+                                          )}
+                                      </div>
+                                    </Card>
+
+                                    {isStartSlot && (
+                                      <div className="absolute top-1 right-1 print:hidden" onClick={e => e.stopPropagation()}>
+                                        <DropdownMenu>
+                                          <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-5 w-5 rounded-md hover:bg-black/5">
+                                              <MoreVertical className="h-3 w-3" />
+                                            </Button>
+                                          </DropdownMenuTrigger>
+                                          <DropdownMenuContent className="rounded-xl border-2 shadow-2xl" align="end">
+                                            <DropdownMenuItem className="font-bold text-xs gap-2" onClick={() => router.push(`/dashboard/appointments/${appt.id}`)}>
+                                              <Eye className="h-3.5 w-3.5" /> {isRtl ? 'عرض الرادار' : 'View Radar'}
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem className="font-bold text-xs gap-2" onClick={() => onAction('edit', eng, slot, appt)}>
+                                              <Edit3 className="h-3.5 w-3.5" /> {isRtl ? 'تعديل الموعد' : 'Edit Booking'}
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem className="font-black text-xs gap-2 text-rose-600" onClick={() => onDelete(appt.id)}>
+                                              <Trash2 className="h-3.5 w-3.5" /> {isRtl ? 'حذف' : 'Delete'}
+                                            </DropdownMenuItem>
+                                          </DropdownMenuContent>
+                                        </DropdownMenu>
+                                      </div>
+                                    )}
+                                  </div>
+                               </td>
+                             );
+                          }
+                          return (
+                            <td 
+                              key={eng.id} 
+                              onClick={() => onAction('create', eng, slot)}
+                              className="p-0.5 border-b border-slate-50 border-s border-s-slate-50 group-hover/row:bg-primary/[0.02] cursor-pointer"
+                            >
+                               <div className="h-6 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
+                                  <Plus className="h-3 w-3 text-primary/30" />
+                               </div>
+                            </td>
+                          );
+                       })}
+                    </tr>
+                  );
+                })}
              </tbody>
           </table>
        </div>
@@ -690,22 +701,34 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
   const handleSave = async () => {
     if (!data || isSelectedDateHoliday) return;
     
-    const start = new Date(`${formData.date}T${formData.time}:00`).toISOString();
+    const start = new Date(`${formData.date}T${formData.time}:00`);
+    const duration = settings?.architectural?.slotDurationMinutes || 60;
+    const end = formData.endTime 
+      ? new Date(`${formData.date}T${formData.endTime}:00`)
+      : addMinutes(start, duration);
     
     const targetClientId = isNewClient ? 'NEW_CLIENT' : formData.clientId;
     
     for (const appt of existingAppts) {
         if (appt.status === 'cancelled' || appt.id === data.appointment?.id) continue;
         
-        if (appt.start === start) {
+        const apptStart = new Date(appt.start);
+        const apptEnd = appt.end 
+          ? new Date(appt.end) 
+          : addMinutes(apptStart, settings?.architectural?.slotDurationMinutes || 60);
+
+        // فحص تداخل الفترات: (Start1 < End2) AND (Start2 < End1)
+        const isOverlapping = start < apptEnd && apptStart < end;
+
+        if (isOverlapping) {
             if (appt.clientId === targetClientId && targetClientId !== 'NEW_CLIENT') {
-               toast({ variant: "destructive", title: isRtl ? "تعارض للعميل" : "Client Conflict", description: isRtl ? `العميل لديه موعد مسبق في ${appt.type === 'hall_meeting' ? 'قاعة اجتماعات' : 'الميدان'} في هذا التوقيت.` : "Client has another appointment at this time." });
+               toast({ variant: "destructive", title: isRtl ? "تعارض للعميل" : "Client Conflict", description: isRtl ? `العميل لديه موعد مسبق في نفس الفترة (${format(apptStart, 'HH:mm')} - ${format(apptEnd, 'HH:mm')}).` : "Client has another appointment at this time." });
                return;
             }
 
             const apptEngineers = [appt.engineerId, ...(appt.additionalEngineerIds || [])];
             if (apptEngineers.includes(targetEngineerId)) {
-               toast({ variant: "destructive", title: isRtl ? "تعارض للمهندس" : "Engineer Conflict", description: isRtl ? `المهندس لديه ارتباط مسبق في ${appt.type === 'hall_meeting' ? 'قاعة اجتماعات' : 'الميدان'} في هذا التوقيت.` : "Engineer is already assigned at this time." });
+               toast({ variant: "destructive", title: isRtl ? "تعارض للمهندس" : "Engineer Conflict", description: isRtl ? `المهندس لديه ارتباط مسبق في نفس الفترة (${format(apptStart, 'HH:mm')} - ${format(apptEnd, 'HH:mm')}).` : "Engineer is already assigned." });
                return;
             }
         }
@@ -750,7 +773,8 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
         engineerId: targetEngineerId,
         engineerName: data.engineer?.fullName || data.appointment?.engineerName,
         type: apptType,
-        start,
+        start: start.toISOString(),
+        end: end.toISOString(),
         status: 'scheduled' as AppointmentStatus,
         companyId,
         notes: formData.notes
@@ -909,7 +933,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
                 <Button 
                   variant="ghost" 
                   onClick={() => onDelete(data.appointment?.id)} 
-                  className="flex-1 h-12 rounded-xl font-black text-rose-600 bg-rose-50 border-2 border-rose-100 hover:bg-rose-100 gap-2"
+                  className="flex-1 h-12 rounded-xl font-black text-rose-600 bg-rose-50 border-2 border-rose-100 hover:bg-rose-100 gap-2 shadow-sm"
                 >
                   <Trash2 className="h-4 w-4" />
                   {isRtl ? 'حذف' : 'Delete'}
@@ -929,4 +953,3 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     </Dialog>
   );
 }
-
