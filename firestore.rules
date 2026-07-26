@@ -63,16 +63,16 @@ service cloud.firestore {
         allow update: if isAdmin(companyId) || (isAuthenticated() && getUserData().employeeId == empId);
       }
 
-      // قواعد الإجازات والاستئذانات (خدمة ذاتية)
+      // قواعد الإجازات والاستئذانات (خدمة ذاتية + صلاحيات إدارية للغير)
       match /leaveRequests/{reqId} {
         allow read: if belongsToCompany(companyId);
-        allow create: if belongsToCompany(companyId) && request.resource.data.userId == request.auth.uid;
+        allow create: if belongsToCompany(companyId) && (request.resource.data.userId == request.auth.uid || isAdmin(companyId));
         allow update, delete: if isAdmin(companyId);
       }
 
       match /permissionRequests/{reqId} {
         allow read: if belongsToCompany(companyId);
-        allow create: if belongsToCompany(companyId) && request.resource.data.userId == request.auth.uid;
+        allow create: if belongsToCompany(companyId) && (request.resource.data.userId == request.auth.uid || isAdmin(companyId));
         allow update, delete: if isAdmin(companyId);
       }
 

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -30,9 +31,10 @@ export class LeaveService {
   async submitRequest(data: Omit<LeaveRequest, 'id' | 'createdAt' | 'updatedAt' | 'companyId' | 'status'>, departmentId?: string) {
     const path = paths.leaveRequests(this.companyId);
     
+    // التحقق من تداخل الإجازات باستخدام employeeId لضمان السيادة حتى للموظفين بدون حسابات دخول
     const overlapQuery = query(
       collection(this.db, path),
-      where('userId', '==', data.userId)
+      where('employeeId', '==', data.employeeId)
     );
     
     const overlapSnap = await getDocs(overlapQuery);
@@ -43,7 +45,7 @@ export class LeaveService {
     });
 
     if (hasOverlap) {
-      throw new Error('OVERLAP: يوجد طلب إجازة آخر متداخل مع هذه الفترة.');
+      throw new Error('OVERLAP: يوجد طلب إجازة آخر متداخل مع هذه الفترة لهذا الموظف.');
     }
 
     const docData = {
@@ -51,7 +53,7 @@ export class LeaveService {
       status: 'pending',
       companyId: this.companyId,
       departmentId: departmentId || '', 
-      createdBy: data.userId, 
+      createdBy: data.userId, // المستخدم الذي أجرى العملية فعلياً
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
@@ -128,16 +130,13 @@ export class LeaveService {
       updateData.commencementConfirmedAt = serverTimestamp();
       updateData.commencementConfirmedBy = adminId;
       
-      // تحديث التواريخ الفعلية النهائية لو قام المدير بتعديلها عند المباشرة
       if (payload.actualDepartureDate) updateData.actualDepartureDate = payload.actualDepartureDate;
       if (payload.actualReturnDate) updateData.actualReturnDate = payload.actualReturnDate;
       
-      // لو عدل المدير "أيام العمل" نتيجة التلاعب بالتواريخ، يتم تحديثها هنا
       if (payload.workingDays !== undefined) {
          const diff = payload.workingDays - (leaveData.workingDays || 0);
          if (diff !== 0) {
             updateData.workingDays = payload.workingDays;
-            // تسوية الرصيد: لو زادت أيام الإجازة نخصم الزيادة، ولو نقصت نرد الفرق
             if (leaveData.type === 'annual') {
                batch.update(empRef, { annualLeaveBalance: increment(-diff) });
             }
