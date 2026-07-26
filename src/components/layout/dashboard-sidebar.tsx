@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview القائمة الجانبية (Sidebar) بتصميم الكبسولات البرتقالية كاملة الاستدارة مع تلميحات وقوائم منبثقة فاتحة ونظيفة.
- * تم تحديث منطق العرض ليكون "متكيفاً" مع صلاحيات الموظف الشخصية.
+ * @fileOverview القائمة الجانبية (Sidebar) بتصميم الكبسولات البرتقالية كاملة الاستدارة.
+ * تم تصحيح خوارزمية الفلترة (Sovereign Deep Filter) لضمان اختفاء العناصر الإدارية عن الموظفين العاديين.
  */
 
 "use client"
@@ -45,7 +45,6 @@ export function DashboardSidebar() {
   const isCollapsed = state === "collapsed"
 
   const menuItems = React.useMemo(() => {
-    // تحديد نطاق الوصول لـ HR لتغيير المسمى إذا كان الموظف يرى نفسه فقط
     const hrAccess = check('hr', 'view');
     const isHrManager = hrAccess.can && hrAccess.scope !== 'own';
 
@@ -97,7 +96,6 @@ export function DashboardSidebar() {
         ]
       },
       { 
-        // الميزة المطلوبة: تغيير المسمى إذا كان الموظف يرى سجلاته الشخصية فقط
         title: isHrManager ? t('hr') : (isRtl ? 'شؤوني الوظيفية' : 'Personal Workspace'), 
         icon: UserCircle, 
         url: "/dashboard/hr", 
@@ -106,7 +104,7 @@ export function DashboardSidebar() {
           { title: t('myProfile'), url: globalUser?.employeeId ? `/dashboard/hr/reports/dossier/${globalUser.employeeId}` : '/dashboard/hr', icon: ShieldCheck },
           { title: t('staffRecords'), url: "/dashboard/hr/employees", icon: Users, hideIfOwnScope: true },
           { title: t('leaves'), url: "/dashboard/hr/leaves", icon: Calendar },
-          { title: t('payroll'), url: "/dashboard/hr/payroll", icon: Calculator, requiredAction: 'approve' as const, hideIfOwnScope: true },
+          { title: t('payroll'), url: "/dashboard/hr/payroll", icon: Calculator, requiredAction: 'approve', hideIfOwnScope: true },
         ]
       },
       { 
@@ -144,21 +142,37 @@ export function DashboardSidebar() {
     ];
   }, [t, isRtl, globalUser, check]);
 
+  // تصحيح خوارزمية الفلترة لضمان عدم تمرير العناصر المحجوبة
   const visibleItems = React.useMemo(() => {
-    return menuItems.filter(item => {
-      if (!canAccess(item.resource)) return false;
+    const finalItems: any[] = [];
+
+    menuItems.forEach(item => {
+      if (!canAccess(item.resource)) return;
+
       if (item.subItems) {
         const filteredSubs = item.subItems.filter(sub => {
-          const access = check(item.resource, (sub as any).requiredAction || 'view');
+          const action = (sub as any).requiredAction || 'view';
+          const access = check(item.resource, action);
+          
           if (!access.can) return false;
+          
+          // إذا كان الموظف يرى نفسه فقط، نحجب القوائم الكلية (مثل سجلات الموظفين والرواتب)
           if ((sub as any).hideIfOwnScope && access.scope === 'own') return false;
+          
           return true;
         });
-        if (filteredSubs.length === 0 && item.resource !== 'dashboard') return false;
-        return { ...item, subItems: filteredSubs };
+
+        if (filteredSubs.length > 0) {
+          finalItems.push({ ...item, subItems: filteredSubs });
+        } else if (item.url === "/dashboard") {
+          finalItems.push(item);
+        }
+      } else {
+        finalItems.push(item);
       }
-      return true;
     });
+
+    return finalItems;
   }, [menuItems, canAccess, check]);
 
   return (
@@ -237,7 +251,6 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                   <button className={collapsedStyle}>
                     <item.icon className="h-6 w-6" />
                   </button>
-                  {/* Floating Popover - CLEAN LIGHT THEME */}
                   <div className={cn(
                     "absolute top-0 z-[999] hidden group-hover:block animate-in fade-in zoom-in-95 duration-200",
                     isRtl ? "right-full mr-3" : "left-full ml-3"
