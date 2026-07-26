@@ -217,7 +217,7 @@ export function ArchitecturalAppointmentsView() {
   }, [db, companyId]);
 
   const archEngineers = useMemo(() => {
-    const list = (allEmployees || []).filter(e => e.departmentName?.includes('معماري') || e.departmentName?.includes('Arch'));
+    const list = (allEmployees || []).filter(e => e.departmentName?.includes('معماري') || e.departmentName?.includes('Arch') || e.departmentName?.includes('إنشائي') || e.departmentName?.includes('Structural'));
     if (!isAdmin && globalUser?.employeeId) {
        return list.filter(e => e.id === globalUser.employeeId);
     }
@@ -357,7 +357,7 @@ export function ArchitecturalAppointmentsView() {
            gridMap={engineerAppointmentsMap} 
            meta={apptMeta} 
            onAction={handleAction}
-           onDelete={setDeletingId}
+           onDelete={confirmDelete}
            isRtl={isRtl}
            isAdmin={isAdmin}
            currentEngineerId={globalUser?.employeeId}
@@ -377,7 +377,7 @@ export function ArchitecturalAppointmentsView() {
              gridMap={engineerAppointmentsMap} 
              meta={apptMeta} 
              onAction={handleAction}
-             onDelete={setDeletingId}
+             onDelete={confirmDelete}
              isRtl={isRtl}
              isAdmin={isAdmin}
              currentEngineerId={globalUser?.employeeId}
@@ -693,7 +693,14 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     if (!db || !companyId) return;
     const q = query(collection(db, paths.transactions(companyId)), where('clientId', '==', cid));
     const snap = await getDocs(q);
-    setClientTransactions(snap.docs.map(d => ({id: d.id, ...d.data()})));
+    const trans = snap.docs.map(d => ({id: d.id, ...d.data()}));
+    setClientTransactions(trans);
+
+    // ذكاء الربط التلقائي: إذا كان هناك مشروع واحد نشط، يتم اختياره آلياً
+    if (!formData.transactionId && trans.length === 1) {
+       const t = trans[0];
+       setFormData(prev => ({ ...prev, transactionId: t.id, transactionNumber: t.transactionNumber }));
+    }
   };
 
   const handleSave = async () => {

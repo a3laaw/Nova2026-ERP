@@ -82,24 +82,27 @@ export default function AppointmentDetailPage() {
   const { data: rawStages } = useCollection<StageInstance>(stagesQuery);
 
   /**
-   * محرك الفلترة السيادي المطور:
-   * يعرض المراحل بناءً على (قسم الموظف) أو (القسم المخصص للموعد نفسه).
-   * هذا يضمن ظهور مسار "الأعمدة" للموعد الإنشائي حتى لو كان المستخدم مديراً عاماً.
+   * محرك الفلترة السيادي المطور (Strict Dept Focus):
+   * يعرض حصراً المراحل المرتبطة بقسم الموعد.
+   * إذا كان موعد إنشائي، لن يرى المهندس إلا مراحل الإنشاء (الأعمدة، القواعد).
    */
   const stages = useMemo(() => {
     const list = (rawStages || []).sort((a, b) => (a.order || 0) - (b.order || 0));
-    if (isAdmin) return list;
-    
-    const userDeptId = globalUser?.departmentId;
     const apptDeptId = appt?.departmentId;
 
+    // إذا كان الموعد يخص قسماً معيناً، نفلت المسار الفني بناءً عليه حصراً
+    if (apptDeptId) {
+      return list.filter(stage => 
+        stage.allowedDepartmentIds?.includes(apptDeptId)
+      );
+    }
+    
+    // Fallback: إذا لم يحدد قسم للموعد، نعرض بناءً على صلاحية المستخدم
+    if (isAdmin) return list;
+    const userDeptId = globalUser?.departmentId;
     return list.filter(stage => {
-       // إذا كانت المرحلة عامة (بدون قسم محدد) تظهر للكل
        if (!stage.allowedDepartmentIds || stage.allowedDepartmentIds.length === 0) return true;
-       
-       // تظهر إذا كان قسم المستخدم مسموحاً له، أو إذا كان هذا الموعد مخصصاً لهذا القسم تشغيلياً
-       return (userDeptId && stage.allowedDepartmentIds.includes(userDeptId)) || 
-              (apptDeptId && stage.allowedDepartmentIds.includes(apptDeptId));
+       return userDeptId && stage.allowedDepartmentIds.includes(userDeptId);
     });
   }, [rawStages, isAdmin, globalUser?.departmentId, appt?.departmentId]);
 
@@ -124,11 +127,6 @@ export default function AppointmentDetailPage() {
     companyId && db && appt?.transactionId ? query(collection(db, paths.executions(companyId)), where('transactionId', '==', appt.transactionId)) : null,
   [db, companyId, appt?.transactionId]);
   const { data: allExecutions } = useCollection<BOQItemExecutionEntry>(execsQuery);
-
-  const commentsQuery = useMemo(() => 
-    companyId && db && appt?.transactionId ? query(collection(db, paths.transactionComments(companyId, appt.transactionId))) : null,
-  [db, companyId, appt?.transactionId]);
-  const { data: comments } = useCollection<any>(commentsQuery);
 
   const [availableTransactions, setAvailableTransactions] = useState<any[]>([]);
   useEffect(() => {
@@ -291,7 +289,7 @@ export default function AppointmentDetailPage() {
                  <div className="text-start">
                     <CardTitle className="text-xl font-black flex items-center gap-3">
                        <Target className="h-6 w-6 text-primary" />
-                       {isRtl ? 'رادار المسار الفني' : 'Technical Radar'}
+                       {isRtl ? `رادار التنفيذ (${appt.departmentName || 'عام'})` : `${appt.departmentName || 'General'} Radar`}
                     </CardTitle>
                  </div>
                  {appt.status !== 'completed' && appt.transactionId && (
@@ -327,8 +325,8 @@ export default function AppointmentDetailPage() {
                          </p>
                          <p className="text-xs font-bold text-slate-400 max-w-xs mx-auto leading-relaxed">
                             {isRtl 
-                              ? `لا توجد مراحل تتبع قسمك (${appt.departmentName || globalUser?.departmentId || '---'}) في هذا المسار. يرجى مراجعة "هندسة المسارات" في الإعدادات للتأكد من تعيين القسم الإنشائي لهذه المراحل.` 
-                              : `No stages for your department found. Check path settings.`}
+                              ? `لا توجد مراحل تتبع قسمك المختار (${appt.departmentName || '---'}) في هذا المسار. يرجى مراجعة "هندسة المسارات" في الإعدادات.` 
+                              : `No stages for the selected department (${appt.departmentName}) found. Check path settings.`}
                          </p>
                       </div>
                       {isAdmin && (
