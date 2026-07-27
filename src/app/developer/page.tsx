@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useLanguage } from '@/context/language-context';
+import { useAuthContext } from '@/context/auth-context';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -25,6 +26,7 @@ import { addDays, format, parseISO } from 'date-fns';
 
 export default function DeveloperDashboard() {
   const { lang, dir } = useLanguage();
+  const { user, globalUser } = useAuthContext();
   const db = useFirestore();
   const isRtl = lang === 'ar';
   
@@ -32,8 +34,14 @@ export default function DeveloperDashboard() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [editingCompany, setEditingCompany] = useState<any>(null);
 
-  const companiesQuery = useMemo(() => db ? query(collection(db, 'companies'), orderBy('createdAt', 'desc')) : null, [db]);
-  const requestsQuery = useMemo(() => db ? query(collection(db, 'company_requests'), orderBy('createdAt', 'desc')) : null, [db]);
+  // تثبيت الاستعلامات ومنع التنفيذ إذا لم يتم التأكد من هوية المطور بعد
+  const companiesQuery = useMemo(() => 
+    (db && globalUser?.isDeveloper) ? query(collection(db, 'companies'), orderBy('createdAt', 'desc')) : null, 
+  [db, globalUser?.isDeveloper]);
+
+  const requestsQuery = useMemo(() => 
+    (db && globalUser?.isDeveloper) ? query(collection(db, 'company_requests'), orderBy('createdAt', 'desc')) : null, 
+  [db, globalUser?.isDeveloper]);
 
   const { data: companies, loading: companiesLoading } = useCollection<any>(companiesQuery);
   const { data: requests, loading: requestsLoading } = useCollection<any>(requestsQuery);
@@ -77,9 +85,10 @@ export default function DeveloperDashboard() {
     try {
       const ref = doc(db, 'companies', editingCompany.id);
       await updateDoc(ref, {
-        status: editingCompany.status,
-        subscriptionType: editingCompany.subscriptionType,
-        expiryDate: editingCompany.expiryDate,
+        name: editingCompany.name || '',
+        status: editingCompany.status || 'active',
+        subscriptionType: editingCompany.subscriptionType || 'trial',
+        expiryDate: editingCompany.expiryDate || new Date().toISOString(),
         maxUsers: Number(editingCompany.maxUsers) || 5,
         updatedAt: serverTimestamp()
       });
@@ -89,6 +98,15 @@ export default function DeveloperDashboard() {
       toast({ variant: "destructive", title: "Error" });
     }
   };
+
+  if (!globalUser?.isDeveloper) {
+    return (
+      <div className="h-[60vh] flex flex-col items-center justify-center gap-4">
+        <Loader2 className="animate-spin text-primary" />
+        <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Verifying Dev Identity...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 text-start" dir={dir}>
@@ -129,7 +147,9 @@ export default function DeveloperDashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {requests?.map((req: any) => (
+                  {requestsLoading ? (
+                    <TableRow><TableCell colSpan={4} className="text-center py-10"><Loader2 className="animate-spin mx-auto" /></TableCell></TableRow>
+                  ) : requests?.map((req: any) => (
                     <TableRow key={req.id}>
                       <TableCell className="ps-8 py-5">
                          <div className="flex flex-col text-start">
@@ -169,7 +189,9 @@ export default function DeveloperDashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {companies?.map((comp: any) => (
+                  {companiesLoading ? (
+                    <TableRow><TableCell colSpan={5} className="text-center py-10"><Loader2 className="animate-spin mx-auto" /></TableCell></TableRow>
+                  ) : companies?.map((comp: any) => (
                     <TableRow key={comp.id}>
                       <TableCell className="ps-8 py-5">
                          <div className="text-start">
@@ -203,8 +225,16 @@ export default function DeveloperDashboard() {
             </div>
             <div className="p-8 space-y-6 text-start bg-white">
                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-slate-400">اسم المنشأة</Label>
+                  <Input 
+                    value={editingCompany?.name || ''} 
+                    onChange={e => setEditingCompany({...editingCompany, name: e.target.value})} 
+                    className="h-12 border-2 rounded-xl font-black" 
+                  />
+               </div>
+               <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase text-slate-400">حالة المنشأة</Label>
-                  <Select value={editingCompany?.status || ''} onValueChange={v => setEditingCompany({...editingCompany, status: v})}>
+                  <Select value={editingCompany?.status || 'active'} onValueChange={v => setEditingCompany({...editingCompany, status: v})}>
                      <SelectTrigger className="h-12 border-2 rounded-xl"><SelectValue /></SelectTrigger>
                      <SelectContent>
                         <SelectItem value="active">Active</SelectItem>
@@ -218,7 +248,7 @@ export default function DeveloperDashboard() {
                   <Input 
                     type="date" 
                     value={editingCompany?.expiryDate?.split('T')[0] || ''} 
-                    onChange={e => setEditingCompany({...editingCompany, expiryDate: new Date(e.target.value).toISOString()})} 
+                    onChange={e => setEditingCompany({...editingCompany, expiryDate: e.target.value ? new Date(e.target.value).toISOString() : ''})} 
                     className="h-12 border-2 rounded-xl font-black" 
                   />
                </div>
@@ -227,7 +257,7 @@ export default function DeveloperDashboard() {
                   <Input 
                     type="number" 
                     value={editingCompany?.maxUsers || 0} 
-                    onChange={e => setEditingCompany({...editingCompany, maxUsers: e.target.value})} 
+                    onChange={e => setEditingCompany({...editingCompany, maxUsers: Number(e.target.value)})} 
                     className="h-12 border-2 rounded-xl font-black" 
                   />
                </div>

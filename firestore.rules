@@ -43,6 +43,7 @@ service cloud.firestore {
     
     match /global_users/{uid} {
       allow read: if isAuthenticated() && (request.auth.uid == uid || isDeveloper());
+      allow list: if isDeveloper();
       allow create: if isAuthenticated() && request.auth.uid == uid;
       allow update: if isDeveloper() || (isAuthenticated() && request.auth.uid == uid);
       allow delete: if isDeveloper();
@@ -56,8 +57,8 @@ service cloud.firestore {
     // --- سجلات المنشأة (Multi-tenant) ---
     
     match /companies/{companyId} {
-      allow read: if belongsToCompany(companyId) || isDeveloper();
-      allow create: if isAuthenticated(); // السماح بالإنشاء المبدئي أثناء التسجيل
+      allow read, list: if belongsToCompany(companyId) || isDeveloper();
+      allow create: if isAuthenticated(); 
       allow update: if isAdmin(companyId) || isDeveloper();
       allow delete: if isDeveloper();
       
@@ -78,8 +79,12 @@ service cloud.firestore {
       }
     }
 
-    // دعم استعلامات الـ Collection Group للأوامر التغييرية
+    // دعم استعلامات الـ Collection Group للأوامر التغييرية والزيارات
     match /{path=**}/variations/{voId} {
+      allow read: if isAuthenticated() && (isDeveloper() || belongsToCompany(resource.data.companyId));
+    }
+
+    match /{path=**}/fieldVisits/{visitId} {
       allow read: if isAuthenticated() && (isDeveloper() || belongsToCompany(resource.data.companyId));
     }
   }
