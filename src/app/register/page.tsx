@@ -49,12 +49,11 @@ export default function RegisterPage() {
       const batch = writeBatch(db);
       const companyId = `comp_${Math.random().toString(36).substr(2, 9)}`;
       
-      // تسجيل طلب الانضمام - مضاف إليه ownerUid لحل مشكلة Segment Error
       const requestRef = doc(collection(db, 'company_requests'));
       batch.set(requestRef, {
         id: requestRef.id,
         companyId: companyId,
-        ownerUid: uid, // الرابط السيادي للهوية
+        ownerUid: uid, 
         companyName: formData.companyName,
         contactName: formData.contactName,
         email: formData.email,
@@ -63,7 +62,6 @@ export default function RegisterPage() {
         createdAt: serverTimestamp(),
       });
 
-      // إنشاء مستند الشركة (حالة غير مفعلة)
       const companyRef = doc(db, 'companies', companyId);
       const companyData = {
         id: companyId,
@@ -78,7 +76,6 @@ export default function RegisterPage() {
       };
       batch.set(companyRef, companyData);
 
-      // إنشاء السجل العالمي (Global Identity)
       const globalUserRef = doc(db, 'global_users', uid);
       const globalUserData = {
         companyId,
@@ -95,7 +92,6 @@ export default function RegisterPage() {
       };
       batch.set(globalUserRef, globalUserData);
 
-      // السجل المحلي
       const tenantUserRef = doc(db, 'companies', companyId, 'users', uid);
       batch.set(tenantUserRef, {
         id: uid,
@@ -108,7 +104,16 @@ export default function RegisterPage() {
         isActive: false
       });
 
-      await batch.commit();
+      await batch.commit().catch(err => {
+         const permissionError = new FirestorePermissionError({
+            path: 'registration_batch',
+            operation: 'write',
+            requestResourceData: { companyId, uid }
+         } satisfies SecurityRuleContext);
+         errorEmitter.emit('permission-error', permissionError);
+         throw err;
+      });
+
       setIsSubmitted(true);
       toast({ title: "تم إرسال طلبك بنجاح" });
 
