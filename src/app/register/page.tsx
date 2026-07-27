@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, Loader2, CheckCircle2, ArrowRight, Eye, EyeOff, Building2, HardHat, PencilRuler, Zap } from 'lucide-react';
+import { Sparkles, Loader2, CheckCircle2, ArrowRight, Eye, EyeOff, Building2, HardHat, PencilRuler, Zap, Clock } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -32,13 +32,14 @@ export default function RegisterPage() {
   const db = useFirestore();
   const auth = useAuth();
 
-  const handleAutomaticProvisioning = async (e: React.FormEvent) => {
+  const handleRequestRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || !auth) return;
 
     setLoading(true);
 
     try {
+      // 1. إنشاء حساب الدخول الأساسي (سيبقى معلقاً إدارياً)
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const uid = userCredential.user.uid;
 
@@ -47,25 +48,29 @@ export default function RegisterPage() {
       const batch = writeBatch(db);
       const companyId = `comp_${Math.random().toString(36).substr(2, 9)}`;
       
+      // تحديد موعد انتهاء التجربة الافتراضي (لكنه لن يظهر إلا بعد التفعيل)
       const trialEndDate = new Date();
       trialEndDate.setDate(trialEndDate.getDate() + 14);
 
-      // 1. تسجيل طلب الشركة
+      // 2. تسجيل طلب الانضمام السيادي (المسار الجديد)
       const requestRef = doc(collection(db, 'company_requests'));
       batch.set(requestRef, {
+        id: requestRef.id,
+        companyId: companyId,
         companyName: formData.companyName,
         contactName: formData.contactName,
         email: formData.email,
         activity: formData.activity,
-        status: 'activated',
+        status: 'pending', // الحالة المعلقة بانتظار المطور
         createdAt: serverTimestamp(),
       });
 
-      // 2. إنشاء مستند الشركة (الربط بالنشاط السيادي)
+      // 3. إنشاء مستند الشركة بحالة "غير نشطة" (Inactive)
       const companyRef = doc(db, 'companies', companyId);
       batch.set(companyRef, {
+        id: companyId,
         name: formData.companyName,
-        status: 'active',
+        status: 'inactive', // معطلة بانتظار المطور
         createdAt: serverTimestamp(),
         trialEndsAt: trialEndDate.toISOString(),
         maxUsers: 5,
@@ -73,7 +78,7 @@ export default function RegisterPage() {
         ownerUid: uid
       });
 
-      // 3. إنشاء السجل العالمي للمدير (Identity Sovereignty)
+      // 4. إنشاء السجل العالمي للمدير (Identity Sovereignty) مع وسم الانتظار
       const globalUserRef = doc(db, 'global_users', uid);
       batch.set(globalUserRef, {
         companyId,
@@ -84,11 +89,12 @@ export default function RegisterPage() {
         isDeveloper: false,
         email: formData.email,
         activity: formData.activity, 
-        isActive: true,
+        isActive: false, // الحساب غير نشط حتى يتم قبول الشركة
+        isPendingApproval: true,
         updatedAt: serverTimestamp()
       });
 
-      // 4. إنشاء السجل المحلي داخل المنشأة
+      // 5. السجل المحلي داخل المنشأة
       const tenantUserRef = doc(db, 'companies', companyId, 'users', uid);
       batch.set(tenantUserRef, {
         id: uid,
@@ -98,46 +104,45 @@ export default function RegisterPage() {
         joinedAt: serverTimestamp(),
         role: 'admin',
         roleCode: 'ADMIN',
-        isActive: true
+        isActive: false
       });
 
       await batch.commit();
       
       setIsSubmitted(true);
       toast({
-        title: "مبروك! تم تفعيل منشأتك",
-        description: "بدأت الآن فترة تجريبية لمدة 14 يوماً مع كامل الصلاحيات.",
+        title: isRtl ? "تم إرسال طلبك بنجاح" : "Request Submitted",
+        description: isRtl ? "طلبك الآن قيد المراجعة من قبل الإدارة الفنية." : "Your request is pending technical approval.",
       });
-
-      document.cookie = `session=true; path=/; max-age=${60 * 60 * 24 * 7}`;
-      setTimeout(() => router.push('/dashboard'), 2000);
 
     } catch (error: any) {
       toast({
         variant: "destructive",
         title: "خطأ في التسجيل",
-        description: error.message || "تعذر إعداد حسابك حالياً.",
+        description: error.message || "تعذر إرسال طلبك حالياً.",
       });
     } finally {
       setLoading(false);
     }
   };
 
+  const isRtl = true; // نثبت العربية كخيار سيادي هنا
+
   if (isSubmitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4" dir="rtl">
-        <Card className="w-full max-w-md border-0 shadow-2xl rounded-[3rem] overflow-hidden bg-white text-center">
-          <CardHeader className="pt-10">
-            <div className="mx-auto w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4">
-              <CheckCircle2 className="h-10 w-10" />
+      <div className="min-h-screen flex items-center justify-center bg-[#fdfaf3] p-6" dir="rtl">
+        <Card className="w-full max-w-md border-0 shadow-3xl rounded-[3rem] overflow-hidden bg-white text-center">
+          <CardHeader className="pt-16 pb-10">
+            <div className="mx-auto w-24 h-24 bg-amber-50 text-amber-600 rounded-[2.5rem] flex items-center justify-center mb-6 shadow-inner ring-8 ring-amber-50/50">
+              <Clock className="h-12 w-12" />
             </div>
-            <CardTitle className="text-2xl font-black font-headline text-slate-900">تم الإعداد بنجاح!</CardTitle>
-            <CardDescription className="text-lg font-bold text-slate-500">
-              جاري توجيهك إلى لوحة تحكم شركة <span className="text-primary">{formData.companyName}</span>...
+            <CardTitle className="text-3xl font-black font-headline text-slate-900 leading-tight">طلبك قيد المراجعة!</CardTitle>
+            <CardDescription className="text-lg font-bold text-slate-500 mt-4 leading-relaxed">
+              شكراً لاهتمامك بـ NovaFlow. لقد تم تسجيل طلب شركة <span className="text-primary">{formData.companyName}</span> بنجاح. سيتم تفعيل حسابك فور مراجعة الطلب من قبل المطور.
             </CardDescription>
           </CardHeader>
-          <CardContent className="pb-10">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <CardContent className="pb-16">
+             <Button onClick={() => router.push('/login')} className="w-full h-14 rounded-2xl bg-slate-900 text-white font-black">العودة لصفحة الدخول</Button>
           </CardContent>
         </Card>
       </div>
@@ -153,11 +158,11 @@ export default function RegisterPage() {
           </div>
           <div className="space-y-2">
             <CardTitle className="text-4xl font-black font-headline tracking-tighter text-slate-900">NovaFlow لأصحاب الأعمال</CardTitle>
-            <CardDescription className="text-slate-500 font-bold text-lg">سجل منشأتك الجديدة واحصل على 14 يوماً تجريبية مجانية</CardDescription>
+            <CardDescription className="text-slate-500 font-bold text-lg">سجل منشأتك الجديدة بانتظار الاعتماد الفني</CardDescription>
           </div>
         </CardHeader>
         <CardContent className="p-12">
-          <form onSubmit={handleAutomaticProvisioning} className="space-y-8">
+          <form onSubmit={handleRequestRegistration} className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-2 text-start">
                 <Label className="font-black text-xs text-slate-400 uppercase tracking-widest">اسم المنشأة / الشركة</Label>
@@ -246,7 +251,7 @@ export default function RegisterPage() {
             </div>
             
             <Button type="submit" disabled={loading} className="w-full h-20 bg-primary text-white rounded-[2rem] text-2xl font-black shadow-2xl shadow-primary/20 hover:scale-[1.01] transition-all border-b-8 border-orange-700 mt-6">
-              {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : 'تفعيل المنشأة والبدء فوراً'}
+              {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : 'إرسال طلب الانضمام للمراجعة'}
             </Button>
           </form>
         </CardContent>
@@ -255,7 +260,7 @@ export default function RegisterPage() {
             لديك حساب شركة بالفعل؟ سجل دخولك <ArrowRight className="mr-2 h-5 w-5" />
           </Button>
           <p className="text-[11px] text-slate-400 text-center max-w-sm font-bold leading-relaxed">
-            هذه الصفحة مخصصة لإنشاء **منشآت جديدة** فقط. إذا كنت موظفاً، يرجى طلب "رابط تفعيل حساب" من مدير النظام بشركتك.
+            بإرسال هذا الطلب، أنت توافق على أن تفعيل المنشأة يخضع لمراجعة المطور التقني لضمان جودة الخدمة السيادية.
           </p>
         </CardFooter>
       </Card>
