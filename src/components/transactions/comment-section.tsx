@@ -148,7 +148,6 @@ export function CommentSection({
     if (!commentService || !user || !content.trim()) return;
     setLoading(true);
     try {
-      // الفرض الاسمي المطلق:FullName هو المعرف الرسمي الوحيد المعروض
       const officialName = globalUser?.fullName || user.displayName || 'مهندس غير معرف';
       
       await commentService.addTransactionComment(
@@ -363,7 +362,6 @@ function StreamItem({ item, isRtl, user, boqItems, onDelete, onUpdate, isAdmin, 
    const [editContent, setEditContent] = useState(item.content);
 
    const isLog = item.streamType === 'log' || item.streamType === 'timeline_log';
-   // تحصين عرض الاسم: الأولوية لـ fullName الموثق
    const displayName = item.userName || item.createdByName || item.recordedByName || (isRtl ? 'مهندس غير معرف' : 'Engineer');
 
    if (isLog) {
