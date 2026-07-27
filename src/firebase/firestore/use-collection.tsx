@@ -7,7 +7,7 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
 
 /**
  * خطاف جلب المجموعات المطور (Hardened Collection Hook).
- * يعالج مشكلة Assertion Failure عبر ضمان عدم تداخل الاشتراكات وتنظيف الذاكرة بشكل قطعي.
+ * يعالج مشكلة Assertion Failure و Infinite Loops عبر ضمان استقرار الاستعلامات والبيانات.
  */
 export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
   const [data, setData] = useState<T[]>([]);
@@ -17,6 +17,7 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
   // مراجع لتتبع الحالة والاشتراك النشط بشكل سيادي
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const activeQueryRef = useRef<Query<any, any> | null>(null);
+  const lastDataRef = useRef<string>(""); // تخزين البيانات بصيغة نصية للمقارنة العميقة
 
   useEffect(() => {
     // بروتوكول الاستقرار: إذا كان الاستعلام منطقياً هو نفسه، لا نقم بإعادة الاشتراك
@@ -54,7 +55,13 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
           ...doc.data(),
         })) as unknown as T[];
         
-        setData(items);
+        // مقارنة عميقة لمنع حلقة التحديث المفرطة (Infinite Loop Prevention)
+        const dataStr = JSON.stringify(items);
+        if (dataStr !== lastDataRef.current) {
+          lastDataRef.current = dataStr;
+          setData(items);
+        }
+        
         setLoading(false);
       },
       (serverError: FirestoreError) => {
@@ -80,7 +87,7 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
         unsubscribeRef.current();
         unsubscribeRef.current = null;
       }
-      activeQueryRef.current = null;
+      // ملاحظة سيادية: لا نقوم بتصفير activeQueryRef هنا للسماح بالمقارنة عبر دورات التصيير
     };
   }, [query]);
 

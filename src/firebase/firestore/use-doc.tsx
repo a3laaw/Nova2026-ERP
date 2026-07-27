@@ -16,9 +16,10 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | n
   
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const activeRef = useRef<DocumentReference<any, any> | null>(null);
+  const lastDataRef = useRef<string>(""); // للمقارنة العميقة
 
   useEffect(() => {
-    // التحقق من المطابقة المرجعية
+    // التحقق من المطابقة المرجعية والمنطقية للمستند
     if (docRef && activeRef.current && refEqual(docRef, activeRef.current)) {
       return;
     }
@@ -45,7 +46,16 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | n
       docRef,
       (snapshot) => {
         if (!isMounted) return;
-        setData(snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as T) : null);
+        
+        const docData = snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as T) : null;
+        
+        // منع التحديثات المتكررة لنفس البيانات (Deep Equality Guard)
+        const dataStr = JSON.stringify(docData);
+        if (dataStr !== lastDataRef.current) {
+          lastDataRef.current = dataStr;
+          setData(docData);
+        }
+        
         setLoading(false);
       },
       (serverError: FirestoreError) => {
@@ -71,7 +81,7 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | n
         unsubscribeRef.current();
         unsubscribeRef.current = null;
       }
-      activeRef.current = null;
+      // الحفاظ على مرجع المستند للمقارنة في الرندرة القادمة
     };
   }, [docRef]);
 
