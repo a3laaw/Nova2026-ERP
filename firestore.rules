@@ -9,7 +9,7 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // التحقق مما إذا كان المستخدم هو المطور العالمي (Master Key)
+    // التحقق المباشر من بريد المطور (Master Key)
     function isDeveloper() {
       return isAuthenticated() && (
         request.auth.token.email == 'admin@novaflow.com' ||
@@ -50,16 +50,16 @@ service cloud.firestore {
     }
     
     match /company_requests/{reqId} {
-       allow create: if true; 
+       allow create: if isAuthenticated(); 
        allow read, list, write: if isDeveloper();
     }
 
     // --- سجلات المنشأة (Multi-tenant) ---
     
     match /companies/{companyId} {
-      // تم تمكين الـ list للمطور لحل مشكلة لوحة تحكم المطور
-      allow read, list: if isDeveloper() || belongsToCompany(companyId);
+      // السماح بالإنشاء للمالك أثناء التسجيل
       allow create: if isAuthenticated(); 
+      allow read, list: if isDeveloper() || belongsToCompany(companyId);
       allow update: if isDeveloper() || isAdmin(companyId);
       allow delete: if isDeveloper();
       
@@ -80,13 +80,13 @@ service cloud.firestore {
       }
     }
 
-    // دعم استعلامات الـ Collection Group (تحتاج فهارس يدوية في الكونسول)
+    // دعم استعلامات الـ Collection Group للمطور
     match /{path=**}/variations/{voId} {
-      allow read, list: if isAuthenticated() && (isDeveloper() || belongsToCompany(resource.data.companyId));
+      allow read, list: if isAuthenticated() && (isDeveloper() || (resource != null && belongsToCompany(resource.data.companyId)));
     }
 
     match /{path=**}/fieldVisits/{visitId} {
-      allow read, list: if isAuthenticated() && (isDeveloper() || belongsToCompany(resource.data.companyId));
+      allow read, list: if isAuthenticated() && (isDeveloper() || (resource != null && belongsToCompany(resource.data.companyId)));
     }
   }
 }

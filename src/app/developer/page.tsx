@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,7 @@ import { useCollection, useFirestore } from '@/firebase';
 import { collection, query, orderBy, doc, updateDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { 
   Loader2, CheckCircle, ShieldAlert, Ban, RefreshCcw, 
-  Edit3, Save, Users, Zap, HardHat, Building2, 
+  Edit3, Save, Users, Zap, Building2, 
   CalendarClock, Timer, ShieldCheck, AlertTriangle, X
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
@@ -26,7 +26,7 @@ import { addDays, format, parseISO } from 'date-fns';
 
 export default function DeveloperDashboard() {
   const { lang, dir } = useLanguage();
-  const { user, globalUser } = useAuthContext();
+  const { user, globalUser, loading: authLoading } = useAuthContext();
   const db = useFirestore();
   const isRtl = lang === 'ar';
   
@@ -34,7 +34,7 @@ export default function DeveloperDashboard() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [editingCompany, setEditingCompany] = useState<any>(null);
 
-  // تثبيت الاستعلامات ومنع التنفيذ إذا لم يتم التأكد من هوية المطور بعد
+  // تثبيت الاستعلامات ومنع التنفيذ قبل التأكد من الهوية
   const companiesQuery = useMemo(() => 
     (db && globalUser?.isDeveloper) ? query(collection(db, 'companies'), orderBy('createdAt', 'desc')) : null, 
   [db, globalUser?.isDeveloper]);
@@ -67,14 +67,14 @@ export default function DeveloperDashboard() {
 
       batch.update(reqRef, { status: 'activated', activatedAt: serverTimestamp() });
 
-      // تفعيل حساب الأدمن المالك
+      // تفعيل حساب الأدمن المالك (Identity Empowerment)
       const globalUserRef = doc(db, 'global_users', req.ownerUid || '');
       batch.update(globalUserRef, { isActive: true, isPendingApproval: false });
 
       await batch.commit();
       toast({ title: isRtl ? `تم التفعيل لـ ${days} يوم` : `Activated for ${days} days` });
-    } catch (e) {
-      toast({ variant: "destructive", title: "Error" });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Activation Error", description: e.message });
     } finally {
       setProcessingId(null);
     }
@@ -94,12 +94,12 @@ export default function DeveloperDashboard() {
       });
       toast({ title: "Updated" });
       setEditingCompany(null);
-    } catch (e) {
-      toast({ variant: "destructive", title: "Error" });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Update Failed", description: e.message });
     }
   };
 
-  if (!globalUser?.isDeveloper) {
+  if (authLoading || !globalUser?.isDeveloper) {
     return (
       <div className="h-[60vh] flex flex-col items-center justify-center gap-4">
         <Loader2 className="animate-spin text-primary" />
@@ -171,6 +171,9 @@ export default function DeveloperDashboard() {
                       </TableCell>
                     </TableRow>
                   ))}
+                  {requests?.length === 0 && !requestsLoading && (
+                    <TableRow><TableCell colSpan={4} className="text-center py-20 italic text-slate-300">لا يوجد طلبات انضمام حالياً.</TableCell></TableRow>
+                  )}
                 </TableBody>
               </Table>
            </Card>
@@ -219,7 +222,7 @@ export default function DeveloperDashboard() {
       </Tabs>
 
       <Dialog open={!!editingCompany} onOpenChange={() => setEditingCompany(null)}>
-         <DialogContent className="rounded-xl max-w-md p-0 overflow-hidden" dir={dir}>
+         <DialogContent className="rounded-xl max-w-md p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
             <div className="bg-slate-900 p-8 text-white text-start">
                <DialogTitle className="text-xl font-black flex items-center gap-3"><ShieldCheck className="h-6 w-6 text-primary" /> تعديل الاشتراك</DialogTitle>
             </div>
@@ -236,10 +239,10 @@ export default function DeveloperDashboard() {
                   <Label className="text-[10px] font-black uppercase text-slate-400">حالة المنشأة</Label>
                   <Select value={editingCompany?.status || 'active'} onValueChange={v => setEditingCompany({...editingCompany, status: v})}>
                      <SelectTrigger className="h-12 border-2 rounded-xl"><SelectValue /></SelectTrigger>
-                     <SelectContent>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="expired">Expired</SelectItem>
-                        <SelectItem value="suspended">Suspended</SelectItem>
+                     <SelectContent className="rounded-xl">
+                        <SelectItem value="active" className="font-bold">Active</SelectItem>
+                        <SelectItem value="expired" className="font-bold">Expired</SelectItem>
+                        <SelectItem value="suspended" className="font-bold">Suspended</SelectItem>
                      </SelectContent>
                   </Select>
                </div>
