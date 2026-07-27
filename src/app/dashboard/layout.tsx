@@ -34,7 +34,6 @@ export default function DashboardLayout({
     }
   }, [user, authLoading, router]);
 
-  // 1. واجهة الانتظار أثناء التحقق من الهوية والمنشأة
   if (authLoading || companyLoading) {
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#F8F9FA] gap-4">
@@ -44,12 +43,10 @@ export default function DashboardLayout({
     );
   }
 
-  // 2. بروتوكول الحجب الفوري: إذا لم يوجد مستخدم، لا تعرض أي شيء (انتظر التوجيه لصفحة الدخول)
   if (!user) {
     return null;
   }
 
-  // --- القفل السيادي المطور (The Sovereign Firewall UI) ---
   const isSuspended = company?.status === 'suspended';
   const isInactive = company?.status === 'inactive';
   const needsLock = (subscription.isExpired || isSuspended || isInactive) && !globalUser?.isDeveloper;
@@ -94,18 +91,31 @@ export default function DashboardLayout({
         </div>
         
         <SidebarInset className="flex flex-col bg-transparent">
-          {/* تحذير اقتراب الانتهاء */}
           {subscription.showWarning && !globalUser?.isDeveloper && (
-            <div className="bg-amber-500 text-slate-900 px-6 py-2 flex items-center justify-between gap-4 border-b border-amber-600 shadow-lg animate-in slide-in-from-top-full duration-700">
+            <div className={cn(
+              "px-6 py-2 flex items-center justify-between gap-4 border-b shadow-lg animate-in slide-in-from-top-full duration-700",
+              subscription.isTrial ? "bg-[#1e1b4b] text-white border-indigo-900" : "bg-amber-500 text-slate-900 border-amber-600"
+            )}>
                <div className="flex items-center gap-3">
-                  <AlertTriangle className="h-5 w-5 animate-pulse" />
+                  {subscription.isTrial ? <CalendarDays className="h-5 w-5 text-primary animate-pulse" /> : <AlertTriangle className="h-5 w-5 animate-pulse" />}
                   <p className="text-xs font-black">
-                     {isRtl 
-                       ? `تنبيه: اشتراك المنشأة ينتهي خلال ${subscription.daysRemaining} أيام. يرجى التجديد لضمان استمرارية العمل.` 
-                       : `Subscription expires in ${subscription.daysRemaining} days. Please renew.`}
+                     {subscription.isTrial ? (
+                       isRtl 
+                        ? `تنبيه: أنت الآن في الفترة التجريبية المجانية، متبقي لك ${subscription.daysRemaining} أيام لتجربة كافة الميزات.` 
+                        : `You are in Free Trial mode. ${subscription.daysRemaining} days left to explore all features.`
+                     ) : (
+                       isRtl 
+                        ? `تنبيه: اشتراك المنشأة ينتهي خلال ${subscription.daysRemaining} أيام. يرجى التجديد لضمان استمرارية العمل.` 
+                        : `Subscription expires in ${subscription.daysRemaining} days. Please renew.`
+                     )}
                   </p>
                </div>
-               <Badge className="bg-slate-900 text-white border-0 font-black">{subscription.daysRemaining}d</Badge>
+               <Badge className={cn(
+                 "border-0 font-black px-3 h-6",
+                 subscription.isTrial ? "bg-primary text-white" : "bg-slate-900 text-white"
+               )}>
+                  {subscription.daysRemaining}d
+               </Badge>
             </div>
           )}
 

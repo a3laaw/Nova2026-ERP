@@ -11,7 +11,7 @@ interface CompanyData {
   id: string;
   name: string;
   status: string; // active, inactive, expired, suspended
-  subscriptionType: 'trial' | 'annual';
+  subscriptionType: 'trial' | 'monthly' | 'annual';
   expiryDate?: string;
   maxUsers: number;
   [key: string]: any;
@@ -65,11 +65,23 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
     const daysRemaining = expiry ? differenceInDays(expiry, now) : 999;
     
     const isExpired = company.status === 'expired' || (expiry !== null && daysRemaining < 0);
-    const showWarning = !isExpired && expiry !== null && daysRemaining <= 3;
+    const isTrial = company.subscriptionType === 'trial';
+
+    // ذكاء التنبيه:
+    // 1. إذا كانت فترة تجربة: اظهر التنبيه دوماً طالما لم تنتهي.
+    // 2. إذا كان اشتراك مدفوع: اظهر التنبيه قبل 5 أيام من الانتهاء.
+    let showWarning = false;
+    if (!isExpired) {
+      if (isTrial) {
+        showWarning = true; // تظهر كل يوم في الـ Trial
+      } else if (expiry !== null && daysRemaining <= 5) {
+        showWarning = true; // تظهر قبل 5 أيام في الاشتراك الرسمي
+      }
+    }
 
     return {
       isExpired,
-      isTrial: company.subscriptionType === 'trial',
+      isTrial,
       daysRemaining: Math.max(0, daysRemaining),
       showWarning,
       status: company.status
