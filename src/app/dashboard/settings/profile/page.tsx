@@ -13,8 +13,9 @@ import {
 } from "lucide-react";
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
-import { useFirestore } from '@/firebase';
+import { useFirestore, useAuth } from '@/firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { updateProfile } from 'firebase/auth';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { toast } from '@/hooks/use-toast';
@@ -26,6 +27,7 @@ export default function ProfilePage() {
   const { user, globalUser, loading: authLoading } = useAuthContext();
   const { t, lang, dir } = useLanguage();
   const db = useFirestore();
+  const auth = useAuth();
   const router = useRouter();
   const isRtl = lang === 'ar';
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -71,8 +73,8 @@ export default function ProfilePage() {
     reader.readAsDataURL(file);
   };
 
-  const handleSave = () => {
-    if (!db || !user?.uid || !globalUser?.companyId) return;
+  const handleSave = async () => {
+    if (!db || !user?.uid || !globalUser?.companyId || !auth?.currentUser) return;
     setSaving(true);
 
     const globalUserRef = doc(db, 'global_users', user.uid);
@@ -92,31 +94,43 @@ export default function ProfilePage() {
       updatedAt: serverTimestamp(),
     };
 
-    // تنفيذ التحديثات بنمط غير محظور (Non-blocking mutations)
-    updateDoc(globalUserRef, globalPayload)
-      .catch(async (serverError) => {
-        const permissionError = new FirestorePermissionError({
-          path: globalUserRef.path,
-          operation: 'update',
-          requestResourceData: globalPayload
-        } satisfies SecurityRuleContext);
-        errorEmitter.emit('permission-error', permissionError);
+    try {
+      // 1. تحديث ملف Auth الأساسي لضمان اختفاء "1004" من الذاكرة الفورية
+      await updateProfile(auth.currentUser, { 
+        displayName: formData.fullName,
+        photoURL: formData.photoUrl 
       });
 
-    updateDoc(tenantUserRef, tenantPayload)
-      .then(() => {
-        toast({ title: t('saved') });
-        setSaving(false);
-      })
-      .catch(async (serverError) => {
-        const permissionError = new FirestorePermissionError({
-          path: tenantUserRef.path,
-          operation: 'update',
-          requestResourceData: tenantPayload
-        } satisfies SecurityRuleContext);
-        errorEmitter.emit('permission-error', permissionError);
-        setSaving(false);
-      });
+      // 2. تحديث السجلات في Firestore
+      updateDoc(globalUserRef, globalPayload)
+        .catch(async (serverError) => {
+          const permissionError = new FirestorePermissionError({
+            path: globalUserRef.path,
+            operation: 'update',
+            requestResourceData: globalPayload
+          } satisfies SecurityRuleContext);
+          errorEmitter.emit('permission-error', permissionError);
+        });
+
+      updateDoc(tenantUserRef, tenantPayload)
+        .then(() => {
+          toast({ title: t('saved') });
+          setSaving(false);
+        })
+        .catch(async (serverError) => {
+          const permissionError = new FirestorePermissionError({
+            path: tenantUserRef.path,
+            operation: 'update',
+            requestResourceData: tenantPayload
+          } satisfies SecurityRuleContext);
+          errorEmitter.emit('permission-error', permissionError);
+          setSaving(false);
+        });
+
+    } catch (e) {
+      toast({ variant: "destructive", title: t('error') });
+      setSaving(false);
+    }
   };
 
   if (authLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
@@ -206,7 +220,7 @@ export default function ProfilePage() {
                           <Input 
                             value={formData.username} 
                             readOnly={!isAdmin}
-                            onChange={e => isAdmin && setFormData({...formData, username: e.target.value})}
+                            onChange={e => setFormData({...formData, username: e.target.value})}
                             className={cn(
                               "h-12 rounded-xl border-2 font-mono font-bold",
                               !isAdmin ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed" : "bg-white"

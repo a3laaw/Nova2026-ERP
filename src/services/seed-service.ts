@@ -27,12 +27,15 @@ export class SeedService {
   async runSeed() {
     const batch = writeBatch(this.db);
     
-    // 1. الأقسام والوظائف (إضافة ألوان للأقسام)
+    // 1. الأقسام والوظائف (ربط سيادي مع الألوان)
+    const deptRefs: Record<string, string> = {};
     for (const dept of SEED_DATA.departments) {
       const deptRef = doc(collection(this.db, paths.departments(this.companyId)));
+      deptRefs[dept.code] = deptRef.id;
       batch.set(deptRef, {
-        ...dept,
-        color: dept.code === 'ARCH' ? '#F57C00' : '#2563eb', // ألوان افتراضية
+        name: dept.name,
+        nameEn: dept.nameEn,
+        color: dept.code === 'ARCH' ? '#F57C00' : dept.code === 'CIVIL' ? '#2563eb' : '#94a3b8',
         isActive: true,
         companyId: this.companyId,
         createdAt: serverTimestamp(),
@@ -130,12 +133,19 @@ export class SeedService {
           for (const stage of sub.technicalStages) {
             const stageRef = doc(collection(this.db, paths.technicalStages(this.companyId, actRef.id, srvRef.id, subRef.id)));
             stageRefs[stage.code] = stageRef.id;
+            
+            // ربط تلقائي للأقسام بناءً على الكود
+            const allowedDepts = [];
+            if (act.code === 'CONSULTING') allowedDepts.push(deptRefs['ARCH']);
+            if (act.code === 'CONSTRUCTION') allowedDepts.push(deptRefs['CIVIL']);
+
             batch.set(stageRef, {
               ...stage,
               activityTypeId: actRef.id,
               serviceId: srvRef.id,
               subServiceId: subRef.id,
               fullPathName: `${act.name} > ${srv.name}`,
+              allowedDepartmentIds: allowedDepts,
               isActive: true,
               companyId: this.companyId,
               createdAt: serverTimestamp(),
@@ -169,17 +179,15 @@ export class SeedService {
       nodeRole: 'group',
       isExecutable: false,
       isActive: true,
-      allowedActivityTypeIds: [activityRefs['CONSULTING'] || ''],
-      allowedActivityTypeNames: ['استشارات هندسية'],
-      allowedServiceIds: [serviceRefs['RESIDENTIAL'] || ''],
-      allowedServiceNames: ['بناء وتصميم سكني'],
+      allowedActivityTypeIds: [activityRefs['CONSTRUCTION'] || ''],
+      allowedActivityTypeNames: ['أعمال المقاولات والإنشاءات'],
       order: 1,
       companyId: this.companyId,
       createdAt: serverTimestamp()
     } as BOQReferenceNode);
 
     const excavationRef = doc(collection(this.db, paths.boqReferenceNodes(this.companyId)));
-    const excavationStageId = stageRefs['FILE-OPEN'] || '';
+    const excavationStageId = stageRefs['EXCAVATION'] || '';
 
     batch.set(excavationRef, {
       code: 'EXC_STR_01',
@@ -213,24 +221,13 @@ export class SeedService {
     await refListService.seedAllLists('SYSTEM_ADMIN');
   }
 
-  /**
-   * تطهير سجل المواعيد نهائياً (Absolute Appointments Purge).
-   */
   async purgeAllAppointments() {
     const q = query(collection(this.db, paths.appointments(this.companyId)));
     const snap = await getDocs(q);
-    
     if (snap.empty) return;
-
     const batch = writeBatch(this.db);
     snap.docs.forEach(d => batch.delete(d.ref));
-    
-    return batch.commit().catch(err => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: 'appointments_purge', operation: 'delete'
-      }));
-      throw err;
-    });
+    return batch.commit();
   }
 
   async isSystemSeeded() {
