@@ -111,7 +111,6 @@ export default function DeveloperDashboard() {
       ...editingCompany,
       subscriptionType: type,
       expiryDate: newExpiry,
-      // إذا كان فك تجميد تلقائي عند اختيار خطة
       status: (editingCompany.status === 'suspended' || editingCompany.status === 'expired') ? 'active' : editingCompany.status
     });
   };
@@ -127,7 +126,6 @@ export default function DeveloperDashboard() {
       
       let finalStatus = editingCompany.status;
 
-      // تحديث تلقائي للحالة بناءً على التاريخ ما لم تكن مجمدة إدارياً
       if (finalStatus !== 'suspended') {
           finalStatus = isAfter(expiry, now) ? 'active' : 'expired';
       }
@@ -332,7 +330,7 @@ export default function DeveloperDashboard() {
       </Tabs>
 
       <Dialog open={!!editingCompany} onOpenChange={(v) => { if(!v) setEditingCompany(null); }}>
-         <DialogContent className="rounded-[3rem] max-w-2xl p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
+         <DialogContent className="rounded-[3rem] max-w-2xl p-0 overflow-hidden border-0 shadow-3xl bg-white flex flex-col max-h-[95vh]" dir={dir}>
             <div className="bg-slate-50 p-10 text-slate-900 text-start border-b shrink-0">
                <DialogTitle className="text-3xl font-black font-headline flex items-center gap-4">
                   <div className="h-12 w-12 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg"><Building2 className="h-6 w-6" /></div> 
@@ -341,7 +339,7 @@ export default function DeveloperDashboard() {
                <p className="text-slate-400 font-bold mt-2 text-lg ps-16">{editingCompany?.name}</p>
             </div>
 
-            <div className="p-10 space-y-10 text-start bg-white">
+            <div className="p-10 space-y-10 text-start bg-white flex-1 overflow-y-auto scrollbar-hide">
                
                <div className="flex items-center justify-between p-8 bg-slate-50 rounded-[2.5rem] border-2 border-white shadow-inner">
                   <div className="text-start">
