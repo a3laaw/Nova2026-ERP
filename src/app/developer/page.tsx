@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -104,11 +104,14 @@ export default function DeveloperDashboard() {
     try {
       const ref = doc(db, 'companies', editingCompany.id);
       
-      // إذا تم تمديد التاريخ والشركة كانت "منتهية"، نقوم بتنشيطها تلقائياً
-      let finalStatus = editingCompany.status || 'active';
       const today = new Date();
-      if (editingCompany.expiryDate && new Date(editingCompany.expiryDate) > today && finalStatus === 'expired') {
-          finalStatus = 'active';
+      const expiry = editingCompany.expiryDate ? new Date(editingCompany.expiryDate) : today;
+      
+      let finalStatus = editingCompany.status;
+
+      // بروتوكول التنشيط التلقائي: الحالة تتبع التاريخ المختار دائماً ما لم تكن "مجمدة إدارياً"
+      if (finalStatus !== 'suspended' && finalStatus !== 'inactive') {
+          finalStatus = expiry > today ? 'active' : 'expired';
       }
 
       const updates = {
@@ -127,7 +130,12 @@ export default function DeveloperDashboard() {
          await updateDoc(globalRef, { isActive: finalStatus === 'active' });
       }
 
-      toast({ title: isRtl ? "تم تحديث بيانات المنشأة وتجديد الاشتراك" : "Subscription Updated & Renewed" });
+      toast({ 
+        title: isRtl ? "تم تطبيق التغييرات السيادية" : "Changes Applied",
+        description: isRtl 
+          ? `حالة المنشأة الآن: ${finalStatus.toUpperCase()} (تلقائي)` 
+          : `Status is now ${finalStatus.toUpperCase()} (Auto)`
+      });
       setEditingCompany(null);
     } catch (e: any) {
       toast({ variant: "destructive", title: "Update Failed", description: e.message });
@@ -348,10 +356,15 @@ export default function DeveloperDashboard() {
                            <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="rounded-2xl border-0 shadow-2xl">
-                           <SelectItem value="active" className="font-bold py-3 text-emerald-600">Active (نشط ومفعل)</SelectItem>
-                           <SelectItem value="suspended" className="font-bold py-3 text-amber-600">Suspended (إيقاف مؤقت)</SelectItem>
-                           <SelectItem value="expired" className="font-bold py-3 text-rose-600">Expired (منتهي الصلاحية)</SelectItem>
-                           <SelectItem value="inactive" className="font-bold py-3 text-slate-400">Inactive (غير نشط)</SelectItem>
+                           <SelectItem value="active" className="font-bold py-3 text-emerald-600">
+                             {isRtl ? 'تنشيط (تلقائي حسب التاريخ)' : 'Normal (Auto-Sync)'}
+                           </SelectItem>
+                           <SelectItem value="suspended" className="font-bold py-3 text-amber-600">
+                             {isRtl ? 'تجميد إداري (يدوي)' : 'Suspended (Administrative)'}
+                           </SelectItem>
+                           <SelectItem value="inactive" className="font-bold py-3 text-slate-400">
+                             {isRtl ? 'غير مفعل' : 'Inactive'}
+                           </SelectItem>
                         </SelectContent>
                      </Select>
                   </div>
@@ -398,34 +411,19 @@ export default function DeveloperDashboard() {
                <div className="p-8 bg-slate-50 rounded-[2rem] border-2 border-dashed border-primary/20 space-y-4">
                   <div className="flex items-center gap-4 text-primary">
                      <CreditCard className="h-6 w-6" />
-                     <h5 className="font-black text-sm uppercase tracking-widest">{isRtl ? 'تحديث السجل المالي' : 'Financial Ledger Update'}</h5>
+                     <h5 className="font-black text-sm uppercase tracking-widest">{isRtl ? 'محرك التجديد الآلي' : 'Auto-Renewal Engine'}</h5>
                   </div>
                   <p className="text-[11px] font-bold text-slate-500 leading-relaxed italic">
-                     {isRtl ? 'عند استلام الدفعات، قم بتحديث تاريخ الانتهاء المختار ونوع الاشتراك يدوياً. سيقوم النظام تلقائياً بفتح الوصول للمنشأة فور حفظ التغييرات إذا كان التاريخ مستقبلياً.' : 'Update chosen expiry date manually. Access will be granted automatically if the date is in the future.'}
+                     {isRtl 
+                       ? 'تنبيه: سيقوم النظام تلقائياً بتحديث حالة المنشأة إلى (نشط) فور اختيارك لتاريخ مستقبلي والضغط على حفظ، ما لم تكن المنشأة تحت التجميد الإداري اليدوي.' 
+                       : 'Note: Status will automatically flip to ACTIVE if a future date is selected and saved, provided no manual suspension is active.'}
                   </p>
-               </div>
-
-               <div className="flex gap-4">
-                  <Button 
-                    variant="outline" 
-                    className="flex-1 h-14 rounded-2xl border-2 font-bold text-slate-500 hover:bg-slate-50"
-                    onClick={() => setEditingCompany({...editingCompany, status: 'suspended'})}
-                  >
-                     <Lock className="me-2 h-4 w-4" /> {isRtl ? 'تجميد فوري' : 'Freeze Access'}
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="flex-1 h-14 rounded-2xl border-2 font-bold text-emerald-600 hover:bg-emerald-50 border-emerald-100"
-                    onClick={() => setEditingCompany({...editingCompany, status: 'active'})}
-                  >
-                     <Unlock className="me-2 h-4 w-4" /> {isRtl ? 'تنشيط فوري' : 'Unfreeze'}
-                  </Button>
                </div>
             </div>
             
             <DialogFooter className="p-10 bg-slate-50 border-t flex flex-row gap-4 shrink-0">
                <Button variant="outline" onClick={() => setEditingCompany(null)} className="flex-1 h-16 rounded-2xl border-2 font-black text-lg bg-white">إلغاء</Button>
-               <Button onClick={handleUpdateSubscription} disabled={processingId === 'saving'} className="flex-[2] h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-2xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all border-b-8 border-orange-700">
+               <Button onClick={handleUpdateSubscription} disabled={processingId === 'saving'} className="flex-[2] h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all border-b-8 border-orange-700">
                   {processingId === 'saving' ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="me-2 h-6 w-6" />}
                   حفظ وتطبيق التغييرات السيادية
                </Button>
