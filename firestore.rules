@@ -55,14 +55,18 @@ service cloud.firestore {
     
     match /companies/{companyId} {
       allow read: if belongsToCompany(companyId);
-      // تصحيح سيادي: السماح للمدير والمطور بتعديل بيانات الشركة الأساسية
-      allow write: if isAdmin(companyId);
+      // السماح بإنشاء الشركة إذا كان المستخدم هو المالك، وتحديثها للمدير والمطور
+      allow create: if isAuthenticated() && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if isAdmin(companyId) || isDeveloper();
+      allow delete: if isDeveloper();
       
       // قواعد مستخدمي الشركة (Authentication metadata)
       match /users/{uid} {
         allow read: if belongsToCompany(companyId);
+        // السماح للمستخدم بإنشاء سجله الخاص (عند التسجيل) أو للمدير بإدارة الجميع
+        allow create: if isAuthenticated() && (request.auth.uid == uid || isAdmin(companyId));
         allow update: if isAdmin(companyId) || (isAuthenticated() && request.auth.uid == uid);
-        allow create, delete: if isAdmin(companyId);
+        allow delete: if isAdmin(companyId);
       }
 
       // قواعد الموظفين (رؤية الجميع وتعديل النفس للمدير)
