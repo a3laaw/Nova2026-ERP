@@ -12,7 +12,7 @@ import { collection, query, orderBy, doc, updateDoc, serverTimestamp, writeBatch
 import { 
   Loader2, CheckCircle, ShieldAlert, Ban, RefreshCcw, 
   Edit3, Save, Users, Zap, HardHat, Building2, 
-  CalendarClock, Timer, ShieldCheck, AlertTriangle
+  CalendarClock, Timer, ShieldCheck, AlertTriangle, X
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useLanguage } from '@/context/language-context';
@@ -204,7 +204,7 @@ export default function DeveloperDashboard() {
             <div className="p-8 space-y-6 text-start bg-white">
                <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase text-slate-400">حالة المنشأة</Label>
-                  <Select value={editingCompany?.status} onValueChange={v => setEditingCompany({...editingCompany, status: v})}>
+                  <Select value={editingCompany?.status || ''} onValueChange={v => setEditingCompany({...editingCompany, status: v})}>
                      <SelectTrigger className="h-12 border-2 rounded-xl"><SelectValue /></SelectTrigger>
                      <SelectContent>
                         <SelectItem value="active">Active</SelectItem>
@@ -215,11 +215,21 @@ export default function DeveloperDashboard() {
                </div>
                <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase text-slate-400">تاريخ الانتهاء</Label>
-                  <Input type="date" value={editingCompany?.expiryDate?.split('T')[0]} onChange={e => setEditingCompany({...editingCompany, expiryDate: new Date(e.target.value).toISOString()})} className="h-12 border-2 rounded-xl font-black" />
+                  <Input 
+                    type="date" 
+                    value={editingCompany?.expiryDate?.split('T')[0] || ''} 
+                    onChange={e => setEditingCompany({...editingCompany, expiryDate: new Date(e.target.value).toISOString()})} 
+                    className="h-12 border-2 rounded-xl font-black" 
+                  />
                </div>
                <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase text-slate-400">سعة المستخدمين</Label>
-                  <Input type="number" value={editingCompany?.maxUsers} onChange={e => setEditingCompany({...editingCompany, maxUsers: e.target.value})} className="h-12 border-2 rounded-xl font-black" />
+                  <Input 
+                    type="number" 
+                    value={editingCompany?.maxUsers || 0} 
+                    onChange={e => setEditingCompany({...editingCompany, maxUsers: e.target.value})} 
+                    className="h-12 border-2 rounded-xl font-black" 
+                  />
                </div>
             </div>
             <DialogFooter className="p-8 bg-slate-50 border-t">
