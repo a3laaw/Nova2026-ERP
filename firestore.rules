@@ -80,7 +80,7 @@ service cloud.firestore {
       }
     }
 
-    // دعم استعلامات الـ Collection Group للمطور
+    // دعم استعلامات الـ Collection Group للمطور والمدير
     match /{path=**}/variations/{voId} {
       allow read, list: if isAuthenticated() && (isDeveloper() || (resource != null && belongsToCompany(resource.data.companyId)));
     }

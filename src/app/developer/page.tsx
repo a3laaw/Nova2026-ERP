@@ -34,7 +34,7 @@ export default function DeveloperDashboard() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [editingCompany, setEditingCompany] = useState<any>(null);
 
-  // استخدام useMemo لتثبيت مرجع الاستعلام ومنع الـ Infinite Loops
+  // تم إعادة تفعيل الفرز ليعمل مع الفهارس اليدوية (Index Motion)
   const companiesQuery = useMemo(() => 
     (db && globalUser?.isDeveloper) ? query(collection(db, 'companies'), orderBy('createdAt', 'desc')) : null, 
   [db, globalUser?.isDeveloper]);
@@ -112,7 +112,7 @@ export default function DeveloperDashboard() {
        <div className="h-[60vh] flex flex-col items-center justify-center space-y-4 text-center p-10">
           <ShieldAlert className="h-16 w-16 text-rose-500" />
           <h2 className="text-2xl font-black">الدخول محجوب</h2>
-          <p className="text-slate-500 font-bold max-w-sm">يرجى تسجيل الدخول كمالك للنظام (admin@novaflow.com) للوصول لهذه اللوحة.</p>
+          <p className="text-slate-500 font-bold max-sm">يرجى تسجيل الدخول كمالك للنظام (admin@novaflow.com) للوصول لهذه اللوحة.</p>
        </div>
     );
   }
