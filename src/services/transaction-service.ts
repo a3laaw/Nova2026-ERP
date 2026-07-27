@@ -115,7 +115,7 @@ export class TransactionService {
     batch.set(timelineRef, {
       transactionId,
       type: 'system',
-      content: `تم فتح المعاملة الفنية بنجاح. بانتظار هندسة ميزانية المشروع (BOQ Setup).`,
+      content: `[إجراء نظام] تم فتح المعاملة الفنية بنجاح. المهندس المسؤول المعتمد: ${data.assignedEngineerName}.`,
       userId,
       userName,
       companyId: this.companyId,
@@ -202,7 +202,7 @@ export class TransactionService {
       appointmentId: appointmentId || null,
       technicalStageId: stageData.technicalStageId,
       type: 'revision_logged',
-      content: `دورة تعديل تصميم: تم تسجيل المراجعة رقم (${nextRev}) للمرحلة: ${stageData.name}`,
+      content: `[مراجعة #${nextRev}] تم تسجيل دورة تعديل مخطط للمرحلة: ${stageData.name}`,
       notes, 
       userId,
       userName,
@@ -214,7 +214,7 @@ export class TransactionService {
        const commentService = new CommentService(this.db, this.companyId, this.permissions);
        await commentService.addTransactionComment(
           transactionId,
-          `[مراجعة #${nextRev}] ${notes}`,
+          `[دورة تعديل #${nextRev}] ${notes}`,
           userId,
           userName,
           stageId,
@@ -253,7 +253,7 @@ export class TransactionService {
       appointmentId: appointmentId || null,
       technicalStageId: stageData.technicalStageId,
       type: 'stage_start',
-      content: `تم بدء العمل في المرحلة الفنية: ${stageData.name}`,
+      content: `[مباشرة ميدانية] تم بدء العمل في المرحلة: ${stageData.name}`,
       userId,
       userName,
       isArchived: false,
@@ -328,8 +328,8 @@ export class TransactionService {
       technicalStageId: stageData.technicalStageId,
       type: 'stage_complete',
       content: force 
-        ? `تنبيه: تم إغلاق المرحلة إجبارياً (بواسطة المدير): ${stageData.name}`
-        : `تم إنجاز المرحلة بنجاح: ${stageData.name}`,
+        ? `[اعتماد إداري] تم إغلاق المرحلة إجبارياً: ${stageData.name}`
+        : `[إنجاز فني] تم إتمام العمل في المرحلة بنجاح: ${stageData.name}`,
       userId,
       userName,
       isArchived: false,
@@ -342,9 +342,9 @@ export class TransactionService {
       batch.set(autoStartLogRef, {
         transactionId,
         type: 'stage_start',
-        content: `[تنشيط تلقائي] تم بدء العمل في المرحلة التالية (${autoStartedStageName}) فور إنجاز سابقتها لضمان استمرارية التدفق.`,
+        content: `[تنشيط تلقائي] تم تفعيل المرحلة التالية (${autoStartedStageName}) فور إنجاز سابقتها لضمان استمرارية التدفق الميداني.`,
         userId: 'SYSTEM',
-        userName: 'NovaFlow Auto',
+        userName: 'محرك NovaFlow الذكي',
         isArchived: false,
         companyId: this.companyId,
         createdAt: serverTimestamp()
@@ -412,7 +412,7 @@ export class TransactionService {
       stageId,
       technicalStageId: stageData.technicalStageId,
       type: 'stage_reopen',
-      content: `إجراء إداري: إعادة فتح مرحلة "${stageData.name}" للمراجعة. تم تجميد كافة المراحل اللاحقة وتطهير السجلات المرتبطة لضمان دقة التنفيذ.`,
+      content: `[إجراء استثنائي] إعادة فتح مرحلة "${stageData.name}" وتجميد المسار اللاحق وتطهير السجلات لضمان سلامة التنفيذ.`,
       userId,
       userName,
       isArchived: false,
