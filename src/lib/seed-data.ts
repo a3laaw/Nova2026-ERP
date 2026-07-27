@@ -1,5 +1,7 @@
+
 /**
  * @fileOverview البيانات المرجعية الأساسية لنظام Nova ERP (النموذج الهندسي الكويتي).
+ * تم تحديث الهيكل ليشمل نشاط "تصميم وإنشاء" كمسار هجين متكامل.
  */
 
 export const SEED_DATA = {
@@ -7,8 +9,8 @@ export const SEED_DATA = {
   departments: [
     {
       code: 'ARCH',
-      name: 'القسم المعماري',
-      nameEn: 'Architectural Dept',
+      name: 'القسم المعماري والتصميم',
+      nameEn: 'Architectural & Design Dept',
       order: 1,
       jobs: [
         { code: 'S-ARCH', name: 'مهندس معماري أول', nameEn: 'Senior Architect', order: 1 },
@@ -17,8 +19,8 @@ export const SEED_DATA = {
     },
     {
       code: 'CIVIL',
-      name: 'القسم الإنشائي (ميداني)',
-      nameEn: 'Civil & Site Dept',
+      name: 'القسم الإنشائي والميداني',
+      nameEn: 'Civil & Construction Dept',
       order: 2,
       jobs: [
         { code: 'SITE-ENG', name: 'مهندس موقع', nameEn: 'Site Engineer', order: 1 },
@@ -109,6 +111,34 @@ export const SEED_DATA = {
                 { code: 'FOOTINGS', name: 'القواعد والأساسات', nameEn: 'Footings & Foundations', order: 3, isTimed: true, timeTargetDays: 7 },
                 { code: 'COLUMNS-G', name: 'أعمدة الدور الأرضي', nameEn: 'Ground Floor Columns', order: 4, isTimed: true, timeTargetDays: 5 },
                 { code: 'SLAB-G', name: 'سقف الدور الأرضي', nameEn: 'Ground Floor Slab', order: 5, isTimed: true, timeTargetDays: 10 },
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      code: 'DESIGN_BUILD',
+      name: 'تصميم وإنشاء (D&B)',
+      nameEn: 'Design & Build',
+      order: 3,
+      services: [
+        {
+          code: 'TURNKEY_VILLA',
+          name: 'فيلا تسليم مفتاح',
+          nameEn: 'Turnkey Villa Project',
+          order: 1,
+          subServices: [
+            {
+              code: 'DB-VILLA-01',
+              name: 'دورة التصميم والتنفيذ المتكاملة',
+              nameEn: 'Integrated Design-Build Cycle',
+              order: 1,
+              technicalStages: [
+                { code: 'CONCEPT', name: 'دراسة الفكرة والميزانية', nameEn: 'Concept & Budget', order: 1, isTimed: true, timeTargetDays: 7 },
+                { code: 'WORKING_DWG', name: 'المخططات التنفيذية', nameEn: 'Working Drawings', order: 2, isTimed: true, timeTargetDays: 21 },
+                { code: 'MOBILIZATION', name: 'تجهيز الموقع والمباشرة', nameEn: 'Site Mobilization', order: 3, isTimed: true, timeTargetDays: 5 },
+                { code: 'STRUCTURE_START', name: 'بدء أعمال الهيكل', nameEn: 'Structure Commencement', order: 4, isTimed: true, timeTargetDays: 120 },
               ]
             }
           ]

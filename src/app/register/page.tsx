@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -40,6 +41,7 @@ export default function RegisterPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const uid = userCredential.user.uid;
 
+      // تحديث ملف Auth الأساسي بالاسم الكامل فوراً
       await updateProfile(userCredential.user, { displayName: formData.contactName });
 
       const batch = writeBatch(db);
@@ -48,6 +50,7 @@ export default function RegisterPage() {
       const trialEndDate = new Date();
       trialEndDate.setDate(trialEndDate.getDate() + 14);
 
+      // 1. تسجيل طلب الشركة
       const requestRef = doc(collection(db, 'company_requests'));
       batch.set(requestRef, {
         companyName: formData.companyName,
@@ -58,6 +61,7 @@ export default function RegisterPage() {
         createdAt: serverTimestamp(),
       });
 
+      // 2. إنشاء مستند الشركة (الربط بالنشاط)
       const companyRef = doc(db, 'companies', companyId);
       batch.set(companyRef, {
         name: formData.companyName,
@@ -65,28 +69,35 @@ export default function RegisterPage() {
         createdAt: serverTimestamp(),
         trialEndsAt: trialEndDate.toISOString(),
         maxUsers: 5,
-        activity: formData.activity,
+        activity: formData.activity, // الربط السيادي بنوع النشاط
         ownerUid: uid
       });
 
+      // 3. إنشاء السجل العالمي للمدير (Identity Sovereignty)
       const globalUserRef = doc(db, 'global_users', uid);
       batch.set(globalUserRef, {
         companyId,
         role: 'admin',
-        fullName: formData.contactName, // تخزين الاسم الكامل السيادي
+        roleCode: 'ADMIN',
+        fullName: formData.contactName, // الاسم الكامل المعتمد
         username: formData.username || formData.email.split('@')[0],
         isDeveloper: false,
         email: formData.email,
+        activity: formData.activity, // ربط المستخدم بنشاط المنشأة للفلترة التلقائية
         isActive: true,
         updatedAt: serverTimestamp()
       });
 
+      // 4. إنشاء السجل المحلي داخل المنشأة
       const tenantUserRef = doc(db, 'companies', companyId, 'users', uid);
       batch.set(tenantUserRef, {
+        id: uid,
         displayName: formData.contactName,
         email: formData.email,
+        username: formData.username || formData.email.split('@')[0],
         joinedAt: serverTimestamp(),
         role: 'admin',
+        roleCode: 'ADMIN',
         isActive: true
       });
 
@@ -159,7 +170,7 @@ export default function RegisterPage() {
                 />
               </div>
               <div className="space-y-2 text-start">
-                <Label className="font-black text-xs text-slate-400 uppercase tracking-widest">نوع النشاط</Label>
+                <Label className="font-black text-xs text-slate-400 uppercase tracking-widest">نوع النشاط الرئيسي</Label>
                 <Select value={formData.activity} onValueChange={(val) => setFormData({...formData, activity: val})}>
                   <SelectTrigger className="h-14 rounded-2xl border-2 font-black text-lg">
                     <SelectValue />
@@ -167,6 +178,7 @@ export default function RegisterPage() {
                   <SelectContent className="rounded-2xl border-0 shadow-2xl">
                     <SelectItem value="construction" className="font-bold">مقاولات وإنشاءات</SelectItem>
                     <SelectItem value="consulting" className="font-bold">استشارات هندسية</SelectItem>
+                    <SelectItem value="design_build" className="font-bold text-primary">تصميم وإنشاء (D&B)</SelectItem>
                     <SelectItem value="general" className="font-bold">تجارة عامة</SelectItem>
                   </SelectContent>
                 </Select>
@@ -181,7 +193,7 @@ export default function RegisterPage() {
                 />
               </div>
               <div className="space-y-2 text-start">
-                <Label className="font-black text-xs text-slate-400 uppercase tracking-widest">اسم المستخدم (Login ID)</Label>
+                <Label className="font-black text-xs text-slate-400 uppercase tracking-widest">معرّف الدخول (Login ID)</Label>
                 <Input 
                   value={formData.username} 
                   onChange={(e) => setFormData({...formData, username: e.target.value})} 
@@ -224,7 +236,7 @@ export default function RegisterPage() {
             </Button>
           </form>
         </CardContent>
-        <CardFooter className="pb-12 pt-4 justify-center flex-col space-y-4">
+        <CardFooter className="pb-12 pt-4 justify-center flex flex-col space-y-4">
           <Button variant="link" onClick={() => router.push('/login')} className="text-primary font-black text-lg">
             لديك حساب شركة بالفعل؟ سجل دخولك <ArrowRight className="mr-2 h-5 w-5" />
           </Button>

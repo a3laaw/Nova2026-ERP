@@ -26,10 +26,20 @@ export default function DeveloperDashboard() {
   const isRtl = lang === 'ar';
   
   const companiesQuery = db ? query(collection(db, 'companies'), orderBy('createdAt', 'desc')) : null;
-  const { data: companies, loading: companiesLoading } = useCollection(companiesQuery);
+  const { data: companies, loading: companiesLoading } = useCollection<any>(companiesQuery);
 
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [editingCompany, setEditingCompany] = useState<any>(null);
+
+  const getActivityLabel = (code: string) => {
+    const map: Record<string, string> = {
+      'construction': isRtl ? 'مقاولات وإنشاءات' : 'Construction',
+      'consulting': isRtl ? 'استشارات هندسية' : 'Consulting',
+      'design_build': isRtl ? 'تصميم وإنشاء' : 'Design & Build',
+      'general': isRtl ? 'تجارة عامة' : 'General Trading'
+    };
+    return map[code] || code;
+  };
 
   const exportToExcel = () => {
     if (!companies || companies.length === 0) return;
@@ -38,7 +48,7 @@ export default function DeveloperDashboard() {
     const rows = companies.map(c => [
       c.name,
       c.status,
-      c.activity,
+      getActivityLabel(c.activity),
       c.maxUsers || 5,
       c.trialEndsAt ? c.trialEndsAt.split('T')[0] : 'N/A',
       c.createdAt?.toDate().toLocaleDateString() || 'N/A'
@@ -200,7 +210,7 @@ export default function DeveloperDashboard() {
                       </div>
                     </TableCell>
                     <TableCell className="text-start">
-                      <Badge variant="outline" className="text-[10px]">{comp.activity}</Badge>
+                      <Badge variant="outline" className="text-[10px] font-black uppercase text-primary border-primary/20">{getActivityLabel(comp.activity)}</Badge>
                     </TableCell>
                     <TableCell className="font-mono text-xs text-start">
                       {comp.trialEndsAt?.split('T')[0]}
@@ -234,6 +244,18 @@ export default function DeveloperDashboard() {
                                   placeholder="مثال: شركة المقاولات الحديثة"
                                   onChange={e => setEditingCompany({...editingCompany, name: e.target.value})} 
                                 />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>النشاط الرئيسي</Label>
+                                <Select value={editingCompany?.activity} onValueChange={v => setEditingCompany({...editingCompany, activity: v})}>
+                                   <SelectTrigger><SelectValue /></SelectTrigger>
+                                   <SelectContent>
+                                      <SelectItem value="construction">مقاولات وإنشاءات</SelectItem>
+                                      <SelectItem value="consulting">استشارات هندسية</SelectItem>
+                                      <SelectItem value="design_build">تصميم وإنشاء</SelectItem>
+                                      <SelectItem value="general">تجارة عامة</SelectItem>
+                                   </SelectContent>
+                                </Select>
                               </div>
                               <div className="space-y-2">
                                 <Label>الحد الأقصى للمستخدمين</Label>
