@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -328,7 +329,7 @@ export class TransactionService {
       technicalStageId: stageData.technicalStageId,
       type: 'stage_complete',
       content: force 
-        ? `[اعتماد إداري] تم إغلاق المرحلة إجبارياً: ${stageData.name}`
+        ? `[اعتماد نظام] تم إغلاق المرحلة إجبارياً: ${stageData.name}`
         : `[إنجاز فني] تم إتمام العمل في المرحلة بنجاح: ${stageData.name}`,
       userId,
       userName,
