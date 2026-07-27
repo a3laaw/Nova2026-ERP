@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
@@ -11,21 +12,20 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
  */
 export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
   const [data, setData] = useState<T[]>([]);
-  const [loading, setLoading] = useState(!!query);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
   
-  // مراجع لتتبع الحالة والاشتراك النشط بشكل سيادي
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const activeQueryRef = useRef<Query<any, any> | null>(null);
-  const lastDataRef = useRef<string>(""); // تخزين البيانات بصيغة نصية للمقارنة العميقة
+  const lastDataRef = useRef<string>("");
 
   useEffect(() => {
-    // بروتوكول الاستقرار: إذا كان الاستعلام منطقياً هو نفسه، لا نقم بإعادة الاشتراك
-    if (query && activeQueryRef.current && queryEqual(query, activeQueryRef.current)) {
+    const isSameQuery = (query && activeQueryRef.current && queryEqual(query, activeQueryRef.current)) || (!query && !activeQueryRef.current);
+    
+    if (isSameQuery && !loading) {
       return;
     }
 
-    // تنظيف أي اشتراك سابق فوراً قبل البدء بالجديد
     if (unsubscribeRef.current) {
       unsubscribeRef.current();
       unsubscribeRef.current = null;
@@ -44,7 +44,6 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
 
     let isMounted = true;
 
-    // بدء الاشتراك الفوري مع حماية المحاذاة الداخلية لـ Firestore
     const unsubscribe = onSnapshot(
       query,
       (snapshot) => {
@@ -55,7 +54,6 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
           ...doc.data(),
         })) as unknown as T[];
         
-        // مقارنة عميقة لمنع حلقة التحديث المفرطة (Infinite Loop Prevention)
         const dataStr = JSON.stringify(items);
         if (dataStr !== lastDataRef.current) {
           lastDataRef.current = dataStr;
@@ -87,7 +85,6 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
         unsubscribeRef.current();
         unsubscribeRef.current = null;
       }
-      // ملاحظة سيادية: لا نقوم بتصفير activeQueryRef هنا للسماح بالمقارنة عبر دورات التصيير
     };
   }, [query]);
 

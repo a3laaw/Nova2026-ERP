@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
@@ -11,16 +12,17 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
  */
 export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | null) {
   const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(!!docRef);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
   
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const activeRef = useRef<DocumentReference<any, any> | null>(null);
-  const lastDataRef = useRef<string>(""); // للمقارنة العميقة
+  const lastDataRef = useRef<string>("");
 
   useEffect(() => {
-    // التحقق من المطابقة المرجعية والمنطقية للمستند
-    if (docRef && activeRef.current && refEqual(docRef, activeRef.current)) {
+    const isSameRef = (docRef && activeRef.current && refEqual(docRef, activeRef.current)) || (!docRef && !activeRef.current);
+    
+    if (isSameRef && !loading) {
       return;
     }
 
@@ -49,7 +51,6 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | n
         
         const docData = snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as T) : null;
         
-        // منع التحديثات المتكررة لنفس البيانات (Deep Equality Guard)
         const dataStr = JSON.stringify(docData);
         if (dataStr !== lastDataRef.current) {
           lastDataRef.current = dataStr;
@@ -81,7 +82,6 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | n
         unsubscribeRef.current();
         unsubscribeRef.current = null;
       }
-      // الحفاظ على مرجع المستند للمقارنة في الرندرة القادمة
     };
   }, [docRef]);
 

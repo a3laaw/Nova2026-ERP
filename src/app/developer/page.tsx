@@ -32,12 +32,16 @@ export default function DeveloperDashboard() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [editingCompany, setEditingCompany] = useState<any>(null);
 
-  // استعلام الشركات النشطة
-  const companiesQuery = db ? query(collection(db, 'companies'), orderBy('createdAt', 'desc')) : null;
-  const { data: companies, loading: companiesLoading } = useCollection<any>(companiesQuery);
+  // استقرار الاستعلامات عبر useMemo لمنع حلقة التحديث اللانهائية
+  const companiesQuery = useMemo(() => 
+    db ? query(collection(db, 'companies'), orderBy('createdAt', 'desc')) : null,
+  [db]);
 
-  // استعلام طلبات الانضمام المعلقة
-  const requestsQuery = db ? query(collection(db, 'company_requests'), orderBy('createdAt', 'desc')) : null;
+  const requestsQuery = useMemo(() => 
+    db ? query(collection(db, 'company_requests'), orderBy('createdAt', 'desc')) : null,
+  [db]);
+
+  const { data: companies, loading: companiesLoading } = useCollection<any>(companiesQuery);
   const { data: requests, loading: requestsLoading } = useCollection<any>(requestsQuery);
 
   const getActivityLabel = (code: string) => {
@@ -54,8 +58,6 @@ export default function DeveloperDashboard() {
     if (!db) return;
     setProcessingId(req.id);
     try {
-      // 1. تحديث مستند الشركة (إذا كان موجوداً مسبقاً من التسجيل المعلق)
-      // في NovaFlow، نقوم بالبحث عن الشركة المرتبطة بهذا الطلب
       if (req.companyId) {
         const companyRef = doc(db, 'companies', req.companyId);
         await updateDoc(companyRef, {
@@ -64,7 +66,6 @@ export default function DeveloperDashboard() {
           activatedAt: serverTimestamp()
         });
 
-        // 2. تحديث حالة الطلب
         await updateDoc(doc(db, 'company_requests', req.id), {
           status: 'activated',
           activatedAt: serverTimestamp()
