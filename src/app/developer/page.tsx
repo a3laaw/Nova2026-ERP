@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCollection, useFirestore } from '@/firebase';
-import { collection, query, doc, updateDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { collection, query, doc, updateDoc, serverTimestamp, writeBatch, orderBy } from 'firebase/firestore';
 import { 
   Loader2, CheckCircle, ShieldAlert, Ban, RefreshCcw, 
   Edit3, Save, Users, Zap, Building2, 
@@ -34,26 +34,17 @@ export default function DeveloperDashboard() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [editingCompany, setEditingCompany] = useState<any>(null);
 
-  // تم إزالة orderBy لتجنب طلب إنشاء فهارس (Indexes) وتسهيل العمل الفوري
+  // استخدام useMemo لتثبيت مرجع الاستعلام ومنع الـ Infinite Loops
   const companiesQuery = useMemo(() => 
-    (db && globalUser?.isDeveloper) ? query(collection(db, 'companies')) : null, 
+    (db && globalUser?.isDeveloper) ? query(collection(db, 'companies'), orderBy('createdAt', 'desc')) : null, 
   [db, globalUser?.isDeveloper]);
 
   const requestsQuery = useMemo(() => 
-    (db && globalUser?.isDeveloper) ? query(collection(db, 'company_requests')) : null, 
+    (db && globalUser?.isDeveloper) ? query(collection(db, 'company_requests'), orderBy('createdAt', 'desc')) : null, 
   [db, globalUser?.isDeveloper]);
 
-  const { data: rawCompanies, loading: companiesLoading } = useCollection<any>(companiesQuery);
-  const { data: rawRequests, loading: requestsLoading } = useCollection<any>(requestsQuery);
-
-  // فرز يدوي في الذاكرة لتوفير الفهارس السحابية
-  const companies = useMemo(() => {
-    return [...rawCompanies].sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
-  }, [rawCompanies]);
-
-  const requests = useMemo(() => {
-    return [...rawRequests].sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
-  }, [rawRequests]);
+  const { data: companies, loading: companiesLoading } = useCollection<any>(companiesQuery);
+  const { data: requests, loading: requestsLoading } = useCollection<any>(requestsQuery);
 
   const handleActivate = async (req: any, days: number = 7, type: 'trial' | 'annual' = 'trial') => {
     if (!db) return;
