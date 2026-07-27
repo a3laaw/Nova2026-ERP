@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, Loader2, CheckCircle2, ArrowRight, Eye, EyeOff, Building2, HardHat, PencilRuler, Zap, Clock } from 'lucide-react';
+import { Sparkles, Loader2, AlertCircle, ArrowRight, Eye, EyeOff, Building2, HardHat, PencilRuler, Zap, Clock } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
@@ -41,7 +41,6 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      // 1. إنشاء حساب الدخول الأساسي
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const uid = userCredential.user.uid;
 
@@ -50,10 +49,7 @@ export default function RegisterPage() {
       const batch = writeBatch(db);
       const companyId = `comp_${Math.random().toString(36).substr(2, 9)}`;
       
-      const trialEndDate = new Date();
-      trialEndDate.setDate(trialEndDate.getDate() + 14);
-
-      // 2. تسجيل طلب الانضمام
+      // تسجيل طلب الانضمام
       const requestRef = doc(collection(db, 'company_requests'));
       batch.set(requestRef, {
         id: requestRef.id,
@@ -66,21 +62,22 @@ export default function RegisterPage() {
         createdAt: serverTimestamp(),
       });
 
-      // 3. إنشاء مستند الشركة
+      // إنشاء مستند الشركة (حالة غير مفعلة)
       const companyRef = doc(db, 'companies', companyId);
       const companyData = {
         id: companyId,
         name: formData.companyName,
         status: 'inactive', 
-        createdAt: serverTimestamp(),
-        trialEndsAt: trialEndDate.toISOString(),
+        subscriptionType: 'trial',
         maxUsers: 5,
         activity: formData.activity, 
-        ownerUid: uid
+        ownerUid: uid,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
       };
       batch.set(companyRef, companyData);
 
-      // 4. إنشاء السجل العالمي (Global Identity)
+      // إنشاء السجل العالمي (Global Identity)
       const globalUserRef = doc(db, 'global_users', uid);
       const globalUserData = {
         companyId,
@@ -97,7 +94,7 @@ export default function RegisterPage() {
       };
       batch.set(globalUserRef, globalUserData);
 
-      // 5. السجل المحلي داخل المنشأة
+      // السجل المحلي
       const tenantUserRef = doc(db, 'companies', companyId, 'users', uid);
       batch.set(tenantUserRef, {
         id: uid,
@@ -110,30 +107,12 @@ export default function RegisterPage() {
         isActive: false
       });
 
-      // تنفيذ الكتابة الشاملة (Atomic Write)
-      await batch.commit().catch(async (serverError) => {
-         // رصد الخطأ الأمني بدقة في حال الرفض
-         const permissionError = new FirestorePermissionError({
-           path: 'registration_batch_commit',
-           operation: 'write'
-         } satisfies SecurityRuleContext);
-         errorEmitter.emit('permission-error', permissionError);
-         throw serverError;
-      });
-      
+      await batch.commit();
       setIsSubmitted(true);
-      toast({
-        title: "تم إرسال طلبك بنجاح",
-        description: "طلبك الآن قيد المراجعة من قبل الإدارة الفنية.",
-      });
+      toast({ title: "تم إرسال طلبك بنجاح" });
 
     } catch (error: any) {
-      console.error("Registration error:", error);
-      toast({
-        variant: "destructive",
-        title: "خطأ في التسجيل",
-        description: error.message || "تعذر إرسال طلبك حالياً.",
-      });
+      toast({ variant: "destructive", title: "خطأ في التسجيل", description: error.message });
     } finally {
       setLoading(false);
     }
@@ -149,7 +128,7 @@ export default function RegisterPage() {
             </div>
             <CardTitle className="text-3xl font-black font-headline text-slate-900 leading-tight">طلبك قيد المراجعة!</CardTitle>
             <CardDescription className="text-lg font-bold text-slate-500 mt-4 leading-relaxed">
-              شكراً لاهتمامك بـ NovaFlow. لقد تم تسجيل طلب شركة <span className="text-primary">{formData.companyName}</span> بنجاح. سيتم تفعيل حسابك فور مراجعة الطلب من قبل المطور.
+              شكراً لاهتمامك بـ NovaFlow. لقد تم تسجيل طلب شركة <span className="text-primary">{formData.companyName}</span> بنجاح. سيقوم المطور بتفعيل فترة التجربة (7 أيام) فور مراجعة الطلب.
             </CardDescription>
           </CardHeader>
           <CardContent className="pb-16">
@@ -168,8 +147,8 @@ export default function RegisterPage() {
             <Building2 className="h-10 w-10" />
           </div>
           <div className="space-y-2">
-            <CardTitle className="text-4xl font-black font-headline tracking-tighter text-slate-900">NovaFlow لأصحاب الأعمال</CardTitle>
-            <CardDescription className="text-slate-500 font-bold text-lg">سجل منشأتك الجديدة بانتظار الاعتماد الفني</CardDescription>
+            <CardTitle className="text-4xl font-black font-headline tracking-tighter text-slate-900">انضم إلى NovaFlow ERP</CardTitle>
+            <CardDescription className="text-slate-500 font-bold text-lg">سجل منشأتك للحصول على فترة تجريبية مجانية لمدة 7 أيام</CardDescription>
           </div>
         </CardHeader>
         <CardContent className="p-12">
@@ -177,102 +156,45 @@ export default function RegisterPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-2 text-start">
                 <Label className="font-black text-xs text-slate-400 uppercase tracking-widest">اسم المنشأة / الشركة</Label>
-                <Input 
-                  value={formData.companyName} 
-                  onChange={(e) => setFormData({...formData, companyName: e.target.value})} 
-                  required 
-                  className="h-14 rounded-2xl border-2 font-black text-lg bg-slate-50/50" 
-                  placeholder="شركة المقاولات الحديثة"
-                />
+                <Input value={formData.companyName} onChange={(e) => setFormData({...formData, companyName: e.target.value})} required className="h-14 rounded-2xl border-2 font-black text-lg bg-slate-50/50" />
               </div>
               <div className="space-y-2 text-start">
-                <Label className="font-black text-xs text-slate-400 uppercase tracking-widest">نوع النشاط الرئيسي</Label>
+                <Label className="font-black text-xs text-slate-400 uppercase tracking-widest">نوع النشاط</Label>
                 <Select value={formData.activity} onValueChange={(val) => setFormData({...formData, activity: val})}>
-                  <SelectTrigger className="h-14 rounded-2xl border-2 font-black text-lg">
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger className="h-14 rounded-2xl border-2 font-black text-lg"><SelectValue /></SelectTrigger>
                   <SelectContent className="rounded-2xl border-0 shadow-2xl">
-                    <SelectItem value="construction" className="font-bold">
-                       <div className="flex items-center gap-2">
-                          <HardHat className="h-4 w-4 text-slate-500" />
-                          <span>مقاولات وإنشاءات</span>
-                       </div>
-                    </SelectItem>
-                    <SelectItem value="consulting" className="font-bold">
-                       <div className="flex items-center gap-2">
-                          <PencilRuler className="h-4 w-4 text-slate-500" />
-                          <span>استشارات هندسية</span>
-                       </div>
-                    </SelectItem>
-                    <SelectItem value="design_build" className="font-bold text-primary">
-                       <div className="flex items-center gap-2">
-                          <Zap className="h-4 w-4" />
-                          <span>تصميم وإنشاء (D&B)</span>
-                       </div>
-                    </SelectItem>
+                    <SelectItem value="construction" className="font-bold">مقاولات وإنشاءات</SelectItem>
+                    <SelectItem value="consulting" className="font-bold">استشارات هندسية</SelectItem>
+                    <SelectItem value="design_build" className="font-bold text-primary">تصميم وإنشاء (D&B)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2 text-start">
                 <Label className="font-black text-xs text-slate-400 uppercase tracking-widest">اسم المدير المسؤول</Label>
-                <Input 
-                  value={formData.contactName} 
-                  onChange={(e) => setFormData({...formData, contactName: e.target.value})} 
-                  required 
-                  className="h-14 rounded-2xl border-2 font-bold bg-slate-50/50" 
-                />
-              </div>
-              <div className="space-y-2 text-start">
-                <Label className="font-black text-xs text-slate-400 uppercase tracking-widest">معرّف الدخول (Login ID)</Label>
-                <Input 
-                  value={formData.username} 
-                  onChange={(e) => setFormData({...formData, username: e.target.value})} 
-                  required 
-                  className="h-14 rounded-2xl border-2 font-mono text-primary bg-slate-50/50" 
-                  placeholder="admin_nova"
-                />
+                <Input value={formData.contactName} onChange={(e) => setFormData({...formData, contactName: e.target.value})} required className="h-14 rounded-2xl border-2 font-bold bg-slate-50/50" />
               </div>
               <div className="space-y-2 text-start">
                 <Label className="font-black text-xs text-slate-400 uppercase tracking-widest">البريد الإلكتروني للشركة</Label>
-                <Input 
-                  type="email" 
-                  value={formData.email} 
-                  onChange={(e) => setFormData({...formData, email: e.target.value})} 
-                  required 
-                  className="h-14 rounded-2xl border-2 text-left bg-slate-50/50" 
-                  dir="ltr"
-                />
+                <Input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} required className="h-14 rounded-2xl border-2 text-left bg-slate-50/50" dir="ltr" />
               </div>
-              <div className="space-y-2 text-start">
+              <div className="space-y-2 text-start md:col-span-2">
                 <Label className="font-black text-xs text-slate-400 uppercase tracking-widest">كلمة المرور</Label>
                 <div className="relative">
-                  <Input 
-                    type={showPassword ? "text" : "password"}
-                    value={formData.password} 
-                    onChange={(e) => setFormData({...formData, password: e.target.value})} 
-                    required 
-                    className="h-14 rounded-2xl border-2 text-left bg-slate-50/50" 
-                    dir="ltr"
-                  />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300">
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                  </button>
+                  <Input type={showPassword ? "text" : "password"} value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} required className="h-14 rounded-2xl border-2 text-left bg-slate-50/50" dir="ltr" />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"><Eye className="h-5 w-5" /></button>
                 </div>
               </div>
             </div>
             
-            <Button type="submit" disabled={loading} className="w-full h-20 bg-primary text-white rounded-[2rem] text-2xl font-black shadow-2xl shadow-primary/20 hover:scale-[1.01] transition-all border-b-8 border-orange-700 mt-6">
-              {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : 'إرسال طلب الانضمام للمراجعة'}
+            <Button type="submit" disabled={loading} className="w-full h-20 bg-primary text-white rounded-[2rem] text-2xl font-black shadow-2xl shadow-primary/20 border-b-8 border-orange-700 mt-6">
+              {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : 'إرسال طلب الانضمام'}
             </Button>
           </form>
         </CardContent>
-        <CardFooter className="pb-12 pt-4 justify-center flex flex-col space-y-4">
+        <CardFooter className="pb-12 pt-4 justify-center">
           <Button variant="link" onClick={() => router.push('/login')} className="text-primary font-black text-lg">
             لديك حساب شركة بالفعل؟ سجل دخولك <ArrowRight className="mr-2 h-5 w-5" />
           </Button>
-          <p className="text-[11px] text-slate-400 text-center max-w-sm font-bold leading-relaxed">
-            بإرسال هذا الطلب، أنت توافق على أن تفعيل المنشأة يخضع لمراجعة المطور التقني لضمان جودة الخدمة السيادية.
-          </p>
         </CardFooter>
       </Card>
     </div>

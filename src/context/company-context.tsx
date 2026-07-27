@@ -1,27 +1,32 @@
+
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { useAuthContext } from './auth-context';
+import { differenceInDays, parseISO } from 'date-fns';
 
 interface CompanyData {
   id: string;
   name: string;
-  logoUrl?: string;
-  headerImageUrl?: string;
-  footerImageUrl?: string;
-  headerText?: string;
-  footerText?: string;
-  commercialRegistry?: string;
-  address?: string;
-  status: string;
+  status: string; // active, inactive, expired, suspended
+  subscriptionType: 'trial' | 'annual';
+  expiryDate?: string;
+  maxUsers: number;
   [key: string]: any;
 }
 
 interface CompanyContextType {
   company: CompanyData | null;
   loading: boolean;
+  subscription: {
+    isExpired: boolean;
+    isTrial: boolean;
+    daysRemaining: number;
+    showWarning: boolean;
+    status: string;
+  };
 }
 
 const CompanyContext = createContext<CompanyContextType | undefined>(undefined);
@@ -35,14 +40,11 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!db || !globalUser?.companyId) {
       setCompany(null);
-      // إذا لم يكن هناك منشأة مرتبطة، ننهي التحميل فوراً
       setLoading(false);
       return;
     }
 
-    // تعيين حالة التحميل عند بدء جلب بيانات شركة جديدة
     setLoading(true);
-
     const unsubscribe = onSnapshot(doc(db, 'companies', globalUser.companyId), (snap) => {
       if (snap.exists()) {
         setCompany({ id: snap.id, ...snap.data() } as CompanyData);
@@ -50,16 +52,32 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
         setCompany(null);
       }
       setLoading(false);
-    }, (err) => {
-      console.error("Company snapshot error:", err);
-      setLoading(false);
     });
 
     return () => unsubscribe();
   }, [db, globalUser?.companyId]);
 
+  const subscription = React.useMemo(() => {
+    if (!company) return { isExpired: false, isTrial: false, daysRemaining: 0, showWarning: false, status: 'unknown' };
+
+    const now = new Date();
+    const expiry = company.expiryDate ? parseISO(company.expiryDate) : null;
+    const daysRemaining = expiry ? differenceInDays(expiry, now) : 999;
+    
+    const isExpired = company.status === 'expired' || (expiry !== null && daysRemaining < 0);
+    const showWarning = !isExpired && expiry !== null && daysRemaining <= 3;
+
+    return {
+      isExpired,
+      isTrial: company.subscriptionType === 'trial',
+      daysRemaining: Math.max(0, daysRemaining),
+      showWarning,
+      status: company.status
+    };
+  }, [company]);
+
   return (
-    <CompanyContext.Provider value={{ company, loading }}>
+    <CompanyContext.Provider value={{ company, loading, subscription }}>
       {children}
     </CompanyContext.Provider>
   );

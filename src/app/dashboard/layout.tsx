@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useAuthContext } from '@/context/auth-context';
@@ -10,7 +11,7 @@ import { DashboardSidebar } from "@/components/layout/dashboard-sidebar"
 import { UserNav } from "@/components/layout/user-nav"
 import { NotificationBell } from "@/components/layout/notification-bell"
 import { BreadcrumbNav } from "@/components/layout/breadcrumb-nav"
-import { Loader2, Languages, CalendarDays } from 'lucide-react';
+import { Loader2, Languages, CalendarDays, AlertTriangle, ShieldAlert, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -19,8 +20,8 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const { user, loading: authLoading } = useAuthContext();
-  const { company, loading: companyLoading } = useCompanyContext();
+  const { user, globalUser, loading: authLoading, logout } = useAuthContext();
+  const { company, loading: companyLoading, subscription } = useCompanyContext();
   const { lang, setLang, t, dir } = useLanguage();
   const router = useRouter();
   const pathname = usePathname();
@@ -32,55 +33,36 @@ export default function DashboardLayout({
     }
   }, [user, authLoading, router]);
 
-  /**
-   * Sovereign Absolute Thaw Protocol V9: 
-   * محرك إذابة قسري عدواني جداً لمنع تجميد الشاشة.
-   * يقوم بمسح كافة قيود Radix UI و Browser Locks تلقائياً.
-   */
-  useEffect(() => {
-    if (typeof document !== 'undefined') {
-      const thaw = () => {
-        const body = document.body;
-        const html = document.documentElement;
-        
-        // 1. فك قفل النقر القسري (The Click Unlock)
-        if (body.style.pointerEvents === 'none') body.style.pointerEvents = 'auto';
-        if (html.style.pointerEvents === 'none') html.style.pointerEvents = 'auto';
-        
-        // 2. فك قفل التمرير (The Scroll Unlock)
-        if (body.style.overflow === 'hidden' || body.getAttribute('data-scroll-locked') !== null) {
-           body.style.overflow = 'auto';
-           body.style.paddingRight = '0px';
-           body.removeAttribute('data-scroll-locked');
-        }
-
-        // 3. تطهير بقايا النوافذ المنبثقة (The Ghost Cleanup)
-        const focusGuards = document.querySelectorAll('[data-radix-focus-guard]');
-        focusGuards.forEach(el => el.remove());
-      };
-
-      thaw();
-      
-      // تنفيذ عند كل حركة ماوس أو نقرة لضمان السيولة المطلقة
-      window.addEventListener('mousedown', thaw);
-      window.addEventListener('mouseup', thaw);
-      const interval = setInterval(thaw, 150); 
-      
-      return () => {
-        clearInterval(interval);
-        window.removeEventListener('mousedown', thaw);
-        window.removeEventListener('mouseup', thaw);
-      };
-    }
-  }, [pathname]);
-
   if (authLoading || companyLoading) {
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#F8F9FA] gap-4">
-        <Loader2 className="h-12 w-12 animate-spin text-[#e87c24]" />
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] animate-pulse">
-           Authenticating Sovereign Session...
-        </p>
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Authenticating Sovereign Session...</p>
+      </div>
+    );
+  }
+
+  // --- القفل السيادي للاشتراك المنتهي ---
+  if (subscription.isExpired && !globalUser?.isDeveloper) {
+    return (
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-950 p-6 text-center" dir={dir}>
+        <div className="max-w-md space-y-8 animate-in zoom-in-95 duration-500">
+           <div className="w-24 h-24 bg-rose-500/20 text-rose-500 rounded-[2.5rem] flex items-center justify-center mx-auto shadow-2xl ring-8 ring-rose-500/5">
+              <ShieldAlert className="h-12 w-12" />
+           </div>
+           <div className="space-y-3">
+              <h1 className="text-4xl font-black text-white font-headline">الوصول محجوب (انتهى الاشتراك)</h1>
+              <p className="text-slate-400 font-bold text-lg leading-relaxed">
+                 عذراً، لقد انتهت فترة اشتراك منشأة <span className="text-primary">{company?.name}</span>. يرجى التواصل مع الإدارة الفنية لتجديد الاشتراك واستعادة الوصول للبيانات.
+              </p>
+           </div>
+           <div className="p-6 bg-white/5 rounded-3xl border border-white/10 space-y-4">
+              <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Sovereign Cloud Guard</p>
+              <Button onClick={logout} variant="outline" className="w-full border-white/10 text-white hover:bg-white/10 rounded-xl h-12">
+                 <LogOut className="me-2 h-4 w-4" /> تسجيل الخروج
+              </Button>
+           </div>
+        </div>
       </div>
     );
   }
@@ -93,6 +75,21 @@ export default function DashboardLayout({
         </div>
         
         <SidebarInset className="flex flex-col bg-transparent">
+          {/* تحذير اقتراب الانتهاء */}
+          {subscription.showWarning && !globalUser?.isDeveloper && (
+            <div className="bg-amber-500 text-slate-900 px-6 py-2 flex items-center justify-between gap-4 border-b border-amber-600 shadow-lg animate-in slide-in-from-top-full duration-700">
+               <div className="flex items-center gap-3">
+                  <AlertTriangle className="h-5 w-5 animate-pulse" />
+                  <p className="text-xs font-black">
+                     {isRtl 
+                       ? `تنبيه: اشتراك المنشأة ينتهي خلال ${subscription.daysRemaining} أيام. يرجى التجديد لضمان استمرارية العمل.` 
+                       : `Subscription expires in ${subscription.daysRemaining} days. Please renew.`}
+                  </p>
+               </div>
+               <Badge className="bg-slate-900 text-white border-0 font-black">{subscription.daysRemaining}d</Badge>
+            </div>
+          )}
+
           <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-white/90 backdrop-blur-md px-6 print:hidden shadow-sm">
             <SidebarTrigger className={cn("text-slate-600 hover:bg-slate-100 rounded-lg shrink-0", isRtl ? "rotate-0" : "rotate-180")} />
             
@@ -102,26 +99,10 @@ export default function DashboardLayout({
             </div>
 
             <div className="flex items-center gap-4 shrink-0">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
-                className="font-black gap-2 text-slate-600 hover:bg-slate-100 rounded-lg h-10 px-4 text-xs"
-              >
-                <Languages className="h-4 w-4 text-[#FFA000]" />
+              <Button variant="ghost" size="sm" onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')} className="font-black gap-2 text-slate-600 h-10 px-4 text-xs">
+                <Languages className="h-4 w-4 text-primary" />
                 {t('switchLang')}
               </Button>
-
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => router.push('/dashboard/appointments')}
-                className="text-muted-foreground hover:text-primary transition-colors h-10 w-10 relative"
-                title={isRtl ? 'المواعيد' : 'Appointments'}
-              >
-                <CalendarDays className="h-5 w-5" />
-              </Button>
-
               <NotificationBell />
               <div className="h-8 w-[1.5px] bg-slate-100 rounded-full" />
               <UserNav />
