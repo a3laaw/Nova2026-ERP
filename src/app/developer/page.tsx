@@ -14,7 +14,7 @@ import {
   Edit3, Save, Users, Zap, Building2, 
   CalendarClock, Timer, ShieldCheck, AlertTriangle, X,
   ExternalLink, Lock, Unlock, CreditCard, History,
-  CalendarDays
+  CalendarDays, Play, Pause, Power
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useLanguage } from '@/context/language-context';
@@ -24,7 +24,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { addDays, format, parseISO } from 'date-fns';
+import { addDays, format, parseISO, isAfter } from 'date-fns';
 
 export default function DeveloperDashboard() {
   const { lang, dir } = useLanguage();
@@ -63,7 +63,7 @@ export default function DeveloperDashboard() {
     });
   }, [rawRequests]);
 
-  const handleActivate = async (req: any, days: number = 7, type: 'trial' | 'annual' = 'trial') => {
+  const handleActivate = async (req: any, days: number = 7, type: string = 'trial') => {
     if (!db) return;
     setProcessingId(req.id);
     try {
@@ -98,20 +98,39 @@ export default function DeveloperDashboard() {
     }
   };
 
+  const handleSubscriptionTypeChange = (type: string) => {
+    if (!editingCompany) return;
+    
+    let days = 0;
+    if (type === 'trial') days = 7;
+    else if (type === 'monthly') days = 30;
+    else if (type === 'annual') days = 365;
+
+    const newExpiry = addDays(new Date(), days).toISOString();
+    
+    setEditingCompany({
+      ...editingCompany,
+      subscriptionType: type,
+      expiryDate: newExpiry,
+      // فك التجميد تلقائياً عند التجديد المالي
+      status: editingCompany.status === 'suspended' ? 'active' : editingCompany.status
+    });
+  };
+
   const handleUpdateSubscription = async () => {
     if (!db || !editingCompany) return;
     setProcessingId('saving');
     try {
       const ref = doc(db, 'companies', editingCompany.id);
       
-      const today = new Date();
-      const expiry = editingCompany.expiryDate ? new Date(editingCompany.expiryDate) : today;
+      const now = new Date();
+      const expiry = parseISO(editingCompany.expiryDate);
       
       let finalStatus = editingCompany.status;
 
-      // بروتوكول التنشيط التلقائي: الحالة تتبع التاريخ المختار دائماً ما لم تكن "مجمدة إدارياً"
-      if (finalStatus !== 'suspended' && finalStatus !== 'inactive') {
-          finalStatus = expiry > today ? 'active' : 'expired';
+      // أتمتة الحالة بناءً على التاريخ ما لم تكن مجمدة يدوياً
+      if (finalStatus !== 'suspended') {
+          finalStatus = isAfter(expiry, now) ? 'active' : 'expired';
       }
 
       const updates = {
@@ -131,10 +150,10 @@ export default function DeveloperDashboard() {
       }
 
       toast({ 
-        title: isRtl ? "تم تطبيق التغييرات السيادية" : "Changes Applied",
+        title: isRtl ? "تم تحديث بيانات الاشتراك" : "Subscription Updated",
         description: isRtl 
-          ? `حالة المنشأة الآن: ${finalStatus.toUpperCase()} (تلقائي)` 
-          : `Status is now ${finalStatus.toUpperCase()} (Auto)`
+          ? `الحالة الحالية: ${finalStatus.toUpperCase()}` 
+          : `Current Status: ${finalStatus.toUpperCase()}`
       });
       setEditingCompany(null);
     } catch (e: any) {
@@ -172,31 +191,30 @@ export default function DeveloperDashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="bg-slate-950 text-white rounded-[2rem] p-8 shadow-2xl relative overflow-hidden border-0">
-           <div className="absolute top-0 right-0 p-4 opacity-10 rotate-12"><Zap className="h-32 w-32 text-primary" /></div>
-           <div className="text-start relative z-10">
-            <h4 className="text-slate-500 text-[10px] font-black uppercase mb-1 tracking-widest">طلبات بانتظار المراجعة</h4>
+        <Card className="bg-slate-950 text-white rounded-[2rem] p-8 shadow-2xl border-0">
+           <div className="text-start">
+            <h4 className="text-slate-500 text-[10px] font-black uppercase mb-1 tracking-widest">طلبات جديدة</h4>
             <p className="text-5xl font-black font-headline text-primary">{requests?.filter(r => r.status === 'pending').length || 0}</p>
           </div>
         </Card>
         <Card className="bg-white rounded-[2rem] p-8 shadow-xl border-0 ring-1 ring-black/5">
-           <h4 className="text-slate-400 text-[10px] font-black uppercase mb-1 text-start tracking-widest">المنشآت النشطة حالياً</h4>
+           <h4 className="text-slate-400 text-[10px] font-black uppercase mb-1 text-start tracking-widest">نشط</h4>
            <p className="text-5xl font-black font-headline text-emerald-600 text-start">{companies?.filter(c => c.status === 'active').length || 0}</p>
         </Card>
-        <Card className="bg-white rounded-[2rem] p-8 shadow-xl border-0 ring-1 ring-black/5">
-           <h4 className="text-slate-400 text-[10px] font-black uppercase mb-1 text-start tracking-widest">اشتراكات منتهية</h4>
-           <p className="text-5xl font-black font-headline text-rose-500 text-start">{companies?.filter(c => c.status === 'expired' || c.status === 'suspended').length || 0}</p>
+        <Card className="bg-white rounded-[2rem] p-8 shadow-xl border-0 ring-1 ring-black/5 text-start">
+           <h4 className="text-slate-400 text-[10px] font-black uppercase mb-1 tracking-widest">متوقف / منتهي</h4>
+           <p className="text-5xl font-black font-headline text-rose-500">{companies?.filter(c => c.status !== 'active').length || 0}</p>
         </Card>
-        <Card className="bg-white rounded-[2rem] p-8 shadow-xl border-0 ring-1 ring-black/5">
-           <h4 className="text-slate-400 text-[10px] font-black uppercase mb-1 text-start tracking-widest">إجمالي التراخيص</h4>
-           <p className="text-5xl font-black font-headline text-slate-900 text-start">{companies?.length || 0}</p>
+        <Card className="bg-white rounded-[2rem] p-8 shadow-xl border-0 ring-1 ring-black/5 text-start">
+           <h4 className="text-slate-400 text-[10px] font-black uppercase mb-1 tracking-widest">إجمالي العملاء</h4>
+           <p className="text-5xl font-black font-headline text-slate-900">{companies?.length || 0}</p>
         </Card>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-white border-2 border-slate-100 h-16 rounded-[1.5rem] p-1.5 shadow-sm mb-8 gap-2">
-           <TabsTrigger value="requests" className="rounded-xl px-10 font-black text-sm data-[state=active]:bg-primary data-[state=active]:text-white">طلبات الانضمام</TabsTrigger>
-           <TabsTrigger value="companies" className="rounded-xl px-10 font-black text-sm data-[state=active]:bg-primary data-[state=active]:text-white">إدارة التراخيص والمنشآت</TabsTrigger>
+        <TabsList className="bg-white border-2 border-slate-100 h-16 rounded-2xl p-1.5 shadow-sm mb-8 gap-2">
+           <TabsTrigger value="requests" className="rounded-xl px-10 font-black text-sm data-[state=active]:bg-primary data-[state=active]:text-white transition-all">طلبات الانضمام</TabsTrigger>
+           <TabsTrigger value="companies" className="rounded-xl px-10 font-black text-sm data-[state=active]:bg-primary data-[state=active]:text-white transition-all">إدارة التراخيص</TabsTrigger>
         </TabsList>
 
         <TabsContent value="requests" className="animate-in slide-in-from-bottom-2 duration-500">
@@ -204,10 +222,10 @@ export default function DeveloperDashboard() {
               <Table>
                 <TableHeader className="bg-slate-50 border-b-2">
                   <TableRow>
-                    <TableHead className="ps-10 py-6 font-black uppercase text-[10px] text-slate-500 tracking-widest">المنشأة المستهدفة</TableHead>
-                    <TableHead className="font-black uppercase text-[10px] text-slate-500 tracking-widest">النشاط</TableHead>
-                    <TableHead className="font-black uppercase text-[10px] text-slate-500 tracking-widest">حالة الطلب</TableHead>
-                    <TableHead className="pe-10 text-end font-black uppercase text-[10px] text-slate-500 tracking-widest">القرار الفني</TableHead>
+                    <TableHead className="ps-10 py-6 font-black uppercase text-[10px] text-slate-500">المنشأة</TableHead>
+                    <TableHead className="font-black uppercase text-[10px] text-slate-500">النشاط</TableHead>
+                    <TableHead className="font-black uppercase text-[10px] text-slate-500">الحالة</TableHead>
+                    <TableHead className="pe-10 text-end font-black uppercase text-[10px] text-slate-500">الإجراء</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -239,36 +257,19 @@ export default function DeveloperDashboard() {
                                <Button 
                                  onClick={() => handleActivate(req, 7, 'trial')} 
                                  disabled={processingId === req.id} 
-                                 className="h-11 px-6 bg-primary text-white font-black text-xs rounded-xl shadow-lg shadow-primary/10 hover:scale-105 transition-all"
+                                 className="h-11 px-6 bg-primary text-white font-black text-xs rounded-xl shadow-lg"
                                >
-                                  {processingId === req.id ? <Loader2 className="animate-spin" /> : <Zap className="me-2 h-4 w-4" />}
-                                  تفعيل 7 أيام تجربة
-                               </Button>
-                               <Button 
-                                 onClick={() => handleActivate(req, 365, 'annual')} 
-                                 disabled={processingId === req.id} 
-                                 variant="secondary" 
-                                 className="h-11 px-6 font-black text-xs rounded-xl shadow-lg"
-                               >
-                                  تفعيل سنة كاملة
+                                  {processingId === req.id ? <Loader2 className="animate-spin" /> : <Power className="me-2 h-4 w-4" />}
+                                  تفعيل تجريبي (7 أيام)
                                </Button>
                              </>
                            ) : (
-                             <Button 
-                               onClick={() => { setActiveTab('companies'); }} 
-                               variant="outline" 
-                               className="h-11 px-8 rounded-xl font-black text-xs gap-2 border-2 text-emerald-600 border-emerald-100 bg-emerald-50"
-                             >
-                                <CheckCircle className="h-4 w-4" /> تم التفعيل (إدارة المنشأة)
-                             </Button>
+                             <Badge variant="outline" className="border-emerald-200 text-emerald-600 font-black">طلب مكتمل</Badge>
                            )}
                         </div>
                       </TableCell>
                     </TableRow>
                   ))}
-                  {requests?.length === 0 && !requestsLoading && (
-                    <TableRow><TableCell colSpan={4} className="text-center py-32 italic text-slate-300 font-black">لا يوجد طلبات انضمام حالياً.</TableCell></TableRow>
-                  )}
                 </TableBody>
               </Table>
            </Card>
@@ -279,11 +280,11 @@ export default function DeveloperDashboard() {
               <Table>
                 <TableHeader className="bg-slate-50 border-b-2">
                   <TableRow>
-                    <TableHead className="ps-10 py-6 font-black uppercase text-[10px] text-slate-500 tracking-widest">المنشأة المسجلة</TableHead>
-                    <TableHead className="font-black uppercase text-[10px] text-slate-500 tracking-widest">الاشتراك</TableHead>
-                    <TableHead className="font-black uppercase text-[10px] text-slate-500 tracking-widest">تاريخ الانتهاء</TableHead>
-                    <TableHead className="font-black uppercase text-[10px] text-slate-500 tracking-widest">حالة الترخيص</TableHead>
-                    <TableHead className="pe-10 text-end font-black uppercase text-[10px] text-slate-500 tracking-widest">تحكم سيادي</TableHead>
+                    <TableHead className="ps-10 py-6 font-black uppercase text-[10px] text-slate-500">المنشأة</TableHead>
+                    <TableHead className="font-black uppercase text-[10px] text-slate-500">الاشتراك</TableHead>
+                    <TableHead className="font-black uppercase text-[10px] text-slate-500">تاريخ الانتهاء</TableHead>
+                    <TableHead className="font-black uppercase text-[10px] text-slate-500">الحالة</TableHead>
+                    <TableHead className="pe-10 text-end font-black uppercase text-[10px] text-slate-500">التحكم</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -293,15 +294,12 @@ export default function DeveloperDashboard() {
                     <TableRow key={comp.id} className="hover:bg-slate-50/50 transition-colors">
                       <TableCell className="ps-10 py-6">
                          <div className="text-start">
-                            <p className="font-black text-slate-900 text-lg leading-none">{comp.name}</p>
-                            <p className="text-[9px] text-slate-400 font-mono font-bold mt-2 uppercase tracking-tighter">TENANT_ID: {comp.id}</p>
+                            <p className="font-black text-slate-900 text-lg">{comp.name}</p>
+                            <p className="text-[9px] text-slate-400 font-mono mt-1 uppercase">ID: {comp.id.slice(-6)}</p>
                          </div>
                       </TableCell>
                       <TableCell>
-                         <Badge className={cn(
-                           "bg-blue-50 text-blue-600 border-0 text-[9px] font-black uppercase px-3 py-1 rounded-lg",
-                           comp.subscriptionType === 'annual' && "bg-indigo-50 text-indigo-600"
-                         )}>
+                         <Badge className="bg-blue-50 text-blue-600 border-0 text-[9px] font-black uppercase px-3 py-1">
                             {comp.subscriptionType}
                          </Badge>
                       </TableCell>
@@ -319,9 +317,9 @@ export default function DeveloperDashboard() {
                         <Button 
                           variant="outline" 
                           onClick={() => setEditingCompany({...comp})} 
-                          className="h-11 px-6 rounded-xl border-2 font-black text-xs gap-2 hover:bg-primary hover:text-white transition-all"
+                          className="h-10 px-5 rounded-xl border-2 font-black text-xs gap-2 hover:bg-primary hover:text-white transition-all"
                         >
-                           <Edit3 className="h-4 w-4" /> إدارة المنشأة
+                           <Settings2 className="h-4 w-4" /> إدارة الاشتراك
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -332,98 +330,98 @@ export default function DeveloperDashboard() {
         </TabsContent>
       </Tabs>
 
-      {/* Sovereign Management Console Dialog */}
-      <Dialog open={!!editingCompany} onOpenChange={(open) => { if(!open) setEditingCompany(null); }}>
+      {/* Management Dialog */}
+      <Dialog open={!!editingCompany} onOpenChange={(v) => { if(!v) setEditingCompany(null); }}>
          <DialogContent className="rounded-[3rem] max-w-2xl p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
-            <div className="bg-slate-950 p-10 text-white text-start relative overflow-hidden shrink-0">
-               <div className="absolute top-0 right-0 p-10 opacity-10"><ShieldCheck className="h-40 w-40 text-primary" /></div>
-               <div className="relative z-10">
-                  <DialogTitle className="text-3xl font-black font-headline flex items-center gap-4">
-                     <Building2 className="h-10 w-10 text-primary" /> 
-                     {isRtl ? 'لوحة تحكم المنشأة السيادية' : 'Tenant Admin Console'}
-                  </DialogTitle>
-                  <p className="text-slate-400 font-bold mt-2 text-lg uppercase tracking-widest">{editingCompany?.name}</p>
-               </div>
+            <div className="bg-slate-900 p-10 text-white text-start shrink-0">
+               <DialogTitle className="text-3xl font-black font-headline flex items-center gap-4">
+                  <Building2 className="h-10 w-10 text-primary" /> 
+                  إدارة المنشأة والاشتراك
+               </DialogTitle>
+               <p className="text-slate-400 font-bold mt-2 text-lg">{editingCompany?.name}</p>
             </div>
 
-            <div className="p-10 space-y-10 text-start bg-white max-h-[60vh] overflow-y-auto scrollbar-hide">
+            <div className="p-10 space-y-10 text-start bg-white">
                
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-3">
-                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">{isRtl ? 'حالة التشغيل والوصول' : 'Operational Status'}</Label>
-                     <Select value={editingCompany?.status || 'active'} onValueChange={v => setEditingCompany({...editingCompany, status: v})}>
-                        <SelectTrigger className="h-14 border-2 rounded-2xl font-black text-lg">
-                           <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-2xl border-0 shadow-2xl">
-                           <SelectItem value="active" className="font-bold py-3 text-emerald-600">
-                             {isRtl ? 'تنشيط (تلقائي حسب التاريخ)' : 'Normal (Auto-Sync)'}
-                           </SelectItem>
-                           <SelectItem value="suspended" className="font-bold py-3 text-amber-600">
-                             {isRtl ? 'تجميد إداري (يدوي)' : 'Suspended (Administrative)'}
-                           </SelectItem>
-                           <SelectItem value="inactive" className="font-bold py-3 text-slate-400">
-                             {isRtl ? 'غير مفعل' : 'Inactive'}
-                           </SelectItem>
-                        </SelectContent>
-                     </Select>
+               <div className="flex items-center justify-between p-6 bg-slate-50 rounded-[2rem] border-2 border-white shadow-inner">
+                  <div className="text-start">
+                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">حالة التشغيل الحالية</p>
+                     <Badge className={cn(
+                        "text-lg font-black uppercase px-6 py-2 border-0 shadow-xl",
+                        editingCompany?.status === 'active' ? "bg-emerald-500 text-white" : 
+                        editingCompany?.status === 'suspended' ? "bg-amber-500 text-white" : "bg-rose-500 text-white"
+                     )}>
+                        {editingCompany?.status}
+                     </Badge>
                   </div>
-
-                  <div className="space-y-3">
-                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">{isRtl ? 'نوع الاشتراك المالي' : 'Subscription Type'}</Label>
-                     <Select value={editingCompany?.subscriptionType || 'trial'} onValueChange={v => setEditingCompany({...editingCompany, subscriptionType: v})}>
-                        <SelectTrigger className="h-14 border-2 rounded-2xl font-black text-lg">
-                           <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-2xl border-0 shadow-2xl">
-                           <SelectItem value="trial" className="font-bold py-3">Trial (فترة تجريبية)</SelectItem>
-                           <SelectItem value="annual" className="font-bold py-3 text-primary">Annual (اشتراك سنوي معتمد)</SelectItem>
-                        </SelectContent>
-                     </Select>
+                  <div className="flex gap-3">
+                     {editingCompany?.status === 'suspended' ? (
+                        <Button 
+                          onClick={() => setEditingCompany({...editingCompany, status: 'active'})}
+                          className="bg-emerald-600 text-white font-black rounded-xl h-14 px-8 shadow-lg gap-2"
+                        >
+                           <Play className="h-5 w-5" /> فك التجميد
+                        </Button>
+                     ) : (
+                        <Button 
+                          onClick={() => setEditingCompany({...editingCompany, status: 'suspended'})}
+                          variant="destructive"
+                          className="font-black rounded-xl h-14 px-8 shadow-lg gap-2"
+                        >
+                           <Pause className="h-5 w-5" /> تجميد مؤقت
+                        </Button>
+                     )}
                   </div>
                </div>
 
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t border-slate-100">
-                  <div className="space-y-3">
-                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] flex items-center gap-2">
-                        <CalendarDays className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'تاريخ تجديد الاشتراك (حر)' : 'Renew Until (Free Date)'}
-                     </Label>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
+                  <div className="space-y-3 text-start">
+                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">نوع الباقة / الاشتراك</Label>
+                     <Select value={editingCompany?.subscriptionType} onValueChange={handleSubscriptionTypeChange}>
+                        <SelectTrigger className="h-14 border-2 rounded-2xl font-black text-lg">
+                           <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-2xl">
+                           <SelectItem value="trial" className="font-bold py-3">Trial (7 أيام)</SelectItem>
+                           <SelectItem value="monthly" className="font-bold py-3">Monthly (30 يوماً)</SelectItem>
+                           <SelectItem value="annual" className="font-bold py-3 text-primary">Annual (سنة كاملة)</SelectItem>
+                        </SelectContent>
+                     </Select>
+                  </div>
+
+                  <div className="space-y-3 text-start">
+                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">تاريخ الانتهاء (قابل للتعديل)</Label>
                      <Input 
                        type="date" 
                        value={editingCompany?.expiryDate ? editingCompany.expiryDate.split('T')[0] : ''} 
                        onChange={e => setEditingCompany({...editingCompany, expiryDate: e.target.value ? new Date(e.target.value).toISOString() : ''})} 
-                       className="h-14 border-2 rounded-2xl font-black text-lg bg-slate-50 focus:bg-white transition-all shadow-inner" 
-                     />
-                  </div>
-                  <div className="space-y-3">
-                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] flex items-center gap-2">
-                        <Users className="h-3.5 w-3.5" /> {isRtl ? 'سعة المستخدمين (Licensing)' : 'Max User Capacity'}
-                     </Label>
-                     <Input 
-                       type="number" 
-                       value={editingCompany?.maxUsers || 0} 
-                       onChange={e => setEditingCompany({...editingCompany, maxUsers: Number(e.target.value)})} 
-                       className="h-14 border-2 rounded-2xl font-black text-2xl text-center bg-slate-50 focus:bg-white shadow-inner" 
+                       className="h-14 border-2 rounded-2xl font-black text-lg shadow-inner bg-slate-50 focus:bg-white transition-all" 
                      />
                   </div>
                </div>
 
-               <div className="p-8 bg-slate-50 rounded-[2rem] border-2 border-dashed border-primary/20 space-y-4">
-                  <div className="flex items-center gap-4 text-primary">
-                     <CreditCard className="h-6 w-6" />
-                     <h5 className="font-black text-sm uppercase tracking-widest">{isRtl ? 'محرك التجديد الآلي' : 'Auto-Renewal Engine'}</h5>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t">
+                  <div className="space-y-3 text-start">
+                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">سعة المستخدمين</Label>
+                     <Input 
+                       type="number" 
+                       value={editingCompany?.maxUsers || 0} 
+                       onChange={e => setEditingCompany({...editingCompany, maxUsers: Number(e.target.value)})} 
+                       className="h-14 border-2 rounded-2xl font-black text-2xl text-center bg-slate-50 focus:bg-white" 
+                     />
                   </div>
-                  <p className="text-[11px] font-bold text-slate-500 leading-relaxed italic">
-                     {isRtl 
-                       ? 'تنبيه: سيقوم النظام تلقائياً بتحديث حالة المنشأة إلى (نشط) فور اختيارك لتاريخ مستقبلي والضغط على حفظ، ما لم تكن المنشأة تحت التجميد الإداري اليدوي.' 
-                       : 'Note: Status will automatically flip to ACTIVE if a future date is selected and saved, provided no manual suspension is active.'}
-                  </p>
+                  <div className="bg-blue-50 p-6 rounded-[2rem] border-2 border-white shadow-inner flex items-start gap-4">
+                     <Info className="h-5 w-5 text-blue-500 shrink-0 mt-1" />
+                     <p className="text-[10px] text-blue-700 font-bold leading-relaxed">
+                        تنبيه: تحديث نوع الاشتراك يقوم بتعيين تاريخ انتهاء جديد تلقائياً من اليوم. يمكنك تعديل التاريخ يدوياً بعد الاختيار.
+                     </p>
+                  </div>
                </div>
             </div>
             
-            <DialogFooter className="p-10 bg-slate-50 border-t flex flex-row gap-4 shrink-0">
+            <DialogFooter className="p-10 bg-slate-50 border-t flex flex-row gap-4 shrink-0 shadow-2xl">
                <Button variant="outline" onClick={() => setEditingCompany(null)} className="flex-1 h-16 rounded-2xl border-2 font-black text-lg bg-white">إلغاء</Button>
-               <Button onClick={handleUpdateSubscription} disabled={processingId === 'saving'} className="flex-[2] h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all border-b-8 border-orange-700">
+               <Button onClick={handleUpdateSubscription} disabled={processingId === 'saving'} className="flex-[2] h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all border-b-8 border-orange-700">
                   {processingId === 'saving' ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="me-2 h-6 w-6" />}
                   حفظ وتطبيق التغييرات السيادية
                </Button>
@@ -433,3 +431,4 @@ export default function DeveloperDashboard() {
     </div>
   );
 }
+
