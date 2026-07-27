@@ -9,17 +9,17 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // جلب بيانات المستخدم العالمي مع حماية من عدم الوجود
-    function getGlobalData() {
-      return get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
-    }
-
+    // التحقق مما إذا كان المستخدم هو المطور العالمي المبرمج
     function isDeveloper() {
       return isAuthenticated() && (
         request.auth.token.email == 'admin@novaflow.com' ||
         (exists(/databases/$(database)/documents/global_users/$(request.auth.uid)) && 
-         getGlobalData().isDeveloper == true)
+         get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.isDeveloper == true)
       );
+    }
+
+    function getGlobalData() {
+      return get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
     }
 
     function belongsToCompany(companyId) {
@@ -42,61 +42,45 @@ service cloud.firestore {
     // --- سجلات المستخدمين العالمية (Identity) ---
     
     match /global_users/{uid} {
-      // يسمح للمستخدم بقراءة سجله الخاص أو المطور أو مدير الشركة
       allow read: if isAuthenticated() && (request.auth.uid == uid || isDeveloper());
-      // يسمح بإنشاء السجل إذا كان المستخدم هو نفسه صاحب الـ UID (مرحلة التسجيل)
       allow create: if isAuthenticated() && request.auth.uid == uid;
-      // التحديث للمستخدم نفسه أو المطور أو المدير
-      allow update: if isDeveloper() || (isAuthenticated() && request.auth.uid == uid) || (isAuthenticated() && isAdmin(getGlobalData().companyId));
+      allow update: if isDeveloper() || (isAuthenticated() && request.auth.uid == uid);
       allow delete: if isDeveloper();
     }
     
     match /company_requests/{reqId} {
-       allow create: if true; // السماح بتقديم الطلبات للجميع
+       allow create: if true; 
        allow read, write: if isDeveloper();
     }
 
     // --- سجلات المنشأة (Multi-tenant) ---
     
     match /companies/{companyId} {
-      allow read: if belongsToCompany(companyId);
-      // السماح بإنشاء الشركة إذا كان المستخدم هو المالك المذكور في البيانات (مرحلة التسجيل)
-      allow create: if isAuthenticated() && request.resource.data.ownerUid == request.auth.uid;
+      allow read: if belongsToCompany(companyId) || isDeveloper();
+      allow create: if isAuthenticated(); // السماح بالإنشاء المبدئي أثناء التسجيل
       allow update: if isAdmin(companyId) || isDeveloper();
       allow delete: if isDeveloper();
       
-      // قواعد مستخدمي الشركة (Internal Users)
       match /users/{uid} {
-        allow read: if belongsToCompany(companyId);
-        allow create: if isAuthenticated() && (request.auth.uid == uid || isAdmin(companyId));
-        allow update: if isAdmin(companyId) || (isAuthenticated() && request.auth.uid == uid);
-        allow delete: if isAdmin(companyId);
+        allow read: if belongsToCompany(companyId) || isDeveloper();
+        allow create, update: if isAuthenticated() && (request.auth.uid == uid || isAdmin(companyId));
+        allow delete: if isAdmin(companyId) || isDeveloper();
       }
 
-      // قواعد الموظفين (HR Core)
       match /employees/{empId} {
-        allow read: if belongsToCompany(companyId);
-        allow create, delete: if isAdmin(companyId);
-        allow update: if isAdmin(companyId) || (isAuthenticated() && exists(/databases/$(database)/documents/global_users/$(request.auth.uid)) && getGlobalData().employeeId == empId);
+        allow read: if belongsToCompany(companyId) || isDeveloper();
+        allow write: if isAdmin(companyId) || isDeveloper();
       }
 
-      // قواعد العملاء (CRM Core)
-      match /clients/{clientId} {
-        allow read: if belongsToCompany(companyId);
-        allow create: if belongsToCompany(companyId);
-        allow update, delete: if isAdmin(companyId);
-        
-        match /history/{histId} {
-          allow read: if belongsToCompany(companyId);
-          allow create: if belongsToCompany(companyId);
-        }
-      }
-
-      // باقي المجموعات والمسارات تتبع قاعدة الوصول العام للشركة والتحكم للمدير
       match /{allSubCollections=**} {
-        allow read: if belongsToCompany(companyId);
-        allow write: if isAdmin(companyId);
+        allow read: if belongsToCompany(companyId) || isDeveloper();
+        allow write: if isAdmin(companyId) || isDeveloper();
       }
+    }
+
+    // دعم استعلامات الـ Collection Group للأوامر التغييرية
+    match /{path=**}/variations/{voId} {
+      allow read: if isAuthenticated() && (isDeveloper() || belongsToCompany(resource.data.companyId));
     }
   }
 }
