@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -91,9 +92,13 @@ export default function BOQExplorerPage() {
   [db, companyId]);
   const { data: boqs, loading: boqLoading } = useCollection<BOQ>(boqsQuery);
 
-  // تصحيح الاستعلام العالمي للأوامر التغييرية ليعمل فوراً دون تداخل
+  // تفعيل الاستعلام بـ Composite Index (companyId + createdAt)
   const allVOsQuery = useMemo(() => 
-    companyId && db ? query(collectionGroup(db, 'variations'), where('companyId', '==', companyId)) : null, 
+    companyId && db ? query(
+      collectionGroup(db, 'variations'), 
+      where('companyId', '==', companyId),
+      orderBy('createdAt', 'desc')
+    ) : null, 
   [db, companyId]);
   const { data: rawVOs, loading: voLoading } = useCollection<BOQVariation>(allVOsQuery);
 
@@ -109,8 +114,7 @@ export default function BOQExplorerPage() {
       .filter(vo => 
         (vo.title || "").toLowerCase().includes(searchTerm.toLowerCase()) || 
         (vo.boqNumber || "").toLowerCase().includes(searchTerm.toLowerCase())
-      )
-      .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+      );
   }, [rawVOs, searchTerm]);
 
   const handleReviewVO = async (vo: BOQVariation) => {
@@ -296,7 +300,6 @@ export default function BOQExplorerPage() {
         </TabsContent>
       </Tabs>
 
-      {/* VO Review Dialog */}
       <Dialog open={!!reviewVO} onOpenChange={(open) => !open && setReviewVO(null)}>
          <DialogContent className="max-w-5xl rounded-none p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
             <div className="bg-[#1e1b4b] p-8 text-white text-start flex justify-between items-center">

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -27,9 +28,13 @@ export default function FieldVisitsListPage() {
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
-  // استعلام شامل لكافة الزيارات الميدانية في المنشأة (Collection Group)
+  // استعلام بـ Composite Index (companyId + visitDate) لضمان السرعة والترتيب
   const visitsQuery = useMemo(() => 
-    companyId && db ? query(collectionGroup(db, 'fieldVisits'), where('companyId', '==', companyId), orderBy('visitDate', 'desc')) : null, 
+    companyId && db ? query(
+      collectionGroup(db, 'fieldVisits'), 
+      where('companyId', '==', companyId), 
+      orderBy('visitDate', 'desc')
+    ) : null, 
   [db, companyId]);
 
   const { data: visits, loading } = useCollection<FieldVisit>(visitsQuery);
