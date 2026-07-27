@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -14,7 +13,7 @@ import {
   Edit3, Save, Users, Zap, Building2, 
   CalendarClock, Timer, ShieldCheck, AlertTriangle, X,
   ExternalLink, Lock, Unlock, CreditCard, History,
-  CalendarDays, Play, Pause, Power
+  CalendarDays, Play, Pause, Power, Info
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useLanguage } from '@/context/language-context';
@@ -245,7 +244,7 @@ export default function DeveloperDashboard() {
                       <TableCell>
                          <Badge className={cn(
                            "font-black text-[9px] uppercase px-4 py-1 border-0 shadow-sm",
-                           req.status === 'activated' ? "bg-emerald-500 text-white" : "bg-amber-100 text-amber-700"
+                           req.status === 'activated' ? "bg-emerald-50 text-white" : "bg-amber-100 text-amber-700"
                          )}>
                            {req.status}
                          </Badge>
@@ -309,8 +308,8 @@ export default function DeveloperDashboard() {
                       <TableCell>
                          <Badge className={cn(
                            "font-black px-4 py-1.5 text-[9px] uppercase border-0 shadow-sm",
-                           comp.status === 'active' ? "bg-emerald-500 text-white" : 
-                           comp.status === 'suspended' ? "bg-amber-500 text-white" : "bg-rose-500 text-white"
+                           comp.status === 'active' ? "bg-emerald-50 text-white" : 
+                           comp.status === 'suspended' ? "bg-amber-50 text-white" : "bg-rose-50 text-white"
                          )}>{comp.status}</Badge>
                       </TableCell>
                       <TableCell className="pe-10 text-end">
@@ -348,8 +347,8 @@ export default function DeveloperDashboard() {
                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">حالة التشغيل الحالية</p>
                      <Badge className={cn(
                         "text-lg font-black uppercase px-6 py-2 border-0 shadow-xl",
-                        editingCompany?.status === 'active' ? "bg-emerald-500 text-white" : 
-                        editingCompany?.status === 'suspended' ? "bg-amber-500 text-white" : "bg-rose-500 text-white"
+                        editingCompany?.status === 'active' ? "bg-emerald-50 text-white" : 
+                        editingCompany?.status === 'suspended' ? "bg-amber-50 text-white" : "bg-rose-50 text-white"
                      )}>
                         {editingCompany?.status}
                      </Badge>
