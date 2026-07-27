@@ -13,7 +13,7 @@ import {
   Edit3, Save, Users, Zap, Building2, 
   CalendarClock, Timer, ShieldCheck, AlertTriangle, X,
   ExternalLink, Lock, Unlock, CreditCard, History,
-  CalendarDays, Play, Pause, Power, Info, Settings2
+  CalendarDays, Play, Pause, Power, Info, Settings2, Sparkles
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useLanguage } from '@/context/language-context';
@@ -170,79 +170,102 @@ export default function DeveloperDashboard() {
   }
 
   return (
-    <div className="space-y-8 text-start" dir={dir}>
-      <div className="flex justify-between items-end">
+    <div className="space-y-10 text-start animate-in fade-in duration-700" dir={dir}>
+      <div className="flex justify-between items-end border-b-2 border-primary/10 pb-8">
         <div className="text-start">
             <h2 className="text-4xl font-black font-headline text-slate-900">{isRtl ? 'بوابة الرقابة والاشتراكات' : 'Subscription Control'}</h2>
-            <Badge className="bg-slate-900 text-primary mt-2 uppercase tracking-widest text-[10px] px-4 py-1">NovaFlow Sovereign Engine</Badge>
+            <div className="flex items-center gap-3 mt-2">
+               <Badge className="bg-primary text-white border-0 uppercase tracking-widest text-[9px] px-4 py-1 rounded-full shadow-lg shadow-primary/10">Sovereign Core</Badge>
+               <span className="text-[10px] font-bold text-slate-400">NovaFlow Cloud Enforcement</span>
+            </div>
         </div>
         <div className="flex gap-4">
-           <Card className="bg-white px-6 py-3 rounded-2xl shadow-sm border-2 flex items-center gap-3">
-              <Zap className="h-5 w-5 text-primary animate-pulse" />
+           <Card className="bg-white px-6 py-3 rounded-2xl shadow-xl border-0 ring-1 ring-black/5 flex items-center gap-4">
+              <div className="h-10 w-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-500 shadow-inner">
+                 <Zap className="h-5 w-5 animate-pulse" />
+              </div>
               <div className="text-start">
-                 <p className="text-[8px] font-black text-slate-400 uppercase">System Status</p>
-                 <p className="text-xs font-black text-emerald-600 uppercase">All Nodes Online</p>
+                 <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Network Status</p>
+                 <p className="text-xs font-black text-slate-800 uppercase">Nodes: Stable</p>
               </div>
            </Card>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="bg-slate-950 text-white rounded-[2rem] p-8 shadow-2xl border-0 text-start">
+        {/* تم تغيير البطاقة القاتمة إلى فاتحة بلمسة برتقالية */}
+        <Card className="bg-white rounded-[2.5rem] p-8 shadow-xl border-0 ring-1 ring-black/5 border-b-8 border-b-primary text-start group hover:scale-105 transition-all">
            <div className="text-start">
-            <h4 className="text-slate-500 text-[10px] font-black uppercase mb-1 tracking-widest">طلبات جديدة</h4>
-            <p className="text-5xl font-black font-headline text-primary">{requests?.filter(r => r.status === 'pending').length || 0}</p>
+            <div className="flex items-center justify-between mb-4">
+               <h4 className="text-slate-400 text-[10px] font-black uppercase tracking-widest">طلبات جديدة</h4>
+               <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary"><Users className="h-4 w-4" /></div>
+            </div>
+            <p className="text-5xl font-black font-headline text-slate-900">{requests?.filter(r => r.status === 'pending').length || 0}</p>
           </div>
         </Card>
-        <Card className="bg-white rounded-[2rem] p-8 shadow-xl border-0 ring-1 ring-black/5 text-start">
-           <h4 className="text-slate-400 text-[10px] font-black uppercase mb-1 tracking-widest">نشط</h4>
+        <Card className="bg-white rounded-[2.5rem] p-8 shadow-xl border-0 ring-1 ring-black/5 border-b-8 border-b-emerald-500 text-start group hover:scale-105 transition-all">
+           <div className="flex items-center justify-between mb-4">
+              <h4 className="text-slate-400 text-[10px] font-black uppercase tracking-widest">نشط</h4>
+              <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-500"><ShieldCheck className="h-4 w-4" /></div>
+           </div>
            <p className="text-5xl font-black font-headline text-emerald-600">{companies?.filter(c => c.status === 'active').length || 0}</p>
         </Card>
-        <Card className="bg-white rounded-[2rem] p-8 shadow-xl border-0 ring-1 ring-black/5 text-start">
-           <h4 className="text-slate-400 text-[10px] font-black uppercase mb-1 tracking-widest">متوقف / منتهي</h4>
+        <Card className="bg-white rounded-[2.5rem] p-8 shadow-xl border-0 ring-1 ring-black/5 border-b-8 border-b-rose-500 text-start group hover:scale-105 transition-all">
+           <div className="flex items-center justify-between mb-4">
+              <h4 className="text-slate-400 text-[10px] font-black uppercase tracking-widest">متوقف / منتهي</h4>
+              <div className="h-8 w-8 rounded-lg bg-rose-50 flex items-center justify-center text-rose-500"><Ban className="h-4 w-4" /></div>
+           </div>
            <p className="text-5xl font-black font-headline text-rose-500">{companies?.filter(c => c.status !== 'active').length || 0}</p>
         </Card>
-        <Card className="bg-white rounded-[2rem] p-8 shadow-xl border-0 ring-1 ring-black/5 text-start">
-           <h4 className="text-slate-400 text-[10px] font-black uppercase mb-1 tracking-widest">إجمالي العملاء</h4>
+        <Card className="bg-white rounded-[2.5rem] p-8 shadow-xl border-0 ring-1 ring-black/5 border-b-8 border-b-slate-900 text-start group hover:scale-105 transition-all">
+           <div className="flex items-center justify-between mb-4">
+              <h4 className="text-slate-400 text-[10px] font-black uppercase tracking-widest">إجمالي العملاء</h4>
+              <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500"><Building2 className="h-4 w-4" /></div>
+           </div>
            <p className="text-5xl font-black font-headline text-slate-900">{companies?.length || 0}</p>
         </Card>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-white border-2 border-slate-100 h-16 rounded-2xl p-1.5 shadow-sm mb-8 gap-2">
-           <TabsTrigger value="requests" className="rounded-xl px-10 font-black text-sm data-[state=active]:bg-primary data-[state=active]:text-white transition-all">طلبات الانضمام</TabsTrigger>
-           <TabsTrigger value="companies" className="rounded-xl px-10 font-black text-sm data-[state=active]:bg-primary data-[state=active]:text-white transition-all">إدارة التراخيص</TabsTrigger>
+        <TabsList className="bg-white border-2 border-slate-100 h-16 rounded-3xl p-1.5 shadow-sm mb-8 gap-2">
+           <TabsTrigger value="requests" className="rounded-2xl px-12 font-black text-sm data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-xl transition-all">طلبات الانضمام</TabsTrigger>
+           <TabsTrigger value="companies" className="rounded-2xl px-12 font-black text-sm data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-xl transition-all">إدارة التراخيص</TabsTrigger>
         </TabsList>
 
         <TabsContent value="requests" className="animate-in slide-in-from-bottom-2 duration-500">
-           <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
+           <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
               <Table>
-                <TableHeader className="bg-slate-50 border-b-2">
+                <TableHeader className="bg-slate-50/50 border-b-2">
                   <TableRow>
-                    <TableHead className="ps-10 py-6 font-black uppercase text-[10px] text-slate-500">المنشأة</TableHead>
-                    <TableHead className="font-black uppercase text-[10px] text-slate-500">النشاط</TableHead>
-                    <TableHead className="font-black uppercase text-[10px] text-slate-500">الحالة</TableHead>
-                    <TableHead className="pe-10 text-end font-black uppercase text-[10px] text-slate-500">الإجراء</TableHead>
+                    <TableHead className="ps-10 py-8 font-black uppercase text-[11px] text-slate-500">المنشأة</TableHead>
+                    <TableHead className="font-black uppercase text-[11px] text-slate-500">النشاط</TableHead>
+                    <TableHead className="font-black uppercase text-[11px] text-slate-500">الحالة</TableHead>
+                    <TableHead className="pe-10 text-end font-black uppercase text-[11px] text-slate-500">الإجراء</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {requestsLoading ? (
-                    <TableRow><TableCell colSpan={4} className="text-center py-20"><Loader2 className="animate-spin mx-auto text-primary/20" /></TableCell></TableRow>
+                    <TableRow><TableCell colSpan={4} className="text-center py-32"><Loader2 className="animate-spin h-12 w-12 mx-auto text-primary/20" /></TableCell></TableRow>
                   ) : requests?.map((req: any) => (
-                    <TableRow key={req.id} className="hover:bg-slate-50/50 transition-colors">
-                      <TableCell className="ps-10 py-6">
-                         <div className="flex flex-col text-start">
-                            <span className="font-black text-slate-800 text-lg">{req.companyName}</span>
-                            <span className="text-[10px] font-mono text-slate-400 font-bold">{req.email}</span>
+                    <TableRow key={req.id} className="hover:bg-primary/[0.01] transition-colors border-b-slate-50">
+                      <TableCell className="ps-10 py-8 text-start">
+                         <div className="flex items-center gap-6">
+                            <div className="h-14 w-14 rounded-2xl bg-white shadow-xl flex items-center justify-center text-primary font-black border-2 border-primary/10">
+                               {req.companyName?.charAt(0)}
+                            </div>
+                            <div className="flex flex-col">
+                               <span className="font-black text-slate-800 text-xl">{req.companyName}</span>
+                               <span className="text-[11px] font-mono text-slate-400 font-bold mt-1">{req.email}</span>
+                            </div>
                          </div>
                       </TableCell>
                       <TableCell>
-                         <Badge variant="outline" className="text-[8px] font-black uppercase border-primary/20 bg-primary/5 text-primary px-3 h-6 rounded-lg">{req.activity}</Badge>
+                         <Badge variant="outline" className="text-[9px] font-black uppercase border-primary/20 bg-primary/5 text-primary px-4 h-7 rounded-xl">{req.activity}</Badge>
                       </TableCell>
                       <TableCell>
                          <Badge className={cn(
-                           "font-black text-[9px] uppercase px-4 py-1 border-0 shadow-sm",
-                           req.status === 'activated' ? "bg-emerald-50 text-white" : "bg-amber-100 text-amber-700"
+                           "font-black text-[10px] uppercase px-5 py-1.5 border-0 shadow-sm rounded-lg",
+                           req.status === 'activated' ? "bg-emerald-50 text-emerald-600" : "bg-amber-100 text-amber-700"
                          )}>
                            {req.status}
                          </Badge>
@@ -254,14 +277,16 @@ export default function DeveloperDashboard() {
                                <Button 
                                  onClick={() => handleActivate(req, 7, 'trial')} 
                                  disabled={processingId === req.id} 
-                                 className="h-11 px-6 bg-primary text-white font-black text-xs rounded-xl shadow-lg"
+                                 className="h-12 px-8 bg-primary text-white font-black text-sm rounded-xl shadow-2xl shadow-primary/20 hover:scale-105 transition-all gap-3"
                                >
-                                  {processingId === req.id ? <Loader2 className="animate-spin" /> : <Power className="me-2 h-4 w-4" />}
-                                  تفعيل تجريبي (7 أيام)
+                                  {processingId === req.id ? <Loader2 className="animate-spin" /> : <Power className="h-4 w-4" />}
+                                  تفعيل فوري (7 أيام)
                                </Button>
                              </>
                            ) : (
-                             <Badge variant="outline" className="border-emerald-200 text-emerald-600 font-black">طلب مكتمل</Badge>
+                             <Button variant="outline" onClick={() => { setActiveTab('companies'); }} className="rounded-xl h-10 px-6 font-black text-[11px] border-emerald-200 text-emerald-600 bg-emerald-50">
+                                <CheckCircle2 className="h-3 w-3 me-2" /> إكمال الإدارة
+                             </Button>
                            )}
                         </div>
                       </TableCell>
@@ -273,48 +298,53 @@ export default function DeveloperDashboard() {
         </TabsContent>
 
         <TabsContent value="companies" className="animate-in fade-in duration-500">
-           <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
+           <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
               <Table>
-                <TableHeader className="bg-slate-50 border-b-2">
+                <TableHeader className="bg-slate-50/50 border-b-2">
                   <TableRow>
-                    <TableHead className="ps-10 py-6 font-black uppercase text-[10px] text-slate-500">المنشأة</TableHead>
-                    <TableHead className="font-black uppercase text-[10px] text-slate-500">الاشتراك</TableHead>
-                    <TableHead className="font-black uppercase text-[10px] text-slate-500">تاريخ الانتهاء</TableHead>
-                    <TableHead className="font-black uppercase text-[10px] text-slate-500">الحالة</TableHead>
-                    <TableHead className="pe-10 text-end font-black uppercase text-[10px] text-slate-500">التحكم</TableHead>
+                    <TableHead className="ps-10 py-8 font-black uppercase text-[11px] text-slate-500">المنشأة</TableHead>
+                    <TableHead className="font-black uppercase text-[11px] text-slate-500">الاشتراك</TableHead>
+                    <TableHead className="font-black uppercase text-[11px] text-slate-500">تاريخ الانتهاء</TableHead>
+                    <TableHead className="font-black uppercase text-[11px] text-slate-500">الحالة</TableHead>
+                    <TableHead className="pe-10 text-end font-black uppercase text-[11px] text-slate-500">التحكم</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {companiesLoading ? (
-                    <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin mx-auto" /></TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="text-center py-32"><Loader2 className="animate-spin h-12 w-12 mx-auto" /></TableCell></TableRow>
                   ) : companies?.map((comp: any) => (
-                    <TableRow key={comp.id} className="hover:bg-slate-50/50 transition-colors">
-                      <TableCell className="ps-10 py-6">
-                         <div className="text-start">
-                            <p className="font-black text-slate-900 text-lg">{comp.name}</p>
-                            <p className="text-[9px] text-slate-400 font-mono mt-1 uppercase">ID: {comp.id.slice(-6)}</p>
+                    <TableRow key={comp.id} className="hover:bg-primary/[0.01] transition-colors border-b-slate-50">
+                      <TableCell className="ps-10 py-8 text-start">
+                         <div className="flex items-center gap-6">
+                            <div className="h-12 w-12 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 font-black border">
+                               {comp.name?.charAt(0)}
+                            </div>
+                            <div className="text-start">
+                               <p className="font-black text-slate-900 text-lg leading-none">{comp.name}</p>
+                               <p className="text-[10px] font-mono text-slate-400 mt-2 uppercase tracking-tighter">ID: {comp.id.slice(-6)}</p>
+                            </div>
                          </div>
                       </TableCell>
                       <TableCell>
-                         <Badge className="bg-blue-50 text-blue-600 border-0 text-[9px] font-black uppercase px-3 py-1">
+                         <Badge className="bg-blue-50 text-blue-600 border-0 text-[10px] font-black uppercase px-4 py-1.5 rounded-lg">
                             {comp.subscriptionType}
                          </Badge>
                       </TableCell>
-                      <TableCell className="font-mono text-xs font-black text-slate-600">
+                      <TableCell className="font-mono text-sm font-black text-slate-600">
                          {comp.expiryDate ? comp.expiryDate.split('T')[0] : '---'}
                       </TableCell>
                       <TableCell>
                          <Badge className={cn(
-                           "font-black px-4 py-1.5 text-[9px] uppercase border-0 shadow-sm",
-                           comp.status === 'active' ? "bg-emerald-50 text-white" : 
-                           comp.status === 'suspended' ? "bg-amber-50 text-white" : "bg-rose-50 text-white"
+                           "font-black px-4 py-1.5 text-[10px] uppercase border-0 shadow-sm rounded-lg",
+                           comp.status === 'active' ? "bg-emerald-50 text-emerald-600" : 
+                           comp.status === 'suspended' ? "bg-amber-50 text-amber-600" : "bg-rose-50 text-rose-600"
                          )}>{comp.status}</Badge>
                       </TableCell>
                       <TableCell className="pe-10 text-end">
                         <Button 
                           variant="outline" 
                           onClick={() => setEditingCompany({...comp})} 
-                          className="h-10 px-5 rounded-xl border-2 font-black text-xs gap-2 hover:bg-primary hover:text-white transition-all"
+                          className="h-11 px-6 rounded-xl border-2 font-black text-xs gap-2 hover:bg-primary hover:text-white transition-all shadow-sm"
                         >
                            <Settings2 className="h-4 w-4" /> إدارة الاشتراك
                         </Button>
@@ -329,97 +359,105 @@ export default function DeveloperDashboard() {
 
       <Dialog open={!!editingCompany} onOpenChange={(v) => { if(!v) setEditingCompany(null); }}>
          <DialogContent className="rounded-[3rem] max-w-2xl p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
-            <div className="bg-slate-900 p-10 text-white text-start shrink-0">
+            {/* تم تغيير خلفية الدايلوج لتصبح فاتحة */}
+            <div className="bg-slate-50 p-10 text-slate-900 text-start border-b shrink-0 relative">
                <DialogTitle className="text-3xl font-black font-headline flex items-center gap-4">
-                  <Building2 className="h-10 w-10 text-primary" /> 
-                  إدارة المنشأة والاشتراك
+                  <div className="h-12 w-12 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg"><Building2 className="h-6 w-6" /></div> 
+                  إدارة التراخيص والمدد
                </DialogTitle>
-               <p className="text-slate-400 font-bold mt-2 text-lg">{editingCompany?.name}</p>
+               <p className="text-slate-400 font-bold mt-2 text-lg ps-16">{editingCompany?.name}</p>
             </div>
 
             <div className="p-10 space-y-10 text-start bg-white">
                
-               <div className="flex items-center justify-between p-6 bg-slate-50 rounded-[2rem] border-2 border-white shadow-inner">
+               <div className="flex items-center justify-between p-8 bg-slate-50 rounded-[2.5rem] border-2 border-white shadow-inner">
                   <div className="text-start">
                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">حالة التشغيل الحالية</p>
                      <Badge className={cn(
-                        "text-lg font-black uppercase px-6 py-2 border-0 shadow-xl",
-                        editingCompany?.status === 'active' ? "bg-emerald-50 text-white" : 
-                        editingCompany?.status === 'suspended' ? "bg-amber-50 text-white" : "bg-rose-50 text-white"
+                        "text-xl font-black uppercase px-8 py-2.5 border-0 shadow-2xl rounded-2xl",
+                        editingCompany?.status === 'active' ? "bg-emerald-500 text-white" : 
+                        editingCompany?.status === 'suspended' ? "bg-amber-500 text-white" : "bg-rose-500 text-white"
                      )}>
                         {editingCompany?.status}
                      </Badge>
                   </div>
-                  <div className="flex gap-3">
+                  <div className="flex gap-4">
                      {editingCompany?.status === 'suspended' ? (
                         <Button 
                           onClick={() => setEditingCompany({...editingCompany, status: 'active'})}
-                          className="bg-emerald-600 text-white font-black rounded-xl h-14 px-8 shadow-lg gap-2"
+                          className="bg-emerald-600 text-white font-black rounded-2xl h-16 px-10 shadow-xl shadow-emerald-500/20 gap-3 border-b-8 border-emerald-800"
                         >
-                           <Play className="h-5 w-5" /> فك التجميد
+                           <Play className="h-6 w-6" /> فك التجميد السيادي
                         </Button>
                      ) : (
                         <Button 
                           onClick={() => setEditingCompany({...editingCompany, status: 'suspended'})}
                           variant="destructive"
-                          className="font-black rounded-xl h-14 px-8 shadow-lg gap-2"
+                          className="font-black rounded-2xl h-16 px-10 shadow-xl shadow-rose-500/20 gap-3 border-b-8 border-rose-800"
                         >
-                           <Pause className="h-5 w-5" /> تجميد مؤقت
+                           <Pause className="h-6 w-6" /> تجميد الوصول فوراً
                         </Button>
                      )}
                   </div>
                </div>
 
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-10 pt-4">
                   <div className="space-y-3 text-start">
-                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">نوع الباقة / الاشتراك</Label>
+                     <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                        <CreditCard className="h-4 w-4 text-primary" /> نوع الباقة / الاشتراك
+                     </Label>
                      <Select value={editingCompany?.subscriptionType} onValueChange={handleSubscriptionTypeChange}>
-                        <SelectTrigger className="h-14 border-2 rounded-2xl font-black text-lg">
+                        <SelectTrigger className="h-16 border-2 rounded-[1.5rem] font-black text-xl bg-white shadow-sm">
                            <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="rounded-2xl">
-                           <SelectItem value="trial" className="font-bold py-3">Trial (7 أيام)</SelectItem>
-                           <SelectItem value="monthly" className="font-bold py-3">Monthly (30 يوماً)</SelectItem>
-                           <SelectItem value="annual" className="font-bold py-3 text-primary">Annual (سنة كاملة)</SelectItem>
+                        <SelectContent className="rounded-2xl border-0 shadow-3xl">
+                           <SelectItem value="trial" className="font-bold py-4">Trial (7 أيام من اليوم)</SelectItem>
+                           <SelectItem value="monthly" className="font-bold py-4">Monthly (30 يوماً من اليوم)</SelectItem>
+                           <SelectItem value="annual" className="font-bold py-4 text-primary">Annual (سنة من اليوم)</SelectItem>
                         </SelectContent>
                      </Select>
                   </div>
 
                   <div className="space-y-3 text-start">
-                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">تاريخ الانتهاء (قابل للتعديل)</Label>
+                     <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                        <CalendarClock className="h-4 w-4 text-primary" /> تاريخ الانتهاء (تعديل يدوي)
+                     </Label>
                      <Input 
                        type="date" 
                        value={editingCompany?.expiryDate ? editingCompany.expiryDate.split('T')[0] : ''} 
                        onChange={e => setEditingCompany({...editingCompany, expiryDate: e.target.value ? new Date(e.target.value).toISOString() : ''})} 
-                       className="h-14 border-2 rounded-2xl font-black text-lg shadow-inner bg-slate-50 focus:bg-white transition-all" 
+                       className="h-16 border-2 rounded-[1.5rem] font-black text-2xl text-center shadow-inner bg-slate-50 focus:bg-white transition-all text-primary" 
                      />
                   </div>
                </div>
 
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-10 pt-8 border-t border-slate-100">
                   <div className="space-y-3 text-start">
-                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">سعة المستخدمين</Label>
+                     <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">سعة الموظفين</Label>
                      <Input 
                        type="number" 
                        value={editingCompany?.maxUsers || 0} 
                        onChange={e => setEditingCompany({...editingCompany, maxUsers: Number(e.target.value)})} 
-                       className="h-14 border-2 rounded-2xl font-black text-2xl text-center bg-slate-50 focus:bg-white" 
+                       className="h-16 border-2 rounded-[1.5rem] font-black text-3xl text-center bg-slate-50 focus:bg-white" 
                      />
                   </div>
                   <div className="bg-blue-50 p-6 rounded-[2rem] border-2 border-white shadow-inner flex items-start gap-4">
-                     <Info className="h-5 w-5 text-blue-500 shrink-0 mt-1" />
-                     <p className="text-[10px] text-blue-700 font-bold leading-relaxed">
-                        تنبيه: تحديث نوع الاشتراك يقوم بتعيين تاريخ انتهاء جديد تلقائياً من اليوم. يمكنك تعديل التاريخ يدوياً بعد الاختيار.
-                     </p>
+                     <Info className="h-6 w-6 text-blue-500 shrink-0 mt-1" />
+                     <div className="text-start space-y-1">
+                        <h5 className="font-black text-xs text-blue-900 uppercase">قاعدة الأتمتة</h5>
+                        <p className="text-[10px] text-blue-700/80 font-bold leading-relaxed">
+                           تغيير نوع الاشتراك يضبط التاريخ تلقائياً. إذا كان تاريخ الانتهاء في المستقبل، سيفعل النظام الوصول فوراً.
+                        </p>
+                     </div>
                   </div>
                </div>
             </div>
             
-            <DialogFooter className="p-10 bg-slate-50 border-t flex flex-row gap-4 shrink-0 shadow-2xl">
-               <Button variant="outline" onClick={() => setEditingCompany(null)} className="flex-1 h-16 rounded-2xl border-2 font-black text-lg bg-white">إلغاء</Button>
-               <Button onClick={handleUpdateSubscription} disabled={processingId === 'saving'} className="flex-[2] h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all border-b-8 border-orange-700">
-                  {processingId === 'saving' ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="me-2 h-6 w-6" />}
-                  حفظ وتطبيق التغييرات السيادية
+            <DialogFooter className="p-10 bg-slate-50 border-t flex flex-row gap-6 shrink-0 shadow-2xl">
+               <Button variant="outline" onClick={() => setEditingCompany(null)} className="flex-1 h-20 rounded-[2rem] border-2 font-black text-xl bg-white hover:bg-slate-100">إلغاء</Button>
+               <Button onClick={handleUpdateSubscription} disabled={processingId === 'saving'} className="flex-[2] h-20 rounded-[2rem] bg-primary text-white font-black text-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all border-b-8 border-orange-700 gap-4">
+                  {processingId === 'saving' ? <Loader2 className="animate-spin h-8 w-8" /> : <Save className="h-8 w-8" />}
+                  حفظ وتطبيق التراخيص
                </Button>
             </DialogFooter>
          </DialogContent>

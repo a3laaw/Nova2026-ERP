@@ -3,7 +3,7 @@
 import { useAuthContext } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { Loader2, ShieldCheck, Languages, LogOut } from 'lucide-react';
+import { Loader2, ShieldCheck, Languages, LogOut, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/context/language-context';
 import { cn } from '@/lib/utils';
@@ -41,15 +41,19 @@ export default function DeveloperLayout({
   };
 
   return (
-    <div className="min-h-screen bg-slate-50" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-      <header className="bg-slate-900 text-white p-4 flex items-center justify-between shadow-2xl">
+    <div className="min-h-screen bg-[#F8F9FA]" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+      {/* هيدر فاتح مشرق متوافق مع الهوية الجديدة */}
+      <header className="bg-white border-b-2 border-primary/10 p-4 flex items-center justify-between shadow-sm sticky top-0 z-50">
         <div className={cn("flex items-center gap-3", lang === 'ar' ? "flex-row-reverse" : "flex-row")}>
-          <div className="p-2 bg-primary rounded-xl">
+          <div className="p-2 bg-primary rounded-xl text-white shadow-lg">
             <ShieldCheck className="h-6 w-6" />
           </div>
           <div className={lang === 'ar' ? "text-right" : "text-left"}>
-            <h1 className="font-headline font-bold text-xl leading-none">{t('devConsole')}</h1>
-            <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-1">NovaFlow Core Management</p>
+            <h1 className="font-headline font-black text-xl leading-none text-slate-900">{t('devConsole')}</h1>
+            <div className="flex items-center gap-2 mt-1">
+               <span className="text-[8px] text-primary font-black uppercase tracking-widest">Sovereign Control</span>
+               <div className="h-1 w-4 bg-primary/20 rounded-full" />
+            </div>
           </div>
         </div>
         <div className={cn("flex items-center gap-4", lang === 'ar' ? "flex-row-reverse" : "flex-row")}>
@@ -57,20 +61,21 @@ export default function DeveloperLayout({
             variant="ghost" 
             size="sm" 
             onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
-            className="text-white hover:bg-slate-800 gap-2"
+            className="text-slate-600 hover:bg-slate-50 gap-2 font-bold"
           >
-            <Languages className="h-4 w-4" />
+            <Languages className="h-4 w-4 text-primary" />
             {t('switchLang')}
           </Button>
-          <div className="h-6 w-[1px] bg-slate-700" />
-          <span className="text-xs bg-slate-800 px-3 py-1 rounded-full text-slate-300 hidden sm:inline">
+          <div className="h-6 w-[1px] bg-slate-100" />
+          <span className="text-[10px] font-black bg-slate-50 border border-slate-100 px-4 py-1.5 rounded-full text-slate-500 hidden sm:inline-flex items-center gap-2">
+            <Sparkles className="h-3 w-3 text-primary" />
             {user?.email}
           </span>
           <Button 
             variant="ghost" 
             size="sm" 
             onClick={handleLogout}
-            className="text-slate-400 hover:text-white hover:bg-slate-800"
+            className="text-rose-500 hover:bg-rose-50 font-bold"
           >
             <LogOut className="h-4 w-4 ml-2" />
             {t('logout')}
