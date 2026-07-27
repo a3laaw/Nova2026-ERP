@@ -10,7 +10,7 @@ import { useCollection, useFirestore } from '@/firebase';
 import { collection, query, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { 
   Loader2, CheckCircle, ShieldAlert, Ban, RefreshCcw, 
-  FileSpreadsheet, Edit3, Save, Users 
+  FileSpreadsheet, Edit3, Save, Users, Zap, HardHat, PencilRuler
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useLanguage } from '@/context/language-context';
@@ -19,6 +19,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { SmartDateInput } from '@/components/ui/smart-date-input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function DeveloperDashboard() {
   const { t, lang } = useLanguage();
@@ -35,7 +36,7 @@ export default function DeveloperDashboard() {
     const map: Record<string, string> = {
       'construction': isRtl ? 'مقاولات وإنشاءات' : 'Construction',
       'consulting': isRtl ? 'استشارات هندسية' : 'Consulting',
-      'design_build': isRtl ? 'تصميم وإنشاء' : 'Design & Build',
+      'design_build': isRtl ? 'تصميم وإنشاء (D&B)' : 'Design & Build',
       'general': isRtl ? 'تجارة عامة' : 'General Trading'
     };
     return map[code] || code;
@@ -124,7 +125,7 @@ export default function DeveloperDashboard() {
       <div className="flex flex-col md:flex-row justify-between items-end gap-4">
         <div className="text-start">
           <h2 className="text-3xl font-black font-headline text-slate-900">{t('devConsole')}</h2>
-          <p className="text-slate-500">إدارة دورة حياة المنشآت والاشتراكات السحابية.</p>
+          <p className="text-slate-50">إدارة دورة حياة المنشآت والاشتراكات السحابية.</p>
         </div>
         <Button 
           onClick={exportToExcel} 
@@ -185,99 +186,108 @@ export default function DeveloperDashboard() {
           <CardTitle className="text-lg font-bold">إدارة المنشآت (Tenants Management)</CardTitle>
           <CardDescription>عرض وتعديل والتحكم في وصول الشركات للنظام.</CardDescription>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="p-0 overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-start">المنشأة</TableHead>
-                <TableHead className="text-start">النشاط</TableHead>
+                <TableHead className="text-start py-5 ps-8">المنشأة</TableHead>
+                <TableHead className="text-start">النشاط السيادي</TableHead>
                 <TableHead className="text-start">نهاية التجربة</TableHead>
                 <TableHead className="text-start">المستخدمين</TableHead>
                 <TableHead className="text-start">الحالة</TableHead>
-                <TableHead className="text-end pe-6">الإجراءات</TableHead>
+                <TableHead className="text-end pe-8">الإجراءات</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {companiesLoading ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-10"><Loader2 className="animate-spin mx-auto" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary" /></TableCell></TableRow>
               ) : (
                 companies?.map((comp: any) => (
                   <TableRow key={comp.id} className="hover:bg-slate-50 transition-colors">
-                    <TableCell className="font-bold text-start">
+                    <TableCell className="font-bold text-start ps-8">
                       <div className="flex flex-col">
                         <span>{comp.name}</span>
                         <span className="text-[10px] text-muted-foreground font-mono">{comp.id}</span>
                       </div>
                     </TableCell>
                     <TableCell className="text-start">
-                      <Badge variant="outline" className="text-[10px] font-black uppercase text-primary border-primary/20">{getActivityLabel(comp.activity)}</Badge>
+                      <Badge variant="outline" className="text-[10px] font-black uppercase text-primary border-primary/20 bg-primary/5 py-1 px-3">
+                         {getActivityLabel(comp.activity)}
+                      </Badge>
                     </TableCell>
                     <TableCell className="font-mono text-xs text-start">
                       {comp.trialEndsAt?.split('T')[0]}
                     </TableCell>
                     <TableCell className="font-bold text-xs text-start">{comp.maxUsers || 5}</TableCell>
                     <TableCell className="text-start">
-                      <Badge className={comp.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}>
+                      <Badge className={cn("font-black px-3 py-1", comp.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700')}>
                         {comp.status === 'active' ? 'نشط' : 'موقوف'}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-end pe-6">
+                    <TableCell className="text-end pe-8">
                       <div className="flex justify-end gap-2">
                         <Dialog open={editingCompany?.id === comp.id} onOpenChange={(open) => !open && setEditingCompany(null)}>
                           <DialogTrigger asChild>
-                            <Button variant="outline" size="sm" className="rounded-xl" onClick={() => setEditingCompany({...comp})}>
+                            <Button variant="outline" size="sm" className="rounded-xl h-10 w-10 p-0" onClick={() => setEditingCompany({...comp})}>
                               <Edit3 className="h-4 w-4" />
                             </Button>
                           </DialogTrigger>
-                          <DialogContent className="sm:max-w-[425px]" dir={isRtl ? "rtl" : "ltr"}>
+                          <DialogContent className="max-w-md rounded-3xl" dir={isRtl ? "rtl" : "ltr"}>
                             <DialogHeader className="text-start">
-                              <DialogTitle>تعديل بيانات المنشأة</DialogTitle>
-                              <DialogDescription>
-                                قم بتغيير إعدادات الشركة وقيود الاشتراك.
+                              <DialogTitle className="text-2xl font-black">تعديل بيانات المنشأة</DialogTitle>
+                              <DialogDescription className="font-bold">
+                                قم بتغيير إعدادات الشركة وقيود الاشتراك النشاطي.
                               </DialogDescription>
                             </DialogHeader>
-                            <div className="grid gap-4 py-4 text-start">
+                            <div className="grid gap-6 py-6 text-start">
                               <div className="space-y-2">
-                                <Label>اسم الشركة</Label>
+                                <Label className="text-xs font-black uppercase text-slate-400">اسم الشركة</Label>
                                 <Input 
                                   value={editingCompany?.name || ''} 
-                                  placeholder="مثال: شركة المقاولات الحديثة"
+                                  className="h-12 border-2"
                                   onChange={e => setEditingCompany({...editingCompany, name: e.target.value})} 
                                 />
                               </div>
                               <div className="space-y-2">
-                                <Label>النشاط الرئيسي</Label>
+                                <Label className="text-xs font-black uppercase text-slate-400">النشاط الرئيسي السيادي</Label>
                                 <Select value={editingCompany?.activity} onValueChange={v => setEditingCompany({...editingCompany, activity: v})}>
-                                   <SelectTrigger><SelectValue /></SelectTrigger>
-                                   <SelectContent>
-                                      <SelectItem value="construction">مقاولات وإنشاءات</SelectItem>
-                                      <SelectItem value="consulting">استشارات هندسية</SelectItem>
-                                      <SelectItem value="design_build">تصميم وإنشاء</SelectItem>
-                                      <SelectItem value="general">تجارة عامة</SelectItem>
+                                   <SelectTrigger className="h-12 border-2 font-bold"><SelectValue /></SelectTrigger>
+                                   <SelectContent className="rounded-xl">
+                                      <SelectItem value="construction" className="font-bold">
+                                         <div className="flex items-center gap-2"><HardHat className="h-4 w-4" /> <span>مقاولات وإنشاءات</span></div>
+                                      </SelectItem>
+                                      <SelectItem value="consulting" className="font-bold">
+                                         <div className="flex items-center gap-2"><PencilRuler className="h-4 w-4" /> <span>استشارات هندسية</span></div>
+                                      </SelectItem>
+                                      <SelectItem value="design_build" className="font-bold text-primary">
+                                         <div className="flex items-center gap-2"><Zap className="h-4 w-4" /> <span>تصميم وإنشاء (D&B)</span></div>
+                                      </SelectItem>
                                    </SelectContent>
                                 </Select>
                               </div>
-                              <div className="space-y-2">
-                                <Label>الحد الأقصى للمستخدمين</Label>
-                                <Input 
-                                  type="number" 
-                                  value={editingCompany?.maxUsers || ''} 
-                                  placeholder="5"
-                                  onChange={e => setEditingCompany({...editingCompany, maxUsers: e.target.value})} 
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label>تاريخ انتهاء الفترة التجريبية</Label>
-                                <SmartDateInput 
-                                  value={editingCompany?.trialEndsAt?.split('T')[0] || ''} 
-                                  onChange={v => setEditingCompany({...editingCompany, trialEndsAt: v})} 
-                                />
+                              <div className="grid grid-cols-2 gap-4">
+                                 <div className="space-y-2">
+                                   <Label className="text-xs font-black uppercase text-slate-400">الحد الأقصى للمستخدمين</Label>
+                                   <Input 
+                                     type="number" 
+                                     value={editingCompany?.maxUsers || ''} 
+                                     className="h-12 border-2 text-center font-black"
+                                     onChange={e => setEditingCompany({...editingCompany, maxUsers: e.target.value})} 
+                                   />
+                                 </div>
+                                 <div className="space-y-2">
+                                   <Label className="text-xs font-black uppercase text-slate-400">نهاية الفترة التجريبية</Label>
+                                   <SmartDateInput 
+                                     value={editingCompany?.trialEndsAt?.split('T')[0] || ''} 
+                                     onChange={v => setEditingCompany({...editingCompany, trialEndsAt: v})} 
+                                   />
+                                 </div>
                               </div>
                             </div>
                             <DialogFooter>
-                              <Button onClick={handleUpdateCompany} disabled={processingId === comp.id} className="w-full">
-                                {processingId === comp.id ? <Loader2 className="animate-spin" /> : <Save className="ml-2 h-4 w-4" />}
-                                حفظ التغييرات
+                              <Button onClick={handleUpdateCompany} disabled={processingId === comp.id} className="w-full h-14 rounded-2xl text-lg">
+                                {processingId === comp.id ? <Loader2 className="animate-spin" /> : <Save className="ml-2 h-5 w-5" />}
+                                حفظ التعديلات السيادية
                               </Button>
                             </DialogFooter>
                           </DialogContent>
@@ -288,7 +298,7 @@ export default function DeveloperDashboard() {
                           variant={comp.status === 'active' ? 'destructive' : 'default'}
                           onClick={() => handleToggleStatus(comp.id, comp.status)}
                           disabled={processingId === comp.id}
-                          className="rounded-xl font-bold"
+                          className="rounded-xl h-10 w-10 p-0 font-bold"
                         >
                           {comp.status === 'active' ? <Ban className="h-4 w-4" /> : <RefreshCcw className="h-4 w-4" />}
                         </Button>

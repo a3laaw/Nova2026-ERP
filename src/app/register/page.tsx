@@ -11,8 +11,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, Loader2, CheckCircle2, ArrowRight, Eye, EyeOff, Building2 } from 'lucide-react';
+import { Sparkles, Loader2, CheckCircle2, ArrowRight, Eye, EyeOff, Building2, HardHat, PencilRuler, Zap } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -41,7 +42,6 @@ export default function RegisterPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const uid = userCredential.user.uid;
 
-      // تحديث ملف Auth الأساسي بالاسم الكامل فوراً
       await updateProfile(userCredential.user, { displayName: formData.contactName });
 
       const batch = writeBatch(db);
@@ -61,7 +61,7 @@ export default function RegisterPage() {
         createdAt: serverTimestamp(),
       });
 
-      // 2. إنشاء مستند الشركة (الربط بالنشاط)
+      // 2. إنشاء مستند الشركة (الربط بالنشاط السيادي)
       const companyRef = doc(db, 'companies', companyId);
       batch.set(companyRef, {
         name: formData.companyName,
@@ -69,7 +69,7 @@ export default function RegisterPage() {
         createdAt: serverTimestamp(),
         trialEndsAt: trialEndDate.toISOString(),
         maxUsers: 5,
-        activity: formData.activity, // الربط السيادي بنوع النشاط
+        activity: formData.activity, 
         ownerUid: uid
       });
 
@@ -79,11 +79,11 @@ export default function RegisterPage() {
         companyId,
         role: 'admin',
         roleCode: 'ADMIN',
-        fullName: formData.contactName, // الاسم الكامل المعتمد
+        fullName: formData.contactName, 
         username: formData.username || formData.email.split('@')[0],
         isDeveloper: false,
         email: formData.email,
-        activity: formData.activity, // ربط المستخدم بنشاط المنشأة للفلترة التلقائية
+        activity: formData.activity, 
         isActive: true,
         updatedAt: serverTimestamp()
       });
@@ -176,10 +176,24 @@ export default function RegisterPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="rounded-2xl border-0 shadow-2xl">
-                    <SelectItem value="construction" className="font-bold">مقاولات وإنشاءات</SelectItem>
-                    <SelectItem value="consulting" className="font-bold">استشارات هندسية</SelectItem>
-                    <SelectItem value="design_build" className="font-bold text-primary">تصميم وإنشاء (D&B)</SelectItem>
-                    <SelectItem value="general" className="font-bold">تجارة عامة</SelectItem>
+                    <SelectItem value="construction" className="font-bold">
+                       <div className="flex items-center gap-2">
+                          <HardHat className="h-4 w-4 text-slate-500" />
+                          <span>مقاولات وإنشاءات</span>
+                       </div>
+                    </SelectItem>
+                    <SelectItem value="consulting" className="font-bold">
+                       <div className="flex items-center gap-2">
+                          <PencilRuler className="h-4 w-4 text-slate-500" />
+                          <span>استشارات هندسية</span>
+                       </div>
+                    </SelectItem>
+                    <SelectItem value="design_build" className="font-bold text-primary">
+                       <div className="flex items-center gap-2">
+                          <Zap className="h-4 w-4" />
+                          <span>تصميم وإنشاء (D&B)</span>
+                       </div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>

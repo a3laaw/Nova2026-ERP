@@ -1,7 +1,7 @@
 
 /**
  * @fileOverview البيانات المرجعية الأساسية لنظام Nova ERP (النموذج الهندسي الكويتي).
- * تم تحديث الهيكل ليشمل نشاط "تصميم وإنشاء" كمسار هجين متكامل.
+ * تم تحديث الهيكل ليشمل الفصل الثلاثي الصارم: مقاولات، استشارات، وتصميم وإنشاء.
  */
 
 export const SEED_DATA = {
@@ -60,7 +60,7 @@ export const SEED_DATA = {
     }
   ],
 
-  // الهيكل الفني الرباعي (المسارات التشغيلية)
+  // الهيكل الفني الرباعي (المسارات التشغيلية الثلاثية)
   activityTypes: [
     {
       code: 'CONSULTING',
@@ -69,19 +69,20 @@ export const SEED_DATA = {
       order: 1,
       services: [
         {
-          code: 'RESIDENTIAL',
+          code: 'RESIDENTIAL_DESIGN',
           name: 'بناء وتصميم سكني',
           nameEn: 'Residential Design',
           order: 1,
           subServices: [
             {
               code: 'MUN-PERMIT',
-              name: 'تراخيص البلدية',
-              nameEn: 'Municipality Permits',
+              name: 'تراخيص البلدية والمخططات',
+              nameEn: 'Municipality Permits & DWG',
               order: 1,
               technicalStages: [
-                { code: 'FILE-OPEN', name: 'فتح ملف', nameEn: 'File Opening', order: 1, isTimed: true, timeTargetDays: 2 },
-                { code: 'ARCH-APPR', name: 'اعتماد معماري', nameEn: 'Arch Approval', order: 2, isTimed: true, timeTargetDays: 14 },
+                { code: 'FILE-OPEN', name: 'فتح ملف المكتب الهندسي', nameEn: 'File Opening', order: 1, isTimed: true, timeTargetDays: 2 },
+                { code: 'ARCH-APPR', name: 'اعتماد المخطط المعماري', nameEn: 'Arch Approval', order: 2, isTimed: true, timeTargetDays: 14 },
+                { code: 'ENG-STAMP', name: 'ختم المخططات النهائية', nameEn: 'Engineering Stamp', order: 3, isTimed: true, timeTargetDays: 5 },
               ]
             }
           ]
@@ -95,7 +96,7 @@ export const SEED_DATA = {
       order: 2,
       services: [
         {
-          code: 'STRUCTURAL',
+          code: 'SKELETON_WORKS',
           name: 'أعمال الهيكل والأساسات',
           nameEn: 'Structural Works',
           order: 1,
@@ -124,9 +125,9 @@ export const SEED_DATA = {
       order: 3,
       services: [
         {
-          code: 'TURNKEY_VILLA',
-          name: 'فيلا تسليم مفتاح',
-          nameEn: 'Turnkey Villa Project',
+          code: 'TURNKEY_PROJECTS',
+          name: 'فيلا تسليم مفتاح (متكامل)',
+          nameEn: 'Turnkey Integrated Villa',
           order: 1,
           subServices: [
             {
@@ -135,10 +136,10 @@ export const SEED_DATA = {
               nameEn: 'Integrated Design-Build Cycle',
               order: 1,
               technicalStages: [
-                { code: 'CONCEPT', name: 'دراسة الفكرة والميزانية', nameEn: 'Concept & Budget', order: 1, isTimed: true, timeTargetDays: 7 },
-                { code: 'WORKING_DWG', name: 'المخططات التنفيذية', nameEn: 'Working Drawings', order: 2, isTimed: true, timeTargetDays: 21 },
-                { code: 'MOBILIZATION', name: 'تجهيز الموقع والمباشرة', nameEn: 'Site Mobilization', order: 3, isTimed: true, timeTargetDays: 5 },
-                { code: 'STRUCTURE_START', name: 'بدء أعمال الهيكل', nameEn: 'Structure Commencement', order: 4, isTimed: true, timeTargetDays: 120 },
+                { code: 'DB-CONCEPT', name: 'دراسة الفكرة والميزانية التقديرية', nameEn: 'Concept & Budgeting', order: 1, isTimed: true, timeTargetDays: 7 },
+                { code: 'DB-DESIGN', name: 'إعداد المخططات المعمارية والإنشائية', nameEn: 'Design Development', order: 2, isTimed: true, timeTargetDays: 21 },
+                { code: 'DB-PERMIT', name: 'تراخيص البلدية والمباشرة', nameEn: 'Permits & Mobilization', order: 3, isTimed: true, timeTargetDays: 14 },
+                { code: 'DB-STRUCTURE', name: 'بدء تنفيذ أعمال الهيكل الميدانية', nameEn: 'Structural Execution', order: 4, isTimed: true, timeTargetDays: 120 },
               ]
             }
           ]
