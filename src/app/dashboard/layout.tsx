@@ -34,6 +34,7 @@ export default function DashboardLayout({
     }
   }, [user, authLoading, router]);
 
+  // 1. واجهة الانتظار أثناء التحقق من الهوية والمنشأة
   if (authLoading || companyLoading) {
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#F8F9FA] gap-4">
@@ -41,6 +42,11 @@ export default function DashboardLayout({
         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Authenticating Sovereign Session...</p>
       </div>
     );
+  }
+
+  // 2. بروتوكول الحجب الفوري: إذا لم يوجد مستخدم، لا تعرض أي شيء (انتظر التوجيه لصفحة الدخول)
+  if (!user) {
+    return null;
   }
 
   // --- القفل السيادي المطور (The Sovereign Firewall UI) ---
