@@ -13,7 +13,8 @@ import {
   Loader2, CheckCircle, ShieldAlert, Ban, RefreshCcw, 
   Edit3, Save, Users, Zap, Building2, 
   CalendarClock, Timer, ShieldCheck, AlertTriangle, X,
-  ExternalLink, Lock, Unlock, CreditCard, History
+  ExternalLink, Lock, Unlock, CreditCard, History,
+  CalendarDays
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useLanguage } from '@/context/language-context';
@@ -102,9 +103,17 @@ export default function DeveloperDashboard() {
     setProcessingId('saving');
     try {
       const ref = doc(db, 'companies', editingCompany.id);
+      
+      // إذا تم تمديد التاريخ والشركة كانت "منتهية"، نقوم بتنشيطها تلقائياً
+      let finalStatus = editingCompany.status || 'active';
+      const today = new Date();
+      if (editingCompany.expiryDate && new Date(editingCompany.expiryDate) > today && finalStatus === 'expired') {
+          finalStatus = 'active';
+      }
+
       const updates = {
         name: editingCompany.name || '',
-        status: editingCompany.status || 'active',
+        status: finalStatus,
         subscriptionType: editingCompany.subscriptionType || 'trial',
         expiryDate: editingCompany.expiryDate || new Date().toISOString(),
         maxUsers: Number(editingCompany.maxUsers) || 5,
@@ -113,13 +122,12 @@ export default function DeveloperDashboard() {
       
       await updateDoc(ref, updates);
 
-      // إذا تم الإيقاف يدوياً، نعطل المالك أيضاً في السجل العالمي
       if (editingCompany.ownerUid) {
          const globalRef = doc(db, 'global_users', editingCompany.ownerUid);
-         await updateDoc(globalRef, { isActive: editingCompany.status === 'active' });
+         await updateDoc(globalRef, { isActive: finalStatus === 'active' });
       }
 
-      toast({ title: isRtl ? "تم تحديث بيانات المنشأة" : "Company Updated" });
+      toast({ title: isRtl ? "تم تحديث بيانات المنشأة وتجديد الاشتراك" : "Subscription Updated & Renewed" });
       setEditingCompany(null);
     } catch (e: any) {
       toast({ variant: "destructive", title: "Update Failed", description: e.message });
@@ -365,7 +373,7 @@ export default function DeveloperDashboard() {
                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t border-slate-100">
                   <div className="space-y-3">
                      <Label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] flex items-center gap-2">
-                        <CalendarClock className="h-3.5 w-3.5" /> {isRtl ? 'تاريخ انتهاء الترخيص' : 'License Expiry Date'}
+                        <CalendarDays className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'تاريخ تجديد الاشتراك (حر)' : 'Renew Until (Free Date)'}
                      </Label>
                      <Input 
                        type="date" 
@@ -393,7 +401,7 @@ export default function DeveloperDashboard() {
                      <h5 className="font-black text-sm uppercase tracking-widest">{isRtl ? 'تحديث السجل المالي' : 'Financial Ledger Update'}</h5>
                   </div>
                   <p className="text-[11px] font-bold text-slate-500 leading-relaxed italic">
-                     {isRtl ? 'عند استلام الدفعات، قم بتحديث تاريخ الانتهاء ونوع الاشتراك يدوياً. سيقوم النظام تلقائياً بفتح الوصول للمنشأة فور حفظ التغييرات.' : 'Update expiry date and subscription type upon payment receipt. Access will be granted automatically.'}
+                     {isRtl ? 'عند استلام الدفعات، قم بتحديث تاريخ الانتهاء المختار ونوع الاشتراك يدوياً. سيقوم النظام تلقائياً بفتح الوصول للمنشأة فور حفظ التغييرات إذا كان التاريخ مستقبلياً.' : 'Update chosen expiry date manually. Access will be granted automatically if the date is in the future.'}
                   </p>
                </div>
 
@@ -427,4 +435,3 @@ export default function DeveloperDashboard() {
     </div>
   );
 }
-
