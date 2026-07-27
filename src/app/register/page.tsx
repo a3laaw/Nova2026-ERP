@@ -49,11 +49,12 @@ export default function RegisterPage() {
       const batch = writeBatch(db);
       const companyId = `comp_${Math.random().toString(36).substr(2, 9)}`;
       
-      // تسجيل طلب الانضمام
+      // تسجيل طلب الانضمام - مضاف إليه ownerUid لحل مشكلة Segment Error
       const requestRef = doc(collection(db, 'company_requests'));
       batch.set(requestRef, {
         id: requestRef.id,
         companyId: companyId,
+        ownerUid: uid, // الرابط السيادي للهوية
         companyName: formData.companyName,
         contactName: formData.contactName,
         email: formData.email,

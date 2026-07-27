@@ -34,7 +34,6 @@ export default function DeveloperDashboard() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [editingCompany, setEditingCompany] = useState<any>(null);
 
-  // بروتوكول الالتفاف: جلب البيانات بدون orderBy لتجنب طلب الفهارس
   const companiesQuery = useMemo(() => 
     (db && globalUser?.isDeveloper) ? query(collection(db, 'companies')) : null, 
   [db, globalUser?.isDeveloper]);
@@ -46,7 +45,6 @@ export default function DeveloperDashboard() {
   const { data: rawCompanies, loading: companiesLoading } = useCollection<any>(companiesQuery);
   const { data: rawRequests, loading: requestsLoading } = useCollection<any>(requestsQuery);
 
-  // فرز البيانات في الذاكرة (In-Memory Sorting) لضمان الترتيب التنازلي بدون فهارس مركبة
   const companies = useMemo(() => {
     return [...rawCompanies].sort((a, b) => {
       const dateA = a.createdAt?.toMillis?.() || 0;
@@ -84,8 +82,11 @@ export default function DeveloperDashboard() {
 
       batch.update(reqRef, { status: 'activated', activatedAt: serverTimestamp() });
 
-      const globalUserRef = doc(db, 'global_users', req.ownerUid || '');
-      batch.update(globalUserRef, { isActive: true, isPendingApproval: false });
+      // تحصين المسار: التأكد من وجود ownerUid لتجنب خطأ Segment Error
+      if (req.ownerUid) {
+        const globalUserRef = doc(db, 'global_users', req.ownerUid);
+        batch.update(globalUserRef, { isActive: true, isPendingApproval: false });
+      }
 
       await batch.commit();
       toast({ title: isRtl ? `تم التفعيل لـ ${days} يوم` : `Activated for ${days} days` });
