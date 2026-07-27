@@ -13,7 +13,7 @@ import {
   Edit3, Save, Users, Zap, Building2, 
   CalendarClock, Timer, ShieldCheck, AlertTriangle, X,
   ExternalLink, Lock, Unlock, CreditCard, History,
-  CalendarDays, Play, Pause, Power, Info
+  CalendarDays, Play, Pause, Power, Info, Settings2
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useLanguage } from '@/context/language-context';
@@ -111,7 +111,6 @@ export default function DeveloperDashboard() {
       ...editingCompany,
       subscriptionType: type,
       expiryDate: newExpiry,
-      // فك التجميد تلقائياً عند التجديد المالي
       status: editingCompany.status === 'suspended' ? 'active' : editingCompany.status
     });
   };
@@ -127,7 +126,6 @@ export default function DeveloperDashboard() {
       
       let finalStatus = editingCompany.status;
 
-      // أتمتة الحالة بناءً على التاريخ ما لم تكن مجمدة يدوياً
       if (finalStatus !== 'suspended') {
           finalStatus = isAfter(expiry, now) ? 'active' : 'expired';
       }
@@ -190,15 +188,15 @@ export default function DeveloperDashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="bg-slate-950 text-white rounded-[2rem] p-8 shadow-2xl border-0">
+        <Card className="bg-slate-950 text-white rounded-[2rem] p-8 shadow-2xl border-0 text-start">
            <div className="text-start">
             <h4 className="text-slate-500 text-[10px] font-black uppercase mb-1 tracking-widest">طلبات جديدة</h4>
             <p className="text-5xl font-black font-headline text-primary">{requests?.filter(r => r.status === 'pending').length || 0}</p>
           </div>
         </Card>
-        <Card className="bg-white rounded-[2rem] p-8 shadow-xl border-0 ring-1 ring-black/5">
-           <h4 className="text-slate-400 text-[10px] font-black uppercase mb-1 text-start tracking-widest">نشط</h4>
-           <p className="text-5xl font-black font-headline text-emerald-600 text-start">{companies?.filter(c => c.status === 'active').length || 0}</p>
+        <Card className="bg-white rounded-[2rem] p-8 shadow-xl border-0 ring-1 ring-black/5 text-start">
+           <h4 className="text-slate-400 text-[10px] font-black uppercase mb-1 tracking-widest">نشط</h4>
+           <p className="text-5xl font-black font-headline text-emerald-600">{companies?.filter(c => c.status === 'active').length || 0}</p>
         </Card>
         <Card className="bg-white rounded-[2rem] p-8 shadow-xl border-0 ring-1 ring-black/5 text-start">
            <h4 className="text-slate-400 text-[10px] font-black uppercase mb-1 tracking-widest">متوقف / منتهي</h4>
@@ -329,7 +327,6 @@ export default function DeveloperDashboard() {
         </TabsContent>
       </Tabs>
 
-      {/* Management Dialog */}
       <Dialog open={!!editingCompany} onOpenChange={(v) => { if(!v) setEditingCompany(null); }}>
          <DialogContent className="rounded-[3rem] max-w-2xl p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
             <div className="bg-slate-900 p-10 text-white text-start shrink-0">
@@ -430,4 +427,3 @@ export default function DeveloperDashboard() {
     </div>
   );
 }
-
