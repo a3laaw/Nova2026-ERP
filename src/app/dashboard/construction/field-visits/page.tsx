@@ -12,7 +12,7 @@ import {
   Filter, Hammer, Calendar, MapPin, Camera
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collectionGroup, query, where, orderBy } from 'firebase/firestore';
+import { collectionGroup, query, where } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { FieldVisit } from '@/types/field-visit';
@@ -28,16 +28,24 @@ export default function FieldVisitsListPage() {
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
-  // استعلام بـ Composite Index (companyId + visitDate) لضمان السرعة والترتيب
+  // بروتوكول الالتفاف: جلب المجموعة بدون orderBy لتجنب الحاجة لفهرس مركب (companyId + visitDate)
   const visitsQuery = useMemo(() => 
     companyId && db ? query(
       collectionGroup(db, 'fieldVisits'), 
-      where('companyId', '==', companyId), 
-      orderBy('visitDate', 'desc')
+      where('companyId', '==', companyId)
     ) : null, 
   [db, companyId]);
 
-  const { data: visits, loading } = useCollection<FieldVisit>(visitsQuery);
+  const { data: rawVisits, loading } = useCollection<FieldVisit>(visitsQuery);
+
+  // الفرز البرمجي في الذاكرة (In-Memory Sorting) لتجنب أخطاء الفهرسة
+  const visits = useMemo(() => {
+    return [...rawVisits].sort((a, b) => {
+      const dateA = a.visitDate || '';
+      const dateB = b.visitDate || '';
+      return dateB.localeCompare(dateA);
+    });
+  }, [rawVisits]);
 
   const filtered = visits.filter(v => 
     v.engineerName?.toLowerCase().includes(searchTerm.toLowerCase()) || 

@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCollection, useFirestore } from '@/firebase';
-import { collection, query, doc, updateDoc, serverTimestamp, writeBatch, orderBy } from 'firebase/firestore';
+import { collection, query, doc, updateDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { 
   Loader2, CheckCircle, ShieldAlert, Ban, RefreshCcw, 
   Edit3, Save, Users, Zap, Building2, 
@@ -34,17 +34,34 @@ export default function DeveloperDashboard() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [editingCompany, setEditingCompany] = useState<any>(null);
 
-  // تم إعادة تفعيل الفرز ليعمل مع الفهارس اليدوية (Index Motion)
+  // بروتوكول الالتفاف: جلب البيانات بدون orderBy لتجنب طلب الفهارس
   const companiesQuery = useMemo(() => 
-    (db && globalUser?.isDeveloper) ? query(collection(db, 'companies'), orderBy('createdAt', 'desc')) : null, 
+    (db && globalUser?.isDeveloper) ? query(collection(db, 'companies')) : null, 
   [db, globalUser?.isDeveloper]);
 
   const requestsQuery = useMemo(() => 
-    (db && globalUser?.isDeveloper) ? query(collection(db, 'company_requests'), orderBy('createdAt', 'desc')) : null, 
+    (db && globalUser?.isDeveloper) ? query(collection(db, 'company_requests')) : null, 
   [db, globalUser?.isDeveloper]);
 
-  const { data: companies, loading: companiesLoading } = useCollection<any>(companiesQuery);
-  const { data: requests, loading: requestsLoading } = useCollection<any>(requestsQuery);
+  const { data: rawCompanies, loading: companiesLoading } = useCollection<any>(companiesQuery);
+  const { data: rawRequests, loading: requestsLoading } = useCollection<any>(requestsQuery);
+
+  // فرز البيانات في الذاكرة (In-Memory Sorting) لضمان الترتيب التنازلي بدون فهارس مركبة
+  const companies = useMemo(() => {
+    return [...rawCompanies].sort((a, b) => {
+      const dateA = a.createdAt?.toMillis?.() || 0;
+      const dateB = b.createdAt?.toMillis?.() || 0;
+      return dateB - dateA;
+    });
+  }, [rawCompanies]);
+
+  const requests = useMemo(() => {
+    return [...rawRequests].sort((a, b) => {
+      const dateA = a.createdAt?.toMillis?.() || 0;
+      const dateB = b.createdAt?.toMillis?.() || 0;
+      return dateB - dateA;
+    });
+  }, [rawRequests]);
 
   const handleActivate = async (req: any, days: number = 7, type: 'trial' | 'annual' = 'trial') => {
     if (!db) return;
@@ -216,7 +233,7 @@ export default function DeveloperDashboard() {
                       <TableCell>
                          <Badge className={cn(
                            "font-black px-3 py-1 text-[9px]",
-                           comp.status === 'active' ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"
+                           comp.status === 'active' ? "bg-emerald-50 text-white" : "bg-rose-50 text-white"
                          )}>{comp.status}</Badge>
                       </TableCell>
                       <TableCell className="pe-8 text-end">

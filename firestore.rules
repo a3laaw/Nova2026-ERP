@@ -9,7 +9,7 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // التحقق المباشر من بريد المطور (Master Key) - الأولوية للتوكن لسرعة الوصول
+    // التحقق المباشر من بريد المطور (Master Key) لضمان الوصول الفوري
     function isDeveloper() {
       return isAuthenticated() && (
         request.auth.token.email == 'admin@novaflow.com' ||
@@ -57,7 +57,6 @@ service cloud.firestore {
     // --- سجلات المنشأة (Multi-tenant) ---
     
     match /companies/{companyId} {
-      // السماح بالإنشاء للمالك أثناء التسجيل
       allow create: if isAuthenticated(); 
       allow read, list: if isDeveloper() || belongsToCompany(companyId);
       allow update: if isDeveloper() || isAdmin(companyId);
@@ -80,7 +79,7 @@ service cloud.firestore {
       }
     }
 
-    // دعم استعلامات الـ Collection Group للمطور والمدير
+    // دعم استعلامات الـ Collection Group للمطور والمدير (بدون قيود orderBy سحابية)
     match /{path=**}/variations/{voId} {
       allow read, list: if isAuthenticated() && (isDeveloper() || (resource != null && belongsToCompany(resource.data.companyId)));
     }

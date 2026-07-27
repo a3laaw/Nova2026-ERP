@@ -14,7 +14,7 @@ import {
   CheckCircle2, FileSearch, UserCircle, Settings2
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, where, collectionGroup, getDocs } from 'firebase/firestore';
+import { collection, query, where, collectionGroup, getDocs } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -87,17 +87,25 @@ export default function BOQExplorerPage() {
   const [reviewItems, setReviewItems] = useState<BOQVariationItem[]>([]);
   const [loadingReview, setLoadingReview] = useState(false);
 
+  // جلب المقايسات بدون orderBy لتجنب الحاجة لفهرس مركب
   const boqsQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.boqs(companyId)), orderBy('createdAt', 'desc')) : null, 
+    companyId && db ? query(collection(db, paths.boqs(companyId))) : null, 
   [db, companyId]);
-  const { data: boqs, loading: boqLoading } = useCollection<BOQ>(boqsQuery);
+  const { data: rawBoqs, loading: boqLoading } = useCollection<BOQ>(boqsQuery);
 
-  // تفعيل الاستعلام بـ Composite Index (companyId + createdAt)
+  const boqs = useMemo(() => {
+    return [...rawBoqs].sort((a, b) => {
+      const dateA = a.createdAt?.toMillis?.() || 0;
+      const dateB = b.createdAt?.toMillis?.() || 0;
+      return dateB - dateA;
+    });
+  }, [rawBoqs]);
+
+  // تفعيل استعلام المجموعة بدون orderBy لتجنب طلب الفهارس المركبة في الكونسول
   const allVOsQuery = useMemo(() => 
     companyId && db ? query(
       collectionGroup(db, 'variations'), 
-      where('companyId', '==', companyId),
-      orderBy('createdAt', 'desc')
+      where('companyId', '==', companyId)
     ) : null, 
   [db, companyId]);
   const { data: rawVOs, loading: voLoading } = useCollection<BOQVariation>(allVOsQuery);
@@ -114,7 +122,12 @@ export default function BOQExplorerPage() {
       .filter(vo => 
         (vo.title || "").toLowerCase().includes(searchTerm.toLowerCase()) || 
         (vo.boqNumber || "").toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      )
+      .sort((a, b) => {
+         const dateA = a.createdAt?.toMillis?.() || 0;
+         const dateB = b.createdAt?.toMillis?.() || 0;
+         return dateB - dateA;
+      });
   }, [rawVOs, searchTerm]);
 
   const handleReviewVO = async (vo: BOQVariation) => {
