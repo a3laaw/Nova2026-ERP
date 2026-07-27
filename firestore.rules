@@ -9,7 +9,7 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // التحقق المباشر من بريد المطور (Master Key)
+    // التحقق المباشر من بريد المطور (Master Key) - الأولوية للتوكن لسرعة الوصول
     function isDeveloper() {
       return isAuthenticated() && (
         request.auth.token.email == 'admin@novaflow.com' ||

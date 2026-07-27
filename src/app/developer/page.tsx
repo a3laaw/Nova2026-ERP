@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCollection, useFirestore } from '@/firebase';
-import { collection, query, orderBy, doc, updateDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { collection, query, doc, updateDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { 
   Loader2, CheckCircle, ShieldAlert, Ban, RefreshCcw, 
   Edit3, Save, Users, Zap, Building2, 
@@ -22,11 +22,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { addDays, format, parseISO } from 'date-fns';
+import { addDays } from 'date-fns';
 
 export default function DeveloperDashboard() {
   const { lang, dir } = useLanguage();
-  const { user, globalUser, loading: authLoading } = useAuthContext();
+  const { globalUser, loading: authLoading } = useAuthContext();
   const db = useFirestore();
   const isRtl = lang === 'ar';
   
@@ -34,17 +34,26 @@ export default function DeveloperDashboard() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [editingCompany, setEditingCompany] = useState<any>(null);
 
-  // تثبيت الاستعلامات ومنع التنفيذ قبل التأكد من الهوية
+  // تم إزالة orderBy لتجنب طلب إنشاء فهارس (Indexes) وتسهيل العمل الفوري
   const companiesQuery = useMemo(() => 
-    (db && globalUser?.isDeveloper) ? query(collection(db, 'companies'), orderBy('createdAt', 'desc')) : null, 
+    (db && globalUser?.isDeveloper) ? query(collection(db, 'companies')) : null, 
   [db, globalUser?.isDeveloper]);
 
   const requestsQuery = useMemo(() => 
-    (db && globalUser?.isDeveloper) ? query(collection(db, 'company_requests'), orderBy('createdAt', 'desc')) : null, 
+    (db && globalUser?.isDeveloper) ? query(collection(db, 'company_requests')) : null, 
   [db, globalUser?.isDeveloper]);
 
-  const { data: companies, loading: companiesLoading } = useCollection<any>(companiesQuery);
-  const { data: requests, loading: requestsLoading } = useCollection<any>(requestsQuery);
+  const { data: rawCompanies, loading: companiesLoading } = useCollection<any>(companiesQuery);
+  const { data: rawRequests, loading: requestsLoading } = useCollection<any>(requestsQuery);
+
+  // فرز يدوي في الذاكرة لتوفير الفهارس السحابية
+  const companies = useMemo(() => {
+    return [...rawCompanies].sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+  }, [rawCompanies]);
+
+  const requests = useMemo(() => {
+    return [...rawRequests].sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+  }, [rawRequests]);
 
   const handleActivate = async (req: any, days: number = 7, type: 'trial' | 'annual' = 'trial') => {
     if (!db) return;
@@ -67,7 +76,6 @@ export default function DeveloperDashboard() {
 
       batch.update(reqRef, { status: 'activated', activatedAt: serverTimestamp() });
 
-      // تفعيل حساب الأدمن المالك (Identity Empowerment)
       const globalUserRef = doc(db, 'global_users', req.ownerUid || '');
       batch.update(globalUserRef, { isActive: true, isPendingApproval: false });
 
@@ -99,7 +107,7 @@ export default function DeveloperDashboard() {
     }
   };
 
-  if (authLoading || !globalUser?.isDeveloper) {
+  if (authLoading) {
     return (
       <div className="h-[60vh] flex flex-col items-center justify-center gap-4">
         <Loader2 className="animate-spin text-primary" />
@@ -108,11 +116,21 @@ export default function DeveloperDashboard() {
     );
   }
 
+  if (!globalUser?.isDeveloper) {
+    return (
+       <div className="h-[60vh] flex flex-col items-center justify-center space-y-4 text-center p-10">
+          <ShieldAlert className="h-16 w-16 text-rose-500" />
+          <h2 className="text-2xl font-black">الدخول محجوب</h2>
+          <p className="text-slate-500 font-bold max-w-sm">يرجى تسجيل الدخول كمالك للنظام (admin@novaflow.com) للوصول لهذه اللوحة.</p>
+       </div>
+    );
+  }
+
   return (
     <div className="space-y-8 text-start" dir={dir}>
       <div className="text-start">
           <h2 className="text-3xl font-black font-headline text-slate-900">{isRtl ? 'بوابة الرقابة والاشتراكات' : 'Subscription Control'}</h2>
-          <Badge className="bg-slate-900 text-primary mt-2">NovaFlow Sovereign Engine</Badge>
+          <Badge className="bg-slate-900 text-primary mt-2 uppercase tracking-widest text-[10px]">NovaFlow Sovereign Engine</Badge>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -221,7 +239,7 @@ export default function DeveloperDashboard() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={!!editingCompany} onOpenChange={() => setEditingCompany(null)}>
+      <Dialog open={!!editingCompany} onOpenChange={(open) => !open && setEditingCompany(null)}>
          <DialogContent className="rounded-xl max-w-md p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
             <div className="bg-slate-900 p-8 text-white text-start">
                <DialogTitle className="text-xl font-black flex items-center gap-3"><ShieldCheck className="h-6 w-6 text-primary" /> تعديل الاشتراك</DialogTitle>
@@ -241,6 +259,7 @@ export default function DeveloperDashboard() {
                      <SelectTrigger className="h-12 border-2 rounded-xl"><SelectValue /></SelectTrigger>
                      <SelectContent className="rounded-xl">
                         <SelectItem value="active" className="font-bold">Active</SelectItem>
+                        <SelectItem value="inactive" className="font-bold">Inactive</SelectItem>
                         <SelectItem value="expired" className="font-bold">Expired</SelectItem>
                         <SelectItem value="suspended" className="font-bold">Suspended</SelectItem>
                      </SelectContent>
