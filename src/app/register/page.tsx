@@ -13,6 +13,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sparkles, Loader2, CheckCircle2, ArrowRight, Eye, EyeOff, Building2, HardHat, PencilRuler, Zap, Clock } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { cn } from '@/lib/utils';
 
 export default function RegisterPage() {
@@ -39,7 +41,7 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      // 1. إنشاء حساب الدخول الأساسي (سيبقى معلقاً إدارياً)
+      // 1. إنشاء حساب الدخول الأساسي
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const uid = userCredential.user.uid;
 
@@ -48,11 +50,10 @@ export default function RegisterPage() {
       const batch = writeBatch(db);
       const companyId = `comp_${Math.random().toString(36).substr(2, 9)}`;
       
-      // تحديد موعد انتهاء التجربة الافتراضي (لكنه لن يظهر إلا بعد التفعيل)
       const trialEndDate = new Date();
       trialEndDate.setDate(trialEndDate.getDate() + 14);
 
-      // 2. تسجيل طلب الانضمام السيادي (المسار الجديد)
+      // 2. تسجيل طلب الانضمام
       const requestRef = doc(collection(db, 'company_requests'));
       batch.set(requestRef, {
         id: requestRef.id,
@@ -61,26 +62,27 @@ export default function RegisterPage() {
         contactName: formData.contactName,
         email: formData.email,
         activity: formData.activity,
-        status: 'pending', // الحالة المعلقة بانتظار المطور
+        status: 'pending',
         createdAt: serverTimestamp(),
       });
 
-      // 3. إنشاء مستند الشركة بحالة "غير نشطة" (Inactive)
+      // 3. إنشاء مستند الشركة
       const companyRef = doc(db, 'companies', companyId);
-      batch.set(companyRef, {
+      const companyData = {
         id: companyId,
         name: formData.companyName,
-        status: 'inactive', // معطلة بانتظار المطور
+        status: 'inactive', 
         createdAt: serverTimestamp(),
         trialEndsAt: trialEndDate.toISOString(),
         maxUsers: 5,
         activity: formData.activity, 
         ownerUid: uid
-      });
+      };
+      batch.set(companyRef, companyData);
 
-      // 4. إنشاء السجل العالمي للمدير (Identity Sovereignty) مع وسم الانتظار
+      // 4. إنشاء السجل العالمي (Global Identity)
       const globalUserRef = doc(db, 'global_users', uid);
-      batch.set(globalUserRef, {
+      const globalUserData = {
         companyId,
         role: 'admin',
         roleCode: 'ADMIN',
@@ -89,10 +91,11 @@ export default function RegisterPage() {
         isDeveloper: false,
         email: formData.email,
         activity: formData.activity, 
-        isActive: false, // الحساب غير نشط حتى يتم قبول الشركة
+        isActive: false, 
         isPendingApproval: true,
         updatedAt: serverTimestamp()
-      });
+      };
+      batch.set(globalUserRef, globalUserData);
 
       // 5. السجل المحلي داخل المنشأة
       const tenantUserRef = doc(db, 'companies', companyId, 'users', uid);
@@ -107,15 +110,25 @@ export default function RegisterPage() {
         isActive: false
       });
 
-      await batch.commit();
+      // تنفيذ الكتابة الشاملة (Atomic Write)
+      await batch.commit().catch(async (serverError) => {
+         // رصد الخطأ الأمني بدقة في حال الرفض
+         const permissionError = new FirestorePermissionError({
+           path: 'registration_batch_commit',
+           operation: 'write'
+         } satisfies SecurityRuleContext);
+         errorEmitter.emit('permission-error', permissionError);
+         throw serverError;
+      });
       
       setIsSubmitted(true);
       toast({
-        title: isRtl ? "تم إرسال طلبك بنجاح" : "Request Submitted",
-        description: isRtl ? "طلبك الآن قيد المراجعة من قبل الإدارة الفنية." : "Your request is pending technical approval.",
+        title: "تم إرسال طلبك بنجاح",
+        description: "طلبك الآن قيد المراجعة من قبل الإدارة الفنية.",
       });
 
     } catch (error: any) {
+      console.error("Registration error:", error);
       toast({
         variant: "destructive",
         title: "خطأ في التسجيل",
@@ -125,8 +138,6 @@ export default function RegisterPage() {
       setLoading(false);
     }
   };
-
-  const isRtl = true; // نثبت العربية كخيار سيادي هنا
 
   if (isSubmitted) {
     return (

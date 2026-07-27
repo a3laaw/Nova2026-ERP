@@ -3,13 +3,14 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // --- الدوال المساعدة المطورة ---
+    // --- الدوال المساعدة السيادية ---
     
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    function getUserData() {
+    // جلب بيانات المستخدم العالمي مع حماية من عدم الوجود
+    function getGlobalData() {
       return get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
     }
 
@@ -17,7 +18,7 @@ service cloud.firestore {
       return isAuthenticated() && (
         request.auth.token.email == 'admin@novaflow.com' ||
         (exists(/databases/$(database)/documents/global_users/$(request.auth.uid)) && 
-         getUserData().isDeveloper == true)
+         getGlobalData().isDeveloper == true)
       );
     }
 
@@ -25,7 +26,7 @@ service cloud.firestore {
       return isAuthenticated() && (
         isDeveloper() ||
         (exists(/databases/$(database)/documents/global_users/$(request.auth.uid)) && 
-         getUserData().companyId == companyId)
+         getGlobalData().companyId == companyId)
       );
     }
 
@@ -33,21 +34,25 @@ service cloud.firestore {
       return isAuthenticated() && (
         isDeveloper() ||
         (exists(/databases/$(database)/documents/global_users/$(request.auth.uid)) && 
-         getUserData().companyId == companyId && 
-         (getUserData().role == 'admin' || getUserData().role == 'Admin' || getUserData().roleCode == 'ADMIN'))
+         getGlobalData().companyId == companyId && 
+         (getGlobalData().role == 'admin' || getGlobalData().role == 'Admin' || getGlobalData().roleCode == 'ADMIN'))
       );
     }
 
-    // --- سجلات المستخدمين العالمية ---
+    // --- سجلات المستخدمين العالمية (Identity) ---
     
     match /global_users/{uid} {
-      allow read: if isAuthenticated() && (request.auth.uid == uid || isDeveloper() || isAdmin(get(/databases/$(database)/documents/global_users/$(uid)).data.companyId));
-      allow create, update: if isDeveloper() || (isAuthenticated() && request.auth.uid == uid) || (isAuthenticated() && isAdmin(request.resource.data.companyId));
+      // يسمح للمستخدم بقراءة سجله الخاص أو المطور أو مدير الشركة
+      allow read: if isAuthenticated() && (request.auth.uid == uid || isDeveloper());
+      // يسمح بإنشاء السجل إذا كان المستخدم هو نفسه صاحب الـ UID (مرحلة التسجيل)
+      allow create: if isAuthenticated() && request.auth.uid == uid;
+      // التحديث للمستخدم نفسه أو المطور أو المدير
+      allow update: if isDeveloper() || (isAuthenticated() && request.auth.uid == uid) || (isAuthenticated() && isAdmin(getGlobalData().companyId));
       allow delete: if isDeveloper();
     }
     
     match /company_requests/{reqId} {
-       allow create: if true;
+       allow create: if true; // السماح بتقديم الطلبات للجميع
        allow read, write: if isDeveloper();
     }
 
@@ -55,28 +60,27 @@ service cloud.firestore {
     
     match /companies/{companyId} {
       allow read: if belongsToCompany(companyId);
-      // السماح بإنشاء الشركة إذا كان المستخدم هو المالك، وتحديثها للمدير والمطور
+      // السماح بإنشاء الشركة إذا كان المستخدم هو المالك المذكور في البيانات (مرحلة التسجيل)
       allow create: if isAuthenticated() && request.resource.data.ownerUid == request.auth.uid;
       allow update: if isAdmin(companyId) || isDeveloper();
       allow delete: if isDeveloper();
       
-      // قواعد مستخدمي الشركة (Authentication metadata)
+      // قواعد مستخدمي الشركة (Internal Users)
       match /users/{uid} {
         allow read: if belongsToCompany(companyId);
-        // السماح للمستخدم بإنشاء سجله الخاص (عند التسجيل) أو للمدير بإدارة الجميع
         allow create: if isAuthenticated() && (request.auth.uid == uid || isAdmin(companyId));
         allow update: if isAdmin(companyId) || (isAuthenticated() && request.auth.uid == uid);
         allow delete: if isAdmin(companyId);
       }
 
-      // قواعد الموظفين (رؤية الجميع وتعديل النفس للمدير)
+      // قواعد الموظفين (HR Core)
       match /employees/{empId} {
         allow read: if belongsToCompany(companyId);
         allow create, delete: if isAdmin(companyId);
-        allow update: if isAdmin(companyId) || (isAuthenticated() && getUserData().employeeId == empId);
+        allow update: if isAdmin(companyId) || (isAuthenticated() && exists(/databases/$(database)/documents/global_users/$(request.auth.uid)) && getGlobalData().employeeId == empId);
       }
 
-      // قواعد العملاء
+      // قواعد العملاء (CRM Core)
       match /clients/{clientId} {
         allow read: if belongsToCompany(companyId);
         allow create: if belongsToCompany(companyId);
@@ -88,7 +92,7 @@ service cloud.firestore {
         }
       }
 
-      // باقي المجموعات محصورة للمدير
+      // باقي المجموعات والمسارات تتبع قاعدة الوصول العام للشركة والتحكم للمدير
       match /{allSubCollections=**} {
         allow read: if belongsToCompany(companyId);
         allow write: if isAdmin(companyId);
