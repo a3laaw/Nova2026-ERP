@@ -20,8 +20,9 @@ import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { SmartDateInput } from '@/components/ui/smart-date-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 export default function DeveloperDashboard() {
   const { t, lang, dir } = useLanguage();
@@ -33,7 +34,6 @@ export default function DeveloperDashboard() {
   const [editingCompany, setEditingCompany] = useState<any>(null);
   const [saving, setSaving] = useState(false);
 
-  // استقرار الاستعلامات عبر useMemo لمنع حلقة التحديث اللانهائية
   const companiesQuery = useMemo(() => 
     db ? query(collection(db, 'companies'), orderBy('createdAt', 'desc')) : null,
   [db]);
@@ -61,21 +61,37 @@ export default function DeveloperDashboard() {
     try {
       if (req.companyId) {
         const companyRef = doc(db, 'companies', req.companyId);
-        await updateDoc(companyRef, {
+        const reqRef = doc(db, 'company_requests', req.id);
+
+        const companyUpdate = {
           status: 'active',
           trialEndsAt: addDaysToISO(new Date(), 14),
           activatedAt: serverTimestamp()
+        };
+
+        updateDoc(companyRef, companyUpdate).catch(async (serverError) => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: companyRef.path,
+            operation: 'update',
+            requestResourceData: companyUpdate
+          } satisfies SecurityRuleContext));
         });
 
-        await updateDoc(doc(db, 'company_requests', req.id), {
+        const requestUpdate = {
           status: 'activated',
           activatedAt: serverTimestamp()
+        };
+
+        updateDoc(reqRef, requestUpdate).catch(async (serverError) => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: reqRef.path,
+            operation: 'update',
+            requestResourceData: requestUpdate
+          } satisfies SecurityRuleContext));
         });
 
         toast({ title: isRtl ? "تم تفعيل المنشأة" : "Company Activated" });
       }
-    } catch (e) {
-      toast({ variant: "destructive", title: "Error", description: "Activation failed" });
     } finally {
       setProcessingId(null);
     }
@@ -84,36 +100,54 @@ export default function DeveloperDashboard() {
   const handleUpdateCompany = async () => {
     if (!db || !editingCompany) return;
     setSaving(true);
-    try {
-      const companyRef = doc(db, 'companies', editingCompany.id);
-      await updateDoc(companyRef, {
-        name: editingCompany.name,
-        activity: editingCompany.activity,
-        status: editingCompany.status,
-        maxUsers: Number(editingCompany.maxUsers) || 5,
-        updatedAt: serverTimestamp()
+    const companyRef = doc(db, 'companies', editingCompany.id);
+    const updateData = {
+      name: editingCompany.name,
+      activity: editingCompany.activity,
+      status: editingCompany.status,
+      maxUsers: Number(editingCompany.maxUsers) || 5,
+      updatedAt: serverTimestamp()
+    };
+
+    updateDoc(companyRef, updateData)
+      .then(() => {
+        toast({ title: isRtl ? "تم تحديث بيانات الشركة" : "Company Updated" });
+        setEditingCompany(null);
+        setSaving(false);
+      })
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: companyRef.path,
+          operation: 'update',
+          requestResourceData: updateData
+        } satisfies SecurityRuleContext);
+        errorEmitter.emit('permission-error', permissionError);
+        setSaving(false);
       });
-      toast({ title: isRtl ? "تم تحديث بيانات الشركة" : "Company Updated" });
-      setEditingCompany(null);
-    } catch (e) {
-      toast({ variant: "destructive", title: "Update Failed" });
-    } finally {
-      setSaving(false);
-    }
   };
 
   const handleRejectRequest = async (id: string) => {
     if (!db || !confirm(isRtl ? 'هل تريد رفض هذا الطلب؟' : 'Reject this request?')) return;
     setProcessingId(id);
-    try {
-      await updateDoc(doc(db, 'company_requests', id), {
-        status: 'rejected',
-        rejectedAt: serverTimestamp()
+    const reqRef = doc(db, 'company_requests', id);
+    const rejectData = {
+      status: 'rejected',
+      rejectedAt: serverTimestamp()
+    };
+
+    updateDoc(reqRef, rejectData)
+      .then(() => {
+        toast({ title: isRtl ? "تم رفض الطلب" : "Request Rejected" });
+        setProcessingId(null);
+      })
+      .catch(async (serverError) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: reqRef.path,
+          operation: 'update',
+          requestResourceData: rejectData
+        } satisfies SecurityRuleContext));
+        setProcessingId(null);
       });
-      toast({ title: isRtl ? "تم رفض الطلب" : "Request Rejected" });
-    } finally {
-      setProcessingId(null);
-    }
   };
 
   const addDaysToISO = (date: Date, days: number) => {
@@ -128,9 +162,6 @@ export default function DeveloperDashboard() {
         <div className="text-start">
           <h2 className="text-3xl font-black font-headline text-slate-900">{isRtl ? 'كونسول التحكم العالمي' : 'Sovereign Dev Console'}</h2>
           <p className="text-slate-50 font-bold bg-slate-900 px-3 py-1 rounded-lg w-fit mt-2 text-[10px] uppercase tracking-widest">NovaFlow Core Management</p>
-        </div>
-        <div className="flex gap-2">
-           <Button variant="outline" className="rounded-xl font-bold bg-white border-2"><FileSpreadsheet className="me-2 h-4 w-4" /> تصدير السجلات</Button>
         </div>
       </div>
 
@@ -312,7 +343,6 @@ export default function DeveloperDashboard() {
         </TabsContent>
       </Tabs>
 
-      {/* نموذج تعديل المنشأة المطور */}
       <Dialog open={!!editingCompany} onOpenChange={(v) => !v && setEditingCompany(null)}>
         <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
           <div className="bg-slate-900 p-10 text-white text-start border-b">
@@ -388,4 +418,3 @@ export default function DeveloperDashboard() {
     </div>
   );
 }
-
