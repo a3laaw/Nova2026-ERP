@@ -76,7 +76,7 @@ export default function DeveloperDashboard() {
     if (company.ownerUid && db) {
       setLoadingOwner(true);
       try {
-        const ownerRef = doc(db, 'companies', company.id, 'users', company.ownerUid);
+        const ownerRef = doc(db, 'global_users', company.ownerUid);
         const ownerSnap = await getDoc(ownerRef);
         if (ownerSnap.exists()) {
           setOwnerData(ownerSnap.data());
@@ -124,7 +124,6 @@ export default function DeveloperDashboard() {
     }
   };
 
-  // محرك التاريخ الذكي وفك التجميد التلقائي
   const handlePlanChange = (type: string) => {
     if (!editingCompany) return;
     
@@ -139,7 +138,6 @@ export default function DeveloperDashboard() {
       ...editingCompany,
       subscriptionType: type,
       expiryDate: newExpiry,
-      // فك التجميد تلقائياً عند تغيير الخطة (باعتبار تم الدفع)
       status: (editingCompany.status === 'suspended' || editingCompany.status === 'expired') ? 'active' : editingCompany.status
     });
   };
@@ -149,13 +147,10 @@ export default function DeveloperDashboard() {
     setProcessingId('saving');
     try {
       const ref = doc(db, 'companies', editingCompany.id);
-      
       const now = new Date();
       const expiry = parseISO(editingCompany.expiryDate);
-      
       let finalStatus = editingCompany.status;
 
-      // إذا لم يكن العميل مجمداً يدوياً، نقوم بحساب الحالة بناءً على التاريخ
       if (finalStatus !== 'suspended') {
           finalStatus = isAfter(expiry, now) ? 'active' : 'expired';
       }
@@ -319,10 +314,10 @@ export default function DeveloperDashboard() {
                 </TableHeader>
                 <TableBody>
                   {companiesLoading ? (
-                    <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/30" /></TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
                   ) : companies?.map((comp: any) => (
-                    <TableRow key={comp.id} className="hover:bg-primary/[0.01] transition-colors border-b-slate-50">
-                      <TableCell className="ps-8 py-3 text-start">
+                    <TableRow key={comp.id} className="hover:bg-primary/[0.01] transition-colors border-b-slate-100">
+                      <TableCell className="ps-8 py-4 text-start">
                          <div className="flex items-center gap-4">
                             <div className="h-9 w-9 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400 font-black border shadow-inner">
                                {comp.name?.charAt(0)}
@@ -379,7 +374,7 @@ export default function DeveloperDashboard() {
             </div>
 
             <div className="p-6 space-y-6 text-start bg-white flex-1 overflow-y-auto scrollbar-hide">
-               <div className="p-6 bg-primary/5 rounded-[2rem] border-2 border-primary/10 space-y-4 animate-in zoom-in-95 duration-300">
+               <div className="p-6 bg-primary/5 rounded-[2rem] border-2 border-primary/10 space-y-4">
                   <div className="flex items-center justify-between">
                      <h5 className="font-black text-[10px] uppercase tracking-[0.2em] text-primary flex items-center gap-2">
                         <ShieldCheck className="h-4 w-4" /> بيانات دخول مالك المنشأة
@@ -437,10 +432,6 @@ export default function DeveloperDashboard() {
                         </div>
                      </div>
                   </div>
-                  <div className="flex items-center gap-2 text-[8px] font-bold text-primary/60 italic">
-                     <Info className="h-2.5 w-2.5" />
-                     تنبيه: هذه البيانات للمراقبة والدعم الفني فقط، ولا يجب مشاركتها.
-                  </div>
                </div>
 
                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border-2 border-white shadow-inner">
@@ -480,7 +471,7 @@ export default function DeveloperDashboard() {
                         <CreditCard className="h-3.5 w-3.5 text-primary" /> نوع الاشتراك
                      </Label>
                      <Select value={editingCompany?.subscriptionType} onValueChange={handlePlanChange}>
-                        <SelectTrigger className="h-11 border-2 rounded-xl font-bold text-xs bg-white">
+                        <SelectTrigger className="h-10 border-2 rounded-xl font-bold text-xs bg-white">
                            <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl border-0 shadow-3xl">
@@ -499,7 +490,7 @@ export default function DeveloperDashboard() {
                        type="date" 
                        value={editingCompany?.expiryDate ? editingCompany.expiryDate.split('T')[0] : ''} 
                        onChange={e => setEditingCompany({...editingCompany, expiryDate: e.target.value ? new Date(e.target.value).toISOString() : ''})} 
-                       className="h-11 border-2 rounded-xl font-black text-xs text-center bg-slate-50 focus:bg-white transition-all text-primary" 
+                       className="h-10 border-2 rounded-xl font-black text-xs text-center bg-slate-50 focus:bg-white transition-all text-primary" 
                      />
                   </div>
                </div>
@@ -511,7 +502,7 @@ export default function DeveloperDashboard() {
                        type="number" 
                        value={editingCompany?.maxUsers || 0} 
                        onChange={e => setEditingCompany({...editingCompany, maxUsers: Number(e.target.value)})} 
-                       className="h-11 border-2 rounded-xl font-black text-base text-center bg-slate-50 focus:bg-white" 
+                       className="h-10 border-2 rounded-xl font-black text-base text-center bg-slate-50 focus:bg-white" 
                      />
                   </div>
                   <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 flex items-start gap-3">
