@@ -15,7 +15,7 @@ import {
   CalendarClock, Timer, ShieldCheck, AlertTriangle, X,
   ExternalLink, Lock, Unlock, CreditCard, History,
   CalendarDays, Play, Pause, Power, Info, Settings2, Sparkles,
-  Search, Mail, Key, Copy, Eye, EyeOff
+  Search, Mail, Key, Copy, Eye, EyeOff, ChevronRight
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useLanguage } from '@/context/language-context';
@@ -518,7 +518,7 @@ export default function DeveloperDashboard() {
                <Button variant="outline" onClick={() => setEditingCompany(null)} className="flex-1 h-11 rounded-xl border-2 font-bold text-xs bg-white">إلغاء</Button>
                <Button onClick={handleUpdateSubscription} disabled={processingId === 'saving'} className="flex-[2] h-11 rounded-xl bg-primary text-white font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all border-b-4 border-orange-700 gap-3">
                   {processingId === 'saving' ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
-                  حفظ وتطبق التراخيص
+                  حفظ وتطبيق التراخيص
                </Button>
             </DialogFooter>
          </DialogContent>

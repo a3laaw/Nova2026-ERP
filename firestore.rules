@@ -9,7 +9,8 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // وضع المطور (Fast Path) - وصول مطلق لبريد المدير المعتمد
+    // وضع المطور (Fast Path) - وصول مطلق ومباشر لبريد المدير المعتمد
+    // هذا المسار يتجاوز كافة القيود ويسمح باستعلامات المجموعات بالعمل فوراً
     function isDeveloper() {
       return isAuthenticated() && request.auth.token.email == 'admin@novaflow.com';
     }
@@ -23,7 +24,7 @@ service cloud.firestore {
 
     // --- قانون الأمان الموحد ---
 
-    // 1. وصول المطور المطلق (God Mode)
+    // 1. وصول المطور المطلق (God Mode) - يجب أن يكون في البداية
     match /{document=**} {
       allow read, write: if isDeveloper();
     }
@@ -37,35 +38,36 @@ service cloud.firestore {
     
     match /company_requests/{reqId} {
        allow create: if isAuthenticated(); 
+       allow read, list: if isDeveloper();
     }
 
     match /companies/{companyId} {
       allow create: if isAuthenticated(); 
-      allow read, list: if belongsToCompany(companyId);
+      allow read, list: if belongsToCompany(companyId) || isDeveloper();
       
       match /users/{uid} {
-        allow read: if belongsToCompany(companyId);
+        allow read: if belongsToCompany(companyId) || isDeveloper();
         allow create, update: if isAuthenticated() && request.auth.uid == uid;
       }
 
       match /employees/{empId} {
-        allow read: if belongsToCompany(companyId);
+        allow read: if belongsToCompany(companyId) || isDeveloper();
       }
 
       match /{allSubCollections=**} {
-        allow read: if belongsToCompany(companyId);
-        allow write: if belongsToCompany(companyId) && 
-          (get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.roleCode == 'ADMIN');
+        allow read: if belongsToCompany(companyId) || isDeveloper();
+        allow write: if (belongsToCompany(companyId) && 
+          (get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.roleCode == 'ADMIN')) || isDeveloper();
       }
     }
 
-    // دعم استعلامات المجموعات (Collection Group) للعملاء
+    // دعم استعلامات المجموعات (Collection Group) - ضرورية لعمل التقارير الشاملة
     match /{path=**}/variations/{voId} {
-      allow read, list: if isAuthenticated() && belongsToCompany(resource.data.companyId);
+      allow read, list: if isDeveloper() || (isAuthenticated() && belongsToCompany(resource.data.companyId));
     }
 
     match /{path=**}/fieldVisits/{visitId} {
-      allow read, list: if isAuthenticated() && belongsToCompany(resource.data.companyId);
+      allow read, list: if isDeveloper() || (isAuthenticated() && belongsToCompany(resource.data.companyId));
     }
   }
 }
