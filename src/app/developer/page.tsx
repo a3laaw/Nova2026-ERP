@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { addDays, isAfter, parseISO } from 'date-fns';
 
 export default function DeveloperDashboard() {
-  const { lang, dir, t } = useLanguage();
+  const { lang, dir, t } = useLanguage(); // تم الإصلاح: t معرفة الآن
   const { globalUser, loading: authLoading } = useAuthContext();
   const db = useFirestore();
   const isRtl = lang === 'ar';
@@ -56,7 +56,10 @@ export default function DeveloperDashboard() {
     let list = [...(rawCompanies || [])];
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
-      list = list.filter(c => c.name?.toLowerCase().includes(q) || c.id?.toLowerCase().includes(q));
+      list = list.filter(c => 
+        (c.name || "").toLowerCase().includes(q) || 
+        (c.id || "").toLowerCase().includes(q)
+      );
     }
     return list.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
   }, [rawCompanies, searchTerm]);
@@ -156,7 +159,7 @@ export default function DeveloperDashboard() {
   return (
     <div className="space-y-6 text-start" dir={dir}>
       <header className="flex justify-between items-end border-b pb-6">
-        <div>
+        <div className="text-start">
           <h2 className="text-2xl font-black font-headline text-slate-900">{isRtl ? 'بوابة الرقابة والاشتراكات' : 'Sovereign Control'}</h2>
           <div className="flex items-center gap-3 mt-1">
              <Badge className="bg-primary text-white border-0 text-[8px] uppercase tracking-widest px-3 rounded-full">God Mode Active</Badge>
@@ -259,7 +262,7 @@ export default function DeveloperDashboard() {
                             {comp.status === 'active' ? comp.subscriptionType : comp.status}
                          </Badge>
                       </TableCell>
-                      <TableCell className="font-mono text-xs font-black text-slate-600">{comp.expiryDate?.split('T')[0] || '---'}</TableCell>
+                      <TableCell className="font-mono text-xs font-black text-slate-600 text-start">{comp.expiryDate?.split('T')[0] || '---'}</TableCell>
                       <TableCell className="pe-8 text-end">
                         <Button variant="outline" size="sm" onClick={() => handleOpenEdit(comp)} className="h-8 gap-2 border-2 hover:bg-slate-50">
                            <Settings2 className="h-3 w-3" /> إدارة
@@ -298,7 +301,7 @@ export default function DeveloperDashboard() {
                            <Button 
                              variant="ghost" 
                              size="icon" 
-                             onClick={() => { navigator.clipboard.writeText(ownerData?.email); toast({title: "Copied"}); }} 
+                             onClick={() => { navigator.clipboard.writeText(ownerData?.email || ''); toast({title: "Copied"}); }} 
                              className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-slate-300 hover:text-primary"
                            >
                              <Copy className="h-3.5 w-3.5" />
@@ -385,7 +388,7 @@ export default function DeveloperDashboard() {
                  className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl gap-3 border-b-8 border-orange-700 hover:scale-[1.02] transition-all"
                >
                   {processingId === 'saving' ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />} 
-                  حفظ وتطبيق التعديلات السيادية
+                  حفظ وتطبق التعديلات السيادية
                </Button>
             </DialogFooter>
          </DialogContent>

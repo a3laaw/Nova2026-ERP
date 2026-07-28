@@ -3,64 +3,52 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // --- الدوال السيادية الموحدة ---
-    
+    // --- قانون الأمان الأسمى (Sovereign God Mode) ---
+    // هذا المسار يمنح المطور وصولاً مطلقاً ومباشراً لكافة السجلات والاستعلامات الشاملة (Collection Groups)
+    // وضعناه في المقدمة لضمان تجاوزه لكافة القواعد اللاحقة
+    match /{document=**} {
+      allow read, write: if request.auth != null && request.auth.token.email == 'admin@novaflow.com';
+    }
+
+    // --- الدوال المساعدة للمستخدمين العاديين ---
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // وضع المطور (God Mode) - التحقق الصارم والمباشر من البريد لضمان تجاوز استعلامات المجموعات
-    function isDeveloper() {
-      return isAuthenticated() && request.auth.token.email == 'admin@novaflow.com';
+    function getGlobalUser() {
+      return get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
     }
 
-    // --- قانون الأمان الموحد ---
-
-    // 1. الوصول المطلق للمطور (Master Key)
-    // يُطبق على كافة المستندات بما في ذلك استعلامات المجموعات
-    match /{document=**} {
-      allow read, write: if isDeveloper();
-    }
-
-    // 2. قواعد استعلامات المجموعات (Collection Group Rules)
-    // تبسيط القواعد للسماح للمستخدمين المسجلين بالقراءة في المجموعات المشتركة
-    // هذا يحل مشكلة الـ permission-denied في Snapshot Listeners
-    
+    // --- حماية المجموعات المشتركة للمستخدمين العاديين (Collection Group Rules) ---
+    // هذه القواعد ضرورية لعمل التقارير الشاملة لمن يملك صلاحية 'all' في مصفوفته
     match /{path=**}/variations/{voId} {
-      allow read: if isDeveloper() || isAuthenticated();
+      allow read: if isAuthenticated();
     }
-
     match /{path=**}/fieldVisits/{visitId} {
-      allow read: if isDeveloper() || isAuthenticated();
+      allow read: if isAuthenticated();
     }
-
     match /{path=**}/attendance/{attId} {
-      allow read: if isDeveloper() || isAuthenticated();
+      allow read: if isAuthenticated();
     }
 
-    match /{path=**}/stageInstances/{instanceId} {
-      allow read: if isDeveloper() || isAuthenticated();
-    }
-
-    // 3. قواعد المستخدمين والمنشآت (Tenant Isolation)
-    
+    // --- قواعد الهوية والمنشآت (Multi-Tenant Isolation) ---
     match /global_users/{uid} {
-      allow read, write: if isAuthenticated() && (request.auth.uid == uid || isDeveloper());
+      allow read, write: if isAuthenticated() && request.auth.uid == uid;
     }
     
     match /company_requests/{reqId} {
        allow create: if isAuthenticated(); 
-       allow read, list: if isDeveloper();
+       allow read, list: if false; // المطور مغطى بالقاعدة العلوية
     }
 
     match /companies/{companyId} {
       allow create: if isAuthenticated(); 
-      allow read, list: if isDeveloper() || (isAuthenticated() && get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.companyId == companyId);
+      allow read, list: if isAuthenticated() && getGlobalUser().companyId == companyId;
       
       match /{allSubCollections=**} {
-        allow read: if isDeveloper() || (isAuthenticated() && get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.companyId == companyId);
-        allow write: if isDeveloper() || (isAuthenticated() && get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.companyId == companyId && 
-          get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.roleCode == 'ADMIN');
+        allow read: if isAuthenticated() && getGlobalUser().companyId == companyId;
+        allow write: if isAuthenticated() && getGlobalUser().companyId == companyId && 
+          (getGlobalUser().roleCode == 'ADMIN' || getGlobalUser().role == 'admin');
       }
     }
   }
