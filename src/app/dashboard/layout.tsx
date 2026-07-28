@@ -56,7 +56,7 @@ export default function DashboardLayout({
     if (needsLock) {
       return (
         <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-950 p-6 text-center" dir={dir}>
-          <div className="max-w-md space-y-8 animate-in zoom-in-95 duration-500">
+          <div className="max-md space-y-8 animate-in zoom-in-95 duration-500">
              <div className={cn(
                "w-24 h-24 rounded-[2.5rem] flex items-center justify-center mx-auto shadow-2xl ring-8",
                isSuspended ? "bg-amber-500/20 text-amber-500 ring-amber-500/5" : 

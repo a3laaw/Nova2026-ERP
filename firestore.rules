@@ -9,7 +9,8 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // وضع المطور (God Mode) - التحقق المباشر من البريد الإلكتروني
+    // وضع المطور (God Mode) - التحقق الصارم من البريد الإلكتروني
+    // هذا المسار يتجاوز كافة القيود لضمان عمل كونسول الرقابة
     function isDeveloper() {
       return isAuthenticated() && request.auth.token.email == 'admin@novaflow.com';
     }
@@ -24,23 +25,24 @@ service cloud.firestore {
     // --- قانون الأمان الموحد ---
 
     // 1. الوصول المطلق للمطور (Master Key)
+    // يسمح للمطور بالوصول لكل شيء بما في ذلك استعلامات المجموعات
     match /{document=**} {
       allow read, write: if isDeveloper();
     }
 
     // 2. قواعد استعلامات المجموعات (Collection Group Rules)
-    // هام: يجب أن تكون بسيطة جداً لضمان عمل الفهارس (Indexes)
+    // يجب أن تكون صريحة وبسيطة لتعمل مع الفهارس (Indexes)
     
     match /{path=**}/variations/{voId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && (isDeveloper() || resource.data.companyId == get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.companyId);
     }
 
     match /{path=**}/fieldVisits/{visitId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && (isDeveloper() || resource.data.companyId == get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.companyId);
     }
 
     match /{path=**}/attendance/{attId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && (isDeveloper() || resource.data.companyId == get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.companyId);
     }
 
     // 3. قواعد المستخدمين والمنشآت (Hierarchy Rules)
