@@ -6,16 +6,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/tabs";
 import { useCollection, useFirestore } from '@/firebase';
-import { collection, query, doc, updateDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { collection, query, doc, updateDoc, serverTimestamp, writeBatch, getDoc } from 'firebase/firestore';
 import { 
   Loader2, CheckCircle2, ShieldAlert, Ban, RefreshCcw, 
   Edit3, Save, Users, Zap, Building2, 
   CalendarClock, Timer, ShieldCheck, AlertTriangle, X,
   ExternalLink, Lock, Unlock, CreditCard, History,
   CalendarDays, Play, Pause, Power, Info, Settings2, Sparkles,
-  Search
+  Search, Mail, Key, Copy, Eye, EyeOff
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useLanguage } from '@/context/language-context';
@@ -36,6 +36,9 @@ export default function DeveloperDashboard() {
   const [activeTab, setActiveTab] = useState("requests");
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [editingCompany, setEditingCompany] = useState<any>(null);
+  const [ownerData, setOwnerData] = useState<any>(null);
+  const [loadingOwner, setLoadingOwner] = useState(false);
+  const [showPass, setShowPass] = useState(false);
 
   const companiesQuery = useMemo(() => 
     (db && globalUser?.isDeveloper) ? query(collection(db, 'companies')) : null, 
@@ -63,6 +66,28 @@ export default function DeveloperDashboard() {
       return dateB - dateA;
     });
   }, [rawRequests]);
+
+  const handleOpenEdit = async (company: any) => {
+    setEditingCompany(company);
+    setOwnerData(null);
+    setShowPass(false);
+    
+    if (company.ownerUid && db) {
+      setLoadingOwner(true);
+      try {
+        // جلب بيانات المالك من السجل العالمي (للايميل) ومن سجل مستخدمي الشركة (للباسورد المبدئي)
+        const ownerRef = doc(db, 'companies', company.id, 'users', company.ownerUid);
+        const ownerSnap = await getDoc(ownerRef);
+        if (ownerSnap.exists()) {
+          setOwnerData(ownerSnap.data());
+        }
+      } catch (e) {
+        console.error("Failed to fetch owner data", e);
+      } finally {
+        setLoadingOwner(false);
+      }
+    }
+  };
 
   const handleActivate = async (req: any, days: number = 7, type: string = 'trial') => {
     if (!db) return;
@@ -157,6 +182,11 @@ export default function DeveloperDashboard() {
     }
   };
 
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: isRtl ? "تم النسخ" : "Copied" });
+  };
+
   if (authLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
 
   return (
@@ -229,16 +259,16 @@ export default function DeveloperDashboard() {
                             <div className="h-9 w-9 rounded-lg bg-white shadow-md flex items-center justify-center text-primary font-black border border-primary/10">
                                {req.companyName?.charAt(0)}
                             </div>
-                            <div className="flex flex-col">
+                            <div className="flex flex-col text-start">
                                <span className="font-black text-slate-800 text-sm">{req.companyName}</span>
                                <span className="text-[9px] font-mono text-slate-400 mt-0.5">{req.email}</span>
                             </div>
                          </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-start">
                          <Badge variant="outline" className="text-[7px] font-black uppercase border-primary/20 bg-primary/5 text-primary px-2 h-5 rounded-md">{req.activity}</Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-start">
                          <Badge className={cn(
                            "font-black text-[8px] uppercase px-3 py-0.5 border-0 shadow-sm rounded-md",
                            req.status === 'activated' ? "bg-emerald-50 text-emerald-600" : "bg-amber-100 text-amber-700"
@@ -254,7 +284,7 @@ export default function DeveloperDashboard() {
                                  disabled={processingId === req.id} 
                                  className="h-9 px-5 bg-primary text-white font-black text-[10px] rounded-lg shadow-lg hover:scale-105 transition-all gap-2"
                                >
-                                  {processingId === req.id ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Power className="h-3.5 w-3.5" />}
+                                  <Power className="h-3.5 w-3.5" />
                                   تفعيل (7 أيام)
                                 </Button>
                            ) : (
@@ -276,10 +306,10 @@ export default function DeveloperDashboard() {
               <Table>
                 <TableHeader className="bg-slate-50/50">
                   <TableRow>
-                    <TableHead className="ps-8 py-4 font-black uppercase text-[9px] text-slate-500">المنشأة</TableHead>
-                    <TableHead className="font-black uppercase text-[9px] text-slate-500">الاشتراك</TableHead>
-                    <TableHead className="font-black uppercase text-[9px] text-slate-500">تاريخ الانتهاء</TableHead>
-                    <TableHead className="font-black uppercase text-[9px] text-slate-500">الحالة</TableHead>
+                    <TableHead className="ps-8 py-4 font-black uppercase text-[9px] text-slate-500 text-start">المنشأة</TableHead>
+                    <TableHead className="font-black uppercase text-[9px] text-slate-500 text-start">الاشتراك</TableHead>
+                    <TableHead className="font-black uppercase text-[9px] text-slate-500 text-start">تاريخ الانتهاء</TableHead>
+                    <TableHead className="font-black uppercase text-[9px] text-slate-500 text-start">الحالة</TableHead>
                     <TableHead className="pe-8 text-end font-black uppercase text-[9px] text-slate-500">التحكم</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -299,15 +329,15 @@ export default function DeveloperDashboard() {
                             </div>
                          </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-start">
                          <Badge className="bg-blue-50 text-blue-600 border-0 text-[8px] font-black uppercase px-3 py-0.5 rounded-md">
                             {comp.subscriptionType}
                          </Badge>
                       </TableCell>
-                      <TableCell className="font-mono text-[11px] font-black text-slate-600">
+                      <TableCell className="font-mono text-[11px] font-black text-slate-600 text-start">
                          {comp.expiryDate ? comp.expiryDate.split('T')[0] : '---'}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-start">
                          <Badge className={cn(
                            "font-black px-4 py-1 text-[9px] uppercase border-0 shadow-sm rounded-md",
                            comp.status === 'active' ? "bg-emerald-50 text-emerald-600" : 
@@ -320,8 +350,8 @@ export default function DeveloperDashboard() {
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => setEditingCompany({...comp})} 
-                          className="h-8 px-4 rounded-lg border-2 font-black text-[10px] gap-2 hover:bg-primary hover:text-white transition-all shadow-sm"
+                          onClick={() => handleOpenEdit(comp)} 
+                          className="h-9 px-4 rounded-lg border-2 font-black text-[10px] gap-2 hover:bg-primary hover:text-white transition-all shadow-sm"
                         >
                            <Settings2 className="h-3.5 w-3.5" /> إدارة
                         </Button>
@@ -335,7 +365,7 @@ export default function DeveloperDashboard() {
       </Tabs>
 
       <Dialog open={!!editingCompany} onOpenChange={(v) => { if(!v) setEditingCompany(null); }}>
-         <DialogContent className="rounded-3xl max-w-xl p-0 overflow-hidden border-0 shadow-3xl bg-white flex flex-col max-h-[85vh]" dir={dir}>
+         <DialogContent className="rounded-3xl max-w-xl p-0 overflow-hidden border-0 shadow-3xl bg-white flex flex-col max-h-[90vh]" dir={dir}>
             <div className="bg-slate-50 p-6 text-slate-900 text-start border-b shrink-0">
                <DialogTitle className="text-xl font-black font-headline flex items-center gap-3">
                   <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg"><Building2 className="h-5 w-5" /></div> 
@@ -346,6 +376,71 @@ export default function DeveloperDashboard() {
 
             <div className="p-6 space-y-6 text-start bg-white flex-1 overflow-y-auto scrollbar-hide">
                
+               {/* Owner Access Data Section */}
+               <div className="p-6 bg-primary/5 rounded-[2rem] border-2 border-primary/10 space-y-4 animate-in zoom-in-95 duration-300">
+                  <div className="flex items-center justify-between">
+                     <h5 className="font-black text-[10px] uppercase tracking-[0.2em] text-primary flex items-center gap-2">
+                        <ShieldCheck className="h-4 w-4" /> بيانات دخول مالك المنشأة
+                     </h5>
+                     {loadingOwner && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <div className="space-y-1.5">
+                        <Label className="text-[9px] font-bold text-slate-400">البريد الإلكتروني / اليوزر</Label>
+                        <div className="relative group">
+                           <Input 
+                             readOnly 
+                             value={ownerData?.email || 'جاري التحميل...'} 
+                             className="h-10 rounded-xl bg-white border-2 font-mono text-xs pr-10" 
+                           />
+                           <Button 
+                             variant="ghost" 
+                             size="icon" 
+                             onClick={() => copyToClipboard(ownerData?.email)}
+                             className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-slate-300 hover:text-primary"
+                           >
+                              <Copy className="h-3.5 w-3.5" />
+                           </Button>
+                        </div>
+                     </div>
+
+                     <div className="space-y-1.5">
+                        <Label className="text-[9px] font-bold text-slate-400">كلمة المرور المبدئية</Label>
+                        <div className="relative group">
+                           <Input 
+                             type={showPass ? "text" : "password"}
+                             readOnly 
+                             value={ownerData?.initialPassword || '••••••••'} 
+                             className="h-10 rounded-xl bg-white border-2 font-mono text-xs pr-20" 
+                           />
+                           <div className="absolute right-1 top-1/2 -translate-y-1/2 flex gap-0.5">
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => setShowPass(!showPass)}
+                                className="h-8 w-8 text-slate-300 hover:text-primary"
+                              >
+                                 {showPass ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => copyToClipboard(ownerData?.initialPassword)}
+                                className="h-8 w-8 text-slate-300 hover:text-primary"
+                              >
+                                 <Copy className="h-3.5 w-3.5" />
+                              </Button>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-[8px] font-bold text-primary/60 italic">
+                     <Info className="h-2.5 w-2.5" />
+                     {isRtl ? 'هذه البيانات للمراقبة والدعم الفني فقط، ولا يجب مشاركتها.' : 'For monitoring and support purposes only.'}
+                  </div>
+               </div>
+
                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border-2 border-white shadow-inner">
                   <div className="text-start">
                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">حالة التشغيل الحالية</p>
@@ -420,7 +515,7 @@ export default function DeveloperDashboard() {
                   <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 flex items-start gap-3">
                      <Info className="h-4 w-4 text-blue-500 shrink-0 mt-1" />
                      <p className="text-[9px] text-blue-700/80 font-bold leading-relaxed">
-                        تحديث نوع الاشتراك يقوم بتعيين تاريخ انتهاء جديد تلقائياً. يمكنك تعديله يدوياً بعد الاختيار.
+                        تنبيه: تحديث نوع الاشتراك يقوم بتعيين تاريخ انتهاء جديد تلقائياً من اليوم. يمكنك تعديل التاريخ يدوياً بعد الاختيار.
                      </p>
                   </div>
                </div>
@@ -438,3 +533,4 @@ export default function DeveloperDashboard() {
     </div>
   );
 }
+
