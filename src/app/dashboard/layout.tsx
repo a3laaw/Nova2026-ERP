@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useAuthContext } from '@/context/auth-context';
@@ -12,7 +11,7 @@ import { UserNav } from "@/components/layout/user-nav"
 import { NotificationBell } from "@/components/layout/notification-bell"
 import { BreadcrumbNav } from "@/components/layout/breadcrumb-nav"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Languages, CalendarDays, AlertTriangle, ShieldAlert, LogOut, Lock } from 'lucide-react';
+import { Loader2, Languages, CalendarDays, AlertTriangle, ShieldAlert, LogOut, Lock, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -34,10 +33,12 @@ export default function DashboardLayout({
     }
   }, [user, authLoading, router]);
 
-  // حظر الوميض: إذا كانت البيانات المالية للمنشأة معطلة، نحجب المحتوى فوراً
+  // حظر الوميض: تحديد الحالة الدقيقة للمنشأة
   const isSuspended = company?.status === 'suspended';
   const isInactive = company?.status === 'inactive';
-  const isExpired = subscription.isExpired;
+  const isExpired = company?.status === 'expired' || subscription.isExpired;
+  
+  // تفعيل القفل للمستخدمين العاديين فقط
   const needsLock = (isExpired || isSuspended || isInactive) && !globalUser?.isDeveloper;
 
   if (authLoading || companyLoading) {
@@ -49,6 +50,7 @@ export default function DashboardLayout({
     );
   }
 
+  // مخرج التوجيه في حال عدم وجود مستخدم أو وجود قفل
   if (!user || needsLock) {
     if (needsLock) {
       return (
@@ -56,18 +58,26 @@ export default function DashboardLayout({
           <div className="max-w-md space-y-8 animate-in zoom-in-95 duration-500">
              <div className={cn(
                "w-24 h-24 rounded-[2.5rem] flex items-center justify-center mx-auto shadow-2xl ring-8",
-               isSuspended ? "bg-amber-500/20 text-amber-500 ring-amber-500/5" : "bg-rose-500/20 text-rose-500 ring-rose-500/5"
+               isSuspended ? "bg-amber-500/20 text-amber-500 ring-amber-500/5" : 
+               isInactive ? "bg-blue-500/20 text-blue-500 ring-blue-500/5" :
+               "bg-rose-500/20 text-rose-500 ring-rose-500/5"
              )}>
-                {isSuspended ? <Lock className="h-12 w-12" /> : <ShieldAlert className="h-12 w-12" />}
+                {isSuspended ? <Lock className="h-12 w-12" /> : 
+                 isInactive ? <Clock className="h-12 w-12" /> :
+                 <ShieldAlert className="h-12 w-12" />}
              </div>
              <div className="space-y-3">
                 <h1 className="text-4xl font-black text-white font-headline">
-                  {isSuspended ? (isRtl ? 'المنشأة مجمدة مؤقتاً' : 'Account Frozen') : (isRtl ? 'الوصول محجوب' : 'Access Restricted')}
+                  {isSuspended ? (isRtl ? 'المنشأة مجمدة مؤقتاً' : 'Account Frozen') : 
+                   isInactive ? (isRtl ? 'بانتظار تفعيل المنشأة' : 'Awaiting Activation') :
+                   (isRtl ? 'انتهت صلاحية الوصول' : 'Subscription Expired')}
                 </h1>
                 <p className="text-slate-400 font-bold text-lg leading-relaxed">
                    {isSuspended 
-                     ? (isRtl ? `عذراً، تم إيقاف الوصول لمنشأة ${company?.name} مؤقتاً بقرار إداري.` : `Access for ${company?.name} has been temporarily suspended.`)
-                     : (isRtl ? `عذراً، انتهت فترة اشتراك منشأة ${company?.name}. يرجى التجديد لاستعادة الوصول.` : `Subscription for ${company?.name} has expired. Please renew.`)
+                     ? (isRtl ? `عذراً، تم إيقاف الوصول لمنشأة ${company?.name} مؤقتاً بقرار إداري من المطور.` : `Access for ${company?.name} has been temporarily suspended by the developer.`)
+                     : isInactive
+                     ? (isRtl ? `شكراً لطلبكم. حساب منشأة ${company?.name} قيد المراجعة حالياً من قبل المطور، سيتم إخطاركم فور التفعيل.` : `Thank you. The account for ${company?.name} is currently under review by the developer. You will be notified once activated.`)
+                     : (isRtl ? `عذراً، انتهت فترة اشتراك منشأة ${company?.name}. يرجى التجديد لاستعادة الوصول للبيانات.` : `Subscription for ${company?.name} has expired. Please renew to regain access.`)
                    }
                 </p>
              </div>
