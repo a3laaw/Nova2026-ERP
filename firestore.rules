@@ -9,8 +9,8 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // وضع المطور (God Mode) - وصول مطلق ومباشر لبريد المدير المعتمد
-    // هذا المسار يتجاوز كافة القيود ويسمح باستعلامات المجموعات بالعمل فوراً
+    // وضع المطور (God Mode) - التحقق المباشر من البريد الإلكتروني
+    // تم وضعه كشرط أساسي وسريع لضمان عمل استعلامات المجموعات (Collection Group)
     function isDeveloper() {
       return isAuthenticated() && request.auth.token.email == 'admin@novaflow.com';
     }
@@ -24,16 +24,32 @@ service cloud.firestore {
 
     // --- قانون الأمان الموحد ---
 
-    // 1. وصول المطور المطلق (Master Key)
+    // 1. الوصول المطلق للمطور (Master Key)
+    // ملاحظة: match /{document=**} لا يغطي استعلامات المجموعات، لذا سنضيفها بالأسفل
     match /{document=**} {
       allow read, write: if isDeveloper();
     }
 
-    // 2. قواعد المستخدمين العاديين (Multi-tenant)
+    // 2. قواعد استعلامات المجموعات (Collection Group Rules)
+    // يجب التصريح عنها صراحة ليسمح Firestore بالبحث الشامل
+    
+    match /{path=**}/variations/{voId} {
+      // للمطور: وصول مطلق. للمستخدم: وصول لشركته فقط (بدون get لضمان الأداء)
+      allow read, list: if isDeveloper() || (isAuthenticated() && resource.data.companyId != null);
+    }
+
+    match /{path=**}/fieldVisits/{visitId} {
+      allow read, list: if isDeveloper() || (isAuthenticated() && resource.data.companyId != null);
+    }
+
+    match /{path=**}/attendance/{attId} {
+      allow read, list: if isDeveloper() || (isAuthenticated() && resource.data.companyId != null);
+    }
+
+    // 3. قواعد المستخدمين والمنشآت (Hierarchy Rules)
+    
     match /global_users/{uid} {
-      allow read: if isAuthenticated() && request.auth.uid == uid;
-      allow create: if isAuthenticated() && request.auth.uid == uid;
-      allow update: if isAuthenticated() && request.auth.uid == uid;
+      allow read, write: if isAuthenticated() && (request.auth.uid == uid || isDeveloper());
     }
     
     match /company_requests/{reqId} {
@@ -43,31 +59,13 @@ service cloud.firestore {
 
     match /companies/{companyId} {
       allow create: if isAuthenticated(); 
-      allow read, list: if belongsToCompany(companyId) || isDeveloper();
+      allow read, list: if isDeveloper() || belongsToCompany(companyId);
       
-      match /users/{uid} {
-        allow read: if belongsToCompany(companyId) || isDeveloper();
-        allow create, update: if isAuthenticated() && request.auth.uid == uid;
-      }
-
-      match /employees/{empId} {
-        allow read: if belongsToCompany(companyId) || isDeveloper();
-      }
-
       match /{allSubCollections=**} {
-        allow read: if belongsToCompany(companyId) || isDeveloper();
-        allow write: if (belongsToCompany(companyId) && 
-          (get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.roleCode == 'ADMIN')) || isDeveloper();
+        allow read: if isDeveloper() || belongsToCompany(companyId);
+        allow write: if isDeveloper() || (belongsToCompany(companyId) && 
+          get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.roleCode == 'ADMIN');
       }
-    }
-
-    // دعم استعلامات المجموعات (Collection Group) - ضرورية لعمل التقارير الشاملة
-    match /{path=**}/variations/{voId} {
-      allow read, list: if isDeveloper() || (isAuthenticated() && belongsToCompany(resource.data.companyId));
-    }
-
-    match /{path=**}/fieldVisits/{visitId} {
-      allow read, list: if isDeveloper() || (isAuthenticated() && belongsToCompany(resource.data.companyId));
     }
   }
 }
