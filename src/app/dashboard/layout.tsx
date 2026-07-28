@@ -34,6 +34,12 @@ export default function DashboardLayout({
     }
   }, [user, authLoading, router]);
 
+  // حظر الوميض: إذا كانت البيانات المالية للمنشأة معطلة، نحجب المحتوى فوراً
+  const isSuspended = company?.status === 'suspended';
+  const isInactive = company?.status === 'inactive';
+  const isExpired = subscription.isExpired;
+  const needsLock = (isExpired || isSuspended || isInactive) && !globalUser?.isDeveloper;
+
   if (authLoading || companyLoading) {
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#F8F9FA] gap-4">
@@ -43,44 +49,39 @@ export default function DashboardLayout({
     );
   }
 
-  if (!user) {
-    return null;
-  }
-
-  const isSuspended = company?.status === 'suspended';
-  const isInactive = company?.status === 'inactive';
-  const needsLock = (subscription.isExpired || isSuspended || isInactive) && !globalUser?.isDeveloper;
-
-  if (needsLock) {
-    return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-950 p-6 text-center" dir={dir}>
-        <div className="max-w-md space-y-8 animate-in zoom-in-95 duration-500">
-           <div className={cn(
-             "w-24 h-24 rounded-[2.5rem] flex items-center justify-center mx-auto shadow-2xl ring-8",
-             isSuspended ? "bg-amber-500/20 text-amber-500 ring-amber-500/5" : "bg-rose-500/20 text-rose-500 ring-rose-500/5"
-           )}>
-              {isSuspended ? <Lock className="h-12 w-12" /> : <ShieldAlert className="h-12 w-12" />}
-           </div>
-           <div className="space-y-3">
-              <h1 className="text-4xl font-black text-white font-headline">
-                {isSuspended ? (isRtl ? 'المنشأة مجمدة مؤقتاً' : 'Account Frozen') : (isRtl ? 'الوصول محجوب' : 'Access Restricted')}
-              </h1>
-              <p className="text-slate-400 font-bold text-lg leading-relaxed">
-                 {isSuspended 
-                   ? (isRtl ? `عذراً، تم إيقاف الوصول لمنشأة ${company?.name} مؤقتاً بقرار إداري.` : `Access for ${company?.name} has been temporarily suspended.`)
-                   : (isRtl ? `عذراً، انتهت فترة اشتراك منشأة ${company?.name}. يرجى التجديد لاستعادة الوصول.` : `Subscription for ${company?.name} has expired. Please renew.`)
-                 }
-              </p>
-           </div>
-           <div className="p-6 bg-white/5 rounded-3xl border border-white/10 space-y-4">
-              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Sovereign Cloud Guard</p>
-              <Button onClick={logout} variant="outline" className="w-full border-white/10 text-white hover:bg-white/10 rounded-xl h-12 font-black">
-                 <LogOut className="me-2 h-4 w-4" /> {t('logout')}
-              </Button>
-           </div>
+  if (!user || needsLock) {
+    if (needsLock) {
+      return (
+        <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-950 p-6 text-center" dir={dir}>
+          <div className="max-w-md space-y-8 animate-in zoom-in-95 duration-500">
+             <div className={cn(
+               "w-24 h-24 rounded-[2.5rem] flex items-center justify-center mx-auto shadow-2xl ring-8",
+               isSuspended ? "bg-amber-500/20 text-amber-500 ring-amber-500/5" : "bg-rose-500/20 text-rose-500 ring-rose-500/5"
+             )}>
+                {isSuspended ? <Lock className="h-12 w-12" /> : <ShieldAlert className="h-12 w-12" />}
+             </div>
+             <div className="space-y-3">
+                <h1 className="text-4xl font-black text-white font-headline">
+                  {isSuspended ? (isRtl ? 'المنشأة مجمدة مؤقتاً' : 'Account Frozen') : (isRtl ? 'الوصول محجوب' : 'Access Restricted')}
+                </h1>
+                <p className="text-slate-400 font-bold text-lg leading-relaxed">
+                   {isSuspended 
+                     ? (isRtl ? `عذراً، تم إيقاف الوصول لمنشأة ${company?.name} مؤقتاً بقرار إداري.` : `Access for ${company?.name} has been temporarily suspended.`)
+                     : (isRtl ? `عذراً، انتهت فترة اشتراك منشأة ${company?.name}. يرجى التجديد لاستعادة الوصول.` : `Subscription for ${company?.name} has expired. Please renew.`)
+                   }
+                </p>
+             </div>
+             <div className="p-6 bg-white/5 rounded-3xl border border-white/10 space-y-4">
+                <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Sovereign Cloud Guard</p>
+                <Button onClick={logout} variant="outline" className="w-full border-white/10 text-white hover:bg-white/10 rounded-xl h-12 font-black">
+                   <LogOut className="me-2 h-4 w-4" /> {t('logout')}
+                </Button>
+             </div>
+          </div>
         </div>
-      </div>
-    );
+      );
+    }
+    return null;
   }
 
   return (
@@ -110,10 +111,7 @@ export default function DashboardLayout({
                      )}
                   </p>
                </div>
-               <Badge className={cn(
-                 "border-0 font-black px-3 h-6",
-                 subscription.isTrial ? "bg-primary text-white" : "bg-slate-900 text-white"
-               )}>
+               <Badge className="bg-slate-900 text-white border-0 font-black h-6 px-3 rounded-md shadow-sm">
                   {subscription.daysRemaining}d
                </Badge>
             </div>

@@ -3,13 +3,13 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // --- الدوال المساعدة السيادية ---
+    // --- الدوال المساعدة السيادية المحدثة للسرعة والأمان ---
     
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // التحقق المباشر من بريد المطور (Master Key) لضمان الوصول الفوري ومنع أخطاء الـ segments
+    // التحقق من هوية المطور (Master Key)
     function isDeveloper() {
       return isAuthenticated() && (
         request.auth.token.email == 'admin@novaflow.com' ||
@@ -18,24 +18,23 @@ service cloud.firestore {
       );
     }
 
-    function getGlobalData() {
-      return get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
-    }
-
+    // التحقق من انتساب الموظف للمنشأة (عزل البيانات)
     function belongsToCompany(companyId) {
       return isAuthenticated() && (
         isDeveloper() ||
         (exists(/databases/$(database)/documents/global_users/$(request.auth.uid)) && 
-         getGlobalData().companyId == companyId)
+         get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.companyId == companyId)
       );
     }
 
+    // التحقق من الصلاحيات الإدارية داخل المنشأة
     function isAdmin(companyId) {
       return isAuthenticated() && (
         isDeveloper() ||
         (exists(/databases/$(database)/documents/global_users/$(request.auth.uid)) && 
-         getGlobalData().companyId == companyId && 
-         (getGlobalData().role == 'admin' || getGlobalData().role == 'Admin' || getGlobalData().roleCode == 'ADMIN'))
+         get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.companyId == companyId && 
+         (get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.roleCode == 'ADMIN' || 
+          get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.role == 'admin'))
       );
     }
 
@@ -79,13 +78,13 @@ service cloud.firestore {
       }
     }
 
-    // دعم استعلامات الـ Collection Group للمطور والمدير
+    // دعم استعلامات الـ Collection Group (يجب أن تتوافق مع فلاتر الاستعلام)
     match /{path=**}/variations/{voId} {
-      allow read, list: if isAuthenticated() && (isDeveloper() || (resource != null && belongsToCompany(resource.data.companyId)));
+      allow read, list: if isAuthenticated() && (isDeveloper() || belongsToCompany(resource.data.companyId));
     }
 
     match /{path=**}/fieldVisits/{visitId} {
-      allow read, list: if isAuthenticated() && (isDeveloper() || (resource != null && belongsToCompany(resource.data.companyId)));
+      allow read, list: if isAuthenticated() && (isDeveloper() || belongsToCompany(resource.data.companyId));
     }
   }
 }

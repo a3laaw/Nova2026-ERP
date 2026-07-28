@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -13,7 +14,8 @@ import {
   Edit3, Save, Users, Zap, Building2, 
   CalendarClock, Timer, ShieldCheck, AlertTriangle, X,
   ExternalLink, Lock, Unlock, CreditCard, History,
-  CalendarDays, Play, Pause, Power, Info, Settings2, Sparkles
+  CalendarDays, Play, Pause, Power, Info, Settings2, Sparkles,
+  Search
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useLanguage } from '@/context/language-context';
@@ -111,7 +113,6 @@ export default function DeveloperDashboard() {
       ...editingCompany,
       subscriptionType: type,
       expiryDate: newExpiry,
-      // فك التجميد التلقائي عند اختيار خطة دفع
       status: (editingCompany.status === 'suspended' || editingCompany.status === 'expired') ? 'active' : editingCompany.status
     });
   };
@@ -127,7 +128,6 @@ export default function DeveloperDashboard() {
       
       let finalStatus = editingCompany.status;
 
-      // تحديث الحالة التلقائي بناءً على التاريخ ما لم تكن مجمدة يدوياً
       if (finalStatus !== 'suspended') {
           finalStatus = isAfter(expiry, now) ? 'active' : 'expired';
       }
