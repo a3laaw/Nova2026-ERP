@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -6,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCollection, useFirestore } from '@/firebase';
 import { collection, query, doc, updateDoc, serverTimestamp, writeBatch, getDoc } from 'firebase/firestore';
 import { 
@@ -75,7 +74,6 @@ export default function DeveloperDashboard() {
     if (company.ownerUid && db) {
       setLoadingOwner(true);
       try {
-        // جلب بيانات المالك من السجل العالمي (للايميل) ومن سجل مستخدمي الشركة (للباسورد المبدئي)
         const ownerRef = doc(db, 'companies', company.id, 'users', company.ownerUid);
         const ownerSnap = await getDoc(ownerRef);
         if (ownerSnap.exists()) {
@@ -183,6 +181,7 @@ export default function DeveloperDashboard() {
   };
 
   const copyToClipboard = (text: string) => {
+    if (!text) return;
     navigator.clipboard.writeText(text);
     toast({ title: isRtl ? "تم النسخ" : "Copied" });
   };
@@ -367,7 +366,7 @@ export default function DeveloperDashboard() {
       <Dialog open={!!editingCompany} onOpenChange={(v) => { if(!v) setEditingCompany(null); }}>
          <DialogContent className="rounded-3xl max-w-xl p-0 overflow-hidden border-0 shadow-3xl bg-white flex flex-col max-h-[90vh]" dir={dir}>
             <div className="bg-slate-50 p-6 text-slate-900 text-start border-b shrink-0">
-               <DialogTitle className="text-xl font-black font-headline flex items-center gap-3">
+               <DialogTitle className="text-xl font-black font-headline flex items-gap-3">
                   <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg"><Building2 className="h-5 w-5" /></div> 
                   إدارة التراخيص والمدد
                </DialogTitle>
@@ -375,8 +374,6 @@ export default function DeveloperDashboard() {
             </div>
 
             <div className="p-6 space-y-6 text-start bg-white flex-1 overflow-y-auto scrollbar-hide">
-               
-               {/* Owner Access Data Section */}
                <div className="p-6 bg-primary/5 rounded-[2rem] border-2 border-primary/10 space-y-4 animate-in zoom-in-95 duration-300">
                   <div className="flex items-center justify-between">
                      <h5 className="font-black text-[10px] uppercase tracking-[0.2em] text-primary flex items-center gap-2">
@@ -447,7 +444,7 @@ export default function DeveloperDashboard() {
                      <Badge className={cn(
                         "text-base font-black uppercase px-6 py-1 border-0 shadow-lg rounded-xl",
                         editingCompany?.status === 'active' ? "bg-emerald-500 text-white" : 
-                        editingCompany?.status === 'suspended' ? "bg-amber-500 text-white" : "bg-rose-500 text-white"
+                        editingCompany?.status === 'suspended' ? "bg-amber-500 text-white" : "bg-rose-50 text-rose-600"
                      )}>
                         {editingCompany?.status === 'active' ? editingCompany.subscriptionType : editingCompany?.status}
                      </Badge>
@@ -533,4 +530,3 @@ export default function DeveloperDashboard() {
     </div>
   );
 }
-
