@@ -10,7 +10,6 @@ service cloud.firestore {
     }
 
     // وضع المطور (God Mode) - التحقق المباشر من البريد الإلكتروني
-    // تم وضعه كشرط أساسي وسريع لضمان عمل استعلامات المجموعات (Collection Group)
     function isDeveloper() {
       return isAuthenticated() && request.auth.token.email == 'admin@novaflow.com';
     }
@@ -25,25 +24,23 @@ service cloud.firestore {
     // --- قانون الأمان الموحد ---
 
     // 1. الوصول المطلق للمطور (Master Key)
-    // ملاحظة: match /{document=**} لا يغطي استعلامات المجموعات، لذا سنضيفها بالأسفل
     match /{document=**} {
       allow read, write: if isDeveloper();
     }
 
     // 2. قواعد استعلامات المجموعات (Collection Group Rules)
-    // يجب التصريح عنها صراحة ليسمح Firestore بالبحث الشامل
+    // هام: يجب أن تكون بسيطة جداً لضمان عمل الفهارس (Indexes)
     
     match /{path=**}/variations/{voId} {
-      // للمطور: وصول مطلق. للمستخدم: وصول لشركته فقط (بدون get لضمان الأداء)
-      allow read, list: if isDeveloper() || (isAuthenticated() && resource.data.companyId != null);
+      allow read: if isAuthenticated();
     }
 
     match /{path=**}/fieldVisits/{visitId} {
-      allow read, list: if isDeveloper() || (isAuthenticated() && resource.data.companyId != null);
+      allow read: if isAuthenticated();
     }
 
     match /{path=**}/attendance/{attId} {
-      allow read, list: if isDeveloper() || (isAuthenticated() && resource.data.companyId != null);
+      allow read: if isAuthenticated();
     }
 
     // 3. قواعد المستخدمين والمنشآت (Hierarchy Rules)
