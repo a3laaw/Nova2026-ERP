@@ -28,7 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { addDays, isAfter, parseISO } from 'date-fns';
 
 export default function DeveloperDashboard() {
-  const { lang, dir, t } = useLanguage(); // تم الإصلاح: t معرفة الآن
+  const { lang, dir, t } = useLanguage();
   const { globalUser, loading: authLoading } = useAuthContext();
   const db = useFirestore();
   const isRtl = lang === 'ar';
@@ -65,7 +65,7 @@ export default function DeveloperDashboard() {
   }, [rawCompanies, searchTerm]);
 
   const requests = useMemo(() => {
-    return [...(rawRequests || [])].sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+    return [...(rawRequests || [])].sort((a, b) => (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0));
   }, [rawRequests]);
 
   const handleOpenEdit = async (company: any) => {
@@ -210,7 +210,7 @@ export default function DeveloperDashboard() {
                       <TableCell>
                          <Badge className={cn(
                            "text-[8px] font-black uppercase px-2 py-1 rounded-md", 
-                           req.status === 'activated' ? "bg-emerald-500 text-white" : "bg-amber-500 text-white"
+                           req.status === 'activated' ? "bg-emerald-50 text-white" : "bg-amber-500 text-white"
                          )}>
                            {req.status}
                          </Badge>

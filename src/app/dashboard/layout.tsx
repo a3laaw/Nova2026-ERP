@@ -34,13 +34,14 @@ export default function DashboardLayout({
     }
   }, [user, authLoading, router]);
 
-  // حظر الوميض: تحديد الحالة الدقيقة للمنشأة
+  // حظر الوميض: تحديد الحالة الدقيقة للمنشأة والمستخدم
   const isSuspended = company?.status === 'suspended';
   const isInactive = company?.status === 'inactive';
+  const isPending = globalUser?.isPendingApproval === true;
   const isExpired = company?.status === 'expired' || subscription.isExpired;
   
-  // تفعيل القفل للمستخدمين العاديين فقط
-  const needsLock = (isExpired || isSuspended || isInactive) && !globalUser?.isDeveloper;
+  // تفعيل القفل للمستخدمين العاديين فقط (المطور دائماً مستثنى)
+  const needsLock = (isExpired || isSuspended || isInactive || isPending) && !globalUser?.isDeveloper;
 
   if (authLoading || companyLoading) {
     return (
@@ -56,34 +57,34 @@ export default function DashboardLayout({
     if (needsLock) {
       return (
         <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-950 p-6 text-center" dir={dir}>
-          <div className="max-md space-y-8 animate-in zoom-in-95 duration-500">
+          <div className="max-w-md space-y-8 animate-in zoom-in-95 duration-500">
              <div className={cn(
                "w-24 h-24 rounded-[2.5rem] flex items-center justify-center mx-auto shadow-2xl ring-8",
                isSuspended ? "bg-amber-500/20 text-amber-500 ring-amber-500/5" : 
-               isInactive ? "bg-blue-500/20 text-blue-500 ring-blue-500/5" :
+               (isInactive || isPending) ? "bg-blue-500/20 text-blue-500 ring-blue-500/5" :
                "bg-rose-500/20 text-rose-500 ring-rose-500/5"
              )}>
                 {isSuspended ? <Lock className="h-12 w-12" /> : 
-                 isInactive ? <Clock className="h-12 w-12" /> :
+                 (isInactive || isPending) ? <Clock className="h-12 w-12" /> :
                  <ShieldAlert className="h-12 w-12" />}
              </div>
              <div className="space-y-3">
                 <h1 className="text-4xl font-black text-white font-headline">
                   {isSuspended ? (isRtl ? 'المنشأة مجمدة مؤقتاً' : 'Account Frozen') : 
-                   isInactive ? (isRtl ? 'بانتظار تفعيل المنشأة' : 'Awaiting Activation') :
+                   (isInactive || isPending) ? (isRtl ? 'بانتظار تفعيل المنشأة' : 'Awaiting Activation') :
                    (isRtl ? 'انتهت صلاحية الوصول' : 'Subscription Expired')}
                 </h1>
                 <p className="text-slate-400 font-bold text-lg leading-relaxed">
                    {isSuspended 
                      ? (isRtl ? `عذراً، تم إيقاف الوصول لمنشأة ${company?.name} مؤقتاً بقرار إداري من المطور.` : `Access for ${company?.name} has been temporarily suspended by the developer.`)
-                     : isInactive
-                     ? (isRtl ? `شكراً لطلبكم. حساب منشأة ${company?.name} قيد المراجعة حالياً من قبل المطور، سيتم إخطاركم فور التفعيل.` : `Thank you. The account for ${company?.name} is currently under review by the developer. You will be notified once activated.`)
+                     : (isInactive || isPending)
+                     ? (isRtl ? `شكراً لطلبكم. حساب منشأة ${company?.name || 'الجديدة'} قيد المراجعة حالياً من قبل المطور، سيتم إخطاركم فور التفعيل.` : `Thank you. Your account for ${company?.name || 'the new company'} is currently under review. You will be notified once activated.`)
                      : (isRtl ? `عذراً، انتهت فترة اشتراك منشأة ${company?.name}. يرجى التجديد لاستعادة الوصول للبيانات.` : `Subscription for ${company?.name} has expired. Please renew to regain access.`)
                    }
                 </p>
              </div>
              <div className="p-6 bg-white/5 rounded-3xl border border-white/10 space-y-4">
-                <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Sovereign Cloud Guard</p>
+                <p className="text-[10px] text-slate-500 font-black text-center uppercase tracking-widest">Sovereign Cloud Guard</p>
                 <Button onClick={logout} variant="outline" className="w-full border-white/10 text-white hover:bg-white/10 rounded-xl h-12 font-black">
                    <LogOut className="me-2 h-4 w-4" /> {t('logout')}
                 </Button>

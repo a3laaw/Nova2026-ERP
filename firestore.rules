@@ -5,7 +5,6 @@ service cloud.firestore {
     
     // --- قانون الأمان الأسمى (Sovereign God Mode) ---
     // هذا المسار يمنح المطور وصولاً مطلقاً ومباشراً لكافة السجلات والاستعلامات الشاملة (Collection Groups)
-    // وضعناه في المقدمة لضمان تجاوزه لكافة القواعد اللاحقة
     match /{document=**} {
       allow read, write: if request.auth != null && request.auth.token.email == 'admin@novaflow.com';
     }
@@ -19,35 +18,44 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
     }
 
-    // --- حماية المجموعات المشتركة للمستخدمين العاديين (Collection Group Rules) ---
-    // هذه القواعد ضرورية لعمل التقارير الشاملة لمن يملك صلاحية 'all' في مصفوفته
+    function isCompanyActive(cid) {
+      return get(/databases/$(database)/documents/companies/$(cid)).data.status == 'active';
+    }
+
+    // --- حماية المجموعات المشتركة (Collection Group Rules) ---
+    // السماح بالقراءة فقط إذا كان المستخدم ينتمي لنفس الشركة والشركة نشطة، أو كان مطوراً (مغطى بالقاعدة العلوية)
     match /{path=**}/variations/{voId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && getGlobalUser().companyId == resource.data.companyId && isCompanyActive(getGlobalUser().companyId);
     }
     match /{path=**}/fieldVisits/{visitId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && getGlobalUser().companyId == resource.data.companyId && isCompanyActive(getGlobalUser().companyId);
     }
     match /{path=**}/attendance/{attId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && getGlobalUser().companyId == resource.data.companyId && isCompanyActive(getGlobalUser().companyId);
     }
 
     // --- قواعد الهوية والمنشآت (Multi-Tenant Isolation) ---
     match /global_users/{uid} {
-      allow read, write: if isAuthenticated() && request.auth.uid == uid;
+      allow read: if isAuthenticated() && (request.auth.uid == uid || request.auth.token.email == 'admin@novaflow.com');
+      allow write: if isAuthenticated() && (request.auth.uid == uid || request.auth.token.email == 'admin@novaflow.com');
     }
     
     match /company_requests/{reqId} {
        allow create: if isAuthenticated(); 
-       allow read, list: if false; // المطور مغطى بالقاعدة العلوية
+       allow read, write: if request.auth != null && request.auth.token.email == 'admin@novaflow.com';
     }
 
     match /companies/{companyId} {
       allow create: if isAuthenticated(); 
-      allow read, list: if isAuthenticated() && getGlobalUser().companyId == companyId;
+      allow read: if isAuthenticated() && getGlobalUser().companyId == companyId;
       
       match /{allSubCollections=**} {
-        allow read: if isAuthenticated() && getGlobalUser().companyId == companyId;
+        // منع الوصول تماماً للمستندات والبيانات الحساسة إذا كانت المنشأة غير نشطة أو الموظف موقوف
+        allow read: if isAuthenticated() && getGlobalUser().companyId == companyId && 
+          getGlobalUser().isActive == true && isCompanyActive(companyId);
+          
         allow write: if isAuthenticated() && getGlobalUser().companyId == companyId && 
+          getGlobalUser().isActive == true && isCompanyActive(companyId) &&
           (getGlobalUser().roleCode == 'ADMIN' || getGlobalUser().role == 'admin');
       }
     }
