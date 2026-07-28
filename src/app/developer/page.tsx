@@ -28,7 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { addDays, isAfter, parseISO } from 'date-fns';
 
 export default function DeveloperDashboard() {
-  const { lang, dir } = useLanguage();
+  const { lang, dir, t } = useLanguage();
   const { globalUser, loading: authLoading } = useAuthContext();
   const db = useFirestore();
   const isRtl = lang === 'ar';
@@ -55,7 +55,8 @@ export default function DeveloperDashboard() {
   const companies = useMemo(() => {
     let list = [...(rawCompanies || [])];
     if (searchTerm) {
-      list = list.filter(c => c.name?.toLowerCase().includes(searchTerm.toLowerCase()));
+      const q = searchTerm.toLowerCase();
+      list = list.filter(c => c.name?.toLowerCase().includes(q) || c.id?.toLowerCase().includes(q));
     }
     return list.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
   }, [rawCompanies, searchTerm]);
@@ -163,18 +164,23 @@ export default function DeveloperDashboard() {
         </div>
         <div className="relative w-full max-w-xs">
            <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-           <Input placeholder={t('search')} className="ps-9 h-10 rounded-xl bg-white border-2" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+           <Input 
+             placeholder={t('search')} 
+             className="ps-9 h-10 rounded-xl bg-white border-2" 
+             value={searchTerm} 
+             onChange={e => setSearchTerm(e.target.value)} 
+           />
         </div>
       </header>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-white border h-12 rounded-xl p-1 gap-2 mb-4">
+        <TabsList className="bg-white border h-12 rounded-xl p-1.5 gap-2 mb-6 shadow-sm inline-flex">
            <TabsTrigger value="requests" className="rounded-lg px-8 font-black text-xs data-[state=active]:bg-primary data-[state=active]:text-white">طلبات الانضمام</TabsTrigger>
            <TabsTrigger value="companies" className="rounded-lg px-8 font-black text-xs data-[state=active]:bg-primary data-[state=active]:text-white">إدارة التراخيص</TabsTrigger>
         </TabsList>
 
         <TabsContent value="requests" className="animate-in slide-in-from-bottom-2">
-           <Card className="border-0 shadow-xl rounded-2xl bg-white overflow-hidden">
+           <Card className="border-0 shadow-xl rounded-2xl bg-white overflow-hidden ring-1 ring-black/5">
               <Table>
                 <TableHeader className="bg-slate-50/50">
                   <TableRow>
@@ -187,7 +193,9 @@ export default function DeveloperDashboard() {
                 <TableBody>
                   {requestsLoading ? (
                     <TableRow><TableCell colSpan={4} className="text-center py-20"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></TableCell></TableRow>
-                  ) : requests?.map((req: any) => (
+                  ) : requests.length === 0 ? (
+                    <TableRow><TableCell colSpan={4} className="text-center py-20 text-slate-300 font-bold italic">لا يوجد طلبات انضمام.</TableCell></TableRow>
+                  ) : requests.map((req: any) => (
                     <TableRow key={req.id} className="hover:bg-primary/[0.01]">
                       <TableCell className="ps-8 py-4">
                          <div className="text-start">
@@ -197,7 +205,10 @@ export default function DeveloperDashboard() {
                       </TableCell>
                       <TableCell><Badge variant="outline" className="text-[8px] font-black uppercase">{req.activity}</Badge></TableCell>
                       <TableCell>
-                         <Badge className={cn("text-[8px] font-black uppercase", req.status === 'activated' ? "bg-emerald-500 text-white" : "bg-amber-500 text-white")}>
+                         <Badge className={cn(
+                           "text-[8px] font-black uppercase px-2 py-1 rounded-md", 
+                           req.status === 'activated' ? "bg-emerald-500 text-white" : "bg-amber-500 text-white"
+                         )}>
                            {req.status}
                          </Badge>
                       </TableCell>
@@ -216,7 +227,7 @@ export default function DeveloperDashboard() {
         </TabsContent>
 
         <TabsContent value="companies" className="animate-in slide-in-from-bottom-2">
-           <Card className="border-0 shadow-xl rounded-2xl bg-white overflow-hidden">
+           <Card className="border-0 shadow-xl rounded-2xl bg-white overflow-hidden ring-1 ring-black/5">
               <Table>
                 <TableHeader className="bg-slate-50/50">
                   <TableRow>
@@ -229,25 +240,28 @@ export default function DeveloperDashboard() {
                 <TableBody>
                   {companiesLoading ? (
                     <TableRow><TableCell colSpan={4} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
-                  ) : companies?.map((comp: any) => (
+                  ) : companies.map((comp: any) => (
                     <TableRow key={comp.id} className="hover:bg-primary/[0.01]">
                       <TableCell className="ps-8 py-4">
                          <div className="text-start">
                             <p className="font-black text-slate-900 text-sm">{comp.name}</p>
-                            <p className="text-[8px] font-mono text-slate-400">ID: {comp.id.slice(-6)}</p>
+                            <p className="text-[8px] font-mono text-slate-400 uppercase tracking-tighter">ID: {comp.id}</p>
                          </div>
                       </TableCell>
                       <TableCell>
                          <Badge className={cn(
-                           "font-black text-[9px] uppercase",
-                           comp.status === 'active' ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"
+                           "font-black text-[9px] uppercase px-3 py-1 rounded-md border-0 shadow-sm",
+                           comp.status === 'active' ? (
+                             comp.subscriptionType === 'trial' ? "bg-indigo-500 text-white" :
+                             comp.subscriptionType === 'monthly' ? "bg-blue-500 text-white" : "bg-emerald-500 text-white"
+                           ) : "bg-rose-500 text-white"
                          )}>
                             {comp.status === 'active' ? comp.subscriptionType : comp.status}
                          </Badge>
                       </TableCell>
                       <TableCell className="font-mono text-xs font-black text-slate-600">{comp.expiryDate?.split('T')[0] || '---'}</TableCell>
                       <TableCell className="pe-8 text-end">
-                        <Button variant="outline" size="sm" onClick={() => handleOpenEdit(comp)} className="h-8 gap-2">
+                        <Button variant="outline" size="sm" onClick={() => handleOpenEdit(comp)} className="h-8 gap-2 border-2 hover:bg-slate-50">
                            <Settings2 className="h-3 w-3" /> إدارة
                         </Button>
                       </TableCell>
@@ -261,13 +275,14 @@ export default function DeveloperDashboard() {
 
       <Dialog open={!!editingCompany} onOpenChange={v => !v && setEditingCompany(null)}>
          <DialogContent className="rounded-3xl max-w-xl p-0 overflow-hidden border-0 shadow-3xl bg-white flex flex-col h-fit max-h-[90vh]">
-            <div className="bg-slate-50 p-6 border-b shrink-0 text-start">
-               <DialogTitle className="text-xl font-black flex items-center gap-3">
-                  <Settings2 className="h-6 w-6 text-primary" /> إدارة تراخيص {editingCompany?.name}
+            <div className="bg-slate-50 p-8 border-b shrink-0 text-start">
+               <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3 text-slate-900">
+                  <Settings2 className="h-7 w-7 text-primary" /> 
+                  إدارة تراخيص {editingCompany?.name}
                </DialogTitle>
             </div>
 
-            <div className="p-6 space-y-6 text-start overflow-y-auto scrollbar-hide">
+            <div className="p-8 space-y-8 text-start overflow-y-auto scrollbar-hide">
                <div className="p-6 bg-primary/5 rounded-[2rem] border-2 border-primary/10 space-y-4">
                   <div className="flex items-center justify-between">
                      <h5 className="font-black text-[10px] uppercase tracking-widest text-primary flex items-center gap-2">
@@ -275,31 +290,52 @@ export default function DeveloperDashboard() {
                      </h5>
                      {loadingOwner && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                      <div className="space-y-1">
-                        <Label className="text-[9px] font-bold text-slate-400">البريد الإلكتروني</Label>
+                        <Label className="text-[9px] font-bold text-slate-400 uppercase">Email</Label>
                         <div className="relative group">
-                           <Input readOnly value={ownerData?.email || '...'} className="h-10 rounded-xl bg-white border-2 font-mono text-[10px]" />
-                           <Button variant="ghost" size="icon" onClick={() => { navigator.clipboard.writeText(ownerData?.email); toast({title: "Copied"}); }} className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"><Copy className="h-3.5 w-3.5" /></Button>
+                           <Input readOnly value={ownerData?.email || '...'} className="h-10 rounded-xl bg-white border-2 font-mono text-[10px] pr-10" />
+                           <Button 
+                             variant="ghost" 
+                             size="icon" 
+                             onClick={() => { navigator.clipboard.writeText(ownerData?.email); toast({title: "Copied"}); }} 
+                             className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-slate-300 hover:text-primary"
+                           >
+                             <Copy className="h-3.5 w-3.5" />
+                           </Button>
                         </div>
                      </div>
                      <div className="space-y-1">
-                        <Label className="text-[9px] font-bold text-slate-400">كلمة المرور</Label>
+                        <Label className="text-[9px] font-bold text-slate-400 uppercase">Password</Label>
                         <div className="relative">
-                           <Input type={showPass ? "text" : "password"} readOnly value={ownerData?.initialPassword || '••••••••'} className="h-10 rounded-xl bg-white border-2 font-mono text-[10px]" />
-                           <Button variant="ghost" size="icon" onClick={() => setShowPass(!showPass)} className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8">{showPass ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}</Button>
+                           <Input 
+                             type={showPass ? "text" : "password"} 
+                             readOnly 
+                             value={ownerData?.initialPassword || '••••••••'} 
+                             className="h-10 rounded-xl bg-white border-2 font-mono text-[10px] pr-10" 
+                           />
+                           <Button 
+                             variant="ghost" 
+                             size="icon" 
+                             onClick={() => setShowPass(!showPass)} 
+                             className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-slate-300 hover:text-primary"
+                           >
+                             {showPass ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                           </Button>
                         </div>
                      </div>
                   </div>
                </div>
 
-               <div className="grid grid-cols-2 gap-4">
+               <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
                      <Label className="text-[10px] font-black uppercase text-slate-400">نوع الاشتراك</Label>
                      <Select value={editingCompany?.subscriptionType} onValueChange={v => setEditingCompany({...editingCompany, subscriptionType: v})}>
-                        <SelectTrigger className="h-10 border-2 rounded-xl font-bold text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                           <SelectItem value="trial" className="font-bold">Trial</SelectItem>
+                        <SelectTrigger className="h-12 border-2 rounded-xl font-bold">
+                           <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-2 shadow-2xl">
+                           <SelectItem value="trial" className="font-bold">Trial (7 Days)</SelectItem>
                            <SelectItem value="monthly" className="font-bold">Monthly</SelectItem>
                            <SelectItem value="annual" className="font-bold">Annual</SelectItem>
                         </SelectContent>
@@ -307,22 +343,49 @@ export default function DeveloperDashboard() {
                   </div>
                   <div className="space-y-2">
                      <Label className="text-[10px] font-black uppercase text-slate-400">تاريخ الانتهاء</Label>
-                     <Input type="date" value={editingCompany?.expiryDate?.split('T')[0] || ''} onChange={e => setEditingCompany({...editingCompany, expiryDate: e.target.value ? new Date(e.target.value).toISOString() : ''})} className="h-10 border-2 rounded-xl text-xs font-black" />
+                     <Input 
+                       type="date" 
+                       value={editingCompany?.expiryDate?.split('T')[0] || ''} 
+                       onChange={e => setEditingCompany({...editingCompany, expiryDate: e.target.value ? new Date(e.target.value).toISOString() : ''})} 
+                       className="h-12 border-2 rounded-xl font-black text-center" 
+                     />
                   </div>
                </div>
 
-               <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border-2 border-white shadow-inner">
-                  <Label className="font-black text-sm">الحالة التشغيلية</Label>
+               <div className="flex items-center justify-between p-6 bg-slate-50 rounded-[2rem] border-2 border-white shadow-inner">
+                  <div className="space-y-1">
+                     <Label className="font-black text-base text-slate-800">الحالة التشغيلية</Label>
+                     <p className="text-[10px] text-slate-400 font-bold">تغيير حالة وصول المنشأة للنظام</p>
+                  </div>
                   <div className="flex gap-2">
-                     <Button onClick={() => setEditingCompany({...editingCompany, status: 'active'})} variant={editingCompany?.status === 'active' ? 'default' : 'outline'} size="sm" className="h-8 rounded-lg font-black text-[10px]">ACTIVE</Button>
-                     <Button onClick={() => setEditingCompany({...editingCompany, status: 'suspended'})} variant={editingCompany?.status === 'suspended' ? 'destructive' : 'outline'} size="sm" className="h-8 rounded-lg font-black text-[10px]">SUSPENDED</Button>
+                     <Button 
+                       onClick={() => setEditingCompany({...editingCompany, status: 'active'})} 
+                       variant={editingCompany?.status === 'active' ? 'default' : 'outline'} 
+                       size="sm" 
+                       className="h-10 rounded-xl font-black text-[10px]"
+                     >
+                       ACTIVE
+                     </Button>
+                     <Button 
+                       onClick={() => setEditingCompany({...editingCompany, status: 'suspended'})} 
+                       variant={editingCompany?.status === 'suspended' ? 'destructive' : 'outline'} 
+                       size="sm" 
+                       className="h-10 rounded-xl font-black text-[10px]"
+                     >
+                       SUSPENDED
+                     </Button>
                   </div>
                </div>
             </div>
 
-            <DialogFooter className="p-6 bg-slate-50 border-t shrink-0">
-               <Button onClick={handleUpdateSubscription} disabled={processingId === 'saving'} className="w-full h-12 rounded-xl bg-primary text-white font-black shadow-xl gap-2">
-                  {processingId === 'saving' ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />} تطبيق التعديلات
+            <DialogFooter className="p-8 bg-slate-50 border-t shrink-0">
+               <Button 
+                 onClick={handleUpdateSubscription} 
+                 disabled={processingId === 'saving'} 
+                 className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl gap-3 border-b-8 border-orange-700 hover:scale-[1.02] transition-all"
+               >
+                  {processingId === 'saving' ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />} 
+                  حفظ وتطبيق التعديلات السيادية
                </Button>
             </DialogFooter>
          </DialogContent>
