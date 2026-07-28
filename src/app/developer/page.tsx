@@ -192,7 +192,7 @@ export default function DeveloperDashboard() {
     <div className="space-y-6 text-start animate-in fade-in duration-700" dir={dir}>
       <div className="flex justify-between items-end border-b-2 border-primary/10 pb-6">
         <div className="text-start">
-            <h2 className="text-3xl font-black font-headline text-slate-900">{isRtl ? 'بوابة الرقابة والاشتراكات' : 'Subscription Control'}</h2>
+            <h2 className="text-2xl font-black font-headline text-slate-900">{isRtl ? 'بوابة الرقابة والاشتراكات' : 'Subscription Control'}</h2>
             <div className="flex items-center gap-3 mt-1">
                <Badge className="bg-primary text-white border-0 uppercase tracking-widest text-[8px] px-3 py-0.5 rounded-full shadow-md">Sovereign Core</Badge>
                <span className="text-[9px] font-bold text-slate-400">NovaFlow Cloud Enforcement</span>
@@ -306,18 +306,17 @@ export default function DeveloperDashboard() {
                 <TableHeader className="bg-slate-50/50">
                   <TableRow>
                     <TableHead className="ps-8 py-3 font-black uppercase text-[9px] text-slate-500 text-start">المنشأة</TableHead>
-                    <TableHead className="font-black uppercase text-[9px] text-slate-500 text-start">الاشتراك</TableHead>
+                    <TableHead className="font-black uppercase text-[9px] text-slate-500 text-start">الحالة / الخطة</TableHead>
                     <TableHead className="font-black uppercase text-[9px] text-slate-500 text-start">تاريخ الانتهاء</TableHead>
-                    <TableHead className="font-black uppercase text-[9px] text-slate-500 text-start">الحالة</TableHead>
                     <TableHead className="pe-8 text-end font-black uppercase text-[9px] text-slate-500">التحكم</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {companiesLoading ? (
-                    <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
+                    <TableRow><TableCell colSpan={4} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
                   ) : companies?.map((comp: any) => (
                     <TableRow key={comp.id} className="hover:bg-primary/[0.01] transition-colors border-b-slate-100">
-                      <TableCell className="ps-8 py-4 text-start">
+                      <TableCell className="ps-8 py-3 text-start">
                          <div className="flex items-center gap-4">
                             <div className="h-9 w-9 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400 font-black border shadow-inner">
                                {comp.name?.charAt(0)}
@@ -329,14 +328,6 @@ export default function DeveloperDashboard() {
                          </div>
                       </TableCell>
                       <TableCell className="text-start">
-                         <Badge className="bg-blue-50 text-blue-600 border-0 text-[8px] font-black uppercase px-3 py-0.5 rounded-md">
-                            {comp.subscriptionType}
-                         </Badge>
-                      </TableCell>
-                      <TableCell className="font-mono text-[10px] font-black text-slate-600 text-start">
-                         {comp.expiryDate ? comp.expiryDate.split('T')[0] : '---'}
-                      </TableCell>
-                      <TableCell className="text-start">
                          <Badge className={cn(
                            "font-black px-3 py-0.5 text-[8px] uppercase border-0 shadow-sm rounded-md",
                            comp.status === 'active' ? "bg-emerald-50 text-emerald-600" : 
@@ -344,6 +335,9 @@ export default function DeveloperDashboard() {
                          )}>
                             {comp.status === 'active' ? comp.subscriptionType : comp.status}
                          </Badge>
+                      </TableCell>
+                      <TableCell className="font-mono text-[10px] font-black text-slate-600 text-start">
+                         {comp.expiryDate ? comp.expiryDate.split('T')[0] : '---'}
                       </TableCell>
                       <TableCell className="pe-8 text-end">
                         <Button 

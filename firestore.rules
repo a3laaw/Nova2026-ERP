@@ -9,7 +9,7 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // وضع المطور (Fast Path) - وصول مطلق ومباشر لبريد المدير المعتمد
+    // وضع المطور (God Mode) - وصول مطلق ومباشر لبريد المدير المعتمد
     // هذا المسار يتجاوز كافة القيود ويسمح باستعلامات المجموعات بالعمل فوراً
     function isDeveloper() {
       return isAuthenticated() && request.auth.token.email == 'admin@novaflow.com';
@@ -24,7 +24,7 @@ service cloud.firestore {
 
     // --- قانون الأمان الموحد ---
 
-    // 1. وصول المطور المطلق (God Mode) - يجب أن يكون في البداية
+    // 1. وصول المطور المطلق (Master Key)
     match /{document=**} {
       allow read, write: if isDeveloper();
     }
