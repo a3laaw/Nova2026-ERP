@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -39,6 +40,7 @@ export default function DeveloperDashboard() {
   const [loadingOwner, setLoadingOwner] = useState(false);
   const [showPass, setShowPass] = useState(false);
 
+  // استعلامات مراقبة المنشآت
   const companiesQuery = useMemo(() => 
     (db && globalUser?.isDeveloper) ? query(collection(db, 'companies')) : null, 
   [db, globalUser?.isDeveloper]);
@@ -122,6 +124,7 @@ export default function DeveloperDashboard() {
     }
   };
 
+  // محرك التاريخ الذكي وفك التجميد التلقائي
   const handlePlanChange = (type: string) => {
     if (!editingCompany) return;
     
@@ -136,6 +139,7 @@ export default function DeveloperDashboard() {
       ...editingCompany,
       subscriptionType: type,
       expiryDate: newExpiry,
+      // فك التجميد تلقائياً عند تغيير الخطة (باعتبار تم الدفع)
       status: (editingCompany.status === 'suspended' || editingCompany.status === 'expired') ? 'active' : editingCompany.status
     });
   };
@@ -151,6 +155,7 @@ export default function DeveloperDashboard() {
       
       let finalStatus = editingCompany.status;
 
+      // إذا لم يكن العميل مجمداً يدوياً، نقوم بحساب الحالة بناءً على التاريخ
       if (finalStatus !== 'suspended') {
           finalStatus = isAfter(expiry, now) ? 'active' : 'expired';
       }
@@ -434,7 +439,7 @@ export default function DeveloperDashboard() {
                   </div>
                   <div className="flex items-center gap-2 text-[8px] font-bold text-primary/60 italic">
                      <Info className="h-2.5 w-2.5" />
-                     {isRtl ? 'هذه البيانات للمراقبة والدعم الفني فقط، ولا يجب مشاركتها.' : 'For monitoring and support purposes only.'}
+                     تنبيه: هذه البيانات للمراقبة والدعم الفني فقط، ولا يجب مشاركتها.
                   </div>
                </div>
 
