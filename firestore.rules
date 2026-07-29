@@ -4,9 +4,21 @@ service cloud.firestore {
   match /databases/{database}/documents {
     
     // --- قانون الأمان الأسمى (Sovereign God Mode) ---
-    // هذا المسار يمنح المطور وصولاً مطلقاً ومباشراً لكافة السجلات والاستعلامات الشاملة (Collection Groups)
+    // منح المطور وصولاً مطلقاً ومباشراً يتجاوز كافة القيود لضمان عمل الرقابة والتقارير
     match /{document=**} {
       allow read, write: if request.auth != null && request.auth.token.email == 'admin@novaflow.com';
+    }
+
+    // --- حماية المجموعات المشتركة (Collection Group Rules) ---
+    // السماح بالقراءة للمستخدمين المسجلين لضمان عمل الفهارس المخصصة (Collection Groups)
+    match /{path=**}/variations/{voId} {
+      allow read: if request.auth != null;
+    }
+    match /{path=**}/fieldVisits/{visitId} {
+      allow read: if request.auth != null;
+    }
+    match /{path=**}/attendance/{attId} {
+      allow read: if request.auth != null;
     }
 
     // --- الدوال المساعدة للمستخدمين العاديين ---
@@ -22,27 +34,18 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/companies/$(cid)).data.status == 'active';
     }
 
-    // --- حماية المجموعات المشتركة (Collection Group Rules) ---
-    // السماح بالقراءة فقط إذا كان المستخدم ينتمي لنفس الشركة والشركة نشطة، أو كان مطوراً (مغطى بالقاعدة العلوية)
-    match /{path=**}/variations/{voId} {
-      allow read: if isAuthenticated() && getGlobalUser().companyId == resource.data.companyId && isCompanyActive(getGlobalUser().companyId);
-    }
-    match /{path=**}/fieldVisits/{visitId} {
-      allow read: if isAuthenticated() && getGlobalUser().companyId == resource.data.companyId && isCompanyActive(getGlobalUser().companyId);
-    }
-    match /{path=**}/attendance/{attId} {
-      allow read: if isAuthenticated() && getGlobalUser().companyId == resource.data.companyId && isCompanyActive(getGlobalUser().companyId);
+    function isNotPending(uid) {
+      return get(/databases/$(database)/documents/global_users/$(uid)).data.isPendingApproval != true;
     }
 
     // --- قواعد الهوية والمنشآت (Multi-Tenant Isolation) ---
     match /global_users/{uid} {
-      allow read: if isAuthenticated() && (request.auth.uid == uid || request.auth.token.email == 'admin@novaflow.com');
-      allow write: if isAuthenticated() && (request.auth.uid == uid || request.auth.token.email == 'admin@novaflow.com');
+      allow read: if isAuthenticated() && (request.auth.uid == uid);
+      allow write: if isAuthenticated() && (request.auth.uid == uid);
     }
     
     match /company_requests/{reqId} {
        allow create: if isAuthenticated(); 
-       allow read, write: if request.auth != null && request.auth.token.email == 'admin@novaflow.com';
     }
 
     match /companies/{companyId} {
@@ -50,12 +53,18 @@ service cloud.firestore {
       allow read: if isAuthenticated() && getGlobalUser().companyId == companyId;
       
       match /{allSubCollections=**} {
-        // منع الوصول تماماً للمستندات والبيانات الحساسة إذا كانت المنشأة غير نشطة أو الموظف موقوف
-        allow read: if isAuthenticated() && getGlobalUser().companyId == companyId && 
-          getGlobalUser().isActive == true && isCompanyActive(companyId);
+        // قفل أمني صارم: منع الوصول للبيانات الحساسة إذا كانت المنشأة غير نشطة أو الحساب قيد المراجعة
+        allow read: if isAuthenticated() && 
+          getGlobalUser().companyId == companyId && 
+          getGlobalUser().isActive == true && 
+          isNotPending(request.auth.uid) &&
+          isCompanyActive(companyId);
           
-        allow write: if isAuthenticated() && getGlobalUser().companyId == companyId && 
-          getGlobalUser().isActive == true && isCompanyActive(companyId) &&
+        allow write: if isAuthenticated() && 
+          getGlobalUser().companyId == companyId && 
+          getGlobalUser().isActive == true && 
+          isNotPending(request.auth.uid) &&
+          isCompanyActive(companyId) &&
           (getGlobalUser().roleCode == 'ADMIN' || getGlobalUser().role == 'admin');
       }
     }
