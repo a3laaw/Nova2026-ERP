@@ -4,7 +4,7 @@
 import { useAuthContext } from '@/context/auth-context';
 import { useCompanyContext } from '@/context/company-context';
 import { useLanguage } from '@/context/language-context';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar"
@@ -12,7 +12,7 @@ import { UserNav } from "@/components/layout/user-nav"
 import { NotificationBell } from "@/components/layout/notification-bell"
 import { BreadcrumbNav } from "@/components/layout/breadcrumb-nav"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Languages, CalendarDays, AlertTriangle, ShieldAlert, LogOut, Lock, Clock } from 'lucide-react';
+import { Loader2, CalendarDays, AlertTriangle, ShieldAlert, LogOut, Lock, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -33,21 +33,20 @@ export default function DashboardLayout({
     }
   }, [user, authLoading, router]);
 
-  // التحقق السيادي الصارم من حالة المنشأة والمستخدم
-  const isSovereignDev = globalUser?.isDeveloper || user?.email === 'admin@novaflow.com';
+  // التحقق السيادي الصارم
+  // المطور الحقيقي هو من يحمل علامة isDeveloper في السجل العالمي فقط
+  const isSovereignDev = globalUser?.isDeveloper === true;
   
-  // شروط الحظر:
-  // 1. المنشأة مجمدة أو غير مفعلة
-  // 2. الحساب قيد المراجعة الأمنية
-  // 3. الاشتراك منتهي
   const isSuspended = company?.status === 'suspended';
-  const isInactive = company?.status === 'inactive' || (!company && !authLoading && !companyLoading && !isSovereignDev);
+  const isInactive = company?.status === 'inactive';
   const isPending = globalUser?.isPendingApproval === true;
   const isExpired = company?.status === 'expired' || subscription.isExpired;
   
+  // تفعيل القفل إذا كان المستخدم ليس مطوراً والمنشأة غير جاهزة
   const needsLock = !isSovereignDev && (isExpired || isSuspended || isInactive || isPending);
 
-  if (authLoading || companyLoading) {
+  // واجهة الانتظار الشاملة لمنع تسريب البيانات قبل اكتمال الفحص
+  if (authLoading || companyLoading || (user && !globalUser)) {
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#F8F9FA] gap-4">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -101,47 +100,16 @@ export default function DashboardLayout({
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-[#F8F9FA] overflow-x-hidden" dir={dir}>
-        <div className="print:hidden">
-          <DashboardSidebar />
-        </div>
+        <DashboardSidebar />
         
         <SidebarInset className="flex flex-col bg-transparent">
-          {subscription.showWarning && !isSovereignDev && (
-            <div className={cn(
-              "px-6 py-2 flex items-center justify-between gap-4 border-b shadow-lg animate-in slide-in-from-top-full duration-700",
-              subscription.isTrial ? "bg-[#1e1b4b] text-white border-indigo-900" : "bg-amber-500 text-slate-900 border-amber-600"
-            )}>
-               <div className="flex items-center gap-3">
-                  {subscription.isTrial ? <CalendarDays className="h-5 w-5 text-primary animate-pulse" /> : <AlertTriangle className="h-5 w-5 animate-pulse" />}
-                  <p className="text-xs font-black">
-                     {subscription.isTrial ? (
-                       isRtl 
-                        ? `تنبيه: أنت الآن في الفترة التجريبية المجانية، متبقي لك ${subscription.daysRemaining} أيام لتجربة كافة الميزات.` 
-                        : `You are in Free Trial mode. ${subscription.daysRemaining} days left to explore all features.`
-                     ) : (
-                       isRtl 
-                        ? `تنبيه: اشتراك المنشأة ينتهي خلال ${subscription.daysRemaining} أيام. يرجى التجديد لضمان استمرارية العمل.` 
-                        : `Subscription expires in ${subscription.daysRemaining} days. Please renew.`
-                     )}
-                  </p>
-               </div>
-               <Badge className="bg-slate-900 text-white border-0 font-black h-6 px-3 rounded-md shadow-sm">
-                  {subscription.daysRemaining}d
-               </Badge>
-            </div>
-          )}
-
           <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-white/90 backdrop-blur-md px-6 print:hidden shadow-sm">
             <SidebarTrigger className={cn("text-slate-600 hover:bg-slate-100 rounded-lg shrink-0", isRtl ? "rotate-0" : "rotate-180")} />
-            
-            <div className="flex-1 flex items-center gap-4 overflow-hidden">
-              <div className="h-6 w-[1.5px] bg-slate-100 rounded-full mx-2 hidden md:block" />
+            <div className="flex-1">
               <BreadcrumbNav />
             </div>
-
             <div className="flex items-center gap-4 shrink-0">
               <Button variant="ghost" size="sm" onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')} className="font-black gap-2 text-slate-600 h-10 px-4 text-xs">
-                <Languages className="h-4 w-4 text-primary" />
                 {t('switchLang')}
               </Button>
               <NotificationBell />
@@ -150,7 +118,7 @@ export default function DashboardLayout({
             </div>
           </header>
           
-          <main className="flex-1 p-6 lg:p-8 animate-in fade-in duration-700 print:p-0" dir={dir}>
+          <main className="flex-1 p-6 lg:p-8 animate-in fade-in duration-700 print:p-0">
             {children}
           </main>
         </SidebarInset>

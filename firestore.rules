@@ -5,17 +5,17 @@ service cloud.firestore {
     
     // --- قانون الأمان الأسمى (Sovereign God Mode) ---
     // منح المطور وصولاً مطلقاً ومباشراً يتجاوز كافة القيود لضمان عمل الرقابة والتقارير
-    // استخدام البريد الإلكتروني مباشرة هو الطريقة الأسرع والأكثر استقراراً لاستعلامات المجموعات
     function isSovereignDev() {
       return request.auth != null && request.auth.token.email == 'admin@novaflow.com';
     }
 
+    // السماح للمطور بالوصول الشامل لكافة المستندات
     match /{document=**} {
       allow read, write: if isSovereignDev();
     }
 
     // --- حماية المجموعات المشتركة (Collection Group Rules) ---
-    // هذه القواعد ضرورية لعمل الفهارس (Indexes) التي تم بناؤها
+    // ضرورية لعمل الفهارس (Indexes) - يسمح بالقراءة للمستخدمين المسجلين لضمان عمل التقارير
     match /{path=**}/variations/{voId} {
       allow read: if request.auth != null;
     }
@@ -26,21 +26,25 @@ service cloud.firestore {
       allow read: if request.auth != null;
     }
 
-    // --- الدوال المساعدة للمستخدمين العاديين ---
+    // --- الدوال المساعدة المحصنة ---
     function isAuthenticated() {
       return request.auth != null;
     }
 
+    // فحص وجود المستند قبل محاولة قراءته لتجنب أخطاء الصلاحيات الوهمية
     function getGlobalUser() {
-      return get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
+      let userPath = /databases/$(database)/documents/global_users/$(request.auth.uid);
+      return exists(userPath) ? get(userPath).data : null;
     }
 
     function isCompanyActive(cid) {
-      return get(/databases/$(database)/documents/companies/$(cid)).data.status == 'active';
+      let compPath = /databases/$(database)/documents/companies/$(cid);
+      return exists(compPath) && get(compPath).data.status == 'active';
     }
 
     function isNotPending(uid) {
-      return get(/databases/$(database)/documents/global_users/$(uid)).data.isPendingApproval != true;
+      let userPath = /databases/$(database)/documents/global_users/$(uid);
+      return exists(userPath) && get(userPath).data.isPendingApproval != true;
     }
 
     // --- قواعد الهوية والمنشآت (Multi-Tenant Isolation) ---
@@ -55,17 +59,19 @@ service cloud.firestore {
 
     match /companies/{companyId} {
       allow create: if isAuthenticated(); 
-      allow read: if isAuthenticated() && (isSovereignDev() || getGlobalUser().companyId == companyId);
+      allow read: if isAuthenticated() && (isSovereignDev() || (getGlobalUser() != null && getGlobalUser().companyId == companyId));
       
       match /{allSubCollections=**} {
         // قفل أمني صارم للمستخدمين العاديين
         allow read: if isAuthenticated() && 
+          getGlobalUser() != null &&
           getGlobalUser().companyId == companyId && 
           getGlobalUser().isActive == true && 
           isNotPending(request.auth.uid) &&
           isCompanyActive(companyId);
           
         allow write: if isAuthenticated() && 
+          getGlobalUser() != null &&
           getGlobalUser().companyId == companyId && 
           getGlobalUser().isActive == true && 
           isNotPending(request.auth.uid) &&
