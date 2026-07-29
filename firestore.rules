@@ -5,12 +5,17 @@ service cloud.firestore {
     
     // --- قانون الأمان الأسمى (Sovereign God Mode) ---
     // منح المطور وصولاً مطلقاً ومباشراً يتجاوز كافة القيود لضمان عمل الرقابة والتقارير
-    // هذا المسار الصريح يمنع حدوث أخطاء permission-denied في استعلامات المجموعات
+    // استخدام البريد الإلكتروني مباشرة هو الطريقة الأسرع والأكثر استقراراً لاستعلامات المجموعات
+    function isSovereignDev() {
+      return request.auth != null && request.auth.token.email == 'admin@novaflow.com';
+    }
+
     match /{document=**} {
-      allow read, write: if request.auth != null && (request.auth.token.email == 'admin@novaflow.com' || request.auth.uid == 'super_dev_id');
+      allow read, write: if isSovereignDev();
     }
 
     // --- حماية المجموعات المشتركة (Collection Group Rules) ---
+    // هذه القواعد ضرورية لعمل الفهارس (Indexes) التي تم بناؤها
     match /{path=**}/variations/{voId} {
       allow read: if request.auth != null;
     }
@@ -40,21 +45,20 @@ service cloud.firestore {
 
     // --- قواعد الهوية والمنشآت (Multi-Tenant Isolation) ---
     match /global_users/{uid} {
-      allow read: if isAuthenticated() && (request.auth.uid == uid);
-      allow write: if isAuthenticated() && (request.auth.uid == uid);
+      allow read, write: if isAuthenticated() && (request.auth.uid == uid);
     }
     
     match /company_requests/{reqId} {
        allow create: if isAuthenticated(); 
-       allow read, delete: if isAuthenticated() && request.auth.token.email == 'admin@novaflow.com';
+       allow read, delete: if isSovereignDev();
     }
 
     match /companies/{companyId} {
       allow create: if isAuthenticated(); 
-      allow read: if isAuthenticated() && getGlobalUser().companyId == companyId;
+      allow read: if isAuthenticated() && (isSovereignDev() || getGlobalUser().companyId == companyId);
       
       match /{allSubCollections=**} {
-        // قفل أمني صارم: منع الوصول للبيانات الحساسة إذا كانت المنشأة غير نشطة أو الحساب قيد المراجعة
+        // قفل أمني صارم للمستخدمين العاديين
         allow read: if isAuthenticated() && 
           getGlobalUser().companyId == companyId && 
           getGlobalUser().isActive == true && 

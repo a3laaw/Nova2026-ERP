@@ -54,6 +54,7 @@ export default function DeveloperDashboard() {
   const [deletingCompany, setDeletingCompany] = useState<any>(null);
   const [deletingRequest, setDeletingRequest] = useState<any>(null);
 
+  // تثبيت الاستعلامات باستخدام useMemo لمنع الحلقات المفرغة والانهيار الداخلي ca9
   const companiesQuery = useMemo(() => 
     (db && globalUser?.isDeveloper) ? query(collection(db, 'companies')) : null, 
   [db, globalUser?.isDeveloper]);
@@ -137,20 +138,13 @@ export default function DeveloperDashboard() {
     setProcessingId('deleting');
     try {
       const batch = writeBatch(db);
-      
-      // 1. حذف سجل المنشأة
       batch.delete(doc(db, 'companies', deletingCompany.id));
-      
-      // 2. حذف سجل المالك العالمي (لتمكينه من إعادة التسجيل ببريده)
       if (deletingCompany.ownerUid) {
         batch.delete(doc(db, 'global_users', deletingCompany.ownerUid));
       }
-
-      // 3. حذف طلب الانضمام المرتبط إذا وجد
       const reqQuery = query(collection(db, 'company_requests'), where('companyId', '==', deletingCompany.id));
       const reqSnap = await getDocs(reqQuery);
       reqSnap.forEach(d => batch.delete(d.ref));
-
       await batch.commit();
       toast({ title: isRtl ? "تم حذف المنشأة نهائياً" : "Company deleted permanently" });
       setDeletingCompany(null);
@@ -264,7 +258,7 @@ export default function DeveloperDashboard() {
                       <TableCell>
                          <Badge className={cn(
                            "text-[8px] font-black uppercase px-2 py-1 rounded-md", 
-                           req.status === 'activated' ? "bg-emerald-50 text-white" : "bg-amber-500 text-white"
+                           req.status === 'activated' ? "bg-emerald-50 text-emerald-600" : "bg-amber-500 text-white"
                          )}>
                            {req.status}
                          </Badge>
@@ -344,17 +338,13 @@ export default function DeveloperDashboard() {
          <DialogContent className="rounded-3xl max-w-xl p-0 overflow-hidden border-0 shadow-3xl bg-white flex flex-col h-fit max-h-[90vh]">
             <div className="bg-slate-50 p-8 border-b shrink-0 text-start">
                <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3 text-slate-900">
-                  <Settings2 className="h-7 w-7 text-primary" /> 
-                  إدارة تراخيص {editingCompany?.name}
+                  <Settings2 className="h-7 w-7 text-primary" /> إدارة تراخيص {editingCompany?.name}
                </DialogTitle>
             </div>
-
             <div className="p-8 space-y-8 text-start overflow-y-auto scrollbar-hide">
                <div className="p-6 bg-primary/5 rounded-[2rem] border-2 border-primary/10 space-y-4">
                   <div className="flex items-center justify-between">
-                     <h5 className="font-black text-[10px] uppercase tracking-widest text-primary flex items-center gap-2">
-                        <Key className="h-4 w-4" /> بيانات دخول المالك
-                     </h5>
+                     <h5 className="font-black text-[10px] uppercase tracking-widest text-primary flex items-center gap-2"><Key className="h-4 w-4" /> بيانات دخول المالك</h5>
                      {loadingOwner && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -362,45 +352,23 @@ export default function DeveloperDashboard() {
                         <Label className="text-[9px] font-bold text-slate-400 uppercase">Email</Label>
                         <div className="relative group">
                            <Input readOnly value={ownerData?.email || '...'} className="h-10 rounded-xl bg-white border-2 font-mono text-[10px] pr-10" />
-                           <Button 
-                             variant="ghost" 
-                             size="icon" 
-                             onClick={() => { navigator.clipboard.writeText(ownerData?.email || ''); toast({title: "Copied"}); }} 
-                             className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-slate-300 hover:text-primary"
-                           >
-                             <Copy className="h-3.5 w-3.5" />
-                           </Button>
+                           <Button variant="ghost" size="icon" onClick={() => { navigator.clipboard.writeText(ownerData?.email || ''); toast({title: "Copied"}); }} className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-slate-300 hover:text-primary"><Copy className="h-3.5 w-3.5" /></Button>
                         </div>
                      </div>
                      <div className="space-y-1">
                         <Label className="text-[9px] font-bold text-slate-400 uppercase">Password</Label>
                         <div className="relative">
-                           <Input 
-                             type={showPass ? "text" : "password"} 
-                             readOnly 
-                             value={ownerData?.initialPassword || '••••••••'} 
-                             className="h-10 rounded-xl bg-white border-2 font-mono text-[10px] pr-10" 
-                           />
-                           <Button 
-                             variant="ghost" 
-                             size="icon" 
-                             onClick={() => setShowPass(!showPass)} 
-                             className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-slate-300 hover:text-primary"
-                           >
-                             {showPass ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                           </Button>
+                           <Input type={showPass ? "text" : "password"} readOnly value={ownerData?.initialPassword || '••••••••'} className="h-10 rounded-xl bg-white border-2 font-mono text-[10px] pr-10" />
+                           <Button variant="ghost" size="icon" onClick={() => setShowPass(!showPass)} className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-slate-300 hover:text-primary">{showPass ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}</Button>
                         </div>
                      </div>
                   </div>
                </div>
-
                <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
                      <Label className="text-[10px] font-black uppercase text-slate-400">نوع الاشتراك</Label>
                      <Select value={editingCompany?.subscriptionType} onValueChange={v => setEditingCompany({...editingCompany, subscriptionType: v})}>
-                        <SelectTrigger className="h-12 border-2 rounded-xl font-bold">
-                           <SelectValue />
-                        </SelectTrigger>
+                        <SelectTrigger className="h-12 border-2 rounded-xl font-bold"><SelectValue /></SelectTrigger>
                         <SelectContent className="rounded-xl border-2 shadow-2xl">
                            <SelectItem value="trial" className="font-bold">Trial (7 Days)</SelectItem>
                            <SelectItem value="monthly" className="font-bold">Monthly</SelectItem>
@@ -410,100 +378,49 @@ export default function DeveloperDashboard() {
                   </div>
                   <div className="space-y-2">
                      <Label className="text-[10px] font-black uppercase text-slate-400">تاريخ الانتهاء</Label>
-                     <Input 
-                       type="date" 
-                       value={editingCompany?.expiryDate?.split('T')[0] || ''} 
-                       onChange={e => setEditingCompany({...editingCompany, expiryDate: e.target.value ? new Date(e.target.value).toISOString() : ''})} 
-                       className="h-12 border-2 rounded-xl font-black text-center" 
-                     />
+                     <Input type="date" value={editingCompany?.expiryDate?.split('T')[0] || ''} onChange={e => setEditingCompany({...editingCompany, expiryDate: e.target.value ? new Date(e.target.value).toISOString() : ''})} className="h-12 border-2 rounded-xl font-black text-center" />
                   </div>
                </div>
-
                <div className="flex items-center justify-between p-6 bg-slate-50 rounded-[2rem] border-2 border-white shadow-inner">
-                  <div className="space-y-1">
-                     <Label className="font-black text-base text-slate-800">الحالة التشغيلية</Label>
-                     <p className="text-[10px] text-slate-400 font-bold">تغيير حالة وصول المنشأة للنظام</p>
-                  </div>
+                  <div className="space-y-1"><Label className="font-black text-base text-slate-800">الحالة التشغيلية</Label><p className="text-[10px] text-slate-400 font-bold">تغيير حالة وصول المنشأة للنظام</p></div>
                   <div className="flex gap-2">
-                     <Button 
-                       onClick={() => setEditingCompany({...editingCompany, status: 'active'})} 
-                       variant={editingCompany?.status === 'active' ? 'default' : 'outline'} 
-                       size="sm" 
-                       className="h-10 rounded-xl font-black text-[10px]"
-                     >
-                       ACTIVE
-                     </Button>
-                     <Button 
-                       onClick={() => setEditingCompany({...editingCompany, status: 'suspended'})} 
-                       variant={editingCompany?.status === 'suspended' ? 'destructive' : 'outline'} 
-                       size="sm" 
-                       className="h-10 rounded-xl font-black text-[10px]"
-                     >
-                       SUSPENDED
-                     </Button>
+                     <Button onClick={() => setEditingCompany({...editingCompany, status: 'active'})} variant={editingCompany?.status === 'active' ? 'default' : 'outline'} size="sm" className="h-10 rounded-xl font-black text-[10px]">ACTIVE</Button>
+                     <Button onClick={() => setEditingCompany({...editingCompany, status: 'suspended'})} variant={editingCompany?.status === 'suspended' ? 'destructive' : 'outline'} size="sm" className="h-10 rounded-xl font-black text-[10px]">SUSPENDED</Button>
                   </div>
                </div>
             </div>
-
             <DialogFooter className="p-8 bg-slate-50 border-t shrink-0">
-               <Button 
-                 onClick={handleUpdateSubscription} 
-                 disabled={processingId === 'saving'} 
-                 className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl gap-3 border-b-8 border-orange-700 hover:scale-[1.02] transition-all"
-               >
-                  {processingId === 'saving' ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />} 
-                  حفظ وتطبق التعديلات السيادية
+               <Button onClick={handleUpdateSubscription} disabled={processingId === 'saving'} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl gap-3 border-b-8 border-orange-700 hover:scale-[1.02] transition-all">
+                  {processingId === 'saving' ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />} حفظ وتطبيق التعديلات السيادية
                </Button>
             </DialogFooter>
          </DialogContent>
       </Dialog>
 
-      {/* حوار حذف المنشأة */}
       <AlertDialog open={!!deletingCompany} onOpenChange={v => !v && setDeletingCompany(null)}>
          <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white z-[200]">
             <AlertDialogHeader>
-               <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50">
-                  <Trash2 className="h-10 w-10" />
-               </div>
+               <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50"><Trash2 className="h-10 w-10" /></div>
                <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900 leading-tight">حذف المنشأة نهائياً</AlertDialogTitle>
-               <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">
-                  هل أنت متأكد؟ سيتم حذف منشأة <strong>{deletingCompany?.name}</strong> وكافة سجلات المالك العالمي نهائياً. لا يمكن التراجع عن هذا الإجراء.
-               </AlertDialogDescription>
+               <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">هل أنت متأكد؟ سيتم حذف منشأة <strong>{deletingCompany?.name}</strong> وكافة سجلات المالك العالمي نهائياً. لا يمكن التراجع عن هذا الإجراء.</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="mt-12 gap-4 flex flex-row">
                <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white">إلغاء</AlertDialogCancel>
-               <AlertDialogAction 
-                 onClick={handleDeleteCompany} 
-                 disabled={processingId === 'deleting'}
-                 className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl"
-               >
-                  {processingId === 'deleting' ? <Loader2 className="animate-spin h-5 w-5" /> : 'نعم، احذف المنشأة'}
-               </AlertDialogAction>
+               <AlertDialogAction onClick={handleDeleteCompany} disabled={processingId === 'deleting'} className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl">{processingId === 'deleting' ? <Loader2 className="animate-spin h-5 w-5" /> : 'نعم، احذف المنشأة'}</AlertDialogAction>
             </AlertDialogFooter>
          </AlertDialogContent>
       </AlertDialog>
 
-      {/* حوار حذف الطلب */}
       <AlertDialog open={!!deletingRequest} onOpenChange={v => !v && setDeletingRequest(null)}>
          <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white z-[200]">
             <AlertDialogHeader>
-               <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50">
-                  <X className="h-10 w-10" />
-               </div>
+               <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50"><X className="h-10 w-10" /></div>
                <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900 leading-tight">حذف طلب الانضمام</AlertDialogTitle>
-               <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">
-                  هل تريد حذف طلب انضمام <strong>{deletingRequest?.companyName}</strong> من القائمة؟
-               </AlertDialogDescription>
+               <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">هل تريد حذف طلب انضمام <strong>{deletingRequest?.companyName}</strong> من القائمة؟</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="mt-12 gap-4 flex flex-row">
                <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white">إلغاء</AlertDialogCancel>
-               <AlertDialogAction 
-                 onClick={handleDeleteRequest} 
-                 disabled={processingId === 'deleting_req'}
-                 className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl"
-               >
-                  {processingId === 'deleting_req' ? <Loader2 className="animate-spin h-5 w-5" /> : 'نعم، احذف الطلب'}
-               </AlertDialogAction>
+               <AlertDialogAction onClick={handleDeleteRequest} disabled={processingId === 'deleting_req'} className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl">{processingId === 'deleting_req' ? <Loader2 className="animate-spin h-5 w-5" /> : 'نعم، احذف الطلب'}</AlertDialogAction>
             </AlertDialogFooter>
          </AlertDialogContent>
       </AlertDialog>

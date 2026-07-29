@@ -7,8 +7,7 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 /**
- * خطاف جلب المستندات المطور (Hardened Document Hook).
- * يمنع تضارب الحالات الداخلية في محرك Firestore ويضمن سيولة عرض البيانات.
+ * خطاف جلب المستندات المدرع (Sovereign Hardened Document Hook).
  */
 export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | null) {
   const [data, setData] = useState<T | null>(null);
@@ -16,29 +15,27 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | n
   const [error, setError] = useState<FirestoreError | Error | null>(null);
   
   const unsubscribeRef = useRef<(() => void) | null>(null);
-  const activeRef = useRef<DocumentReference<any, any> | null>(null);
-  const lastDataRef = useRef<string>("");
+  const lastRefRef = useRef<DocumentReference<any, any> | null>(null);
+  const lastDataHashRef = useRef<string>("");
 
   useEffect(() => {
-    const isSameRef = (docRef && activeRef.current && refEqual(docRef, activeRef.current)) || (!docRef && !activeRef.current);
+    const isNewRef = !docRef || !lastRefRef.current || !refEqual(docRef, lastRefRef.current);
     
-    if (isSameRef && !loading) {
-      return;
-    }
+    if (!isNewRef && !loading) return;
 
     if (unsubscribeRef.current) {
       unsubscribeRef.current();
       unsubscribeRef.current = null;
     }
 
-    activeRef.current = docRef;
-
     if (!docRef) {
       setData(null);
       setLoading(false);
+      lastRefRef.current = null;
       return;
     }
 
+    lastRefRef.current = docRef;
     setLoading(true);
     setError(null);
 
@@ -51,9 +48,9 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | n
         
         const docData = snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as T) : null;
         
-        const dataStr = JSON.stringify(docData);
-        if (dataStr !== lastDataRef.current) {
-          lastDataRef.current = dataStr;
+        const currentHash = JSON.stringify(docData);
+        if (currentHash !== lastDataHashRef.current) {
+          lastDataHashRef.current = currentHash;
           setData(docData);
         }
         

@@ -7,8 +7,8 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 /**
- * خطاف جلب المجموعات المطور (Hardened Collection Hook).
- * يعالج مشكلة Assertion Failure و Infinite Loops عبر ضمان استقرار الاستعلامات والبيانات.
+ * خطاف جلب المجموعات المدرع (Sovereign Hardened Collection Hook).
+ * يحل مشكلة Assertion Failure عبر ضمان عدم تكرار المستمعين عند إعادة الرندر.
  */
 export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
   const [data, setData] = useState<T[]>([]);
@@ -16,34 +16,35 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
   const [error, setError] = useState<FirestoreError | Error | null>(null);
   
   const unsubscribeRef = useRef<(() => void) | null>(null);
-  const activeQueryRef = useRef<Query<any, any> | null>(null);
-  const lastDataRef = useRef<string>("");
+  const lastQueryRef = useRef<Query<any, any> | null>(null);
+  const lastDataHashRef = useRef<string>("");
 
   useEffect(() => {
-    const isSameQuery = (query && activeQueryRef.current && queryEqual(query, activeQueryRef.current)) || (!query && !activeQueryRef.current);
+    // 1. التحقق من استقرار الاستعلام (منع الانهيار الداخلي ID: ca9)
+    const isNewQuery = !query || !lastQueryRef.current || !queryEqual(query, lastQueryRef.current);
     
-    if (isSameQuery && !loading) {
-      return;
-    }
+    if (!isNewQuery && !loading) return;
 
+    // تنظيف المستمع القديم فوراً
     if (unsubscribeRef.current) {
       unsubscribeRef.current();
       unsubscribeRef.current = null;
     }
-    
-    activeQueryRef.current = query;
 
     if (!query) {
       setData([]);
       setLoading(false);
+      lastQueryRef.current = null;
       return;
     }
 
+    lastQueryRef.current = query;
     setLoading(true);
     setError(null);
 
     let isMounted = true;
 
+    // 2. تفعيل المستمع الجديد
     const unsubscribe = onSnapshot(
       query,
       (snapshot) => {
@@ -54,9 +55,10 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
           ...doc.data(),
         })) as unknown as T[];
         
-        const dataStr = JSON.stringify(items);
-        if (dataStr !== lastDataRef.current) {
-          lastDataRef.current = dataStr;
+        // منع تحديث الحالة إذا كانت البيانات متطابقة (توفير الرندر)
+        const currentHash = JSON.stringify(items);
+        if (currentHash !== lastDataHashRef.current) {
+          lastDataHashRef.current = currentHash;
           setData(items);
         }
         
