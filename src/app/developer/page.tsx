@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCollection, useFirestore } from '@/firebase';
-import { collection, query, doc, updateDoc, serverTimestamp, writeBatch, getDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, doc, updateDoc, serverTimestamp, writeBatch, getDoc, deleteDoc, where, getDocs } from 'firebase/firestore';
 import { 
   Loader2, CheckCircle2, ShieldAlert, Ban, RefreshCw, 
   Edit3, Save, Users, Zap, Building2, 
