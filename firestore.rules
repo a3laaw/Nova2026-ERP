@@ -5,22 +5,19 @@ service cloud.firestore {
     
     // --- قانون الأمان الأسمى (Sovereign God Mode) ---
     // منح المطور الرسمي وصولاً مطلقاً وفورياً يتجاوز كافة القيود
-    // تم وضعه في المقدمة وبدون دوال معقدة لضمان عمل استعلامات المجموعات (ca9 Fix)
+    // هذا هو المفتاح الماستر الذي يقضي على خطأ permission-denied للأدمن
     function isSovereignDev() {
-      return request.auth != null && (
-        request.auth.token.email == 'admin@novaflow.com' ||
-        (exists(/databases/$(database)/documents/global_users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.isDeveloper == true)
-      );
+      return request.auth != null && request.auth.token.email == 'admin@novaflow.com';
     }
 
-    // المفتاح الماستر: يسمح للمطور بالوصول الشامل (قراءة وكتابة)
+    // المفتاح الماستر: يسمح للمطور بالوصول الشامل (قراءة وكتابة) في كافة المستويات
     match /{document=**} {
       allow read, write: if isSovereignDev();
     }
 
     // --- حماية المجموعات المشتركة (Collection Group Rules) ---
     // تبسيط القواعد لضمان عمل الفهارس (Indexes) والتقارير الشاملة بدون أخطاء صلاحيات
+    // منع استخدام get() هنا لضمان أداء استعلامات المجموعات
     match /{path=**}/variations/{voId} {
       allow read: if request.auth != null;
     }

@@ -120,7 +120,11 @@ export default function DeveloperDashboard() {
       batch.update(reqRef, { status: 'activated', activatedAt: serverTimestamp() });
 
       if (req.ownerUid) {
-        batch.update(doc(db, 'global_users', req.ownerUid), { isActive: true, isPendingApproval: false });
+        batch.update(doc(db, 'global_users', req.ownerUid), { 
+           isActive: true, 
+           isPendingApproval: false,
+           isDeveloper: false // ضمان عدم تحول المالك لمطور
+        });
       }
 
       await batch.commit();

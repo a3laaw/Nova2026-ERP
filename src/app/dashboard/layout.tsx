@@ -12,7 +12,7 @@ import { UserNav } from "@/components/layout/user-nav"
 import { NotificationBell } from "@/components/layout/notification-bell"
 import { BreadcrumbNav } from "@/components/layout/breadcrumb-nav"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, CalendarDays, AlertTriangle, ShieldAlert, LogOut, Lock, Clock } from 'lucide-react';
+import { Loader2, AlertTriangle, ShieldAlert, LogOut, Lock, Clock, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
