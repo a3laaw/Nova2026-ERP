@@ -32,10 +32,6 @@ import { SmartDateInput } from '@/components/ui/smart-date-input';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { LaborDetail, EquipmentUsed } from '@/types/documents';
 
-/**
- * صفحة تقرير زيارة ميدانية جديد.
- * تم تطهير اللون الكحلي بالكامل واستبداله بتصميم فاتح ومشرق.
- */
 export default function NewFieldVisitPage() {
   const { globalUser, user } = useAuthContext();
   const { lang, dir, t } = useLanguage();
@@ -49,6 +45,8 @@ export default function NewFieldVisitPage() {
   
   const [formData, setFormData] = useState({
     projectId: '',
+    clientId: '',
+    clientName: '',
     boqItemId: '',
     technicalStageId: '',
     visitDate: new Date().toISOString().split('T')[0],
@@ -74,7 +72,17 @@ export default function NewFieldVisitPage() {
 
   const handleProjectChange = async (projectId: string) => {
     if (!db || !companyId) return;
-    setFormData({ ...formData, projectId, boqItemId: '', technicalStageId: '' });
+    
+    const selectedTrans = transactions?.find(t => t.id === projectId);
+    
+    setFormData({ 
+      ...formData, 
+      projectId, 
+      clientId: selectedTrans?.clientId || '',
+      clientName: selectedTrans?.clientName || '',
+      boqItemId: '', 
+      technicalStageId: '' 
+    });
     
     const boqsSnap = await getDocs(query(collection(db, paths.boqs(companyId)), where('transactionId', '==', projectId)));
     if (!boqsSnap.empty) {
@@ -129,7 +137,7 @@ export default function NewFieldVisitPage() {
 
       await service.createFieldVisit(formData.projectId, {
         ...formData,
-        engineerName: user.displayName || 'Engineer',
+        engineerName: globalUser?.fullName || user.displayName || 'Engineer',
         engineerId: user.uid,
         workersCount: totalWorkers,
         laborDetails,
@@ -198,7 +206,7 @@ export default function NewFieldVisitPage() {
                         <div key={i} className="flex gap-2 items-center animate-in slide-in-from-top-1">
                            <Input placeholder={isRtl ? "التخصص" : "Trade"} value={l.trade} onChange={e => { const nl = [...laborDetails]; nl[i].trade = e.target.value; setLaborDetails(nl); }} className="h-10 rounded-xl border-2 text-xs font-bold" />
                            <Input type="number" value={l.count} onChange={e => { const nl = [...laborDetails]; nl[i].count = Number(e.target.value); setLaborDetails(nl); }} className="h-10 w-24 rounded-xl border-2 text-center font-black text-slate-700" />
-                           <Button type="button" variant="ghost" size="icon" onClick={() => setLaborDetails(laborDetails.filter((_, idx) => idx !== i))} className="h-10 w-10 text-rose-300 hover:text-rose-600"><Trash2 className="h-4 w-4" /></Button>
+                           {laborDetails.length > 1 && <Button type="button" variant="ghost" size="icon" onClick={() => setLaborDetails(laborDetails.filter((_, idx) => idx !== i))} className="h-10 w-10 text-rose-300 hover:text-rose-600"><Trash2 className="h-4 w-4" /></Button>}
                         </div>
                       ))}
                    </div>

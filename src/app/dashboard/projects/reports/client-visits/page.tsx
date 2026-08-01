@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -14,24 +13,25 @@ import {
   Printer, Filter, LayoutGrid, X,
   XCircle, AlertTriangle, FileText,
   User, History, ShieldCheck, Phone,
-  RotateCcw
+  RotateCcw, HardHat, Camera, Landmark
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit, collectionGroup } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
 import { Client } from '@/types/client';
 import { Appointment } from '@/types/appointment';
+import { FieldVisit } from '@/types/field-visit';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
 
 /**
- * @fileOverview تقرير سجل تفاعل العملاء (The Sovereign Visit Dossier V2).
- * واجهة مبسطة مع بحث علوي بالاسم/الهاتف وجدول مخرجات شامل يشمل التعديلات الفنية.
- * فرض الأرقام القياسية (123) في كافة البيانات.
+ * @fileOverview سجل تفاعل العملاء الشامل (Sovereign Universal Client Dossier).
+ * يدمج اللقاءات (Appointments) وتقارير الإنجاز الميداني (Field Visits) في عرض زمني واحد.
+ * فرض الأرقام القياسية (123) في كافة المخرجات لضمان السيادة الرقمية.
  */
 export default function ClientVisitsReportPage() {
   const { globalUser } = useAuthContext();
@@ -42,72 +42,94 @@ export default function ClientVisitsReportPage() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
-  const [visitsData, setVisitsData] = useState<any[]>([]);
-  const [loadingVisits, setLoadingVisits] = useState(false);
+  const [unifiedTimeline, setUnifiedTimeline] = useState<any[]>([]);
+  const [loadingTimeline, setLoadingTimeline] = useState(false);
 
-  // 1. جلب قائمة العملاء للبحث
+  // 1. جلب قائمة العملاء للبحث العلوي
   const clientsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.clients(companyId)), orderBy('nameAr')) : null, 
   [db, companyId]);
   const { data: allClients, loading: clientsLoading } = useCollection<Client>(clientsQuery);
 
-  // 2. تصفية قائمة العملاء للبحث العلوي
   const filteredClients = useMemo(() => {
     if (!searchTerm.trim()) return [];
     return (allClients || []).filter(c => 
       c.nameAr.toLowerCase().includes(searchTerm.toLowerCase()) || 
       c.mobile?.includes(searchTerm) ||
       c.fileNumber.includes(searchTerm)
-    ).slice(0, 5); // عرض أول 5 نتائج فقط كقائمة منبثقة
+    ).slice(0, 5);
   }, [allClients, searchTerm]);
 
-  // 3. محرك جلب بيانات الزيارات الشامل (Deep Visit Analytics)
+  // 2. محرك دمج البيانات الشامل (Unified Integration Engine)
   useEffect(() => {
     async function fetchFullHistory() {
       if (!selectedClientId || !db || !companyId) return;
-      setLoadingVisits(true);
+      setLoadingTimeline(true);
       try {
-        const apptsRef = collection(db, paths.appointments(companyId));
-        const apptsQuery = query(apptsRef, where('clientId', '==', selectedClientId));
+        // أ. جلب المواعيد (Meetings & Hall Sessions)
+        const apptsQuery = query(
+          collection(db, paths.appointments(companyId)), 
+          where('clientId', '==', selectedClientId)
+        );
         const apptsSnap = await getDocs(apptsQuery);
         
-        const allAppts = apptsSnap.docs
-          .map(d => ({ id: d.id, ...d.data() } as Appointment))
-          .sort((a, b) => b.start.localeCompare(a.start));
+        // ب. جلب تقارير الإنجاز الميداني (Field Visits) عبر البحث الشامل
+        const fieldVisitsQuery = query(
+          collectionGroup(db, 'fieldVisits'), 
+          where('companyId', '==', companyId),
+          where('clientId', '==', selectedClientId)
+        );
+        const fieldSnap = await getDocs(fieldVisitsQuery);
 
-        const fullData = await Promise.all(allAppts.map(async (appt) => {
-           // جلب الإنجازات (كميات BOQ)
-           const execsRef = collection(db, paths.executions(companyId));
-           const execsQuery = query(execsRef, where('appointmentId', '==', appt.id));
-           const execsSnap = await getDocs(execsQuery);
-           const achievements = execsSnap.docs.map(d => d.data());
-
-           // جلب التعديلات الفنية (Revisions) من التايم لاين
-           let revisions: any[] = [];
-           if (appt.transactionId) {
-              const timelineRef = collection(db, paths.transactionTimeline(companyId, appt.transactionId));
-              const timelineQuery = query(timelineRef, where('appointmentId', '==', appt.id), where('type', '==', 'revision_logged'));
-              const timelineSnap = await getDocs(timelineQuery);
-              revisions = timelineSnap.docs.map(d => d.data());
-           }
-
-           // جلب التعليقات البشرية
-           let comments: any[] = [];
-           if (appt.transactionId) {
-              const commentsRef = collection(db, paths.transactionComments(companyId, appt.transactionId));
-              const commentsQuery = query(commentsRef, where('appointmentId', '==', appt.id));
-              const commentsSnap = await getDocs(commentsQuery);
-              comments = commentsSnap.docs.map(d => d.data()).filter(c => c.commentType !== 'note'); // استبعاد الملاحظات التي تم جلبها كتعديلات
-           }
-
-           return { ...appt, achievements, revisions, comments };
+        // ج. معالجة وتوحيد الهياكل
+        const appts = apptsSnap.docs.map(d => ({ 
+          id: d.id, 
+          ...d.data(), 
+          entryType: 'appointment',
+          displayDate: d.data().start.split('T')[0]
         }));
 
-        setVisitsData(fullData);
+        const fieldVisits = fieldSnap.docs.map(d => ({ 
+          id: d.id, 
+          ...d.data(), 
+          entryType: 'field_report',
+          displayDate: d.data().visitDate
+        }));
+
+        // د. الدمج والفرز الزمني (الأحدث أولاً)
+        const merged = [...appts, ...fieldVisits].sort((a, b) => b.displayDate.localeCompare(a.displayDate));
+
+        // هـ. جلب الملحقات الفنية لكل حركة (Comments, Revisions)
+        const detailedData = await Promise.all(merged.map(async (item: any) => {
+           let revisions: any[] = [];
+           let comments: any[] = [];
+
+           if (item.transactionId) {
+              // جلب مراجعات التصميم لهذا الموعد بالتحديد
+              const timelineQuery = query(
+                 collection(db, paths.transactionTimeline(companyId, item.transactionId)), 
+                 where('appointmentId', '==', item.id),
+                 where('type', '==', 'revision_logged')
+              );
+              const timelineSnap = await getDocs(timelineQuery);
+              revisions = timelineSnap.docs.map(d => d.data());
+
+              // جلب التعليقات البشرية الموثقة
+              const commentsQuery = query(
+                 collection(db, paths.transactionComments(companyId, item.transactionId)), 
+                 where('appointmentId', '==', item.id)
+              );
+              const commentsSnap = await getDocs(commentsQuery);
+              comments = commentsSnap.docs.map(d => d.data());
+           }
+           return { ...item, revisions, comments };
+        }));
+
+        setUnifiedTimeline(detailedData);
       } catch (e) {
-        console.error("Failed to load visit history", e);
+        console.error("Unified fetch failed", e);
       } finally {
-        setLoadingVisits(false);
+        setLoadingTimeline(false);
       }
     }
     fetchFullHistory();
@@ -115,9 +137,8 @@ export default function ClientVisitsReportPage() {
 
   const selectedClient = allClients?.find(c => c.id === selectedClientId);
 
-  // دالة لتنسيق التاريخ بالأرقام القياسية (123) دوماً
-  const formatSovereignDate = (dateIso: string) => {
-    return new Date(dateIso).toLocaleDateString('en-US', { 
+  const formatSovereignDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('en-US', { 
       day: 'numeric', 
       month: 'short', 
       year: 'numeric' 
@@ -132,20 +153,23 @@ export default function ClientVisitsReportPage() {
         <div className="text-start">
            <h1 className="text-3xl font-black font-headline flex items-center gap-3 text-slate-900">
              <History className="h-10 w-10 text-primary" />
-             {isRtl ? 'سجل تفاعل العملاء (Dossier)' : 'Client Interaction Ledger'}
+             {isRtl ? 'سجل تفاعل العملاء (Universal Dossier)' : 'Unified Client Ledger'}
            </h1>
+           <p className="text-muted-foreground font-bold text-sm opacity-70">
+              سجل زمني موحد يشمل اللقاءات، حجز القاعات، وتقارير الإنجاز الميداني.
+           </p>
         </div>
 
         <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-visible z-50">
            <CardContent className="p-8">
               <div className="relative max-w-2xl mx-auto">
                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-3 block text-start">
-                    {isRtl ? 'البحث عن عميل (بالاسم أو الهاتف)' : 'Search Client (Name or Mobile)'}
+                    {isRtl ? 'البحث عن عميل بالاسم أو الهاتف' : 'Search Client by Name or Phone'}
                  </Label>
                  <div className="relative">
                     <Search className="absolute start-5 top-1/2 -translate-y-1/2 h-6 w-6 text-primary" />
                     <Input 
-                      placeholder={isRtl ? 'اكتب اسم العميل أو رقم هاتفه هنا...' : 'Search by name or phone...'} 
+                      placeholder={isRtl ? 'اكتب اسم العميل أو رقم هاتفه...' : 'Search by name or phone...'} 
                       className="h-16 rounded-2xl border-2 border-slate-100 ps-14 text-xl font-bold bg-slate-50 focus:bg-white focus:border-primary/40 transition-all shadow-inner" 
                       value={searchTerm}
                       onChange={e => setSearchTerm(e.target.value)}
@@ -183,21 +207,21 @@ export default function ClientVisitsReportPage() {
       {!selectedClientId ? (
         <div className="h-[400px] flex flex-col items-center justify-center text-center opacity-30 animate-pulse print:hidden">
            <UserCircle className="h-24 w-24 text-slate-200 mb-4" />
-           <p className="text-xl font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'يرجى اختيار عميل لبدء التقرير' : 'Select Client to start report'}</p>
+           <p className="text-xl font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'يرجى اختيار عميل لبدء التحليل' : 'Select Client to begin dossier'}</p>
         </div>
-      ) : loadingVisits ? (
+      ) : loadingTimeline ? (
         <div className="h-[400px] flex flex-col items-center justify-center gap-4 print:hidden">
            <Loader2 className="h-12 w-12 animate-spin text-primary" />
-           <p className="text-xs font-black text-slate-400 uppercase tracking-widest italic">Analyzing Field Data (123 Scale)...</p>
+           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Merging All Site Logs (Standard 123)...</p>
         </div>
       ) : (
-        <PrintWrapper title={isRtl ? "كشف سجل تفاعل العميل والزيارات" : "Client Interaction Dossier"}>
-           <div className="space-y-8">
+        <PrintWrapper title={isRtl ? "كشف سجل تفاعل العميل الموحد" : "Universal Client Interaction Ledger"}>
+           <div className="space-y-10">
               
-              {/* Report Hero */}
+              {/* Header Info */}
               <div className="p-8 rounded-[2.5rem] bg-slate-50 border-2 border-white shadow-inner flex flex-col md:flex-row justify-between items-center gap-8 relative overflow-hidden text-start">
                  <div className="space-y-2 relative z-10">
-                    <p className="text-[10px] font-black text-primary uppercase tracking-widest">{isRtl ? 'العميل المالك' : 'Client Profile'}</p>
+                    <p className="text-[10px] font-black text-primary uppercase tracking-widest">{isRtl ? 'ملف العميل المالك' : 'Client Profile'}</p>
                     <h2 className="text-3xl font-black text-slate-900">{selectedClient?.nameAr}</h2>
                     <div className="flex gap-4 items-center">
                        <Badge className="bg-slate-900 text-white border-0 font-black px-4 py-1 rounded-lg uppercase text-[10px] tracking-widest">{selectedClient?.fileNumber}</Badge>
@@ -205,114 +229,121 @@ export default function ClientVisitsReportPage() {
                     </div>
                  </div>
                  <div className="flex items-center gap-4 relative z-10">
-                    <div className="text-center bg-white p-4 rounded-2xl shadow-sm border border-slate-100 min-w-[100px]">
-                       <p className="text-[8px] font-black text-slate-400 uppercase mb-1">{isRtl ? 'إجمالي المواعيد' : 'Total Visits'}</p>
-                       <p className="text-2xl font-black text-slate-900">{visitsData.length}</p>
-                    </div>
-                    <div className="text-center bg-white p-4 rounded-2xl shadow-sm border border-slate-100 min-w-[100px]">
-                       <p className="text-[8px] font-black text-slate-400 uppercase mb-1">{isRtl ? 'مكتملة' : 'Completed'}</p>
-                       <p className="text-2xl font-black text-emerald-600">{visitsData.filter(v => v.status === 'completed').length}</p>
+                    <div className="text-center bg-white p-5 rounded-3xl shadow-sm border border-slate-100 min-w-[120px]">
+                       <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Total Interactions</p>
+                       <p className="text-3xl font-black text-slate-900">{unifiedTimeline.length}</p>
                     </div>
                  </div>
               </div>
 
-              {/* Main Ledger Table */}
+              {/* Main Timeline Table */}
               <div className="border-2 border-slate-900 rounded-xl overflow-hidden bg-white shadow-xl">
                  <Table>
                     <TableHeader className="bg-slate-900">
                        <TableRow className="hover:bg-slate-900 border-0">
-                          <TableHead className="py-6 ps-8 text-white font-black uppercase text-[10px] tracking-widest w-[150px]">{isRtl ? 'تاريخ الزيارة' : 'Visit Date'}</TableHead>
-                          <TableHead className="text-white font-black uppercase text-[10px] tracking-widest w-[100px]">{isRtl ? 'الحالة' : 'Status'}</TableHead>
-                          <TableHead className="text-white font-black uppercase text-[10px] tracking-widest">{isRtl ? 'المخرجات والإنجاز الفني / التعديلات' : 'Technical Achievements & Revisions'}</TableHead>
-                          <TableHead className="text-white font-black uppercase text-[10px] tracking-widest">{isRtl ? 'ملاحظات وتوجيهات المهندس' : 'Engineer Notes'}</TableHead>
+                          <TableHead className="py-6 ps-8 text-white font-black uppercase text-[10px] tracking-widest w-[160px]">{isRtl ? 'التاريخ' : 'Date'}</TableHead>
+                          <TableHead className="text-white font-black uppercase text-[10px] tracking-widest w-[120px]">{isRtl ? 'النوع' : 'Category'}</TableHead>
+                          <TableHead className="text-white font-black uppercase text-[10px] tracking-widest">{isRtl ? 'المخرجات الفنية / الإنجاز' : 'Outputs & Progress'}</TableHead>
+                          <TableHead className="text-white font-black uppercase text-[10px] tracking-widest">{isRtl ? 'المهندس / التوثيق' : 'Engineer / Log'}</TableHead>
                        </TableRow>
                     </TableHeader>
                     <TableBody>
-                       {visitsData.map((visit) => (
-                         <TableRow key={visit.id} className={cn(
-                           "hover:bg-slate-50 transition-colors border-b-slate-100",
-                           visit.status === 'cancelled' && "bg-rose-50/20"
-                         )}>
-                            <TableCell className="py-6 ps-8 align-top text-start">
-                               <div className="space-y-1">
-                                  <p className="font-black text-slate-900 text-sm">{formatSovereignDate(visit.start)}</p>
-                                  <p className="text-[10px] font-bold text-slate-400 uppercase">{new Date(visit.start).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</p>
-                                  <div className="mt-3 flex items-center gap-1.5 text-[8px] font-black text-primary uppercase">
-                                     <User className="h-2.5 w-2.5" /> {visit.engineerName}
-                                  </div>
-                               </div>
-                            </TableCell>
-                            <TableCell className="align-top text-start">
-                               <Badge className={cn(
-                                 "font-black text-[8px] uppercase px-2 py-0.5 rounded-md border-0 shadow-sm",
-                                 visit.status === 'completed' ? "bg-emerald-500 text-white" : 
-                                 visit.status === 'cancelled' ? "bg-rose-500 text-white" : 
-                                 'bg-blue-500 text-white'
-                               )}>
-                                  {visit.status}
-                                </Badge>
-                            </TableCell>
-                            <TableCell className="align-top py-6 text-start">
-                               <div className="space-y-2">
-                                  {/* 1. الإنجازات الكمية (BOQ) */}
-                                  {visit.achievements.length > 0 && visit.achievements.map((ex: any, i: number) => (
-                                    <div key={`ex-${i}`} className="flex items-start gap-2 bg-emerald-50/40 p-2 rounded-lg border border-emerald-100">
-                                       <Hammer className="h-3 w-3 text-emerald-600 shrink-0 mt-0.5" />
-                                       <div className="text-start">
-                                          <p className="text-[10px] font-black text-slate-800 leading-tight">{ex.boqItemName}</p>
-                                          <div className="flex items-center gap-2 mt-1">
-                                             <span className="text-[9px] font-bold text-emerald-700">+{ex.quantity}</span>
-                                             {ex.notes && <span className="text-[8px] text-slate-400 italic">"{ex.notes}"</span>}
-                                          </div>
-                                       </div>
-                                    </div>
-                                  ))}
-                                  
-                                  {/* 2. تعديلات التصميم (Revisions) */}
-                                  {visit.revisions.length > 0 && visit.revisions.map((rev: any, i: number) => (
-                                    <div key={`rev-${i}`} className="flex items-start gap-2 bg-amber-50/40 p-2 rounded-lg border border-amber-100">
-                                       <RotateCcw className="h-3 w-3 text-amber-600 shrink-0 mt-0.5" />
-                                       <div className="text-start">
-                                          <p className="text-[10px] font-black text-slate-800 leading-tight">{isRtl ? 'تعديل مخطط / مراجعة فنية' : 'Design Revision'}</p>
-                                          <p className="text-[9px] font-bold text-amber-700 mt-1">{rev.content}</p>
-                                       </div>
-                                    </div>
-                                  ))}
+                       {unifiedTimeline.map((item) => {
+                          const isAppt = item.entryType === 'appointment';
+                          const isHall = item.type === 'hall_meeting';
 
-                                  {visit.achievements.length === 0 && visit.revisions.length === 0 && (
-                                    <span className="text-[9px] text-slate-300 font-bold italic">{isRtl ? 'لم يتم تسجيل مخرجات فنية' : 'No technical outputs'}</span>
-                                  )}
-                               </div>
-                            </TableCell>
-                            <TableCell className="align-top py-6 text-start">
-                               <div className="space-y-3">
-                                  {visit.comments.length > 0 ? visit.comments.map((c: any, i: number) => (
-                                    <div key={i} className="relative ps-4 border-s-2 border-primary/20">
-                                       <p className="text-[11px] font-bold text-slate-600 leading-relaxed">{c.content}</p>
-                                       <div className="mt-1 flex items-center gap-1.5 text-[7px] font-black text-slate-300 uppercase">
-                                          <UserCircle className="h-2 w-2" /> {c.createdByName}
+                          return (
+                            <TableRow key={item.id} className="hover:bg-slate-50 transition-colors border-b-slate-100">
+                               <td className="py-6 ps-8 align-top text-start">
+                                  <div className="space-y-1">
+                                     <p className="font-black text-slate-900 text-sm">{formatSovereignDate(item.displayDate)}</p>
+                                     <p className="text-[10px] font-bold text-slate-400 uppercase">
+                                        {isAppt ? new Date(item.start).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 'Site Log'}
+                                     </p>
+                                  </div>
+                               </td>
+                               <td className="align-top py-6 text-start">
+                                  <Badge className={cn(
+                                    "font-black text-[8px] uppercase px-3 py-1 rounded-md border-0 shadow-sm",
+                                    isAppt ? (isHall ? "bg-indigo-500 text-white" : "bg-blue-500 text-white") : "bg-emerald-500 text-white"
+                                  )}>
+                                     {isAppt ? (isHall ? "Hall Meeting" : "Site Visit") : "Field Report"}
+                                  </Badge>
+                               </td>
+                               <td className="align-top py-6 text-start">
+                                  <div className="space-y-3">
+                                     {/* مخرجات الزيارة الميدانية */}
+                                     {item.entryType === 'field_report' && (
+                                       <div className="space-y-2">
+                                          <div className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-100 flex items-start gap-3">
+                                             <Hammer className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                                             <div className="text-start">
+                                                <p className="text-[11px] font-black text-slate-800 leading-tight">{item.completedWork || (isRtl ? 'تقرير إنجاز موقع' : 'Site Progress Report')}</p>
+                                                <div className="flex items-center gap-3 mt-1.5">
+                                                   <Badge variant="outline" className="bg-white border-emerald-200 text-emerald-600 font-black text-[9px] h-5 px-2">+{item.progressPercentage}% Progress</Badge>
+                                                   <span className="text-[9px] font-bold text-slate-400 flex items-center gap-1"><Users className="h-3 w-3" /> {item.workersCount} Workers</span>
+                                                </div>
+                                             </div>
+                                          </div>
+                                          {item.photoUrls && item.photoUrls.length > 0 && (
+                                             <div className="flex gap-1.5 flex-wrap pt-1">
+                                                {item.photoUrls.slice(0, 4).map((url: string, i: number) => (
+                                                  <div key={i} className="h-10 w-10 rounded-lg border-2 border-white shadow-sm overflow-hidden bg-slate-100">
+                                                     <img src={url} alt="Site" className="h-full w-full object-cover" />
+                                                  </div>
+                                                ))}
+                                                {item.photoUrls.length > 4 && <div className="h-10 w-10 rounded-lg bg-slate-900 text-white flex items-center justify-center text-[9px] font-black">+{item.photoUrls.length - 4}</div>}
+                                             </div>
+                                          )}
                                        </div>
-                                    </div>
-                                  )) : (
-                                    <span className="text-[9px] text-slate-300 font-bold italic">{isRtl ? 'لا يوجد ملاحظات مسجلة' : 'No comments logged'}</span>
-                                  )}
-                               </div>
-                            </TableCell>
-                         </TableRow>
-                       ))}
+                                     )}
+
+                                     {/* مخرجات الموعد المعماري/الاجتماع */}
+                                     {isAppt && (
+                                       <div className="space-y-2">
+                                          <p className="text-[11px] font-bold text-slate-700 leading-relaxed">{item.title}</p>
+                                          {item.revisions?.length > 0 && item.revisions.map((rev: any, i: number) => (
+                                            <div key={`rev-${i}`} className="flex items-start gap-2 bg-amber-50/50 p-2 rounded-lg border border-amber-100">
+                                               <RotateCcw className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
+                                               <p className="text-[10px] font-black text-amber-800 leading-tight">{rev.content}</p>
+                                            </div>
+                                          ))}
+                                          {item.comments?.length > 0 && item.comments.map((c: any, i: number) => (
+                                            <div key={`c-${i}`} className="ps-4 border-s-2 border-primary/20">
+                                               <p className="text-[11px] font-medium text-slate-500 italic">"{c.content}"</p>
+                                            </div>
+                                          ))}
+                                       </div>
+                                     )}
+                                  </div>
+                               </td>
+                               <td className="align-top py-6 text-start">
+                                  <div className="flex items-center gap-3">
+                                     <div className="h-9 w-9 rounded-xl bg-slate-50 border flex items-center justify-center text-slate-400">
+                                        <HardHat className="h-5 w-5" />
+                                     </div>
+                                     <div className="text-start">
+                                        <p className="font-black text-xs text-slate-800">{item.engineerName}</p>
+                                        <p className="text-[8px] font-black text-primary uppercase mt-0.5">Sovereign Signature</p>
+                                     </div>
+                                  </div>
+                               </td>
+                            </TableRow>
+                          );
+                       })}
                     </TableBody>
                  </Table>
               </div>
 
-              {/* Disclaimer Footnote */}
-              <div className="p-8 rounded-[2rem] bg-slate-50 border-2 border-white shadow-inner flex items-start gap-4 text-start">
+              {/* Legal Disclaimer */}
+              <div className="p-8 rounded-[2.5rem] bg-slate-50 border-2 border-dashed border-primary/20 flex items-start gap-4 text-start">
                  <ShieldCheck className="h-6 w-6 text-primary shrink-0 mt-1" />
                  <div className="space-y-1">
-                    <h5 className="font-black text-xs text-slate-800 uppercase tracking-widest">{isRtl ? 'إقرار صحة البيانات الميدانية' : 'Field Data Validation Statement'}</h5>
+                    <h5 className="font-black text-xs text-slate-800 uppercase tracking-widest">{isRtl ? 'إقرار صحة البيانات الموحدة' : 'Unified Data Validation'}</h5>
                     <p className="text-[9px] text-slate-400 font-bold leading-relaxed italic">
                        {isRtl 
-                         ? 'تم استخراج هذا التقرير آلياً بنظام الأرقام القياسية (123). كافة المخرجات الفنية بما فيها تعديلات التصميم تم ربطها بمعرف الموعد (ID) لحظة الحدوث لضمان دقة الأرشفة والامتثال المهني.' 
-                         : 'Report auto-generated in 123 standard numerals. All technical outputs including design revisions are linked to appointment IDs to ensure archiving accuracy.'}
+                         ? 'تم استخراج هذا التقرير الشامل بنظام الأرقام القياسية الموحد (123). يدمج هذا السجل كافة الحركات الميدانية والمكتبية المسجلة للعميل عبر كافة موديولات النظام لضمان شفافية الأداء والرقابة.' 
+                         : 'Universal report generated in 123 standard numerals. This dossier merges all field and office interactions recorded for the client across all system modules to ensure performance transparency and oversight.'}
                     </p>
                  </div>
               </div>
