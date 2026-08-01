@@ -4,7 +4,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
     
     // --- 1. قانون الأمان الأسمى (Sovereign Master Key) ---
-    // المطور الرسمي يتجاوز كافة القيود فوراً لضمان عمل بوابة الرقابة
+    // المطور الرسمي يتجاوز كافة القيود فوراً لضمان عمل بوابة الرقابة ومنع أخطاء collectionGroup
     function isSovereignDev() {
       return request.auth != null && request.auth.token.email == 'admin@novaflow.com';
     }
@@ -23,9 +23,13 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
     }
 
+    function hasGlobalData() {
+      return exists(/databases/$(database)/documents/global_users/$(request.auth.uid));
+    }
+
     // --- 3. قواعد الهوية العالمية (Global Identity) ---
     match /global_users/{uid} {
-      // السماح للمستخدم دائماً بقراءة ملفه الشخصي لضمان استقرار الجلسة
+      // السماح للمستخدم دائماً بقراءة وإنشاء ملفه الشخصي لضمان استقرار جلسة التسجيل
       allow read: if isAuthenticated() && request.auth.uid == uid;
       allow create: if isAuthenticated() && request.auth.uid == uid;
       allow update: if isAuthenticated() && request.auth.uid == uid;
@@ -36,11 +40,12 @@ service cloud.firestore {
       allow create: if isAuthenticated(); 
       
       // فك العقدة: السماح دائماً بقراءة بيانات المنشأة الأساسية (الاسم، الحالة) 
-      // لتمكين النظام من عرض شاشة "بانتظار التفعيل" بدلاً من إظهار خطأ صلاحيات
+      // لتمكين النظام من فحص الحالة وعرض شاشة "بانتظار التفعيل" بدلاً من إظهار خطأ صلاحيات
       allow read: if isAuthenticated(); 
 
       // قواعد المستخدمين داخل المنشأة
       match /users/{uid} {
+        // السماح بإنشاء الحساب الأول في المنشأة أثناء التسجيل
         allow create: if isAuthenticated() && request.auth.uid == uid;
         allow read: if isAuthenticated();
         allow update: if isAuthenticated() && request.auth.uid == uid;
@@ -49,10 +54,12 @@ service cloud.firestore {
       // حماية المجموعات الفرعية التشغيلية (البيانات الحساسة)
       match /{allSubCollections=**} {
         allow read: if isAuthenticated() && 
+          hasGlobalData() &&
           getUserData().companyId == companyId && 
           (getUserData().isActive == true || isSovereignDev());
           
         allow write: if isAuthenticated() && 
+          hasGlobalData() &&
           getUserData().companyId == companyId && 
           (getUserData().roleCode == 'ADMIN' || isSovereignDev());
       }
@@ -61,11 +68,12 @@ service cloud.firestore {
     // --- 5. طلبات الانضمام ---
     match /company_requests/{reqId} {
        allow create: if isAuthenticated(); 
-       allow read: if isSovereignDev();
+       allow read: if isAuthenticated() && (request.auth.uid == resource.data.ownerUid || isSovereignDev());
+       allow delete: if isSovereignDev();
     }
 
     // --- 6. حماية المجموعات المشتركة (Collection Group Rules) ---
-    // السماح بالاستعلامات الشاملة للمطور لضمان عمل التقارير والرقابة
+    // القواعد المسطحة لضمان عمل استعلامات المجموعات دون الحاجة لـ get() معقد
     match /{path=**}/variations/{id} { allow read: if isAuthenticated(); }
     match /{path=**}/fieldVisits/{id} { allow read: if isAuthenticated(); }
     match /{path=**}/attendance/{id} { allow read: if isAuthenticated(); }

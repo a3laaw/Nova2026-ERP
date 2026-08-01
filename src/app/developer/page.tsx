@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +14,7 @@ import {
   Save, Users, Zap, Building2, 
   ShieldCheck, Trash2, ChevronRight,
   Power, Search, Key, Copy, Eye, EyeOff,
-  Settings2, Info, X
+  Settings2, Info, X, AlertTriangle
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useLanguage } from '@/context/language-context';
@@ -53,7 +53,7 @@ export default function DeveloperDashboard() {
   const [deletingCompany, setDeletingCompany] = useState<any>(null);
   const [deletingRequest, setDeletingRequest] = useState<any>(null);
 
-  // تثبيت كائنات الاستعلام (Query Stabilization) لمنع الانهيار ca9
+  // تثبيت كائنات الاستعلام لضمان استقرار المحرك ومنع خطأ ca9
   const companiesQuery = useMemo(() => 
     (db && globalUser?.isDeveloper) ? query(collection(db, 'companies')) : null, 
   [db, globalUser?.isDeveloper]);
@@ -78,7 +78,7 @@ export default function DeveloperDashboard() {
   }, [rawCompanies, searchTerm]);
 
   const requests = useMemo(() => {
-    return [...(rawRequests || [])].sort((a, b) => (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0));
+    return [...(rawRequests || [])].sort((a, b) => (a.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
   }, [rawRequests]);
 
   const handleOpenEdit = async (company: any) => {
@@ -138,6 +138,14 @@ export default function DeveloperDashboard() {
 
   const handleDeleteCompany = async () => {
     if (!db || !deletingCompany) return;
+    
+    // قيد سيادي: منع حذف الشركات ذات الاشتراكات الفعالة أو الموقوفة
+    if (deletingCompany.status === 'active' || deletingCompany.status === 'suspended') {
+      toast({ variant: "destructive", title: isRtl ? "حذف محظور" : "Deletion Prohibited", description: isRtl ? "لا يمكن حذف منشأة ذات اشتراك فعال أو موقوف." : "Cannot delete active or suspended companies." });
+      setDeletingCompany(null);
+      return;
+    }
+
     setProcessingId('deleting');
     try {
       const batch = writeBatch(db);
@@ -161,6 +169,14 @@ export default function DeveloperDashboard() {
 
   const handleDeleteRequest = async () => {
     if (!db || !deletingRequest) return;
+    
+    // قيد سيادي: منع حذف الطلبات التي تم تفعيلها بالفعل
+    if (deletingRequest.status === 'activated') {
+      toast({ variant: "destructive", title: isRtl ? "حذف محظور" : "Deletion Prohibited", description: isRtl ? "هذا الطلب مفعل ومنشأته نشطة حالياً." : "This request is already activated." });
+      setDeletingRequest(null);
+      return;
+    }
+
     setProcessingId('deleting_req');
     try {
       await deleteDoc(doc(db, 'company_requests', deletingRequest.id));
@@ -214,7 +230,7 @@ export default function DeveloperDashboard() {
         <div className="text-start">
           <h2 className="text-2xl font-black font-headline text-slate-900">{isRtl ? 'بوابة الرقابة والاشتراكات' : 'Sovereign Control'}</h2>
           <div className="flex items-center gap-3 mt-1">
-             <Badge className="bg-primary text-white border-0 text-[8px] uppercase tracking-widest px-3 rounded-full">God Mode Active</Badge>
+             <Badge className="bg-primary text-white border-0 text-[8px] uppercase tracking-widest px-3 rounded-full">Sovereign God Mode</Badge>
           </div>
         </div>
         <div className="relative w-full max-w-xs">
@@ -270,13 +286,15 @@ export default function DeveloperDashboard() {
                       <TableCell className="pe-8 text-end">
                          <div className="flex justify-end gap-2">
                            {req.status === 'pending' && (
-                             <Button onClick={() => handleActivate(req)} disabled={!!processingId} size="sm" className="h-8 gap-2">
-                                <Power className="h-3 w-3" /> تفعيل تجريبي
-                             </Button>
+                             <>
+                               <Button onClick={() => handleActivate(req)} disabled={!!processingId} size="sm" className="h-8 gap-2">
+                                  <Power className="h-3 w-3" /> تفعيل تجريبي
+                               </Button>
+                               <Button variant="ghost" size="icon" onClick={() => setDeletingRequest(req)} className="h-8 w-8 text-rose-300 hover:text-rose-600">
+                                 <Trash2 className="h-4 w-4" />
+                               </Button>
+                             </>
                            )}
-                           <Button variant="ghost" size="icon" onClick={() => setDeletingRequest(req)} className="h-8 w-8 text-rose-300 hover:text-rose-600">
-                             <Trash2 className="h-4 w-4" />
-                           </Button>
                          </div>
                       </TableCell>
                     </TableRow>
@@ -325,9 +343,12 @@ export default function DeveloperDashboard() {
                           <Button variant="outline" size="sm" onClick={() => handleOpenEdit(comp)} className="h-8 gap-2 border-2 hover:bg-slate-50">
                              <Settings2 className="h-3 w-3" /> إدارة
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => setDeletingCompany(comp)} className="h-8 w-8 text-rose-300 hover:text-rose-600">
-                             <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {/* قيد الحذف السيادي: يظهر فقط للمنشآت غير النشطة (المسجلة حديثاً فقط) */}
+                          {comp.status !== 'active' && comp.status !== 'suspended' && (
+                            <Button variant="ghost" size="icon" onClick={() => setDeletingCompany(comp)} className="h-8 w-8 text-rose-300 hover:text-rose-600">
+                               <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

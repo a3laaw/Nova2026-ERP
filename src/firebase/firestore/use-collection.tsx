@@ -7,8 +7,8 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 /**
- * خطاف جلب المجموعات المدرع (Sovereign Hardened Collection Hook).
- * يحل مشكلة الانهيار ca9 عبر تثبيت الاستعلامات وتجنب إعادة الاشتراك المتكرر.
+ * خطاف جلب المجموعات المطور (Hardened Sovereign Collection Hook).
+ * يستخدم تقنية التثبيت (Memoization) العميقة لمنع الانهيار الداخلي ca9.
  */
 export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
   const [data, setData] = useState<T[]>([]);
@@ -20,7 +20,8 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
   const lastDataHashRef = useRef<string>("");
 
   useEffect(() => {
-    // 1. التحقق من استقرار الاستعلام (Query Stability)
+    // 1. التحقق من استقرار الاستعلام (Query Stability) باستخدام queryEqual
+    // هذا يمنع الحلقات المفرغة التي تسبب خطأ ca9
     const isSameQuery = query && lastQueryRef.current && queryEqual(query, lastQueryRef.current);
     
     if (isSameQuery && !loading) {
@@ -55,6 +56,7 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
           ...doc.data(),
         })) as unknown as T[];
         
+        // منع التحديثات غير الضرورية (Data Stabilization)
         const currentHash = JSON.stringify(items);
         if (currentHash !== lastDataHashRef.current) {
           lastDataHashRef.current = currentHash;
