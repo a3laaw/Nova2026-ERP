@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -38,7 +38,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export default function DeveloperDashboard() {
-  const { lang, dir, t } = useLanguage(); // تم تصحيح استخراج t هنا
+  const { lang, dir, t } = useLanguage(); 
   const { globalUser, loading: authLoading } = useAuthContext();
   const db = useFirestore();
   const isRtl = lang === 'ar';
@@ -54,7 +54,7 @@ export default function DeveloperDashboard() {
   const [deletingCompany, setDeletingCompany] = useState<any>(null);
   const [deletingRequest, setDeletingRequest] = useState<any>(null);
 
-  // استقرار الاستعلامات لمنع الانهيار الداخلي (Internal Assertion Failed)
+  // استقرار الاستعلامات لمنع انهيار ca9
   const companiesQuery = useMemo(() => 
     (db && globalUser?.isDeveloper) ? query(collection(db, 'companies')) : null, 
   [db, globalUser?.isDeveloper]);

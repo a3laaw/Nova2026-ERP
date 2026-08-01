@@ -8,7 +8,7 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
 
 /**
  * خطاف جلب المجموعات المدرع (Sovereign Hardened Collection Hook).
- * يمنع الانهيار الداخلي (ca9) عبر ضمان استقرار المستمعين والمقارنة العميقة.
+ * يحل مشكلة الانهيار ca9 عبر تثبيت الاستعلامات وتجنب إعادة الاشتراك المتكرر.
  */
 export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
   const [data, setData] = useState<T[]>([]);
@@ -20,13 +20,15 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
   const lastDataHashRef = useRef<string>("");
 
   useEffect(() => {
-    // 1. التحقق من استقرار الاستعلام عبر queryEqual
-    // هذا يمنع إعادة الاشتراك المتكرر الذي يسبب خطأ ca9
+    // 1. التحقق من استقرار الاستعلام (Query Stability)
+    // هذا يمنع خطأ ca9 (INTERNAL ASSERTION FAILED) الناتج عن إعادة الاشتراك اللانهائي
     const isSameQuery = query && lastQueryRef.current && queryEqual(query, lastQueryRef.current);
     
-    if (isSameQuery && !loading) return;
+    if (isSameQuery && !loading) {
+       return; 
+    }
 
-    // تنظيف المستمع القديم فوراً قبل البدء بجديد
+    // تنظيف المستمع القديم فوراً
     if (unsubscribeRef.current) {
       unsubscribeRef.current();
       unsubscribeRef.current = null;
@@ -45,7 +47,7 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
 
     let isMounted = true;
 
-    // 2. تفعيل المستمع الجديد
+    // 2. تفعيل المستمع الجديد مع معالجة الصدمات
     const unsubscribe = onSnapshot(
       query,
       (snapshot) => {
@@ -56,7 +58,7 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
           ...doc.data(),
         })) as unknown as T[];
         
-        // منع تحديث الحالة إذا كانت البيانات متطابقة تماماً (Deep Hash)
+        // المقارنة العميقة للبيانات لمنع الرندر المتكرر
         const currentHash = JSON.stringify(items);
         if (currentHash !== lastDataHashRef.current) {
           lastDataHashRef.current = currentHash;
@@ -71,12 +73,12 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
         setLoading(false);
         setError(serverError);
         
-        // معالجة أخطاء الصلاحيات مركزياً
+        // معالجة أخطاء الصلاحيات مركزياً لتجنب إزعاج المستخدم
         if (serverError.code === 'permission-denied') {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: 'collection_group_query',
-            operation: 'list',
-          } satisfies SecurityRuleContext));
+           errorEmitter.emit('permission-error', new FirestorePermissionError({
+             path: 'collection_query',
+             operation: 'list',
+           } satisfies SecurityRuleContext));
         }
       }
     );

@@ -4,17 +4,18 @@ service cloud.firestore {
   match /databases/{database}/documents {
     
     // --- قانون الأمان الأسمى (Sovereign God Mode) ---
+    // منح المطور الرسمي وصولاً مطلقاً وفورياً يتجاوز كافة القيود
     function isSovereignDev() {
       return request.auth != null && request.auth.token.email == 'admin@novaflow.com';
     }
 
-    // السماح للمطور بالوصول الشامل لكافة المستندات (المفتاح الماستر)
+    // المفتاح الماستر: يسمح للمطور بالوصول الشامل (قراءة وكتابة)
     match /{document=**} {
       allow read, write: if isSovereignDev();
     }
 
     // --- حماية المجموعات المشتركة (Collection Group Rules) ---
-    // ضرورية لعمل الفهارس (Indexes) والتقارير الشاملة
+    // تبسيط القواعد لضمان عمل الفهارس (Indexes) والتقارير الشاملة بدون أخطاء صلاحيات
     match /{path=**}/variations/{voId} {
       allow read: if request.auth != null;
     }
@@ -61,7 +62,7 @@ service cloud.firestore {
       }
 
       match /{allSubCollections=**} {
-        // قفل أمني صارم للمستخدمين العاديين على بقية الموارد
+        // قفل أمني صارم للمستخدمين العاديين
         allow read: if isAuthenticated() && 
           getGlobalUser() != null &&
           getGlobalUser().companyId == companyId && 
