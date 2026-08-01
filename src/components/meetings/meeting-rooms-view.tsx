@@ -149,7 +149,6 @@ export function MeetingRoomsView() {
     if (!targetId || !db || !companyId) return;
     
     const docRef = doc(db, paths.appointments(companyId), targetId);
-    // عدم استخدام await لضمان Optimistic UI
     deleteDoc(docRef)
       .then(() => {
         toast({ title: isRtl ? "تم الحذف بنجاح" : "Deleted Successfully" });
@@ -618,7 +617,6 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
     
     if (isEdit) {
       const docRef = doc(db, apptsPath, data.appointment.id);
-      // عدم استخدام await
       updateDoc(docRef, payload)
         .then(() => {
           toast({ title: t('saved') });
@@ -644,7 +642,6 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
         createdAt: serverTimestamp(),
         createdBy: officialUserName 
       };
-      // عدم استخدام await
       addDoc(collection(db, apptsPath), newDocData)
         .then(() => {
           toast({ title: t('saved') });

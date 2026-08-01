@@ -20,24 +20,17 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
     }
 
-    function hasGlobalData() {
-      return exists(/databases/$(database)/documents/global_users/$(request.auth.uid));
-    }
-
-    // التحقق من الانتماء للشركة
+    // التحقق من الانتماء للشركة (كفء وسريع)
     function belongsToCompany(companyId) {
-      return isAuthenticated() && hasGlobalData() && getGlobalUser().companyId == companyId;
+      let user = getGlobalUser();
+      return isAuthenticated() && user != null && user.companyId == companyId;
     }
 
-    // التحقق من الرتبة الإدارية الصارمة (Master Admin)
+    // التحقق من الرتبة الإدارية (Master Admin) - يعتمد على السجل العالمي مباشرة
     function isAdmin(companyId) {
-      return belongsToCompany(companyId) && 
-             (getGlobalUser().roleCode == 'ADMIN' || getGlobalUser().role == 'admin');
-    }
-
-    // المستخدم النشط (للموظفين العاديين)
-    function isActiveUser(companyId) {
-      return belongsToCompany(companyId) && getGlobalUser().isActive == true;
+      let user = getGlobalUser();
+      return isAuthenticated() && user != null && user.companyId == companyId && 
+             (user.roleCode == 'ADMIN' || user.role == 'admin');
     }
 
     // --- 3. قواعد الهوية العالمية (Global Identity) ---
@@ -49,17 +42,14 @@ service cloud.firestore {
     
     // --- 4. قواعد المنشآت (Multi-Tenant Core) ---
     match /companies/{companyId} {
-      // السماح بقراءة مستند الشركة الأساسي دائماً لفحص الحالة في الواجهة
       allow read: if isAuthenticated(); 
       allow create: if isAuthenticated(); 
 
-      // أ. العمليات التشغيلية والمواعيد (المدير يكتب، الموظف يقرأ)
       match /appointments/{id} { 
         allow read: if belongsToCompany(companyId); 
         allow write: if isAdmin(companyId); 
       }
       
-      // ب. السجلات الميدانية (متاحة للموظفين النشطين للكتابة)
       match /leaveRequests/{id} { allow read, write: if belongsToCompany(companyId); }
       match /permissionRequests/{id} { allow read, write: if belongsToCompany(companyId); }
       match /executions/{id} { allow read, write: if belongsToCompany(companyId); }
@@ -69,7 +59,6 @@ service cloud.firestore {
       match /transactions/{tId}/comments/{id} { allow read, write: if belongsToCompany(companyId); }
       match /transactions/{tId}/stageInstances/{id} { allow read, write: if belongsToCompany(companyId); }
 
-      // ج. البيانات الحساسة والإدارية (للمدراء فقط)
       match /users/{uid} {
         allow create: if isAuthenticated() && request.auth.uid == uid;
         allow read: if belongsToCompany(companyId);
@@ -82,16 +71,15 @@ service cloud.firestore {
       }
     }
 
-    // --- 5. طلبات الانضمام ---
     match /company_requests/{reqId} {
        allow create: if isAuthenticated(); 
        allow read: if isAuthenticated() && (request.auth.uid == resource.data.ownerUid || isSovereignDev());
        allow delete: if isSovereignDev();
     }
 
-    // --- 6. حماية المجموعات المشتركة (Collection Group Rules) ---
-    match /{path=**}/variations/{id} { allow read: if isAuthenticated(); }
-    match /{path=**}/fieldVisits/{id} { allow read: if isAuthenticated(); }
-    match /{path=**}/attendance/{id} { allow read: if isAuthenticated(); }
+    // حماية المجموعات المشتركة
+    match /{path=**}/variations/{id} { allow read: if belongsToCompany(resource.data.companyId); }
+    match /{path=**}/fieldVisits/{id} { allow read: if belongsToCompany(resource.data.companyId); }
+    match /{path=**}/attendance/{id} { allow read: if belongsToCompany(resource.data.companyId); }
   }
 }

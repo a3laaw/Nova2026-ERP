@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useCallback, useMemo } from 'react';
@@ -12,8 +11,10 @@ export function usePermissions() {
   const role = roleData as any;
   
   const isAdmin = useMemo(() => {
-    return globalUser?.role?.toLowerCase() === 'admin' || 
-           globalUser?.roleCode === 'ADMIN' || 
+    // السيادة المعلوماتية: إذا كان السجل العالمي يحمل كود ADMIN فهو مدير مطلق
+    // حتى لو لم تتوفر بيانات الأدوار المحلية بعد (حالة المنشآت الجديدة)
+    return globalUser?.roleCode === 'ADMIN' || 
+           globalUser?.role?.toLowerCase() === 'admin' || 
            globalUser?.isDeveloper === true;
   }, [globalUser]);
 
