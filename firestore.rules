@@ -22,28 +22,38 @@ service cloud.firestore {
 
     // التحقق من الانتماء للشركة
     function belongsToCompany(companyId) {
-      let user = getGlobalUser();
-      return isAuthenticated() && user != null && user.companyId == companyId;
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.companyId == companyId);
     }
 
     // التحقق من الرتبة الإدارية (Master Admin)
-    // تم تحديثها لتمنح المالك وصولاً مطلقاً حتى لو لم يكن "نشطاً" بعد في مرحلة التأسيس
+    // تم تحصينها لتعمل للمالك حتى لو لم يكن لديه سجل موظف (بدون رقم وظيفي)
     function isAdmin(companyId) {
-      let user = getGlobalUser();
+      let hasGlobalUser = exists(/databases/$(database)/documents/global_users/$(request.auth.uid));
+      let globalUser = hasGlobalUser ? get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data : null;
       let company = get(/databases/$(database)/documents/companies/$(companyId)).data;
       
       return isAuthenticated() && (
-        (user != null && user.companyId == companyId && (user.roleCode == 'ADMIN' || user.role == 'admin')) ||
+        (globalUser != null && globalUser.companyId == companyId && (globalUser.roleCode == 'ADMIN' || globalUser.role == 'admin')) ||
         (company != null && company.ownerUid == request.auth.uid) ||
-        (user != null && user.isDeveloper == true)
+        (globalUser != null && globalUser.isDeveloper == true)
       );
     }
 
     // --- 3. قواعد الهوية العالمية (Global Identity) ---
     match /global_users/{uid} {
-      allow read: if isAuthenticated() && request.auth.uid == uid;
-      allow create: if isAuthenticated() && request.auth.uid == uid;
-      allow update: if isAuthenticated() && (request.auth.uid == uid || isSovereignDev());
+      // السماح للمستخدم برؤية نفسه، وللمدير برؤية موظفيه
+      allow read: if isAuthenticated() && (request.auth.uid == uid || isAdmin(resource.data.companyId));
+      
+      // السماح للمستخدم بإنشاء سجله، وللمدير بإنشاء سجلات موظفيه
+      allow create: if isAuthenticated() && (request.auth.uid == uid || isAdmin(request.resource.data.companyId));
+      
+      // السماح بالتعديل للمستخدم (لنفسه) أو للمدير أو المطور
+      allow update: if isAuthenticated() && (
+        request.auth.uid == uid || 
+        isAdmin(resource.data.companyId) || 
+        isSovereignDev()
+      );
     }
     
     // --- 4. قواعد المنشآت (Multi-Tenant Core) ---
@@ -67,7 +77,7 @@ service cloud.firestore {
       match /transactions/{tId}/stageInstances/{id} { allow read, write: if belongsToCompany(companyId); }
 
       match /users/{uid} {
-        allow create: if isAuthenticated() && request.auth.uid == uid;
+        allow create: if isAuthenticated() && (request.auth.uid == uid || isAdmin(companyId));
         allow read: if belongsToCompany(companyId);
         allow update: if isAdmin(companyId) || (isAuthenticated() && request.auth.uid == uid);
       }
