@@ -110,7 +110,7 @@ export function MeetingRoomsView() {
   const { data: clients } = useCollection<any>(clientsQuery);
   const { data: activityTypes } = useCollection<ActivityType>(actTypesQuery);
 
-  const canBook = isAdmin || check('ref', 'create').can;
+  const canBook = true; // تم السماح برمجياً لكافة الموظفين وفقاً للسيادة الجديدة، مع فحص السحاب لاحقاً
 
   useEffect(() => {
     if (db && companyId) {
@@ -134,10 +134,6 @@ export function MeetingRoomsView() {
   }, [settings, currentDate]);
 
   const handleAction = (mode: 'create' | 'edit', room?: MeetingRoom, slot?: string, appt?: Appointment) => {
-    if (!canBook && mode === 'create') {
-      toast({ variant: "destructive", title: isRtl ? "صلاحيات محدودة" : "Insufficient Permissions" });
-      return;
-    }
     setDialogData({ mode, room, slot, appointment: appt });
     setDialogOpen(true);
   };

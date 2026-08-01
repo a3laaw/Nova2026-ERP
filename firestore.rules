@@ -3,7 +3,6 @@ service cloud.firestore {
   match /databases/{database}/documents {
     
     // --- 1. قانون الأمان الأسمى (Sovereign Master Key) ---
-    // المطور الرسمي يتجاوز كافة القيود فوراً لضمان عمل التقارير ومنع أخطاء collectionGroup
     function isSovereignDev() {
       return request.auth != null && request.auth.token.email == 'admin@novaflow.com';
     }
@@ -25,9 +24,21 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/global_users/$(request.auth.uid));
     }
 
+    // فحص الانتساب والنشاط (The Activity Guard)
+    function isActiveUser(companyId) {
+      return isAuthenticated() && 
+             hasGlobalData() && 
+             getUserData().companyId == companyId && 
+             getUserData().isActive == true;
+    }
+
+    // فحص الصلاحية الإدارية
+    function isAdmin(companyId) {
+      return isActiveUser(companyId) && getUserData().roleCode == 'ADMIN';
+    }
+
     // --- 3. قواعد الهوية العالمية (Global Identity) ---
     match /global_users/{uid} {
-      // السماح للمستخدم دائماً بقراءة وإنشاء ملفه الشخصي لضمان استقرار جلسة التسجيل
       allow read: if isAuthenticated() && request.auth.uid == uid;
       allow create: if isAuthenticated() && request.auth.uid == uid;
       allow update: if isAuthenticated() && request.auth.uid == uid;
@@ -36,28 +47,30 @@ service cloud.firestore {
     // --- 4. قواعد المنشآت (Multi-Tenant Core) ---
     match /companies/{companyId} {
       allow create: if isAuthenticated(); 
-      
-      // السماح دائماً بقراءة بيانات المنشأة الأساسية لفحص الحالة
       allow read: if isAuthenticated(); 
 
-      // قواعد المستخدمين داخل المنشأة
+      // أ. العمليات التشغيلية (متاحة لكافة الموظفين النشطين)
+      // تشمل المواعيد، الزيارات، التايم لاين، والتعليقات
+      match /appointments/{id} { allow read, write: if isActiveUser(companyId); }
+      match /leaveRequests/{id} { allow read, write: if isActiveUser(companyId); }
+      match /permissionRequests/{id} { allow read, write: if isActiveUser(companyId); }
+      match /executions/{id} { allow read, write: if isActiveUser(companyId); }
+      
+      match /transactions/{tId}/fieldVisits/{id} { allow read, write: if isActiveUser(companyId); }
+      match /transactions/{tId}/timeline/{id} { allow read, write: if isActiveUser(companyId); }
+      match /transactions/{tId}/comments/{id} { allow read, write: if isActiveUser(companyId); }
+      match /transactions/{tId}/stageInstances/{id} { allow read, write: if isActiveUser(companyId); }
+
+      // ب. البيانات الحساسة والإعدادات (للمدراء فقط)
       match /users/{uid} {
         allow create: if isAuthenticated() && request.auth.uid == uid;
-        allow read: if isAuthenticated();
-        allow update: if isAuthenticated() && request.auth.uid == uid;
+        allow read: if isActiveUser(companyId);
+        allow update: if isAdmin(companyId) || (isAuthenticated() && request.auth.uid == uid);
       }
 
-      // حماية المجموعات الفرعية التشغيلية (البيانات الحساسة)
-      match /{allSubCollections=**} {
-        allow read: if isAuthenticated() && 
-          hasGlobalData() &&
-          getUserData().companyId == companyId && 
-          (getUserData().isActive == true || isSovereignDev());
-          
-        allow write: if isAuthenticated() && 
-          hasGlobalData() &&
-          getUserData().companyId == companyId && 
-          (getUserData().roleCode == 'ADMIN' || isSovereignDev());
+      match /{allAdminCollections=**} {
+        allow read: if isActiveUser(companyId);
+        allow write: if isAdmin(companyId);
       }
     }
 
@@ -69,7 +82,6 @@ service cloud.firestore {
     }
 
     // --- 6. حماية المجموعات المشتركة (Collection Group Rules) ---
-    // القواعد المسطحة لضمان عمل استعلامات المجموعات دون الحاجة لـ get() معقد
     match /{path=**}/variations/{id} { allow read: if isAuthenticated(); }
     match /{path=**}/fieldVisits/{id} { allow read: if isAuthenticated(); }
     match /{path=**}/attendance/{id} { allow read: if isAuthenticated(); }
