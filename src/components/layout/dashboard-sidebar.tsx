@@ -1,7 +1,7 @@
 
 /**
  * @fileOverview القائمة الجانبية (Sidebar) بتصميم الكبسولات البرتقالية كاملة الاستدارة.
- * تم تصحيح خوارزمية الفلترة (Sovereign Deep Filter) لضمان اختفاء العناصر الإدارية عن الموظفين العاديين.
+ * تم إعادة هيكلة العناصر لنقل المواعيد والاجتماعات وسجل التفاعل إلى موديول CRM.
  */
 
 "use client"
@@ -58,6 +58,9 @@ export function DashboardSidebar() {
         subItems: [
           { title: t('leads'), url: "/dashboard/crm", icon: Users },
           { title: t('clients'), url: "/dashboard/clients", icon: UserCircle },
+          { title: isRtl ? 'المواعيد والزيارات' : 'Appointments', url: "/dashboard/appointments", icon: CalendarDays },
+          { title: isRtl ? 'حجز القاعات والاجتماعات' : 'Halls & Meetings', url: "/dashboard/meetings", icon: Landmark },
+          { title: isRtl ? 'سجل تفاعل العملاء' : 'Visits Dossier', url: "/dashboard/projects/reports/client-visits", icon: MapPinned },
         ]
       },
       { 
@@ -67,9 +70,6 @@ export function DashboardSidebar() {
         resource: 'projects',
         subItems: [
           { title: t('activeProjects'), url: "/dashboard/projects", icon: Layers },
-          { title: isRtl ? 'المواعيد والزيارات' : 'Appointments', url: "/dashboard/appointments", icon: CalendarDays },
-          { title: isRtl ? 'حجز القاعات والاجتماعات' : 'Halls & Meetings', url: "/dashboard/meetings", icon: Landmark },
-          { title: isRtl ? 'سجل تفاعل العملاء' : 'Visits Dossier', url: "/dashboard/projects/reports/client-visits", icon: MapPinned },
           { title: t('boqExplorer'), url: "/dashboard/projects/boqs", icon: FileSpreadsheet },
           { title: t('reports'), url: "/dashboard/reports", icon: FileText },
         ]
@@ -257,7 +257,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                   )}>
                     <div className="bg-white border-2 border-slate-100 shadow-3xl rounded-[1.5rem] min-w-[220px] overflow-hidden ring-4 ring-black/[0.02]">
                       <div className="px-5 py-4 bg-slate-50 border-b flex items-center justify-between">
-                        <p className="text-[10px] font-black text-slate-800 uppercase tracking-widest">{item.title}</p>
+                        <p className="text-sm font-black text-slate-800 uppercase tracking-widest">{item.title}</p>
                         <div className="h-6 w-6 rounded-lg bg-primary/10 flex items-center justify-center">
                           <item.icon className="h-3.5 w-3.5 text-primary" />
                         </div>
