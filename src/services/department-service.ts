@@ -12,15 +12,19 @@ import {
   getDocs
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { paths } from '@/firebase/multi-tenant';
 import { Department, Job } from '@/types/reference';
 
 export class DepartmentService {
   constructor(private db: Firestore, private companyId: string) {}
 
+  /**
+   * إضافة قسم جديد بنمط غير معطل (Non-blocking)
+   */
   async addDepartment(data: Omit<Department, 'id' | 'createdAt' | 'updatedAt' | 'companyId'>) {
     const path = paths.departments(this.companyId);
+    const collRef = collection(this.db, path);
     const docData = { 
       ...data, 
       companyId: this.companyId, 
@@ -28,53 +32,48 @@ export class DepartmentService {
       updatedAt: serverTimestamp() 
     };
     
-    return addDoc(collection(this.db, path), docData).catch((err) => {
-      this.handleError(path, 'create', docData);
-      throw err;
+    // عدم استخدام await لضمان استجابة الواجهة الفورية
+    addDoc(collRef, docData).catch(async (serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: collRef.path,
+        operation: 'create',
+        requestResourceData: docData,
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
     });
   }
 
   async updateDepartment(id: string, data: Partial<Department>) {
-    const path = paths.departments(this.companyId);
-    const docRef = doc(this.db, path, id);
+    const docRef = doc(this.db, paths.departments(this.companyId), id);
     
-    return updateDoc(docRef, { 
+    updateDoc(docRef, { 
       ...data, 
       updatedAt: serverTimestamp() 
-    }).catch((err) => {
-      this.handleError(docRef.path, 'update', data);
-      throw err;
+    }).catch(async (serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: docRef.path,
+        operation: 'update',
+        requestResourceData: data,
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
     });
   }
 
   async deleteDepartment(id: string) {
-    const path = paths.departments(this.companyId);
-    const docRef = doc(this.db, path, id);
+    const docRef = doc(this.db, paths.departments(this.companyId), id);
     
-    try {
-      const jobsRef = collection(this.db, paths.jobs(this.companyId, id));
-      const jobsSnap = await getDocs(jobsRef);
-      const batch = writeBatch(this.db);
-      
-      // حذف كافة الوظائف التابعة أولاً
-      jobsSnap.docs.forEach(jobDoc => batch.delete(jobDoc.ref));
-      batch.delete(docRef);
-      
-      return await batch.commit().catch((err) => {
-        this.handleError(docRef.path, 'delete');
-        throw err;
-      });
-    } catch (err) {
-      // إذا فشل الـ Batch، حاول الحذف المباشر
-      return deleteDoc(docRef).catch((e) => {
-        this.handleError(docRef.path, 'delete');
-        throw e;
-      });
-    }
+    deleteDoc(docRef).catch(async (serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: docRef.path,
+        operation: 'delete',
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
+    });
   }
 
   async addJob(deptId: string, data: Omit<Job, 'id' | 'createdAt' | 'updatedAt' | 'companyId'>) {
     const path = paths.jobs(this.companyId, deptId);
+    const collRef = collection(this.db, path);
     const docData = { 
       ...data, 
       companyId: this.companyId, 
@@ -83,40 +82,41 @@ export class DepartmentService {
       updatedAt: serverTimestamp() 
     };
     
-    return addDoc(collection(this.db, path), docData).catch((err) => {
-      this.handleError(path, 'create', docData);
-      throw err;
+    addDoc(collRef, docData).catch(async (serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: collRef.path,
+        operation: 'create',
+        requestResourceData: docData,
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
     });
   }
 
   async updateJob(deptId: string, jobId: string, data: Partial<Job>) {
-    const path = paths.jobs(this.companyId, deptId);
-    const docRef = doc(this.db, path, jobId);
+    const docRef = doc(this.db, paths.jobs(this.companyId, deptId), jobId);
     
-    return updateDoc(docRef, { 
+    updateDoc(docRef, { 
       ...data, 
       updatedAt: serverTimestamp() 
-    }).catch((err) => {
-      this.handleError(docRef.path, 'update', data);
-      throw err;
+    }).catch(async (serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: docRef.path,
+        operation: 'update',
+        requestResourceData: data,
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
     });
   }
 
   async deleteJob(deptId: string, jobId: string) {
-    const path = paths.jobs(this.companyId, deptId);
-    const docRef = doc(this.db, path, jobId);
-    return deleteDoc(docRef).catch((err) => {
-      this.handleError(docRef.path, 'delete');
-      throw err;
+    const docRef = doc(this.db, paths.jobs(this.companyId, deptId), jobId);
+    
+    deleteDoc(docRef).catch(async (serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: docRef.path,
+        operation: 'delete',
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
     });
-  }
-
-  private handleError(path: string, operation: any, data?: any) {
-    const permissionError = new FirestorePermissionError({
-      path,
-      operation,
-      requestResourceData: data,
-    });
-    errorEmitter.emit('permission-error', permissionError);
   }
 }

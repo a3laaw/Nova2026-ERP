@@ -27,10 +27,11 @@ service cloud.firestore {
     }
 
     // التحقق من الرتبة الإدارية (Master Admin) - يعتمد على السجل العالمي مباشرة
+    // تم تحريرها لدعم المدراء الجدد بدون رقم وظيفي
     function isAdmin(companyId) {
       let user = getGlobalUser();
       return isAuthenticated() && user != null && user.companyId == companyId && 
-             (user.roleCode == 'ADMIN' || user.role == 'admin');
+             (user.roleCode == 'ADMIN' || user.role == 'admin' || user.isDeveloper == true);
     }
 
     // --- 3. قواعد الهوية العالمية (Global Identity) ---
@@ -65,6 +66,7 @@ service cloud.firestore {
         allow update: if isAdmin(companyId) || (isAuthenticated() && request.auth.uid == uid);
       }
 
+      // القفل الإداري الشامل للمجموعات الأساسية
       match /{allAdminCollections=**} {
         allow read: if belongsToCompany(companyId);
         allow write: if isAdmin(companyId);
@@ -81,5 +83,6 @@ service cloud.firestore {
     match /{path=**}/variations/{id} { allow read: if belongsToCompany(resource.data.companyId); }
     match /{path=**}/fieldVisits/{id} { allow read: if belongsToCompany(resource.data.companyId); }
     match /{path=**}/attendance/{id} { allow read: if belongsToCompany(resource.data.companyId); }
+    match /{path=**}/departments/{id} { allow read, write: if isAdmin(companyId); }
   }
 }
