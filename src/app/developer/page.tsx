@@ -53,7 +53,6 @@ export default function DeveloperDashboard() {
   const [deletingCompany, setDeletingCompany] = useState<any>(null);
   const [deletingRequest, setDeletingRequest] = useState<any>(null);
 
-  // استقرار الاستعلامات باستخدام useMemo لمنع الانهيار ca9
   const companiesQuery = useMemo(() => 
     (db && globalUser?.isDeveloper) ? query(collection(db, 'companies')) : null, 
   [db, globalUser?.isDeveloper]);

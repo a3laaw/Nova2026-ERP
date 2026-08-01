@@ -3,79 +3,68 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // --- قانون الأمان الأسمى (Sovereign God Mode) ---
-    // منح المطور الرسمي وصولاً مطلقاً وفورياً يتجاوز كافة القيود
+    // --- 1. قانون الأمان الأسمى (Sovereign Master Key) ---
+    // هذا المسار السريع يحل مشكلة permission-denied للمطور فوراً
     function isSovereignDev() {
       return request.auth != null && request.auth.token.email == 'admin@novaflow.com';
     }
 
-    // المفتاح الماستر: يسمح للمطور بالوصول الشامل (قراءة وكتابة) في كافة المستويات
+    // المفتاح الماستر: تجاوز مطلق لكافة القيود للمطور الرسمي
     match /{document=**} {
       allow read, write: if isSovereignDev();
     }
 
-    // --- حماية المجموعات المشتركة (Collection Group Rules) ---
-    // تبسيط القواعد لضمان عمل الفهارس (Indexes) والتقارير الشاملة بدون أخطاء صلاحيات
-    // يسمح بالقراءة لكافة المستخدمين المسجلين لضمان عمل الاستعلامات الشاملة
-    match /{path=**}/variations/{voId} {
-      allow read: if request.auth != null;
-    }
-    match /{path=**}/fieldVisits/{visitId} {
-      allow read: if request.auth != null;
-    }
-    match /{path=**}/attendance/{attId} {
-      allow read: if request.auth != null;
-    }
-
-    // --- الدوال المساعدة المحصنة ---
+    // --- 2. الدوال المساعدة المحصنة ---
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    function getGlobalUser() {
-      let userPath = /databases/$(database)/documents/global_users/$(request.auth.uid);
-      return exists(userPath) ? get(userPath).data : null;
-    }
-
-    function isCompanyActive(cid) {
-      let compPath = /databases/$(database)/documents/companies/$(cid);
-      return exists(compPath) && get(compPath).data.status == 'active';
-    }
-
-    // --- قواعد الهوية والمنشآت (Multi-Tenant Isolation) ---
+    // --- 3. قواعد الهوية العالمية (Global Identity) ---
+    // ضروري جداً للسماح للنظام بقراءة بيانات المستخدم ليعرف من هو
     match /global_users/{uid} {
       allow read: if isAuthenticated() && (request.auth.uid == uid || isSovereignDev());
       allow write: if isSovereignDev() || (isAuthenticated() && request.auth.uid == uid);
     }
     
+    // --- 4. قواعد المنشآت (Multi-Tenant Core) ---
+    match /companies/{companyId} {
+      // السماح بإنشاء المنشأة أثناء التسجيل
+      allow create: if isAuthenticated(); 
+      
+      // حل مشكلة Catch-22: السماح للمستخدم بقراءة بيانات منشأته ليعرف حالتها (نشطة/معلقة)
+      allow read: if isAuthenticated() && (
+        isSovereignDev() || 
+        get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.companyId == companyId
+      );
+
+      // حماية المجموعات الفرعية (البيانات الحساسة)
+      match /{allSubCollections=**} {
+        allow read: if isAuthenticated() && 
+          get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.companyId == companyId && 
+          (isSovereignDev() || (
+            get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.isActive == true &&
+            get(/databases/$(database)/documents/companies/$(companyId)).data.status == 'active'
+          ));
+          
+        allow write: if isAuthenticated() && 
+          get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.companyId == companyId && 
+          (isSovereignDev() || (
+            get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.isActive == true && 
+            (get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.roleCode == 'ADMIN' || get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.role == 'admin')
+          ));
+      }
+    }
+
+    // --- 5. طلبات الانضمام ---
     match /company_requests/{reqId} {
        allow create: if isAuthenticated(); 
        allow read, delete: if isSovereignDev();
     }
 
-    match /companies/{companyId} {
-      allow create: if isAuthenticated(); 
-      allow read: if isAuthenticated() && (isSovereignDev() || (getGlobalUser() != null && getGlobalUser().companyId == companyId));
-      allow delete: if isSovereignDev();
-      
-      // قاعدة خاصة للسماح بإنشاء حساب المالك الأول أثناء التسجيل
-      match /users/{uid} {
-        allow create: if isAuthenticated() && (request.auth.uid == uid);
-        allow read, write: if isAuthenticated() && (isSovereignDev() || (request.auth.uid == uid));
-      }
-
-      match /{allSubCollections=**} {
-        // قفل أمني صارم للمستخدمين العاديين
-        allow read: if isAuthenticated() && 
-          getGlobalUser() != null &&
-          getGlobalUser().companyId == companyId && 
-          (isSovereignDev() || (getGlobalUser().isActive == true && isCompanyActive(companyId)));
-          
-        allow write: if isAuthenticated() && 
-          getGlobalUser() != null &&
-          getGlobalUser().companyId == companyId && 
-          (isSovereignDev() || (getGlobalUser().isActive == true && (getGlobalUser().roleCode == 'ADMIN' || getGlobalUser().role == 'admin')));
-      }
-    }
+    // --- 6. حماية المجموعات المشتركة (Collection Group Rules) ---
+    // تبسيط القواعد لضمان عمل الفهارس دون تعقيد الدوال
+    match /{path=**}/variations/{voId} { allow read: if isAuthenticated(); }
+    match /{path=**}/fieldVisits/{visitId} { allow read: if isAuthenticated(); }
+    match /{path=**}/attendance/{attId} { allow read: if isAuthenticated(); }
   }
 }
