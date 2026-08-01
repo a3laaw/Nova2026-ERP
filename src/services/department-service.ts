@@ -8,8 +8,6 @@ import {
   updateDoc, 
   deleteDoc, 
   serverTimestamp,
-  writeBatch,
-  getDocs
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
@@ -20,7 +18,7 @@ export class DepartmentService {
   constructor(private db: Firestore, private companyId: string) {}
 
   /**
-   * إضافة قسم جديد بنمط غير معطل (Non-blocking)
+   * إضافة قسم جديد بنمط الكتابة غير المعطلة لضمان استقرار الواجهة.
    */
   async addDepartment(data: Omit<Department, 'id' | 'createdAt' | 'updatedAt' | 'companyId'>) {
     const path = paths.departments(this.companyId);
@@ -32,7 +30,7 @@ export class DepartmentService {
       updatedAt: serverTimestamp() 
     };
     
-    // عدم استخدام await لضمان استجابة الواجهة الفورية
+    // تنفيذ العملية بدون انتظار (Non-blocking) مع معالجة الخطأ سياقياً
     addDoc(collRef, docData).catch(async (serverError) => {
       const permissionError = new FirestorePermissionError({
         path: collRef.path,
