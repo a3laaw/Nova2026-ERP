@@ -38,7 +38,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export default function DeveloperDashboard() {
-  const { lang, dir, t } = useLanguage();
+  const { lang, dir, t } = useLanguage(); // تم تصحيح استخراج t هنا
   const { globalUser, loading: authLoading } = useAuthContext();
   const db = useFirestore();
   const isRtl = lang === 'ar';
@@ -54,6 +54,7 @@ export default function DeveloperDashboard() {
   const [deletingCompany, setDeletingCompany] = useState<any>(null);
   const [deletingRequest, setDeletingRequest] = useState<any>(null);
 
+  // استقرار الاستعلامات لمنع الانهيار الداخلي (Internal Assertion Failed)
   const companiesQuery = useMemo(() => 
     (db && globalUser?.isDeveloper) ? query(collection(db, 'companies')) : null, 
   [db, globalUser?.isDeveloper]);

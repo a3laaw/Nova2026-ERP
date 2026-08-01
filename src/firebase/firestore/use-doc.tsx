@@ -8,6 +8,7 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
 
 /**
  * خطاف جلب المستندات المدرع (Sovereign Hardened Document Hook).
+ * يحل مشكلة الانهيار الداخلي عبر تثبيت المراجع والمقارنة العميقة.
  */
 export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | null) {
   const [data, setData] = useState<T | null>(null);
@@ -19,9 +20,10 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | n
   const lastDataHashRef = useRef<string>("");
 
   useEffect(() => {
-    const isNewRef = !docRef || !lastRefRef.current || !refEqual(docRef, lastRefRef.current);
+    // التحقق من تكرار المراجع عبر refEqual
+    const isSameRef = docRef && lastRefRef.current && refEqual(docRef, lastRefRef.current);
     
-    if (!isNewRef && !loading) return;
+    if (isSameRef && !loading) return;
 
     if (unsubscribeRef.current) {
       unsubscribeRef.current();

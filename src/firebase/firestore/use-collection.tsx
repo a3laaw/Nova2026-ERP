@@ -8,7 +8,7 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
 
 /**
  * خطاف جلب المجموعات المدرع (Sovereign Hardened Collection Hook).
- * يحل مشكلة Assertion Failure عبر ضمان عدم تكرار المستمعين عند إعادة الرندر.
+ * يمنع الانهيار الداخلي (ca9) عبر ضمان استقرار المستمعين والمقارنة العميقة.
  */
 export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
   const [data, setData] = useState<T[]>([]);
@@ -20,12 +20,13 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
   const lastDataHashRef = useRef<string>("");
 
   useEffect(() => {
-    // 1. التحقق من استقرار الاستعلام (منع الانهيار الداخلي ID: ca9)
-    const isNewQuery = !query || !lastQueryRef.current || !queryEqual(query, lastQueryRef.current);
+    // 1. التحقق من استقرار الاستعلام عبر queryEqual
+    // هذا يمنع إعادة الاشتراك المتكرر الذي يسبب خطأ ca9
+    const isSameQuery = query && lastQueryRef.current && queryEqual(query, lastQueryRef.current);
     
-    if (!isNewQuery && !loading) return;
+    if (isSameQuery && !loading) return;
 
-    // تنظيف المستمع القديم فوراً
+    // تنظيف المستمع القديم فوراً قبل البدء بجديد
     if (unsubscribeRef.current) {
       unsubscribeRef.current();
       unsubscribeRef.current = null;
@@ -55,7 +56,7 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
           ...doc.data(),
         })) as unknown as T[];
         
-        // منع تحديث الحالة إذا كانت البيانات متطابقة (توفير الرندر)
+        // منع تحديث الحالة إذا كانت البيانات متطابقة تماماً (Deep Hash)
         const currentHash = JSON.stringify(items);
         if (currentHash !== lastDataHashRef.current) {
           lastDataHashRef.current = currentHash;
@@ -70,9 +71,10 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
         setLoading(false);
         setError(serverError);
         
+        // معالجة أخطاء الصلاحيات مركزياً
         if (serverError.code === 'permission-denied') {
           errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: 'collection_query',
+            path: 'collection_group_query',
             operation: 'list',
           } satisfies SecurityRuleContext));
         }
