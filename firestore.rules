@@ -3,7 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
     
     // --- 1. قانون الأمان الأسمى (Sovereign Master Key) ---
-    // المطور الرسمي يتجاوز كافة القيود فوراً لضمان عمل بوابة الرقابة ومنع أخطاء collectionGroup
+    // المطور الرسمي يتجاوز كافة القيود فوراً لضمان عمل التقارير ومنع أخطاء collectionGroup
     function isSovereignDev() {
       return request.auth != null && request.auth.token.email == 'admin@novaflow.com';
     }
@@ -37,13 +37,11 @@ service cloud.firestore {
     match /companies/{companyId} {
       allow create: if isAuthenticated(); 
       
-      // فك العقدة: السماح دائماً بقراءة بيانات المنشأة الأساسية (الاسم، الحالة) 
-      // لتمكين النظام من فحص الحالة وعرض شاشة "بانتظار التفعيل" بدلاً من إظهار خطأ صلاحيات
+      // السماح دائماً بقراءة بيانات المنشأة الأساسية لفحص الحالة
       allow read: if isAuthenticated(); 
 
       // قواعد المستخدمين داخل المنشأة
       match /users/{uid} {
-        // السماح بإنشاء الحساب الأول في المنشأة أثناء التسجيل
         allow create: if isAuthenticated() && request.auth.uid == uid;
         allow read: if isAuthenticated();
         allow update: if isAuthenticated() && request.auth.uid == uid;
