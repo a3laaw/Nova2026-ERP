@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -10,12 +10,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCollection, useFirestore } from '@/firebase';
 import { collection, query, doc, updateDoc, serverTimestamp, writeBatch, getDoc, deleteDoc, where, getDocs } from 'firebase/firestore';
 import { 
-  Loader2, CheckCircle2, ShieldAlert, Ban, RefreshCw, 
-  Edit3, Save, Users, Zap, Building2, 
-  CalendarClock, Timer, ShieldCheck, AlertTriangle, X,
-  ExternalLink, Lock, Unlock, CreditCard, History,
-  CalendarDays, Play, Pause, Power, Info, Settings2, Sparkles,
-  Search, Mail, Key, Copy, Eye, EyeOff, ChevronRight, Trash2
+  Loader2, CheckCircle2, RefreshCw, 
+  Save, Users, Zap, Building2, 
+  ShieldCheck, Trash2, ChevronRight,
+  Power, Search, Key, Copy, Eye, EyeOff,
+  Settings2, Info, X
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useLanguage } from '@/context/language-context';
@@ -54,7 +53,7 @@ export default function DeveloperDashboard() {
   const [deletingCompany, setDeletingCompany] = useState<any>(null);
   const [deletingRequest, setDeletingRequest] = useState<any>(null);
 
-  // استقرار الاستعلامات لمنع انهيار ca9
+  // استقرار الاستعلامات باستخدام useMemo لمنع الانهيار ca9
   const companiesQuery = useMemo(() => 
     (db && globalUser?.isDeveloper) ? query(collection(db, 'companies')) : null, 
   [db, globalUser?.isDeveloper]);
@@ -145,6 +144,7 @@ export default function DeveloperDashboard() {
       const reqQuery = query(collection(db, 'company_requests'), where('companyId', '==', deletingCompany.id));
       const reqSnap = await getDocs(reqQuery);
       reqSnap.forEach(d => batch.delete(d.ref));
+      
       await batch.commit();
       toast({ title: isRtl ? "تم حذف المنشأة نهائياً" : "Company deleted permanently" });
       setDeletingCompany(null);

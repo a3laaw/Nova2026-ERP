@@ -5,8 +5,13 @@ service cloud.firestore {
     
     // --- قانون الأمان الأسمى (Sovereign God Mode) ---
     // منح المطور الرسمي وصولاً مطلقاً وفورياً يتجاوز كافة القيود
+    // تم وضعه في المقدمة وبدون دوال معقدة لضمان عمل استعلامات المجموعات (ca9 Fix)
     function isSovereignDev() {
-      return request.auth != null && request.auth.token.email == 'admin@novaflow.com';
+      return request.auth != null && (
+        request.auth.token.email == 'admin@novaflow.com' ||
+        (exists(/databases/$(database)/documents/global_users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.isDeveloper == true)
+      );
     }
 
     // المفتاح الماستر: يسمح للمطور بالوصول الشامل (قراءة وكتابة)
@@ -43,7 +48,8 @@ service cloud.firestore {
 
     // --- قواعد الهوية والمنشآت (Multi-Tenant Isolation) ---
     match /global_users/{uid} {
-      allow read, write: if isAuthenticated() && (request.auth.uid == uid);
+      allow read: if isAuthenticated() && (request.auth.uid == uid || isSovereignDev());
+      allow write: if isSovereignDev() || (isAuthenticated() && request.auth.uid == uid);
     }
     
     match /company_requests/{reqId} {
@@ -54,6 +60,7 @@ service cloud.firestore {
     match /companies/{companyId} {
       allow create: if isAuthenticated(); 
       allow read: if isAuthenticated() && (isSovereignDev() || (getGlobalUser() != null && getGlobalUser().companyId == companyId));
+      allow delete: if isSovereignDev();
       
       // قاعدة خاصة للسماح بإنشاء حساب المالك الأول أثناء التسجيل
       match /users/{uid} {

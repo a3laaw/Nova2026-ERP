@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useCallback, useMemo } from 'react';
@@ -29,7 +30,7 @@ export function usePermissions() {
     return {
       ...access,
       userContext: {
-        uid: user?.uid || '', // استخدام user.uid الفعلي من Firebase
+        uid: user?.uid || '',
         departmentId: globalUser?.departmentId || ''
       }
     };
