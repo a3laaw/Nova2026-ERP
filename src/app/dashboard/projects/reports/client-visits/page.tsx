@@ -8,32 +8,26 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Search, Loader2, ArrowRight, 
-  MapPinned, UserCircle, Calculator,
+  MapPinned, UserCircle,
   MessageSquare, Hammer, Clock,
   CalendarDays, CheckCircle2,
   Printer, Filter, LayoutGrid, X,
-  XCircle, AlertTriangle, FileText,
-  User, History, ShieldCheck, Phone,
+  AlertTriangle, History, ShieldCheck, Phone,
   RotateCcw, HardHat, Camera, Landmark,
-  Layers, Zap
+  Users, Zap
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, where, getDocs, orderBy, limit, collectionGroup } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, collectionGroup } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
 import { Client } from '@/types/client';
 import { Appointment } from '@/types/appointment';
-import { FieldVisit } from '@/types/field-visit';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
 
-/**
- * @fileOverview سجل تفاعل العملاء الشامل (Sovereign Universal Client Dossier).
- * تم تحديثه لدعم التبويبات المنفصلة (Tabs) لكل نوع من أنواع التفاعل.
- */
 export default function ClientVisitsReportPage() {
   const { globalUser } = useAuthContext();
   const { lang, dir, t } = useLanguage();
@@ -47,7 +41,7 @@ export default function ClientVisitsReportPage() {
   const [unifiedTimeline, setUnifiedTimeline] = useState<any[]>([]);
   const [loadingTimeline, setLoadingTimeline] = useState(false);
 
-  // 1. جلب قائمة العملاء للبحث العلوي
+  // جلب قائمة العملاء للبحث
   const clientsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.clients(companyId)), orderBy('nameAr')) : null, 
   [db, companyId]);
@@ -62,18 +56,20 @@ export default function ClientVisitsReportPage() {
     ).slice(0, 5);
   }, [allClients, searchTerm]);
 
-  // 2. محرك دمج البيانات الشامل
+  // محرك دمج البيانات التخصصي
   useEffect(() => {
     async function fetchFullHistory() {
       if (!selectedClientId || !db || !companyId) return;
       setLoadingTimeline(true);
       try {
+        // 1. جلب المواعيد (معماري وقاعات)
         const apptsQuery = query(
           collection(db, paths.appointments(companyId)), 
           where('clientId', '==', selectedClientId)
         );
         const apptsSnap = await getDocs(apptsQuery);
         
+        // 2. جلب تقارير الموقع (ميداني)
         const fieldVisitsQuery = query(
           collectionGroup(db, 'fieldVisits'), 
           where('companyId', '==', companyId),
@@ -97,6 +93,7 @@ export default function ClientVisitsReportPage() {
 
         const merged = [...appts, ...fieldVisits].sort((a, b) => b.displayDate.localeCompare(a.displayDate));
 
+        // جلب البيانات الإضافية (تعديلات وتعليقات) لكل حركة
         const detailedData = await Promise.all(merged.map(async (item: any) => {
            let revisions: any[] = [];
            let comments: any[] = [];
@@ -130,20 +127,20 @@ export default function ClientVisitsReportPage() {
     fetchFullHistory();
   }, [selectedClientId, db, companyId]);
 
-  // 3. محرك الفلترة للتابات
+  // محرك التبويبات التخصصي المطلوب
   const tabData = useMemo(() => {
     return {
       all: unifiedTimeline,
-      field: unifiedTimeline.filter(i => i.entryType === 'field_report'),
-      meetings: unifiedTimeline.filter(i => i.entryType === 'appointment' && i.type !== 'hall_meeting'),
-      halls: unifiedTimeline.filter(i => i.entryType === 'appointment' && i.type === 'hall_meeting')
+      field: unifiedTimeline.filter(i => i.entryType === 'field_report'), // التاب الميداني
+      architectural: unifiedTimeline.filter(i => i.entryType === 'appointment' && i.type !== 'hall_meeting'), // التاب المعماري
+      halls: unifiedTimeline.filter(i => i.entryType === 'appointment' && i.type === 'hall_meeting') // تاب القاعات
     };
   }, [unifiedTimeline]);
 
   const selectedClient = allClients?.find(c => c.id === selectedClientId);
 
   const formatSovereignDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', { 
+    return new Date(dateStr).toLocaleDateString(isRtl ? 'ar-KW' : 'en-US', { 
       day: 'numeric', 
       month: 'short', 
       year: 'numeric' 
@@ -151,14 +148,14 @@ export default function ClientVisitsReportPage() {
   };
 
   const renderTimelineTable = (data: any[]) => (
-    <div className="border-2 border-slate-900 rounded-xl overflow-hidden bg-white shadow-xl animate-in fade-in duration-300">
+    <div className="border-2 border-slate-900 rounded-2xl overflow-hidden bg-white shadow-2xl animate-in fade-in duration-500">
       <Table>
         <TableHeader className="bg-slate-900">
           <TableRow className="hover:bg-slate-900 border-0">
-            <TableHead className="py-6 ps-8 text-white font-black uppercase text-[10px] tracking-widest w-[160px]">{isRtl ? 'التاريخ' : 'Date'}</TableHead>
-            <TableHead className="text-white font-black uppercase text-[10px] tracking-widest w-[120px]">{isRtl ? 'النوع' : 'Category'}</TableHead>
-            <TableHead className="text-white font-black uppercase text-[10px] tracking-widest">{isRtl ? 'المخرجات الفنية / الإنجاز' : 'Outputs & Progress'}</TableHead>
-            <TableHead className="text-white font-black uppercase text-[10px] tracking-widest">{isRtl ? 'المهندس / التوثيق' : 'Engineer / Log'}</TableHead>
+            <TableHead className="py-6 ps-8 text-white font-black uppercase text-[10px] tracking-widest w-[180px]">{isRtl ? 'التاريخ والوقت' : 'Date & Time'}</TableHead>
+            <TableHead className="text-white font-black uppercase text-[10px] tracking-widest w-[140px]">{isRtl ? 'نوع الزيارة' : 'Visit Type'}</TableHead>
+            <TableHead className="text-white font-black uppercase text-[10px] tracking-widest">{isRtl ? 'التفاصيل والمخرجات الفنية' : 'Details & Technical Outputs'}</TableHead>
+            <TableHead className="text-white font-black uppercase text-[10px] tracking-widest">{isRtl ? 'المسؤول الموثق' : 'Responsible Staff'}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -172,70 +169,77 @@ export default function ClientVisitsReportPage() {
                   <div className="space-y-1">
                     <p className="font-black text-slate-900 text-sm">{formatSovereignDate(item.displayDate)}</p>
                     <p className="text-[10px] font-bold text-slate-400 uppercase">
-                      {isAppt ? new Date(item.start).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 'Site Log'}
+                      {isAppt ? new Date(item.start).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 'Field Log'}
                     </p>
                   </div>
                 </td>
                 <td className="align-top py-6 text-start">
                   <Badge className={cn(
-                    "font-black text-[8px] uppercase px-3 py-1 rounded-md border-0 shadow-sm",
-                    isAppt ? (isHall ? "bg-indigo-500 text-white" : "bg-blue-500 text-white") : "bg-emerald-500 text-white"
+                    "font-black text-[8px] uppercase px-4 py-1.5 rounded-lg border-0 shadow-sm",
+                    isAppt ? (isHall ? "bg-indigo-600 text-white" : "bg-orange-500 text-white") : "bg-emerald-600 text-white"
                   )}>
-                    {isAppt ? (isHall ? "Hall Meeting" : "Site Visit") : "Field Report"}
+                    {isAppt ? (isHall ? (isRtl ? "اجتماع قاعة" : "Hall Session") : (isRtl ? "زيارة معمارية" : "Arch Visit")) : (isRtl ? "تقرير ميداني" : "Field Report")}
                   </Badge>
                 </td>
                 <td className="align-top py-6 text-start">
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {item.entryType === 'field_report' && (
-                      <div className="space-y-2">
-                        <div className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-100 flex items-start gap-3">
-                          <Hammer className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                          <div className="text-start">
-                            <p className="text-[11px] font-black text-slate-800 leading-tight">{item.completedWork || (isRtl ? 'تقرير إنجاز موقع' : 'Site Progress Report')}</p>
-                            <div className="flex items-center gap-3 mt-1.5">
-                              <Badge variant="outline" className="bg-white border-emerald-200 text-emerald-600 font-black text-[9px] h-5 px-2">+{item.progressPercentage}% Progress</Badge>
+                      <div className="space-y-3">
+                        <div className="p-4 bg-emerald-50/50 rounded-2xl border-2 border-emerald-100 flex items-start gap-4 shadow-sm">
+                          <HardHat className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
+                          <div className="text-start space-y-1">
+                            <p className="text-xs font-black text-slate-800 leading-relaxed">{item.completedWork || (isRtl ? 'توثيق إنجاز ميداني' : 'Site Progress Log')}</p>
+                            <div className="flex items-center gap-3 pt-1">
+                              <Badge className="bg-emerald-600 text-white font-black text-[8px] h-5 px-3">+{item.progressPercentage}% Completion</Badge>
                               <span className="text-[9px] font-bold text-slate-400 flex items-center gap-1"><Users className="h-3 w-3" /> {item.workersCount} Workers</span>
                             </div>
                           </div>
                         </div>
                         {item.photoUrls && item.photoUrls.length > 0 && (
-                          <div className="flex gap-1.5 flex-wrap pt-1">
-                            {item.photoUrls.slice(0, 4).map((url: string, i: number) => (
-                              <div key={i} className="h-10 w-10 rounded-lg border-2 border-white shadow-sm overflow-hidden bg-slate-100">
+                          <div className="flex gap-2 flex-wrap px-1">
+                            {item.photoUrls.map((url: string, i: number) => (
+                              <div key={i} className="h-12 w-12 rounded-xl border-2 border-white shadow-md overflow-hidden bg-slate-100 hover:scale-110 transition-transform cursor-pointer">
                                 <img src={url} alt="Site" className="h-full w-full object-cover" />
                               </div>
                             ))}
-                            {item.photoUrls.length > 4 && <div className="h-10 w-10 rounded-lg bg-slate-900 text-white flex items-center justify-center text-[9px] font-black">+{item.photoUrls.length - 4}</div>}
                           </div>
                         )}
                       </div>
                     )}
                     {isAppt && (
-                      <div className="space-y-2">
-                        <p className="text-[11px] font-bold text-slate-700 leading-relaxed">{item.title}</p>
+                      <div className="space-y-3">
+                        <p className="text-sm font-bold text-slate-700 leading-relaxed">{item.title}</p>
                         {item.revisions?.length > 0 && item.revisions.map((rev: any, i: number) => (
-                          <div key={`rev-${i}`} className="flex items-start gap-2 bg-amber-50/50 p-2 rounded-lg border border-amber-100">
-                            <RotateCcw className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
-                            <p className="text-[10px] font-black text-amber-800 leading-tight">{rev.content}</p>
+                          <div key={`rev-${i}`} className="flex items-start gap-3 bg-orange-50/50 p-3 rounded-xl border-2 border-orange-100 animate-in zoom-in-95">
+                            <RotateCcw className="h-4 w-4 text-orange-600 shrink-0 mt-0.5" />
+                            <div className="text-start">
+                               <p className="text-[10px] font-black text-orange-900 uppercase tracking-tighter">Design Revision Logged</p>
+                               <p className="text-xs font-bold text-orange-800 mt-0.5">{rev.content}</p>
+                            </div>
                           </div>
                         ))}
-                        {item.comments?.length > 0 && item.comments.map((c: any, i: number) => (
-                          <div key={`c-${i}`} className="ps-4 border-s-2 border-primary/20">
-                            <p className="text-[11px] font-medium text-slate-500 italic">"{c.content}"</p>
-                          </div>
-                        ))}
+                        {item.comments?.length > 0 && (
+                           <div className="space-y-2 pt-2">
+                              {item.comments.map((c: any, i: number) => (
+                                <div key={`c-${i}`} className="ps-4 border-s-4 border-primary/20 bg-slate-50/50 p-2 rounded-lg">
+                                  <p className="text-[11px] font-bold text-slate-600 italic">"{c.content}"</p>
+                                </div>
+                              ))}
+                           </div>
+                        )}
                       </div>
                     )}
                   </div>
                 </td>
                 <td className="align-top py-6 text-start">
                   <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-xl bg-slate-50 border flex items-center justify-center text-slate-400">
-                      <HardHat className="h-5 w-5" />
-                    </div>
+                    <Avatar className="h-10 w-10 rounded-2xl border-2 border-white shadow-md">
+                       <AvatarImage src={`https://picsum.photos/seed/${item.engineerId || item.id}/40/40`} />
+                       <AvatarFallback className="bg-primary/10 text-primary font-black text-xs">{item.engineerName?.charAt(0)}</AvatarFallback>
+                    </Avatar>
                     <div className="text-start">
                       <p className="font-black text-xs text-slate-800">{item.engineerName}</p>
-                      <p className="text-[8px] font-black text-primary uppercase mt-0.5">Sovereign Signature</p>
+                      <p className="text-[8px] font-black text-primary uppercase mt-0.5 tracking-widest">Sovereign Authority</p>
                     </div>
                   </div>
                 </td>
@@ -244,8 +248,8 @@ export default function ClientVisitsReportPage() {
           })}
           {data.length === 0 && (
             <TableRow>
-              <TableCell colSpan={4} className="py-20 text-center text-slate-300 italic font-bold">
-                {isRtl ? 'لا توجد سجلات في هذا القسم.' : 'No records in this section.'}
+              <TableCell colSpan={4} className="py-32 text-center text-slate-300 italic font-bold">
+                {isRtl ? 'لا يوجد سجلات تخصصية في هذا القسم للعميل المختار.' : 'No specialized records found in this section.'}
               </TableCell>
             </TableRow>
           )}
@@ -255,19 +259,19 @@ export default function ClientVisitsReportPage() {
   );
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-20" dir={dir}>
+    <div className="space-y-8 animate-in fade-in duration-700 pb-20" dir={dir}>
       <div className="flex flex-col gap-6 print:hidden">
         <div className="text-start">
-           <h1 className="text-3xl font-black font-headline flex items-center gap-3 text-slate-900">
-             <History className="h-10 w-10 text-primary" />
-             {isRtl ? 'سجل تفاعل العملاء (Universal Dossier)' : 'Unified Client Ledger'}
+           <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
+             <History className="h-12 w-12 text-primary" />
+             {isRtl ? 'سجل تفاعل العملاء الشامل' : 'Universal Client Dossier'}
            </h1>
            <p className="text-muted-foreground font-bold text-sm opacity-70 italic">
-              {isRtl ? 'تتبع تاريخ العميل الموحد: لقاءات، قاعات، وتقارير إنجاز ميدانية.' : 'Track unified history: meetings, halls, and field progress.'}
+              {isRtl ? 'رادار موحد يدمج الزيارات المعمارية، القاعات، والتقارير الميدانية لضمان السيادة المعلوماتية.' : 'Unified radar merging architectural, halls, and field visits.'}
            </p>
         </div>
 
-        <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-visible z-50">
+        <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-visible z-50">
            <CardContent className="p-8">
               <div className="relative max-w-2xl mx-auto">
                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-3 block text-start">
@@ -305,65 +309,66 @@ export default function ClientVisitsReportPage() {
 
       {!selectedClientId ? (
         <div className="h-[400px] flex flex-col items-center justify-center text-center opacity-30 animate-pulse print:hidden">
-           <UserCircle className="h-24 w-24 text-slate-200 mb-4" />
-           <p className="text-xl font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'يرجى اختيار عميل لبدء التحليل' : 'Select Client to begin dossier'}</p>
+           <UserCircle className="h-32 w-32 text-slate-200 mb-4" />
+           <p className="text-2xl font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'يرجى اختيار عميل لبدء التحليل الشامل' : 'Select Client to begin full audit'}</p>
         </div>
       ) : loadingTimeline ? (
         <div className="h-[400px] flex flex-col items-center justify-center gap-4 print:hidden">
            <Loader2 className="h-12 w-12 animate-spin text-primary" />
-           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Merging All Site Logs (Standard 123)...</p>
+           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Merging Sovereign Site Logs (123 Scale)...</p>
         </div>
       ) : (
-        <PrintWrapper title={isRtl ? "كشف سجل تفاعل العميل الموحد" : "Universal Client Interaction Ledger"}>
+        <PrintWrapper title={isRtl ? "كشف سجل تفاعل العميل الشامل" : "Universal Client Dossier Statement"}>
            <div className="space-y-10">
-              <div className="p-8 rounded-[2.5rem] bg-slate-50 border-2 border-white shadow-inner flex flex-col md:flex-row justify-between items-center gap-8 relative overflow-hidden text-start">
-                 <div className="space-y-2 relative z-10">
-                    <p className="text-[10px] font-black text-primary uppercase tracking-widest">{isRtl ? 'ملف العميل المالك' : 'Client Profile'}</p>
-                    <h2 className="text-3xl font-black text-slate-900">{selectedClient?.nameAr}</h2>
+              <div className="p-10 rounded-[3rem] bg-slate-900 text-white flex flex-col md:flex-row justify-between items-center gap-8 relative overflow-hidden text-start shadow-2xl">
+                 <div className="absolute top-0 right-0 p-10 opacity-5"><Landmark className="h-48 w-48 text-primary" /></div>
+                 <div className="space-y-3 relative z-10">
+                    <p className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">{isRtl ? 'ملف العميل المعتمد' : 'Client Authority Record'}</p>
+                    <h2 className="text-4xl font-black font-headline">{selectedClient?.nameAr}</h2>
                     <div className="flex gap-4 items-center">
-                       <Badge className="bg-slate-900 text-white border-0 font-black px-4 py-1 rounded-lg uppercase text-[10px] tracking-widest">{selectedClient?.fileNumber}</Badge>
-                       <span className="text-slate-400 font-bold text-xs flex items-center gap-1"><Phone className="h-3 w-3" /> {selectedClient?.mobile}</span>
+                       <Badge className="bg-primary text-white border-0 font-black px-6 py-1.5 rounded-xl uppercase text-[11px] tracking-widest shadow-lg">{selectedClient?.fileNumber}</Badge>
+                       <span className="text-slate-400 font-bold text-sm flex items-center gap-2 border-s border-white/10 ps-4"><Phone className="h-4 w-4" /> {selectedClient?.mobile}</span>
                     </div>
                  </div>
                  <div className="flex items-center gap-4 relative z-10">
-                    <div className="text-center bg-white p-5 rounded-3xl shadow-sm border border-slate-100 min-w-[120px]">
-                       <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Total Interactions</p>
-                       <p className="text-3xl font-black text-slate-900">{unifiedTimeline.length}</p>
+                    <div className="text-center bg-white/5 backdrop-blur-md p-6 rounded-[2rem] border border-white/10 min-w-[150px] shadow-2xl">
+                       <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Audit Entries</p>
+                       <p className="text-4xl font-black text-white font-mono">{unifiedTimeline.length}</p>
                     </div>
                  </div>
               </div>
 
-              {/* Tabs System for different visit types */}
+              {/* نظام التبويبات التخصصي المطلوب (الميداني، المعماري، القاعات) */}
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="bg-white border-2 border-slate-100 p-1 rounded-xl h-14 w-full md:w-fit gap-2 shadow-sm mb-6 print:hidden">
-                   <TabsTrigger value="all" className="rounded-lg font-black text-xs px-8 data-[state=active]:bg-slate-900 data-[state=active]:text-white transition-all gap-2 h-full">
-                      <LayoutGrid className="h-4 w-4" /> {isRtl ? 'الكل' : 'All'}
+                <TabsList className="bg-white border-2 border-slate-100 p-1.5 rounded-2xl h-16 w-full md:w-fit gap-2 shadow-xl mb-10 print:hidden ring-1 ring-black/[0.02]">
+                   <TabsTrigger value="all" className="rounded-xl font-black text-xs px-8 data-[state=active]:bg-slate-900 data-[state=active]:text-white transition-all gap-2 h-full">
+                      <LayoutGrid className="h-4 w-4" /> {isRtl ? 'الكل' : 'Combined'}
                    </TabsTrigger>
-                   <TabsTrigger value="field" className="rounded-lg font-black text-xs px-8 data-[state=active]:bg-emerald-600 data-[state=active]:text-white transition-all gap-2 h-full">
-                      <HardHat className="h-4 w-4" /> {isRtl ? 'الميدانية' : 'Field Reports'}
+                   <TabsTrigger value="field" className="rounded-xl font-black text-xs px-8 data-[state=active]:bg-emerald-600 data-[state=active]:text-white transition-all gap-2 h-full">
+                      <HardHat className="h-4 w-4" /> {isRtl ? 'الميداني' : 'Field'}
                    </TabsTrigger>
-                   <TabsTrigger value="meetings" className="rounded-lg font-black text-xs px-8 data-[state=active]:bg-blue-600 data-[state=active]:text-white transition-all gap-2 h-full">
-                      <CalendarDays className="h-4 w-4" /> {isRtl ? 'اللقاءات' : 'Meetings'}
+                   <TabsTrigger value="architectural" className="rounded-xl font-black text-xs px-8 data-[state=active]:bg-orange-500 data-[state=active]:text-white transition-all gap-2 h-full">
+                      <Zap className="h-4 w-4" /> {isRtl ? 'المعماري' : 'Arch'}
                    </TabsTrigger>
-                   <TabsTrigger value="halls" className="rounded-lg font-black text-xs px-8 data-[state=active]:bg-indigo-600 data-[state=active]:text-white transition-all gap-2 h-full">
+                   <TabsTrigger value="halls" className="rounded-xl font-black text-xs px-8 data-[state=active]:bg-indigo-600 data-[state=active]:text-white transition-all gap-2 h-full">
                       <Landmark className="h-4 w-4" /> {isRtl ? 'القاعات' : 'Halls'}
                    </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="all">{renderTimelineTable(tabData.all)}</TabsContent>
-                <TabsContent value="field">{renderTimelineTable(tabData.field)}</TabsContent>
-                <TabsContent value="meetings">{renderTimelineTable(tabData.meetings)}</TabsContent>
-                <TabsContent value="halls">{renderTimelineTable(tabData.halls)}</TabsContent>
+                <TabsContent value="all" className="animate-in fade-in zoom-in-95">{renderTimelineTable(tabData.all)}</TabsContent>
+                <TabsContent value="field" className="animate-in fade-in zoom-in-95">{renderTimelineTable(tabData.field)}</TabsContent>
+                <TabsContent value="architectural" className="animate-in fade-in zoom-in-95">{renderTimelineTable(tabData.architectural)}</TabsContent>
+                <TabsContent value="halls" className="animate-in fade-in zoom-in-95">{renderTimelineTable(tabData.halls)}</TabsContent>
               </Tabs>
 
-              <div className="p-8 rounded-[2.5rem] bg-slate-50 border-2 border-dashed border-primary/20 flex items-start gap-4 text-start">
-                 <ShieldCheck className="h-6 w-6 text-primary shrink-0 mt-1" />
-                 <div className="space-y-1">
-                    <h5 className="font-black text-xs text-slate-800 uppercase tracking-widest">{isRtl ? 'إقرار صحة البيانات الموحدة' : 'Unified Data Validation'}</h5>
-                    <p className="text-[9px] text-slate-400 font-bold leading-relaxed italic">
+              <div className="p-10 rounded-[3rem] bg-slate-50 border-2 border-dashed border-primary/20 flex items-start gap-6 text-start shadow-inner">
+                 <ShieldCheck className="h-8 w-8 text-primary shrink-0 mt-1" />
+                 <div className="space-y-2">
+                    <h5 className="font-black text-sm text-slate-800 uppercase tracking-widest">{isRtl ? 'إقرار وحدة المرجع المعلوماتي' : 'Unified Data Integrity Clause'}</h5>
+                    <p className="text-[10px] text-slate-500 font-bold leading-relaxed italic">
                        {isRtl 
-                         ? 'تم استخراج هذا التقرير الشامل بنظام الأرقام القياسية الموحد (123). يدمج هذا السجل كافة الحركات الميدانية والمكتبية المسجلة للعميل عبر كافة موديولات النظام لضمان شفافية الأداء والرقابة.' 
-                         : 'Universal report generated in 123 standard numerals. This dossier merges all field and office interactions recorded for the client across all system modules to ensure performance transparency and oversight.'}
+                         ? 'هذا التقرير هو المرجع السيادي الوحيد لكافة حركات العميل الموثقة بنظام الأرقام القياسية (123). يتم دمج سجلات رادار الميدان ورادار القاعات ورادار المعماري آلياً لضمان عدم حدوث تضارب في المسؤوليات أو المواعيد، ولتمكين الإدارة من مراجعة جودة الخدمة المقدمة للعميل في كافة مراحل التعاقد والتنفيذ.' 
+                         : 'This report is the sole sovereign reference for all client interactions indexed by 123 standards. Field, Hall, and Arch logs are merged automatically to prevent responsibility overlaps and enable executive quality audits across all contracting and execution stages.'}
                     </p>
                  </div>
               </div>
