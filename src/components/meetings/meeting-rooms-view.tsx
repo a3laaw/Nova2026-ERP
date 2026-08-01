@@ -38,6 +38,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from '@/hooks/use-toast';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import {
   Dialog,
   DialogContent,
@@ -108,7 +110,6 @@ export function MeetingRoomsView() {
   const { data: clients } = useCollection<any>(clientsQuery);
   const { data: activityTypes } = useCollection<ActivityType>(actTypesQuery);
 
-  // صلاحية حجز القاعات (Sovereign Guard)
   const canBook = isAdmin || check('ref', 'create').can;
 
   useEffect(() => {
@@ -149,19 +150,25 @@ export function MeetingRoomsView() {
     }
   }, []);
 
-  const confirmDelete = async (id?: string) => {
+  const confirmDelete = (id?: string) => {
     const targetId = id || deletingId;
     if (!targetId || !db || !companyId) return;
-    const service = new AppointmentService(db, companyId);
-    try {
-       await service.deleteAppointment(targetId);
-       toast({ title: isRtl ? "تم الحذف بنجاح" : "Deleted Successfully" });
-       setDeletingId(null);
-       setDialogOpen(false);
-       forceThaw();
-    } catch (e) {
-       toast({ variant: "destructive", title: t('error') });
-    }
+    
+    const docRef = doc(db, paths.appointments(companyId), targetId);
+    deleteDoc(docRef)
+      .then(() => {
+        toast({ title: isRtl ? "تم الحذف بنجاح" : "Deleted Successfully" });
+        setDeletingId(null);
+        setDialogOpen(false);
+        forceThaw();
+      })
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'delete'
+        } satisfies SecurityRuleContext);
+        errorEmitter.emit('permission-error', permissionError);
+      });
   };
 
   if (!mounted || apptsLoading || roomsLoading || !settings) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
@@ -230,7 +237,7 @@ export function MeetingRoomsView() {
            rooms={allRooms} 
            appts={filteredAppointments}
            onAction={handleAction}
-           onDelete={confirmDelete}
+           onDelete={(id: string) => setDeletingId(id)}
            isRtl={isRtl}
            t={t}
            settings={settings}
@@ -255,7 +262,7 @@ export function MeetingRoomsView() {
           existingAppts={rawAppointments || []}
           isRtl={isRtl}
           t={t}
-          onDelete={confirmDelete}
+          onDelete={(id: string) => setDeletingId(id)}
           dir={dir}
           settings={settings}
           isAdmin={isAdmin}
@@ -480,24 +487,30 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
 
   const fetchClientTransactions = async (cid: string, actId?: string) => {
     if (!db || !companyId) return;
-    let q = query(collection(db, paths.transactions(companyId)), where('clientId', '==', cid));
+    const transPath = paths.transactions(companyId);
+    let q = query(collection(db, transPath), where('clientId', '==', cid));
     
-    // إذا تم تحديد نوع النشاط، نقوم بفلترة المعاملات برمجياً لضمان الدقة
-    const snap = await getDocs(q);
-    let trans = snap.docs.map(d => ({id: d.id, ...d.data()}));
-    
-    if (actId) {
-       trans = trans.filter((t: any) => t.activityTypeId === actId);
-    }
-    
-    setClientTransactions(trans);
-
-    if (trans.length === 1) {
-       const t = trans[0];
-       setFormData(prev => ({ ...prev, transactionId: t.id, transactionNumber: t.transactionNumber }));
-    } else {
-       setFormData(prev => ({ ...prev, transactionId: '', transactionNumber: '' }));
-    }
+    getDocs(q)
+      .then(snap => {
+        let trans = snap.docs.map(d => ({id: d.id, ...d.data()}));
+        if (actId) {
+          trans = trans.filter((t: any) => t.activityTypeId === actId);
+        }
+        setClientTransactions(trans);
+        if (trans.length === 1) {
+          const t = trans[0];
+          setFormData(prev => ({ ...prev, transactionId: t.id, transactionNumber: t.transactionNumber }));
+        } else {
+          setFormData(prev => ({ ...prev, transactionId: '', transactionNumber: '' }));
+        }
+      })
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: transPath,
+          operation: 'list'
+        } satisfies SecurityRuleContext);
+        errorEmitter.emit('permission-error', permissionError);
+      });
   };
 
   const handleActivityChange = (v: string) => {
@@ -514,21 +527,29 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
       return;
     }
     setEligibilityLoading(true);
-    try {
-      const stagesSnap = await getDocs(query(collection(db, paths.transactionStages(companyId, transId)), orderBy('order')));
-      const allStages = stagesSnap.docs.map(d => d.data() as StageInstance);
-      const deptStages = allStages.filter(s => s.allowedDepartmentIds?.includes(deptId));
+    const stagesPath = paths.transactionStages(companyId, transId);
+    getDocs(query(collection(db, stagesPath), orderBy('order')))
+      .then(snap => {
+        const allStages = snap.docs.map(d => d.data() as StageInstance);
+        const deptStages = allStages.filter(s => s.allowedDepartmentIds?.includes(deptId));
 
-      if (deptStages.length > 0) {
-        const firstDeptOrder = deptStages[0].order;
-        const previousIncomplete = allStages.find(s => s.order < firstDeptOrder && s.status !== 'completed');
-        setEligibilityBlocker(previousIncomplete ? previousIncomplete.name : null);
-      } else {
-        setEligibilityBlocker(null);
-      }
-    } finally {
-      setEligibilityLoading(false);
-    }
+        if (deptStages.length > 0) {
+          const firstDeptOrder = deptStages[0].order;
+          const previousIncomplete = allStages.find(s => s.order < firstDeptOrder && s.status !== 'completed');
+          setEligibilityBlocker(previousIncomplete ? previousIncomplete.name : null);
+        } else {
+          setEligibilityBlocker(null);
+        }
+        setEligibilityLoading(false);
+      })
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: stagesPath,
+          operation: 'list'
+        } satisfies SecurityRuleContext);
+        errorEmitter.emit('permission-error', permissionError);
+        setEligibilityLoading(false);
+      });
   };
 
   useEffect(() => {
@@ -539,7 +560,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
     }
   }, [formData.transactionId, formData.departmentId]);
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!db || !companyId || !formData.clientId || !formData.engineerId || !data || eligibilityBlocker) return;
 
     const start = new Date(`${formData.date}T${formData.time}:00`);
@@ -571,55 +592,76 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
     }
 
     setLoading(true);
-    try {
-      const client = clients.find((c: any) => c.id === formData.clientId);
-      const dept = departments.find((d: any) => d.id === formData.departmentId);
-      const eng = employees.find((e: any) => e.id === formData.engineerId);
-      const addEngNames = formData.additionalEngineerIds.map((id: string) => employees.find((e: any) => e.id === id)?.fullName || '');
+    const client = clients.find((c: any) => c.id === formData.clientId);
+    const dept = departments.find((d: any) => d.id === formData.departmentId);
+    const eng = employees.find((e: any) => e.id === formData.engineerId);
+    const addEngNames = formData.additionalEngineerIds.map((id: string) => employees.find((e: any) => e.id === id)?.fullName || '');
 
-      const payload: any = {
-        title: formData.title || (isRtl ? 'اجتماع فني' : 'Professional Meeting'),
-        clientId: formData.clientId,
-        clientName: client?.nameAr || '',
-        departmentId: formData.departmentId,
-        departmentName: dept?.name || '',
-        departmentColor: dept?.color || '#FFA000',
-        activityTypeId: formData.activityTypeId,
-        activityTypeName: formData.activityTypeName,
-        engineerId: formData.engineerId,
-        engineerName: eng?.fullName || '',
-        additionalEngineerIds: formData.additionalEngineerIds,
-        additionalEngineerNames: addEngNames,
-        notes: formData.notes,
-        start: start.toISOString(),
-        end: end.toISOString(),
-        transactionId: formData.transactionId,
-        transactionNumber: formData.transactionNumber,
-        updatedAt: serverTimestamp(),
-        recordedByName: officialUserName 
-      };
+    const payload: any = {
+      title: formData.title || (isRtl ? 'اجتماع فني' : 'Professional Meeting'),
+      clientId: formData.clientId,
+      clientName: client?.nameAr || '',
+      departmentId: formData.departmentId,
+      departmentName: dept?.name || '',
+      departmentColor: dept?.color || '#FFA000',
+      activityTypeId: formData.activityTypeId,
+      activityTypeName: formData.activityTypeName,
+      engineerId: formData.engineerId,
+      engineerName: eng?.fullName || '',
+      additionalEngineerIds: formData.additionalEngineerIds,
+      additionalEngineerNames: addEngNames,
+      notes: formData.notes,
+      start: start.toISOString(),
+      end: end.toISOString(),
+      transactionId: formData.transactionId,
+      transactionNumber: formData.transactionNumber,
+      updatedAt: serverTimestamp(),
+      recordedByName: officialUserName 
+    };
 
-      if (isEdit) {
-        await updateDoc(doc(db, paths.appointments(companyId), data.appointment.id), payload);
-      } else {
-        await addDoc(collection(db, paths.appointments(companyId)), {
-          ...payload,
-          companyId,
-          type: 'hall_meeting',
-          status: 'scheduled',
-          hallId: data.room.id,
-          hallName: data.room.name,
-          createdAt: serverTimestamp(),
-          createdBy: officialUserName 
+    const apptsPath = paths.appointments(companyId);
+    
+    if (isEdit) {
+      const docRef = doc(db, apptsPath, data.appointment.id);
+      updateDoc(docRef, payload)
+        .then(() => {
+          toast({ title: t('saved') });
+          onClose();
+        })
+        .catch(async (serverError) => {
+          const permissionError = new FirestorePermissionError({
+            path: docRef.path,
+            operation: 'update',
+            requestResourceData: payload
+          } satisfies SecurityRuleContext);
+          errorEmitter.emit('permission-error', permissionError);
+          setLoading(false);
         });
-      }
-      
-      toast({ title: t('saved') });
-      onClose();
-    } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
-    } finally {
-      setLoading(false);
+    } else {
+      const newDocData = {
+        ...payload,
+        companyId,
+        type: 'hall_meeting',
+        status: 'scheduled' as AppointmentStatus,
+        hallId: data.room.id,
+        hallName: data.room.name,
+        createdAt: serverTimestamp(),
+        createdBy: officialUserName 
+      };
+      addDoc(collection(db, apptsPath), newDocData)
+        .then(() => {
+          toast({ title: t('saved') });
+          onClose();
+        })
+        .catch(async (serverError) => {
+          const permissionError = new FirestorePermissionError({
+            path: apptsPath,
+            operation: 'create',
+            requestResourceData: newDocData
+          } satisfies SecurityRuleContext);
+          errorEmitter.emit('permission-error', permissionError);
+          setLoading(false);
+        });
     }
   };
 
