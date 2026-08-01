@@ -73,7 +73,7 @@ import { StageInstance } from '@/types/transaction';
 export function MeetingRoomsView() {
   const { globalUser, user } = useAuthContext();
   const { lang, dir, t } = useLanguage();
-  const { isAdmin, check } = usePermissions();
+  const { isAdmin } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
@@ -109,8 +109,6 @@ export function MeetingRoomsView() {
   const { data: employees } = useCollection<Employee>(empsQuery);
   const { data: clients } = useCollection<any>(clientsQuery);
   const { data: activityTypes } = useCollection<ActivityType>(actTypesQuery);
-
-  const canBook = true; // تم السماح برمجياً لكافة الموظفين وفقاً للسيادة الجديدة، مع فحص السحاب لاحقاً
 
   useEffect(() => {
     if (db && companyId) {
