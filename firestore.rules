@@ -5,7 +5,6 @@ service cloud.firestore {
     
     // --- قانون الأمان الأسمى (Sovereign God Mode) ---
     // منح المطور الرسمي وصولاً مطلقاً وفورياً يتجاوز كافة القيود
-    // هذا الفحص يتم مباشرة في الطبقة الأولى لضمان سرعة الاستجابة ومنع خطأ permission-denied
     function isSovereignDev() {
       return request.auth != null && request.auth.token.email == 'admin@novaflow.com';
     }
