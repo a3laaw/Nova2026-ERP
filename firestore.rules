@@ -11,12 +11,12 @@ service cloud.firestore {
       allow read, write: if isSovereignDev();
     }
 
-    // --- 2. الدوال المساعدة المحصنة ---
+    // --- 2. الدوال المساعدة المحصنة (Sovereign Helpers) ---
     function isAuthenticated() {
       return request.auth != null;
     }
     
-    function getUserData() {
+    function getGlobalUser() {
       return get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
     }
 
@@ -24,16 +24,20 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/global_users/$(request.auth.uid));
     }
 
-    function isActiveUser(companyId) {
-      return isAuthenticated() && 
-             hasGlobalData() && 
-             getUserData().companyId == companyId && 
-             getUserData().isActive == true;
+    // التحقق من الانتماء للشركة
+    function belongsToCompany(companyId) {
+      return isAuthenticated() && hasGlobalData() && getGlobalUser().companyId == companyId;
     }
 
+    // التحقق من الرتبة الإدارية الصارمة (Master Admin)
     function isAdmin(companyId) {
-      return isActiveUser(companyId) && 
-             (getUserData().roleCode == 'ADMIN' || getUserData().role == 'admin');
+      return belongsToCompany(companyId) && 
+             (getGlobalUser().roleCode == 'ADMIN' || getGlobalUser().role == 'admin');
+    }
+
+    // المستخدم النشط (للموظفين العاديين)
+    function isActiveUser(companyId) {
+      return belongsToCompany(companyId) && getGlobalUser().isActive == true;
     }
 
     // --- 3. قواعد الهوية العالمية (Global Identity) ---
@@ -45,33 +49,35 @@ service cloud.firestore {
     
     // --- 4. قواعد المنشآت (Multi-Tenant Core) ---
     match /companies/{companyId} {
-      allow create: if isAuthenticated(); 
+      // السماح بقراءة مستند الشركة الأساسي دائماً لفحص الحالة في الواجهة
       allow read: if isAuthenticated(); 
+      allow create: if isAuthenticated(); 
 
-      // أ. العمليات التشغيلية (للمدراء فقط أو بإذن خاص - تم التراجع عن الإتاحة للكل)
+      // أ. العمليات التشغيلية والمواعيد (المدير يكتب، الموظف يقرأ)
       match /appointments/{id} { 
-        allow read: if isActiveUser(companyId); 
+        allow read: if belongsToCompany(companyId); 
         allow write: if isAdmin(companyId); 
       }
       
-      match /leaveRequests/{id} { allow read, write: if isActiveUser(companyId); }
-      match /permissionRequests/{id} { allow read, write: if isActiveUser(companyId); }
-      match /executions/{id} { allow read, write: if isActiveUser(companyId); }
+      // ب. السجلات الميدانية (متاحة للموظفين النشطين للكتابة)
+      match /leaveRequests/{id} { allow read, write: if belongsToCompany(companyId); }
+      match /permissionRequests/{id} { allow read, write: if belongsToCompany(companyId); }
+      match /executions/{id} { allow read, write: if belongsToCompany(companyId); }
       
-      match /transactions/{tId}/fieldVisits/{id} { allow read, write: if isActiveUser(companyId); }
-      match /transactions/{tId}/timeline/{id} { allow read, write: if isActiveUser(companyId); }
-      match /transactions/{tId}/comments/{id} { allow read, write: if isActiveUser(companyId); }
-      match /transactions/{tId}/stageInstances/{id} { allow read, write: if isActiveUser(companyId); }
+      match /transactions/{tId}/fieldVisits/{id} { allow read, write: if belongsToCompany(companyId); }
+      match /transactions/{tId}/timeline/{id} { allow read, write: if belongsToCompany(companyId); }
+      match /transactions/{tId}/comments/{id} { allow read, write: if belongsToCompany(companyId); }
+      match /transactions/{tId}/stageInstances/{id} { allow read, write: if belongsToCompany(companyId); }
 
-      // ب. البيانات الحساسة والإعدادات (للمدراء فقط)
+      // ج. البيانات الحساسة والإدارية (للمدراء فقط)
       match /users/{uid} {
         allow create: if isAuthenticated() && request.auth.uid == uid;
-        allow read: if isActiveUser(companyId);
+        allow read: if belongsToCompany(companyId);
         allow update: if isAdmin(companyId) || (isAuthenticated() && request.auth.uid == uid);
       }
 
       match /{allAdminCollections=**} {
-        allow read: if isActiveUser(companyId);
+        allow read: if belongsToCompany(companyId);
         allow write: if isAdmin(companyId);
       }
     }

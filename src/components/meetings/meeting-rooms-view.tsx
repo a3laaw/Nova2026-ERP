@@ -149,6 +149,7 @@ export function MeetingRoomsView() {
     if (!targetId || !db || !companyId) return;
     
     const docRef = doc(db, paths.appointments(companyId), targetId);
+    // عدم استخدام await لضمان Optimistic UI
     deleteDoc(docRef)
       .then(() => {
         toast({ title: isRtl ? "تم الحذف بنجاح" : "Deleted Successfully" });
@@ -617,6 +618,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
     
     if (isEdit) {
       const docRef = doc(db, apptsPath, data.appointment.id);
+      // عدم استخدام await
       updateDoc(docRef, payload)
         .then(() => {
           toast({ title: t('saved') });
@@ -642,6 +644,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
         createdAt: serverTimestamp(),
         createdBy: officialUserName 
       };
+      // عدم استخدام await
       addDoc(collection(db, apptsPath), newDocData)
         .then(() => {
           toast({ title: t('saved') });
@@ -817,7 +820,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
 
         <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4 shrink-0 shadow-lg">
            <div className="flex-1 flex gap-3">
-              <Button variant="outline" onClick={onClose} className="flex-1 h-14 rounded-[1.5rem] font-bold border-2 bg-white text-slate-900">
+              <Button variant="outline" onClick={onClose} className="flex-1 h-12 rounded-[1.5rem] font-bold border-2 bg-white text-slate-900">
                 {isRtl ? 'إلغاء' : 'Cancel'}
               </Button>
               {isEdit && (
