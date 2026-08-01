@@ -15,7 +15,9 @@ import {
   Eye,
   MoreVertical,
   ShieldX,
-  ChevronDown
+  ChevronDown,
+  LayoutGrid,
+  Activity
 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs, serverTimestamp, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
@@ -26,7 +28,7 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { WorkHoursService } from '@/services/work-hours-service';
 import * as WorkHoursEngine from '@/services/work-hours-engine';
 import { Appointment, AppointmentStatus } from '@/types/appointment';
-import { MeetingRoom, Department } from '@/types/reference';
+import { MeetingRoom, Department, ActivityType } from '@/types/reference';
 import { Employee } from '@/types/hr';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -99,10 +101,12 @@ export function MeetingRoomsView() {
   const deptsQuery = useMemo(() => companyId && db ? query(collection(db, paths.departments(companyId)), orderBy('order')) : null, [db, companyId]);
   const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
   const clientsQuery = useMemo(() => companyId && db ? query(collection(db, paths.clients(companyId))) : null, [db, companyId]);
+  const actTypesQuery = useMemo(() => companyId && db ? query(collection(db, paths.activityTypes(companyId)), orderBy('order')) : null, [db, companyId]);
   
   const { data: departments } = useCollection<Department>(deptsQuery);
   const { data: employees } = useCollection<Employee>(empsQuery);
   const { data: clients } = useCollection<any>(clientsQuery);
+  const { data: activityTypes } = useCollection<ActivityType>(actTypesQuery);
 
   // صلاحية حجز القاعات (Sovereign Guard)
   const canBook = isAdmin || check('ref', 'create').can;
@@ -247,6 +251,7 @@ export function MeetingRoomsView() {
           employees={employees || []}
           departments={departments || []}
           rooms={allRooms}
+          activityTypes={activityTypes || []}
           existingAppts={rawAppointments || []}
           isRtl={isRtl}
           t={t}
@@ -401,11 +406,12 @@ function HallGridSection({ title, slots, rooms, appts, onAction, onDelete, isRtl
   );
 }
 
-function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, employees, departments, rooms, existingAppts, isRtl, t, onDelete, dir, settings, isAdmin, officialUserName }: any) {
+function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, employees, departments, rooms, activityTypes, existingAppts, isRtl, t, onDelete, dir, settings, isAdmin, officialUserName }: any) {
   const [loading, setLoading] = useState(false);
   const [eligibilityLoading, setEligibilityLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: '', clientId: '', clientName: '', departmentId: '', departmentName: '', departmentColor: '',
+    activityTypeId: '', activityTypeName: '',
     engineerId: '', engineerName: '', additionalEngineerIds: [] as string[],
     date: '', time: '', notes: '', endTime: '', transactionId: '', transactionNumber: ''
   });
@@ -440,6 +446,8 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
              departmentId: appt.departmentId || '',
              departmentName: appt.departmentName || '',
              departmentColor: appt.departmentColor || '',
+             activityTypeId: appt.activityTypeId || '',
+             activityTypeName: appt.activityTypeName || '',
              engineerId: appt.engineerId || '',
              engineerName: appt.engineerName || '',
              additionalEngineerIds: appt.additionalEngineerIds || [],
@@ -450,7 +458,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
              transactionId: appt.transactionId || '',
              transactionNumber: appt.transactionNumber || ''
           });
-          if (appt.clientId) fetchClientTransactions(appt.clientId);
+          if (appt.clientId) fetchClientTransactions(appt.clientId, appt.activityTypeId);
        } else if (data.room) {
           const startTime = data.slot || '08:00';
           const start = parse(startTime, 'HH:mm', new Date());
@@ -463,23 +471,41 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
             time: startTime,
             endTime: endTime,
             engineerId: '', additionalEngineerIds: [],
-            clientId: '', departmentId: '', transactionId: '', transactionNumber: ''
+            clientId: '', departmentId: '', transactionId: '', transactionNumber: '',
+            activityTypeId: '', activityTypeName: ''
           }));
        }
     }
   }, [isOpen, data, isEdit, settings]);
 
-  const fetchClientTransactions = async (cid: string) => {
+  const fetchClientTransactions = async (cid: string, actId?: string) => {
     if (!db || !companyId) return;
-    const q = query(collection(db, paths.transactions(companyId)), where('clientId', '==', cid));
+    let q = query(collection(db, paths.transactions(companyId)), where('clientId', '==', cid));
+    
+    // إذا تم تحديد نوع النشاط، نقوم بفلترة المعاملات برمجياً لضمان الدقة
     const snap = await getDocs(q);
-    const trans = snap.docs.map(d => ({id: d.id, ...d.data()}));
+    let trans = snap.docs.map(d => ({id: d.id, ...d.data()}));
+    
+    if (actId) {
+       trans = trans.filter((t: any) => t.activityTypeId === actId);
+    }
+    
     setClientTransactions(trans);
 
-    if (!formData.transactionId && trans.length === 1) {
+    if (trans.length === 1) {
        const t = trans[0];
        setFormData(prev => ({ ...prev, transactionId: t.id, transactionNumber: t.transactionNumber }));
+    } else {
+       setFormData(prev => ({ ...prev, transactionId: '', transactionNumber: '' }));
     }
+  };
+
+  const handleActivityChange = (v: string) => {
+     const act = activityTypes.find((a: any) => a.id === v);
+     setFormData(prev => ({ ...prev, activityTypeId: v, activityTypeName: act?.name || '' }));
+     if (formData.clientId) {
+        fetchClientTransactions(formData.clientId, v);
+     }
   };
 
   const checkEligibility = async (transId: string, deptId: string) => {
@@ -522,7 +548,6 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
       ? new Date(`${formData.date}T${formData.endTime}:00`)
       : addMinutes(start, duration);
     
-    // --- TESTING BYPASS: Allow Admin to book in the past for tests ---
     if (!isAdmin && start < new Date()) {
        toast({ variant: "destructive", title: isRtl ? "تنبيه: لا يمكن الحجز في وقت سابق" : "Alert: Cannot book in the past" });
        return;
@@ -559,6 +584,8 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
         departmentId: formData.departmentId,
         departmentName: dept?.name || '',
         departmentColor: dept?.color || '#FFA000',
+        activityTypeId: formData.activityTypeId,
+        activityTypeName: formData.activityTypeName,
         engineerId: formData.engineerId,
         engineerName: eng?.fullName || '',
         additionalEngineerIds: formData.additionalEngineerIds,
@@ -569,7 +596,6 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
         transactionId: formData.transactionId,
         transactionNumber: formData.transactionNumber,
         updatedAt: serverTimestamp(),
-        // السيادة الاسمية: تسجيل صاحب الفعل باسمه الكامل المعتمد
         recordedByName: officialUserName 
       };
 
@@ -602,7 +628,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-2xl text-start" dir={dir}>
-        <div className="bg-slate-50/50 p-8 border-b flex items-center justify-between shrink-0 relative">
+        <div className="bg-primary/5 p-8 border-b flex items-center justify-between shrink-0 relative">
            <div className="flex items-center gap-4">
               <div className="h-12 w-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary shadow-sm"><Landmark className="h-6 w-6" /></div>
               <div>
@@ -623,29 +649,28 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'العميل المالك' : 'Client'}</Label>
                  <Select value={formData.clientId} onValueChange={v => {
                    const c = clients.find((x:any) => x.id === v);
-                   setFormData({...formData, clientId: v, clientName: c?.nameAr || '', transactionId: '', transactionNumber: ''});
+                   setFormData({...formData, clientId: v, clientName: c?.nameAr || '', transactionId: '', transactionNumber: '', activityTypeId: '', activityTypeName: ''});
                    if (v) fetchClientTransactions(v);
                  }}>
-                    <SelectTrigger className="h-12 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
+                    <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
                     <SelectContent className="rounded-xl z-[160]">
                        {clients.map((c: any) => <SelectItem key={c.id} value={c.id} className="font-bold">{c.nameAr}</SelectItem>)}
                     </SelectContent>
                  </Select>
               </div>
+
               <div className="space-y-2">
-                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'القسم المختص' : 'Department'}</Label>
-                 <Select value={formData.departmentId} onValueChange={v => {
-                    const d = departments.find((x:any) => x.id === v);
-                    setFormData({...formData, departmentId: v, departmentName: d?.name || '', departmentColor: d?.color || '#FFA000', engineerId: ''});
-                 }}>
-                    <SelectTrigger className="h-12 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
+                 <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1">
+                    <Activity className="h-3 w-3" /> {isRtl ? 'نوع نشاط الاجتماع' : 'Meeting Activity'}
+                 </Label>
+                 <Select disabled={!formData.clientId} value={formData.activityTypeId} onValueChange={handleActivityChange}>
+                    <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-white">
+                       <SelectValue placeholder={isRtl ? "تحديد التخصص..." : "Select specialty..."} />
+                    </SelectTrigger>
                     <SelectContent className="rounded-xl z-[160]">
-                       {filteredDepartments.map((d: any) => (
-                         <SelectItem key={d.id} value={d.id} className="font-bold">
-                            <div className="flex items-center gap-2">
-                               <div className="h-2 w-2 rounded-full" style={{ backgroundColor: d.color || '#ccc' }} />
-                               {isRtl ? d.name : d.nameEn}
-                            </div>
+                       {activityTypes.map((act: any) => (
+                         <SelectItem key={act.id} value={act.id} className="font-bold">
+                            {isRtl ? act.name : act.nameEn}
                          </SelectItem>
                        ))}
                     </SelectContent>
@@ -653,18 +678,18 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
               </div>
            </div>
 
-           {formData.clientId && (
+           {formData.clientId && formData.activityTypeId && (
              <div className="space-y-4 p-5 bg-slate-50 rounded-2xl border-2 border-slate-100 animate-in slide-in-from-top-2">
                 <div className="space-y-1.5">
                    <Label className="text-[9px] font-black uppercase text-primary flex items-center gap-1.5">
-                      <Workflow className="h-3 w-3" /> {isRtl ? 'ربط بالمسار الفني (المشروع)' : 'Link to Technical Path'}
+                      <Workflow className="h-3 w-3" /> {isRtl ? `ربط بالمعاملة المفتوحة (${formData.activityTypeName})` : `Link to ${formData.activityTypeName} Project`}
                    </Label>
                    <Select value={formData.transactionId} onValueChange={v => {
                       const t = clientTransactions.find(x => x.id === v);
                       setFormData({...formData, transactionId: v, transactionNumber: t?.transactionNumber || ''});
                    }}>
                       <SelectTrigger className="h-12 rounded-xl border-2 font-black text-xs bg-white shadow-sm">
-                         <SelectValue placeholder="..." />
+                         <SelectValue placeholder={clientTransactions.length === 0 ? (isRtl ? "لا يوجد معاملات لهذا التخصص" : "No projects for this specialty") : "..."} />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl z-[161]">
                          {clientTransactions.map(t => (
@@ -695,7 +720,27 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
              </div>
            )}
 
-           <div className="p-6 bg-slate-50 rounded-[2rem] border-2 border-slate-100 space-y-6">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'القسم المسؤول' : 'Department'}</Label>
+                 <Select value={formData.departmentId} onValueChange={v => {
+                    const d = departments.find((x:any) => x.id === v);
+                    setFormData({...formData, departmentId: v, departmentName: d?.name || '', departmentColor: d?.color || '#FFA000', engineerId: ''});
+                 }}>
+                    <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
+                    <SelectContent className="rounded-xl z-[160]">
+                       {filteredDepartments.map((d: any) => (
+                         <SelectItem key={d.id} value={d.id} className="font-bold">
+                            <div className="flex items-center gap-2">
+                               <div className="h-2 w-2 rounded-full" style={{ backgroundColor: d.color || '#ccc' }} />
+                               {isRtl ? d.name : d.nameEn}
+                            </div>
+                         </SelectItem>
+                       ))}
+                    </SelectContent>
+                 </Select>
+              </div>
+
               <div className="space-y-2">
                  <Label className="text-[11px] font-black uppercase text-primary flex items-center gap-2">
                    <Briefcase className="h-4 w-4" /> {isRtl ? 'المهندس المسؤول' : 'Lead Engineer'}
@@ -709,34 +754,45 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
                     </SelectContent>
                  </Select>
               </div>
+           </div>
 
-              <div className="space-y-3">
-                 <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'مهندسين مشاركين' : 'Supporting Team'}</Label>
-                 <ScrollArea className="h-32 rounded-xl bg-white border-2 p-3 shadow-inner">
-                    <div className="grid grid-cols-2 gap-2">
-                       {employees.filter((e: any) => e.id !== formData.engineerId).map((e: any) => (
-                         <div key={e.id} className="flex items-center space-x-2 space-x-reverse">
-                            <Checkbox id={`eng-${e.id}`} checked={formData.additionalEngineerIds.includes(e.id)} onCheckedChange={(checked) => {
-                               const ids = checked ? [...formData.additionalEngineerIds, e.id] : formData.additionalEngineerIds.filter((id: string) => id !== e.id);
-                               setFormData({...formData, additionalEngineerIds: ids});
-                            }} />
-                            <label htmlFor={`eng-${e.id}`} className="text-[10px] font-bold cursor-pointer">{e.fullName}</label>
-                         </div>
-                       ))}
-                    </div>
-                 </ScrollArea>
-              </div>
+           <div className="space-y-3">
+              <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'مهندسين مشاركين' : 'Supporting Team'}</Label>
+              <ScrollArea className="h-32 rounded-xl bg-slate-50/50 border-2 p-3 shadow-inner">
+                 <div className="grid grid-cols-2 gap-2">
+                    {employees.filter((e: any) => e.id !== formData.engineerId).map((e: any) => (
+                      <div key={e.id} className="flex items-center space-x-2 space-x-reverse">
+                         <Checkbox id={`eng-${e.id}`} checked={formData.additionalEngineerIds.includes(e.id)} onCheckedChange={(checked) => {
+                            const ids = checked ? [...formData.additionalEngineerIds, e.id] : formData.additionalEngineerIds.filter((id: string) => id !== e.id);
+                            setFormData({...formData, additionalEngineerIds: ids});
+                         }} />
+                         <label htmlFor={`eng-${e.id}`} className="text-[10px] font-bold cursor-pointer text-slate-600">{e.fullName}</label>
+                      </div>
+                    ))}
+                 </div>
+              </ScrollArea>
+           </div>
+
+           <div className="space-y-1.5">
+             <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">غرض الموعد</Label>
+             <Input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="h-12 rounded-xl border-2 font-bold bg-slate-50/30" />
            </div>
         </div>
 
         <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4 shrink-0 shadow-lg">
            <div className="flex-1 flex gap-3">
-              <Button variant="outline" onClick={onClose} className="flex-1 h-12 rounded-xl font-bold border-2 bg-white">إلغاء</Button>
+              <Button variant="outline" onClick={onClose} className="flex-1 h-14 rounded-[1.5rem] font-bold border-2 bg-white text-slate-900">
+                {isRtl ? 'إلغاء' : 'Cancel'}
+              </Button>
               {isEdit && (
-                <Button variant="ghost" onClick={() => onDelete(data?.appointment?.id)} className="flex-1 h-12 rounded-xl font-black text-rose-600 bg-rose-50 border-2 border-rose-100 gap-2"><Trash2 className="h-4 w-4" />{isRtl ? 'حذف' : 'Delete'}</Button>
+                <Button variant="ghost" onClick={() => onDelete(data?.appointment?.id)} className="flex-1 h-14 rounded-[1.5rem] font-black text-rose-600 bg-rose-50 border-2 border-rose-100 gap-2"><Trash2 className="h-4 w-4" />{isRtl ? 'حذف' : 'Delete'}</Button>
               )}
            </div>
-           <Button onClick={handleSave} disabled={loading || eligibilityLoading || !formData.clientId || !formData.engineerId || !!eligibilityBlocker} className="flex-1 h-14 rounded-2xl bg-primary text-white font-black text-xl shadow-xl gap-3">
+           <Button 
+             onClick={handleSave} 
+             disabled={loading || eligibilityLoading || !formData.clientId || !formData.activityTypeId || !formData.engineerId || !!eligibilityBlocker} 
+             className="flex-1 h-14 rounded-[1.5rem] bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 gap-3 border-b-8 border-orange-700 hover:scale-105 transition-all"
+           >
               {loading || eligibilityLoading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
               {isRtl ? 'تأكيد الحجز' : 'Confirm'}
            </Button>
