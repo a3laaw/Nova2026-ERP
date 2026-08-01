@@ -7,7 +7,7 @@ import {
   BarChart3, FileText, Printer, Download, 
   MapPinned, Calculator, TrendingUp, CheckCircle2,
   FolderSearch, ArrowUpRight, Sparkles, LayoutGrid,
-  PieChart, Activity
+  PieChart, Activity, Landmark
 } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/context/language-context';
@@ -20,32 +20,32 @@ export default function ReportsHubPage() {
 
   const reportCards = [
     {
+      id: 'executive',
+      title: isRtl ? 'التقرير التنفيذي الشامل' : 'Global Executive Report',
+      desc: isRtl ? 'ملخص ذكاء أعمال موحد يشمل CRM والمشاريع والمالية والـ HR في شاشة واحدة.' : 'Unified business intelligence summary covering CRM, Projects, Finance and HR.',
+      icon: Landmark,
+      color: 'text-primary',
+      bg: 'bg-primary/5',
+      path: '/dashboard/reports/executive',
+      primary: true
+    },
+    {
       id: 'analytics',
       title: isRtl ? 'رادار الأداء المالي والإنتاجي' : 'Financial Performance Radar',
       desc: isRtl ? 'تحليل ذكي لربط ميزانيات المقايسات بالمصروفات الفعلية ونسب الإنجاز.' : 'Smart analysis linking BOQ budgets to actual spending and progress.',
       icon: Activity,
-      color: 'text-orange-600',
-      bg: 'bg-orange-50',
-      path: '/dashboard/reports/analytics',
-      primary: true
+      color: 'text-blue-600',
+      bg: 'bg-blue-50',
+      path: '/dashboard/reports/analytics'
     },
     {
       id: 'visits',
       title: isRtl ? 'سجل تفاعل العملاء والزيارات' : 'Client Visit Dossier',
       desc: isRtl ? 'تحليل تاريخي لكل زيارة: الإنجاز الفني الموثق والملاحظات الميدانية.' : 'Visit-by-visit audit of technical progress and site notes.',
       icon: MapPinned,
-      color: 'text-blue-600',
-      bg: 'bg-blue-50',
-      path: '/dashboard/projects/reports/client-visits'
-    },
-    {
-      id: 'boq',
-      title: isRtl ? 'تحليل انحراف المقايسات' : 'BOQ Variance Report',
-      desc: isRtl ? 'مقارنة المخطط بالمنفذ فعلياً والمصروف مالياً لكل بند.' : 'Compare planned vs executed vs paid for every item.',
-      icon: Calculator,
       color: 'text-emerald-600',
       bg: 'bg-emerald-50',
-      path: '/dashboard/reports/analytics'
+      path: '/dashboard/projects/reports/client-visits'
     }
   ];
 
@@ -82,7 +82,7 @@ export default function ReportsHubPage() {
             </CardHeader>
             <CardContent className="p-10 pt-0 text-start">
                <div className={cn("flex items-center gap-2 font-black text-xs transition-all mt-8", card.color)}>
-                  {isRtl ? 'عرض التحليلات المتقدمة' : 'View Advanced Analytics'}
+                  {isRtl ? 'عرض التقرير المفصل' : 'View Detailed Report'}
                   <ArrowUpRight className="h-4 w-4" />
                </div>
             </CardContent>

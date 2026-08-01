@@ -10,6 +10,7 @@ import {
 import { paths } from '@/firebase/multi-tenant';
 import { Transaction } from '@/types/transaction';
 import { BOQ, PurchaseOrder } from '@/types/documents';
+import { Employee } from '@/types/hr';
 
 export interface ProjectAnalyticsSummary {
   projectId: string;
@@ -20,6 +21,30 @@ export interface ProjectAnalyticsSummary {
   totalSpent: number;
   variance: number;
   status: string;
+}
+
+export interface ExecutiveSummary {
+  crm: {
+    totalClients: number;
+    activeTransactions: number;
+  };
+  projects: {
+    total: number;
+    active: number;
+    completed: number;
+    constructionCount: number;
+    consultingCount: number;
+  };
+  finance: {
+    totalBudget: number;
+    totalSpent: number;
+    remaining: number;
+  };
+  hr: {
+    totalStaff: number;
+    activeField: number;
+    onLeave: number;
+  };
 }
 
 /**
@@ -52,12 +77,56 @@ export class AnalyticsService {
         projectId: trans.id,
         projectName: trans.subServiceName,
         clientName: trans.clientName,
-        completionRate: 0, // سيتم حسابها عبر محرك الإنجاز الفني في النسخة المتقدمة
+        completionRate: 0,
         totalBudget,
         totalSpent,
         variance: totalBudget - totalSpent,
         status: trans.status
       };
     });
+  }
+
+  /**
+   * جلب التقرير التنفيذي الشامل للمنشأة
+   */
+  async getGlobalExecutiveSummary(): Promise<ExecutiveSummary> {
+    const [clients, trans, employees, boqs, pos] = await Promise.all([
+      getDocs(collection(this.db, paths.clients(this.companyId))),
+      getDocs(collection(this.db, paths.transactions(this.companyId))),
+      getDocs(collection(this.db, paths.employees(this.companyId))),
+      getDocs(collection(this.db, paths.boqs(this.companyId))),
+      getDocs(collection(this.db, paths.purchaseOrders(this.companyId)))
+    ]);
+
+    const transactions = trans.docs.map(d => d.data() as Transaction);
+    const boqData = boqs.docs.map(d => d.data() as BOQ);
+    const poData = pos.docs.map(d => d.data() as PurchaseOrder).filter(p => p.status === 'approved');
+
+    const totalBudget = boqData.reduce((acc, b) => acc + (b.totalAmount || 0), 0);
+    const totalSpent = poData.reduce((acc, p) => acc + (p.totalAmount || 0), 0);
+
+    return {
+      crm: {
+        totalClients: clients.size,
+        activeTransactions: transactions.filter(t => t.status !== 'completed').length
+      },
+      projects: {
+        total: transactions.length,
+        active: transactions.filter(t => t.status !== 'completed').length,
+        completed: transactions.filter(t => t.status === 'completed').length,
+        constructionCount: transactions.filter(t => t.activityTypeName?.includes('مقاولات') || t.activityTypeName?.includes('Construction')).length,
+        consultingCount: transactions.filter(t => t.activityTypeName?.includes('استشارات') || t.activityTypeName?.includes('Consulting')).length,
+      },
+      finance: {
+        totalBudget,
+        totalSpent,
+        remaining: totalBudget - totalSpent
+      },
+      hr: {
+        totalStaff: employees.size,
+        activeField: employees.docs.filter(d => (d.data() as Employee).status === 'active').length,
+        onLeave: employees.docs.filter(d => (d.data() as Employee).status === 'on-leave').length,
+      }
+    };
   }
 }
