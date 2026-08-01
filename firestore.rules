@@ -4,7 +4,6 @@ service cloud.firestore {
   match /databases/{database}/documents {
     
     // --- 1. قانون الأمان الأسمى (Sovereign Master Key) ---
-    // هذا المسار السريع يحل مشكلة permission-denied للمطور فوراً
     function isSovereignDev() {
       return request.auth != null && request.auth.token.email == 'admin@novaflow.com';
     }
@@ -18,12 +17,16 @@ service cloud.firestore {
     function isAuthenticated() {
       return request.auth != null;
     }
+    
+    function getUserData() {
+      return get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
+    }
 
     // --- 3. قواعد الهوية العالمية (Global Identity) ---
-    // ضروري جداً للسماح للنظام بقراءة بيانات المستخدم ليعرف من هو
     match /global_users/{uid} {
       allow read: if isAuthenticated() && (request.auth.uid == uid || isSovereignDev());
-      allow write: if isSovereignDev() || (isAuthenticated() && request.auth.uid == uid);
+      allow create: if isAuthenticated() && request.auth.uid == uid;
+      allow update: if isSovereignDev() || (isAuthenticated() && request.auth.uid == uid);
     }
     
     // --- 4. قواعد المنشآت (Multi-Tenant Core) ---
@@ -31,26 +34,33 @@ service cloud.firestore {
       // السماح بإنشاء المنشأة أثناء التسجيل
       allow create: if isAuthenticated(); 
       
-      // حل مشكلة Catch-22: السماح للمستخدم بقراءة بيانات منشأته ليعرف حالتها (نشطة/معلقة)
+      // السماح للمستخدم دائماً بقراءة بيانات منشأته ليعرف حالتها (نشطة/معلقة)
       allow read: if isAuthenticated() && (
         isSovereignDev() || 
-        get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.companyId == companyId
+        (exists(/databases/$(database)/documents/global_users/$(request.auth.uid)) && getUserData().companyId == companyId)
       );
 
-      // حماية المجموعات الفرعية (البيانات الحساسة)
+      // --- قواعد المستخدمين داخل الشركة (منفصلة لضمان نجاح التسجيل) ---
+      match /users/{uid} {
+        allow create: if isAuthenticated() && request.auth.uid == uid;
+        allow read: if isAuthenticated() && (isSovereignDev() || getUserData().companyId == companyId);
+        allow update: if isAuthenticated() && (isSovereignDev() || (getUserData().companyId == companyId && (getUserData().roleCode == 'ADMIN' || request.auth.uid == uid)));
+      }
+
+      // حماية المجموعات الفرعية التشغيلية
       match /{allSubCollections=**} {
         allow read: if isAuthenticated() && 
-          get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.companyId == companyId && 
+          getUserData().companyId == companyId && 
           (isSovereignDev() || (
-            get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.isActive == true &&
+            getUserData().isActive == true &&
             get(/databases/$(database)/documents/companies/$(companyId)).data.status == 'active'
           ));
           
         allow write: if isAuthenticated() && 
-          get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.companyId == companyId && 
+          getUserData().companyId == companyId && 
           (isSovereignDev() || (
-            get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.isActive == true && 
-            (get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.roleCode == 'ADMIN' || get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.role == 'admin')
+            getUserData().isActive == true && 
+            (getUserData().roleCode == 'ADMIN' || getUserData().role == 'admin')
           ));
       }
     }
@@ -62,7 +72,6 @@ service cloud.firestore {
     }
 
     // --- 6. حماية المجموعات المشتركة (Collection Group Rules) ---
-    // تبسيط القواعد لضمان عمل الفهارس دون تعقيد الدوال
     match /{path=**}/variations/{voId} { allow read: if isAuthenticated(); }
     match /{path=**}/fieldVisits/{visitId} { allow read: if isAuthenticated(); }
     match /{path=**}/attendance/{attId} { allow read: if isAuthenticated(); }
