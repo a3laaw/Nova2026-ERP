@@ -5,7 +5,7 @@ service cloud.firestore {
     
     // --- قانون الأمان الأسمى (Sovereign God Mode) ---
     // منح المطور الرسمي وصولاً مطلقاً وفورياً يتجاوز كافة القيود
-    // هذا هو المفتاح الماستر الذي يقضي على خطأ permission-denied للأدمن
+    // هذا الفحص يتم مباشرة في الطبقة الأولى لضمان سرعة الاستجابة ومنع خطأ permission-denied
     function isSovereignDev() {
       return request.auth != null && request.auth.token.email == 'admin@novaflow.com';
     }
@@ -17,7 +17,7 @@ service cloud.firestore {
 
     // --- حماية المجموعات المشتركة (Collection Group Rules) ---
     // تبسيط القواعد لضمان عمل الفهارس (Indexes) والتقارير الشاملة بدون أخطاء صلاحيات
-    // منع استخدام get() هنا لضمان أداء استعلامات المجموعات
+    // يسمح بالقراءة لكافة المستخدمين المسجلين لضمان عمل الاستعلامات الشاملة
     match /{path=**}/variations/{voId} {
       allow read: if request.auth != null;
     }

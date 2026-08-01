@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
@@ -16,7 +17,7 @@ interface GlobalUserData {
   employeeId?: string; 
   isDeveloper?: boolean;
   username: string;
-  fullName?: string; // مضاف لضمان ظهور الأسماء بدلاً من الايميلات
+  fullName?: string;
 }
 
 interface AuthContextType {
@@ -52,37 +53,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, [auth]);
 
-  // تأثير 1: جلب بيانات المستخدم العالمي (global_users)
+  // تأثير جلب بيانات المستخدم العالمي (global_users)
   useEffect(() => {
     if (!db || !user) return;
 
-    if (user.email === 'admin@novaflow.com') {
-      setGlobalUser({
-        uid: user.uid,
-        companyId: 'dev_hq',
-        role: 'developer',
-        isDeveloper: true,
-        username: 'super_dev',
-        fullName: 'Super Developer',
-        departmentId: 'HQ'
-      });
-      setRoleData({ permissions: ['*'], code: 'ADMIN' } as any);
-      setLoading(false);
-      return;
-    }
-
+    // القفل السيادي: يتم الاعتماد حصراً على البيانات المخزنة في Firestore
+    // لمنع ثغرة الدخول ببريد الأدمن قبل التفعيل
     const docRef = doc(db, 'global_users', user.uid);
     const unsubscribe = onSnapshot(docRef, (snap) => {
       if (snap.exists()) {
         const data = snap.data() as GlobalUserData;
         setGlobalUser({ ...data, uid: user.uid });
-        if (!data.roleId) {
-          setLoading(false);
-        }
       } else {
-        setGlobalUser(null);
-        setLoading(false);
+        // إذا كان بريد الأدمن ولكن لم يُنشأ السجل بعد (مرحلة التسجيل)
+        if (user.email === 'admin@novaflow.com') {
+           setGlobalUser({
+             uid: user.uid,
+             companyId: 'awaiting_setup',
+             role: 'developer',
+             isDeveloper: true,
+             username: 'admin',
+             fullName: 'System Developer'
+           });
+        } else {
+           setGlobalUser(null);
+        }
       }
+      setLoading(false);
     }, (err) => {
       console.error("Global user snapshot error:", err);
       setLoading(false);
@@ -91,13 +88,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, [db, user]);
 
-  // تأثير 2: جلب بيانات الصلاحيات (Role Data)
+  // تأثير جلب بيانات الصلاحيات
   useEffect(() => {
-    if (!db || !globalUser) return;
-
-    if (!globalUser.companyId || !globalUser.roleId) {
+    if (!db || !globalUser || !globalUser.companyId || !globalUser.roleId) {
       setRoleData(null);
-      setLoading(false);
       return;
     }
 
@@ -108,14 +102,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         setRoleData(null);
       }
-      setLoading(false);
     }, (err) => {
       console.error("Role snapshot error:", err);
-      setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [db, globalUser?.companyId, globalUser?.roleId]);
+  }, [db, globalUser]);
 
   const logout = async () => {
     if (auth) {

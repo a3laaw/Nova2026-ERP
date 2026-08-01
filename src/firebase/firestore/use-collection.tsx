@@ -28,7 +28,7 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
        return; 
     }
 
-    // تنظيف المستمع القديم فوراً
+    // تنظيف المستمع القديم فوراً وبشكل صارم
     if (unsubscribeRef.current) {
       unsubscribeRef.current();
       unsubscribeRef.current = null;
@@ -47,7 +47,7 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
 
     let isMounted = true;
 
-    // 2. تفعيل المستمع الجديد مع معالجة الصدمات
+    // 2. تفعيل المستمع الجديد
     const unsubscribe = onSnapshot(
       query,
       (snapshot) => {
@@ -58,7 +58,7 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
           ...doc.data(),
         })) as unknown as T[];
         
-        // المقارنة العميقة للبيانات لمنع الرندر المتكرر
+        // المقارنة العميقة للبيانات لمنع الرندر المتكرر العبثي
         const currentHash = JSON.stringify(items);
         if (currentHash !== lastDataHashRef.current) {
           lastDataHashRef.current = currentHash;
@@ -73,7 +73,7 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
         setLoading(false);
         setError(serverError);
         
-        // معالجة أخطاء الصلاحيات مركزياً لتجنب إزعاج المستخدم
+        // معالجة أخطاء الصلاحيات مركزياً
         if (serverError.code === 'permission-denied') {
            errorEmitter.emit('permission-error', new FirestorePermissionError({
              path: 'collection_query',

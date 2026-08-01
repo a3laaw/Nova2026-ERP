@@ -123,7 +123,7 @@ export default function DeveloperDashboard() {
         batch.update(doc(db, 'global_users', req.ownerUid), { 
            isActive: true, 
            isPendingApproval: false,
-           isDeveloper: false // ضمان عدم تحول المالك لمطور
+           isDeveloper: false 
         });
       }
 
