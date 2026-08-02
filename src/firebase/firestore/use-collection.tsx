@@ -24,22 +24,27 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
   const unsubscribeRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    // التحقق من استقرار الاستعلام (Sovereign Stability Check)
-    const isSameQuery = query && lastQueryRef.current && queryEqual(query, lastQueryRef.current);
-    
+    // 1. معالجة حالة الاستعلام الفارغ
+    if (!query) {
+      if (lastQueryRef.current !== null) {
+        setState({ data: [], loading: false, error: null });
+        lastQueryRef.current = null;
+      }
+      return;
+    }
+
+    // 2. التحقق من استقرار الاستعلام (Deep Equality Check)
+    // هذا يمنع حلقة البحث اللانهائية في حال تم إعادة إنشاء كائن الاستعلام في الرندر
+    const isSameQuery = lastQueryRef.current && queryEqual(query, lastQueryRef.current);
     if (isSameQuery) return;
 
+    // 3. تنظيف الاشتراك السابق قبل البدء بجديد
     if (unsubscribeRef.current) {
       unsubscribeRef.current();
       unsubscribeRef.current = null;
     }
 
-    if (!query) {
-      setState({ data: [], loading: false, error: null });
-      lastQueryRef.current = null;
-      return;
-    }
-
+    // 4. تحديث المرجع وبدء حالة التحميل
     lastQueryRef.current = query;
     setState(prev => ({ ...prev, loading: true, error: null }));
 

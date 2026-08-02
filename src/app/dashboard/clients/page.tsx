@@ -71,7 +71,7 @@ export default function ClientsListPage() {
     <div className="space-y-6 animate-in fade-in duration-500" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start">
-           <h1 className="flex items-center gap-3 text-slate-900 font-black">
+           <h1 className="flex items-center gap-3 text-slate-900 font-black font-headline">
              <Users className="h-8 w-8 text-primary" />
              {isRtl ? 'قاعدة العملاء' : 'Clients Database'}
            </h1>
@@ -85,22 +85,22 @@ export default function ClientsListPage() {
         </div>
         
         {canRegisterClient && (
-          <Button onClick={() => router.push('/dashboard/clients/new')} variant="gradient" className="h-11 px-8 shadow-xl gap-2">
+          <Button onClick={() => router.push('/dashboard/clients/new')} className="btn-gradient h-11 px-8 gap-2">
             <UserPlus className="h-5 w-5" /> {isRtl ? 'تسجيل عميل جديد' : 'New Registration'}
           </Button>
         )}
       </div>
 
-      <Card className="border-0 shadow-sm rounded-2xl bg-white overflow-hidden ring-1 ring-black/[0.03]">
+      <Card className="border-0 shadow-lg rounded-2xl bg-white overflow-hidden ring-1 ring-black/[0.03]">
         <div className="p-5 flex flex-row items-center justify-between gap-4">
-           <Button variant="outline" className="border-slate-200 font-bold gap-2 h-11">
+           <Button variant="outline" className="border-slate-200 font-bold gap-2 h-11 rounded-xl">
               <Filter className="h-4 w-4 text-primary" /> {isRtl ? 'تصفية النتائج' : 'Filter'}
            </Button>
            <div className="relative w-full max-w-md">
               <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
               <input 
                 placeholder={isRtl ? 'بحث في الأسماء، الملفات، أو المهندسين...' : 'Search records...'} 
-                className="ps-12 h-12 w-full bg-slate-50/50 border-slate-100 focus:outline-none focus:ring-primary/10 font-bold text-lg rounded-xl transition-all" 
+                className="ps-12 h-12 w-full bg-slate-50/50 border-slate-100 focus:outline-none focus:ring-4 focus:ring-primary/5 font-bold text-lg rounded-xl transition-all" 
                 value={searchTerm} 
                 onChange={e => setSearchTerm(e.target.value)} 
               />
@@ -114,10 +114,10 @@ export default function ClientsListPage() {
             <h3 className="text-xl font-black text-rose-900">{isRtl ? 'خطأ في جلب البيانات' : 'Data Sync Error'}</h3>
          </div>
       ) : (
-        <Card className="rounded-2xl overflow-hidden border border-border shadow-xl bg-white">
+        <Card className="rounded-2xl overflow-hidden border border-border shadow-2xl bg-white">
           <CardContent className="p-0">
             <Table>
-              <TableHeader className="bg-muted/50 border-b">
+              <TableHeader className="bg-slate-50/50 border-b">
                 <TableRow>
                   <TableHead className="ps-8 py-5 text-slate-500 font-black uppercase text-[10px] tracking-widest">{isRtl ? 'العميل المالك' : 'Client Profile'}</TableHead>
                   <TableHead className="text-slate-500 font-black uppercase text-[10px] tracking-widest">{isRtl ? 'المسؤول المباشر' : 'Assigned Staff'}</TableHead>

@@ -13,14 +13,14 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
     
-    --primary: 38 100% 50%;
+    --primary: 38 100% 50%; /* Firebase Orange #FFA000 */
     --primary-dark: 30 100% 48%;
     --primary-foreground: 0 0% 100%;
     
-    --secondary: 199 89% 48%;
+    --secondary: 199 89% 48%; /* Firebase Blue #039BE5 */
     --secondary-foreground: 0 0% 100%;
     
-    --accent: 43 96% 58%;
+    --accent: 43 96% 58%; /* Firebase Gold #FBC02D */
     --accent-foreground: 222 47% 11%;
     
     --muted: 210 40% 96.1%;
@@ -59,18 +59,18 @@
 }
 
 .btn-gradient {
-  @apply bg-gradient-to-r from-[#FFA000] to-[#FBC02D] text-foreground shadow-lg shadow-orange-500/15 hover:brightness-105 active:scale-[0.98] transition-all border-b-2 border-[#F57C00]/50 font-semibold;
+  @apply bg-gradient-to-r from-[#FFA000] to-[#FBC02D] text-white shadow-lg shadow-orange-500/15 hover:brightness-105 active:scale-[0.98] transition-all border-b-4 border-orange-700 font-bold;
 }
 
 .card-shadow {
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 10px -2px rgba(0, 0, 0, 0.02);
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.05), 0 2px 10px -2px rgba(0, 0, 0, 0.02);
 }
 
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
 [data-state=active].tab-sovereign {
-  @apply bg-gradient-to-r from-[#FFA000] to-[#FBC02D] text-foreground shadow-lg !important;
+  @apply bg-gradient-to-r from-[#FFA000] to-[#FBC02D] text-white shadow-lg !important;
 }
 
 .animate-ready-pulse {

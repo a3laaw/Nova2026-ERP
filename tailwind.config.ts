@@ -10,9 +10,9 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        body: ['PT Sans', 'sans-serif'],
-        headline: ['Space Grotesk', 'sans-serif'],
-        code: ['monospace'],
+        body: ['var(--font-body)', 'IBM Plex Sans Arabic', 'sans-serif'],
+        headline: ['var(--font-headline)', 'Cairo', 'sans-serif'],
+        code: ['ui-monospace', 'monospace'],
       },
       colors: {
         background: 'hsl(var(--background))',
@@ -70,8 +70,7 @@ export default {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
-        '2xl': '12px', /* Unified */
-        '3xl': '12px', /* Standardized to avoid excessive rounding */
+        '2xl': '12px', /* Sovereign Standard */
       },
       keyframes: {
         'accordion-down': {
