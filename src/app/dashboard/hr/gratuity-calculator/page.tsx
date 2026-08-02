@@ -19,12 +19,12 @@ import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
 import { Employee } from '@/types/hr';
 import { 
-  EmployeeSettlementInput, 
   NoticeType, 
   SettlementResult, 
   TerminationReason 
 } from '@/types/settlement';
-import { EndOfServiceCalculator } from '@/services/end-of-service-calculator';
+import { GratuityService, type GratuityCalculationInput, type GratuityResult } from '@/services/gratuity-service';
+import { addMonths, format, parseISO } from 'date-fns';
 import { SmartDateInput } from '@/components/ui/smart-date-input';
 import { SettlementBreakdown } from '@/components/hr/settlement-breakdown';
 import { cn } from '@/lib/utils';
@@ -59,38 +59,79 @@ export default function GratuityCalculatorPage() {
       toast({ variant: "destructive", title: isRtl ? "يرجى اختيار موظف أولاً" : "Please select an employee" });
       return;
     }
-
     if (!selectedEmployee.hireDate) {
       toast({ variant: "destructive", title: isRtl ? "الموظف ليس له تاريخ تعيين مسجل" : "Employee has no hire date recorded" });
       return;
     }
 
-    const lastSalary = (selectedEmployee.basicSalary || 0) + 
-                       (selectedEmployee.housingAllowance || 0) + 
-                       (selectedEmployee.transportAllowance || 0);
+    // الراتب الشامل الكامل (يشمل كل البدلات) — موحّد مع GratuityService
+    const totalSalary = (selectedEmployee.basicSalary || 0)
+                      + (selectedEmployee.housingAllowance || 0)
+                      + (selectedEmployee.transportAllowance || 0)
+                      + (selectedEmployee.otherAllowances || 0);
 
-    if (lastSalary <= 0) {
+    if (totalSalary <= 0) {
       toast({ variant: "destructive", title: isRtl ? "يجب ضبط راتب الموظف قبل الحساب" : "Employee salary must be configured" });
       return;
     }
 
     try {
-      const input: EmployeeSettlementInput = {
-        employeeId: selectedEmployee.id!,
-        fullName: selectedEmployee.fullName,
+      // تحويل نموذج الإنذار من الصفحة إلى نموذج GratuityService وتحديد تاريخ نهاية الأثر
+      let gNoticeType: GratuityCalculationInput['noticeType'] = 'served';
+      let effectiveEndDate = noticeStartDate;
+      let noticeText = "تنازل متبادل عن مدة الإنذار";
+
+      if (noticeType === 'worked') {
+        gNoticeType = 'served';
+        effectiveEndDate = format(addMonths(parseISO(noticeStartDate), 3), 'yyyy-MM-dd');
+        noticeText = "استيفاء فترة الإنذار (عمل فعلي 90 يوماً)";
+      } else if (noticeType === 'indemnity') {
+        gNoticeType = 'not_served_by_employer';
+        effectiveEndDate = noticeStartDate;
+        noticeText = "إنهاء فوري (استحقاق بدل إنذار 3 أشهر)";
+      } else {
+        // waived
+        gNoticeType = 'served';
+        effectiveEndDate = noticeStartDate;
+        noticeText = "تنازل متبادل عن مدة الإنذار";
+      }
+
+      // تحويل سبب إنهاء الخدمة (end_of_contract يُعامل كإنهاء من جهة العمل = مكافأة كاملة)
+      const gReason: GratuityCalculationInput['reason'] =
+        terminationReason === 'resignation' ? 'resignation'
+        : terminationReason === 'misconduct' ? 'misconduct'
+        : 'termination';
+
+      const gInput: GratuityCalculationInput = {
         hireDate: selectedEmployee.hireDate,
-        basicSalary: selectedEmployee.basicSalary || 0,
-        housingAllowance: selectedEmployee.housingAllowance || 0,
-        transportAllowance: selectedEmployee.transportAllowance || 0,
-        otherAllowances: selectedEmployee.otherAllowances || 0,
-        annualLeaveUsed: selectedEmployee.annualLeaveBalance === 30 ? 0 : 30 - (selectedEmployee.annualLeaveBalance || 30), // Example logic
-        carriedLeaveDays: 0,
-        terminationReason,
+        endDate: effectiveEndDate,
+        totalSalary,
+        reason: gReason,
+        noticeType: gNoticeType,
+        remainingLeaveDays: selectedEmployee.annualLeaveBalance || 0,
       };
 
-      const calcResult = EndOfServiceCalculator.buildSettlementResult(input, noticeStartDate, noticeType);
-      setResult(calcResult);
-      
+      const g: GratuityResult = GratuityService.calculate(gInput);
+
+      // تحويل النتيجة إلى شكل SettlementResult ليعمل مكوّن SettlementBreakdown كما هو
+      const mapped: SettlementResult = {
+        gratuity: g.finalGratuity,
+        leaveBalancePay: g.leaveBalancePay,
+        noticeIndemnity: g.noticeIndemnity,
+        total: g.totalEntitlement,
+        notice: noticeText,
+        yearsOfService: g.serviceDuration.years,
+        monthsOfService: g.serviceDuration.months,
+        lastSalary: totalSalary,
+        leaveBalance: g.accruedLeaveDays,
+        dailyWage: g.dailyWage,
+        baseGratuityBeforeFactor: g.baseGratuity,
+        resignationFactor: g.resignationFactor,
+        effectiveEndDate,
+        isCapped: g.isCapped,
+      };
+
+      setResult(mapped);
       toast({ title: isRtl ? "تم التحليل القانوني بنجاح" : "Legal Analysis Complete" });
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
@@ -139,7 +180,7 @@ export default function GratuityCalculatorPage() {
                        <SelectTrigger className="h-14 rounded-2xl border-2 font-black">
                           <SelectValue placeholder={isRtl ? "اختر موظفاً من القائمة" : "Select from list"} />
                        </SelectTrigger>
-                       <SelectContent className="rounded-2xl">
+                       <SelectContent className="rounded-xl">
                           {empsLoading ? <div className="p-4 text-center"><Loader2 className="h-4 w-4 animate-spin mx-auto" /></div> : 
                             employees?.map(emp => (
                              <SelectItem key={emp.id} value={emp.id!} className="font-bold">{emp.fullName}</SelectItem>
@@ -156,7 +197,7 @@ export default function GratuityCalculatorPage() {
                        </div>
                        <div className="flex justify-between items-center">
                           <span className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'الراتب الشامل' : 'Gross Salary'}</span>
-                          <span className="font-black text-emerald-600">{(selectedEmployee.basicSalary || 0) + (selectedEmployee.housingAllowance || 0) + (selectedEmployee.transportAllowance || 0)} KWD</span>
+                          <span className="font-black text-emerald-600">{(selectedEmployee.basicSalary || 0) + (selectedEmployee.housingAllowance || 0) + (selectedEmployee.transportAllowance || 0) + (selectedEmployee.otherAllowances || 0)} KWD</span>
                        </div>
                     </div>
                  )}
@@ -173,7 +214,7 @@ export default function GratuityCalculatorPage() {
                           <SelectTrigger className="h-14 rounded-2xl border-2 font-black">
                              <SelectValue />
                           </SelectTrigger>
-                          <SelectContent className="rounded-2xl">
+                          <SelectContent className="rounded-xl">
                              <SelectItem value="worked" className="font-bold">{isRtl ? 'استيفاء فترة الإنذار (عمل)' : 'Work during notice'}</SelectItem>
                              <SelectItem value="indemnity" className="font-bold">{isRtl ? 'إنهاء فوري (صرف بدل)' : 'Indemnity payout'}</SelectItem>
                              <SelectItem value="waived" className="font-bold">{isRtl ? 'تنازل متبادل عن المدة' : 'Waived period'}</SelectItem>
@@ -187,7 +228,7 @@ export default function GratuityCalculatorPage() {
                           <SelectTrigger className="h-14 rounded-2xl border-2 font-black">
                              <SelectValue />
                           </SelectTrigger>
-                          <SelectContent className="rounded-2xl">
+                          <SelectContent className="rounded-xl">
                              <SelectItem value="resignation" className="font-bold">{isRtl ? 'استقالة' : 'Resignation'}</SelectItem>
                              <SelectItem value="termination" className="font-bold text-blue-600">{isRtl ? 'إنهاء خدمات (صاحب عمل)' : 'Termination'}</SelectItem>
                              <SelectItem value="end_of_contract" className="font-bold">{isRtl ? 'انتهاء عقد' : 'Contract End'}</SelectItem>
