@@ -1,7 +1,3 @@
-/**
- * @fileOverview خدمة التعامل مع Firestore لإعدادات مواعيد العمل التخصصية.
- */
-
 'use client';
 
 import { 
@@ -29,7 +25,6 @@ export class WorkHoursService {
 
     if (snap.exists()) {
       const data = snap.data() as WorkHoursSettings;
-      // ضمان وجود كافة التخصصات والحقول الجديدة (Migration Support)
       return {
         ...defaults,
         ...data,
@@ -38,7 +33,9 @@ export class WorkHoursService {
         fieldWork: { ...defaults.fieldWork, ...data.fieldWork },
       } as WorkHoursSettings;
     }
-    return null;
+    
+    // فك قفل الرادار للمنشآت الجديدة بإعادة القيم الافتراضية فوراً
+    return { ...defaults, companyId: this.companyId } as WorkHoursSettings;
   }
 
   async saveSettings(settings: Partial<WorkHoursSettings>, userId: string) {
@@ -51,9 +48,6 @@ export class WorkHoursService {
     }, { merge: true });
   }
 
-  /**
-   * إعدادات افتراضية للشركات الجديدة تشمل التخصصات الثلاثة والوضع المرن
-   */
   getDefaultSettings(): Omit<WorkHoursSettings, 'companyId'> {
     const commonSchedule: DailySchedule = {
       mode: 'single',
@@ -68,9 +62,9 @@ export class WorkHoursService {
 
     return {
       general: { ...commonSchedule },
-      architectural: { ...commonSchedule }, // افتراضي فترة واحدة للمكتب
+      architectural: { ...commonSchedule },
       meetingRooms: { ...commonSchedule, slotDurationMinutes: 30, restDurationMinutes: 5 },
-      fieldWork: { ...commonSchedule, mode: 'double', restDurationMinutes: 30 }, // افتراضي فترتين للميدان
+      fieldWork: { ...commonSchedule, mode: 'double', restDurationMinutes: 30 },
       holidays: ["Friday"],
       publicHolidays: [],
       halfDay: {

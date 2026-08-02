@@ -6,8 +6,8 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 /**
- * خطاف جلب المستندات المدرع (Sovereign Hardened Document Hook).
- * يعالج مشكلة الانهيار ca9 عبر المقارنة المرجعية العميقة لمرجع المستند.
+ * خطاف جلب المستندات المطور (Sovereign Hardened Document Hook).
+ * محصن ضد تكرار التحديث عبر بصمة البيانات.
  */
 export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | null) {
   const [data, setData] = useState<T | null>(null);
@@ -19,7 +19,6 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | n
   const lastDataHashRef = useRef<string>("");
 
   useEffect(() => {
-    // التحقق من تطابق مرجع المستند
     const isSameRef = docRef && lastRefRef.current && refEqual(docRef, lastRefRef.current);
     
     if (isSameRef) return;
@@ -49,6 +48,7 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | n
         
         const docData = snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as T) : null;
         
+        // مقارنة البصمة لمنع حلقة الرندر
         const currentHash = JSON.stringify(docData);
         if (currentHash !== lastDataHashRef.current) {
           lastDataHashRef.current = currentHash;
