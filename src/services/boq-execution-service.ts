@@ -50,9 +50,6 @@ export class BOQExecutionService {
     return item.technicalStageId ? [item.technicalStageId] : [];
   }
 
-  /**
-   * دالة مساعدة للتحقق من هوية المهندس المسؤول عن المعاملة
-   */
   private async getIsAssignedEngineer(transactionId: string | undefined, userId: string): Promise<boolean> {
      if (!transactionId) return false;
      const transSnap = await getDoc(doc(this.db, paths.transactions(this.companyId), transactionId));
@@ -188,8 +185,7 @@ export class BOQExecutionService {
     if (snap.empty) return;
 
     const batch = writeBatch(this.db);
-    const affectedItemIds = new Set<string>();
-    const boqIds = new Set<string>();
+    const itemToBoq = new Map<string, string>(); // itemId -> boqId
 
     snap.docs.forEach(d => {
       const data = d.data();
@@ -200,17 +196,14 @@ export class BOQExecutionService {
           archivedAt: serverTimestamp(),
           updatedAt: serverTimestamp() 
         });
-        affectedItemIds.add(data.boqItemId);
-        boqIds.add(data.boqId);
+        itemToBoq.set(data.boqItemId, data.boqId);
       }
     });
 
     await batch.commit();
 
-    for (const boqId of Array.from(boqIds)) {
-      for (const itemId of Array.from(affectedItemIds)) {
-        await this.recalculateItemQuantity(boqId, itemId);
-      }
+    for (const [itemId, boqId] of itemToBoq.entries()) {
+      await this.recalculateItemQuantity(boqId, itemId);
     }
   }
 

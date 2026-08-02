@@ -9,7 +9,8 @@ import {
   deleteDoc, 
   serverTimestamp,
   increment,
-  writeBatch
+  writeBatch,
+  getDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -56,6 +57,21 @@ export class InventoryService {
     itemName: string; 
     quantity: number 
   }) {
+    if (!data.quantity || data.quantity <= 0) {
+      throw new Error('INVALID_QUANTITY: الكمية يجب أن تكون أكبر من صفر.');
+    }
+
+    // فحص الرصيد المتاح قبل الصرف لمنع السالب
+    const itemRef = doc(this.db, paths.inventoryItems(this.companyId), data.itemId);
+    const itemSnap = await getDoc(itemRef);
+    if (!itemSnap.exists()) {
+      throw new Error('ITEM_NOT_FOUND: الصنف غير موجود في المخزون.');
+    }
+    const available = (itemSnap.data().quantity || 0) as number;
+    if (data.quantity > available) {
+      throw new Error(`INSUFFICIENT_STOCK: الكمية المطلوبة (${data.quantity}) أكبر من المتاح (${available}).`);
+    }
+
     const batch = writeBatch(this.db);
     
     // 1. إنشاء سجل العهدة
@@ -69,7 +85,6 @@ export class InventoryService {
     });
 
     // 2. خصم الكمية من المخزون الأصلي
-    const itemRef = doc(this.db, paths.inventoryItems(this.companyId), data.itemId);
     batch.update(itemRef, {
       quantity: increment(-data.quantity),
       updatedAt: serverTimestamp()

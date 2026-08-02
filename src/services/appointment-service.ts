@@ -7,16 +7,14 @@ import {
   addDoc, 
   updateDoc, 
   serverTimestamp,
-  query,
-  getDocs,
   increment,
   writeBatch,
-  deleteDoc
+  deleteDoc,
+  getDoc
 } from 'firebase/firestore';
+import { handleWriteError } from '@/lib/write-error';
 import { paths } from '@/firebase/multi-tenant';
 import { Appointment, AppointmentStatus } from '@/types/appointment';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 
 export class AppointmentService {
   constructor(private db: Firestore, private companyId: string) {}
@@ -36,16 +34,11 @@ export class AppointmentService {
 
   async updateAppointment(id: string, data: Partial<Appointment>): Promise<void> {
     const ref = doc(this.db, paths.appointments(this.companyId), id);
-    return updateDoc(ref, { 
-      ...data, 
-      updatedAt: serverTimestamp() 
-    }).catch(async (err) => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: ref.path,
-        operation: 'update',
-        requestResourceData: data
-      }));
-    });
+    try {
+      await updateDoc(ref, { ...data, updatedAt: serverTimestamp() });
+    } catch (err: any) {
+      await handleWriteError(err, { path: ref.path, operation: 'update', requestResourceData: data });
+    }
   }
 
   async updateStatus(appointmentId: string, status: AppointmentStatus, userId: string) {
@@ -59,35 +52,29 @@ export class AppointmentService {
     });
 
     if (status === 'completed') {
-      const snap = await getDocs(query(collection(this.db, paths.appointments(this.companyId))));
-      const appData = snap.docs.find(d => d.id === appointmentId)?.data() as Appointment;
-      
-      if (appData?.type === 'site_visit' && appData.clientId) {
-        const clientRef = doc(this.db, paths.clients(this.companyId), appData.clientId);
-        batch.update(clientRef, {
-          visitCount: increment(1),
-          updatedAt: serverTimestamp()
-        });
+      const appSnap = await getDoc(docRef);
+      if (appSnap.exists()) {
+        const appData = appSnap.data() as Appointment;
+        if (appData?.type === 'site_visit' && appData.clientId) {
+          const clientRef = doc(this.db, paths.clients(this.companyId), appData.clientId);
+          batch.update(clientRef, {
+            visitCount: increment(1),
+            updatedAt: serverTimestamp()
+          });
+        }
       }
     }
 
     return batch.commit();
   }
 
-  /**
-   * حذف الموعد نهائياً (Sovereign Enforced Deletion).
-   */
   async deleteAppointment(id: string): Promise<void> {
     if (!id || !this.companyId) return;
     const ref = doc(this.db, paths.appointments(this.companyId), id);
-    
-    // إرجاع الوعد لضمان معرفة الواجهة بنتيجة العملية
-    return deleteDoc(ref).catch(async (serverError) => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: ref.path,
-        operation: 'delete'
-      }));
-      throw serverError;
-    });
+    try {
+      await deleteDoc(ref);
+    } catch (err: any) {
+      await handleWriteError(err, { path: ref.path, operation: 'delete' });
+    }
   }
 }

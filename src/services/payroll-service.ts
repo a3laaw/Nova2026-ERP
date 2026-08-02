@@ -9,9 +9,7 @@ import {
   where,
   getDocs,
   writeBatch,
-  updateDoc,
-  limit,
-  orderBy
+  updateDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { Employee, AttendanceRecord, LeaveRequest, PermissionRequest } from '@/types/hr';
@@ -48,13 +46,11 @@ export class PayrollService {
     const lastDay = new Date(year, month, 0).getDate();
     const end = `${year}-${monthStr}-${lastDay}`;
 
-    // 1. جلب كافة البيانات المطلوبة للتحليل
     const employeesSnap = await getDocs(query(collection(this.db, paths.employees(this.companyId)), where('status', '==', 'active')));
     const attendanceSnap = await getDocs(query(collection(this.db, paths.attendance(this.companyId)), where('date', '>=', start), where('date', '<=', end)));
     const leavesSnap = await getDocs(query(collection(this.db, paths.leaveRequests(this.companyId)), where('status', 'in', ['approved', 'on-leave', 'returned', 'commenced'])));
     const permsSnap = await getDocs(query(collection(this.db, paths.permissionRequests(this.companyId)), where('status', '==', 'approved'), where('date', '>=', start), where('date', '<=', end)));
     
-    // جلب إعدادات الدوام للحصول على معدل الخصم
     const whService = new WorkHoursService(this.db, this.companyId);
     let settings = await whService.getSettings();
     if (!settings) settings = whService.getDefaultSettings() as any;
@@ -75,10 +71,9 @@ export class PayrollService {
       let totalDeductions = 0;
       let unjustifiedAbsenceDays = 0;
       let justifiedAbsenceDays = 0;
+      let consumedSickDays = 0;
 
       const days = eachDayOfInterval({ start: parseISO(start), end: parseISO(end) });
-
-      // حسبة الـ 26 يوماً (قانون العمل الكويتي)
       const dailyWage = emp.basicSalary / 26;
       const hourlyWage = dailyWage / 8;
       const minuteWage = hourlyWage / 60;
@@ -88,39 +83,34 @@ export class PayrollService {
         const record = empAttendance.find(a => a.date === dateStr);
         const approvedLeave = empLeaves.find(l => dateStr >= l.startDate && dateStr <= l.endDate);
         
-        // أ. معالجة الإجازات المعتمدة (الخصومات القانونية)
         if (approvedLeave) {
           justifiedAbsenceDays++;
-          
-          // تطبيق خصم شرائح المرضية (المادة 69)
           if (approvedLeave.type === 'sick') {
-             // نحتاج لمعرفة كم يوماً مرضياً استهلك الموظف قبل هذا اليوم في نفس السنة
-             const prevSickDays = empLeaves
+             // الأيام المرضية السابقة في نفس السنة من الإجازات الأخرى (مستثناة المرفوضة)
+             const prevSickFromOtherLeaves = empLeaves
                .filter(l => l.type === 'sick' && l.startDate < dateStr && l.status !== 'rejected')
                .reduce((acc, curr) => acc + (curr.workingDays || 0), 0);
              
-             const breakdown = wdService.calculateSickLeaveBreakdown(1, prevSickDays);
+             const breakdown = wdService.calculateSickLeaveBreakdown(1, prevSickFromOtherLeaves + consumedSickDays);
              
-             // الخصم يكون عكس النسبة الممنوحة
-             if (breakdown.threeQuarterPay > 0) totalDeductions += (dailyWage * 0.25); // خصم 25%
-             if (breakdown.halfPay > 0) totalDeductions += (dailyWage * 0.50);         // خصم 50%
-             if (breakdown.quarterPay > 0) totalDeductions += (dailyWage * 0.75);      // خصم 75%
-             if (breakdown.noPay > 0) totalDeductions += dailyWage;                  // خصم 100%
+             if (breakdown.threeQuarterPay > 0) totalDeductions += (dailyWage * 0.25);
+             else if (breakdown.halfPay > 0) totalDeductions += (dailyWage * 0.50);
+             else if (breakdown.quarterPay > 0) totalDeductions += (dailyWage * 0.75);
+             else if (breakdown.noPay > 0) totalDeductions += dailyWage;
+
+             consumedSickDays++;
           }
           continue; 
         }
 
-        // ب. استبعاد أيام الراحة والعطلات
         if (record && (record.status === 'holiday' || record.status === 'weekend')) {
           continue;
         }
 
-        // ج. غياب غير مبرر (خصم يوم كامل)
         if (!record || record.status === 'absent') {
           unjustifiedAbsenceDays++;
           totalDeductions += dailyWage;
         } 
-        // د. تأخير (خصم بالدقائق)
         else if (record.status === 'late') {
           const hasPerm = empPerms.some(p => p.date === dateStr && p.type === 'late_arrival');
           if (!hasPerm) {

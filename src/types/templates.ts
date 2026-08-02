@@ -25,6 +25,7 @@ export interface QuotationItem {
   timing?: MilestoneTiming;
   technicalStageId?: string;
   contractualEvent?: 'SIGNING' | 'CONTRACTING' | 'MANUAL';
+  deleted?: boolean;
 }
 
 export interface BaseTemplate extends BaseReference {
@@ -72,6 +73,7 @@ export interface ContractTemplate extends BaseTemplate {
   defaultMilestones: ContractMilestone[];
   contractType?: string;
   durationNotes?: string;
+  pricingMode?: PricingMode;
 }
 
 /**

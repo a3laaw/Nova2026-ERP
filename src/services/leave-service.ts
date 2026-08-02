@@ -14,8 +14,7 @@ import {
   increment,
   writeBatch
 } from 'firebase/firestore';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+import { handleWriteError } from '@/lib/write-error';
 import { LeaveRequest, Employee } from '@/types/hr';
 import { ensureActionPermission } from '@/lib/permissions';
 import { paths } from '@/firebase/multi-tenant';
@@ -56,20 +55,13 @@ export class LeaveService {
       updatedAt: serverTimestamp()
     };
 
-    return addDoc(collection(this.db, path), docData).catch(async (err) => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path,
-        operation: 'create',
-        requestResourceData: docData
-      }));
-      throw err;
-    });
+    try {
+      await addDoc(collection(this.db, path), docData);
+    } catch (err: any) {
+      await handleWriteError(err, { path, operation: 'create', requestResourceData: docData });
+    }
   }
 
-  /**
-   * محرك تحليل كثافة الإجازات في القسم (Department Leave Density)
-   * تم تحسينه ليشمل الطلبات "المقدمة" (Pending) والطلبات "المقبولة" لضمان عدم حدوث تضارب.
-   */
   async getDepartmentLeaveDensity(departmentId: string, startDate: string, endDate: string, currentRequestId?: string) {
     const q = query(
       collection(this.db, paths.leaveRequests(this.companyId)),
@@ -80,9 +72,7 @@ export class LeaveService {
     const snap = await getDocs(q);
     const peersOnLeave = snap.docs.filter(d => {
        const data = d.data();
-       // استبعاد الطلب الحالي من الفحص
        if (currentRequestId && d.id === currentRequestId) return false;
-       // فحص تداخل التواريخ
        return (startDate <= data.endDate && endDate >= data.startDate);
     });
 
@@ -110,7 +100,8 @@ export class LeaveService {
       actualDepartureDate?: string 
     } = {}
   ) {
-    const leaveRef = doc(this.db, paths.leaveRequests(this.companyId), leaveId);
+    const path = paths.leaveRequests(this.companyId);
+    const leaveRef = doc(this.db, path, leaveId);
     const leaveSnap = await getDoc(leaveRef);
     
     if (!leaveSnap.exists()) return;
@@ -168,6 +159,8 @@ export class LeaveService {
             updateData.workingDays = payload.workingDays;
             if (leaveData.type === 'annual') {
                batch.update(empRef, { annualLeaveBalance: increment(-diff) });
+            } else if (leaveData.type === 'sick') {
+               batch.update(empRef, { sickLeaveBalance: increment(-diff) });
             }
          }
       }
@@ -176,12 +169,10 @@ export class LeaveService {
     }
 
     batch.update(leaveRef, updateData);
-    await batch.commit().catch(err => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: 'leave_status_batch',
-            operation: 'write'
-        }));
-        throw err;
-    });
+    try {
+      await batch.commit();
+    } catch (err: any) {
+      await handleWriteError(err, { path: 'leave_status_batch', operation: 'update', requestResourceData: updateData });
+    }
   }
 }

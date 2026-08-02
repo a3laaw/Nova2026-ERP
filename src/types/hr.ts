@@ -53,6 +53,8 @@ export interface LeaveRequest extends BaseReference {
   status: LeaveStatus;
   approvedBy?: string;
   approvedAt?: any;
+  rejectedBy?: string;
+  rejectedAt?: any;
   departureConfirmedAt?: any;
   returnRecordedAt?: any;
   actualReturnDate?: string;

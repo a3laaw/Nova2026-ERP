@@ -4,57 +4,28 @@ import {
   Firestore, 
   collection, 
   doc, 
-  addDoc, 
   setDoc,
   updateDoc, 
   serverTimestamp,
-  query,
-  where,
-  orderBy,
-  limit,
-  getDocs,
-  increment,
+  addDoc,
   getDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { Client, ClientHistory } from '@/types/client';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { nextSequential } from '@/lib/counters';
 
 export class ClientService {
   constructor(private db: Firestore, private companyId: string) {}
 
   /**
-   * توليد رقم الملف التلقائي التالي بصيغة C-0001/2026
+   * توليد رقم الملف التلقائي التالي بصيغة C-0001/2026 عبر عداد ذري
    */
   async getNextFileNumber(): Promise<string> {
     const year = new Date().getFullYear();
-    const prefix = `C-`;
-    const suffix = `/${year}`;
-    
-    try {
-      const q = query(
-        collection(this.db, paths.clients(this.companyId)),
-        where('fileNumber', '>=', `${prefix}0000${suffix}`),
-        where('fileNumber', '<=', `${prefix}9999${suffix}`),
-        orderBy('fileNumber', 'desc'),
-        limit(1)
-      );
-      
-      const snap = await getDocs(q);
-      
-      if (snap.empty) return `${prefix}0001${suffix}`;
-      
-      const lastNumStr = snap.docs[0].data().fileNumber;
-      const match = lastNumStr.match(/C-(\d+)\//);
-      if (match) {
-        const nextNum = parseInt(match[1]) + 1;
-        return `${prefix}${nextNum.toString().padStart(4, '0')}${suffix}`;
-      }
-      return `${prefix}0001${suffix}`;
-    } catch (e) {
-      return `${prefix}0001${suffix}`;
-    }
+    const num = await nextSequential(this.db, this.companyId, 'client', `C-`, 4);
+    return `${num}/${year}`;
   }
 
   async addClient(data: Partial<Client>, userId: string, userName: string) {

@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { 
   Gavel, Plus, Search, Loader2, ArrowRight,
   Filter, Calendar, FileText, UserCircle, Wallet,
-  ShieldCheck, ArrowUpRight
+  ShieldCheck, ArrowUpRight, CheckCircle2, Clock
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -87,7 +87,7 @@ export default function GlobalContractsPage() {
             <h3 className="text-3xl font-black text-emerald-600">{stats.paid}</h3>
          </Card>
          <Card className="border-0 shadow-lg rounded-xl p-6 text-start bg-white group hover:scale-[1.02] transition-all border-b-4 border-b-blue-500">
-            <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{isRtl ? 'بانتظار السداد' : 'Pending Payment'}</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'بانتظار السداد' : 'Pending Payment'}</p>
             <h3 className="text-3xl font-black text-blue-600">{stats.pending}</h3>
          </Card>
          <Card className="border-0 shadow-lg rounded-xl p-6 text-start bg-white group hover:scale-[1.02] transition-all border-b-4 border-b-slate-900">
