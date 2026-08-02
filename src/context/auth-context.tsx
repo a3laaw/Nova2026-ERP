@@ -45,6 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!auth) return;
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
+      // إذا لم يوجد مستخدم، ننهي حالة التحميل فوراً
       if (!firebaseUser) {
         setGlobalUser(null);
         setRoleData(null);
@@ -54,7 +55,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, [auth]);
 
-  // تأثير جلب بيانات المستخدم العالمي (global_users)
   useEffect(() => {
     if (!db || !user) return;
 
@@ -64,6 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const data = snap.data() as GlobalUserData;
         setGlobalUser({ ...data, uid: user.uid });
       } else {
+        // دعم حالة المطور
         if (user.email === 'admin@novaflow.com') {
            setGlobalUser({
              uid: user.uid,
@@ -77,6 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
            setGlobalUser(null);
         }
       }
+      // إنهاء حالة التحميل بعد أول رد من السحاب سواء وجد المستند أم لا
       setLoading(false);
     }, (err) => {
       console.error("Global user snapshot error:", err);
@@ -86,7 +88,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, [db, user]);
 
-  // تأثير جلب بيانات الصلاحيات
   useEffect(() => {
     if (!db || !globalUser || !globalUser.companyId || !globalUser.roleId) {
       setRoleData(null);

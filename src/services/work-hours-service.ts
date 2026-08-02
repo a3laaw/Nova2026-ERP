@@ -23,24 +23,32 @@ export class WorkHoursService {
     return doc(this.db, 'companies', this.companyId, 'settings', WORK_HOURS_DOC_ID);
   }
 
+  /**
+   * جلب الإعدادات مع معالجة فورية لحالة عدم الوجود (Fix for Setup Hang).
+   */
   async getSettings(): Promise<WorkHoursSettings | null> {
-    const snap = await getDoc(this.getDocRef());
-    const defaults = this.getDefaultSettings();
+    try {
+      const snap = await getDoc(this.getDocRef());
+      const defaults = this.getDefaultSettings();
 
-    if (snap.exists()) {
-      const data = snap.data() as WorkHoursSettings;
-      // ضمان وجود كافة التخصصات والحقول الجديدة (Migration Support)
-      return {
-        ...defaults,
-        ...data,
-        architectural: { ...defaults.architectural, ...data.architectural },
-        meetingRooms: { ...defaults.meetingRooms, ...data.meetingRooms },
-        fieldWork: { ...defaults.fieldWork, ...data.fieldWork },
-      } as WorkHoursSettings;
+      if (snap.exists()) {
+        const data = snap.data() as WorkHoursSettings;
+        return {
+          ...defaults,
+          ...data,
+          architectural: { ...defaults.architectural, ...data.architectural },
+          meetingRooms: { ...defaults.meetingRooms, ...data.meetingRooms },
+          fieldWork: { ...defaults.fieldWork, ...data.fieldWork },
+          companyId: this.companyId
+        } as WorkHoursSettings;
+      }
+      
+      // إذا لم توجد الوثيقة، نرجع الافتراضي فوراً لفك تعليق الواجهة
+      return { ...defaults, companyId: this.companyId } as WorkHoursSettings;
+    } catch (e) {
+      console.warn("Using local defaults due to fetch error:", e);
+      return { ...this.getDefaultSettings(), companyId: this.companyId } as WorkHoursSettings;
     }
-    
-    // تصحيح سيادي: إذا لم توجد الوثيقة، نعد القيم الافتراضية فوراً لمنع تعليق الواجهة (Fix for the Spinner issue)
-    return { ...defaults, companyId: this.companyId } as WorkHoursSettings;
   }
 
   async saveSettings(settings: Partial<WorkHoursSettings>, userId: string) {
@@ -53,9 +61,6 @@ export class WorkHoursService {
     }, { merge: true });
   }
 
-  /**
-   * إعدادات افتراضية للشركات الجديدة تشمل التخصصات الثلاثة والوضع المرن
-   */
   getDefaultSettings(): Omit<WorkHoursSettings, 'companyId'> {
     const commonSchedule: DailySchedule = {
       mode: 'single',

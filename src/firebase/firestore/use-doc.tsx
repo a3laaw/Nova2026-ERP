@@ -6,20 +6,19 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 /**
- * خطاف جلب المستندات المدرع (Sovereign Hardened Document Hook).
- * يعالج مشكلة الانهيار ca9 عبر المقارنة المرجعية العميقة لمرجع المستند.
+ * خطاف جلب المستندات المحصن (Sovereign Ref-Equal Hook).
+ * يمنع الـ Re-rendering المتكرر الذي يسبب دائرة التحميل المستمرة.
  */
 export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | null) {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
   
-  const unsubscribeRef = useRef<(() => void) | null>(null);
   const lastRefRef = useRef<DocumentReference<any, any> | null>(null);
-  const lastDataHashRef = useRef<string>("");
+  const unsubscribeRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    // التحقق من تطابق مرجع المستند - يمنع إعادة التحميل اللانهائي
+    // مقارنة مرجع المستند لمنع الدخول في حلقة لانهائية
     const isSameRef = docRef && lastRefRef.current && refEqual(docRef, lastRefRef.current);
     
     if (isSameRef) return;
@@ -48,14 +47,7 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | n
         if (!isMounted) return;
         
         const docData = snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as T) : null;
-        
-        // منع تحديث الحالة إذا كانت البيانات متطابقة نصياً
-        const currentHash = JSON.stringify(docData);
-        if (currentHash !== lastDataHashRef.current) {
-          lastDataHashRef.current = currentHash;
-          setData(docData);
-        }
-        
+        setData(docData);
         setLoading(false);
       },
       (serverError: FirestoreError) => {
@@ -79,7 +71,6 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | n
       isMounted = false;
       if (unsubscribeRef.current) {
         unsubscribeRef.current();
-        unsubscribeRef.current = null;
       }
     };
   }, [docRef]);

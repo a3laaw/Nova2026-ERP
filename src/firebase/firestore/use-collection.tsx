@@ -6,8 +6,8 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 /**
- * خطاف جلب المجموعات المطور (Sovereign Atomic Collection Hook).
- * تم تحديثه لضمان استقرار الحالة ومنع "حلقات البحث" المفرغة ca9.
+ * خطاف جلب المجموعات المحصن (Sovereign Deep-Comparison Hook).
+ * يقضي على حلقة التحميل اللانهائية (ca9) عبر المقارنة العميقة للاستعلامات.
  */
 export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
   const [state, setState] = useState<{
@@ -24,12 +24,12 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
   const unsubscribeRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    // التحقق من استقرار الاستعلام (Query Stability Check) - الحل النهائي لخطأ ca9
+    // التحقق من استقرار الاستعلام عبر المقارنة العميقة من Firestore SDK
     const isSameQuery = query && lastQueryRef.current && queryEqual(query, lastQueryRef.current);
     
     if (isSameQuery) return;
 
-    // تنظيف المراقب السابق فوراً
+    // تنظيف المراقب السابق قبل بدء استعلام جديد
     if (unsubscribeRef.current) {
       unsubscribeRef.current();
       unsubscribeRef.current = null;
@@ -79,7 +79,6 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
       isMounted = false;
       if (unsubscribeRef.current) {
         unsubscribeRef.current();
-        unsubscribeRef.current = null;
       }
     };
   }, [query]);

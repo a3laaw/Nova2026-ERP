@@ -21,6 +21,9 @@ import { paths } from '@/firebase/multi-tenant';
 import { Client } from '@/types/client';
 import { cn } from '@/lib/utils';
 
+/**
+ * صفحة قاعدة العملاء - مستعادة ومحصنة ضد حلقة البحث اللانهائية.
+ */
 export default function ClientsListPage() {
   const { globalUser } = useAuthContext();
   const { lang, dir, t } = useLanguage();
@@ -33,7 +36,7 @@ export default function ClientsListPage() {
 
   const canRegisterClient = check('crm', 'create').can;
 
-  // استقرار الاستعلام (Query Stability) - يمنع حلقات التكرار ca9
+  // استقرار الاستعلام (Query Stability) المحصن
   const clientsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.clients(companyId))) : null, 
   [db, companyId]);
@@ -81,7 +84,7 @@ export default function ClientsListPage() {
         </div>
         
         {canRegisterClient && (
-          <Button onClick={() => router.push('/dashboard/clients/new')} variant="gradient" size="lg" className="shadow-xl gap-2">
+          <Button onClick={() => router.push('/dashboard/clients/new')} variant="gradient" size="lg" className="shadow-xl gap-2 h-11">
             <UserPlus className="h-5 w-5" /> {isRtl ? 'تسجيل عميل جديد' : 'New Registration'}
           </Button>
         )}
@@ -89,14 +92,14 @@ export default function ClientsListPage() {
 
       <Card className="border-0 shadow-sm rounded-2xl bg-white overflow-hidden ring-1 ring-black/[0.03]">
         <div className="p-5 flex flex-row items-center justify-between gap-4">
-           <Button variant="outline" size="lg" className="border-slate-200 font-bold gap-2">
+           <Button variant="outline" size="lg" className="border-slate-200 font-bold gap-2 h-11">
               <Filter className="h-4 w-4 text-primary" /> {isRtl ? 'تصفية النتائج' : 'Filter'}
            </Button>
            <div className="relative w-full max-w-md">
               <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
               <Input 
                 placeholder={isRtl ? 'بحث في الأسماء، الملفات، أو المهندسين...' : 'Search records...'} 
-                className="ps-12 h-12 bg-slate-50/50 border-slate-100 focus-visible:ring-primary/10 font-bold text-lg" 
+                className="ps-12 h-12 bg-slate-50/50 border-slate-100 focus-visible:ring-primary/10 font-bold text-lg rounded-xl" 
                 value={searchTerm} 
                 onChange={e => setSearchTerm(e.target.value)} 
               />
