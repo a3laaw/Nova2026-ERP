@@ -42,9 +42,12 @@ export default function ClientVisitsReportPage() {
   const [loadingTimeline, setLoadingTimeline] = useState(false);
   const [indexError, setIndexError] = useState<string | null>(null);
 
-  const clientsQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.clients(companyId)), orderBy('nameAr')) : null, 
-  [db, companyId]);
+  // تثبيت كائن الاستعلام لمنع أخطاء استقرار الحالة ca9
+  const clientsQuery = useMemo(() => {
+    if (!companyId || !db) return null;
+    return query(collection(db, paths.clients(companyId)), orderBy('nameAr'));
+  }, [db, companyId]);
+
   const { data: allClients, loading: clientsLoading } = useCollection<Client>(clientsQuery);
 
   const filteredClients = useMemo(() => {
@@ -57,6 +60,7 @@ export default function ClientVisitsReportPage() {
   }, [allClients, searchTerm]);
 
   useEffect(() => {
+    let isMounted = true;
     async function fetchFullHistory() {
       if (!selectedClientId || !db || !companyId) return;
       setLoadingTimeline(true);
@@ -68,7 +72,7 @@ export default function ClientVisitsReportPage() {
         );
         const apptsSnap = await getDocs(apptsQuery);
         
-        // جلب تقارير الموقع - قد يتطلب فهرساً مركباً
+        // جلب تقارير الموقع - محمي ضد غياب الفهارس
         const fieldVisitsQuery = query(
           collectionGroup(db, 'fieldVisits'), 
           where('companyId', '==', companyId),
@@ -83,6 +87,8 @@ export default function ClientVisitsReportPage() {
             setIndexError(e.message);
           }
         }
+
+        if (!isMounted) return;
 
         const appts = apptsSnap.docs.map(d => ({ 
           id: d.id, 
@@ -123,14 +129,17 @@ export default function ClientVisitsReportPage() {
            return { ...item, revisions, comments };
         }));
 
-        setUnifiedTimeline(detailedData);
+        if (isMounted) {
+           setUnifiedTimeline(detailedData);
+        }
       } catch (e) {
         console.error("Unified fetch failed", e);
       } finally {
-        setLoadingTimeline(false);
+        if (isMounted) setLoadingTimeline(false);
       }
     }
     fetchFullHistory();
+    return () => { isMounted = false; };
   }, [selectedClientId, db, companyId]);
 
   const tabData = useMemo(() => {
@@ -145,9 +154,9 @@ export default function ClientVisitsReportPage() {
   const selectedClient = allClients?.find(c => c.id === selectedClientId);
 
   const renderTimelineTable = (data: any[]) => (
-    <div className="border-2 border-primary/10 rounded-[2rem] overflow-hidden bg-white shadow-2xl animate-in fade-in duration-500">
+    <div className="border-2 border-primary/10 rounded-3xl overflow-hidden bg-white shadow-xl animate-in fade-in duration-500">
       <Table>
-        <TableHeader className="bg-slate-50">
+        <TableHeader className="bg-slate-50/50">
           <TableRow className="hover:bg-slate-50 border-0">
             <TableHead className="py-6 ps-8 text-primary font-black uppercase text-[10px] tracking-widest w-[180px]">{isRtl ? 'التاريخ والوقت' : 'Date & Time'}</TableHead>
             <TableHead className="text-primary font-black uppercase text-[10px] tracking-widest w-[140px]">{isRtl ? 'نوع الزيارة' : 'Visit Type'}</TableHead>
@@ -161,7 +170,7 @@ export default function ClientVisitsReportPage() {
             const isHall = item.type === 'hall_meeting';
 
             return (
-              <TableRow key={item.id} className="hover:bg-primary/[0.02] transition-colors border-b-slate-100">
+              <TableRow key={item.id} className="hover:bg-primary/[0.01] transition-colors border-b-slate-100">
                 <td className="py-6 ps-8 align-top text-start">
                   <div className="space-y-1">
                     <p className="font-black text-slate-800 text-sm">{item.displayDate}</p>
@@ -258,13 +267,15 @@ export default function ClientVisitsReportPage() {
         </div>
 
         {indexError && (
-          <div className="p-6 bg-rose-50 border-4 border-rose-100 rounded-[2rem] text-start space-y-4">
-             <div className="flex items-center gap-3 text-rose-600">
+          <div className="p-6 bg-orange-50 border-4 border-orange-100 rounded-[2rem] text-start space-y-4 shadow-xl">
+             <div className="flex items-center gap-3 text-[#f97316]">
                 <AlertTriangle className="h-8 w-8" />
                 <h3 className="text-xl font-black">تنبيه: يتطلب النظام إنشاء فهرس سحابي</h3>
              </div>
-             <p className="text-sm font-bold text-rose-700">يرجى الضغط على الرابط أدناه لمرة واحدة لتمكين البحث الشامل في سجلات الميدان:</p>
-             <Button variant="outline" className="bg-white border-rose-200 text-rose-600 font-bold" onClick={() => window.open(indexError.split(': ')[1], '_blank')}>
+             <p className="text-sm font-bold text-slate-700 leading-relaxed">
+               يرجى الضغط على الرابط أدناه لمرة واحدة لتمكين البحث الشامل في سجلات الميدان والمكتب. هذا إجراء تقني لضمان سرعة البحث في السحاب:
+             </p>
+             <Button className="bg-white border-2 border-orange-200 text-[#f97316] font-bold h-12 shadow-sm hover:bg-orange-50" onClick={() => window.open(indexError.split(': ')[1], '_blank')}>
                 إنشاء الفهرس الآن في Firebase Console
              </Button>
           </div>
@@ -327,7 +338,7 @@ export default function ClientVisitsReportPage() {
                     </div>
                  </div>
                  <div className="relative z-10">
-                    <div className="text-center bg-primary/5 p-6 rounded-[2rem] border-2 border-white shadow-inner min-w-[150px]">
+                    <div className="text-center bg-primary/5 p-6 rounded-3xl border-2 border-white shadow-inner min-w-[150px]">
                        <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Total Entries</p>
                        <p className="text-4xl font-black text-primary font-mono">{unifiedTimeline.length}</p>
                     </div>

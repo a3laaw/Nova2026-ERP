@@ -6,8 +6,8 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 /**
- * خطاف جلب المجموعات المطور (Hardened Sovereign Collection Hook).
- * يستخدم تقنية التثبيت (Memoization) العميقة لمنع الانهيار الداخلي ca9.
+ * خطاف جلب المجموعات المدرع (Sovereign Hardened Collection Hook).
+ * تم تحديثه للقضاء على خطأ ca9 عبر تثبيت الاستعلامات ومنع التكرار اللحظي.
  */
 export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
   const [data, setData] = useState<T[]>([]);
@@ -19,14 +19,16 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
   const lastDataHashRef = useRef<string>("");
 
   useEffect(() => {
-    // 1. التحقق من استقرار الاستعلام (Query Stability) باستخدام queryEqual
-    // هذا يمنع الحلقات المفرغة التي تسبب خطأ ca9
+    // بروتوكول تثبيت الاستعلام (Query Stabilization Protocol)
+    // نستخدم queryEqual المدمجة في SDK للمقارنة العميقة بدلاً من المراجع
     const isSameQuery = query && lastQueryRef.current && queryEqual(query, lastQueryRef.current);
     
-    if (isSameQuery && !loading) {
+    // إذا كان الاستعلام هو نفسه، نتوقف فوراً لمنع حلقة ca9 المفرغة
+    if (isSameQuery) {
        return; 
     }
 
+    // تنظيف المراقب السابق قبل بدء الجديد
     if (unsubscribeRef.current) {
       unsubscribeRef.current();
       unsubscribeRef.current = null;
@@ -45,6 +47,7 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
 
     let isMounted = true;
 
+    // البدء في مراقبة البيانات بنمط حماية الذاكرة
     const unsubscribe = onSnapshot(
       query,
       (snapshot) => {
@@ -55,7 +58,7 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
           ...doc.data(),
         })) as unknown as T[];
         
-        // منع التحديثات غير الضرورية (Data Stabilization)
+        // منع تحديث الواجهة إذا لم تتغير البيانات فعلياً (Data Integrity Check)
         const currentHash = JSON.stringify(items);
         if (currentHash !== lastDataHashRef.current) {
           lastDataHashRef.current = currentHash;

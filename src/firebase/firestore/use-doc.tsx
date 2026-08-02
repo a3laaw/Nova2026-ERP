@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
@@ -8,7 +7,7 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
 
 /**
  * خطاف جلب المستندات المدرع (Sovereign Hardened Document Hook).
- * يحل مشكلة الانهيار الداخلي عبر تثبيت المراجع والمقارنة العميقة.
+ * يعالج مشكلة الانهيار ca9 عبر المقارنة المرجعية العميقة لمرجع المستند.
  */
 export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | null) {
   const [data, setData] = useState<T | null>(null);
@@ -20,9 +19,10 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | n
   const lastDataHashRef = useRef<string>("");
 
   useEffect(() => {
+    // التحقق من تطابق مرجع المستند
     const isSameRef = docRef && lastRefRef.current && refEqual(docRef, lastRefRef.current);
     
-    if (isSameRef && !loading) return;
+    if (isSameRef) return;
 
     if (unsubscribeRef.current) {
       unsubscribeRef.current();
