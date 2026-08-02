@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { onSnapshot, DocumentReference, DocumentData, FirestoreError, refEqual } from 'firebase/firestore';
+import { onSnapshot, DocumentReference, DocumentData, FirestoreError } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
@@ -14,24 +14,16 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | n
   const [loading, setLoading] = useState(docRef !== null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
   
-  const lastRefRef = useRef<DocumentReference<any, any> | null>(null);
   const lastDataHashRef = useRef<string>("");
 
   useEffect(() => {
     if (!docRef) {
       setData(null);
       setLoading(false);
-      lastRefRef.current = null;
       lastDataHashRef.current = "";
       return;
     }
 
-    // حارس المرجع الموحد لكسر حلقات الرندر
-    if (lastRefRef.current && refEqual(docRef, lastRefRef.current)) {
-      return;
-    }
-
-    lastRefRef.current = docRef;
     setLoading(true);
 
     const unsubscribe = onSnapshot(
