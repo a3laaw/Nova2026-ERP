@@ -6,32 +6,33 @@
 
 @layer base {
   :root {
-    --background: 30 20% 98%; /* خلفية دافئة خفيفة جداً */
+    --background: 30 20% 98%;
     --foreground: 222 47% 11%;
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
     
-    /* لوحة الألوان الجديدة بناءً على طلبك */
-    --primary: 24 95% 53%;    /* البرتقالي المشرق #f97316 */
+    /* لوحة الألوان الدافئة المعتمدة */
+    --primary: 38 100% 50%;
+    --primary-dark: 30 100% 48%;
     --primary-foreground: 0 0% 100%;
     
-    --secondary: 199 89% 48%;  /* الأزرق السماوي #0ea5e9 */
+    --secondary: 199 89% 48%;
     --secondary-foreground: 0 0% 100%;
     
-    --accent: 48 96% 53%;     /* الأصفر الذهبي #facc15 */
+    --accent: 43 96% 58%;
     --accent-foreground: 222 47% 11%;
     
     --muted: 210 40% 96.1%;
     --muted-foreground: 215 16% 35%;
     
-    --destructive: 14 100% 70%; /* المرجاني/الخوخي #ff8a65 */
+    --destructive: 0 72% 51%;
     --destructive-foreground: 210 40% 98%;
     
-    --border: 24 95% 53% / 0.1;
+    --border: 38 100% 50% / 0.12;
     --input: 214.3 31.8% 91.4%;
-    --ring: 24 95% 53%;
+    --ring: 38 100% 50%;
     --radius: 12px;
     --sidebar-background: 30 20% 98%;
   }
@@ -40,29 +41,22 @@
 @layer base {
   * { @apply border-border; }
   
-  html {
-    font-size: 16px;
-  }
-  
   body { 
     @apply bg-background text-foreground font-body antialiased; 
     overflow-x: hidden;
   }
   
-  h1, h2, h3, h4, h5, h6 { @apply font-headline tracking-tight font-bold text-slate-900; }
-  
-  input::-webkit-outer-spin-button,
-  input::-webkit-inner-spin-button {
-    -webkit-appearance: none !important;
-    margin: 0 !important;
-  }
-  input[type=number] {
-    -moz-appearance: textfield !important;
-  }
+  h1 { @apply font-headline text-3xl md:text-4xl font-extrabold tracking-tight text-foreground; }
+  h2 { @apply font-headline text-2xl md:text-3xl font-extrabold tracking-tight text-foreground; }
+  h3 { @apply font-headline text-xl font-bold text-foreground; }
+  h4 { @apply font-headline text-lg font-bold text-foreground; }
+  h5 { @apply font-headline text-base font-bold text-foreground; }
+  h6 { @apply font-headline text-sm font-bold uppercase tracking-wide text-foreground; }
+  p  { @apply font-body text-sm leading-relaxed; }
 }
 
 .btn-gradient {
-  @apply bg-gradient-to-r from-[#f97316] to-[#facc15] text-white shadow-lg shadow-orange-500/10 hover:brightness-110 active:scale-[0.98] transition-all border-b-2 border-orange-700/30 font-black;
+  @apply bg-gradient-to-r from-[#FFA000] to-[#FBC02D] text-foreground shadow-lg shadow-orange-500/15 hover:brightness-105 active:scale-[0.98] transition-all border-b-2 border-[#F57C00]/50 font-semibold;
 }
 
 .card-shadow {
@@ -73,7 +67,7 @@
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
 [data-state=active].tab-sovereign {
-  @apply bg-gradient-to-r from-[#f97316] to-[#facc15] text-white shadow-lg !important;
+  @apply bg-gradient-to-r from-[#FFA000] to-[#FBC02D] text-foreground shadow-lg !important;
 }
 
 .animate-ready-pulse {
@@ -135,10 +129,5 @@
     padding: 1px 3px !important;
     font-size: 8px !important;
     border: 1px solid #eee !important;
-  }
-  
-  .font-black, .font-bold {
-    font-weight: 900 !important;
-    color: black !important;
   }
 }
