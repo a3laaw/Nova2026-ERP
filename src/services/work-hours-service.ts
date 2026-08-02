@@ -38,7 +38,9 @@ export class WorkHoursService {
         fieldWork: { ...defaults.fieldWork, ...data.fieldWork },
       } as WorkHoursSettings;
     }
-    return null;
+    
+    // تصحيح سيادي: إذا لم توجد الوثيقة، نعد القيم الافتراضية فوراً لمنع تعليق الواجهة (Fix for the Spinner issue)
+    return { ...defaults, companyId: this.companyId } as WorkHoursSettings;
   }
 
   async saveSettings(settings: Partial<WorkHoursSettings>, userId: string) {
@@ -68,9 +70,9 @@ export class WorkHoursService {
 
     return {
       general: { ...commonSchedule },
-      architectural: { ...commonSchedule }, // افتراضي فترة واحدة للمكتب
+      architectural: { ...commonSchedule },
       meetingRooms: { ...commonSchedule, slotDurationMinutes: 30, restDurationMinutes: 5 },
-      fieldWork: { ...commonSchedule, mode: 'double', restDurationMinutes: 30 }, // افتراضي فترتين للميدان
+      fieldWork: { ...commonSchedule, mode: 'double', restDurationMinutes: 30 },
       holidays: ["Friday"],
       publicHolidays: [],
       halfDay: {

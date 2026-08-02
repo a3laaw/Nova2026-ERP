@@ -33,7 +33,7 @@ export default function ClientsListPage() {
 
   const canRegisterClient = check('crm', 'create').can;
 
-  // استقرار الاستعلام (Query Stability)
+  // استقرار الاستعلام (Query Stability) - يمنع حلقات التكرار ca9
   const clientsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.clients(companyId))) : null, 
   [db, companyId]);

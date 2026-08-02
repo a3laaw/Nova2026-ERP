@@ -24,7 +24,7 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
   const unsubscribeRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    // التحقق من استقرار الاستعلام (Query Stability Check)
+    // التحقق من استقرار الاستعلام (Query Stability Check) - الحل النهائي لخطأ ca9
     const isSameQuery = query && lastQueryRef.current && queryEqual(query, lastQueryRef.current);
     
     if (isSameQuery) return;

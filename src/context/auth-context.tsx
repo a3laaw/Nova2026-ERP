@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
@@ -18,6 +17,8 @@ interface GlobalUserData {
   isDeveloper?: boolean;
   username: string;
   fullName?: string;
+  photoUrl?: string;
+  isPendingApproval?: boolean;
 }
 
 interface AuthContextType {
@@ -57,15 +58,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!db || !user) return;
 
-    // القفل السيادي: يتم الاعتماد حصراً على البيانات المخزنة في Firestore
-    // لمنع ثغرة الدخول ببريد الأدمن قبل التفعيل
     const docRef = doc(db, 'global_users', user.uid);
     const unsubscribe = onSnapshot(docRef, (snap) => {
       if (snap.exists()) {
         const data = snap.data() as GlobalUserData;
         setGlobalUser({ ...data, uid: user.uid });
       } else {
-        // إذا كان بريد الأدمن ولكن لم يُنشأ السجل بعد (مرحلة التسجيل)
         if (user.email === 'admin@novaflow.com') {
            setGlobalUser({
              uid: user.uid,
