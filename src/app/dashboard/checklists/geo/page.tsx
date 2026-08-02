@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -42,24 +41,32 @@ export default function GeoPage() {
   const { data: governorates, loading: govsLoading } = useCollection<Governorate>(govsQuery);
   const { data: areas, loading: areasLoading } = useCollection<Area>(areasQuery);
 
-  const handleSaveGov = () => {
+  const handleSaveGov = async () => {
     if (!locationService || !govForm.name) return;
     const data = { ...govForm, order: 0, isActive: true, name: govForm.name || '', nameEn: govForm.nameEn || '' };
-    if (govForm.id) locationService.updateGovernorate(govForm.id, data);
-    else locationService.addGovernorate(data as any);
-    toast({ title: t('saved') });
-    setGovForm({ name: '', nameEn: '' });
-    setIsGovOpen(false);
+    try {
+      if (govForm.id) await locationService.updateGovernorate(govForm.id, data);
+      else await locationService.addGovernorate(data as any);
+      toast({ title: t('saved') });
+      setGovForm({ name: '', nameEn: '' });
+      setIsGovOpen(false);
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: t('error'), description: e?.message });
+    }
   };
 
-  const handleSaveArea = () => {
+  const handleSaveArea = async () => {
     if (!locationService || !selectedGov?.id || !areaForm.name) return;
     const data = { ...areaForm, order: 0, isActive: true, name: areaForm.name || '', nameEn: areaForm.nameEn || '' };
-    if (areaForm.id) locationService.updateArea(selectedGov.id, areaForm.id, data);
-    else locationService.addArea(selectedGov.id, data as any);
-    toast({ title: t('saved') });
-    setAreaForm({ name: '', nameEn: '' });
-    setIsAreaOpen(false);
+    try {
+      if (areaForm.id) await locationService.updateArea(selectedGov.id, areaForm.id, data);
+      else await locationService.addArea(selectedGov.id, data as any);
+      toast({ title: t('saved') });
+      setAreaForm({ name: '', nameEn: '' });
+      setIsAreaOpen(false);
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: t('error'), description: e?.message });
+    }
   };
 
   return (

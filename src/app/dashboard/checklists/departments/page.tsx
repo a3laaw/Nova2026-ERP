@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -45,27 +44,38 @@ export default function DepartmentsPage() {
   const { data: departments, loading: deptsLoading } = useCollection<Department>(deptsQuery);
   const { data: jobs, loading: jobsLoading } = useCollection<Job>(jobsQuery);
 
-  const handleSaveDept = () => {
+  const handleSaveDept = async () => {
     if (!deptService || !deptForm.name) return;
     setLoadingAction('dept');
     const data = { ...deptForm, order: 0, isActive: true, name: deptForm.name || '', nameEn: deptForm.nameEn || '' };
-    if (deptForm.id) deptService.updateDepartment(deptForm.id, data);
-    else deptService.addDepartment(data as any);
-    toast({ title: t('saved') });
-    setDeptForm({ name: '', nameEn: '', description: '' });
-    setIsDeptOpen(false);
-    setLoadingAction(null);
+    try {
+      if (deptForm.id) await deptService.updateDepartment(deptForm.id, data);
+      else await deptService.addDepartment(data as any);
+      toast({ title: t('saved') });
+      setDeptForm({ name: '', nameEn: '', description: '' });
+      setIsDeptOpen(false);
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: t('error'), description: e?.message });
+    } finally {
+      setLoadingAction(null);
+    }
   };
 
-  const handleSaveJob = () => {
+  const handleSaveJob = async () => {
     if (!deptService || !selectedDept?.id || !jobForm.name) return;
     setLoadingAction('job');
     const data = { ...jobForm, order: 0, isActive: true, name: jobForm.name || '', nameEn: jobForm.nameEn || '' };
-    deptService.addJob(selectedDept.id, data as any);
-    toast({ title: t('saved') });
-    setJobForm({ name: '', nameEn: '' });
-    setIsJobOpen(false);
-    setLoadingAction(null);
+    try {
+      if (jobForm.id) await deptService.updateJob(selectedDept.id, jobForm.id, data);
+      else await deptService.addJob(selectedDept.id, data as any);
+      toast({ title: t('saved') });
+      setJobForm({ name: '', nameEn: '' });
+      setIsJobOpen(false);
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: t('error'), description: e?.message });
+    } finally {
+      setLoadingAction(null);
+    }
   };
 
   return (

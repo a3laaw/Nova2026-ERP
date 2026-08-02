@@ -28,7 +28,8 @@ export class HRService {
   ) {}
 
   async getNextEmployeeNumber(): Promise<string> {
-    return nextSequential(this.db, this.companyId, 'employee', '', 0);
+    // الترقيم يبدأ من 1001 لضمان الاحترافية
+    return nextSequential(this.db, this.companyId, 'employee', '', 0, 1000);
   }
 
   async addEmployee(data: Omit<Employee, 'id' | 'createdAt' | 'updatedAt' | 'companyId'>) {
