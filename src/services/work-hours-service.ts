@@ -43,7 +43,6 @@ export class WorkHoursService {
         } as WorkHoursSettings;
       }
       
-      // إذا لم توجد الوثيقة، نرجع الافتراضي فوراً لفك تعليق الواجهة
       return { ...defaults, companyId: this.companyId } as WorkHoursSettings;
     } catch (e) {
       console.warn("Using local defaults due to fetch error:", e);

@@ -16,7 +16,7 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
     error: Error | null;
   }>({
     data: [],
-    loading: query !== null, // إذا كان الاستعلام موجوداً نبدأ بالتحميل، وإلا فلا
+    loading: query !== null,
     error: null,
   });
 

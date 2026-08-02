@@ -1,5 +1,4 @@
 @import "leaflet/dist/leaflet.css";
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -14,15 +13,14 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
     
-    /* لوحة الألوان الدافئة السيادية المحدثة */
-    --primary: 38 100% 50%; /* #FFA000 */
-    --primary-dark: 30 100% 48%; /* #F57C00 */
+    --primary: 38 100% 50%;
+    --primary-dark: 30 100% 48%;
     --primary-foreground: 0 0% 100%;
     
     --secondary: 199 89% 48%;
     --secondary-foreground: 0 0% 100%;
     
-    --accent: 43 96% 58%; /* #FBC02D */
+    --accent: 43 96% 58%;
     --accent-foreground: 222 47% 11%;
     
     --muted: 210 40% 96.1%;
@@ -43,13 +41,13 @@
   * { @apply border-border; }
   
   body { 
-    font-family: 'IBM Plex Sans Arabic', sans-serif;
+    font-family: var(--font-body), system-ui, sans-serif;
     @apply bg-background text-foreground antialiased; 
     overflow-x: hidden;
   }
   
   h1, h2, h3, h4, h5, h6 { 
-    font-family: 'Cairo', sans-serif;
+    font-family: var(--font-headline), system-ui, sans-serif;
     @apply tracking-tight text-foreground; 
   }
 
