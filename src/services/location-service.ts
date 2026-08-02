@@ -8,11 +8,8 @@ import {
   updateDoc, 
   deleteDoc, 
   serverTimestamp,
-  writeBatch,
-  getDocs
 } from 'firebase/firestore';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
+import { handleWriteError } from '@/lib/write-error';
 import { paths } from '@/firebase/multi-tenant';
 import { Governorate, Area } from '@/types/reference';
 
@@ -29,42 +26,31 @@ export class LocationService {
       updatedAt: serverTimestamp() 
     };
     
-    addDoc(collRef, docData).catch(async (serverError) => {
-      const permissionError = new FirestorePermissionError({
-        path: collRef.path,
-        operation: 'create',
-        requestResourceData: docData,
-      } satisfies SecurityRuleContext);
-      errorEmitter.emit('permission-error', permissionError);
-    });
+    try {
+      await addDoc(collRef, docData);
+    } catch (err: any) {
+      await handleWriteError(err, { path: collRef.path, operation: 'create', requestResourceData: docData });
+    }
   }
 
   async updateGovernorate(id: string, data: Partial<Governorate>) {
-    const docRef = doc(this.db, paths.governorates(this.companyId), id);
-    
-    updateDoc(docRef, { 
-      ...data, 
-      updatedAt: serverTimestamp() 
-    }).catch(async (serverError) => {
-      const permissionError = new FirestorePermissionError({
-        path: docRef.path,
-        operation: 'update',
-        requestResourceData: data,
-      } satisfies SecurityRuleContext);
-      errorEmitter.emit('permission-error', permissionError);
-    });
+    const path = paths.governorates(this.companyId);
+    const docRef = doc(this.db, path, id);
+    try {
+      await updateDoc(docRef, { ...data, updatedAt: serverTimestamp() });
+    } catch (err: any) {
+      await handleWriteError(err, { path: docRef.path, operation: 'update', requestResourceData: data });
+    }
   }
 
   async deleteGovernorate(id: string) {
-    const docRef = doc(this.db, paths.governorates(this.companyId), id);
-    
-    deleteDoc(docRef).catch(async (serverError) => {
-      const permissionError = new FirestorePermissionError({
-        path: docRef.path,
-        operation: 'delete',
-      } satisfies SecurityRuleContext);
-      errorEmitter.emit('permission-error', permissionError);
-    });
+    const path = paths.governorates(this.companyId);
+    const docRef = doc(this.db, path, id);
+    try {
+      await deleteDoc(docRef);
+    } catch (err: any) {
+      await handleWriteError(err, { path: docRef.path, operation: 'delete' });
+    }
   }
 
   async addArea(govId: string, data: Omit<Area, 'id' | 'createdAt' | 'updatedAt' | 'companyId'>) {
@@ -78,41 +64,30 @@ export class LocationService {
       updatedAt: serverTimestamp() 
     };
     
-    addDoc(collRef, docData).catch(async (serverError) => {
-      const permissionError = new FirestorePermissionError({
-        path: collRef.path,
-        operation: 'create',
-        requestResourceData: docData,
-      } satisfies SecurityRuleContext);
-      errorEmitter.emit('permission-error', permissionError);
-    });
+    try {
+      await addDoc(collRef, docData);
+    } catch (err: any) {
+      await handleWriteError(err, { path: collRef.path, operation: 'create', requestResourceData: docData });
+    }
   }
 
   async updateArea(govId: string, areaId: string, data: Partial<Area>) {
-    const docRef = doc(this.db, paths.areas(this.companyId, govId), areaId);
-    
-    updateDoc(docRef, { 
-      ...data, 
-      updatedAt: serverTimestamp() 
-    }).catch(async (serverError) => {
-      const permissionError = new FirestorePermissionError({
-        path: docRef.path,
-        operation: 'update',
-        requestResourceData: data,
-      } satisfies SecurityRuleContext);
-      errorEmitter.emit('permission-error', permissionError);
-    });
+    const path = paths.areas(this.companyId, govId);
+    const docRef = doc(this.db, path, areaId);
+    try {
+      await updateDoc(docRef, { ...data, updatedAt: serverTimestamp() });
+    } catch (err: any) {
+      await handleWriteError(err, { path: docRef.path, operation: 'update', requestResourceData: data });
+    }
   }
 
   async deleteArea(govId: string, areaId: string) {
-    const docRef = doc(this.db, paths.areas(this.companyId, govId), areaId);
-    
-    deleteDoc(docRef).catch(async (serverError) => {
-      const permissionError = new FirestorePermissionError({
-        path: docRef.path,
-        operation: 'delete',
-      } satisfies SecurityRuleContext);
-      errorEmitter.emit('permission-error', permissionError);
-    });
+    const path = paths.areas(this.companyId, govId);
+    const docRef = doc(this.db, path, areaId);
+    try {
+      await deleteDoc(docRef);
+    } catch (err: any) {
+      await handleWriteError(err, { path: docRef.path, operation: 'delete' });
+    }
   }
 }

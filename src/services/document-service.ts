@@ -17,12 +17,10 @@ import {
   addDoc,
   deleteDoc
 } from 'firebase/firestore';
+import { nextSequential } from '@/lib/counters';
 import { paths } from '@/firebase/multi-tenant';
 import { BOQTemplate, BOQTemplateItem, QuotationTemplate, ContractTemplate } from '@/types/templates';
 import { Quotation, Contract, BOQ, BOQItem } from '@/types/documents';
-import { Transaction } from '@/types/transaction';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 import { ensureActionPermission } from '@/lib/permissions';
 import { TransactionService } from './transaction-service';
 import { BOQReferenceNode } from '@/types/reference';
@@ -37,24 +35,7 @@ export class DocumentService {
 
   async getNextBOQNumber(): Promise<string> {
     const year = new Date().getFullYear();
-    const prefix = `BOQ-${year}-`;
-    try {
-      const q = query(
-        collection(this.db, paths.boqs(this.companyId)),
-        where('boqNumber', '>=', `${prefix}0000`),
-        where('boqNumber', '<=', `${prefix}9999`),
-        orderBy('boqNumber', 'desc'),
-        limit(1)
-      );
-      const snap = await getDocs(q);
-      if (snap.empty) return `${prefix}0001`;
-      const lastNumStr = snap.docs[0].data().boqNumber;
-      const parts = lastNumStr.split('-');
-      const lastSeq = parseInt(parts[parts.length - 1]);
-      return `${prefix}${(lastSeq + 1).toString().padStart(4, '0')}`;
-    } catch (e) {
-      return `${prefix}0001`;
-    }
+    return nextSequential(this.db, this.companyId, 'boq', `BOQ-${year}-`, 4);
   }
 
   async instantiateQuotationFromTemplate(
@@ -234,11 +215,6 @@ export class DocumentService {
       updatedAt: serverTimestamp()
     };
 
-    // بروتوكول الاعتماد التلقائي للمسودة عند الحفظ
-    if (currentData.status === 'draft' && !data.status) {
-       updates.status = 'approved';
-    }
-
     await updateDoc(docRef, updates);
 
     // التحقق من شرط تفعيل المسار الفني
@@ -258,7 +234,7 @@ export class DocumentService {
       const clientService = new ClientService(this.db, this.companyId);
       await clientService.addHistory(currentData.clientId, {
         type: 'system_log',
-        content: `تم اعتماد وحفظ عقد رسمي جديد للمعاملة: ${currentData.name}`,
+        content: `تم تحديث مستند تعاقدي للمعاملة: ${currentData.name}`,
         userId, 
         userName: data.updatedBy || 'User', 
         companyId: this.companyId

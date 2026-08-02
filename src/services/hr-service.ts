@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -13,14 +12,12 @@ import {
   where,
   getDocs,
   getDoc,
-  orderBy,
-  limit,
   addDoc
 } from 'firebase/firestore';
+import { handleWriteError } from '@/lib/write-error';
+import { nextSequential } from '@/lib/counters';
 import { paths } from '@/firebase/multi-tenant';
 import { Employee, EmployeeAuditLog } from '@/types/hr';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 import { ensureActionPermission } from '@/lib/permissions';
 
 export class HRService {
@@ -31,27 +28,10 @@ export class HRService {
   ) {}
 
   async getNextEmployeeNumber(): Promise<string> {
-    try {
-      const q = query(
-        collection(this.db, paths.employees(this.companyId)), 
-        orderBy('employeeNumber', 'desc'), 
-        limit(1)
-      );
-      const snap = await getDocs(q);
-      if (snap.empty) return "1001";
-      const lastNum = parseInt(snap.docs[0].data().employeeNumber);
-      return isNaN(lastNum) ? "1001" : (lastNum + 1).toString();
-    } catch (e) {
-      return "1001";
-    }
+    return nextSequential(this.db, this.companyId, 'employee', '', 0);
   }
 
-  /**
-   * إضافة موظف جديد.
-   * هنا نقوم بالتحقق من أن الموظف لا يستخدم نطاق 'own' لإنشاء ملفات لموظفين آخرين.
-   */
   async addEmployee(data: Omit<Employee, 'id' | 'createdAt' | 'updatedAt' | 'companyId'>) {
-    // التحقق من الصلاحية الأساسية
     ensureActionPermission(this.permissions, 'hr:create');
     
     const path = paths.employees(this.companyId);
@@ -64,13 +44,11 @@ export class HRService {
       updatedAt: serverTimestamp(),
     };
 
-    await setDoc(empRef, docData).catch((err) => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: empRef.path,
-        operation: 'create',
-        requestResourceData: docData
-      }));
-    });
+    try {
+      await setDoc(empRef, docData);
+    } catch (err: any) {
+      await handleWriteError(err, { path: empRef.path, operation: 'create', requestResourceData: docData });
+    }
 
     if (data.email) {
       await this.syncGlobalUserData(data.email, data.roleId, data.departmentId);
@@ -90,13 +68,11 @@ export class HRService {
 
     const updates = { ...newData, updatedAt: serverTimestamp() };
     
-    await updateDoc(empRef, updates).catch((err) => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: empRef.path,
-        operation: 'update',
-        requestResourceData: updates
-      }));
-    });
+    try {
+      await updateDoc(empRef, updates);
+    } catch (err: any) {
+      await handleWriteError(err, { path: empRef.path, operation: 'update', requestResourceData: updates });
+    }
 
     if ((newData.roleId && newData.roleId !== oldData.roleId) || 
         (newData.departmentId && newData.departmentId !== oldData.departmentId)) {

@@ -11,8 +11,7 @@ import {
   where,
   getDocs
 } from 'firebase/firestore';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+import { handleWriteError } from '@/lib/write-error';
 import { PermissionRequest } from '@/types/hr';
 import { ensureActionPermission } from '@/lib/permissions';
 import { paths } from '@/firebase/multi-tenant';
@@ -32,13 +31,11 @@ export class PermissionService {
       throw new Error('LIMIT_EXCEEDED: مدة الاستئذان الواحد لا يمكن أن تتجاوز 3 ساعات.');
     }
 
-    // فحص الرصيد الشهري
     const currentMonthQuota = await this.getMonthlyUsedHours(data.userId, data.date);
     if (currentMonthQuota + data.durationHours > 12) {
       throw new Error(`QUOTA_EXCEEDED: لقد تجاوزت الحد الشهري المسموح به (12 ساعة). رصيدك المستخدم حالياً: ${currentMonthQuota} ساعة.`);
     }
 
-    // فحص التداخل مع الإجازات
     const hasLeave = await this.hasLeaveOnDate(data.userId, data.date);
     if (hasLeave) {
       throw new Error('LEAVE_OVERLAP: لا يمكن تقديم استئذان في يوم مسجل فيه إجازة معتمدة.');
@@ -52,26 +49,18 @@ export class PermissionService {
       updatedAt: serverTimestamp()
     };
 
-    // كتابة - غير محظورة
-    addDoc(collection(this.db, path), docData).catch(async (err) => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path,
-        operation: 'create',
-        requestResourceData: docData
-      }));
-    });
+    try {
+      await addDoc(collection(this.db, path), docData);
+    } catch (err: any) {
+      await handleWriteError(err, { path, operation: 'create', requestResourceData: docData });
+    }
   }
 
-  /**
-   * حساب الساعات المستخدمة في شهر معين للمستخدم
-   * تم تبسيط الاستعلام لتجنب الحاجة لفهرس مركب (Composite Index)
-   */
   async getMonthlyUsedHours(userId: string, dateStr: string): Promise<number> {
     const targetDate = parseISO(dateStr);
     const start = format(startOfMonth(targetDate), 'yyyy-MM-dd');
     const end = format(endOfMonth(targetDate), 'yyyy-MM-dd');
 
-    // جلب كافة طلبات المستخدم (استعلام بسيط لا يحتاج فهرس مركب)
     const q = query(
       collection(this.db, paths.permissionRequests(this.companyId)),
       where('userId', '==', userId)
@@ -79,7 +68,6 @@ export class PermissionService {
 
     const snap = await getDocs(q);
     
-    // الفلترة البرمجية لتجنب أخطاء الفهارس
     return snap.docs
       .map(d => d.data() as PermissionRequest)
       .filter(req => 
@@ -90,9 +78,6 @@ export class PermissionService {
       .reduce((sum, req) => sum + (req.durationHours || 0), 0);
   }
 
-  /**
-   * التحقق من وجود إجازة في تاريخ معين
-   */
   async hasLeaveOnDate(userId: string, dateStr: string): Promise<boolean> {
     const q = query(
       collection(this.db, paths.leaveRequests(this.companyId)),
@@ -101,7 +86,6 @@ export class PermissionService {
 
     const snap = await getDocs(q);
     
-    // الفلترة البرمجية لتجنب الحاجة لفهرس مركب على (userId + status + dates)
     return snap.docs.some(docSnap => {
       const d = docSnap.data();
       const isApproved = ['approved', 'on-leave'].includes(d.status);
@@ -112,7 +96,8 @@ export class PermissionService {
 
   async updateRequestStatus(requestId: string, status: PermissionRequest['status'], adminId: string, comment?: string) {
     ensureActionPermission(this.permissions, 'hr:edit');
-    const reqRef = doc(this.db, paths.permissionRequests(this.companyId), requestId);
+    const path = paths.permissionRequests(this.companyId);
+    const reqRef = doc(this.db, path, requestId);
     
     const updateData = {
       status,
@@ -122,11 +107,10 @@ export class PermissionService {
       updatedAt: serverTimestamp()
     };
 
-    updateDoc(reqRef, updateData).catch(async (err) => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: reqRef.path,
-        operation: 'update'
-      }));
-    });
+    try {
+      await updateDoc(reqRef, updateData);
+    } catch (err: any) {
+      await handleWriteError(err, { path: reqRef.path, operation: 'update', requestResourceData: updateData });
+    }
   }
 }

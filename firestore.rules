@@ -20,14 +20,11 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
     }
 
-    // التحقق من الانتماء للشركة
     function belongsToCompany(companyId) {
       return isAuthenticated() && 
         (get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.companyId == companyId);
     }
 
-    // التحقق من الرتبة الإدارية (Master Admin)
-    // تم تحصينها لتعمل للمالك حتى لو لم يكن لديه سجل موظف (بدون رقم وظيفي)
     function isAdmin(companyId) {
       let hasGlobalUser = exists(/databases/$(database)/documents/global_users/$(request.auth.uid));
       let globalUser = hasGlobalUser ? get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data : null;
@@ -42,13 +39,8 @@ service cloud.firestore {
 
     // --- 3. قواعد الهوية العالمية (Global Identity) ---
     match /global_users/{uid} {
-      // السماح للمستخدم برؤية نفسه، وللمدير برؤية موظفيه
       allow read: if isAuthenticated() && (request.auth.uid == uid || isAdmin(resource.data.companyId));
-      
-      // السماح للمستخدم بإنشاء سجله، وللمدير بإنشاء سجلات موظفيه
       allow create: if isAuthenticated() && (request.auth.uid == uid || isAdmin(request.resource.data.companyId));
-      
-      // السماح بالتعديل للمستخدم (لنفسه) أو للمدير أو المطور
       allow update: if isAuthenticated() && (
         request.auth.uid == uid || 
         isAdmin(resource.data.companyId) || 
@@ -61,6 +53,11 @@ service cloud.firestore {
       allow read: if isAuthenticated(); 
       allow create: if isAuthenticated(); 
       allow update: if isAdmin(companyId);
+
+      // السماح للمدير بكتابة العدادات التسلسلية
+      match /counters/{id} {
+        allow read, write: if isAdmin(companyId);
+      }
 
       match /appointments/{id} { 
         allow read: if belongsToCompany(companyId); 
@@ -82,7 +79,6 @@ service cloud.firestore {
         allow update: if isAdmin(companyId) || (isAuthenticated() && request.auth.uid == uid);
       }
 
-      // القفل الإداري الشامل للمجموعات المرجعية والتشغيلية
       match /{allAdminCollections=**} {
         allow read: if belongsToCompany(companyId);
         allow write: if isAdmin(companyId);
@@ -95,7 +91,6 @@ service cloud.firestore {
        allow delete: if isSovereignDev();
     }
 
-    // حماية المجموعات المشتركة
     match /{path=**}/variations/{id} { allow read: if belongsToCompany(resource.data.companyId); }
     match /{path=**}/fieldVisits/{id} { allow read: if belongsToCompany(resource.data.companyId); }
     match /{path=**}/attendance/{id} { allow read: if belongsToCompany(resource.data.companyId); }
