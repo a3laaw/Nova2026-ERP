@@ -7,6 +7,7 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
 
 /**
  * خطاف جلب المستندات المحصن ضد التحديثات المكررة.
+ * يضمن ثبات المرجع ومنع Spinner التحميل من العودة بعد أول استجابة.
  */
 export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | null) {
   const [data, setData] = useState<T | null>(null);

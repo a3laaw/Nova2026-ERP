@@ -13,14 +13,14 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
     
-    --primary: 38 100% 50%; /* Firebase Orange #FFA000 */
-    --primary-dark: 30 100% 48%;
+    --primary: 38 100% 50%; /* #FFA000 */
+    --primary-dark: 30 100% 48%; /* #F57C00 */
     --primary-foreground: 0 0% 100%;
     
-    --secondary: 199 89% 48%; /* Firebase Blue #039BE5 */
+    --secondary: 199 89% 48%; /* #039BE5 */
     --secondary-foreground: 0 0% 100%;
     
-    --accent: 43 96% 58%; /* Firebase Gold #FBC02D */
+    --accent: 43 96% 58%; /* #FBC02D */
     --accent-foreground: 222 47% 11%;
     
     --muted: 210 40% 96.1%;

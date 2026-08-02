@@ -1,7 +1,3 @@
-/**
- * @fileOverview خدمة التعامل مع Firestore لإعدادات مواعيد العمل التخصصية.
- */
-
 'use client';
 
 import { 
@@ -16,6 +12,10 @@ import { format } from 'date-fns';
 
 export const WORK_HOURS_DOC_ID = 'work_hours';
 
+/**
+ * خدمة إعدادات مواعيد العمل.
+ * محصنة لضمان إعادة القيم الافتراضية فوراً لفك تعليق الواجهات الإدارية.
+ */
 export class WorkHoursService {
   constructor(private db: Firestore, private companyId: string) {}
 
@@ -23,7 +23,7 @@ export class WorkHoursService {
     return doc(this.db, 'companies', this.companyId, 'settings', WORK_HOURS_DOC_ID);
   }
 
-  async getSettings(): Promise<WorkHoursSettings | null> {
+  async getSettings(): Promise<WorkHoursSettings> {
     try {
       const snap = await getDoc(this.getDocRef());
       const defaults = this.getDefaultSettings();
@@ -40,7 +40,6 @@ export class WorkHoursService {
         } as WorkHoursSettings;
       }
       
-      // العودة للقيم الافتراضية فوراً لفك تعليق الواجهة
       return { ...defaults, companyId: this.companyId } as WorkHoursSettings;
     } catch (e) {
       console.warn("Using local defaults due to fetch error:", e);

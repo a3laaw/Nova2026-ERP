@@ -33,6 +33,7 @@ export default function ClientsListPage() {
 
   const canRegisterClient = check('crm', 'create').can;
 
+  // استعلام مستقر لا يحتاج لترتيب سحابي لتجنب أخطاء الفهارس
   const clientsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.clients(companyId))) : null, 
   [db, companyId]);

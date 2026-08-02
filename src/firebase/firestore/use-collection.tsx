@@ -6,7 +6,8 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 /**
- * خطاف جلب المجموعات المحصن ضد حلقة البحث اللانهائية.
+ * خطاف جلب المجموعات المحصن ضد حلقة البحث اللانهائية (ca9 loop).
+ * يستخدم queryEqual لضمان استقرار الاستعلام ومنع إعادة التحميل غير المبررة.
  */
 export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
   const [state, setState] = useState<{
@@ -28,7 +29,7 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
       return;
     }
 
-    // منع إعادة التحميل إذا كان الاستعلام مطابقاً للاستعلام السابق
+    // المقارنة الذرية العميقة: إذا كان الاستعلام مطابقاً للسابق، لا تفعل شيئاً
     if (lastQueryRef.current && queryEqual(query, lastQueryRef.current)) {
       return;
     }
