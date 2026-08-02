@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils';
 
 /**
  * صفحة قاعدة العملاء - مستعادة ومحصنة ضد حلقة البحث اللانهائية.
+ * تصميم السيادة البصرية (Orange/Gold theme).
  */
 export default function ClientsListPage() {
   const { globalUser } = useAuthContext();
@@ -70,7 +71,7 @@ export default function ClientsListPage() {
     <div className="space-y-6 animate-in fade-in duration-500" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start">
-           <h1 className="flex items-center gap-3 text-slate-900 font-headline font-black">
+           <h1 className="flex items-center gap-3 text-slate-900 font-black">
              <Users className="h-8 w-8 text-primary" />
              {isRtl ? 'قاعدة العملاء' : 'Clients Database'}
            </h1>
@@ -84,7 +85,7 @@ export default function ClientsListPage() {
         </div>
         
         {canRegisterClient && (
-          <Button onClick={() => router.push('/dashboard/clients/new')} variant="gradient" size="lg" className="shadow-xl gap-2 h-11">
+          <Button onClick={() => router.push('/dashboard/clients/new')} variant="gradient" className="h-11 px-8 shadow-xl gap-2">
             <UserPlus className="h-5 w-5" /> {isRtl ? 'تسجيل عميل جديد' : 'New Registration'}
           </Button>
         )}
@@ -92,7 +93,7 @@ export default function ClientsListPage() {
 
       <Card className="border-0 shadow-sm rounded-2xl bg-white overflow-hidden ring-1 ring-black/[0.03]">
         <div className="p-5 flex flex-row items-center justify-between gap-4">
-           <Button variant="outline" size="lg" className="border-slate-200 font-bold gap-2 h-11">
+           <Button variant="outline" className="border-slate-200 font-bold gap-2 h-11">
               <Filter className="h-4 w-4 text-primary" /> {isRtl ? 'تصفية النتائج' : 'Filter'}
            </Button>
            <div className="relative w-full max-w-md">

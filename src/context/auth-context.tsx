@@ -45,7 +45,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!auth) return;
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
-      // إذا لم يوجد مستخدم، ننهي حالة التحميل فوراً
       if (!firebaseUser) {
         setGlobalUser(null);
         setRoleData(null);
@@ -56,7 +55,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [auth]);
 
   useEffect(() => {
-    if (!db || !user) return;
+    if (!db || !user) {
+      if (user === null) setLoading(false);
+      return;
+    }
 
     const docRef = doc(db, 'global_users', user.uid);
     const unsubscribe = onSnapshot(docRef, (snap) => {
@@ -64,7 +66,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const data = snap.data() as GlobalUserData;
         setGlobalUser({ ...data, uid: user.uid });
       } else {
-        // دعم حالة المطور
         if (user.email === 'admin@novaflow.com') {
            setGlobalUser({
              uid: user.uid,
@@ -78,7 +79,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
            setGlobalUser(null);
         }
       }
-      // إنهاء حالة التحميل بعد أول رد من السحاب سواء وجد المستند أم لا
       setLoading(false);
     }, (err) => {
       console.error("Global user snapshot error:", err);
@@ -89,18 +89,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [db, user]);
 
   useEffect(() => {
-    if (!db || !globalUser || !globalUser.companyId || !globalUser.roleId) {
+    if (!db || !globalUser?.companyId || !globalUser?.roleId) {
       setRoleData(null);
       return;
     }
 
     const roleRef = doc(db, 'companies', globalUser.companyId, 'roles', globalUser.roleId);
     const unsubscribe = onSnapshot(roleRef, (snap) => {
-      if (snap.exists()) {
-        setRoleData(snap.data() as Role);
-      } else {
-        setRoleData(null);
-      }
+      setRoleData(snap.exists() ? (snap.data() as Role) : null);
     }, (err) => {
       console.error("Role snapshot error:", err);
     });

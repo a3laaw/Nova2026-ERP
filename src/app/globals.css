@@ -1,4 +1,5 @@
 @import "leaflet/dist/leaflet.css";
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -42,17 +43,21 @@
   * { @apply border-border; }
   
   body { 
-    @apply bg-background text-foreground font-body antialiased; 
+    font-family: 'IBM Plex Sans Arabic', sans-serif;
+    @apply bg-background text-foreground antialiased; 
     overflow-x: hidden;
   }
   
-  h1 { @apply font-headline text-3xl md:text-4xl font-extrabold tracking-tight text-foreground; }
-  h2 { @apply font-headline text-2xl md:text-3xl font-extrabold tracking-tight text-foreground; }
-  h3 { @apply font-headline text-xl font-bold text-foreground; }
-  h4 { @apply font-headline text-lg font-bold text-foreground; }
-  h5 { @apply font-headline text-base font-bold text-foreground; }
-  h6 { @apply font-headline text-sm font-bold uppercase tracking-wide text-foreground; }
-  p  { @apply font-body text-sm leading-relaxed; }
+  h1, h2, h3, h4, h5, h6 { 
+    font-family: 'Cairo', sans-serif;
+    @apply tracking-tight text-foreground; 
+  }
+
+  h1 { @apply text-3xl md:text-4xl font-extrabold; }
+  h2 { @apply text-2xl md:text-3xl font-extrabold; }
+  h3 { @apply text-xl font-bold; }
+  
+  p { @apply text-sm leading-relaxed; }
 }
 
 .btn-gradient {
@@ -80,54 +85,9 @@
 }
 
 @media print {
-  @page {
-    size: landscape;
-    margin: 0 !important;
-  }
-  
-  body {
-    background: white !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    font-size: 10px !important;
-  }
-
-  .sidebar, header, nav, .print-ui-only,
-  [data-sidebar="sidebar"], [data-sidebar="header"], [data-sidebar="trigger"],
-  [data-sidebar="footer"], .breadcrumb-nav {
-    display: none !important;
-  }
-
-  main {
-    padding: 2mm !important;
-    margin: 0 !important;
-    width: 100% !important;
-  }
-
-  .card {
-    box-shadow: none !important;
-    border: 1px solid #eee !important;
-    border-radius: 4px !important;
-    break-inside: avoid;
-    padding: 2mm !important;
-  }
-
-  table {
-    width: 100% !important;
-    border-collapse: collapse !important;
-    table-layout: auto !important;
-  }
-
-  tr {
-    page-break-inside: avoid;
-    page-break-after: auto;
-  }
-
-  th, td {
-    padding: 1px 3px !important;
-    font-size: 8px !important;
-    border: 1px solid #eee !important;
-  }
+  @page { size: landscape; margin: 0 !important; }
+  body { background: white !important; margin: 0 !important; padding: 0 !important; font-size: 10px !important; }
+  .sidebar, header, nav, .print-ui-only { display: none !important; }
+  main { padding: 2mm !important; margin: 0 !important; width: 100% !important; }
+  .card { box-shadow: none !important; border: 1px solid #eee !important; break-inside: avoid; }
 }

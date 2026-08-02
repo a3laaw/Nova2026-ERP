@@ -7,18 +7,17 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
 
 /**
  * خطاف جلب المستندات المحصن (Sovereign Ref-Equal Hook).
- * يمنع الـ Re-rendering المتكرر الذي يسبب دائرة التحميل المستمرة.
+ * يمنع التحديثات المكررة التي تسبب دائرة التحميل المستمرة.
  */
 export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | null) {
   const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(docRef !== null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
   
   const lastRefRef = useRef<DocumentReference<any, any> | null>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    // مقارنة مرجع المستند لمنع الدخول في حلقة لانهائية
     const isSameRef = docRef && lastRefRef.current && refEqual(docRef, lastRefRef.current);
     
     if (isSameRef) return;
@@ -37,7 +36,6 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | n
 
     lastRefRef.current = docRef;
     setLoading(true);
-    setError(null);
 
     let isMounted = true;
 
@@ -45,17 +43,14 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | n
       docRef,
       (snapshot) => {
         if (!isMounted) return;
-        
         const docData = snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as T) : null;
         setData(docData);
         setLoading(false);
       },
       (serverError: FirestoreError) => {
         if (!isMounted) return;
-        
         setLoading(false);
         setError(serverError);
-        
         if (serverError.code === 'permission-denied') {
           errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: docRef.path || 'document',
@@ -69,9 +64,7 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | n
 
     return () => {
       isMounted = false;
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-      }
+      if (unsubscribeRef.current) unsubscribeRef.current();
     };
   }, [docRef]);
 

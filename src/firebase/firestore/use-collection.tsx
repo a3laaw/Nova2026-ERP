@@ -7,7 +7,7 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
 
 /**
  * خطاف جلب المجموعات المحصن (Sovereign Deep-Comparison Hook).
- * يقضي على حلقة التحميل اللانهائية (ca9) عبر المقارنة العميقة للاستعلامات.
+ * يمنع حلقة التحميل اللانهائية عبر المقارنة الذرية للاستعلامات.
  */
 export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
   const [state, setState] = useState<{
@@ -16,7 +16,7 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
     error: Error | null;
   }>({
     data: [],
-    loading: true,
+    loading: query !== null, // إذا كان الاستعلام موجوداً نبدأ بالتحميل، وإلا فلا
     error: null,
   });
 
@@ -24,12 +24,11 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
   const unsubscribeRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    // التحقق من استقرار الاستعلام عبر المقارنة العميقة من Firestore SDK
+    // التحقق من استقرار الاستعلام (Sovereign Stability Check)
     const isSameQuery = query && lastQueryRef.current && queryEqual(query, lastQueryRef.current);
     
     if (isSameQuery) return;
 
-    // تنظيف المراقب السابق قبل بدء استعلام جديد
     if (unsubscribeRef.current) {
       unsubscribeRef.current();
       unsubscribeRef.current = null;
@@ -50,20 +49,15 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
       query,
       (snapshot) => {
         if (!isMounted) return;
-        
         const items = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         })) as unknown as T[];
-        
         setState({ data: items, loading: false, error: null });
       },
       (serverError: FirestoreError) => {
         if (!isMounted) return;
-        
-        console.error("Firestore Collection Error:", serverError);
         setState(prev => ({ ...prev, loading: false, error: serverError }));
-        
         if (serverError.code === 'permission-denied') {
            errorEmitter.emit('permission-error', new FirestorePermissionError({
              path: 'collection_query',
@@ -77,9 +71,7 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
 
     return () => {
       isMounted = false;
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-      }
+      if (unsubscribeRef.current) unsubscribeRef.current();
     };
   }, [query]);
 
