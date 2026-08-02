@@ -97,9 +97,9 @@ export default function ClientsListPage() {
            </Button>
            <div className="relative w-full max-w-md">
               <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
-              <Input 
+              <input 
                 placeholder={isRtl ? 'بحث في الأسماء، الملفات، أو المهندسين...' : 'Search records...'} 
-                className="ps-12 h-12 bg-slate-50/50 border-slate-100 focus-visible:ring-primary/10 font-bold text-lg rounded-xl" 
+                className="ps-12 h-12 w-full bg-slate-50/50 border-slate-100 focus:outline-none focus:ring-primary/10 font-bold text-lg rounded-xl transition-all" 
                 value={searchTerm} 
                 onChange={e => setSearchTerm(e.target.value)} 
               />
