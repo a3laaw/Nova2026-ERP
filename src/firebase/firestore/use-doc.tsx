@@ -6,8 +6,8 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 /**
- * خطاف جلب المستندات المطور (Sovereign Hardened Document Hook).
- * محصن ضد تكرار التحديث عبر بصمة البيانات.
+ * خطاف جلب المستندات السيادي المحصن (Sovereign Hardened Document Hook).
+ * محصن ضد تكرار التحديث عبر بصمة البيانات العميقة.
  */
 export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | null) {
   const [data, setData] = useState<T | null>(null);
@@ -19,10 +19,12 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | n
   const lastDataHashRef = useRef<string>("");
 
   useEffect(() => {
-    // حارس المرجع
+    // حارس المرجع الموحد
     const isSameRef = docRef && lastRefRef.current && refEqual(docRef, lastRefRef.current);
     
-    if (isSameRef) return;
+    if (isSameRef) {
+      return;
+    }
 
     if (unsubscribeRef.current) {
       unsubscribeRef.current();
@@ -50,7 +52,7 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | n
         
         const docData = snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as T) : null;
         
-        // مقارنة البصمة لمنع حلقة الرندر
+        // مقارنة البصمة (Hash Guard)
         const currentHash = JSON.stringify(docData);
         if (currentHash !== lastDataHashRef.current) {
           lastDataHashRef.current = currentHash;
