@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
@@ -53,32 +52,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, [auth]);
 
-  // تأثير جلب بيانات المستخدم العالمي (global_users)
   useEffect(() => {
     if (!db || !user) return;
 
-    // القفل السيادي: يتم الاعتماد حصراً على البيانات المخزنة في Firestore
-    // لمنع ثغرة الدخول ببريد الأدمن قبل التفعيل
     const docRef = doc(db, 'global_users', user.uid);
     const unsubscribe = onSnapshot(docRef, (snap) => {
+      let newData: GlobalUserData | null = null;
+      
       if (snap.exists()) {
-        const data = snap.data() as GlobalUserData;
-        setGlobalUser({ ...data, uid: user.uid });
-      } else {
-        // إذا كان بريد الأدمن ولكن لم يُنشأ السجل بعد (مرحلة التسجيل)
-        if (user.email === 'admin@novaflow.com') {
-           setGlobalUser({
-             uid: user.uid,
-             companyId: 'awaiting_setup',
-             role: 'developer',
-             isDeveloper: true,
-             username: 'admin',
-             fullName: 'System Developer'
-           });
-        } else {
-           setGlobalUser(null);
-        }
+        newData = { ...snap.data() as GlobalUserData, uid: user.uid };
+      } else if (user.email === 'admin@novaflow.com') {
+        newData = {
+          uid: user.uid,
+          companyId: 'awaiting_setup',
+          role: 'developer',
+          isDeveloper: true,
+          username: 'admin',
+          fullName: 'System Developer'
+        };
       }
+
+      // الحارس الذري: منع تحديث السياق إذا كانت البيانات متطابقة هيكلياً
+      setGlobalUser(prev => {
+        if (JSON.stringify(prev) === JSON.stringify(newData)) return prev;
+        return newData;
+      });
+      
       setLoading(false);
     }, (err) => {
       console.error("Global user snapshot error:", err);
@@ -88,7 +87,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, [db, user]);
 
-  // تأثير جلب بيانات الصلاحيات
   useEffect(() => {
     if (!db || !globalUser || !globalUser.companyId || !globalUser.roleId) {
       setRoleData(null);
@@ -98,12 +96,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const roleRef = doc(db, 'companies', globalUser.companyId, 'roles', globalUser.roleId);
     const unsubscribe = onSnapshot(roleRef, (snap) => {
       if (snap.exists()) {
-        setRoleData(snap.data() as Role);
+        const newData = snap.data() as Role;
+        setRoleData(prev => {
+          if (JSON.stringify(prev) === JSON.stringify(newData)) return prev;
+          return newData;
+        });
       } else {
         setRoleData(null);
       }
-    }, (err) => {
-      console.error("Role snapshot error:", err);
     });
 
     return () => unsubscribe();

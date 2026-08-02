@@ -33,6 +33,7 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | n
       setData(null);
       setLoading(false);
       lastRefRef.current = null;
+      lastDataHashRef.current = "";
       return;
     }
 
@@ -60,7 +61,6 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | n
       },
       (serverError: FirestoreError) => {
         if (!isMounted) return;
-        
         setLoading(false);
         setError(serverError);
         

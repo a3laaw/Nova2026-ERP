@@ -7,7 +7,7 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
 
 /**
  * خطاف جلب المجموعات المطور (Sovereign Hardened Collection Hook).
- * يستخدم تقنية Deep Comparison لمنع حلقة الرندر اللانهائية.
+ * محصن ضد حلقة الرندر اللانهائية عبر تقنية Deep Hash Comparison.
  */
 export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
   const [data, setData] = useState<T[]>([]);
@@ -19,12 +19,10 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
   const lastDataHashRef = useRef<string>("");
 
   useEffect(() => {
-    // الحارس الأول: منع إعادة الاشتراك إذا كان الاستعلام مطابقاً برمجياً
+    // 1. الحارس الأول: منع إعادة الاشتراك إذا كان الاستعلام مطابقاً هيكلياً
     const isSameQuery = query && lastQueryRef.current && queryEqual(query, lastQueryRef.current);
     
-    if (isSameQuery) {
-       return; 
-    }
+    if (isSameQuery) return;
 
     if (unsubscribeRef.current) {
       unsubscribeRef.current();
@@ -35,6 +33,7 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
       setData([]);
       setLoading(false);
       lastQueryRef.current = null;
+      lastDataHashRef.current = "";
       return;
     }
 
@@ -54,7 +53,7 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
           ...doc.data(),
         })) as unknown as T[];
         
-        // الحارس الثاني (الذري): لا يتم تحديث الحالة إلا إذا تغيرت البيانات فعلياً
+        // 2. الحارس الذري: مقارنة بصمة البيانات لمنع التحديث إذا لم تتغير القيم فعلياً
         const currentHash = JSON.stringify(items);
         if (currentHash !== lastDataHashRef.current) {
           lastDataHashRef.current = currentHash;
@@ -65,7 +64,6 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
       },
       (serverError: FirestoreError) => {
         if (!isMounted) return;
-        
         setLoading(false);
         setError(serverError);
         
