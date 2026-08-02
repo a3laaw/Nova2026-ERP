@@ -19,6 +19,7 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | n
   const lastDataHashRef = useRef<string>("");
 
   useEffect(() => {
+    // حارس المرجع
     const isSameRef = docRef && lastRefRef.current && refEqual(docRef, lastRefRef.current);
     
     if (isSameRef) return;

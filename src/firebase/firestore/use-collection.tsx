@@ -7,7 +7,7 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
 
 /**
  * خطاف جلب المجموعات المطور (Sovereign Hardened Collection Hook).
- * يستخدم تقنية Deep Hash Comparison لمنع حلقة الرندر اللانهائية (ca9 Loop).
+ * يستخدم تقنية Deep Comparison لمنع حلقة الرندر اللانهائية.
  */
 export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
   const [data, setData] = useState<T[]>([]);
@@ -19,7 +19,7 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
   const lastDataHashRef = useRef<string>("");
 
   useEffect(() => {
-    // التحقق من تطابق الاستعلام بعمق لمنع تكرار التنفيذ
+    // الحارس الأول: منع إعادة الاشتراك إذا كان الاستعلام مطابقاً برمجياً
     const isSameQuery = query && lastQueryRef.current && queryEqual(query, lastQueryRef.current);
     
     if (isSameQuery) {
@@ -54,7 +54,7 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
           ...doc.data(),
         })) as unknown as T[];
         
-        // الحارس الذري: لا يتم تحديث الواجهة إلا إذا تغيرت محتويات البيانات فعلياً
+        // الحارس الثاني (الذري): لا يتم تحديث الحالة إلا إذا تغيرت البيانات فعلياً
         const currentHash = JSON.stringify(items);
         if (currentHash !== lastDataHashRef.current) {
           lastDataHashRef.current = currentHash;

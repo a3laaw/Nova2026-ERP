@@ -20,22 +20,26 @@ export class WorkHoursService {
   }
 
   async getSettings(): Promise<WorkHoursSettings | null> {
-    const snap = await getDoc(this.getDocRef());
-    const defaults = this.getDefaultSettings();
+    try {
+      const snap = await getDoc(this.getDocRef());
+      const defaults = this.getDefaultSettings();
 
-    if (snap.exists()) {
-      const data = snap.data() as WorkHoursSettings;
-      return {
-        ...defaults,
-        ...data,
-        architectural: { ...defaults.architectural, ...data.architectural },
-        meetingRooms: { ...defaults.meetingRooms, ...data.meetingRooms },
-        fieldWork: { ...defaults.fieldWork, ...data.fieldWork },
-      } as WorkHoursSettings;
+      if (snap.exists()) {
+        const data = snap.data() as WorkHoursSettings;
+        return {
+          ...defaults,
+          ...data,
+          architectural: { ...defaults.architectural, ...data.architectural },
+          meetingRooms: { ...defaults.meetingRooms, ...data.meetingRooms },
+          fieldWork: { ...defaults.fieldWork, ...data.fieldWork },
+        } as WorkHoursSettings;
+      }
+    } catch (e) {
+      console.warn("Failed to fetch settings, using defaults.");
     }
     
     // فك قفل الرادار للمنشآت الجديدة بإعادة القيم الافتراضية فوراً
-    return { ...defaults, companyId: this.companyId } as WorkHoursSettings;
+    return { ...this.getDefaultSettings(), companyId: this.companyId } as WorkHoursSettings;
   }
 
   async saveSettings(settings: Partial<WorkHoursSettings>, userId: string) {
