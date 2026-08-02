@@ -14,7 +14,7 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { initializeApp, deleteApp, getApps } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { getAuth, createUserWithEmailAndPassword, updateProfile, sendPasswordResetEmail } from 'firebase/auth';
 import { firebaseConfig } from '@/firebase/config';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -141,6 +141,14 @@ export class UserService {
       }));
       throw err;
     }
+  }
+
+  /**
+   * إرسال رابط إعادة تعيين كلمة المرور إلى بريد المستخدم (آمن، دون تخزين كلمات المرور).
+   */
+  async sendPasswordReset(email: string): Promise<void> {
+    const auth = getAuth();
+    await sendPasswordResetEmail(auth, email);
   }
 
   async getInvitation(inviteId: string): Promise<Invitation | null> {

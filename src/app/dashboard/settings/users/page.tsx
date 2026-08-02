@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -117,15 +116,27 @@ export default function UsersManagementPage() {
       const role = roles?.find(r => r.id === editForm.roleId);
       if (!role) return;
 
+      // 1) تحديث بيانات الحساب (بدون كلمة مرور)
       await userService.updateUserAccount(editingUser.id, {
         displayName: editForm.fullName,
         username: editForm.username,
         roleId: role.id!,
-        roleCode: role.code,
-        initialPassword: editForm.newPassword || editingUser.initialPassword
+        roleCode: role.code
       });
 
-      toast({ title: t('saved') });
+      // 2) إعادة تعيين كلمة المرور عبر رابط آمن إن طُلبت كلمة جديدة
+      if (editForm.newPassword && editingUser.email) {
+        await userService.sendPasswordReset(editingUser.email);
+        toast({
+          title: t('saved'),
+          description: isRtl
+            ? 'تم إرسال رابط إعادة تعيين كلمة المرور إلى بريد الموظف.'
+            : 'A password reset link was sent to the employee email.'
+        });
+      } else {
+        toast({ title: t('saved') });
+      }
+
       setEditingUser(null);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
@@ -359,17 +370,17 @@ export default function UsersManagementPage() {
 
                <div className="space-y-4 pt-4 border-t text-start">
                   <div className="flex items-center gap-2 text-primary font-black text-xs uppercase tracking-widest">
-                     <Lock className="h-4 w-4" /> {isRtl ? 'تحديث كلمة المرور الإدارية' : 'Manage Password'}
+                     <Lock className="h-4 w-4" /> {isRtl ? 'إعادة تعيين كلمة المرور' : 'Reset Password'}
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-bold text-slate-400">{isRtl ? 'كلمة مرور جديدة (اتركه فارغاً للإبقاء على الحالية)' : 'New Password (Leave blank to keep current)'}</Label>
+                    <Label className="text-[10px] font-bold text-slate-400">{isRtl ? 'كلمة مرور جديدة (سيتم إرسال رابط للبريد)' : 'New Password (Will send link to email)'}</Label>
                     <div className="relative">
                       <Input 
                         type="text" 
                         value={editForm.newPassword} 
                         onChange={e => setEditForm({...editForm, newPassword: e.target.value})}
                         className="h-12 rounded-xl border-2 font-mono text-primary bg-slate-50"
-                        placeholder="••••••••"
+                        placeholder={isRtl ? "اكتب أي شيء لإرسال الرابط" : "Type anything to trigger link"}
                       />
                       <RefreshCcw className="absolute end-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-200" />
                     </div>
