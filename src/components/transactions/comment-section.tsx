@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -416,7 +415,7 @@ function StreamItem({ item, isRtl, user, boqItems, onDelete, onUpdate, isAdmin, 
               <span className="text-[7px] font-bold text-slate-300">
                  {item.createdAt ? formatDistanceToNow(item.createdAt.toDate(), { addSuffix: true, locale: isRtl ? ar : enUS }) : '...'}
               </span>
-              {item.isEdited && <Badge variant="ghost" className="h-3 p-0 text-[6px] font-bold text-slate-300 italic">(edited)</Badge>}
+              {item.isEdited && <Badge variant="secondary" className="h-3 p-0 text-[6px] font-bold text-slate-300 italic">(edited)</Badge>}
            </div>
            
            <div className={cn(

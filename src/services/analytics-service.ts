@@ -9,7 +9,8 @@ import {
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { Transaction } from '@/types/transaction';
-import { BOQ, PurchaseOrder } from '@/types/documents';
+import { BOQ } from '@/types/documents';
+import { PurchaseOrder } from '@/types/procurement';
 import { Employee } from '@/types/hr';
 
 export interface ProjectAnalyticsSummary {

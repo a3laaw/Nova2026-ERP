@@ -126,6 +126,12 @@ export default function AppointmentDetailPage() {
   [db, companyId, appt?.transactionId]);
   const { data: allExecutions } = useCollection<BOQItemExecutionEntry>(execsQuery);
 
+  const inventoryQuery = useMemo(
+    () => companyId && db ? query(collection(db, paths.inventoryItems(companyId))) : null,
+    [db, companyId]
+  );
+  const { data: equipmentItems } = useCollection<any>(inventoryQuery);
+
   const hasMadeProgress = useMemo(() => {
      return (allExecutions || []).some(e => e.appointmentId === apptId);
   }, [allExecutions, apptId]);
@@ -295,7 +301,7 @@ export default function AppointmentDetailPage() {
         
         {appt.status !== 'completed' && (
            <Button 
-             disabled={appt.transactionId && !hasMadeProgress}
+             disabled={!!appt.transactionId && !hasMadeProgress}
              onClick={() => {
                 if (db && companyId && user) {
                    const service = new AppointmentService(db, companyId);
@@ -358,7 +364,7 @@ export default function AppointmentDetailPage() {
                          <p className="text-xl font-black text-rose-900">
                             {isRtl ? 'العميل لم يصل لهذه المرحلة بعد' : 'Project Sequence Violation'}
                          </p>
-                         <p className="text-sm font-bold text-slate-400 max-w-sm mx-auto leading-relaxed">
+                         <p className="text-sm font-bold text-slate-400 max-sm mx-auto leading-relaxed">
                             {isRtl 
                               ? `تنبيه: لا يمكن بدء أعمال ${appt.departmentName} قبل إنجاز مرحلة "${blockerStage?.name}" السابقة. يرجى مراجعة الجدول الزمني للمشروع.` 
                               : `Cannot start ${appt.departmentName} work until "${blockerStage?.name}" is completed. Review project schedule.`}

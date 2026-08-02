@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
@@ -18,6 +17,8 @@ interface GlobalUserData {
   isDeveloper?: boolean;
   username: string;
   fullName?: string;
+  photoUrl?: string;
+  isPendingApproval?: boolean;
 }
 
 interface AuthContextType {
