@@ -21,12 +21,19 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
   });
 
   const lastQueryRef = useRef<Query<any, any> | null>(null);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     // التحقق من استقرار الاستعلام (Query Stability Check)
     const isSameQuery = query && lastQueryRef.current && queryEqual(query, lastQueryRef.current);
     
     if (isSameQuery) return;
+
+    // تنظيف المراقب السابق فوراً
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+      unsubscribeRef.current = null;
+    }
 
     if (!query) {
       setState({ data: [], loading: false, error: null });
@@ -66,9 +73,14 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
       }
     );
 
+    unsubscribeRef.current = unsubscribe;
+
     return () => {
       isMounted = false;
-      unsubscribe();
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
     };
   }, [query]);
 
