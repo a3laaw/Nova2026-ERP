@@ -6,48 +6,39 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 /**
- * خطاف جلب المجموعات المدرع (Sovereign Hardened Collection Hook).
- * تم تحديثه للقضاء على خطأ ca9 عبر تثبيت الاستعلامات ومنع التكرار اللحظي.
+ * خطاف جلب المجموعات المطور (Sovereign Atomic Collection Hook).
+ * تم تحديثه لضمان استقرار الحالة ومنع "حلقات البحث" المفرغة ca9.
  */
 export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
-  const [data, setData] = useState<T[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<FirestoreError | Error | null>(null);
-  
-  const unsubscribeRef = useRef<(() => void) | null>(null);
+  const [state, setState] = useState<{
+    data: T[];
+    loading: boolean;
+    error: Error | null;
+  }>({
+    data: [],
+    loading: true,
+    error: null,
+  });
+
   const lastQueryRef = useRef<Query<any, any> | null>(null);
-  const lastDataHashRef = useRef<string>("");
 
   useEffect(() => {
-    // بروتوكول تثبيت الاستعلام (Query Stabilization Protocol)
-    // نستخدم queryEqual المدمجة في SDK للمقارنة العميقة بدلاً من المراجع
+    // التحقق من استقرار الاستعلام (Query Stability Check)
     const isSameQuery = query && lastQueryRef.current && queryEqual(query, lastQueryRef.current);
     
-    // إذا كان الاستعلام هو نفسه، نتوقف فوراً لمنع حلقة ca9 المفرغة
-    if (isSameQuery) {
-       return; 
-    }
-
-    // تنظيف المراقب السابق قبل بدء الجديد
-    if (unsubscribeRef.current) {
-      unsubscribeRef.current();
-      unsubscribeRef.current = null;
-    }
+    if (isSameQuery) return;
 
     if (!query) {
-      setData([]);
-      setLoading(false);
+      setState({ data: [], loading: false, error: null });
       lastQueryRef.current = null;
       return;
     }
 
     lastQueryRef.current = query;
-    setLoading(true);
-    setError(null);
+    setState(prev => ({ ...prev, loading: true, error: null }));
 
     let isMounted = true;
 
-    // البدء في مراقبة البيانات بنمط حماية الذاكرة
     const unsubscribe = onSnapshot(
       query,
       (snapshot) => {
@@ -58,20 +49,13 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
           ...doc.data(),
         })) as unknown as T[];
         
-        // منع تحديث الواجهة إذا لم تتغير البيانات فعلياً (Data Integrity Check)
-        const currentHash = JSON.stringify(items);
-        if (currentHash !== lastDataHashRef.current) {
-          lastDataHashRef.current = currentHash;
-          setData(items);
-        }
-        
-        setLoading(false);
+        setState({ data: items, loading: false, error: null });
       },
       (serverError: FirestoreError) => {
         if (!isMounted) return;
         
-        setLoading(false);
-        setError(serverError);
+        console.error("Firestore Collection Error:", serverError);
+        setState(prev => ({ ...prev, loading: false, error: serverError }));
         
         if (serverError.code === 'permission-denied') {
            errorEmitter.emit('permission-error', new FirestorePermissionError({
@@ -82,16 +66,11 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
       }
     );
 
-    unsubscribeRef.current = unsubscribe;
-
     return () => {
       isMounted = false;
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-        unsubscribeRef.current = null;
-      }
+      unsubscribe();
     };
   }, [query]);
 
-  return { data, loading, error };
+  return state;
 }

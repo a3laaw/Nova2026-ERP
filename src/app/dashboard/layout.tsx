@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useAuthContext } from '@/context/auth-context';
@@ -12,7 +11,7 @@ import { UserNav } from "@/components/layout/user-nav"
 import { NotificationBell } from "@/components/layout/notification-bell"
 import { BreadcrumbNav } from "@/components/layout/breadcrumb-nav"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, AlertTriangle, ShieldAlert, LogOut, Lock, Clock, Sparkles } from 'lucide-react';
+import { Loader2, LogOut, Lock, Clock, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -33,29 +32,42 @@ export default function DashboardLayout({
     }
   }, [user, authLoading, router]);
 
-  // التحقق السيادي الصارم
-  // المطور الحقيقي هو من يحمل علامة isDeveloper في السجل العالمي فقط
   const isSovereignDev = globalUser?.isDeveloper === true;
-  
   const isSuspended = company?.status === 'suspended';
   const isInactive = company?.status === 'inactive';
   const isPending = globalUser?.isPendingApproval === true;
   const isExpired = company?.status === 'expired' || subscription.isExpired;
   
-  // تفعيل القفل إذا كان المستخدم ليس مطوراً والمنشأة غير جاهزة
+  // فك قفل الانتظار: إذا كان المستخدم مسجلاً ولكن السجل لم يكتمل بعد
+  const isStuck = user && !globalUser && !authLoading;
   const needsLock = !isSovereignDev && (isExpired || isSuspended || isInactive || isPending);
 
-  // واجهة الانتظار الشاملة لمنع تسريب البيانات قبل اكتمال الفحص
-  if (authLoading || companyLoading || (user && !globalUser)) {
+  if (authLoading || companyLoading) {
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#F8F9FA] gap-4">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Authenticating Sovereign Session...</p>
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse italic">Synchronizing Secure Session...</p>
       </div>
     );
   }
 
   if (!user) return null;
+
+  // إذا كان المستخدم عالقاً بسبب نقص البيانات، نعطيه فرصة للخروج أو إعادة المحاولة
+  if (isStuck) {
+    return (
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-white p-6 text-center" dir={dir}>
+        <div className="max-w-md space-y-6">
+           <div className="h-20 w-20 bg-rose-50 text-rose-500 rounded-3xl flex items-center justify-center mx-auto shadow-inner"><ShieldAlert className="h-10 w-10" /></div>
+           <div className="space-y-2">
+              <h1 className="text-2xl font-black text-slate-900">{isRtl ? 'تعذر تحميل ملف الصلاحيات' : 'Profile Link Failed'}</h1>
+              <p className="text-sm font-bold text-slate-400 leading-relaxed">عذراً، لم نتمكن من العثور على سجل الموظف المرتبط بهذا الحساب. قد يكون حسابك قيد الإعداد.</p>
+           </div>
+           <Button onClick={logout} variant="outline" className="w-full rounded-xl h-12 gap-2"><LogOut className="h-4 w-4" /> تسجيل الخروج</Button>
+        </div>
+      </div>
+    );
+  }
 
   if (needsLock) {
     return (
