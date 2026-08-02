@@ -1,7 +1,4 @@
 'use client';
-/**
- * @fileOverview محرك معالجة أخطاء الكتابة السيادي الموحد.
- */
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 

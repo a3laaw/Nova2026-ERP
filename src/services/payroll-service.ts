@@ -86,6 +86,7 @@ export class PayrollService {
         if (approvedLeave) {
           justifiedAbsenceDays++;
           if (approvedLeave.type === 'sick') {
+             // الأيام المرضية السابقة في نفس السنة من الإجازات الأخرى (مستثناة المرفوضة)
              const prevSickFromOtherLeaves = empLeaves
                .filter(l => l.type === 'sick' && l.startDate < dateStr && l.status !== 'rejected')
                .reduce((acc, curr) => acc + (curr.workingDays || 0), 0);

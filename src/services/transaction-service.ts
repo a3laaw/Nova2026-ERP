@@ -366,8 +366,28 @@ export class TransactionService {
     const stageData = currentStageDoc.data() as StageInstance;
 
     const affectedStageIds: string[] = [stageId];
+    allStagesSnap.docs.forEach(d => {
+       const s = d.data() as StageInstance;
+       if (s.order > stageData.order) {
+          affectedStageIds.push(d.id!);
+       }
+    });
+
+    const commentService = new CommentService(this.db, this.companyId, this.permissions);
+    const boqService = new BOQExecutionService(this.db, this.companyId, this.permissions);
+
+    // 1) أرشفة التعليقات والتنفيذيات أولاً (عمليات مستقلة)
+    for (const sid of affectedStageIds) {
+       await commentService.archiveStageComments(transactionId, sid);
+       const sData = allStagesSnap.docs.find(d => d.id === sid)?.data() as StageInstance;
+       if (sData) {
+          await boqService.archiveStageExecutions(transactionId, sData.technicalStageId, true);
+       }
+    }
+
     const batch = writeBatch(this.db);
     
+    // 2) إعادة ضبط المراحل والتايملاين في دفعة واحدة
     batch.update(currentStageDoc.ref, {
       status: 'in-progress',
       completedAt: null,
@@ -389,21 +409,8 @@ export class TransactionService {
              startedByApptId: null,
              updatedAt: serverTimestamp()
           });
-          affectedStageIds.push(d.id!);
        }
     });
-
-    const commentService = new CommentService(this.db, this.companyId, this.permissions);
-    const boqService = new BOQExecutionService(this.db, this.companyId, this.permissions);
-
-    // أرشفة التعليقات والتنفيذيات أولاً (عمليات مستقلة)
-    for (const sid of affectedStageIds) {
-       await commentService.archiveStageComments(transactionId, sid);
-       const sData = allStagesSnap.docs.find(d => d.id === sid)?.data() as StageInstance;
-       if (sData) {
-          await boqService.archiveStageExecutions(transactionId, sData.technicalStageId, true);
-       }
-    }
 
     const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
     batch.set(timelineRef, {

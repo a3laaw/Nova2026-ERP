@@ -1,7 +1,4 @@
 'use client';
-/**
- * @fileOverview محرك العدادات التسلسلية الآمن (Atomic Counters).
- */
 import { Firestore, runTransaction, doc } from 'firebase/firestore';
 
 /**

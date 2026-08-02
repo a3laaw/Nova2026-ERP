@@ -39,7 +39,7 @@ export interface GratuityResult {
  */
 export class GratuityService {
   static calculate(input: GratuityCalculationInput): GratuityResult {
-    const { hireDate, endDate, totalSalary, reason, noticeType, remainingLeaveDays: inputLeaves } = input;
+    const { hireDate, endDate, totalSalary, reason, noticeType, remainingLeaveDays } = input;
     
     const start = parseISO(hireDate);
     const end = parseISO(endDate);
@@ -92,9 +92,9 @@ export class GratuityService {
     const finalGratuity = baseGratuity * resignationFactor;
 
     // 4. بدل الإجازات النقدية = الأيام المتبقية فعلياً × قيمة اليوم (قاعدة الـ26)
-    const remainingLeaveDays = Math.max(0, inputLeaves ?? 0);
-    const leaveBalancePay = Math.round(remainingLeaveDays * dailyWage * 1000) / 1000;
-    legalNotes.push(`تم احتساب بدل إجازات عن ${remainingLeaveDays} يوم متبقٍ في الرصيد.`);
+    const validRemainingLeaves = Math.max(0, remainingLeaveDays ?? 0);
+    const leaveBalancePay = Math.round(validRemainingLeaves * dailyWage * 1000) / 1000;
+    legalNotes.push(`تم احتساب بدل إجازات عن ${validRemainingLeaves} يوم متبقٍ في الرصيد.`);
 
     // 5. بدل الإنذار (المادة 44)
     let noticeIndemnity = 0;
@@ -106,7 +106,7 @@ export class GratuityService {
       legalNotes.push("خصم بدل إنذار يعادل راتب 3 أشهر.");
     }
 
-    // المجموع النهائي
+    // المجموع النهائي: السماح بالقيمة السالبة (خصم الإنذار)
     const totalEntitlement = Math.round((finalGratuity + leaveBalancePay + noticeIndemnity) * 1000) / 1000;
 
     return {
@@ -121,7 +121,7 @@ export class GratuityService {
       resignationFactor,
       finalGratuity,
       leaveBalancePay,
-      accruedLeaveDays: remainingLeaveDays,
+      accruedLeaveDays: validRemainingLeaves,
       noticeIndemnity,
       totalEntitlement,
       isCapped,
