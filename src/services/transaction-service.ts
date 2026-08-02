@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -361,14 +360,35 @@ export class TransactionService {
        ensureActionPermission(this.permissions, 'projects:edit');
     }
     
-    const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
-    const stageSnap = await getDoc(stageRef);
-    if (!stageSnap.exists()) return;
-    const stageData = stageSnap.data() as StageInstance;
+    const allStagesSnap = await getDocs(collection(this.db, paths.transactionStages(this.companyId, transactionId)));
+    const currentStageDoc = allStagesSnap.docs.find(d => d.id === stageId);
+    if (!currentStageDoc) return;
+    const stageData = currentStageDoc.data() as StageInstance;
+
+    const affectedStageIds: string[] = [stageId];
+    allStagesSnap.docs.forEach(d => {
+       const s = d.data() as StageInstance;
+       if (s.order > stageData.order) {
+          affectedStageIds.push(d.id!);
+       }
+    });
+
+    const commentService = new CommentService(this.db, this.companyId, this.permissions);
+    const boqService = new BOQExecutionService(this.db, this.companyId, this.permissions);
+
+    // 1) أرشفة التعليقات والتنفيذيات أولاً (عمليات مستقلة)
+    for (const sid of affectedStageIds) {
+       await commentService.archiveStageComments(transactionId, sid);
+       const sData = allStagesSnap.docs.find(d => d.id === sid)?.data() as StageInstance;
+       if (sData) {
+          await boqService.archiveStageExecutions(transactionId, sData.technicalStageId, true);
+       }
+    }
 
     const batch = writeBatch(this.db);
     
-    batch.update(stageRef, {
+    // 2) إعادة ضبط المراحل والتايملاين في دفعة واحدة
+    batch.update(currentStageDoc.ref, {
       status: 'in-progress',
       completedAt: null,
       completedBy: null,
@@ -376,9 +396,6 @@ export class TransactionService {
       updatedAt: serverTimestamp(),
       updatedBy: userId
     });
-
-    const allStagesSnap = await getDocs(collection(this.db, paths.transactionStages(this.companyId, transactionId)));
-    const affectedStageIds: string[] = [stageId];
 
     allStagesSnap.docs.forEach(d => {
        const s = d.data() as StageInstance;
@@ -392,20 +409,8 @@ export class TransactionService {
              startedByApptId: null,
              updatedAt: serverTimestamp()
           });
-          affectedStageIds.push(d.id!);
        }
     });
-
-    const commentService = new CommentService(this.db, this.companyId, this.permissions);
-    const boqService = new BOQExecutionService(this.db, this.companyId, this.permissions);
-
-    for (const sid of affectedStageIds) {
-       await commentService.archiveStageComments(transactionId, sid);
-       const sData = allStagesSnap.docs.find(d => d.id === sid)?.data() as StageInstance;
-       if (sData) {
-          await boqService.archiveStageExecutions(transactionId, sData.technicalStageId, true);
-       }
-    }
 
     const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
     batch.set(timelineRef, {
@@ -424,22 +429,24 @@ export class TransactionService {
     await batch.commit();
   }
 
-  async deleteStageInstance(transactionId: string, stageId: string) {
-    ensureActionPermission(this.permissions, 'projects:delete');
-    const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
-    return deleteDoc(stageRef);
-  }
-
   async deleteTransaction(transactionId: string) {
     ensureActionPermission(this.permissions, 'projects:delete');
     const batch = writeBatch(this.db);
     batch.delete(doc(this.db, paths.transactions(this.companyId), transactionId));
     
-    const subCollections = ['stageInstances', 'timeline', 'comments'];
+    const subCollections = ['stageInstances', 'timeline', 'comments', 'fieldVisits'];
+    const txBase = `companies/${this.companyId}/transactions/${transactionId}`;
     for (const sub of subCollections) {
-       const snap = await getDocs(collection(this.db, `companies/${this.companyId}/transactions/${transactionId}/${sub}`));
+       const snap = await getDocs(collection(this.db, `${txBase}/${sub}`));
        snap.forEach(d => batch.delete(d.ref));
     }
+
+    // حذف عمليات التنفيذ المرتبطة بالمعاملة (مستوى المنشأة)
+    const execSnap = await getDocs(query(
+      collection(this.db, paths.executions(this.companyId)),
+      where('transactionId', '==', transactionId)
+    ));
+    execSnap.forEach(d => batch.delete(d.ref));
     
     await batch.commit();
   }

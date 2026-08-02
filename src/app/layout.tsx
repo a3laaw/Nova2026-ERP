@@ -1,6 +1,21 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Providers } from './providers';
+import { Cairo, IBM_Plex_Sans_Arabic } from 'next/font/google';
+
+const bodyFont = IBM_Plex_Sans_Arabic({ 
+  subsets: ['arabic', 'latin'], 
+  weight: ['400', '500', '600', '700'], 
+  variable: '--font-body', 
+  display: 'swap' 
+});
+
+const headlineFont = Cairo({ 
+  subsets: ['arabic', 'latin'], 
+  weight: ['600', '700', '800', '900'], 
+  variable: '--font-headline', 
+  display: 'swap' 
+});
 
 export const metadata: Metadata = {
   title: 'NovaFlow ERP - نظام إدارة هندسي متكامل',
@@ -14,12 +29,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ar" suppressHydrationWarning>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&family=PT+Sans:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet" />
-      </head>
-      <body className="font-body antialiased selection:bg-primary/20">
+      <body className={`${bodyFont.variable} ${headlineFont.variable} font-body antialiased selection:bg-primary/20`} dir="rtl">
         <Providers>
           {children}
         </Providers>

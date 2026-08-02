@@ -168,6 +168,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
       ...formData, 
       items: [...(formData.items || []), { 
         label: getOrdinalLabel(nextIdx), 
+        description: '',
         percentage: 0, 
         unitPrice: 0, 
         quantity: 1,

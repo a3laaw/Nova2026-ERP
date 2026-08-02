@@ -29,6 +29,7 @@ import { Governorate, Area } from '@/types/reference';
 import { Employee } from '@/types/hr';
 import { LocationPickerDialog } from './location-picker-dialog';
 import { cn } from '@/lib/utils';
+import { Badge } from "@/components/ui/badge";
 
 export function ClientForm({ initialData, onSubmit, loading }: { initialData?: any, onSubmit: (data: any) => void, loading?: boolean }) {
   const { dir, lang, t } = useLanguage();
@@ -108,7 +109,7 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
   };
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 text-start pb-20">
+    <form form={form} onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 text-start pb-20">
       
       <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/[0.02]">
         <div className="bg-primary/5 p-6 border-b flex items-center justify-between">

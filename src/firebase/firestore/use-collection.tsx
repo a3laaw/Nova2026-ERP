@@ -11,51 +11,39 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
  */
 export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
   const [data, setData] = useState<T[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<FirestoreError | Error | null>(null);
-  
-  const unsubscribeRef = useRef<(() => void) | null>(null);
+  const [loading, setLoading] = useState(query !== null);
+  const [error, setError] = useState<Error | null>(null);
+
   const lastQueryRef = useRef<Query<any, any> | null>(null);
   const lastDataHashRef = useRef<string>("");
 
   useEffect(() => {
-    // 1. حارس الاستعلام الموحد (Query Stability Guard)
-    // إذا كان الاستعلام مطابقاً برمجياً للسابق، لا تفعل شيئاً لمنع الـ Loop
-    if (query && lastQueryRef.current && queryEqual(query, lastQueryRef.current)) {
-      return;
-    }
-
-    if (unsubscribeRef.current) {
-      unsubscribeRef.current();
-      unsubscribeRef.current = null;
-    }
-
     if (!query) {
       setData([]);
       setLoading(false);
+      setError(null);
       lastQueryRef.current = null;
       lastDataHashRef.current = "";
       return;
     }
 
+    // حارس الاستعلام الموحد: منع الـ Loop الناتج عن تغيير مرجع الكائن في كل رندر
+    if (lastQueryRef.current && queryEqual(query, lastQueryRef.current)) {
+      return;
+    }
+
     lastQueryRef.current = query;
     setLoading(true);
-    setError(null);
-
-    let isMounted = true;
 
     const unsubscribe = onSnapshot(
       query,
       (snapshot) => {
-        if (!isMounted) return;
-        
         const items = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         })) as unknown as T[];
         
-        // 2. حارس البصمة الذري (Deep Hash Comparison)
-        // لن يتم تحديث الحالة (setState) إلا إذا تغيرت محتويات البيانات فعلياً في السحاب
+        // حارس البصمة الذري: لا نحدث الحالة إلا إذا تغيرت البيانات فعلياً
         const currentHash = JSON.stringify(items);
         if (currentHash !== lastDataHashRef.current) {
           lastDataHashRef.current = currentHash;
@@ -65,28 +53,18 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
         setLoading(false);
       },
       (serverError: FirestoreError) => {
-        if (!isMounted) return;
         setLoading(false);
         setError(serverError);
-        
         if (serverError.code === 'permission-denied') {
-           errorEmitter.emit('permission-error', new FirestorePermissionError({
-             path: 'collection_query',
-             operation: 'list',
-           } satisfies SecurityRuleContext));
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: 'collection_query',
+            operation: 'list',
+          } satisfies SecurityRuleContext));
         }
       }
     );
 
-    unsubscribeRef.current = unsubscribe;
-
-    return () => {
-      isMounted = false;
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-        unsubscribeRef.current = null;
-      }
-    };
+    return () => unsubscribe();
   }, [query]);
 
   return { data, loading, error };

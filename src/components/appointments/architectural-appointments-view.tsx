@@ -763,7 +763,7 @@ function AppointmentManagerDialog({ isOpen, onClose, data, clients, governorates
     if (!db || !companyId) return;
     const q = query(collection(db, paths.transactions(companyId)), where('clientId', '==', cid));
     const snap = await getDocs(q);
-    const trans = snap.docs.map(d => ({id: d.id, ...d.data()}));
+    const trans = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
     setClientTransactions(trans);
 
     if (!formData.transactionId && trans.length === 1) {

@@ -14,7 +14,7 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { initializeApp, deleteApp, getApps } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { getAuth, createUserWithEmailAndPassword, updateProfile, sendPasswordResetEmail } from 'firebase/auth';
 import { firebaseConfig } from '@/firebase/config';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -34,15 +34,9 @@ export interface Invitation {
   expiresAt?: any;
 }
 
-/**
- * خدمة إدارة المستخدمين المحدثة لدعم الإنشاء المباشر والتعديل الشامل.
- */
 export class UserService {
   constructor(private db: Firestore, private companyId: string) {}
 
-  /**
-   * إنشاء حساب موظف مباشر (بدون دعوة)
-   */
   async createUserAccount(data: {
     employeeId: string;
     employeeName: string;
@@ -69,7 +63,7 @@ export class UserService {
         companyId: this.companyId,
         roleId: data.roleId,
         role: data.roleCode,
-        fullName: data.employeeName, // تخزين الاسم الكامل السيادي
+        fullName: data.employeeName,
         departmentId: data.departmentId,
         employeeId: data.employeeId,
         username: data.username,
@@ -87,12 +81,19 @@ export class UserService {
         employeeId: data.employeeId,
         roleId: data.roleId,
         role: data.roleCode,
-        initialPassword: data.password,
+        initialPasswordSetAt: serverTimestamp(),
         joinedAt: serverTimestamp(),
         isActive: true
       });
 
-      await batch.commit();
+      try {
+        await batch.commit();
+      } catch (batchErr) {
+        try { await cred.user.delete(); } catch {}
+        await deleteApp(tempApp);
+        throw batchErr;
+      }
+
       await deleteApp(tempApp);
       return uid;
     } catch (error: any) {
@@ -103,15 +104,11 @@ export class UserService {
     }
   }
 
-  /**
-   * تحديث بيانات حساب المستخدم بشكل شامل
-   */
   async updateUserAccount(uid: string, data: {
     displayName: string;
     username: string;
     roleId: string;
     roleCode: string;
-    initialPassword?: string;
   }) {
     const tenantUserRef = doc(this.db, 'companies', this.companyId, 'users', uid);
     const globalUserRef = doc(this.db, 'global_users', uid);
@@ -119,25 +116,17 @@ export class UserService {
     try {
       const batch = writeBatch(this.db);
 
-      // تحديث السجل الداخلي في الشركة
-      const internalUpdates: any = {
+      batch.update(tenantUserRef, {
         displayName: data.displayName,
         username: data.username,
         roleId: data.roleId,
         role: data.roleCode,
         updatedAt: serverTimestamp()
-      };
+      });
 
-      if (data.initialPassword) {
-        internalUpdates.initialPassword = data.initialPassword;
-      }
-
-      batch.update(tenantUserRef, internalUpdates);
-
-      // تحديث السجل العالمي
       batch.update(globalUserRef, {
         username: data.username,
-        fullName: data.displayName, // تحديث الاسم الكامل الموازي
+        fullName: data.displayName,
         roleId: data.roleId,
         role: data.roleCode,
         updatedAt: serverTimestamp()
@@ -154,6 +143,14 @@ export class UserService {
     }
   }
 
+  /**
+   * إرسال رابط إعادة تعيين كلمة المرور إلى بريد المستخدم (آمن، دون تخزين كلمات المرور).
+   */
+  async sendPasswordReset(email: string): Promise<void> {
+    const auth = getAuth();
+    await sendPasswordResetEmail(auth, email);
+  }
+
   async getInvitation(inviteId: string): Promise<Invitation | null> {
     const ref = doc(this.db, paths.invitations(this.companyId), inviteId);
     const snap = await getDoc(ref);
@@ -161,30 +158,12 @@ export class UserService {
     return { id: snap.id, ...(snap.data() as Omit<Invitation, 'id'>) };
   }
 
-  /**
-   * تحديث دور المستخدم (Role Assignment) فقط
-   */
-  async updateUserRole(uid: string, roleId: string, roleCode: string) {
-    const userSnap = await getDoc(doc(this.db, 'companies', this.companyId, 'users', uid));
-    if (!userSnap.exists()) return;
-    const userData = userSnap.data();
-
-    return this.updateUserAccount(uid, {
-        displayName: userData.displayName || '',
-        username: userData.username || '', 
-        roleId,
-        roleCode
-    });
-  }
-
   async toggleUserStatus(uid: string, isActive: boolean) {
     const userRef = doc(this.db, 'companies', this.companyId, 'users', uid);
     const globalRef = doc(this.db, 'global_users', uid);
-    try {
-      await updateDoc(userRef, { isActive, updatedAt: serverTimestamp() });
-      await updateDoc(globalRef, { isActive, updatedAt: serverTimestamp() });
-    } catch (err) {
-      console.error(err);
-    }
+    const batch = writeBatch(this.db);
+    batch.update(userRef, { isActive, updatedAt: serverTimestamp() });
+    batch.update(globalRef, { isActive, updatedAt: serverTimestamp() });
+    await batch.commit();
   }
 }

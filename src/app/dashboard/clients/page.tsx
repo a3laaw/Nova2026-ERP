@@ -9,10 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   Users, UserPlus, Search, Loader2, 
-  ArrowRight, Filter, Briefcase, ShieldCheck 
+  ArrowRight, Filter, Briefcase, ShieldCheck
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils';
 
 export default function ClientsListPage() {
   const { globalUser } = useAuthContext();
-  const { lang, dir } = useLanguage();
+  const { lang, dir, t } = useLanguage();
   const { isAdmin, check } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
@@ -34,13 +34,17 @@ export default function ClientsListPage() {
 
   // استعلام محصن: المثبت الذري يضمن عدم حدوث Loop هنا
   const clientsQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.clients(companyId)), orderBy('createdAt', 'desc')) : null, 
+    companyId && db ? query(collection(db, paths.clients(companyId))) : null, 
   [db, companyId]);
 
   const { data: rawClients, loading } = useCollection<Client>(clientsQuery);
 
   const filtered = useMemo(() => {
-    let list = rawClients || [];
+    let list = [...(rawClients || [])].sort((a, b) => {
+       const dateA = a.createdAt?.toMillis?.() || 0;
+       const dateB = b.createdAt?.toMillis?.() || 0;
+       return dateB - dateA;
+    });
     
     if (!isAdmin && globalUser?.employeeId) {
       list = list.filter(c => c.assignedEngineerId === globalUser.employeeId);
@@ -85,13 +89,12 @@ export default function ClientsListPage() {
         )}
       </div>
 
-      {/* شريط البحث الاحترافي (Premium Search) */}
       <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
         <div className="p-6 flex flex-col md:flex-row items-center justify-between gap-6 bg-slate-50/30">
            <div className="relative w-full max-w-xl">
               <Search className="absolute start-5 top-1/2 -translate-y-1/2 h-6 w-6 text-primary" />
               <Input 
-                placeholder={isRtl ? 'بحث بالاسم، رقم الهاتف، أو رقم الملف الضريبي...' : 'Search names, mobile, or file number...'} 
+                placeholder={isRtl ? 'بحث بالاسم، رقم الهاتف، أو رقم الملف...' : 'Search names, mobile, or file number...'} 
                 className="ps-14 h-16 rounded-[1.5rem] border-2 border-slate-100 focus:border-primary/40 bg-white text-lg font-bold shadow-inner transition-all" 
                 value={searchTerm} 
                 onChange={e => setSearchTerm(e.target.value)} 
@@ -147,7 +150,7 @@ export default function ClientsListPage() {
                   <TableCell className="py-6 text-start">
                      <Badge className={cn(
                        "font-black px-4 py-1.5 rounded-lg border-0 shadow-sm uppercase text-[9px]", 
-                       client.status === 'contracted' ? 'bg-emerald-500 text-white' : 'bg-primary text-white'
+                       client.status === 'contracted' ? 'bg-emerald-50 text-emerald-600' : 'bg-primary text-white'
                      )}>
                         {client.status}
                      </Badge>

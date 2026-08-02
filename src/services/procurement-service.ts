@@ -5,15 +5,13 @@ import {
   collection, 
   doc, 
   getDocs, 
-  setDoc,
   serverTimestamp, 
   query,
   where,
-  orderBy,
-  limit,
   writeBatch,
   updateDoc
 } from 'firebase/firestore';
+import { nextSequential } from '@/lib/counters';
 import { paths } from '@/firebase/multi-tenant';
 import { PurchaseOrder, POItem, POStatus } from '@/types/procurement';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -27,33 +25,11 @@ export class ProcurementService {
     private permissions: string[] = []
   ) {}
 
-  /**
-   * توليد رقم متسلسل لأمر الشراء (PO-2026-0001)
-   */
   async getNextPONumber(): Promise<string> {
     const year = new Date().getFullYear();
-    const prefix = `PO-${year}-`;
-    
-    const q = query(
-      collection(this.db, paths.purchaseOrders(this.companyId)),
-      where('poNumber', '>=', `${prefix}0000`),
-      where('poNumber', '<=', `${prefix}9999`),
-      orderBy('poNumber', 'desc'),
-      limit(1)
-    );
-    
-    const snap = await getDocs(q);
-    if (snap.empty) return `${prefix}0001`;
-    
-    const lastNumStr = snap.docs[0].data().poNumber;
-    const parts = lastNumStr.split('-');
-    const lastSeq = parseInt(parts[parts.length - 1]);
-    return `${prefix}${(lastSeq + 1).toString().padStart(4, '0')}`;
+    return nextSequential(this.db, this.companyId, 'po', `PO-${year}-`, 4);
   }
 
-  /**
-   * إنشاء أمر شراء جديد مع البنود في خطوة واحدة (Atomic Write)
-   */
   async createPurchaseOrder(data: Partial<PurchaseOrder>, items: Partial<POItem>[], userId: string) {
     ensureActionPermission(this.permissions, 'procurement:create');
 

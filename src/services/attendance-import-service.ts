@@ -10,7 +10,7 @@ import {
 import { paths } from '@/firebase/multi-tenant';
 import { AttendanceRecord, Employee } from '@/types/hr';
 import { WorkHoursSettings, DayOfWeek } from '@/types/work-hours';
-import { parse, differenceInMinutes, format, isValid, parseISO, getMonth, getYear, startOfYear, addYears } from 'date-fns';
+import { parse, differenceInMinutes, format, isValid, parseISO, getMonth, getYear } from 'date-fns';
 
 export interface RawAttendanceRow {
   employeeNumber: string;
@@ -37,30 +37,17 @@ export interface ImportPreviewResult {
 export class AttendanceImportService {
   constructor(private db: Firestore, private companyId: string) {}
 
-  /**
-   * تحويل النصوص والأرقام إلى تاريخ موحد بصيغة YYYY-MM-DD
-   * تم تحسينه لمعالجة السنوات المكونة من رقمين (مثل 26 لتصبح 2026)
-   */
   private normalizeDate(input: string): string | null {
     if (!input) return null;
     let clean = input.trim();
     
-    // 1. معالجة تنسيق إكسيل التسلسلي (Excel Serial Number)
     const num = Number(clean);
-    if (!isNaN(num) && num > 30000) { // التواريخ الحديثة في إكسيل تكون أرقاماً كبيرة
-      // إكسيل يبدأ من 30 ديسمبر 1899
+    if (!isNaN(num) && num > 30000) {
       const excelBaseDate = new Date(1899, 11, 30);
       const date = new Date(excelBaseDate.getTime() + num * 86400000);
       if (isValid(date)) return format(date, 'yyyy-MM-dd');
     }
 
-    // 2. معالجة التواريخ المكتوبة برقمين للسنة (مثل 01/01/26)
-    // نبحث عن نمط ينتهي بـ /26 أو -26
-    if (/(^|[/-])26$/.test(clean)) {
-        clean = clean.replace(/26$/, '2026');
-    }
-
-    // 3. محاولة التنسيقات الشائعة
     const commonFormats = [
         'yyyy-MM-dd', 
         'dd/MM/yyyy', 
@@ -68,14 +55,16 @@ export class AttendanceImportService {
         'dd-MM-yyyy', 
         'yyyy/MM/dd',
         'd/M/yyyy',
-        'yyyy-M-d'
+        'yyyy-M-d',
+        'dd/MM/yy',
+        'MM/dd/yy',
+        'yy-MM-dd'
     ];
 
     for (const f of commonFormats) {
       try {
         const p = parse(clean, f, new Date());
         if (isValid(p)) {
-            // ضمان أن السنة ليست في القرن الأول (مثل 0026)
             if (p.getFullYear() < 100) {
                 p.setFullYear(p.getFullYear() + 2000);
             }
@@ -84,7 +73,6 @@ export class AttendanceImportService {
       } catch(e) {}
     }
 
-    // 4. محاولة أخيرة باستخدام parseISO
     const parsed = parseISO(clean);
     if (isValid(parsed)) {
         if (parsed.getFullYear() < 100) {
@@ -100,7 +88,6 @@ export class AttendanceImportService {
     if (!timeStr || typeof timeStr !== 'string' || !timeStr.trim()) return null;
     const cleanTime = timeStr.trim();
     
-    // معالجة وقت إكسيل العشري (مثل 0.333 يعادل 08:00)
     const num = Number(cleanTime);
     if (!isNaN(num) && num >= 0 && num < 1) {
       const totalSeconds = Math.round(num * 86400);
@@ -125,7 +112,7 @@ export class AttendanceImportService {
     rows: RawAttendanceRow[], 
     employees: Employee[], 
     workSettings: WorkHoursSettings,
-    targetMonth?: number, // 1-indexed
+    targetMonth?: number, 
     targetYear?: number
   ): Promise<ImportPreviewResult> {
     const records: Partial<AttendanceRecord>[] = [];
@@ -143,7 +130,6 @@ export class AttendanceImportService {
 
       const dateObj = parseISO(normalizedDate);
       
-      // التحقق من مطابقة الفترة المختارة
       if (targetMonth && targetYear) {
         const rowMonth = getMonth(dateObj) + 1;
         const rowYear = getYear(dateObj);

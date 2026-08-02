@@ -45,6 +45,7 @@ export interface Contract extends BaseDocument {
   milestones: ContractMilestone[];
   contractType?: string;
   isPaid?: boolean; 
+  pricingMode?: PricingMode;
 }
 
 export interface BOQItem extends BaseReference {

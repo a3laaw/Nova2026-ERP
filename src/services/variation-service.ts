@@ -171,7 +171,7 @@ export class VariationService {
       id: stageRef.id,
       transactionId,
       technicalStageId: techId,
-      code: vItem.localStageCode || `VO_INJ_${Math.floor(Math.random()*1000)}`,
+      code: vItem.localStageCode || `VO_INJ_${stageRef.id.slice(-6).toUpperCase()}`,
       name: vItem.localStageName || vItem.description,
       status: 'pending',
       isTemporary: true,

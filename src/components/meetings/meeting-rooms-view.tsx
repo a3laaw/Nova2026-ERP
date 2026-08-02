@@ -486,7 +486,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
     
     getDocs(q)
       .then(snap => {
-        let trans = snap.docs.map(d => ({id: d.id, ...d.data()}));
+        let trans = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
         if (actId) {
           trans = trans.filter((t: any) => t.activityTypeId === actId);
         }
@@ -504,6 +504,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
           operation: 'list'
         } satisfies SecurityRuleContext);
         errorEmitter.emit('permission-error', permissionError);
+        setLoading(false);
       });
   };
 

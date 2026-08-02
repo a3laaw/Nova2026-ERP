@@ -6,12 +6,12 @@ import {
   doc, 
   updateDoc, 
   getDocs, 
+  getDoc,
   serverTimestamp,
   writeBatch
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { Contract } from '@/types/documents';
-import { StageInstance } from '@/types/transaction';
 
 interface BillingMilestone {
   linkedStageInstanceId?: string;
@@ -21,21 +21,13 @@ interface BillingMilestone {
   [key: string]: unknown;
 }
 
-/**
- * خدمة ذكاء الربط المالي (Billing Intelligence Service).
- * مسؤولة عن مراقبة اكتمال مراحل التنفيذ (StageInstances) وتحويلها إلى استحقاقات مالية.
- */
 export class BillingTriggerService {
   constructor(private db: Firestore, private companyId: string) {}
 
-  /**
-   * إكمال مرحلة تنفيذية والتحقق من التبعات المالية
-   */
   async completeStageInstance(projectId: string, instanceId: string, userId: string) {
     const instanceRef = doc(this.db, paths.transactionStages(this.companyId, projectId), instanceId);
     
     try {
-      // 1. تحديث حالة النسخة التنفيذية
       await updateDoc(instanceRef, {
         status: 'completed',
         completedAt: serverTimestamp(),
@@ -43,7 +35,6 @@ export class BillingTriggerService {
         updatedAt: serverTimestamp()
       });
 
-      // 2. فحص الأثر المالي
       return await this.checkFinancialImpact(projectId, instanceId);
     } catch (error) {
       console.error('Failed to complete stage instance:', error);
@@ -51,10 +42,11 @@ export class BillingTriggerService {
     }
   }
 
-  /**
-   * فحص الأثر المالي لاكتمال النسخة التنفيذية
-   */
   private async checkFinancialImpact(projectId: string, stageInstanceId: string) {
+    // جلب مفتاح المرحلة المكتملة لمطابقتها بدقة
+    const stageInstanceSnap = await getDoc(doc(this.db, paths.transactionStages(this.companyId, projectId), stageInstanceId));
+    const completedMilestoneKey = stageInstanceSnap.exists() ? (stageInstanceSnap.data().milestoneKey as string | undefined) : undefined;
+
     const contractsRef = collection(this.db, paths.contracts(this.companyId));
     const contractsSnap = await getDocs(contractsRef);
 
@@ -66,10 +58,11 @@ export class BillingTriggerService {
 
       const milestones = contract.milestones as unknown as BillingMilestone[];
 
-      // تحديث الـ Milestones المرتبطة
       const updatedMilestones = milestones.map(milestone => {
-        // الربط يتم عبر معرف النسخة التنفيذية أو عبر مفتاح المرحلة (Milestone Key)
-        if (milestone.linkedStageInstanceId === stageInstanceId || (milestone.linkedMilestoneKey && milestone.status === 'pending')) {
+        const matchesById = milestone.linkedStageInstanceId === stageInstanceId;
+        const matchesByKey = !!(completedMilestoneKey && milestone.linkedMilestoneKey === completedMilestoneKey && milestone.status === 'pending');
+        
+        if (matchesById || matchesByKey) {
           hasChange = true;
           return { ...milestone, status: 'due' as const };
         }
@@ -88,9 +81,6 @@ export class BillingTriggerService {
     return affectedContracts;
   }
 
-  /**
-   * تهيئة مراحل المشروع (Instances) بناءً على القالب المرجعي (Template)
-   */
   async instantiateTechnicalStages(projectId: string, subServiceId: string, templateStages: any[]) {
     const batch = writeBatch(this.db);
     const instancesRef = collection(this.db, paths.transactionStages(this.companyId, projectId));

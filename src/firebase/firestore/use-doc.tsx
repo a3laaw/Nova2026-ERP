@@ -11,24 +11,13 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
  */
 export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | null) {
   const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(docRef !== null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
   
-  const unsubscribeRef = useRef<(() => void) | null>(null);
   const lastRefRef = useRef<DocumentReference<any, any> | null>(null);
   const lastDataHashRef = useRef<string>("");
 
   useEffect(() => {
-    // حارس المرجع الموحد لكسر حلقات الرندر
-    if (docRef && lastRefRef.current && refEqual(docRef, lastRefRef.current)) {
-      return;
-    }
-
-    if (unsubscribeRef.current) {
-      unsubscribeRef.current();
-      unsubscribeRef.current = null;
-    }
-
     if (!docRef) {
       setData(null);
       setLoading(false);
@@ -37,20 +26,20 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | n
       return;
     }
 
+    // حارس المرجع الموحد لكسر حلقات الرندر
+    if (lastRefRef.current && refEqual(docRef, lastRefRef.current)) {
+      return;
+    }
+
     lastRefRef.current = docRef;
     setLoading(true);
-    setError(null);
-
-    let isMounted = true;
 
     const unsubscribe = onSnapshot(
       docRef,
       (snapshot) => {
-        if (!isMounted) return;
-        
         const docData = snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as T) : null;
         
-        // مقارنة البصمة (Deep Hash Guard)
+        // مقارنة البصمة العميقة (Deep Hash Guard)
         const currentHash = JSON.stringify(docData);
         if (currentHash !== lastDataHashRef.current) {
           lastDataHashRef.current = currentHash;
@@ -60,28 +49,18 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | n
         setLoading(false);
       },
       (serverError: FirestoreError) => {
-        if (!isMounted) return;
         setLoading(false);
         setError(serverError);
-        
         if (serverError.code === 'permission-denied') {
           errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: docRef.path || 'document',
+            path: docRef.path,
             operation: 'get',
           } satisfies SecurityRuleContext));
         }
       }
     );
 
-    unsubscribeRef.current = unsubscribe;
-
-    return () => {
-      isMounted = false;
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-        unsubscribeRef.current = null;
-      }
-    };
+    return () => unsubscribe();
   }, [docRef]);
 
   return { data, loading, error };

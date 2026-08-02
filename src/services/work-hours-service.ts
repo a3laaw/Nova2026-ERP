@@ -12,6 +12,10 @@ import { format } from 'date-fns';
 
 export const WORK_HOURS_DOC_ID = 'work_hours';
 
+/**
+ * خدمة إعدادات مواعيد العمل.
+ * محصنة لضمان إعادة القيم الافتراضية فوراً لفك تعليق الواجهات الإدارية.
+ */
 export class WorkHoursService {
   constructor(private db: Firestore, private companyId: string) {}
 
@@ -19,7 +23,11 @@ export class WorkHoursService {
     return doc(this.db, 'companies', this.companyId, 'settings', WORK_HOURS_DOC_ID);
   }
 
+<<<<<<< HEAD
   async getSettings(): Promise<WorkHoursSettings | null> {
+=======
+  async getSettings(): Promise<WorkHoursSettings> {
+>>>>>>> a712178cc9542615f42bbaa9eb1031c6cca436c8
     try {
       const snap = await getDoc(this.getDocRef());
       const defaults = this.getDefaultSettings();
@@ -32,6 +40,7 @@ export class WorkHoursService {
           architectural: { ...defaults.architectural, ...data.architectural },
           meetingRooms: { ...defaults.meetingRooms, ...data.meetingRooms },
           fieldWork: { ...defaults.fieldWork, ...data.fieldWork },
+<<<<<<< HEAD
         } as WorkHoursSettings;
       }
     } catch (e) {
@@ -40,6 +49,17 @@ export class WorkHoursService {
     
     // فك قفل الرادار للمنشآت الجديدة بإعادة القيم الافتراضية فوراً
     return { ...this.getDefaultSettings(), companyId: this.companyId } as WorkHoursSettings;
+=======
+          companyId: this.companyId
+        } as WorkHoursSettings;
+      }
+      
+      return { ...defaults, companyId: this.companyId } as WorkHoursSettings;
+    } catch (e) {
+      console.warn("Using local defaults due to fetch error:", e);
+      return { ...this.getDefaultSettings(), companyId: this.companyId } as WorkHoursSettings;
+    }
+>>>>>>> a712178cc9542615f42bbaa9eb1031c6cca436c8
   }
 
   async saveSettings(settings: Partial<WorkHoursSettings>, userId: string) {

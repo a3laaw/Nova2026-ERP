@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { 
   Sparkles, Loader2, Database, ShieldCheck, 
-  CheckCircle2, AlertTriangle, Trash2, CalendarX
+  CheckCircle2, AlertTriangle, Trash2, CalendarX,
+  Settings2
 } from "lucide-react";
 import { useFirestore } from '@/firebase';
 import { useAuthContext } from '@/context/auth-context';

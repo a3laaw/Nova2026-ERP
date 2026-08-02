@@ -17,6 +17,8 @@ interface GlobalUserData {
   isDeveloper?: boolean;
   username: string;
   fullName?: string;
+  photoUrl?: string;
+  isPendingApproval?: boolean;
 }
 
 interface AuthContextType {
@@ -56,7 +58,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [auth]);
 
   useEffect(() => {
-    if (!db || !user) return;
+    if (!db || !user) {
+      if (user === null) setLoading(false);
+      return;
+    }
 
     const docRef = doc(db, 'global_users', user.uid);
     const unsubscribe = onSnapshot(docRef, (snap) => {
@@ -92,7 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [db, user]);
 
   useEffect(() => {
-    if (!db || !globalUser || !globalUser.companyId || !globalUser.roleId) {
+    if (!db || !globalUser?.companyId || !globalUser?.roleId) {
       setRoleData(null);
       return;
     }
