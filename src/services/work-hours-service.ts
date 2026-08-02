@@ -23,9 +23,6 @@ export class WorkHoursService {
     return doc(this.db, 'companies', this.companyId, 'settings', WORK_HOURS_DOC_ID);
   }
 
-  /**
-   * جلب الإعدادات مع معالجة فورية لحالة عدم الوجود (Fix for Setup Hang).
-   */
   async getSettings(): Promise<WorkHoursSettings | null> {
     try {
       const snap = await getDoc(this.getDocRef());
@@ -43,6 +40,7 @@ export class WorkHoursService {
         } as WorkHoursSettings;
       }
       
+      // العودة للقيم الافتراضية فوراً لفك تعليق الواجهة
       return { ...defaults, companyId: this.companyId } as WorkHoursSettings;
     } catch (e) {
       console.warn("Using local defaults due to fetch error:", e);

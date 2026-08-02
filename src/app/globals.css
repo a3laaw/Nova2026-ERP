@@ -73,15 +73,6 @@
   @apply bg-gradient-to-r from-[#FFA000] to-[#FBC02D] text-white shadow-lg !important;
 }
 
-.animate-ready-pulse {
-  animation: ready-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-@keyframes ready-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: .7; transform: scale(0.98); }
-}
-
 @media print {
   @page { size: landscape; margin: 0 !important; }
   body { background: white !important; margin: 0 !important; padding: 0 !important; font-size: 10px !important; }

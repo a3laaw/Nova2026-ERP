@@ -6,8 +6,7 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 /**
- * خطاف جلب المستندات المحصن (Sovereign Ref-Equal Hook).
- * يمنع التحديثات المكررة التي تسبب دائرة التحميل المستمرة.
+ * خطاف جلب المستندات المحصن ضد التحديثات المكررة.
  */
 export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | null) {
   const [data, setData] = useState<T | null>(null);
@@ -15,18 +14,8 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | n
   const [error, setError] = useState<FirestoreError | Error | null>(null);
   
   const lastRefRef = useRef<DocumentReference<any, any> | null>(null);
-  const unsubscribeRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    const isSameRef = docRef && lastRefRef.current && refEqual(docRef, lastRefRef.current);
-    
-    if (isSameRef) return;
-
-    if (unsubscribeRef.current) {
-      unsubscribeRef.current();
-      unsubscribeRef.current = null;
-    }
-
     if (!docRef) {
       setData(null);
       setLoading(false);
@@ -34,38 +23,33 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | n
       return;
     }
 
+    if (lastRefRef.current && refEqual(docRef, lastRefRef.current)) {
+      return;
+    }
+
     lastRefRef.current = docRef;
     setLoading(true);
-
-    let isMounted = true;
 
     const unsubscribe = onSnapshot(
       docRef,
       (snapshot) => {
-        if (!isMounted) return;
         const docData = snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as T) : null;
         setData(docData);
         setLoading(false);
       },
       (serverError: FirestoreError) => {
-        if (!isMounted) return;
         setLoading(false);
         setError(serverError);
         if (serverError.code === 'permission-denied') {
           errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: docRef.path || 'document',
+            path: docRef.path,
             operation: 'get',
           } satisfies SecurityRuleContext));
         }
       }
     );
 
-    unsubscribeRef.current = unsubscribe;
-
-    return () => {
-      isMounted = false;
-      if (unsubscribeRef.current) unsubscribeRef.current();
-    };
+    return () => unsubscribe();
   }, [docRef]);
 
   return { data, loading, error };

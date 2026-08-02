@@ -21,10 +21,6 @@ import { paths } from '@/firebase/multi-tenant';
 import { Client } from '@/types/client';
 import { cn } from '@/lib/utils';
 
-/**
- * صفحة قاعدة العملاء - مستعادة ومحصنة ضد حلقة البحث اللانهائية.
- * تصميم السيادة البصرية (Orange/Gold theme).
- */
 export default function ClientsListPage() {
   const { globalUser } = useAuthContext();
   const { lang, dir, t } = useLanguage();
@@ -37,7 +33,6 @@ export default function ClientsListPage() {
 
   const canRegisterClient = check('crm', 'create').can;
 
-  // استقرار الاستعلام (Query Stability) المحصن
   const clientsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.clients(companyId))) : null, 
   [db, companyId]);
@@ -108,68 +103,61 @@ export default function ClientsListPage() {
         </div>
       </Card>
 
-      {error ? (
-         <div className="py-20 text-center space-y-4 bg-rose-50/50 rounded-3xl border-2 border-dashed border-rose-100">
-            <AlertCircle className="h-12 w-12 text-rose-500 mx-auto" />
-            <h3 className="text-xl font-black text-rose-900">{isRtl ? 'خطأ في جلب البيانات' : 'Data Sync Error'}</h3>
-         </div>
-      ) : (
-        <Card className="rounded-2xl overflow-hidden border border-border shadow-2xl bg-white">
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader className="bg-slate-50/50 border-b">
-                <TableRow>
-                  <TableHead className="ps-8 py-5 text-slate-500 font-black uppercase text-[10px] tracking-widest">{isRtl ? 'العميل المالك' : 'Client Profile'}</TableHead>
-                  <TableHead className="text-slate-500 font-black uppercase text-[10px] tracking-widest">{isRtl ? 'المسؤول المباشر' : 'Assigned Staff'}</TableHead>
-                  <TableHead className="text-slate-500 font-black uppercase text-[10px] tracking-widest">{isRtl ? 'الهاتف' : 'Mobile'}</TableHead>
-                  <TableHead className="text-slate-500 font-black uppercase text-[10px] tracking-widest">{isRtl ? 'الحالة' : 'Status'}</TableHead>
-                  <TableHead className="pe-8 text-end"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-32"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/20" /></TableCell></TableRow>
-                ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-32 italic text-slate-400 font-bold">
-                    {isRtl ? 'لا يوجد عملاء مطابقين للبحث.' : 'No matching clients found.'}
-                  </TableCell></TableRow>
-                ) : (
-                  filtered.map((client) => (
-                    <TableRow key={client.id} className="cursor-pointer group hover:bg-primary/[0.01] border-b-slate-50" onClick={() => router.push(`/dashboard/clients/${client.id}`)}>
-                      <TableCell className="ps-8 py-5 text-start">
-                         <div className="flex flex-col">
-                            <span className="font-bold text-slate-900 text-base leading-none">{client.nameAr}</span>
-                            <span className="text-[10px] text-slate-400 font-bold mt-2 font-mono uppercase tracking-wider">{client.fileNumber}</span>
-                         </div>
-                      </TableCell>
-                      <TableCell className="text-start">
-                         <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                             <Briefcase className="h-3.5 w-3.5 text-primary" />
-                             {client.assignedEngineerName || '---'}
-                         </div>
-                      </TableCell>
-                      <TableCell className="text-xs font-bold text-slate-500 tabular-nums text-start">{client.mobile}</TableCell>
-                      <TableCell className="text-start">
-                         <Badge variant="secondary" className={cn(
-                           "text-[9px] font-black px-3 py-1 rounded-lg border-0 shadow-sm uppercase", 
-                           client.status === 'contracted' ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-primary'
-                         )}>
-                            {client.status}
-                         </Badge>
-                      </TableCell>
-                      <TableCell className="pe-8 text-end">
-                         <Button variant="ghost" size="icon" className="rounded-xl group-hover:bg-primary group-hover:text-white transition-all h-9 w-9">
-                            <ArrowRight className={cn("h-5 w-5", isRtl && "rotate-180")} />
-                         </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
+      <Card className="rounded-2xl overflow-hidden border border-border shadow-2xl bg-white">
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader className="bg-slate-50/50 border-b">
+              <TableRow>
+                <TableHead className="ps-8 py-5 text-slate-500 font-black uppercase text-[10px] tracking-widest">{isRtl ? 'العميل المالك' : 'Client Profile'}</TableHead>
+                <TableHead className="text-slate-500 font-black uppercase text-[10px] tracking-widest">{isRtl ? 'المسؤول المباشر' : 'Assigned Staff'}</TableHead>
+                <TableHead className="text-slate-500 font-black uppercase text-[10px] tracking-widest">{isRtl ? 'الهاتف' : 'Mobile'}</TableHead>
+                <TableHead className="text-slate-500 font-black uppercase text-[10px] tracking-widest">{isRtl ? 'الحالة' : 'Status'}</TableHead>
+                <TableHead className="pe-8 text-end"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow><TableCell colSpan={5} className="text-center py-32"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/20" /></TableCell></TableRow>
+              ) : filtered.length === 0 ? (
+                <TableRow><TableCell colSpan={5} className="text-center py-32 italic text-slate-400 font-bold">
+                  {isRtl ? 'لا يوجد عملاء مطابقين للبحث.' : 'No matching clients found.'}
+                </TableCell></TableRow>
+              ) : (
+                filtered.map((client) => (
+                  <TableRow key={client.id} className="cursor-pointer group hover:bg-primary/[0.01] border-b-slate-100" onClick={() => router.push(`/dashboard/clients/${client.id}`)}>
+                    <TableCell className="ps-8 py-5 text-start">
+                       <div className="flex flex-col">
+                          <span className="font-bold text-slate-900 text-base leading-none">{client.nameAr}</span>
+                          <span className="text-[10px] text-slate-400 font-bold mt-2 font-mono uppercase tracking-wider">{client.fileNumber}</span>
+                       </div>
+                    </TableCell>
+                    <TableCell className="text-start">
+                       <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                           <Briefcase className="h-3.5 w-3.5 text-primary" />
+                           {client.assignedEngineerName || '---'}
+                       </div>
+                    </TableCell>
+                    <TableCell className="text-xs font-bold text-slate-500 tabular-nums text-start">{client.mobile}</TableCell>
+                    <TableCell className="text-start">
+                       <Badge variant="secondary" className={cn(
+                         "text-[9px] font-black px-3 py-1 rounded-lg border-0 shadow-sm uppercase", 
+                         client.status === 'contracted' ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-primary'
+                       )}>
+                          {client.status}
+                       </Badge>
+                    </TableCell>
+                    <TableCell className="pe-8 text-end">
+                       <Button variant="ghost" size="icon" className="rounded-xl group-hover:bg-primary group-hover:text-white transition-all h-9 w-9">
+                          <ArrowRight className={cn("h-5 w-5", isRtl && "rotate-180")} />
+                       </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 }
