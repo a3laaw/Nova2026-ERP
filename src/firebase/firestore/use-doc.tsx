@@ -19,10 +19,8 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | n
   const lastDataHashRef = useRef<string>("");
 
   useEffect(() => {
-    // حارس المرجع الموحد
-    const isSameRef = docRef && lastRefRef.current && refEqual(docRef, lastRefRef.current);
-    
-    if (isSameRef) {
+    // حارس المرجع الموحد لكسر حلقات الرندر
+    if (docRef && lastRefRef.current && refEqual(docRef, lastRefRef.current)) {
       return;
     }
 
@@ -52,7 +50,7 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | n
         
         const docData = snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as T) : null;
         
-        // مقارنة البصمة (Hash Guard)
+        // مقارنة البصمة (Deep Hash Guard)
         const currentHash = JSON.stringify(docData);
         if (currentHash !== lastDataHashRef.current) {
           lastDataHashRef.current = currentHash;

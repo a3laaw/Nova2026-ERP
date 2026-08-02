@@ -7,7 +7,7 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
 
 /**
  * خطاف جلب المجموعات السيادي المحصن (Sovereign Hardened Collection Hook).
- * يستخدم تقنية "حارس البصمة" (Data Hashing) لكسر حلقة الرندر اللانهائية.
+ * يستخدم تقنية "حارس البصمة" (JSON Hashing) لكسر حلقة الرندر اللانهائية.
  */
 export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
   const [data, setData] = useState<T[]>([]);
@@ -19,15 +19,12 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
   const lastDataHashRef = useRef<string>("");
 
   useEffect(() => {
-    // 1. التحقق من مطابقة الاستعلام برمجياً (Sovereign Query Guard)
-    const isSameQuery = query && lastQueryRef.current && queryEqual(query, lastQueryRef.current);
-    
-    // إذا كان الاستعلام مطابقاً، لا تفعل شيئاً (يمنع الـ Loop الناتج عن رندر الأب)
-    if (isSameQuery) {
+    // 1. حارس الاستعلام الموحد (Query Stability Guard)
+    // إذا كان الاستعلام مطابقاً برمجياً للسابق، لا تفعل شيئاً لمنع الـ Loop
+    if (query && lastQueryRef.current && queryEqual(query, lastQueryRef.current)) {
       return;
     }
 
-    // تنظيف الاشتراك السابق
     if (unsubscribeRef.current) {
       unsubscribeRef.current();
       unsubscribeRef.current = null;
@@ -58,7 +55,7 @@ export function useCollection<T = DocumentData>(query: Query<any, any> | null) {
         })) as unknown as T[];
         
         // 2. حارس البصمة الذري (Deep Hash Comparison)
-        // لن يتم تحديث الحالة (setState) إلا إذا تغيرت محتويات البيانات فعلياً
+        // لن يتم تحديث الحالة (setState) إلا إذا تغيرت محتويات البيانات فعلياً في السحاب
         const currentHash = JSON.stringify(items);
         if (currentHash !== lastDataHashRef.current) {
           lastDataHashRef.current = currentHash;

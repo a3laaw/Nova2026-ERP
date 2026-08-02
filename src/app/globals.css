@@ -30,7 +30,7 @@
     --border: 24 95% 53% / 0.1;
     --input: 214.3 31.8% 91.4%;
     --ring: 24 95% 53%;
-    --radius: 16px;
+    --radius: 24px;
     --sidebar-background: 30 20% 98%;
   }
 }
@@ -38,19 +38,14 @@
 @layer base {
   * { @apply border-border; }
   
-  html {
-    font-size: 16px;
-  }
-  
   body { 
     @apply bg-background text-foreground antialiased; 
     font-family: 'IBM Plex Sans Arabic', sans-serif;
-    overflow-x: hidden;
   }
   
   h1, h2, h3, h4, h5, h6 { 
     font-family: 'Cairo', sans-serif;
-    @apply tracking-tight font-bold text-slate-900; 
+    @apply tracking-tight font-black text-slate-900; 
   }
 }
 
@@ -85,7 +80,6 @@
     print-color-adjust: exact !important;
     margin: 0 !important;
     padding: 0 !important;
-    font-size: 10px !important;
   }
   .sidebar, header, nav, .print-ui-only {
     display: none !important;

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo, useRef } from 'react';
 import { onAuthStateChanged, User, signOut } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useAuth, useFirestore } from '@/firebase';
@@ -39,6 +39,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const lastGlobalUserHash = useRef<string>("");
+  const lastRoleHash = useRef<string>("");
+
   useEffect(() => {
     if (!auth) return;
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
@@ -72,11 +75,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
       }
 
-      // الحارس الذري: منع تحديث السياق إذا كانت البيانات متطابقة هيكلياً
-      setGlobalUser(prev => {
-        if (JSON.stringify(prev) === JSON.stringify(newData)) return prev;
-        return newData;
-      });
+      // حارس البصمة الذري لمنع الـ Loop في سياق الهوية
+      const currentHash = JSON.stringify(newData);
+      if (currentHash !== lastGlobalUserHash.current) {
+        lastGlobalUserHash.current = currentHash;
+        setGlobalUser(newData);
+      }
       
       setLoading(false);
     }, (err) => {
@@ -97,10 +101,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onSnapshot(roleRef, (snap) => {
       if (snap.exists()) {
         const newData = snap.data() as Role;
-        setRoleData(prev => {
-          if (JSON.stringify(prev) === JSON.stringify(newData)) return prev;
-          return newData;
-        });
+        const currentHash = JSON.stringify(newData);
+        if (currentHash !== lastRoleHash.current) {
+          lastRoleHash.current = currentHash;
+          setRoleData(newData);
+        }
       } else {
         setRoleData(null);
       }
