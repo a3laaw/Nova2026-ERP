@@ -1,14 +1,13 @@
-
 'use client';
 /**
  * @fileOverview تعريف واجهات البيانات للمستندات الحية (Instantiated Documents).
- * تم تحديث الهيكل لدعم تفاصيل العمالة والمعدات المستهلكة ونظام المستخلصات (IPC).
+ * تم تحديث الهيكل بناءً على تقرير الدورة المتكاملة (IPC Engine).
  */
 
 import { BaseReference } from './reference';
 import { PricingMode, MeasurementMode, QuotationItem, ContractMilestone } from './templates';
 
-export type DocumentStatus = 'draft' | 'sent' | 'approved' | 'rejected' | 'active' | 'completed' | 'cancelled' | 'paid';
+export type DocumentStatus = 'draft' | 'sent' | 'approved' | 'rejected' | 'active' | 'completed' | 'cancelled' | 'paid' | 'clientCertified';
 
 export interface BaseDocument extends BaseReference {
   id: string;
@@ -28,15 +27,6 @@ export interface BaseDocument extends BaseReference {
   isHistoryRecorded?: boolean;
 }
 
-export interface Quotation extends BaseDocument {
-  name: string;
-  introText?: string;
-  defaultTerms?: string;
-  validDays: number;
-  pricingMode: PricingMode;
-  items: QuotationItem[];
-}
-
 export interface Contract extends BaseDocument {
   name: string;
   introText?: string;
@@ -44,7 +34,16 @@ export interface Contract extends BaseDocument {
   closingText?: string;
   clauses: string[];
   milestones: ContractMilestone[];
-  contractType?: string;
+  
+  // حقول الفوترة المتقدمة (IPC Config)
+  retentionRate: number;              // نسبة الاحتجاز (0.1 = 10%)
+  advancePayment: {
+    amount: number;                   // مبلغ الدفعة المقدمة
+    recoveryRate: number;             // نسبة الخصم من كل مستخلص
+    recoveredToDate: number;          // المسترد حتى الآن
+  } | null;
+  requiresClientCertification: boolean; // هل يتطلب اعتماد العميل؟
+  
   isPaid?: boolean; 
   pricingMode?: PricingMode;
 }
@@ -53,107 +52,91 @@ export interface BOQItem extends BaseReference {
   id: string;
   boqId: string;
   transactionId?: string;
-  projectId?: string;
-  boqReferenceNodeId: string;
+  
+  // هندسة الكميات المتعددة (The 5 Pillars of Qty)
+  contractQty: number;                 // الكمية التعاقدية الأصلية
+  approvedVariationQty: number;        // كميات أوامر التغيير المعتمدة
+  executedQuantity: number;            // مجموع المنفذ (من الميدان)
+  verifiedQuantity: number;            // مجموع المعتمد (قابلة للفوترة)
+  billedQuantity: number;              // مجموع المفوتر (المدرج في مستخلصات معتمدة)
+
   referenceCode: string;
   referenceTitle: string;
   referenceDescription?: string;
-  parentId?: string | null;
-  ancestorIds: string[];
-  ancestorTitles?: string[];
-  depth: number;
-  unitTypeId?: string;
-  unitName?: string;
   unitSymbol?: string;
+  estimatedRate: number;               // سعر الوحدة التعاقدي
+  order: number;
   technicalStageId?: string;
   technicalStageIds?: string[];
-  billingTriggerGroup?: string;
-  allowedItemCategoryIds?: string[];
-  plannedQuantity: number;
-  executedQuantity: number; 
-  verifiedQuantity?: number; // الكمية المعتمدة من الاستشاري/المدير
-  billedQuantity?: number;   // الكمية التي أدرجت في مستخلصات سابقة
-  estimatedRate?: number;
-  estimatedCostRate?: number;
-  actualRate?: number;
-  notes?: string;
-  order: number;
-}
-
-/**
- * سجل تفاصيل العمالة (Labor Breakdown)
- */
-export interface LaborDetail {
-  trade: string;    
-  count: number;    
-  hours?: number;   
-  employeeIds?: string[]; 
-}
-
-/**
- * سجل المعدات المستخدمة
- */
-export interface EquipmentUsed {
-  equipmentId: string;
-  name: string;
-  hoursUsed: number;
-  costPerHour?: number;
+  ancestorIds?: string[];
+  ancestorTitles?: string[];
 }
 
 export interface BOQItemExecutionEntry extends BaseReference {
   id?: string;
   boqId: string;
   boqItemId: string;
-  transactionId?: string;
-  appointmentId?: string; 
-  technicalStageId: string;
-  quantity: number;
-  notes?: string;
-  laborDetails?: LaborDetail[];
-  equipmentUsed?: EquipmentUsed[];
+  transactionId: string;
+  visitId?: string;
+  
+  quantity: number;                    // الكمية المنفذة المسجلة
+  status: 'executed' | 'verified' | 'partiallyVerified' | 'rejected';
+  
+  verifiedQuantity?: number;           // الكمية المعتمدة فعلياً
+  rejectionReason?: string;
+  verifiedBy?: string;
+  verifiedAt?: any;
+
+  // تفاصيل الموارد المربوطة بالجداول المرجعية (The Resource Bridge)
+  laborDetails: {
+    employeeId: string;
+    hours: number;
+    hourlyCostRef?: string;            // مرجع لجدول التكلفة
+    actualCost: number;                // التكلفة وقت التسجيل
+  }[];
+
+  equipmentUsed: {
+    equipmentId: string;
+    hours: number;
+    hourlyRateRef?: string;
+    actualCost: number;
+  }[];
+
   recordedBy: string;
   recordedByName: string;
-  isArchived?: boolean;
-  isVerified?: boolean;     // هل اعتمدها المدير للصرف؟
-  verifiedAt?: any;
-  verifiedBy?: string;
-  ipcId?: string;           // ربط الكمية بمستخلص محدد
-  createdAt?: any;
-  updatedAt?: any;
+  createdAt: any;
 }
 
 /**
- * بنية المستخلص المالي (Interim Payment Certificate - IPC)
+ * بنية المستخلص المالي الرسمي (IPC)
  */
 export interface InterimPaymentCertificate extends BaseDocument {
-  ipcNumber: string;        // تسلسلي مثل IPC-01
-  periodMonth: number;
-  periodYear: number;
-  totalCurrentClaim: number;
-  totalPreviousClaim: number;
-  totalToDate: number;
-  retentionAmount: number;  // المحتجز (عادة 10%)
-  netPayable: number;       
-  isJournalPosted?: boolean;
-}
+  ipcNumber: number;                   // تسلسلي لكل عقد
+  contractId: string;
+  status: 'draft' | 'clientCertified' | 'approved' | 'rejected';
 
-export interface IPCItem extends BaseReference {
-  ipcId: string;
-  boqItemId: string;
-  description: string;
-  unit: string;
-  rate: number;
-  plannedQty: number;
-  previousQty: number;
-  currentQty: number;
-  totalToDateQty: number;
-  totalAmount: number;
+  // لقطة ثابتة للبنود (Snapshot)
+  lineItems: {
+    boqItemId: string;
+    description: string;
+    contractQty: number;
+    approvedVariationQty: number;
+    previousCumulativeQty: number;     // الكمية المفوترة سابقاً
+    currentQty: number;                // الكمية في هذا المستخلص
+    unitRate: number;
+    amount: number;
+  }[];
+
+  grossAmount: number;                 // إجمالي الكميات الحالية
+  retentionAmount: number;             // مبلغ الاحتجاز المخصوم
+  advanceRecovery: number;             // مبلغ استرداد الدفعة المقدمة
+  netPayable: number;                  // الصافي للدفع
+  
+  isJournalPosted?: boolean;
 }
 
 export interface BOQ extends BaseDocument {
   boqNumber: string;
   name: string;
-  description?: string;
-  templateName?: string;
   measurementMode: MeasurementMode;
 }
