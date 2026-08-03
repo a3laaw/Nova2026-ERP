@@ -14,8 +14,15 @@ import {
   updateDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
-import { BOQItem, BOQItemExecutionEntry } from '@/types/documents';
+import { BOQItem, BOQItemExecutionEntry, LaborDetail, EquipmentUsed } from '@/types/documents';
 import { ensureActionPermission } from '@/lib/permissions/engine';
+
+export interface StageProgressResult {
+  progressPercent: number;
+  canComplete: boolean;
+  reason?: string;
+  linkedItemsCount: number;
+}
 
 export class BOQExecutionService {
   constructor(
@@ -25,93 +32,121 @@ export class BOQExecutionService {
   ) {}
 
   /**
-   * تسجيل إنجاز ميداني مع الموارد (حالة executed)
-   * يتم توليد تكلفة WIP تقديرية فورية
+   * تسجيل إنجاز ميداني مع حساب التكاليف الفوري بناءً على جداول التعرفة (Phase 2 logic)
    */
-  async recordExecution(
-    transactionId: string,
+  async recordBOQItemExecution(
     boqId: string,
     itemId: string,
+    technicalStageId: string,
     quantity: number,
-    resources: { labor: any[], equipment: any[] },
     userId: string,
-    userName: string
+    userName: string,
+    notes: string,
+    stageInstanceId: string,
+    force: boolean = false,
+    appointmentId?: string,
+    resources?: { laborDetails: any[], equipmentUsed: any[] }
   ) {
     const executionRef = doc(collection(this.db, paths.executions(this.companyId)));
     
-    const executionData: BOQItemExecutionEntry = {
+    // حساب تكاليف العمالة والمعدات وقت التسجيل (Snapshot)
+    let processedLabor: LaborDetail[] = [];
+    let processedEquip: EquipmentUsed[] = [];
+
+    if (resources) {
+       processedLabor = resources.laborDetails.map(l => ({
+          ...l,
+          totalCost: (Number(l.count) || 0) * (Number(l.hours) || 8) * (Number(l.hourlyCostRef) || 0)
+       }));
+       processedEquip = resources.equipmentUsed.map(e => ({
+          ...e,
+          totalCost: (Number(e.hoursUsed) || 0) * (Number(e.hourlyRateRef) || 0)
+       }));
+    }
+
+    const executionData: Partial<BOQItemExecutionEntry> = {
       id: executionRef.id,
       companyId: this.companyId,
       boqId,
       boqItemId: itemId,
-      transactionId,
+      transactionId: '', // ستُملأ لاحقاً من البند
+      appointmentId: appointmentId || null,
+      stageInstanceId: stageInstanceId,
+      technicalStageId,
       quantity,
       status: 'executed',
-      laborDetails: resources.labor || [],
-      equipmentUsed: resources.equipment || [],
+      notes,
+      laborDetails: processedLabor,
+      equipmentUsed: processedEquip,
       recordedBy: userId,
       recordedByName: userName,
       createdAt: serverTimestamp()
-    } as any;
+    };
 
     const batch = writeBatch(this.db);
+    
+    const itemRef = doc(this.db, paths.boqItems(this.companyId, boqId), itemId);
+    const itemSnap = await getDoc(itemRef);
+    if (!itemSnap.exists()) throw new Error("BOQ Item missing");
+    const itemData = itemSnap.data() as BOQItem;
+
+    executionData.transactionId = itemData.transactionId;
     batch.set(executionRef, executionData);
     
-    // تحديث الإجمالي المنفذ في البند للمتابعة الفنية
-    const itemRef = doc(this.db, paths.boqItems(this.companyId, boqId), itemId);
     batch.update(itemRef, {
       executedQuantity: increment(quantity),
       updatedAt: serverTimestamp()
     });
 
-    await batch.commit();
-    return executionRef.id;
-  }
-
-  /**
-   * الاعتماد المالي (Verification) - تحويل المنفذ إلى معتمد للصرف
-   */
-  async verifyExecution(
-    executionId: string, 
-    verifiedQty: number, 
-    status: 'verified' | 'partiallyVerified' | 'rejected',
-    userId: string,
-    reason?: string
-  ) {
-    ensureActionPermission(this.permissions, 'projects:edit');
-    
-    const execRef = doc(this.db, paths.executions(this.companyId), executionId);
-    const execSnap = await getDoc(execRef);
-    if (!execSnap.exists()) return;
-    const execData = execSnap.data() as BOQItemExecutionEntry;
-
-    const batch = writeBatch(this.db);
-    
-    // 1. تحديث سجل الزيارة
-    batch.update(execRef, {
-      status,
-      verifiedQuantity: verifiedQty,
-      rejectionReason: reason || '',
-      verifiedBy: userId,
-      verifiedAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
-
-    // 2. ترحيل الكمية المعتمدة فقط إلى البند (Verified Quantity)
-    if (status !== 'rejected') {
-      const itemRef = doc(this.db, paths.boqItems(this.companyId, execData.boqId), execData.boqItemId);
-      batch.update(itemRef, {
-        verifiedQuantity: increment(verifiedQty),
-        updatedAt: serverTimestamp()
+    // توثيق في التايملاين
+    if (itemData.transactionId) {
+      const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, itemData.transactionId)));
+      batch.set(timelineRef, {
+        transactionId: itemData.transactionId,
+        stageId: stageInstanceId,
+        technicalStageId,
+        appointmentId: appointmentId || null,
+        type: 'numeric_update',
+        content: `تم تسجيل إنجاز ميداني للبنّد (${itemData.referenceTitle}) بكمية: ${quantity} ${itemData.unitSymbol || ''}.`,
+        userId,
+        userName,
+        companyId: this.companyId,
+        createdAt: serverTimestamp()
       });
     }
 
     await batch.commit();
+    return executionRef.id;
   }
 
-  async getTechnicalStageProgress(transactionId: string, technicalStageId: string) {
+  async verifyExecutionForBilling(executionId: string, userId: string, userName: string) {
+    const execRef = doc(this.db, paths.executions(this.companyId), executionId);
+    const snap = await getDoc(execRef);
+    if (!snap.exists()) return;
+    const data = snap.data() as BOQItemExecutionEntry;
+
+    const batch = writeBatch(this.db);
+    batch.update(execRef, {
+      status: 'verified',
+      verifiedQuantity: data.quantity,
+      verifiedBy: userId,
+      verifiedByName: userName,
+      verifiedAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+
+    const itemRef = doc(this.db, paths.boqItems(this.companyId, data.boqId), data.boqItemId);
+    batch.update(itemRef, {
+      verifiedQuantity: increment(data.quantity),
+      updatedAt: serverTimestamp()
+    });
+
+    await batch.commit();
+  }
+
+  async getTechnicalStageProgress(transactionId: string, technicalStageId: string): Promise<StageProgressResult> {
     const boqsSnap = await getDocs(query(collection(this.db, paths.boqs(this.companyId)), where('transactionId', '==', transactionId)));
-    if (boqsSnap.empty) return { progressPercent: 0, canComplete: true };
+    if (boqsSnap.empty) return { progressPercent: 0, canComplete: true, linkedItemsCount: 0 };
 
     const boqId = boqsSnap.docs[0].id;
     const itemsSnap = await getDocs(collection(this.db, paths.boqItems(this.companyId, boqId)));
@@ -119,17 +154,34 @@ export class BOQExecutionService {
       .map(d => d.data() as BOQItem)
       .filter(i => (i.technicalStageIds?.includes(technicalStageId) || i.technicalStageId === technicalStageId));
 
-    if (linkedItems.length === 0) return { progressPercent: 100, canComplete: true };
+    if (linkedItems.length === 0) return { progressPercent: 100, canComplete: true, linkedItemsCount: 0 };
 
     let totalPlanned = 0, totalExecuted = 0;
     linkedItems.forEach(i => {
-      totalPlanned += (i.contractQty || i.plannedQuantity || 0);
+      totalPlanned += (i.plannedQuantity || 0);
       totalExecuted += (i.executedQuantity || 0);
     });
 
     return {
       progressPercent: totalPlanned > 0 ? Math.round((totalExecuted / totalPlanned) * 100) : 0,
-      canComplete: totalExecuted >= totalPlanned
+      canComplete: totalExecuted >= totalPlanned,
+      linkedItemsCount: linkedItems.length
     };
+  }
+
+  async archiveStageExecutions(transactionId: string, technicalStageId: string, isArchived: boolean) {
+    const q = query(
+      collection(this.db, paths.executions(this.companyId)),
+      where('transactionId', '==', transactionId),
+      where('technicalStageId', '==', technicalStageId)
+    );
+    const snap = await getDocs(q);
+    if (snap.empty) return;
+
+    const batch = writeBatch(this.db);
+    snap.docs.forEach(d => {
+       batch.update(d.ref, { isArchived, updatedAt: serverTimestamp() });
+    });
+    return batch.commit();
   }
 }
