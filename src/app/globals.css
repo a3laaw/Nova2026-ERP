@@ -47,6 +47,17 @@
     font-family: 'Cairo', sans-serif;
     @apply tracking-tight font-black text-slate-900; 
   }
+
+  /* إخفاء أزرار الزيادة والنقصان في حقول الأرقام بشكل سيادي */
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type=number] {
+    -moz-appearance: textfield;
+  }
 }
 
 .btn-gradient {
