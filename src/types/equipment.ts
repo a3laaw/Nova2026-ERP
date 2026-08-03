@@ -1,7 +1,7 @@
 'use client';
 /**
  * @fileOverview تعريف واجهات البيانات لسجل المعدات والآليات (Equipment Master).
- * تم التحديث لدعم البيانات الإدارية الديناميكية وحالة الأدوات اليدوية.
+ * تم التحديث لدعم البيانات الإدارية الديناميكية وحالة الأدوات اليدوية وسنة التصنيع.
  */
 
 import { BaseReference } from './reference';
@@ -23,6 +23,7 @@ export interface Equipment extends BaseReference {
   ownershipType: EquipmentOwnershipType; 
   
   // --- البيانات الإدارية والتراخيص (ديناميكية) ---
+  manufacturingYear?: string;            // سنة التصنيع / الموديل
   isLicensed?: boolean;
   isStreetLicensed?: boolean;            // للآليات الثقيلة
   chassisNumber?: string;                
