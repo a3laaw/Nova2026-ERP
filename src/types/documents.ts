@@ -2,7 +2,7 @@
 'use client';
 /**
  * @fileOverview تعريف واجهات البيانات للمستندات الحية (Instantiated Documents).
- * تم تحديث الهيكل لدعم تفاصيل العمالة والمعدات المستخدمة في التنفيذ الميداني.
+ * تم تحديث الهيكل لدعم تفاصيل العمالة والمعدات المستهلكة ونظام المستخلصات (IPC).
  */
 
 import { BaseReference } from './reference';
@@ -71,8 +71,8 @@ export interface BOQItem extends BaseReference {
   allowedItemCategoryIds?: string[];
   plannedQuantity: number;
   executedQuantity: number; 
-  verifiedQuantity?: number; // الكمية المعتمدة مالياً للمستخلصات
-  billedQuantity?: number;   // الكمية التي تم إصدار فاتورة/مستخلص بها فعلياً
+  verifiedQuantity?: number; // الكمية المعتمدة من الاستشاري/المدير
+  billedQuantity?: number;   // الكمية التي أدرجت في مستخلصات سابقة
   estimatedRate?: number;
   estimatedCostRate?: number;
   actualRate?: number;
@@ -84,10 +84,10 @@ export interface BOQItem extends BaseReference {
  * سجل تفاصيل العمالة (Labor Breakdown)
  */
 export interface LaborDetail {
-  trade: string;    // التخصص (نجار، حداد، عمالة عامة...)
-  count: number;    // العدد
-  hours?: number;   // ساعات العمل
-  employeeIds?: string[]; // ربط الموظفين الفعليين بالزيارة (للتكاليف)
+  trade: string;    
+  count: number;    
+  hours?: number;   
+  employeeIds?: string[]; 
 }
 
 /**
@@ -109,21 +109,45 @@ export interface BOQItemExecutionEntry extends BaseReference {
   technicalStageId: string;
   quantity: number;
   notes?: string;
-  
-  // حقول محرك الموارد الجديد
   laborDetails?: LaborDetail[];
   equipmentUsed?: EquipmentUsed[];
-  
   recordedBy: string;
   recordedByName: string;
   isArchived?: boolean;
-  archivedAt?: any;
-  
-  // حالة الاعتماد المالي
-  isVerified?: boolean;     // هل اعتمدها المهندس المشرف؟
+  isVerified?: boolean;     // هل اعتمدها المدير للصرف؟
   verifiedAt?: any;
   verifiedBy?: string;
-  ipcId?: string;           // معرف المستخلص الذي أدرجت فيه هذه الكمية
+  ipcId?: string;           // ربط الكمية بمستخلص محدد
+  createdAt?: any;
+  updatedAt?: any;
+}
+
+/**
+ * بنية المستخلص المالي (Interim Payment Certificate - IPC)
+ */
+export interface InterimPaymentCertificate extends BaseDocument {
+  ipcNumber: string;        // تسلسلي مثل IPC-01
+  periodMonth: number;
+  periodYear: number;
+  totalCurrentClaim: number;
+  totalPreviousClaim: number;
+  totalToDate: number;
+  retentionAmount: number;  // المحتجز (عادة 10%)
+  netPayable: number;       
+  isJournalPosted?: boolean;
+}
+
+export interface IPCItem extends BaseReference {
+  ipcId: string;
+  boqItemId: string;
+  description: string;
+  unit: string;
+  rate: number;
+  plannedQty: number;
+  previousQty: number;
+  currentQty: number;
+  totalToDateQty: number;
+  totalAmount: number;
 }
 
 export interface BOQ extends BaseDocument {
@@ -132,52 +156,4 @@ export interface BOQ extends BaseDocument {
   description?: string;
   templateName?: string;
   measurementMode: MeasurementMode;
-}
-
-export type BOQVariationStatus = 'draft' | 'approved' | 'cancelled';
-export type VariationType = 'increase_quantity' | 'decrease_quantity' | 'new_item' | 'omit_item';
-export type VOStageMode = 'existing_stage' | 'new_local_stage';
-
-export interface BOQVariation extends BaseReference {
-  id: string;
-  boqId: string;
-  transactionId: string;
-  boqNumber: string;
-  title: string;
-  reason: string;
-  status: BOQVariationStatus;
-  totalAmount: number; 
-  createdBy: string;
-  updatedBy?: string;
-  approvedBy?: string;
-  approvedAt?: any;
-  rejectedBy?: string;
-  rejectedAt?: any;
-  activityTypeId?: string;
-  serviceId?: string;
-  subServiceId?: string;
-}
-
-export interface BOQVariationItem extends BaseReference {
-  id: string;
-  variationId: string;
-  sourceBoqItemId?: string;     
-  boqReferenceNodeId?: string;  
-  technicalStageId?: string;    
-  type: VariationType;
-  description: string;
-  unitName?: string;
-  unitSymbol?: string;
-  sourcePlannedQuantity?: number; 
-  quantityDelta: number;         
-  rate: number;
-  total: number;                 
-  reason?: string;
-  stageMode?: VOStageMode;
-  localStageName?: string;
-  localStageCode?: string;
-  insertAfterStageId?: string;   
-  isComplementary?: boolean; 
-  targetSectionId?: string | null;
-  technicalStageIds?: string[];
 }

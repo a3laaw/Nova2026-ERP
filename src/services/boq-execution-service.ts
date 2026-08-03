@@ -11,23 +11,12 @@ import {
   where, 
   serverTimestamp,
   updateDoc,
-  addDoc,
   writeBatch,
   increment
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { BOQItem, BOQItemExecutionEntry, LaborDetail, EquipmentUsed } from '@/types/documents';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 import { ensureActionPermission } from '@/lib/permissions/engine';
-
-export interface ItemProgressResult {
-  plannedQuantity: number;
-  executedQuantity: number;
-  progressPercent: number;
-  remainingQuantity: number;
-  isOverExecuted: boolean;
-}
 
 export interface StageProgressResult {
   linkedItemsCount: number;
@@ -35,9 +24,12 @@ export interface StageProgressResult {
   totalExecuted: number;
   progressPercent: number;
   canComplete: boolean;
-  reason?: string;
 }
 
+/**
+ * خدمة تنفيذ المقايسة الميدانية.
+ * تربط بين تسجيل الإنجاز (المهندس) والاعتماد الفني (المشرف).
+ */
 export class BOQExecutionService {
   constructor(
     private db: Firestore, 
@@ -45,15 +37,8 @@ export class BOQExecutionService {
     private permissions: string[] = []
   ) {}
 
-  private getAllowedTechnicalStageIds(item: BOQItem): string[] {
-    if (item.technicalStageIds && item.technicalStageIds.length > 0) {
-      return item.technicalStageIds;
-    }
-    return item.technicalStageId ? [item.technicalStageId] : [];
-  }
-
   /**
-   * تسجيل إنجاز ميداني مع ربط الموارد (عمالة ومعدات)
+   * تسجيل إنجاز ميداني مع استهلاك الموارد (عمالة ومعدات)
    */
   async recordBOQItemExecution(
     boqId: string,
@@ -76,8 +61,6 @@ export class BOQExecutionService {
     if (!itemSnap.exists()) throw new Error('ITEM_NOT_FOUND');
     const itemData = itemSnap.data() as BOQItem;
 
-    if (quantity < 0) throw new Error('INVALID_QUANTITY');
-
     const executionRef = doc(collection(this.db, paths.executions(this.companyId)));
     const executionData: BOQItemExecutionEntry = {
       id: executionRef.id,
@@ -94,7 +77,7 @@ export class BOQExecutionService {
       recordedBy: userId,
       recordedByName: userName,
       isArchived: false,
-      isVerified: false, // بانتظار اعتماد الاستحقاق المالي
+      isVerified: false, 
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
@@ -102,19 +85,19 @@ export class BOQExecutionService {
     const batch = writeBatch(this.db);
     batch.set(executionRef, executionData);
     
-    // تحديث الإجمالي اللحظي في البند
+    // تحديث إجمالي المنفذ في البند (للمتابعة الفنية)
     batch.update(itemRef, {
       executedQuantity: increment(quantity),
       updatedAt: serverTimestamp()
     });
 
-    // توثيق في التايم لاين
+    // إضافة حدث للتايم لاين
     if (itemData.transactionId) {
       const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, itemData.transactionId)));
       batch.set(timelineRef, {
         transactionId: itemData.transactionId,
         type: 'numeric_update',
-        content: `[إنجاز ميداني] تم تسجيل تنفيذ ${quantity} ${itemData.unitSymbol || ''} لبند: ${itemData.referenceTitle}`,
+        content: `[إنجاز ميداني] تم تسجيل ${quantity} ${itemData.unitSymbol || ''} لبند: ${itemData.referenceTitle}`,
         userId, userName,
         companyId: this.companyId,
         createdAt: serverTimestamp()
@@ -126,8 +109,7 @@ export class BOQExecutionService {
   }
 
   /**
-   * اعتماد الكمية للصرف (Verification for Billing)
-   * هذا هو الرابط بين الميدان والمستخلصات
+   * اعتماد الإنجاز الميداني للصرف المالي (Field-to-Finance Verification)
    */
   async verifyExecutionForBilling(executionId: string, userId: string, userName: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
@@ -139,7 +121,7 @@ export class BOQExecutionService {
 
     const batch = writeBatch(this.db);
     
-    // 1. تحديث سجل التنفيذ كمعتمد
+    // 1. تحديث سجل الزيارة كمعتمد
     batch.update(execRef, {
       isVerified: true,
       verifiedAt: serverTimestamp(),
@@ -147,7 +129,7 @@ export class BOQExecutionService {
       updatedAt: serverTimestamp()
     });
 
-    // 2. تحديث البند في المقايسة لإضافة "الكمية المعتمدة"
+    // 2. ترحيل الكمية المعتمدة إلى بند المقايسة (Verified Quantity)
     const itemRef = doc(this.db, paths.boqItems(this.companyId, execData.boqId), execData.boqItemId);
     batch.update(itemRef, {
       verifiedQuantity: increment(execData.quantity),
@@ -162,39 +144,28 @@ export class BOQExecutionService {
     const boqQuery = query(boqsRef, where('transactionId', '==', transactionId));
     const boqSnap = await getDocs(boqQuery);
     
-    if (boqSnap.empty) {
-      return { linkedItemsCount: 0, totalPlanned: 0, totalExecuted: 0, progressPercent: 100, canComplete: true };
-    }
+    if (boqSnap.empty) return { linkedItemsCount: 0, totalPlanned: 0, totalExecuted: 0, progressPercent: 100, canComplete: true };
 
     const boqId = boqSnap.docs[0].id;
-    const itemsRef = collection(this.db, paths.boqItems(this.companyId, boqId));
-    const itemsSnap = await getDocs(itemsRef);
+    const itemsSnap = await getDocs(collection(this.db, paths.boqItems(this.companyId, boqId)));
     const allItems = itemsSnap.docs.map(d => ({ id: d.id, ...d.data() } as BOQItem));
     
-    const linkedItems = allItems.filter(i => 
-      this.getAllowedTechnicalStageIds(i).includes(technicalStageId) && 
-      (i.plannedQuantity || 0) > 0
-    );
+    const linkedItems = allItems.filter(i => (i.technicalStageIds?.includes(technicalStageId) || i.technicalStageId === technicalStageId) && (i.plannedQuantity || 0) > 0);
 
-    if (linkedItems.length === 0) {
-      return { linkedItemsCount: 0, totalPlanned: 0, totalExecuted: 0, progressPercent: 100, canComplete: true };
-    }
+    if (linkedItems.length === 0) return { linkedItemsCount: 0, totalPlanned: 0, totalExecuted: 0, progressPercent: 100, canComplete: true };
 
     let totalPlanned = 0;
     let totalExecuted = 0;
-
     linkedItems.forEach(item => {
       totalPlanned += (item.plannedQuantity || 0);
       totalExecuted += (item.executedQuantity || 0);
     });
 
-    const progress = totalPlanned > 0 ? (totalExecuted / totalPlanned) * 100 : 0;
-    
     return {
       linkedItemsCount: linkedItems.length,
       totalPlanned,
       totalExecuted,
-      progressPercent: Math.min(100, Math.round(progress * 100) / 100),
+      progressPercent: Math.min(100, Math.round((totalExecuted / totalPlanned) * 100)),
       canComplete: totalExecuted >= totalPlanned
     };
   }
