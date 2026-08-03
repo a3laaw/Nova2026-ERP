@@ -11,7 +11,7 @@ import {
   Trash2, Edit3, Clock, Calculator,
   Building2, Save, X, Filter,
   ArrowRight, CheckCircle2, AlertTriangle,
-  Sparkles
+  Sparkles, PlusCircle
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where } from 'firebase/firestore';
@@ -243,7 +243,7 @@ export default function EquipmentPage() {
                         <SelectValue placeholder={isRtl ? "اختر المورد..." : "Select supplier..."} />
                      </SelectTrigger>
                      <SelectContent className="rounded-xl border-2 shadow-2xl">
-                        {suppliers?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold">{s.name}</SelectItem>)}
+                        {suppliers?.map((s: any) => <SelectItem key={s.id} value={s.id!} className="font-bold">{s.name}</SelectItem>)}
                      </SelectContent>
                   </Select>
                </div>
@@ -290,4 +290,3 @@ export default function EquipmentPage() {
     </div>
   );
 }
-
