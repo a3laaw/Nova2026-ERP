@@ -17,20 +17,17 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    // جلب بيانات الهوية العالمية
+    // جلب بيانات الهوية العالمية (بدون استدعاءات متداخلة)
     function getGlobalUser() {
       return get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
     }
 
-    // فحص صلاحية الإدارة (تعتمد على المالك المباشر أو الهوية العالمية)
+    // فحص صلاحية الإدارة (تبسيط جذري لمنع تعليق الصلاحيات)
     function isAdmin(companyId) {
-      // السماح إذا كان المستخدم هو المالك المسجل للشركة
-      let isOwner = get(/databases/$(database)/documents/companies/$(companyId)).data.ownerUid == request.auth.uid;
-      // أو إذا كان يحمل دور ADMIN في الهوية العالمية
-      let hasAdminRole = getGlobalUser().companyId == companyId && 
-                         (getGlobalUser().roleCode == 'ADMIN' || getGlobalUser().role == 'admin');
-      
-      return isAuthenticated() && (isOwner || hasAdminRole || isSovereignDev());
+      let user = getGlobalUser();
+      return isAuthenticated() && (
+        user.companyId == companyId && (user.roleCode == 'ADMIN' || user.role == 'admin')
+      );
     }
 
     // --- 3. قواعد الهوية العالمية ---
@@ -46,10 +43,13 @@ service cloud.firestore {
       allow create: if isAuthenticated(); 
       allow update: if isAuthenticated() && (resource.data.ownerUid == request.auth.uid || isSovereignDev());
 
-      // القاعدة الذهبية للمجموعات الفرعية: أي كتابة تتطلب صلاحية Admin (التي تشمل المالك)
+      // القاعدة الذهبية للمجموعات الفرعية: السماح المباشر للمسؤولين
       match /{allSubCollections=**} {
         allow read: if isAuthenticated() && (getGlobalUser().companyId == companyId || isSovereignDev());
-        allow write: if isAdmin(companyId);
+        allow write: if isAuthenticated() && (
+           getGlobalUser().companyId == companyId && 
+           (getGlobalUser().roleCode == 'ADMIN' || getGlobalUser().role == 'admin')
+        );
       }
     }
 

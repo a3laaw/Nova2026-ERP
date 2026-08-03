@@ -40,10 +40,10 @@ export class EquipmentService {
       updatedAt: serverTimestamp()
     };
     
-    // تنفيذ الكتابة دون await (Pattern 1)
+    // تنفيذ الكتابة دون await (Pattern 1) لضمان استجابة الواجهة
     setDoc(equipRef, docData)
-      .catch(async (serverError) => {
-        // إذا فشل الحفظ في السحاب، نطلق الخطأ السياقي للمستمع العالمي
+      .catch((serverError) => {
+        console.error("Firestore Write Error:", serverError);
         const permissionError = new FirestorePermissionError({
           path: equipRef.path,
           operation: 'create',
@@ -68,7 +68,7 @@ export class EquipmentService {
     };
 
     updateDoc(ref, docData)
-      .catch(async (serverError) => {
+      .catch((serverError) => {
         const permissionError = new FirestorePermissionError({
           path: ref.path,
           operation: 'update',
