@@ -15,7 +15,8 @@ import {
   Filter,
   Hammer,
   ArrowRight,
-  PlusCircle
+  PlusCircle,
+  CheckCircle2
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, doc, deleteDoc } from 'firebase/firestore';
@@ -225,7 +226,6 @@ export default function EquipmentMasterPage() {
         </CardContent>
       </Card>
 
-      {/* Assign to Project Dialog - Keep as small dialog since it's simple */}
       <Dialog open={!!isAssigning} onOpenChange={() => setIsAssigning(null)}>
          <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-md" dir={dir}>
             <div className="bg-blue-600 p-8 text-white text-start">
