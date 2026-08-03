@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -9,17 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   Truck, Plus, Search, Loader2, 
-  Edit3, Trash2, Settings2,
-  RefreshCcw,
-  Link as LinkIcon,
-  Filter,
-  Hammer,
-  ArrowRight,
-  PlusCircle,
-  CheckCircle2
+  Trash2, Edit3, Clock, Calculator,
+  Building2, Save, X, Filter,
+  ArrowRight, CheckCircle2, AlertTriangle,
+  Sparkles
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, doc, deleteDoc } from 'firebase/firestore';
+import { collection, query, orderBy, where } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
@@ -27,7 +22,6 @@ import { Equipment } from '@/types/equipment';
 import { EquipmentService } from '@/services/equipment-service';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
-import { useRouter } from 'next/navigation';
 import {
   Dialog,
   DialogContent,
@@ -36,64 +30,67 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 
-export default function EquipmentMasterPage() {
+export default function EquipmentPage() {
   const { globalUser, user } = useAuthContext();
   const { lang, dir, t } = useLanguage();
   const db = useFirestore();
-  const router = useRouter();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [isAssigning, setIsAssigning] = useState<Equipment | null>(null);
+  const [isNewRentedOpen, setIsNewRentedOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [assignForm, setAssignForm] = useState({ projectId: '', fromDate: new Date().toISOString().split('T')[0] });
+
+  // Form State for Rented Equipment
+  const [rentedForm, setRentedForm] = useState({
+    code: '',
+    name: '',
+    supplierId: '',
+    supplierName: '',
+    costMethod: 'hourly' as any,
+    costValue: 0
+  });
 
   const equipQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.equipment(companyId)), orderBy('code')) : null, 
+    companyId && db ? query(collection(db, paths.equipment(companyId)), where('isActive', '==', true)) : null, 
   [db, companyId]);
 
-  const projectsQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.transactions(companyId)), orderBy('createdAt', 'desc')) : null, 
+  const suppliersQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.suppliers(companyId)), orderBy('name')) : null, 
   [db, companyId]);
 
   const { data: equipment, loading: equipLoading } = useCollection<Equipment>(equipQuery);
-  const { data: projects } = useCollection<any>(projectsQuery);
+  const { data: suppliers } = useCollection<any>(suppliersQuery);
 
-  const equipmentService = useMemo(() => db && companyId ? new EquipmentService(db, companyId) : null, [db, companyId]);
+  const handleCreateRented = async () => {
+    if (!db || !companyId || !user || !rentedForm.name || !rentedForm.supplierId) {
+      toast({ variant: "destructive", title: isRtl ? "بيانات ناقصة" : "Missing Data" });
+      return;
+    }
 
-  const handleAssign = async () => {
-    if (!equipmentService || !user || !isAssigning || !assignForm.projectId) return;
     setLoading(true);
     try {
-      const proj = projects?.find(p => p.id === assignForm.projectId);
-      await equipmentService.assignToProject(
-        isAssigning.id, 
-        isAssigning.name, 
-        assignForm.projectId, 
-        proj?.subServiceName || 'Project', 
-        assignForm.fromDate, 
-        user.uid,
-        globalUser?.fullName || 'Admin'
-      );
-      toast({ title: isRtl ? "تم تخصيص المعدة لمشروع" : "Equipment Assigned" });
-      setIsAssigning(null);
+      const service = new EquipmentService(db, companyId);
+      const supplier = suppliers.find(s => s.id === rentedForm.supplierId);
+      
+      await service.createRentedEquipment({
+        ...rentedForm,
+        supplierName: supplier?.name || ''
+      }, user.uid);
+
+      toast({ title: isRtl ? "تمت إضافة المعدة بنجاح" : "Rented Equipment Added" });
+      setIsNewRentedOpen(false);
+      setRentedForm({ code: '', name: '', supplierId: '', supplierName: '', costMethod: 'hourly', costValue: 0 });
     } catch (e) {
       toast({ variant: "destructive", title: t('error') });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRelease = async (equip: Equipment) => {
-    if (!equipmentService || !user) return;
-    if (!confirm(isRtl ? "تأكيد تحرير المعدة وإعادتها للمخزن؟" : "Confirm equipment release?")) return;
-    setLoading(true);
-    try {
-      await equipmentService.releaseFromProject(equip.id, new Date().toISOString().split('T')[0], user.uid);
-      toast({ title: isRtl ? "تم تحرير المعدة" : "Equipment Released" });
     } finally {
       setLoading(false);
     }
@@ -112,14 +109,17 @@ export default function EquipmentMasterPage() {
         <div className="text-start">
           <h1 className="text-3xl font-black font-headline flex items-center gap-3 text-slate-900">
             <Truck className="h-8 w-8 text-primary" />
-            {isRtl ? 'سجل المعدات والآليات' : 'Equipment Master'}
+            {isRtl ? 'سجل المعدات والآليات' : 'Equipment Registry'}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-            {isRtl ? 'إدارة الأصول التشغيلية، تتبع التخصيص، والتحليل المحاسبي للإهلاك.' : 'Manage operational assets, track assignments, and depreciation analysis.'}
+            {isRtl ? 'إدارة وتتبع المعدات المستأجرة وتكاليف التشغيل الميدانية.' : 'Manage and track rented equipment and field operating costs.'}
           </p>
         </div>
-        <Button onClick={() => router.push('/dashboard/equipment/new')} className="h-12 px-8 rounded-xl shadow-xl shadow-primary/20 gap-2 border-b-4 border-orange-700 font-black">
-           <Plus className="h-5 w-5" /> {isRtl ? 'إضافة معدة جديدة' : 'Add New Equipment'}
+        <Button 
+          onClick={() => setIsNewRentedOpen(true)} 
+          className="h-12 px-8 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-2 border-b-4 border-orange-700"
+        >
+           <Plus className="h-5 w-5" /> {isRtl ? 'إضافة معدة مؤجرة' : 'Add Rented Item'}
         </Button>
       </header>
 
@@ -134,8 +134,8 @@ export default function EquipmentMasterPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button variant="outline" className="h-11 px-6 border-slate-200">
-             <Filter className="h-4 w-4 me-2 text-primary" /> {isRtl ? 'تصفية' : 'Filter'}
+          <Button variant="outline" className="h-11 px-6 border-slate-200 font-bold">
+             <Filter className="h-4 w-4 me-2" /> {isRtl ? 'تصفية' : 'Filter'}
           </Button>
         </div>
       </Card>
@@ -146,24 +146,24 @@ export default function EquipmentMasterPage() {
             <TableHeader className="bg-slate-50/80 border-b">
               <TableRow>
                 <TableHead className="py-6 ps-10 text-start font-black uppercase text-[10px] tracking-widest">{isRtl ? 'المعدة / الكود' : 'Equipment / Code'}</TableHead>
-                <TableHead className="text-start font-black uppercase text-[10px] tracking-widest">{isRtl ? 'النوع والملكية' : 'Type & Ownership'}</TableHead>
-                <TableHead className="text-center font-black uppercase text-[10px] tracking-widest">{isRtl ? 'تعرفة الساعة' : 'Hourly Rate'}</TableHead>
-                <TableHead className="text-start font-black uppercase text-[10px] tracking-widest">{isRtl ? 'الحالة والمشروع' : 'Status & Project'}</TableHead>
+                <TableHead className="text-start font-black uppercase text-[10px] tracking-widest">{isRtl ? 'المورد / المؤجر' : 'Supplier'}</TableHead>
+                <TableHead className="text-center font-black uppercase text-[10px] tracking-widest">{isRtl ? 'طريقة التكلفة' : 'Cost Basis'}</TableHead>
+                <TableHead className="text-end font-black uppercase text-[10px] tracking-widest">{isRtl ? 'القيمة' : 'Rate'}</TableHead>
                 <TableHead className="pe-10 text-end"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {equipLoading ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-32"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/20" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/20" /></TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-32 text-slate-300 font-bold italic">{isRtl ? 'لا يوجد معدات مسجلة.' : 'No equipment found.'}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-300 font-bold italic">{isRtl ? 'لا يوجد معدات مسجلة.' : 'No equipment found.'}</TableCell></TableRow>
               ) : (
                 filtered.map((item) => (
                   <TableRow key={item.id} className="group hover:bg-primary/[0.01] transition-colors border-b-slate-100">
                     <TableCell className="ps-10 py-6 text-start">
                        <div className="flex items-center gap-4">
                           <div className="h-11 w-11 rounded-xl bg-primary/5 flex items-center justify-center text-primary shadow-inner border border-primary/10">
-                             <Hammer className="h-5 w-5" />
+                             <Truck className="h-5 w-5" />
                           </div>
                           <div className="text-start">
                              <span className="font-black text-slate-800 text-lg leading-none">{item.name}</span>
@@ -172,51 +172,23 @@ export default function EquipmentMasterPage() {
                        </div>
                     </TableCell>
                     <TableCell className="text-start">
-                       <div className="flex flex-col gap-1.5">
-                          <span className="text-xs font-bold text-slate-600">{item.type}</span>
-                          <Badge variant="outline" className={cn(
-                            "w-fit text-[8px] font-black uppercase bg-white",
-                            item.ownershipType === 'owned' ? "text-blue-600 border-blue-100" : "text-orange-600 border-orange-100"
-                          )}>
-                             {item.ownershipType}
-                          </Badge>
+                       <div className="flex items-center gap-2">
+                          <Building2 className="h-3.5 w-3.5 text-slate-400" />
+                          <span className="text-xs font-bold text-slate-600">{item.supplierName}</span>
                        </div>
                     </TableCell>
-                    <TableCell className="text-center font-mono font-black text-emerald-600 text-lg">
-                       {item.ownershipType === 'owned' ? (item.hourlyDepreciationRate || 0) : (item.hourlyRentalRate || 0)}
-                       <span className="text-[8px] text-slate-300 ms-1">KWD</span>
+                    <TableCell className="text-center">
+                       <Badge variant="outline" className="font-black text-[9px] uppercase px-3 py-1 bg-white border-slate-200">
+                          {item.costMethod}
+                       </Badge>
                     </TableCell>
-                    <TableCell className="text-start">
-                       <div className="space-y-1.5">
-                          <Badge className={cn(
-                            "font-black px-3 py-0.5 rounded-lg border-0 shadow-sm uppercase text-[9px]",
-                            item.status === 'available' ? 'bg-emerald-50 text-emerald-600' :
-                            item.status === 'in_use' ? 'bg-blue-50 text-blue-600' : 'bg-rose-50 text-rose-600'
-                          )}>
-                             {item.status}
-                          </Badge>
-                          {item.currentProjectId && (
-                            <p className="text-[9px] font-bold text-primary flex items-center gap-1">
-                               <LinkIcon className="h-2 w-2" /> {item.currentProjectName}
-                            </p>
-                          )}
-                       </div>
+                    <TableCell className="text-end font-mono font-black text-emerald-600 text-lg pe-10">
+                       {item.costValue?.toLocaleString()} <span className="text-[8px] text-slate-300 ms-1">KWD</span>
                     </TableCell>
                     <TableCell className="pe-10 text-end">
-                       <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {item.status === 'available' ? (
-                            <Button size="sm" variant="outline" onClick={() => setIsAssigning(item)} className="h-8 rounded-lg text-[9px] font-black gap-1.5 bg-blue-50 text-blue-600 border-blue-100">
-                               <LinkIcon className="h-3 w-3" /> {isRtl ? 'تخصيص' : 'Assign'}
-                            </Button>
-                          ) : item.status === 'in_use' && (
-                            <Button size="sm" variant="outline" onClick={() => handleRelease(item)} className="h-8 rounded-lg text-[9px] font-black gap-1.5 bg-orange-50 text-orange-600 border-orange-100">
-                               <RefreshCcw className="h-3 w-3" /> {isRtl ? 'تحرير' : 'Release'}
-                            </Button>
-                          )}
-                          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-blue-600" onClick={() => router.push(`/dashboard/equipment/${item.id}/edit`)}>
-                             <Edit3 className="h-4 w-4" />
-                          </Button>
-                       </div>
+                       <Button variant="ghost" size="icon" className="rounded-xl group-hover:bg-primary group-hover:text-white transition-all h-9 w-9">
+                          <ArrowRight className={cn("h-5 w-5", isRtl && "rotate-180")} />
+                       </Button>
                     </TableCell>
                   </TableRow>
                 ))
@@ -226,41 +198,91 @@ export default function EquipmentMasterPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={!!isAssigning} onOpenChange={() => setIsAssigning(null)}>
-         <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-md" dir={dir}>
-            <div className="bg-blue-600 p-8 text-white text-start">
-               <DialogTitle className="text-xl font-black font-headline flex items-center gap-3">
-                  <LinkIcon className="h-6 w-6 text-blue-200" />
-                  {isRtl ? 'تخصيص المعدة لمشروع' : 'Assign to Project'}
-               </DialogTitle>
-               <p className="text-[10px] font-bold text-blue-100/70 mt-2 uppercase tracking-widest">{isAssigning?.name}</p>
+      {/* Rented Equipment Glassmorphism Modal */}
+      <Dialog open={isNewRentedOpen} onOpenChange={setIsNewRentedOpen}>
+         <DialogContent className="max-w-xl rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white/70 backdrop-blur-2xl ring-1 ring-white/50" dir={dir}>
+            <div className="bg-primary/10 p-8 text-slate-900 text-start border-b border-white/20 relative overflow-hidden">
+               <div className="absolute top-0 right-0 p-8 opacity-5"><Sparkles className="h-40 w-40 text-primary" /></div>
+               <div className="flex items-center gap-4 relative z-10">
+                  <div className="h-12 w-12 bg-primary rounded-2xl flex items-center justify-center text-white shadow-xl shadow-primary/20 ring-4 ring-white/50">
+                     <PlusCircle className="h-6 w-6" />
+                  </div>
+                  <div>
+                     <DialogTitle className="text-2xl font-black font-headline text-slate-900">{isRtl ? 'إضافة معدة مؤجرة' : 'Add Rented Equipment'}</DialogTitle>
+                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Quick Asset Registration</p>
+                  </div>
+               </div>
             </div>
-            <div className="p-8 space-y-6 text-start">
+
+            <div className="p-10 space-y-8 text-start bg-transparent">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-2">
+                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'كود المعدة' : 'Equipment Code'}</Label>
+                     <Input 
+                       value={rentedForm.code} 
+                       onChange={e => setRentedForm({...rentedForm, code: e.target.value.toUpperCase()})}
+                       placeholder="EQ-R-001" 
+                       className="h-12 rounded-xl border-2 font-mono font-black text-primary bg-white/50 focus:bg-white transition-all shadow-inner" 
+                     />
+                  </div>
+                  <div className="space-y-2">
+                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اسم المعدة' : 'Equipment Name'}</Label>
+                     <Input 
+                       value={rentedForm.name} 
+                       onChange={e => setRentedForm({...rentedForm, name: e.target.value})}
+                       placeholder={isRtl ? "مثلاً: بوكات" : "e.g. Bobcat"} 
+                       className="h-12 rounded-xl border-2 font-bold bg-white/50 focus:bg-white transition-all shadow-inner" 
+                     />
+                  </div>
+               </div>
+
                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'اختر المشروع' : 'Target Project'}</Label>
-                  <Select value={assignForm.projectId} onValueChange={v => setAssignForm({...assignForm, projectId: v})}>
-                     <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'المورد / شركة التأجير' : 'Rental Supplier'}</Label>
+                  <Select value={rentedForm.supplierId} onValueChange={v => setRentedForm({...rentedForm, supplierId: v})}>
+                     <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-white/50">
+                        <SelectValue placeholder={isRtl ? "اختر المورد..." : "Select supplier..."} />
+                     </SelectTrigger>
                      <SelectContent className="rounded-xl border-2 shadow-2xl">
-                        {projects?.filter(p => p.status !== 'completed').map(p => (
-                          <SelectItem key={p.id} value={p.id} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
-                             <div className="flex flex-col text-start">
-                                <span>{p.subServiceName}</span>
-                                <span className="text-[8px] text-slate-400 uppercase">#{p.transactionNumber}</span>
-                             </div>
-                          </SelectItem>
-                        ))}
+                        {suppliers?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold">{s.name}</SelectItem>)}
                      </SelectContent>
                   </Select>
                </div>
-               <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'تاريخ التخصيص' : 'From Date'}</Label>
-                  <Input type="date" value={assignForm.fromDate} onChange={e => setAssignForm({...assignForm, fromDate: e.target.value})} className="h-12 rounded-xl border-2 font-bold" />
+
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-8 bg-white/40 rounded-[2rem] border-2 border-white/60 shadow-inner">
+                  <div className="space-y-2">
+                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'طريقة التكلفة' : 'Cost Method'}</Label>
+                     <Select value={rentedForm.costMethod} onValueChange={v => setRentedForm({...rentedForm, costMethod: v})}>
+                        <SelectTrigger className="h-12 rounded-xl border-2 font-black bg-white">
+                           <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                           <SelectItem value="hourly" className="font-bold">{isRtl ? 'بالساعة KWD/HR' : 'Hourly'}</SelectItem>
+                           <SelectItem value="daily" className="font-bold">{isRtl ? 'يومي KWD/Day' : 'Daily'}</SelectItem>
+                           <SelectItem value="monthly" className="font-bold">{isRtl ? 'شهري KWD/Month' : 'Monthly'}</SelectItem>
+                        </SelectContent>
+                     </Select>
+                  </div>
+                  <div className="space-y-2">
+                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'قيمة التكلفة (KWD)' : 'Cost Value'}</Label>
+                     <div className="relative">
+                        <Input 
+                           type="number" 
+                           step="0.001"
+                           value={rentedForm.costValue || ''} 
+                           onChange={e => setRentedForm({...rentedForm, costValue: Number(e.target.value)})}
+                           className="h-12 rounded-xl border-2 font-black text-emerald-600 text-xl text-center bg-white shadow-inner" 
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-300">KWD</span>
+                     </div>
+                  </div>
                </div>
             </div>
-            <DialogFooter className="p-8 bg-slate-50 border-t">
-               <Button onClick={handleAssign} disabled={loading || !assignForm.projectId} className="w-full h-14 rounded-2xl bg-blue-600 text-white font-black text-lg shadow-xl shadow-blue-200 transition-all border-b-8 border-blue-800">
-                  {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <CheckCircle2 className="h-5 w-5 me-2" />}
-                  {isRtl ? 'تأكيد التخصيص' : 'Confirm Assignment'}
+
+            <DialogFooter className="p-8 bg-white/50 border-t border-white/20 shrink-0">
+               <Button variant="outline" onClick={() => setIsNewRentedOpen(false)} className="flex-1 h-14 rounded-2xl font-bold bg-white/50 border-2">إلغاء</Button>
+               <Button onClick={handleCreateRented} disabled={loading} className="flex-[2] h-14 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 transition-all border-b-8 border-orange-700 hover:scale-[1.02] active:scale-95">
+                  {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6 me-2" />}
+                  {isRtl ? 'اعتماد الإضافة' : 'Confirm & Save'}
                </Button>
             </DialogFooter>
          </DialogContent>
@@ -268,3 +290,4 @@ export default function EquipmentMasterPage() {
     </div>
   );
 }
+
