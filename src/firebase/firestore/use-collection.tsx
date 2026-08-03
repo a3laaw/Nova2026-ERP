@@ -7,27 +7,34 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
 
 /**
  * خطاف جلب المجموعات السيادي المحصن (Sovereign Hardened Collection Hook).
- * يستخدم تقنية queryEqual لمنع حلقة الاشتراك اللانهائية (ID: ca9).
+ * يستخدم تقنية queryEqual وحارس البصمة لمنع حلقة الاشتراك اللانهائية (ID: ca9).
  */
 export function useCollection<T = DocumentData>(q: Query<any, any> | null) {
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(q !== null);
   const [error, setError] = useState<Error | null>(null);
 
-  // الحفاظ على مرجع مستقر للاستعلام منطقياً
-  const [stableQuery, setStableQuery] = useState<Query<any, any> | null>(q);
+  // 1. المثبت المنطقي للاستعلام
+  const stableQueryRef = useRef<Query<any, any> | null>(null);
+  const [stableQuery, setStableQuery] = useState<Query<any, any> | null>(null);
+
+  // 2. حارس بصمة البيانات لمنع الرندر غير الضروري
+  const lastDataHashRef = useRef<string>("");
 
   useEffect(() => {
     if (!q) {
-      if (stableQuery !== null) setStableQuery(null);
+      if (stableQueryRef.current !== null) {
+        stableQueryRef.current = null;
+        setStableQuery(null);
+      }
       return;
     }
 
-    // إذا كان الاستعلام الجديد يختلف منطقياً عن المستقر حالياً، نقوم بتحديثه
-    if (!stableQuery || !queryEqual(q, stableQuery)) {
+    if (!stableQueryRef.current || !queryEqual(q, stableQueryRef.current)) {
+      stableQueryRef.current = q;
       setStableQuery(q);
     }
-  }, [q, stableQuery]);
+  }, [q]);
 
   useEffect(() => {
     if (!stableQuery) {
@@ -47,7 +54,12 @@ export function useCollection<T = DocumentData>(q: Query<any, any> | null) {
           ...doc.data(),
         })) as unknown as T[];
         
-        setData(items);
+        // التحقق من البصمة: لا تحديث إلا لو تغير المحتوى فعلياً
+        const currentHash = JSON.stringify(items);
+        if (currentHash !== lastDataHashRef.current) {
+          lastDataHashRef.current = currentHash;
+          setData(items);
+        }
         setLoading(false);
       },
       (serverError: FirestoreError) => {
@@ -63,7 +75,7 @@ export function useCollection<T = DocumentData>(q: Query<any, any> | null) {
     );
 
     return () => unsubscribe();
-  }, [stableQuery]); // الاعتماد على الاستعلام المستقر حصراً
+  }, [stableQuery]);
 
   return { data, loading, error };
 }

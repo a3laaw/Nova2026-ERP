@@ -52,6 +52,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setGlobalUser(null);
         setRoleData(null);
         setLoading(false);
+        lastGlobalUserHash.current = "";
+        lastRoleHash.current = "";
       }
     });
     return () => unsubscribe();
@@ -99,6 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!db || !globalUser?.companyId || !globalUser?.roleId) {
       setRoleData(null);
+      lastRoleHash.current = "";
       return;
     }
 
@@ -113,6 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } else {
         setRoleData(null);
+        lastRoleHash.current = "";
       }
     });
 
