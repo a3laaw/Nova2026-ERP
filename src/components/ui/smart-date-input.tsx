@@ -84,34 +84,34 @@ export function SmartDateInput({ value, onChange, className }: SmartDateInputPro
 
   return (
     <div className={cn("relative", className)} dir="ltr">
-      <div className="flex items-center h-12 w-full rounded-2xl border-2 border-slate-200 bg-white px-4 py-1 focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/5 transition-all shadow-sm">
+      <div className="flex items-center h-12 w-full rounded-full border-2 border-primary bg-white px-6 py-1 focus-within:ring-4 focus-within:ring-primary/10 transition-all shadow-sm">
         
-        <div className="flex items-center gap-1 flex-1">
+        <div className="flex items-center justify-center gap-1 flex-1">
           <input
             ref={dayRef}
             type="text"
             placeholder="dd"
             value={day}
             onChange={handleDayChange}
-            className="w-6 bg-transparent text-center font-mono font-bold text-slate-700 placeholder:text-slate-300 outline-none"
+            className="w-8 bg-transparent text-center font-mono font-black text-slate-800 placeholder:text-slate-200 outline-none text-lg"
           />
-          <span className="text-slate-300">--</span>
+          <span className="text-primary/20 font-black">-</span>
           <input
             ref={monthRef}
             type="text"
             placeholder="mm"
             value={month}
             onChange={handleMonthChange}
-            className="w-6 bg-transparent text-center font-mono font-bold text-slate-700 placeholder:text-slate-300 outline-none"
+            className="w-8 bg-transparent text-center font-mono font-black text-slate-800 placeholder:text-slate-200 outline-none text-lg"
           />
-          <span className="text-slate-300">--</span>
+          <span className="text-primary/20 font-black">-</span>
           <input
             ref={yearRef}
             type="text"
             placeholder="yyyy"
             value={year}
             onChange={handleYearChange}
-            className="w-10 bg-transparent text-center font-mono font-bold text-slate-700 placeholder:text-slate-300 outline-none"
+            className="w-14 bg-transparent text-center font-mono font-black text-slate-800 placeholder:text-slate-200 outline-none text-lg"
           />
         </div>
 
@@ -120,12 +120,12 @@ export function SmartDateInput({ value, onChange, className }: SmartDateInputPro
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-slate-400 hover:text-primary shrink-0"
+              className="h-8 w-8 text-primary/40 hover:text-primary shrink-0 ml-2"
             >
               <CalendarIcon className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0 rounded-3xl border-0 shadow-2xl" align="end">
+          <PopoverContent className="w-auto p-0 rounded-[2rem] border-0 shadow-3xl z-[150]" align="end">
             <Calendar
               mode="single"
               selected={value ? new Date(value) : undefined}
