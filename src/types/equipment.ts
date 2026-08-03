@@ -10,15 +10,26 @@ export type EquipmentOwnershipType = 'owned' | 'rented';
 export type EquipmentStatus = 'available' | 'in_use' | 'under_maintenance' | 'retired';
 export type RentalCostMethod = 'hourly' | 'daily' | 'monthly';
 export type DepreciationMethod = 'hours' | 'straight' | 'none';
+export type EquipmentCategory = 'heavy_machinery' | 'vehicle' | 'hand_tool' | 'stationary' | 'other';
+export type InsuranceType = 'comprehensive' | 'third_party' | 'none';
 
 export interface Equipment extends BaseReference {
   id: string;
   code: string;                          // كود المعدة (مثال: EQ-001)
   name: string;                          // اسم المعدة
-  type: string;                          // تصنيف المعدة (حفار، بوكات، إلخ)
-  ownershipType: EquipmentOwnershipType; 
+  category: EquipmentCategory;           // تصنيف المعدة
   status: EquipmentStatus;
+  ownershipType: EquipmentOwnershipType; 
   
+  // --- البيانات الإدارية والتراخيص (للمملوكة والمرخصة فقط) ---
+  isLicensed?: boolean;
+  chassisNumber?: string;                // رقم الشاصي
+  plateNumber?: string;                  // رقم اللوحة / الدفتر
+  registrationExpiry?: string;           // تاريخ انتهاء الترخيص
+  insuranceType?: InsuranceType;         // نوع التأمين
+  insuranceCompany?: string;             // شركة التأمين
+  insuranceExpiry?: string;              // تاريخ انتهاء التأمين
+
   // --- بيانات الملكية (للنوع: مملوكة) ---
   purchaseDate?: string;
   purchaseCost?: number;
@@ -40,7 +51,6 @@ export interface Equipment extends BaseReference {
   costValue?: number;                    // القيمة المتفق عليها
   hourlyRentalRate?: number;             // القيمة المحولة للساعة للربط الميداني
 
-  plateNumber?: string;
   notes?: string;
   isActive: boolean;
   createdBy?: string;
