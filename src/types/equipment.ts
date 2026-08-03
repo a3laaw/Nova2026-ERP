@@ -8,6 +8,7 @@ import { BaseReference } from './reference';
 
 export type EquipmentOwnershipType = 'owned' | 'rented';
 export type EquipmentStatus = 'available' | 'in_use' | 'under_maintenance' | 'retired';
+export type DepreciationMethod = 'hours' | 'straight' | 'none';
 
 export interface Equipment extends BaseReference {
   id: string;
@@ -15,15 +16,30 @@ export interface Equipment extends BaseReference {
   name: string;                          // اسم المعدة
   type: string;                          // نوع المعدة (حفار، رافعة، شاحنة قلاب...)
   ownershipType: EquipmentOwnershipType;
+  
+  // بيانات الشراء والتشغيل
+  purchaseDate?: string;                 // تاريخ الشراء / بدء التشغيل
+  purchaseCost?: number;                 // سعر الشراء الأصلي (KWD)
+  salvageValue?: number;                 // القيمة التخريدية / الخردة (KWD)
+  
+  // التمويل (للمعدات المملوكة)
+  isFinanced?: boolean;                  // هل المعدة ممولة؟
+  financierName?: string;                // جهة التمويل
+  monthlyInstallment?: number;           // القسط الشهري (KWD)
+  installmentDay?: number;               // يوم القسط في الشهر
 
-  // تعرفة الاستخدام بالساعة (حسب نوع الملكية)
-  hourlyRentalRate?: number;             // إلزامي لو ownershipType == 'rented'
-  hourlyDepreciationRate?: number;       // إلزامي لو ownershipType == 'owned'
+  // معالجة الإهلاك (للمعدات المملوكة)
+  depreciationMethod?: DepreciationMethod;
+  expectedTotalHours?: number;           // إجمالي ساعات العمل المتوقعة
+  hourlyDepreciationRate?: number;       // معدل الإهلاك بالساعة (KWD / HR)
+
+  // الإيجار (للمعدات المستأجرة)
+  hourlyRentalRate?: number;             
 
   status: EquipmentStatus;
-  currentProjectId?: string;             // المشروع اللي مخصصة له حاليًا (إن وجد)
+  currentProjectId?: string;             // المشروع المخصص له حاليًا
   currentProjectName?: string;
-  plateNumber?: string;                  // رقم اللوحة (للمركبات)
+  plateNumber?: string;                  // رقم اللوحة
   notes?: string;
 
   isActive: boolean;
@@ -32,7 +48,7 @@ export interface Equipment extends BaseReference {
 }
 
 /**
- * سجل حركة/تخصيص المعدة (Equipment Log) — لتتبع أين استُخدمت ومتى
+ * سجل حركة/تخصيص المعدة (Equipment Log)
  */
 export interface EquipmentAssignmentLog extends BaseReference {
   id: string;
@@ -41,7 +57,7 @@ export interface EquipmentAssignmentLog extends BaseReference {
   projectId: string;
   projectName: string;
   fromDate: string;
-  toDate?: string;                       // فارغ = لسا مخصصة
+  toDate?: string;
   assignedBy: string;
   assignedByName: string;
 }
