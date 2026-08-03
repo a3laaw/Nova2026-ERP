@@ -13,7 +13,7 @@ import {
   Link as LinkIcon, RefreshCcw,
   Calendar, CreditCard, Banknote,
   TrendingDown, Hammer, AlertTriangle,
-  ArrowRight, Filter, Info
+  ArrowRight, Filter, Info, Clock
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -362,15 +362,15 @@ export default function EquipmentMasterPage() {
                   {form.ownershipType === 'owned' && form.isFinanced && (
                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 bg-slate-50/50 rounded-[2rem] border-2 border-white shadow-inner animate-in zoom-in-95">
                         <div className="space-y-1.5">
-                           <Label className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'جهة التمويل' : 'Financier'}</Label>
+                           <Label className="text-[9px] font-bold text-slate-400 uppercase">{isRtl ? 'جهة التمويل' : 'Financier'}</Label>
                            <Input value={form.financierName || ''} onChange={e => setForm({...form, financierName: e.target.value})} className="h-10 rounded-lg bg-white font-bold" />
                         </div>
                         <div className="space-y-1.5">
-                           <Label className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'القسط الشهري' : 'Monthly Payment'}</Label>
+                           <Label className="text-[9px] font-bold text-slate-400 uppercase">{isRtl ? 'القسط الشهري' : 'Monthly Payment'}</Label>
                            <Input type="number" value={form.monthlyInstallment || 0} onChange={e => setForm({...form, monthlyInstallment: Number(e.target.value)})} className="h-10 rounded-lg bg-white font-black text-emerald-600" />
                         </div>
                         <div className="space-y-1.5">
-                           <Label className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'يوم استحقاق القسط' : 'Due Day'}</Label>
+                           <Label className="text-[9px] font-bold text-slate-400 uppercase">{isRtl ? 'يوم استحقاق القسط' : 'Due Day'}</Label>
                            <Input type="number" min="1" max="31" value={form.installmentDay || 1} onChange={e => setForm({...form, installmentDay: Number(e.target.value)})} className="h-10 rounded-lg bg-white font-black text-center" />
                         </div>
                      </div>
