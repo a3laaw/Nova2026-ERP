@@ -44,19 +44,13 @@ service cloud.firestore {
     match /global_users/{uid} {
       allow read: if isAuthenticated() && (request.auth.uid == uid || isAdmin(resource.data.companyId));
       
-      // تحصين الإنشاء: منع تصعيد الصلاحيات (Privilege Escalation)
       allow create: if isAuthenticated() && (
-        // مسار المستخدم يسجل نفسه: ممنوع من تحديد أي صلاحيات حساسة
         (request.auth.uid == uid && !request.resource.data.keys().hasAny(['isDeveloper', 'roleCode', 'role'])) || 
-        // مسار الأدمن يضيف موظف: مسموح له تحديد الصلاحيات للموظف الجديد
         isAdmin(request.resource.data.companyId)
       );
       
-      // منع تغيير الحقول الحساسة (بما فيها isActive) إلا من خلال الأدمن أو المطور
       allow update: if isAuthenticated() && (
-        // المستخدم يعدل ملفه: ممنوع يغير دوره أو يفعل حسابه بنفسه
         (request.auth.uid == uid && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isDeveloper', 'roleCode', 'role', 'companyId', 'isActive'])) || 
-        // الأدمن أو المطور يعدل: مسموح لهم كامل الصلاحية للتفعيل والترفيع
         isAdmin(resource.data.companyId) || 
         isSovereignDev()
       );
@@ -64,26 +58,19 @@ service cloud.firestore {
     
     // --- 4. قواعد المنشآت (Multi-Tenant Core) ---
     match /companies/{companyId} {
-      // القراءة فقط لأعضاء الشركة أو الأدمن لضمان الخصوصية (belongsToCompany تحمي البيانات)
       allow read: if belongsToCompany(companyId) || isAdmin(companyId); 
-      
-      // التحقق من أن منشئ الشركة هو المالك الفعلي المسجل لضمان سلامة الهوية
       allow create: if isAuthenticated() && request.resource.data.ownerUid == request.auth.uid; 
-      
       allow update: if isAdmin(companyId);
 
-      match /counters/{id} {
-        allow read, write: if isAdmin(companyId);
-      }
-
-      match /appointments/{id} { 
-        allow read: if belongsToCompany(companyId); 
-        allow write: if isAdmin(companyId); 
-      }
-      
+      match /counters/{id} { allow read, write: if isAdmin(companyId); }
+      match /appointments/{id} { allow read: if belongsToCompany(companyId); allow write: if isAdmin(companyId); }
       match /leaveRequests/{id} { allow read, write: if belongsToCompany(companyId); }
       match /permissionRequests/{id} { allow read, write: if belongsToCompany(companyId); }
       match /executions/{id} { allow read, write: if belongsToCompany(companyId); }
+      
+      // تصريح صريح لمجموعات المعدات لضمان الوصول الفوري للأدمن
+      match /equipment/{id} { allow read: if belongsToCompany(companyId); allow write: if isAdmin(companyId); }
+      match /equipmentAssignments/{id} { allow read: if belongsToCompany(companyId); allow write: if isAdmin(companyId); }
       
       match /transactions/{tId}/fieldVisits/{id} { allow read, write: if belongsToCompany(companyId); }
       match /transactions/{tId}/timeline/{id} { allow read, write: if belongsToCompany(companyId); }
@@ -96,7 +83,6 @@ service cloud.firestore {
         allow update: if isAdmin(companyId) || (isAuthenticated() && request.auth.uid == uid);
       }
 
-      // سجل المعدات: القراءة لكل أعضاء الشركة، الكتابة للأدمن فقط (تُغطى تلقائيًا عبر allAdminCollections)
       match /{allAdminCollections=**} {
         allow read: if belongsToCompany(companyId);
         allow write: if isAdmin(companyId);

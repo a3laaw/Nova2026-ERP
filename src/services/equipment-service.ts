@@ -7,15 +7,17 @@ import {
   addDoc, 
   updateDoc, 
   serverTimestamp,
-  query,
-  where,
-  getDocs,
-  writeBatch
+  deleteDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { Equipment } from '@/types/equipment';
-import { handleWriteError } from '@/lib/write-error';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
+/**
+ * خدمة إدارة المعدات والآليات (Equipment Service).
+ * تم تحديثها لتدعم بنية تقارير الأخطاء السياقية لضمان الشفافية الأمنية.
+ */
 export class EquipmentService {
   constructor(private db: Firestore, private companyId: string) {}
 
@@ -31,11 +33,18 @@ export class EquipmentService {
       updatedAt: serverTimestamp()
     };
     
-    try {
-      return await addDoc(collection(this.db, path), docData);
-    } catch (err: any) {
-      await handleWriteError(err, { path, operation: 'create', requestResourceData: docData });
-    }
+    // تنفيذ الكتابة مع ربط محرك الأخطاء السياقية
+    return addDoc(collection(this.db, path), docData)
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: `companies/${this.companyId}/equipment`,
+          operation: 'create',
+          requestResourceData: docData
+        } satisfies SecurityRuleContext);
+
+        errorEmitter.emit('permission-error', permissionError);
+        throw serverError;
+      });
   }
 
   async updateEquipment(id: string, data: Partial<Equipment>, userId: string) {
@@ -46,15 +55,31 @@ export class EquipmentService {
       updatedBy: userId,
       updatedAt: serverTimestamp()
     };
-    try {
-      await updateDoc(ref, docData);
-    } catch (err: any) {
-      await handleWriteError(err, { path, operation: 'update', requestResourceData: docData });
-    }
+
+    return updateDoc(ref, docData)
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: ref.path,
+          operation: 'update',
+          requestResourceData: docData
+        } satisfies SecurityRuleContext);
+
+        errorEmitter.emit('permission-error', permissionError);
+        throw serverError;
+      });
   }
 
   async deleteEquipment(id: string) {
     const ref = doc(this.db, paths.equipment(this.companyId), id);
-    await updateDoc(ref, { isActive: false, updatedAt: serverTimestamp() });
+    return updateDoc(ref, { isActive: false, updatedAt: serverTimestamp() })
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: ref.path,
+          operation: 'update',
+          requestResourceData: { isActive: false }
+        } satisfies SecurityRuleContext);
+        errorEmitter.emit('permission-error', permissionError);
+        throw serverError;
+      });
   }
 }
