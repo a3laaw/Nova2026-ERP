@@ -7,10 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { 
-  Info, CreditCard, Save, Truck, 
-  Calculator, ShieldCheck, FileText, 
-  MapPin, Gavel, AlertTriangle, Key,
-  LayoutGrid
+  Info, Save, Truck, 
+  Calculator, ShieldCheck, 
+  MapPin, Gavel, LayoutGrid
 } from "lucide-react";
 import { 
   Select, 
@@ -27,6 +26,7 @@ import { collection, query, orderBy } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { useAuthContext } from '@/context/auth-context';
 import { SmartDateInput } from '@/components/ui/smart-date-input';
+import { toast } from '@/hooks/use-toast';
 
 interface Props {
   initialData?: Partial<Equipment>;
@@ -40,6 +40,7 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
   const db = useFirestore();
   const companyId = globalUser?.companyId;
 
+  // تهيئة الحالة بكافة المفاتيح لضمان عدم حدوث خطأ Controlled to Uncontrolled
   const [form, setForm] = useState<any>({
     code: '', 
     name: '', 
@@ -56,6 +57,15 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
     salvageValue: '', 
     depreciationMethod: 'hours', 
     isFinanced: false,
+    financierName: '',
+    monthlyInstallment: '',
+    installmentDay: '',
+    supplierId: '',
+    supplierName: '',
+    costMethod: 'hourly',
+    costValue: '',
+    hourlyDepreciationRate: '',
+    hourlyRentalRate: '',
     status: 'available',
     isActive: true,
     ...initialData
@@ -91,7 +101,7 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
               <div className="space-y-2">
                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Code</Label>
                  <Input 
-                   value={form.code} 
+                   value={form.code ?? ''} 
                    onChange={e => setForm({...form, code: e.target.value.toUpperCase()})} 
                    className="h-12 rounded-xl border-2 font-mono font-black text-primary bg-white" 
                  />
@@ -99,14 +109,14 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
               <div className="md:col-span-2 space-y-2">
                  <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'اسم المعدة' : 'Equipment Name'}</Label>
                  <Input 
-                   value={form.name} 
+                   value={form.name ?? ''} 
                    onChange={e => setForm({...form, name: e.target.value})} 
                    className="h-12 rounded-xl border-2 font-bold bg-white" 
                  />
               </div>
               <div className="space-y-2">
                  <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'تصنيف المعدة' : 'Category'}</Label>
-                 <Select value={form.category} onValueChange={(v: EquipmentCategory) => setForm({...form, category: v, isLicensed: ['heavy_machinery', 'vehicle'].includes(v)})}>
+                 <Select value={form.category ?? 'heavy_machinery'} onValueChange={(v: EquipmentCategory) => setForm({...form, category: v, isLicensed: ['heavy_machinery', 'vehicle'].includes(v)})}>
                     <SelectTrigger className="h-12 rounded-xl border-2 font-black bg-white"><SelectValue /></SelectTrigger>
                     <SelectContent>
                        <SelectItem value="heavy_machinery" className="font-bold">آليات ثقيلة (حفار/جرافة)</SelectItem>
@@ -148,12 +158,12 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
                        <Label className="font-black text-sm text-slate-800">{isRtl ? 'هل المعدة ممولة (أقساط)؟' : 'Is it Financed?'}</Label>
                        <p className="text-[9px] text-slate-400 font-bold uppercase">Linked to Bank/Finance Co.</p>
                     </div>
-                    <Switch checked={form.isFinanced} onCheckedChange={v => setForm({...form, isFinanced: v})} />
+                    <Switch checked={form.isFinanced ?? false} onCheckedChange={v => setForm({...form, isFinanced: v})} />
                  </div>
               ) : (
                  <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المورد المؤجر' : 'Renting Supplier'}</Label>
-                    <Select value={form.supplierId} onValueChange={v => {
+                    <Select value={form.supplierId ?? ''} onValueChange={v => {
                        const s = suppliers?.find((x:any) => x.id === v);
                        setForm({...form, supplierId: v, supplierName: s?.name || ''});
                     }}>
@@ -169,7 +179,7 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
                        <Label className="font-black text-sm text-slate-800">{isRtl ? 'مركبة مرور / ترخيص رسمي' : 'Licensed Vehicle'}</Label>
                        <p className="text-[9px] text-slate-400 font-bold uppercase">Requires Plate & Insurance</p>
                     </div>
-                    <Switch checked={form.isLicensed} onCheckedChange={v => setForm({...form, isLicensed: v})} />
+                    <Switch checked={form.isLicensed ?? false} onCheckedChange={v => setForm({...form, isLicensed: v})} />
                  </div>
               )}
            </div>
@@ -178,15 +188,15 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-8 bg-slate-50/50 rounded-[2rem] border-2 border-white shadow-inner animate-in zoom-in-95 text-start">
                  <div className="space-y-1.5">
                     <Label className="text-[10px] font-black uppercase text-slate-400">Financier</Label>
-                    <Input value={form.financierName} onChange={e => setForm({...form, financierName: e.target.value})} className="h-11 rounded-xl border-2 bg-white" placeholder={isRtl ? "البنك أو شركة التمويل" : "Bank Name"} />
+                    <Input value={form.financierName ?? ''} onChange={e => setForm({...form, financierName: e.target.value})} className="h-11 rounded-xl border-2 bg-white" placeholder={isRtl ? "البنك أو شركة التمويل" : "Bank Name"} />
                  </div>
                  <div className="space-y-1.5">
                     <Label className="text-[10px] font-black uppercase text-slate-400">Installment (KWD)</Label>
-                    <Input type="number" value={form.monthlyInstallment} onChange={e => setForm({...form, monthlyInstallment: e.target.value})} className="h-11 rounded-xl border-2 bg-white font-black text-emerald-600" />
+                    <Input type="number" value={form.monthlyInstallment ?? ''} onChange={e => setForm({...form, monthlyInstallment: e.target.value})} className="h-11 rounded-xl border-2 bg-white font-black text-emerald-600" />
                  </div>
                  <div className="space-y-1.5">
                     <Label className="text-[10px] font-black uppercase text-slate-400">Due Day</Label>
-                    <Input type="number" min="1" max="31" value={form.installmentDay} onChange={e => setForm({...form, installmentDay: e.target.value})} className="h-11 rounded-xl border-2 bg-white font-black text-center" />
+                    <Input type="number" min="1" max="31" value={form.installmentDay ?? ''} onChange={e => setForm({...form, installmentDay: e.target.value})} className="h-11 rounded-xl border-2 bg-white font-black text-center" />
                  </div>
               </div>
            )}
@@ -211,22 +221,22 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                  <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase text-slate-400">Chassis / VIN</Label>
-                    <Input value={form.chassisNumber} onChange={e => setForm({...form, chassisNumber: e.target.value})} className="h-12 rounded-xl border-2 font-mono font-bold bg-white" />
+                    <Input value={form.chassisNumber ?? ''} onChange={e => setForm({...form, chassisNumber: e.target.value})} className="h-12 rounded-xl border-2 font-mono font-bold bg-white" />
                  </div>
                  <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'رقم اللوحة / الدفتر' : 'Plate Number'}</Label>
-                    <Input value={form.plateNumber} onChange={e => setForm({...form, plateNumber: e.target.value})} className="h-12 rounded-xl border-2 font-black bg-white" />
+                    <Input value={form.plateNumber ?? ''} onChange={e => setForm({...form, plateNumber: e.target.value})} className="h-12 rounded-xl border-2 font-black bg-white" />
                  </div>
                  <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'انتهاء الدفتر' : 'Reg Expiry'}</Label>
-                    <SmartDateInput value={form.registrationExpiry} onChange={v => setForm({...form, registrationExpiry: v})} />
+                    <SmartDateInput value={form.registrationExpiry ?? ''} onChange={v => setForm({...form, registrationExpiry: v})} />
                  </div>
               </div>
 
               <div className="pt-8 border-t border-slate-100 grid grid-cols-1 md:grid-cols-3 gap-8">
                  <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'نوع التأمين' : 'Insurance Type'}</Label>
-                    <Select value={form.insuranceType} onValueChange={(v: InsuranceType) => setForm({...form, insuranceType: v})}>
+                    <Select value={form.insuranceType ?? 'none'} onValueChange={(v: InsuranceType) => setForm({...form, insuranceType: v})}>
                        <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-white"><SelectValue /></SelectTrigger>
                        <SelectContent>
                           <SelectItem value="none" className="font-bold">بدون تأمين</SelectItem>
@@ -237,11 +247,11 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
                  </div>
                  <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'شركة التأمين' : 'Insurance Company'}</Label>
-                    <Input value={form.insuranceCompany} onChange={e => setForm({...form, insuranceCompany: e.target.value})} className="h-12 rounded-xl border-2 font-bold bg-white" />
+                    <Input value={form.insuranceCompany ?? ''} onChange={e => setForm({...form, insuranceCompany: e.target.value})} className="h-12 rounded-xl border-2 font-bold bg-white" />
                  </div>
                  <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'انتهاء التأمين' : 'Ins Expiry'}</Label>
-                    <SmartDateInput value={form.insuranceExpiry} onChange={v => setForm({...form, insuranceExpiry: v})} />
+                    <SmartDateInput value={form.insuranceExpiry ?? ''} onChange={v => setForm({...form, insuranceExpiry: v})} />
                  </div>
               </div>
 
@@ -273,23 +283,23 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div className="space-y-2">
                    <Label className="text-[10px] font-black uppercase text-slate-400">Purchase Cost (KWD)</Label>
-                   <Input type="number" value={form.purchaseCost} onChange={e => setForm({...form, purchaseCost: e.target.value})} className="h-12 rounded-xl border-2 font-black text-emerald-600 bg-white" />
+                   <Input type="number" value={form.purchaseCost ?? ''} onChange={e => setForm({...form, purchaseCost: e.target.value})} className="h-12 rounded-xl border-2 font-black text-emerald-600 bg-white" />
                 </div>
                 <div className="space-y-2">
                    <Label className="text-[10px] font-black uppercase text-slate-400">Salvage Value (KWD)</Label>
-                   <Input type="number" value={form.salvageValue} onChange={e => setForm({...form, salvageValue: e.target.value})} className="h-12 rounded-xl border-2 font-black bg-white" />
+                   <Input type="number" value={form.salvageValue ?? ''} onChange={e => setForm({...form, salvageValue: e.target.value})} className="h-12 rounded-xl border-2 font-black bg-white" />
                 </div>
                 <div className="space-y-2">
                    <Label className="text-[10px] font-black uppercase text-slate-400">Operating Rate (KWD/HR)</Label>
-                   <Input type="number" step="0.001" value={form.hourlyDepreciationRate} onChange={e => setForm({...form, hourlyDepreciationRate: e.target.value})} className="h-12 rounded-xl border-2 font-black text-primary bg-white" />
+                   <Input type="number" step="0.001" value={form.hourlyDepreciationRate ?? ''} onChange={e => setForm({...form, hourlyDepreciationRate: e.target.value})} className="h-12 rounded-xl border-2 font-black text-primary bg-white" />
                 </div>
              </div>
            ) : (
              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-8 bg-slate-50 rounded-[2rem] border-2 border-white shadow-inner text-start">
                 <div className="space-y-2">
                    <Label className="text-[10px] font-black uppercase text-slate-400">Rental Rate Basis</Label>
-                   <Select value={form.costMethod} onValueChange={(v: any) => setForm({...form, costMethod: v})}>
-                      <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-white"><SelectValue /></SelectTrigger>
+                   <Select value={form.costMethod ?? 'hourly'} onValueChange={(v: any) => setForm({...form, costMethod: v})}>
+                      <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
                       <SelectContent>
                          <SelectItem value="hourly" className="font-bold">بالساعة (KWD/HR)</SelectItem>
                          <SelectItem value="daily" className="font-bold">يومي (KWD/Day)</SelectItem>
@@ -299,7 +309,7 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
                 </div>
                 <div className="space-y-2">
                    <Label className="text-[10px] font-black uppercase text-slate-400">Rental Value</Label>
-                   <Input type="number" step="0.001" value={form.costValue} onChange={e => setForm({...form, costValue: e.target.value})} className="h-12 rounded-xl border-2 font-black text-xl text-orange-600 bg-white" />
+                   <Input type="number" step="0.001" value={form.costValue ?? ''} onChange={e => setForm({...form, costValue: e.target.value})} className="h-12 rounded-xl border-2 font-black text-xl text-orange-600 bg-white" />
                 </div>
              </div>
            )}
