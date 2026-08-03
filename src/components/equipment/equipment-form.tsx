@@ -56,7 +56,7 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
     name: '', 
     category: 'heavy_machinery', 
     ownershipType: 'owned', 
-    manufacturingYear: '',
+    manufacturingYear: '', // Will store 4 digits e.g. "2024"
     isLicensed: false,
     isStreetLicensed: false,
     chassisNumber: '',
@@ -126,6 +126,20 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
         }
       }
     }
+
+    // Final Year Validation
+    if (form.manufacturingYear) {
+      const year = parseInt(form.manufacturingYear);
+      if (year < 1980) {
+        toast({ 
+          variant: "destructive", 
+          title: isRtl ? "سنة غير صالحة" : "Invalid Year", 
+          description: isRtl ? "سنة الصنع لا يمكن أن تكون قبل 1980." : "Manufacturing year cannot be before 1980."
+        });
+        return;
+      }
+    }
+
     onSubmit(form);
   };
 
@@ -152,8 +166,8 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
                  <LayoutGrid className="h-6 w-6" />
               </div>
               <div>
-                 <CardTitle className="text-xl font-black">{isRtl ? 'هوية الأصل المرجعية' : 'Master Identity'}</CardTitle>
-                 <p className="text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-widest">{isRtl ? 'توليد تلقائي للكود بناءً على الفئة' : 'Abbreviation-based Auto Coding'}</p>
+                 <CardTitle className="text-xl font-black">{isRtl ? 'هوية الأصل والفئة' : 'Identity & Category'}</CardTitle>
+                 <p className="text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-widest">{isRtl ? 'توليد تلقائي للكود بناءً على الفئة المختارة' : 'Abbreviation-based Auto Coding'}</p>
               </div>
            </div>
         </CardHeader>
@@ -220,7 +234,28 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                    <div className="space-y-1.5">
                       <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'سنة التصنيع / الموديل' : 'Model Year'}</Label>
-                      <SmartDateInput value={form.manufacturingYear ?? ''} onChange={v => setForm({...form, manufacturingYear: v})} />
+                      <Input 
+                        type="text"
+                        maxLength={4}
+                        placeholder="YYYY"
+                        value={form.manufacturingYear ?? ''} 
+                        onChange={e => {
+                          const val = e.target.value.replace(/\D/g, '').slice(0, 4);
+                          setForm({...form, manufacturingYear: val});
+                        }}
+                        onBlur={() => {
+                          const year = parseInt(form.manufacturingYear);
+                          if (year && year < 1980) {
+                            toast({ 
+                              variant: "destructive", 
+                              title: isRtl ? "سنة غير صالحة" : "Invalid Year", 
+                              description: isRtl ? "سنة الصنع لا يمكن أن تكون قبل 1980." : "Manufacturing year cannot be before 1980."
+                            });
+                            setForm({...form, manufacturingYear: ''});
+                          }
+                        }}
+                        className="h-12 rounded-xl border-2 font-black text-center bg-white" 
+                      />
                    </div>
                    {form.isStreetLicensed ? (
                      <>
@@ -249,7 +284,28 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                     <div className="space-y-1.5">
                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'سنة التصنيع / الموديل' : 'Model Year'}</Label>
-                       <SmartDateInput value={form.manufacturingYear ?? ''} onChange={v => setForm({...form, manufacturingYear: v})} />
+                       <Input 
+                        type="text"
+                        maxLength={4}
+                        placeholder="YYYY"
+                        value={form.manufacturingYear ?? ''} 
+                        onChange={e => {
+                          const val = e.target.value.replace(/\D/g, '').slice(0, 4);
+                          setForm({...form, manufacturingYear: val});
+                        }}
+                        onBlur={() => {
+                          const year = parseInt(form.manufacturingYear);
+                          if (year && year < 1980) {
+                            toast({ 
+                              variant: "destructive", 
+                              title: isRtl ? "سنة غير صالحة" : "Invalid Year", 
+                              description: isRtl ? "سنة الصنع لا يمكن أن تكون قبل 1980." : "Manufacturing year cannot be before 1980."
+                            });
+                            setForm({...form, manufacturingYear: ''});
+                          }
+                        }}
+                        className="h-12 rounded-xl border-2 font-black text-center bg-white" 
+                      />
                     </div>
                     <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'رقم اللوحة' : 'Plate Number'}</Label><Input value={form.plateNumber ?? ''} onChange={e => setForm({...form, plateNumber: e.target.value})} className="h-12 rounded-xl border-2 font-black" /></div>
                     <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'رقم الدفتر' : 'Reg Number'}</Label><Input value={form.registrationNumber ?? ''} onChange={e => setForm({...form, registrationNumber: e.target.value})} className="h-12 rounded-xl border-2" /></div>
@@ -276,11 +332,32 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
               <div className="grid grid-cols-1 md:grid-cols-5 gap-6 animate-in slide-in-from-top-2">
                  <div className="space-y-1.5">
                     <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'سنة التصنيع' : 'Model Year'}</Label>
-                    <SmartDateInput value={form.manufacturingYear ?? ''} onChange={v => setForm({...form, manufacturingYear: v})} />
+                    <Input 
+                        type="text"
+                        maxLength={4}
+                        placeholder="YYYY"
+                        value={form.manufacturingYear ?? ''} 
+                        onChange={e => {
+                          const val = e.target.value.replace(/\D/g, '').slice(0, 4);
+                          setForm({...form, manufacturingYear: val});
+                        }}
+                        onBlur={() => {
+                          const year = parseInt(form.manufacturingYear);
+                          if (year && year < 1980) {
+                            toast({ 
+                              variant: "destructive", 
+                              title: isRtl ? "سنة غير صالحة" : "Invalid Year", 
+                              description: isRtl ? "سنة الصنع لا يمكن أن تكون قبل 1980." : "Manufacturing year cannot be before 1980."
+                            });
+                            setForm({...form, manufacturingYear: ''});
+                          }
+                        }}
+                        className="h-12 rounded-xl border-2 font-black text-center bg-white" 
+                      />
                  </div>
                  <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الرقم التسلسلي' : 'Serial No'}</Label><Input value={form.serialNumber ?? ''} onChange={e => setForm({...form, serialNumber: e.target.value})} className="h-12 rounded-xl border-2 font-mono" /></div>
                  <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'القدرة (KVA/HP)' : 'Capacity'}</Label><Input value={form.capacity ?? ''} onChange={e => setForm({...form, capacity: e.target.value})} className="h-12 rounded-xl border-2 font-black text-secondary" /></div>
-                 <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'موعد السيرفس القادم' : 'Next Service'}</Label><SmartDateInput value={form.nextServiceDate ?? ''} onChange={v => setForm({...form, nextServiceDate: v})} /></div>
+                 <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'موعد الصيانة القادم' : 'Next Service'}</Label><SmartDateInput value={form.nextServiceDate ?? ''} onChange={v => setForm({...form, nextServiceDate: v})} /></div>
                  <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'انتهاء شهادة السلامة' : 'Safety Cert'}</Label><SmartDateInput value={form.safetyCertExpiry ?? ''} onChange={v => setForm({...form, safetyCertExpiry: v})} /></div>
               </div>
             )}
@@ -296,7 +373,7 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
                        <SelectContent className="rounded-xl">
                           <SelectItem value="new" className="font-bold">{isRtl ? 'جديدة (New)' : 'New'}</SelectItem>
                           <SelectItem value="used_good" className="font-bold">{isRtl ? 'مستعملة - حالة جيدة' : 'Used - Good'}</SelectItem>
-                          <SelectItem value="under_maintenance" className="font-bold text-rose-600">{isRtl ? 'تحتحت الصيانة' : 'Maintenance'}</SelectItem>
+                          <SelectItem value="under_maintenance" className="font-bold text-rose-600">{isRtl ? 'تحت الصيانة' : 'Maintenance'}</SelectItem>
                        </SelectContent>
                     </Select>
                  </div>
@@ -360,12 +437,12 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
       {/* 4. المعالجة المالية */}
       <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
         <CardHeader className="bg-slate-50/50 p-8 border-b">
-           <AdminSectionHeader title={isRtl ? 'المعطيات المالية والتشغيليّة' : 'Finance & Rates'} sub={isRtl ? 'تحديد تعرفة الساعة وتكاليف التشغيل' : 'Cost Recovery Metrics'} icon={Calculator} />
+           <AdminSectionHeader title={isRtl ? 'المعطيات المالية والتشغيلية' : 'Finance & Rates'} sub={isRtl ? 'تحديد تعرفة الساعة وتكاليف التشغيل' : 'Cost Recovery Metrics'} icon={Calculator} />
         </CardHeader>
         <CardContent className="p-8 space-y-8 text-start">
            {isOwned ? (
              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'سعر الشراء الأصل' : 'Purchase Cost'}</Label><Input type="number" value={form.purchaseCost ?? ''} onChange={e => setForm({...form, purchaseCost: e.target.value})} className="h-12 rounded-xl border-2 font-black text-emerald-600 bg-white" /></div>
+                <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'سعر شراء الأصل' : 'Purchase Cost'}</Label><Input type="number" value={form.purchaseCost ?? ''} onChange={e => setForm({...form, purchaseCost: e.target.value})} className="h-12 rounded-xl border-2 font-black text-emerald-600 bg-white" /></div>
                 <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'القيمة التخريدية' : 'Salvage Value'}</Label><Input type="number" value={form.salvageValue ?? ''} onChange={e => setForm({...form, salvageValue: e.target.value})} className="h-12 rounded-xl border-2 font-black bg-white" placeholder="1" /></div>
                 <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase text-primary flex items-center gap-2">
