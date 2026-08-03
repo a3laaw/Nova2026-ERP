@@ -31,24 +31,28 @@ service cloud.firestore {
       let company = exists(/databases/$(database)/documents/companies/$(companyId)) ? get(/databases/$(database)/documents/companies/$(companyId)).data : null;
       
       return isAuthenticated() && (
+        // مسار الصلاحيات المكتوبة
         (globalUser != null && globalUser.companyId == companyId && (globalUser.roleCode == 'ADMIN' || globalUser.role == 'admin')) ||
+        // مسار الملكية المطلقة (Sovereign Owner)
         (company != null && company.ownerUid == request.auth.uid) ||
+        // مسار المطور العالمي
         (globalUser != null && globalUser.isDeveloper == true)
       );
     }
 
     // --- 3. قواعد الهوية العالمية (Global Identity) ---
-    // تم التحصين لمنع تصعيد الصلاحيات يدوياً
     match /global_users/{uid} {
       allow read: if isAuthenticated() && (request.auth.uid == uid || isAdmin(resource.data.companyId));
       
-      // السماح بإنشاء الملف الشخصي فقط لصاحب العلاقة أو الأدمن، مع منع وضع صلاحيات مطور يدوياً
+      // تحصين الإنشاء: منع تصعيد الصلاحيات (Privilege Escalation)
       allow create: if isAuthenticated() && (
-        (request.auth.uid == uid && request.resource.data.get('isDeveloper', false) == false) || 
+        // مسار المستخدم يسجل نفسه: ممنوع من تحديد أي صلاحيات حساسة
+        (request.auth.uid == uid && !request.resource.data.keys().hasAny(['isDeveloper', 'roleCode', 'role'])) || 
+        // مسار الأدمن يضيف موظف: مسموح له تحديد الصلاحيات للموظف الجديد
         isAdmin(request.resource.data.companyId)
       );
       
-      // منع تغيير الحقول الحساسة (isDeveloper, roleCode, companyId) إلا من خلال الأدمن أو المطور
+      // منع تغيير الحقول الحساسة إلا من خلال الأدمن أو المطور
       allow update: if isAuthenticated() && (
         (request.auth.uid == uid && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isDeveloper', 'roleCode', 'role', 'companyId'])) || 
         isAdmin(resource.data.companyId) || 
@@ -58,15 +62,14 @@ service cloud.firestore {
     
     // --- 4. قواعد المنشآت (Multi-Tenant Core) ---
     match /companies/{companyId} {
-      // تصحيح: القراءة فقط لأعضاء الشركة أو الأدمن
+      // القراءة فقط لأعضاء الشركة أو الأدمن لضمان الخصوصية
       allow read: if belongsToCompany(companyId) || isAdmin(companyId); 
       
-      // تصحيح: التحقق من أن منشئ الشركة هو نفسه المالك المسجل في البيانات
+      // التحقق من أن منشئ الشركة هو المالك الفعلي المسجل
       allow create: if isAuthenticated() && request.resource.data.ownerUid == request.auth.uid; 
       
       allow update: if isAdmin(companyId);
 
-      // السماح للمدير بكتابة العدادات التسلسلية
       match /counters/{id} {
         allow read, write: if isAdmin(companyId);
       }

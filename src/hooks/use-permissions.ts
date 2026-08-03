@@ -2,21 +2,30 @@
 
 import { useCallback, useMemo } from 'react';
 import { useAuthContext } from '@/context/auth-context';
+import { useCompanyContext } from '@/context/company-context';
 import { hasResourceAccess, canViewModule } from '@/lib/permissions/engine';
 import { Action } from '@/lib/permissions/types';
 
 export function usePermissions() {
   const { roleData, globalUser, user, loading } = useAuthContext();
+  const { company } = useCompanyContext();
   
   const role = roleData as any;
   
   const isAdmin = useMemo(() => {
-    // السيادة المعلوماتية: إذا كان السجل العالمي يحمل كود ADMIN فهو مدير مطلق
-    // حتى لو لم تتوفر بيانات الأدوار المحلية بعد (حالة المنشآت الجديدة)
-    return globalUser?.roleCode === 'ADMIN' || 
-           globalUser?.role?.toLowerCase() === 'admin' || 
-           globalUser?.isDeveloper === true;
-  }, [globalUser]);
+    // السيادة المعلوماتية:
+    // 1. إذا كان المالك المسجل في وثيقة الشركة (Sovereign Owner)
+    const isOwner = company && globalUser && company.ownerUid === globalUser.uid;
+    
+    // 2. إذا كان يحمل كود ADMIN أو دور إداري
+    const isExplicitAdmin = globalUser?.roleCode === 'ADMIN' || 
+                           globalUser?.role?.toLowerCase() === 'admin';
+                           
+    // 3. حالة المطور
+    const isDev = globalUser?.isDeveloper === true;
+
+    return isOwner || isExplicitAdmin || isDev;
+  }, [globalUser, company]);
 
   const effectivePermissions = useMemo(() => {
     if (isAdmin) return ['*'];

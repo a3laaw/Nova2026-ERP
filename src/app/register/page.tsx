@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -79,11 +78,10 @@ export default function RegisterPage() {
       const globalUserRef = doc(db, 'global_users', uid);
       const globalUserData = {
         companyId,
-        role: 'admin',
-        roleCode: 'ADMIN',
+        // ملاحظة: لا نرسل role أو roleCode هنا امتثالاً للقواعد الأمنية الجديدة
+        // النظام سيتعرف على المستخدم كأدمن من خلال حقل ownerUid في وثيقة الشركة
         fullName: formData.contactName, 
         username: formData.username || formData.email.split('@')[0],
-        isDeveloper: false,
         email: formData.email,
         activity: formData.activity, 
         isActive: false, 
@@ -99,8 +97,6 @@ export default function RegisterPage() {
         email: formData.email,
         username: formData.username || formData.email.split('@')[0],
         joinedAt: serverTimestamp(),
-        role: 'admin',
-        roleCode: 'ADMIN',
         isActive: false
       });
 
