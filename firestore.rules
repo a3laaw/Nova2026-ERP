@@ -96,6 +96,7 @@ service cloud.firestore {
         allow update: if isAdmin(companyId) || (isAuthenticated() && request.auth.uid == uid);
       }
 
+      // سجل المعدات: القراءة لكل أعضاء الشركة، الكتابة للأدمن فقط (تُغطى تلقائيًا عبر allAdminCollections)
       match /{allAdminCollections=**} {
         allow read: if belongsToCompany(companyId);
         allow write: if isAdmin(companyId);

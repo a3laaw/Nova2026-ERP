@@ -58,6 +58,10 @@ export const paths = {
   appointments: (companyId: string) => getTenantPath(companyId, 'appointments'),
   fieldVisits: (companyId: string, transactionId: string) => `${getTenantPath(companyId, 'transactions')}/${transactionId}/fieldVisits`,
   
+  // سجل المعدات والتخصيص
+  equipment: (companyId: string) => getTenantPath(companyId, 'equipment'),
+  equipmentAssignments: (companyId: string) => getTenantPath(companyId, 'equipmentAssignments'),
+
   // New Paths for IPCs and Rate Cards
   ipcs: (companyId: string) => getTenantPath(companyId, 'ipcs'),
   costRateCards: (companyId: string) => getTenantPath(companyId, 'costRateCards'),
