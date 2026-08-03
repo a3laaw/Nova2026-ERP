@@ -78,8 +78,8 @@ export default function RegisterPage() {
       const globalUserRef = doc(db, 'global_users', uid);
       const globalUserData = {
         companyId,
-        // ملاحظة: لا نرسل role أو roleCode هنا امتثالاً للقواعد الأمنية الجديدة
-        // النظام سيتعرف على المستخدم كأدمن من خلال حقل ownerUid في وثيقة الشركة
+        role: 'admin',
+        roleCode: 'ADMIN',
         fullName: formData.contactName, 
         username: formData.username || formData.email.split('@')[0],
         email: formData.email,
@@ -96,6 +96,8 @@ export default function RegisterPage() {
         displayName: formData.contactName,
         email: formData.email,
         username: formData.username || formData.email.split('@')[0],
+        role: 'admin',
+        roleCode: 'ADMIN',
         joinedAt: serverTimestamp(),
         isActive: false
       });

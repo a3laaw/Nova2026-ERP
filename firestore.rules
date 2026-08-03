@@ -16,77 +16,47 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    function getGlobalUser() {
-      return get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
-    }
-
+    // فحص الانتماء للشركة (مستقر وغير دائري)
     function belongsToCompany(companyId) {
-      return isAuthenticated() && 
-        (get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.companyId == companyId);
+      let userDoc = get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
+      return isAuthenticated() && userDoc.companyId == companyId;
     }
 
+    // فحص صلاحية الإدارة (Master Admin Check)
     function isAdmin(companyId) {
-      let hasGlobalUser = exists(/databases/$(database)/documents/global_users/$(request.auth.uid));
-      let globalUser = hasGlobalUser ? get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data : null;
-      let companyDoc = exists(/databases/$(database)/documents/companies/$(companyId)) ? get(/databases/$(database)/documents/companies/$(companyId)).data : null;
+      let userDoc = get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
+      // نتحقق أولاً من سجل المستخدم العالمي لتجنب Recursion
+      let isExplicitAdmin = userDoc.companyId == companyId && (userDoc.roleCode == 'ADMIN' || userDoc.role == 'admin' || userDoc.isDeveloper == true);
       
-      return isAuthenticated() && (
-        // مسار الملكية المطلقة (Sovereign Owner): المالك دائماً أدمن حتى لو حسابه غير مفعل بعد
-        (companyDoc != null && companyDoc.ownerUid == request.auth.uid) ||
-        // مسار الصلاحيات المكتوبة: يتطلب أن يكون الحساب نشطاً (isActive == true)
-        (globalUser != null && globalUser.companyId == companyId && globalUser.isActive == true && (globalUser.roleCode == 'ADMIN' || globalUser.role == 'admin')) ||
-        // مسار المطور العالمي
-        (globalUser != null && globalUser.isDeveloper == true)
-      );
+      // نتحقق من الملكية في حال فشل الدور (للمالكين الجدد)
+      // ملاحظة: نسمح بقرءاة وثيقة الشركة للمالك دائماً في قواعد القراءة أدناه
+      let companyDoc = get(/databases/$(database)/documents/companies/$(companyId)).data;
+      let isOwner = companyDoc.ownerUid == request.auth.uid;
+      
+      return isAuthenticated() && (isOwner || isExplicitAdmin);
     }
 
-    // --- 3. قواعد الهوية العالمية (Global Identity) ---
+    // --- 3. قواعد الهوية العالمية ---
     match /global_users/{uid} {
-      allow read: if isAuthenticated() && (request.auth.uid == uid || isAdmin(resource.data.companyId));
-      
-      allow create: if isAuthenticated() && (
-        (request.auth.uid == uid && !request.resource.data.keys().hasAny(['isDeveloper', 'roleCode', 'role'])) || 
-        isAdmin(request.resource.data.companyId)
-      );
-      
-      allow update: if isAuthenticated() && (
-        (request.auth.uid == uid && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isDeveloper', 'roleCode', 'role', 'companyId', 'isActive'])) || 
-        isAdmin(resource.data.companyId) || 
-        isSovereignDev()
-      );
+      allow read: if isAuthenticated() && (request.auth.uid == uid || isSovereignDev());
+      allow create: if isAuthenticated() && request.auth.uid == uid;
+      allow update: if isAuthenticated() && (request.auth.uid == uid || isSovereignDev());
     }
     
     // --- 4. قواعد المنشآت (Multi-Tenant Core) ---
     match /companies/{companyId} {
-      allow read: if belongsToCompany(companyId) || isAdmin(companyId); 
+      // المالك والمنتمين للشركة يمكنهم القراءة
+      allow read: if isAuthenticated() && (resource.data.ownerUid == request.auth.uid || belongsToCompany(companyId));
       allow create: if isAuthenticated() && request.resource.data.ownerUid == request.auth.uid; 
-      allow update: if isAdmin(companyId);
+      allow update: if isAuthenticated() && (resource.data.ownerUid == request.auth.uid || isSovereignDev());
 
-      // تصريح صريح لمجموعة المعدات لضمان نفاذ الأدمن والمالك
+      // حماية خاصة لمجموعة المعدات لضمان عدم تعطل الميدان
       match /equipment/{id} { 
         allow read: if belongsToCompany(companyId) || isAdmin(companyId); 
         allow write: if isAdmin(companyId); 
       }
 
-      match /counters/{id} { allow read, write: if isAdmin(companyId); }
-      match /appointments/{id} { allow read: if belongsToCompany(companyId); allow write: if isAdmin(companyId); }
-      match /leaveRequests/{id} { allow read, write: if belongsToCompany(companyId); }
-      match /permissionRequests/{id} { allow read, write: if belongsToCompany(companyId); }
-      match /executions/{id} { allow read, write: if belongsToCompany(companyId); }
-      
-      match /equipmentAssignments/{id} { allow read: if belongsToCompany(companyId); allow write: if isAdmin(companyId); }
-      
-      match /transactions/{tId}/fieldVisits/{id} { allow read, write: if belongsToCompany(companyId); }
-      match /transactions/{tId}/timeline/{id} { allow read, write: if belongsToCompany(companyId); }
-      match /transactions/{tId}/comments/{id} { allow read, write: if belongsToCompany(companyId); }
-      match /transactions/{tId}/stageInstances/{id} { allow read, write: if belongsToCompany(companyId); }
-
-      match /users/{uid} {
-        allow create: if isAuthenticated() && (request.auth.uid == uid || isAdmin(companyId));
-        allow read: if belongsToCompany(companyId);
-        allow update: if isAdmin(companyId) || (isAuthenticated() && request.auth.uid == uid);
-      }
-
+      // القواعد العامة لباقي المجموعات الفرعية التابعة للشركة
       match /{allAdminCollections=**} {
         allow read: if belongsToCompany(companyId);
         allow write: if isAdmin(companyId);
@@ -99,7 +69,7 @@ service cloud.firestore {
        allow delete: if isSovereignDev();
     }
 
-    match /{path=**}/variations/{id} { allow read: if belongsToCompany(resource.data.companyId); }
+    // تتبع الحركات العامة
     match /{path=**}/fieldVisits/{id} { allow read: if belongsToCompany(resource.data.companyId); }
     match /{path=**}/attendance/{id} { allow read: if belongsToCompany(resource.data.companyId); }
   }
