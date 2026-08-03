@@ -23,11 +23,7 @@ export class WorkHoursService {
     return doc(this.db, 'companies', this.companyId, 'settings', WORK_HOURS_DOC_ID);
   }
 
-<<<<<<< HEAD
-  async getSettings(): Promise<WorkHoursSettings | null> {
-=======
   async getSettings(): Promise<WorkHoursSettings> {
->>>>>>> a712178cc9542615f42bbaa9eb1031c6cca436c8
     try {
       const snap = await getDoc(this.getDocRef());
       const defaults = this.getDefaultSettings();
@@ -40,16 +36,6 @@ export class WorkHoursService {
           architectural: { ...defaults.architectural, ...data.architectural },
           meetingRooms: { ...defaults.meetingRooms, ...data.meetingRooms },
           fieldWork: { ...defaults.fieldWork, ...data.fieldWork },
-<<<<<<< HEAD
-        } as WorkHoursSettings;
-      }
-    } catch (e) {
-      console.warn("Failed to fetch settings, using defaults.");
-    }
-    
-    // فك قفل الرادار للمنشآت الجديدة بإعادة القيم الافتراضية فوراً
-    return { ...this.getDefaultSettings(), companyId: this.companyId } as WorkHoursSettings;
-=======
           companyId: this.companyId
         } as WorkHoursSettings;
       }
@@ -59,7 +45,6 @@ export class WorkHoursService {
       console.warn("Using local defaults due to fetch error:", e);
       return { ...this.getDefaultSettings(), companyId: this.companyId } as WorkHoursSettings;
     }
->>>>>>> a712178cc9542615f42bbaa9eb1031c6cca436c8
   }
 
   async saveSettings(settings: Partial<WorkHoursSettings>, userId: string) {

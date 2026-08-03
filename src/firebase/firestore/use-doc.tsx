@@ -1,43 +1,47 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import { onSnapshot, DocumentReference, DocumentData, FirestoreError } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
+import { onSnapshot, DocumentReference, DocumentData, FirestoreError, refEqual } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 /**
  * خطاف جلب المستندات السيادي المحصن (Sovereign Hardened Document Hook).
- * محصن ضد تكرار التحديث عبر بصمة البيانات العميقة.
+ * يستخدم refEqual لضمان استقرار الاشتراك الميداني.
  */
 export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | null) {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(docRef !== null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
   
-  const lastDataHashRef = useRef<string>("");
+  const [stableRef, setStableRef] = useState<DocumentReference<any, any> | null>(docRef);
 
   useEffect(() => {
     if (!docRef) {
+      if (stableRef !== null) setStableRef(null);
+      return;
+    }
+
+    if (!stableRef || !refEqual(docRef, stableRef)) {
+      setStableRef(docRef);
+    }
+  }, [docRef, stableRef]);
+
+  useEffect(() => {
+    if (!stableRef) {
       setData(null);
       setLoading(false);
-      lastDataHashRef.current = "";
+      setError(null);
       return;
     }
 
     setLoading(true);
 
     const unsubscribe = onSnapshot(
-      docRef,
+      stableRef,
       (snapshot) => {
         const docData = snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as T) : null;
-        
-        // مقارنة البصمة العميقة (Deep Hash Guard)
-        const currentHash = JSON.stringify(docData);
-        if (currentHash !== lastDataHashRef.current) {
-          lastDataHashRef.current = currentHash;
-          setData(docData);
-        }
-        
+        setData(docData);
         setLoading(false);
       },
       (serverError: FirestoreError) => {
@@ -45,7 +49,7 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | n
         setError(serverError);
         if (serverError.code === 'permission-denied') {
           errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: docRef.path,
+            path: stableRef.path,
             operation: 'get',
           } satisfies SecurityRuleContext));
         }
@@ -53,7 +57,7 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<any, any> | n
     );
 
     return () => unsubscribe();
-  }, [docRef]);
+  }, [stableRef]);
 
   return { data, loading, error };
 }
