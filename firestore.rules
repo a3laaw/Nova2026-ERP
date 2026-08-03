@@ -28,13 +28,13 @@ service cloud.firestore {
     function isAdmin(companyId) {
       let hasGlobalUser = exists(/databases/$(database)/documents/global_users/$(request.auth.uid));
       let globalUser = hasGlobalUser ? get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data : null;
-      let company = exists(/databases/$(database)/documents/companies/$(companyId)) ? get(/databases/$(database)/documents/companies/$(companyId)).data : null;
+      let companyDoc = exists(/databases/$(database)/documents/companies/$(companyId)) ? get(/databases/$(database)/documents/companies/$(companyId)).data : null;
       
       return isAuthenticated() && (
-        // مسار الصلاحيات المكتوبة: يتطلب الآن أن يكون الحساب نشطاً (isActive == true)
+        // مسار الملكية المطلقة (Sovereign Owner): المالك دائماً أدمن حتى لو حسابه غير مفعل بعد
+        (companyDoc != null && companyDoc.ownerUid == request.auth.uid) ||
+        // مسار الصلاحيات المكتوبة: يتطلب أن يكون الحساب نشطاً (isActive == true)
         (globalUser != null && globalUser.companyId == companyId && globalUser.isActive == true && (globalUser.roleCode == 'ADMIN' || globalUser.role == 'admin')) ||
-        // مسار الملكية المطلقة (Sovereign Owner): المالك المسجل في الشركة دائماً أدمن عليها
-        (company != null && company.ownerUid == request.auth.uid) ||
         // مسار المطور العالمي
         (globalUser != null && globalUser.isDeveloper == true)
       );
@@ -62,14 +62,18 @@ service cloud.firestore {
       allow create: if isAuthenticated() && request.resource.data.ownerUid == request.auth.uid; 
       allow update: if isAdmin(companyId);
 
+      // تصريح صريح لمجموعة المعدات لضمان نفاذ الأدمن والمالك
+      match /equipment/{id} { 
+        allow read: if belongsToCompany(companyId) || isAdmin(companyId); 
+        allow write: if isAdmin(companyId); 
+      }
+
       match /counters/{id} { allow read, write: if isAdmin(companyId); }
       match /appointments/{id} { allow read: if belongsToCompany(companyId); allow write: if isAdmin(companyId); }
       match /leaveRequests/{id} { allow read, write: if belongsToCompany(companyId); }
       match /permissionRequests/{id} { allow read, write: if belongsToCompany(companyId); }
       match /executions/{id} { allow read, write: if belongsToCompany(companyId); }
       
-      // تصريح صريح لمجموعات المعدات لضمان الوصول الفوري للأدمن
-      match /equipment/{id} { allow read: if belongsToCompany(companyId); allow write: if isAdmin(companyId); }
       match /equipmentAssignments/{id} { allow read: if belongsToCompany(companyId); allow write: if isAdmin(companyId); }
       
       match /transactions/{tId}/fieldVisits/{id} { allow read, write: if belongsToCompany(companyId); }

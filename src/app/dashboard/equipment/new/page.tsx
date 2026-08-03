@@ -8,7 +8,7 @@ import { useLanguage } from '@/context/language-context';
 import { EquipmentService } from '@/services/equipment-service';
 import { EquipmentForm } from '@/components/equipment/equipment-form';
 import { toast } from '@/hooks/use-toast';
-import { Truck, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -22,24 +22,18 @@ export default function NewEquipmentPage() {
 
   const [loading, setLoading] = useState(false);
 
-  const handleSave = async (formData: any) => {
+  const handleSave = (formData: any) => {
     if (!db || !companyId || !user) return;
     
     setLoading(true);
-    try {
-      const equipmentService = new EquipmentService(db, companyId);
-      await equipmentService.createEquipment(formData, user.uid);
-      toast({ title: isRtl ? "تمت إضافة المعدة بنجاح" : "Equipment Registered" });
-      router.push('/dashboard/equipment');
-    } catch (e: any) {
-      toast({ 
-        variant: "destructive", 
-        title: isRtl ? "فشل حفظ البيانات" : "Save Failed",
-        description: e.message || (isRtl ? "حدث خطأ غير متوقع أثناء معالجة الطلب." : "An unexpected error occurred.")
-      });
-    } finally {
-      setLoading(false);
-    }
+    const equipmentService = new EquipmentService(db, companyId);
+    
+    // Pattern 1: إطلاق العملية دون انتظار (Non-blocking)
+    // نعتمد على التوجيه المباشر؛ وفي حال حدوث خطأ سيتكفل Error Emitter بعرضه
+    equipmentService.createEquipment(formData, user.uid);
+    
+    toast({ title: isRtl ? "تم إرسال طلب الإضافة" : "Add request sent" });
+    router.push('/dashboard/equipment');
   };
 
   return (

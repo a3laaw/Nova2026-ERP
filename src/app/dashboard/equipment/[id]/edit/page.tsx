@@ -11,7 +11,7 @@ import { EquipmentService } from '@/services/equipment-service';
 import { EquipmentForm } from '@/components/equipment/equipment-form';
 import { Equipment } from '@/types/equipment';
 import { toast } from '@/hooks/use-toast';
-import { Truck, ArrowRight, Loader2 } from 'lucide-react';
+import { ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -33,20 +33,15 @@ export default function EditEquipmentPage() {
   
   const { data: equipment, loading: fetchLoading } = useDoc<Equipment>(equipRef);
 
-  const handleSave = async (formData: any) => {
+  const handleSave = (formData: any) => {
     if (!db || !companyId || !user) return;
     
     setLoading(true);
-    try {
-      const equipmentService = new EquipmentService(db, companyId);
-      await equipmentService.updateEquipment(equipId, formData, user.uid);
-      toast({ title: t('saved') });
-      router.push('/dashboard/equipment');
-    } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
-    } finally {
-      setLoading(false);
-    }
+    const equipmentService = new EquipmentService(db, companyId);
+    equipmentService.updateEquipment(equipId, formData, user.uid);
+    
+    toast({ title: t('saved') });
+    router.push('/dashboard/equipment');
   };
 
   if (fetchLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
