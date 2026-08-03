@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { 
   Info, CreditCard, Save, Truck, 
   Calculator, ShieldCheck, FileText, 
-  MapPin, Gavel, AlertTriangle, Key
+  MapPin, Gavel, AlertTriangle, Key,
+  LayoutGrid
 } from "lucide-react";
 import { 
   Select, 
@@ -73,7 +74,7 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
     <div className="space-y-8 text-start pb-20 animate-in fade-in duration-700 bg-transparent">
       
       {/* 1. Basic Identity Section */}
-      <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white/80 backdrop-blur-md ring-1 ring-black/5 overflow-hidden">
+      <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
         <CardHeader className="bg-primary/5 p-8 border-b">
            <div className="flex items-center gap-4">
               <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center text-primary shadow-sm border border-primary/10">
@@ -121,10 +122,10 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
       </Card>
 
       {/* 2. Ownership & Financing Section */}
-      <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white/80 backdrop-blur-md ring-1 ring-black/5 overflow-hidden">
+      <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
         <CardHeader className="bg-white p-8 border-b">
            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 text-start">
                  <div className="h-12 w-12 bg-blue-50/50 rounded-2xl flex items-center justify-center text-blue-600 shadow-sm border border-blue-100">
                     <ShieldCheck className="h-6 w-6" />
                  </div>
@@ -140,7 +141,7 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
            </div>
         </CardHeader>
         <CardContent className="p-8 space-y-8">
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-start">
               {isOwned ? (
                  <div className="flex items-center justify-between p-6 bg-primary/5 rounded-[2rem] border-2 border-primary/10">
                     <div className="space-y-1">
@@ -174,7 +175,7 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
            </div>
 
            {form.isFinanced && isOwned && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-8 bg-slate-50/50 rounded-[2rem] border-2 border-white shadow-inner animate-in zoom-in-95">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-8 bg-slate-50/50 rounded-[2rem] border-2 border-white shadow-inner animate-in zoom-in-95 text-start">
                  <div className="space-y-1.5">
                     <Label className="text-[10px] font-black uppercase text-slate-400">Financier</Label>
                     <Input value={form.financierName} onChange={e => setForm({...form, financierName: e.target.value})} className="h-11 rounded-xl border-2 bg-white" placeholder={isRtl ? "البنك أو شركة التمويل" : "Bank Name"} />
@@ -194,7 +195,7 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
 
       {/* 3. Administrative & Licensing Section (Conditional) */}
       {showAdminSection && (
-        <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white/80 backdrop-blur-md ring-1 ring-black/5 overflow-hidden animate-in slide-in-from-top-4 duration-500">
+        <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 animate-in slide-in-from-top-4 duration-500">
            <CardHeader className="bg-slate-50/80 p-8 border-b">
               <div className="flex items-center gap-4 text-start">
                  <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center text-blue-600 shadow-sm border border-blue-100">
@@ -255,7 +256,7 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
       )}
 
       {/* 4. Financial & Operating Section */}
-      <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white/80 backdrop-blur-md ring-1 ring-black/5 overflow-hidden">
+      <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
         <CardHeader className="bg-slate-50/50 p-8 border-b">
            <div className="flex items-center gap-4 text-start">
               <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center text-emerald-600 shadow-sm border border-emerald-100">
@@ -284,7 +285,7 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
                 </div>
              </div>
            ) : (
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-8 bg-slate-50 rounded-[2rem] border-2 border-white shadow-inner">
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-8 bg-slate-50 rounded-[2rem] border-2 border-white shadow-inner text-start">
                 <div className="space-y-2">
                    <Label className="text-[10px] font-black uppercase text-slate-400">Rental Rate Basis</Label>
                    <Select value={form.costMethod} onValueChange={(v: any) => setForm({...form, costMethod: v})}>
