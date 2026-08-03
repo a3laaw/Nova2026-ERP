@@ -4,10 +4,9 @@ import {
   Firestore, 
   collection, 
   doc, 
-  addDoc, 
-  updateDoc, 
   serverTimestamp,
-  setDoc
+  setDoc,
+  updateDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { Equipment } from '@/types/equipment';
@@ -16,12 +15,14 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
 
 /**
  * خدمة إدارة المعدات والآليات (Equipment Service).
- * تم تحديثها لتتوافق مع Pattern 1 (Non-blocking mutations) وتفعيل محرك الأخطاء السياقية.
+ * تم تحصينها بنظام الأخطاء السياقية ونمط الحفظ غير الحاصر.
  */
 export class EquipmentService {
   constructor(private db: Firestore, private companyId: string) {}
 
   createEquipment(data: Partial<Equipment>, userId: string) {
+    if (!this.db || !this.companyId) return;
+
     const path = paths.equipment(this.companyId);
     const equipRef = doc(collection(this.db, path));
     
@@ -29,23 +30,23 @@ export class EquipmentService {
       ...data,
       id: equipRef.id,
       companyId: this.companyId,
-      status: 'available',
+      status: data.status || 'available',
       isActive: true,
       createdBy: userId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
     
-    // تنفيذ الكتابة بدون await (Optimistic Write)
+    // تنفيذ الكتابة بنمط Pattern 1 (بدون await)
     setDoc(equipRef, docData)
       .catch(async (serverError) => {
+        // إنشاء خطأ سياقي غني لإرشاد المبرمج الآلي
         const permissionError = new FirestorePermissionError({
           path: equipRef.path,
           operation: 'create',
           requestResourceData: docData
         } satisfies SecurityRuleContext);
 
-        // إرسال الخطأ للمستمع العالمي ليظهر في واجهة المطور/المالك
         errorEmitter.emit('permission-error', permissionError);
       });
       
@@ -53,8 +54,7 @@ export class EquipmentService {
   }
 
   updateEquipment(id: string, data: Partial<Equipment>, userId: string) {
-    const path = paths.equipment(this.companyId);
-    const ref = doc(this.db, path, id);
+    const ref = doc(this.db, paths.equipment(this.companyId), id);
     const docData = {
       ...data,
       updatedBy: userId,
@@ -69,19 +69,6 @@ export class EquipmentService {
           requestResourceData: docData
         } satisfies SecurityRuleContext);
 
-        errorEmitter.emit('permission-error', permissionError);
-      });
-  }
-
-  deleteEquipment(id: string) {
-    const ref = doc(this.db, paths.equipment(this.companyId), id);
-    updateDoc(ref, { isActive: false, updatedAt: serverTimestamp() })
-      .catch(async (serverError) => {
-        const permissionError = new FirestorePermissionError({
-          path: ref.path,
-          operation: 'update',
-          requestResourceData: { isActive: false }
-        } satisfies SecurityRuleContext);
         errorEmitter.emit('permission-error', permissionError);
       });
   }
