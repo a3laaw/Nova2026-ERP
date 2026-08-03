@@ -31,9 +31,9 @@ service cloud.firestore {
       let company = exists(/databases/$(database)/documents/companies/$(companyId)) ? get(/databases/$(database)/documents/companies/$(companyId)).data : null;
       
       return isAuthenticated() && (
-        // مسار الصلاحيات المكتوبة
-        (globalUser != null && globalUser.companyId == companyId && (globalUser.roleCode == 'ADMIN' || globalUser.role == 'admin')) ||
-        // مسار الملكية المطلقة (Sovereign Owner)
+        // مسار الصلاحيات المكتوبة: يتطلب الآن أن يكون الحساب نشطاً (isActive == true)
+        (globalUser != null && globalUser.companyId == companyId && globalUser.isActive == true && (globalUser.roleCode == 'ADMIN' || globalUser.role == 'admin')) ||
+        // مسار الملكية المطلقة (Sovereign Owner): المالك المسجل في الشركة دائماً أدمن عليها
         (company != null && company.ownerUid == request.auth.uid) ||
         // مسار المطور العالمي
         (globalUser != null && globalUser.isDeveloper == true)
@@ -52,9 +52,11 @@ service cloud.firestore {
         isAdmin(request.resource.data.companyId)
       );
       
-      // منع تغيير الحقول الحساسة إلا من خلال الأدمن أو المطور
+      // منع تغيير الحقول الحساسة (بما فيها isActive) إلا من خلال الأدمن أو المطور
       allow update: if isAuthenticated() && (
-        (request.auth.uid == uid && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isDeveloper', 'roleCode', 'role', 'companyId'])) || 
+        // المستخدم يعدل ملفه: ممنوع يغير دوره أو يفعل حسابه بنفسه
+        (request.auth.uid == uid && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isDeveloper', 'roleCode', 'role', 'companyId', 'isActive'])) || 
+        // الأدمن أو المطور يعدل: مسموح لهم كامل الصلاحية للتفعيل والترفيع
         isAdmin(resource.data.companyId) || 
         isSovereignDev()
       );
@@ -62,10 +64,10 @@ service cloud.firestore {
     
     // --- 4. قواعد المنشآت (Multi-Tenant Core) ---
     match /companies/{companyId} {
-      // القراءة فقط لأعضاء الشركة أو الأدمن لضمان الخصوصية
+      // القراءة فقط لأعضاء الشركة أو الأدمن لضمان الخصوصية (belongsToCompany تحمي البيانات)
       allow read: if belongsToCompany(companyId) || isAdmin(companyId); 
       
-      // التحقق من أن منشئ الشركة هو المالك الفعلي المسجل
+      // التحقق من أن منشئ الشركة هو المالك الفعلي المسجل لضمان سلامة الهوية
       allow create: if isAuthenticated() && request.resource.data.ownerUid == request.auth.uid; 
       
       allow update: if isAdmin(companyId);
