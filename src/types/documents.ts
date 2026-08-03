@@ -1,3 +1,4 @@
+
 'use client';
 /**
  * @fileOverview تعريف واجهات البيانات للمستندات الحية (Instantiated Documents).
@@ -70,6 +71,8 @@ export interface BOQItem extends BaseReference {
   allowedItemCategoryIds?: string[];
   plannedQuantity: number;
   executedQuantity: number; 
+  verifiedQuantity?: number; // الكمية المعتمدة مالياً للمستخلصات
+  billedQuantity?: number;   // الكمية التي تم إصدار فاتورة/مستخلص بها فعلياً
   estimatedRate?: number;
   estimatedCostRate?: number;
   actualRate?: number;
@@ -84,6 +87,7 @@ export interface LaborDetail {
   trade: string;    // التخصص (نجار، حداد، عمالة عامة...)
   count: number;    // العدد
   hours?: number;   // ساعات العمل
+  employeeIds?: string[]; // ربط الموظفين الفعليين بالزيارة (للتكاليف)
 }
 
 /**
@@ -93,6 +97,7 @@ export interface EquipmentUsed {
   equipmentId: string;
   name: string;
   hoursUsed: number;
+  costPerHour?: number;
 }
 
 export interface BOQItemExecutionEntry extends BaseReference {
@@ -113,6 +118,12 @@ export interface BOQItemExecutionEntry extends BaseReference {
   recordedByName: string;
   isArchived?: boolean;
   archivedAt?: any;
+  
+  // حالة الاعتماد المالي
+  isVerified?: boolean;     // هل اعتمدها المهندس المشرف؟
+  verifiedAt?: any;
+  verifiedBy?: string;
+  ipcId?: string;           // معرف المستخلص الذي أدرجت فيه هذه الكمية
 }
 
 export interface BOQ extends BaseDocument {

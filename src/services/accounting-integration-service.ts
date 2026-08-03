@@ -1,17 +1,48 @@
+
 'use client';
 
 import { PayrollBatch, PayrollRecord } from '@/types/payroll';
+import { BOQItemExecutionEntry, BOQItem } from '@/types/documents';
 
 /**
  * خدمة التكامل المحاسبي (Accounting Integration Service).
- * مسؤولة عن تحويل بيانات الرواتب إلى مسودات قيود يومية (Journal Entries).
+ * تم تحديثها لدعم تحويل الإنجاز الميداني المعتمد إلى قيود يومية (Progress Billing Entry).
  */
 export class AccountingIntegrationService {
+  
+  /**
+   * توليد قيد استحقاق إيراد بناءً على إنجاز ميداني معتمد
+   * مدين: ذمم مدينة / عملاء (Accounts Receivable)
+   * دائن: إيرادات عقود / مشاريع (Project Revenue)
+   */
+  static generateProgressBillingPayload(
+    clientName: string,
+    items: { title: string, amount: number }[]
+  ) {
+    const totalAmount = items.reduce((acc, i) => acc + i.amount, 0);
+    const narration = `استحقاق إيراد عن إنجاز ميداني - ${clientName}`;
+
+    return {
+      date: new Date().toISOString().split('T')[0],
+      narration,
+      sourceModule: 'PROGRESS_BILLING',
+      lines: [
+        {
+          accountName: 'Accounts Receivable',
+          debit: totalAmount,
+          credit: 0,
+        },
+        {
+          accountName: 'Project Revenue',
+          debit: 0,
+          credit: totalAmount,
+        }
+      ]
+    };
+  }
+
   /**
    * توليد مسودة قيد رواتب (Journal Entry Draft)
-   * مدين: حساب رواتب وأجور الموظفين (إجمالي المستحق)
-   * دائن: حساب البنك/الخزينة (صافي الراتب)
-   * دائن: حساب الخصومات/الجزاءات (إجمالي الخصومات)
    */
   static generatePayrollJournalPayload(batch: PayrollBatch, records: PayrollRecord[]) {
     const description = `رواتب شهر ${batch.month}-${batch.year} لعدد ${batch.totalEmployees} موظف`;
@@ -23,7 +54,7 @@ export class AccountingIntegrationService {
       sourceId: batch.id,
       lines: [
         {
-          accountName: 'Site Labor Wages', // من دليل الحسابات الافتراضي
+          accountName: 'Site Labor Wages', 
           debit: batch.totalBasicSalary + batch.totalAllowances,
           credit: 0,
         },
@@ -33,7 +64,7 @@ export class AccountingIntegrationService {
           credit: batch.totalNetSalary,
         },
         {
-          accountName: 'Other Income', // الخصومات تعتبر دخل للمنشأة أو تسوية
+          accountName: 'Other Income', 
           debit: 0,
           credit: batch.totalDeductions,
         }

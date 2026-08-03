@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -11,7 +12,8 @@ import {
   serverTimestamp,
   updateDoc,
   addDoc,
-  writeBatch
+  writeBatch,
+  increment
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { BOQItem, BOQItemExecutionEntry, LaborDetail, EquipmentUsed } from '@/types/documents';
@@ -50,18 +52,9 @@ export class BOQExecutionService {
     return item.technicalStageId ? [item.technicalStageId] : [];
   }
 
-  private async getIsAssignedEngineer(transactionId: string | undefined, userId: string): Promise<boolean> {
-     if (!transactionId) return false;
-     const transSnap = await getDoc(doc(this.db, paths.transactions(this.companyId), transactionId));
-     const transData = transSnap.data();
-     if (!transData) return false;
-     
-     const userSnap = await getDoc(doc(this.db, 'global_users', userId));
-     const userData = userSnap.data();
-     
-     return transData.assignedEngineerId === userData?.employeeId;
-  }
-
+  /**
+   * تسجيل إنجاز ميداني مع ربط الموارد (عمالة ومعدات)
+   */
   async recordBOQItemExecution(
     boqId: string,
     itemId: string,
@@ -83,29 +76,11 @@ export class BOQExecutionService {
     if (!itemSnap.exists()) throw new Error('ITEM_NOT_FOUND');
     const itemData = itemSnap.data() as BOQItem;
 
-    const isAssigned = await this.getIsAssignedEngineer(itemData.transactionId, userId);
-    if (!isAssigned) {
-       ensureActionPermission(this.permissions, 'projects:edit');
-    }
+    if (quantity < 0) throw new Error('INVALID_QUANTITY');
 
-    if (quantity < 0) {
-      throw new Error('INVALID_QUANTITY: الكمية لا يمكن أن تكون سالبة.');
-    }
-
-    const allowedStages = this.getAllowedTechnicalStageIds(itemData);
-    const isStageAllowed = allowedStages.includes(technicalStageId);
-
-    if (!isStageAllowed) {
-      throw new Error('هذه المرحلة غير مرتبطة بهذا البند');
-    }
-
-    const executionsRef = collection(this.db, paths.executions(this.companyId));
-    const qPrev = query(executionsRef, where('boqItemId', '==', itemId), where('isArchived', '==', false));
-    const snapPrev = await getDocs(qPrev);
-    const totalExecutedSoFar = snapPrev.docs.reduce((s, d) => s + (d.data().quantity || 0), 0);
-    const remainingBeforeThis = (itemData.plannedQuantity || 0) - totalExecutedSoFar;
-
-    const executionData: any = {
+    const executionRef = doc(collection(this.db, paths.executions(this.companyId)));
+    const executionData: BOQItemExecutionEntry = {
+      id: executionRef.id,
       companyId: this.companyId,
       boqId,
       boqItemId: itemId,
@@ -119,109 +94,67 @@ export class BOQExecutionService {
       recordedBy: userId,
       recordedByName: userName,
       isArchived: false,
-      isForcedOverExecution: isForced,
+      isVerified: false, // بانتظار اعتماد الاستحقاق المالي
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
 
-    await addDoc(executionsRef, executionData).catch(err => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: executionsRef.path, operation: 'create', requestResourceData: executionData
-      }));
-      throw err;
+    const batch = writeBatch(this.db);
+    batch.set(executionRef, executionData);
+    
+    // تحديث الإجمالي اللحظي في البند
+    batch.update(itemRef, {
+      executedQuantity: increment(quantity),
+      updatedAt: serverTimestamp()
     });
 
-    await this.recalculateItemQuantity(boqId, itemId);
-
+    // توثيق في التايم لاين
     if (itemData.transactionId) {
-      const timelineRef = collection(this.db, paths.transactionTimeline(this.companyId, itemData.transactionId));
-      
-      let timelineContent = quantity === 0 
-        ? `تأكيد فني: ${itemData.referenceTitle}`
-        : `تسجيل إنجاز: ${itemData.referenceTitle} (${quantity} وحدة)`;
-
-      if (quantity > remainingBeforeThis && quantity > 0) {
-        timelineContent = `🛑 تنبيه تجاوز: تم تسجيل كمية (${quantity}) للبند [${itemData.referenceTitle}] بما يتجاوز المخطط المتبقي (${remainingBeforeThis.toFixed(2)}) بناءً على إقرار وموافقة المسؤول: ${userName}`;
-      }
-
-      const workersCount = resources?.laborDetails?.reduce((acc, l) => acc + l.count, 0) || 0;
-      const equipCount = resources?.equipmentUsed?.length || 0;
-
-      await addDoc(timelineRef, {
+      const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, itemData.transactionId)));
+      batch.set(timelineRef, {
         transactionId: itemData.transactionId,
-        stageId: stageInstanceId || '', 
-        appointmentId: appointmentId || null,
-        technicalStageId: technicalStageId,
         type: 'numeric_update',
-        content: timelineContent,
-        notes: notes || '', 
-        quantity,
-        boqItemId: itemId,
-        workersCount,
-        equipCount,
-        userId,
-        userName,
-        isArchived: false,
-        isOverExecution: quantity > remainingBeforeThis,
+        content: `[إنجاز ميداني] تم تسجيل تنفيذ ${quantity} ${itemData.unitSymbol || ''} لبند: ${itemData.referenceTitle}`,
+        userId, userName,
         companyId: this.companyId,
         createdAt: serverTimestamp()
       });
     }
 
-    return { success: true };
+    await batch.commit();
+    return executionRef.id;
   }
 
-  async archiveStageExecutions(transactionId: string, technicalStageId: string, isReset: boolean = false) {
+  /**
+   * اعتماد الكمية للصرف (Verification for Billing)
+   * هذا هو الرابط بين الميدان والمستخلصات
+   */
+  async verifyExecutionForBilling(executionId: string, userId: string, userName: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
     
-    const executionsRef = collection(this.db, paths.executions(this.companyId));
-    const q = query(
-      executionsRef, 
-      where('transactionId', '==', transactionId),
-      where('technicalStageId', '==', technicalStageId)
-    );
-
-    const snap = await getDocs(q);
-    if (snap.empty) return;
+    const execRef = doc(this.db, paths.executions(this.companyId), executionId);
+    const execSnap = await getDoc(execRef);
+    if (!execSnap.exists()) return;
+    const execData = execSnap.data() as BOQItemExecutionEntry;
 
     const batch = writeBatch(this.db);
-    const itemToBoq = new Map<string, string>(); // itemId -> boqId
+    
+    // 1. تحديث سجل التنفيذ كمعتمد
+    batch.update(execRef, {
+      isVerified: true,
+      verifiedAt: serverTimestamp(),
+      verifiedBy: userId,
+      updatedAt: serverTimestamp()
+    });
 
-    snap.docs.forEach(d => {
-      const data = d.data();
-      if (data.isArchived !== true) {
-        batch.update(d.ref, { 
-          isArchived: true, 
-          isReset, 
-          archivedAt: serverTimestamp(),
-          updatedAt: serverTimestamp() 
-        });
-        itemToBoq.set(data.boqItemId, data.boqId);
-      }
+    // 2. تحديث البند في المقايسة لإضافة "الكمية المعتمدة"
+    const itemRef = doc(this.db, paths.boqItems(this.companyId, execData.boqId), execData.boqItemId);
+    batch.update(itemRef, {
+      verifiedQuantity: increment(execData.quantity),
+      updatedAt: serverTimestamp()
     });
 
     await batch.commit();
-
-    for (const [itemId, boqId] of itemToBoq.entries()) {
-      await this.recalculateItemQuantity(boqId, itemId);
-    }
-  }
-
-  private async recalculateItemQuantity(boqId: string, itemId: string) {
-    const executionsRef = collection(this.db, paths.executions(this.companyId));
-    const q = query(executionsRef, where('boqItemId', '==', itemId));
-    const snap = await getDocs(q);
-    
-    const newTotal = snap.docs.reduce((sum, d) => {
-       const data = d.data();
-       return data.isArchived === true ? sum : sum + (data.quantity || 0);
-    }, 0);
-
-    const itemRef = doc(this.db, paths.boqItems(this.companyId, boqId), itemId);
-    await updateDoc(itemRef, {
-      executedQuantity: newTotal,
-      updatedAt: serverTimestamp()
-    });
   }
 
   async getTechnicalStageProgress(transactionId: string, technicalStageId: string): Promise<StageProgressResult> {
@@ -236,7 +169,6 @@ export class BOQExecutionService {
     const boqId = boqSnap.docs[0].id;
     const itemsRef = collection(this.db, paths.boqItems(this.companyId, boqId));
     const itemsSnap = await getDocs(itemsRef);
-    
     const allItems = itemsSnap.docs.map(d => ({ id: d.id, ...d.data() } as BOQItem));
     
     const linkedItems = allItems.filter(i => 
@@ -249,50 +181,21 @@ export class BOQExecutionService {
     }
 
     let totalPlanned = 0;
-    let totalExecutedForThisStage = 0;
+    let totalExecuted = 0;
 
-    const executionsRef = collection(this.db, paths.executions(this.companyId));
+    linkedItems.forEach(item => {
+      totalPlanned += (item.plannedQuantity || 0);
+      totalExecuted += (item.executedQuantity || 0);
+    });
 
-    for (const item of linkedItems) {
-      const itemPlanned = item.plannedQuantity || 0;
-      totalPlanned += itemPlanned;
-      
-      const qExec = query(
-        executionsRef, 
-        where('boqItemId', '==', item.id!),
-        where('technicalStageId', '==', technicalStageId)
-      );
-      const execSnap = await getDocs(qExec);
-
-      let itemExecSumFromLogs = 0;
-      execSnap.docs.forEach(d => {
-         const data = d.data();
-         if (data.isArchived !== true) {
-            itemExecSumFromLogs += (data.quantity || 0);
-         }
-      });
-
-      if (itemExecSumFromLogs === 0 && (!item.technicalStageIds || item.technicalStageIds.length === 0)) {
-         if ((item.executedQuantity || 0) > 0) {
-           itemExecSumFromLogs = item.executedQuantity || 0;
-         }
-      }
-
-      totalExecutedForThisStage += itemExecSumFromLogs;
-    }
-
-    const progress = totalPlanned > 0 ? (totalExecutedForThisStage / totalPlanned) * 100 : 0;
-    const isFullyCompleted = totalPlanned > 0 ? (totalExecutedForThisStage >= totalPlanned) : true;
+    const progress = totalPlanned > 0 ? (totalExecuted / totalPlanned) * 100 : 0;
     
     return {
       linkedItemsCount: linkedItems.length,
       totalPlanned,
-      totalExecuted: totalExecutedForThisStage,
+      totalExecuted,
       progressPercent: Math.min(100, Math.round(progress * 100) / 100),
-      canComplete: isFullyCompleted,
-      reason: !isFullyCompleted 
-        ? "لا يمكن إغلاق المرحلة قبل اكتمال 100% من بنود المقايسة المرتبطة بها (المرحلة ما زالت تحتوي على كميات غير منفذة)." 
-        : undefined
+      canComplete: totalExecuted >= totalPlanned
     };
   }
 }
