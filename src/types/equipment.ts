@@ -1,7 +1,7 @@
 'use client';
 /**
  * @fileOverview تعريف واجهات البيانات لسجل المعدات والآليات (Equipment Master).
- * المصدر السيادي الوحيد لكل معدة/آلية يمتلكها أو يستأجرها النظام.
+ * تم التحديث لدعم البيانات الإدارية الديناميكية وحالة الأدوات اليدوية.
  */
 
 import { BaseReference } from './reference';
@@ -12,33 +12,46 @@ export type RentalCostMethod = 'hourly' | 'daily' | 'monthly';
 export type DepreciationMethod = 'hours' | 'straight' | 'none';
 export type EquipmentCategory = 'heavy_machinery' | 'vehicle' | 'hand_tool' | 'stationary' | 'other';
 export type InsuranceType = 'comprehensive' | 'third_party' | 'none';
+export type ToolCondition = 'new' | 'used_good' | 'under_maintenance';
 
 export interface Equipment extends BaseReference {
   id: string;
-  code: string;                          // كود المعدة (مثال: EQ-001)
-  name: string;                          // اسم المعدة
-  category: EquipmentCategory;           // تصنيف المعدة
+  code: string;                          
+  name: string;                          
+  category: EquipmentCategory;           
   status: EquipmentStatus;
   ownershipType: EquipmentOwnershipType; 
   
-  // --- البيانات الإدارية والتراخيص (للمملوكة والمرخصة فقط) ---
+  // --- البيانات الإدارية والتراخيص (ديناميكية) ---
   isLicensed?: boolean;
-  chassisNumber?: string;                // رقم الشاصي
-  plateNumber?: string;                  // رقم اللوحة / الدفتر
-  registrationExpiry?: string;           // تاريخ انتهاء الترخيص
-  insuranceType?: InsuranceType;         // نوع التأمين
-  insuranceCompany?: string;             // شركة التأمين
-  insuranceExpiry?: string;              // تاريخ انتهاء التأمين
+  isStreetLicensed?: boolean;            // للآليات الثقيلة
+  chassisNumber?: string;                
+  plateNumber?: string;                  
+  registrationNumber?: string;           // رقم الدفتر
+  registrationExpiry?: string;           
+  insuranceType?: InsuranceType;         
+  insuranceCompany?: string;             
+  insuranceExpiry?: string;              
+  thirdPartyInspectionExpiry?: string;    // لآليات الموقع
+  siteInsuranceExpiry?: string;          // لآليات الموقع
+
+  // بيانات المعدات الثابتة
+  serialNumber?: string;
+  capacity?: string;                     // KVA/HP
+  nextServiceDate?: string;
+  safetyCertExpiry?: string;
+
+  // بيانات الأدوات اليدوية
+  brandModel?: string;                   // الماركة/الموديل
+  toolCondition?: ToolCondition;
 
   // --- بيانات الملكية (للنوع: مملوكة) ---
   purchaseDate?: string;
   purchaseCost?: number;
-  salvageValue?: number;                 // القيمة التخريدية
-  expectedTotalHours?: number;           // العمر الافتراضي بالساعات
+  salvageValue?: number;                 
   depreciationMethod?: DepreciationMethod;
-  hourlyDepreciationRate?: number;       // معدل الإهلاك للساعة (محسوب أو يدوي)
+  hourlyDepreciationRate?: number;       
   
-  // بيانات التمويل
   isFinanced?: boolean;
   financierName?: string;
   monthlyInstallment?: number;
@@ -47,9 +60,9 @@ export interface Equipment extends BaseReference {
   // --- بيانات التأجير (للنوع: مستأجرة) ---
   supplierId?: string;
   supplierName?: string;
-  costMethod?: RentalCostMethod;         // ساعة/يوم/شهر
-  costValue?: number;                    // القيمة المتفق عليها
-  hourlyRentalRate?: number;             // القيمة المحولة للساعة للربط الميداني
+  costMethod?: RentalCostMethod;         
+  costValue?: number;                    
+  hourlyRentalRate?: number;             
 
   notes?: string;
   isActive: boolean;
