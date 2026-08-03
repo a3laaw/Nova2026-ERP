@@ -22,7 +22,7 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Equipment, EquipmentCategory, InsuranceType, ToolCondition } from '@/types/equipment';
+import { Equipment, EquipmentCategory, ToolCondition } from '@/types/equipment';
 import { cn } from '@/lib/utils';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -91,9 +91,7 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
   const isOwned = form.ownershipType === 'owned';
   const cat = form.category;
 
-  // دالة التحقق قبل الإرسال
   const handlePreSubmit = () => {
-    // التحقق من تواريخ الترخيص والتأمين للفئات الملزمة
     if (isOwned) {
       if (cat === 'vehicle' || (cat === 'heavy_machinery' && form.isStreetLicensed)) {
         if (!form.registrationExpiry || !form.insuranceExpiry) {
@@ -105,26 +103,18 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
           return;
         }
       }
-      if (cat === 'stationary' && !form.safetyCertExpiry) {
-        toast({ 
-          variant: "destructive", 
-          title: isRtl ? "تنبيه" : "Alert", 
-          description: isRtl ? "يجب إدخال تاريخ انتهاء شهادة السلامة للمعدات الثابتة." : "Safety cert expiry is required."
-        });
-        return;
-      }
     }
     onSubmit(form);
   };
 
   const AdminSectionHeader = ({ title, sub, icon: Icon }: any) => (
     <div className="flex items-center gap-4 text-start">
-      <div className="h-12 w-12 bg-blue-50/50 rounded-2xl flex items-center justify-center text-blue-600 shadow-sm border border-blue-100">
+      <div className="h-12 w-12 bg-primary/5 rounded-2xl flex items-center justify-center text-primary shadow-sm border border-primary/10">
         <Icon className="h-6 w-6" />
       </div>
       <div>
         <CardTitle className="text-xl font-black">{title}</CardTitle>
-        <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">{sub}</p>
+        <p className="text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-widest">{sub}</p>
       </div>
     </div>
   );
@@ -133,7 +123,7 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
     <div className="space-y-8 text-start pb-20 animate-in fade-in duration-700 bg-transparent">
       
       {/* 1. Identity Section */}
-      <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
+      <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
         <CardHeader className="bg-primary/5 p-8 border-b">
            <div className="flex items-center gap-4">
               <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center text-primary shadow-sm border border-primary/10">
@@ -141,14 +131,14 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
               </div>
               <div>
                  <CardTitle className="text-xl font-black">{isRtl ? 'الهوية والنوع' : 'Identity & Category'}</CardTitle>
-                 <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Global Asset Classification</p>
+                 <p className="text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-widest">{isRtl ? 'تصنيف الأصول الموحد' : 'Global Asset Classification'}</p>
               </div>
            </div>
         </CardHeader>
         <CardContent className="p-8">
            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
               <div className="space-y-2">
-                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Code</Label>
+                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'كود المعدة' : 'Equipment Code'}</Label>
                  <Input 
                    value={form.code ?? ''} 
                    onChange={e => setForm({...form, code: e.target.value.toUpperCase()})} 
@@ -156,7 +146,7 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
                  />
               </div>
               <div className="md:col-span-2 space-y-2">
-                 <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'اسم المعدة' : 'Equipment Name'}</Label>
+                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اسم المعدة' : 'Equipment Name'}</Label>
                  <Input 
                    value={form.name ?? ''} 
                    onChange={e => setForm({...form, name: e.target.value})} 
@@ -164,15 +154,15 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
                  />
               </div>
               <div className="space-y-2">
-                 <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'تصنيف المعدة' : 'Category'}</Label>
+                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'تصنيف المعدة' : 'Category'}</Label>
                  <Select value={form.category ?? 'heavy_machinery'} onValueChange={(v: EquipmentCategory) => setForm({...form, category: v})}>
                     <SelectTrigger className="h-12 rounded-xl border-2 font-black bg-white"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                       <SelectItem value="heavy_machinery" className="font-bold">آليات ثقيلة (حفار/جرافة)</SelectItem>
-                       <SelectItem value="vehicle" className="font-bold">مركبات (سيارات/شاحنات)</SelectItem>
-                       <SelectItem value="stationary" className="font-bold">معدات ثابتة (مولدات)</SelectItem>
-                       <SelectItem value="hand_tool" className="font-bold">أدوات يدوية (صاروخ/دريل)</SelectItem>
-                       <SelectItem value="other" className="font-bold">أخرى</SelectItem>
+                    <SelectContent className="rounded-xl">
+                       <SelectItem value="heavy_machinery" className="font-bold">{isRtl ? 'آليات ثقيلة (حفار/جرافة)' : 'Heavy Machinery'}</SelectItem>
+                       <SelectItem value="vehicle" className="font-bold">{isRtl ? 'مركبات (سيارات/شاحنات)' : 'Vehicles'}</SelectItem>
+                       <SelectItem value="stationary" className="font-bold">{isRtl ? 'معدات ثابتة (مولدات)' : 'Stationary'}</SelectItem>
+                       <SelectItem value="hand_tool" className="font-bold">{isRtl ? 'أدوات يدوية (صاروخ/دريل)' : 'Hand Tools'}</SelectItem>
+                       <SelectItem value="other" className="font-bold">{isRtl ? 'أخرى' : 'Other'}</SelectItem>
                     </SelectContent>
                  </Select>
               </div>
@@ -180,120 +170,107 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
         </CardContent>
       </Card>
 
-      {/* 2. Dynamic Administrative & Licensing Details (Glassmorphism) */}
-      {isOwned && (
-        <Card className="border-0 shadow-2xl rounded-[3rem] bg-white/80 backdrop-blur-xl ring-1 ring-black/5 overflow-hidden transition-all duration-500">
-           <CardHeader className="bg-slate-50/50 p-8 border-b">
-              {cat === 'heavy_machinery' && (
-                <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-                   <AdminSectionHeader title={isRtl ? 'بيانات الآلية الثقيلة' : 'Heavy Machinery Details'} sub="Street vs Site Compliance" icon={HardHat} />
-                   <div className="flex items-center gap-4 bg-white px-6 py-2.5 rounded-2xl border-2 shadow-sm">
-                      <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'مرخصة للسير في الشارع؟' : 'Street Licensed?'}</Label>
-                      <Switch checked={form.isStreetLicensed} onCheckedChange={v => setForm({...form, isStreetLicensed: v})} />
-                   </div>
-                </div>
-              )}
-              {cat === 'vehicle' && <AdminSectionHeader title={isRtl ? 'بيانات ترخيص المركبة' : 'Vehicle Licensing'} sub="Traffic Dept & Insurance" icon={Truck} />}
-              {cat === 'stationary' && <AdminSectionHeader title={isRtl ? 'الصيانة والسلامة' : 'Maintenance & Safety'} sub="Service & Certification" icon={Zap} />}
-              {cat === 'hand_tool' && <AdminSectionHeader title={isRtl ? 'الماركة والحالة' : 'Brand & Condition'} sub="Master Tool Data" icon={Wrench} />}
-              {cat === 'other' && <AdminSectionHeader title={isRtl ? 'بيانات إضافية' : 'Additional Info'} sub="Miscellaneous Details" icon={Info} />}
-           </CardHeader>
+      {/* 2. Administrative Details */}
+      <Card className="border-0 shadow-xl rounded-[3rem] bg-white ring-1 ring-black/5 overflow-hidden">
+         <CardHeader className="bg-slate-50/50 p-8 border-b">
+            {cat === 'heavy_machinery' && (
+              <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                 <AdminSectionHeader title={isRtl ? 'بيانات الآلية الثقيلة' : 'Heavy Machinery'} sub={isRtl ? 'الامتثال الميداني والمروري' : 'Field vs Street Compliance'} icon={HardHat} />
+                 <div className="flex items-center gap-4 bg-white px-6 py-2.5 rounded-2xl border-2 shadow-sm">
+                    <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'مرخصة للسير في الشارع؟' : 'Street Licensed?'}</Label>
+                    <Switch checked={form.isStreetLicensed} onCheckedChange={v => setForm({...form, isStreetLicensed: v})} />
+                 </div>
+              </div>
+            )}
+            {cat === 'vehicle' && <AdminSectionHeader title={isRtl ? 'بيانات ترخيص المركبة' : 'Vehicle Licensing'} sub={isRtl ? 'المرور والتأمين' : 'Traffic & Insurance'} icon={Truck} />}
+            {cat === 'stationary' && <AdminSectionHeader title={isRtl ? 'الصيانة والسلامة' : 'Maintenance & Safety'} sub={isRtl ? 'الفحص الدوري والشهادات' : 'Service & Certification'} icon={Zap} />}
+            {cat === 'hand_tool' && <AdminSectionHeader title={isRtl ? 'الماركة والحالة الفنية' : 'Brand & Condition'} sub={isRtl ? 'البيانات المرجعية للأداة' : 'Master Tool Data'} icon={Wrench} />}
+            {cat === 'other' && <AdminSectionHeader title={isRtl ? 'بيانات إضافية' : 'Additional Info'} sub={isRtl ? 'تفاصيل متنوعة' : 'Miscellaneous Details'} icon={Info} />}
+         </CardHeader>
 
-           <CardContent className="p-8">
-              {/* Case: Heavy Machinery (Street Licensed) */}
-              {cat === 'heavy_machinery' && form.isStreetLicensed && (
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 animate-in slide-in-from-top-4 duration-500">
-                   <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">Plate Number</Label><Input value={form.plateNumber ?? ''} onChange={e => setForm({...form, plateNumber: e.target.value})} className="h-10 rounded-lg border-2 font-black" /></div>
-                   <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">Reg Number</Label><Input value={form.registrationNumber ?? ''} onChange={e => setForm({...form, registrationNumber: e.target.value})} className="h-10 rounded-lg border-2 font-bold" /></div>
-                   <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">Reg Expiry</Label><SmartDateInput value={form.registrationExpiry ?? ''} onChange={v => setForm({...form, registrationExpiry: v})} /></div>
-                   <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">Insurance Expiry</Label><SmartDateInput value={form.insuranceExpiry ?? ''} onChange={v => setForm({...form, insuranceExpiry: v})} /></div>
-                </div>
-              )}
+         <CardContent className="p-8">
+            {cat === 'heavy_machinery' && form.isStreetLicensed && (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 animate-in slide-in-from-top-2">
+                 <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'رقم اللوحة' : 'Plate Number'}</Label><Input value={form.plateNumber ?? ''} onChange={e => setForm({...form, plateNumber: e.target.value})} className="h-10 rounded-lg border-2 font-black" /></div>
+                 <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'رقم الدفتر' : 'Reg Number'}</Label><Input value={form.registrationNumber ?? ''} onChange={e => setForm({...form, registrationNumber: e.target.value})} className="h-10 rounded-lg border-2 font-bold" /></div>
+                 <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'انتهاء الدفتر' : 'Reg Expiry'}</Label><SmartDateInput value={form.registrationExpiry ?? ''} onChange={v => setForm({...form, registrationExpiry: v})} /></div>
+                 <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'انتهاء التأمين' : 'Insurance Expiry'}</Label><SmartDateInput value={form.insuranceExpiry ?? ''} onChange={v => setForm({...form, insuranceExpiry: v})} /></div>
+              </div>
+            )}
 
-              {/* Case: Heavy Machinery (Site/Tracked) */}
-              {cat === 'heavy_machinery' && !form.isStreetLicensed && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-top-4 duration-500">
-                   <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">Chassis / Serial</Label><Input value={form.chassisNumber ?? ''} onChange={e => setForm({...form, chassisNumber: e.target.value})} className="h-10 rounded-lg border-2 font-mono" /></div>
-                   <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">3rd Party Inspection Expiry</Label><SmartDateInput value={form.thirdPartyInspectionExpiry ?? ''} onChange={v => setForm({...form, thirdPartyInspectionExpiry: v})} /></div>
-                   <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">Site Insurance Expiry</Label><SmartDateInput value={form.siteInsuranceExpiry ?? ''} onChange={v => setForm({...form, siteInsuranceExpiry: v})} /></div>
-                </div>
-              )}
+            {cat === 'heavy_machinery' && !form.isStreetLicensed && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-top-2">
+                 <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'رقم الشاصي / السيريال' : 'Chassis / Serial'}</Label><Input value={form.chassisNumber ?? ''} onChange={e => setForm({...form, chassisNumber: e.target.value})} className="h-10 rounded-lg border-2 font-mono" /></div>
+                 <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'انتهاء الفحص الفني (3rd Party)' : '3rd Party Inspection'}</Label><SmartDateInput value={form.thirdPartyInspectionExpiry ?? ''} onChange={v => setForm({...form, thirdPartyInspectionExpiry: v})} /></div>
+                 <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'انتهاء تأمين الموقع' : 'Site Insurance Expiry'}</Label><SmartDateInput value={form.siteInsuranceExpiry ?? ''} onChange={v => setForm({...form, siteInsuranceExpiry: v})} /></div>
+              </div>
+            )}
 
-              {/* Case: Vehicle */}
-              {cat === 'vehicle' && (
-                <div className="space-y-8 animate-in slide-in-from-top-4 duration-500">
-                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">Plate Number</Label><Input value={form.plateNumber ?? ''} onChange={e => setForm({...form, plateNumber: e.target.value})} className="h-10 rounded-lg border-2 font-black" /></div>
-                      <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">Reg Number</Label><Input value={form.registrationNumber ?? ''} onChange={e => setForm({...form, registrationNumber: e.target.value})} className="h-10 rounded-lg border-2" /></div>
-                      <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">Chassis VIN</Label><Input value={form.chassisNumber ?? ''} onChange={e => setForm({...form, chassisNumber: e.target.value})} className="h-10 rounded-lg border-2 font-mono" /></div>
-                   </div>
-                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-slate-100">
-                      <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">Reg Expiry</Label><SmartDateInput value={form.registrationExpiry ?? ''} onChange={v => setForm({...form, registrationExpiry: v})} /></div>
-                      <div className="space-y-1.5">
-                         <Label className="text-[10px] font-black uppercase text-slate-400">Insurance Type</Label>
-                         <Select value={form.insuranceType} onValueChange={v => setForm({...form, insuranceType: v})}>
-                            <SelectTrigger className="h-10 rounded-lg border-2"><SelectValue /></SelectTrigger>
-                            <SelectContent><SelectItem value="comprehensive">شامل (Full)</SelectItem><SelectItem value="third_party">ضد الغير (TPL)</SelectItem></SelectContent>
-                         </Select>
-                      </div>
-                      <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">Insurance Expiry</Label><SmartDateInput value={form.insuranceExpiry ?? ''} onChange={v => setForm({...form, insuranceExpiry: v})} /></div>
-                   </div>
-                </div>
-              )}
+            {cat === 'vehicle' && (
+              <div className="space-y-8 animate-in slide-in-from-top-2">
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'رقم اللوحة' : 'Plate Number'}</Label><Input value={form.plateNumber ?? ''} onChange={e => setForm({...form, plateNumber: e.target.value})} className="h-10 rounded-lg border-2 font-black" /></div>
+                    <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'رقم الدفتر' : 'Reg Number'}</Label><Input value={form.registrationNumber ?? ''} onChange={e => setForm({...form, registrationNumber: e.target.value})} className="h-10 rounded-lg border-2" /></div>
+                    <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'رقم الشاصي (VIN)' : 'Chassis VIN'}</Label><Input value={form.chassisNumber ?? ''} onChange={e => setForm({...form, chassisNumber: e.target.value})} className="h-10 rounded-lg border-2 font-mono" /></div>
+                 </div>
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-slate-100">
+                    <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'انتهاء الدفتر' : 'Reg Expiry'}</Label><SmartDateInput value={form.registrationExpiry ?? ''} onChange={v => setForm({...form, registrationExpiry: v})} /></div>
+                    <div className="space-y-1.5">
+                       <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'نوع التأمين' : 'Insurance Type'}</Label>
+                       <Select value={form.insuranceType} onValueChange={v => setForm({...form, insuranceType: v})}>
+                          <SelectTrigger className="h-10 rounded-lg border-2"><SelectValue /></SelectTrigger>
+                          <SelectContent className="rounded-xl">
+                             <SelectItem value="comprehensive">{isRtl ? 'شامل (Full)' : 'Comprehensive'}</SelectItem>
+                             <SelectItem value="third_party">{isRtl ? 'ضد الغير (TPL)' : 'Third Party'}</SelectItem>
+                          </SelectContent>
+                       </Select>
+                    </div>
+                    <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'انتهاء التأمين' : 'Insurance Expiry'}</Label><SmartDateInput value={form.insuranceExpiry ?? ''} onChange={v => setForm({...form, insuranceExpiry: v})} /></div>
+                 </div>
+              </div>
+            )}
 
-              {/* Case: Stationary */}
-              {cat === 'stationary' && (
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 animate-in slide-in-from-top-4 duration-500">
-                   <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">Serial No</Label><Input value={form.serialNumber ?? ''} onChange={e => setForm({...form, serialNumber: e.target.value})} className="h-10 rounded-lg border-2 font-mono" /></div>
-                   <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">Capacity (KVA/HP)</Label><Input value={form.capacity ?? ''} onChange={e => setForm({...form, capacity: e.target.value})} className="h-10 rounded-lg border-2 font-black text-primary" /></div>
-                   <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">Next Service</Label><SmartDateInput value={form.nextServiceDate ?? ''} onChange={v => setForm({...form, nextServiceDate: v})} /></div>
-                   <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">Safety Cert Expiry</Label><SmartDateInput value={form.safetyCertExpiry ?? ''} onChange={v => setForm({...form, safetyCertExpiry: v})} /></div>
-                </div>
-              )}
+            {cat === 'stationary' && (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 animate-in slide-in-from-top-2">
+                 <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الرقم التسلسلي' : 'Serial No'}</Label><Input value={form.serialNumber ?? ''} onChange={e => setForm({...form, serialNumber: e.target.value})} className="h-10 rounded-lg border-2 font-mono" /></div>
+                 <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'القدرة (KVA/HP)' : 'Capacity'}</Label><Input value={form.capacity ?? ''} onChange={e => setForm({...form, capacity: e.target.value})} className="h-10 rounded-lg border-2 font-black text-primary" /></div>
+                 <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'موعد السيرفس القادم' : 'Next Service'}</Label><SmartDateInput value={form.nextServiceDate ?? ''} onChange={v => setForm({...form, nextServiceDate: v})} /></div>
+                 <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'انتهاء شهادة السلامة' : 'Safety Cert'}</Label><SmartDateInput value={form.safetyCertExpiry ?? ''} onChange={v => setForm({...form, safetyCertExpiry: v})} /></div>
+              </div>
+            )}
 
-              {/* Case: Hand Tool */}
-              {cat === 'hand_tool' && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-top-4 duration-500">
-                   <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">Serial Number (SN)</Label><Input value={form.serialNumber ?? ''} onChange={e => setForm({...form, serialNumber: e.target.value})} className="h-10 rounded-lg border-2 font-mono" /></div>
-                   <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">Brand / Model</Label><Input value={form.brandModel ?? ''} onChange={e => setForm({...form, brandModel: e.target.value})} className="h-10 rounded-lg border-2 font-bold" placeholder="e.g. Bosch / Makita" /></div>
-                   <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase text-slate-400">Condition</Label>
-                      <Select value={form.toolCondition} onValueChange={(v: ToolCondition) => setForm({...form, toolCondition: v})}>
-                         <SelectTrigger className="h-10 rounded-lg border-2 font-bold"><SelectValue /></SelectTrigger>
-                         <SelectContent>
-                            <SelectItem value="new" className="font-bold">جديدة (New)</SelectItem>
-                            <SelectItem value="used_good" className="font-bold">مستعملة - حالة جيدة</SelectItem>
-                            <SelectItem value="under_maintenance" className="font-bold text-rose-600">تحت الصيانة</SelectItem>
-                         </SelectContent>
-                      </Select>
-                   </div>
-                </div>
-              )}
+            {cat === 'hand_tool' && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-top-2">
+                 <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الرقم التسلسلي (SN)' : 'Serial No'}</Label><Input value={form.serialNumber ?? ''} onChange={e => setForm({...form, serialNumber: e.target.value})} className="h-10 rounded-lg border-2 font-mono" /></div>
+                 <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الماركة / الموديل' : 'Brand / Model'}</Label><Input value={form.brandModel ?? ''} onChange={e => setForm({...form, brandModel: e.target.value})} className="h-10 rounded-lg border-2 font-bold" placeholder="e.g. Bosch / Makita" /></div>
+                 <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الحالة الفنية' : 'Condition'}</Label>
+                    <Select value={form.toolCondition} onValueChange={(v: ToolCondition) => setForm({...form, toolCondition: v})}>
+                       <SelectTrigger className="h-10 rounded-lg border-2 font-bold"><SelectValue /></SelectTrigger>
+                       <SelectContent className="rounded-xl">
+                          <SelectItem value="new" className="font-bold">{isRtl ? 'جديدة (New)' : 'New'}</SelectItem>
+                          <SelectItem value="used_good" className="font-bold">{isRtl ? 'مستعملة - حالة جيدة' : 'Used - Good'}</SelectItem>
+                          <SelectItem value="under_maintenance" className="font-bold text-rose-600">{isRtl ? 'تحت الصيانة' : 'Maintenance'}</SelectItem>
+                       </SelectContent>
+                    </Select>
+                 </div>
+              </div>
+            )}
 
-              {/* Case: Other */}
-              {cat === 'other' && (
-                <div className="animate-in fade-in">
-                   <Label className="text-[10px] font-black uppercase text-slate-400">Reference / Description</Label>
-                   <Input value={form.notes ?? ''} onChange={e => setForm({...form, notes: e.target.value})} className="h-12 rounded-xl border-2 mt-2" />
-                </div>
-              )}
-           </CardContent>
-        </Card>
-      )}
+            {cat === 'other' && (
+              <div className="animate-in fade-in">
+                 <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الرقم المرجعي / الوصف' : 'Reference / Description'}</Label>
+                 <Input value={form.notes ?? ''} onChange={e => setForm({...form, notes: e.target.value})} className="h-12 rounded-xl border-2 mt-2" />
+              </div>
+            )}
+         </CardContent>
+      </Card>
 
       {/* 3. Ownership & Financing Section */}
       <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
         <CardHeader className="bg-white p-8 border-b">
            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4 text-start">
-                 <div className="h-12 w-12 bg-blue-50/50 rounded-2xl flex items-center justify-center text-blue-600 shadow-sm border border-blue-100">
-                    <ShieldCheck className="h-6 w-6" />
-                 </div>
-                 <div>
-                    <CardTitle className="text-xl font-black">{isRtl ? 'الملكية والتمويل' : 'Ownership & Financing'}</CardTitle>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Financial Possession Status</p>
-                 </div>
-              </div>
+              <AdminSectionHeader title={isRtl ? 'الملكية والتمويل' : 'Ownership & Financing'} sub={isRtl ? 'حالة التملك والالتزام المالي' : 'Possession Status'} icon={ShieldCheck} />
               <div className="flex items-center gap-4 bg-slate-50 px-6 py-2 rounded-2xl border-2">
                  <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'مملوكة' : 'Owned'}</Label>
                  <Switch checked={isOwned} onCheckedChange={v => setForm({...form, ownershipType: v ? 'owned' : 'rented'})} />
@@ -306,19 +283,19 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
                  <div className="flex items-center justify-between p-6 bg-primary/5 rounded-[2rem] border-2 border-primary/10">
                     <div className="space-y-1">
                        <Label className="font-black text-sm text-slate-800">{isRtl ? 'هل المعدة ممولة (أقساط)؟' : 'Is it Financed?'}</Label>
-                       <p className="text-[9px] text-slate-400 font-bold uppercase">Linked to Bank/Finance Co.</p>
+                       <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tight">Linked to Bank/Finance Co.</p>
                     </div>
                     <Switch checked={form.isFinanced ?? false} onCheckedChange={v => setForm({...form, isFinanced: v})} />
                  </div>
               ) : (
                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المورد المؤجر' : 'Renting Supplier'}</Label>
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'المورد المؤجر' : 'Renting Supplier'}</Label>
                     <Select value={form.supplierId ?? ''} onValueChange={v => {
                        const s = suppliers?.find((x:any) => x.id === v);
                        setForm({...form, supplierId: v, supplierName: s?.name || ''});
                     }}>
                        <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
-                       <SelectContent>{suppliers?.map((s:any) => <SelectItem key={s.id} value={s.id!}>{s.name}</SelectItem>)}</SelectContent>
+                       <SelectContent className="rounded-xl">{suppliers?.map((s:any) => <SelectItem key={s.id} value={s.id!}>{s.name}</SelectItem>)}</SelectContent>
                     </Select>
                  </div>
               )}
@@ -326,18 +303,9 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
 
            {form.isFinanced && isOwned && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-8 bg-slate-50/50 rounded-[2rem] border-2 border-white shadow-inner animate-in zoom-in-95 text-start">
-                 <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">Financier</Label>
-                    <Input value={form.financierName ?? ''} onChange={e => setForm({...form, financierName: e.target.value})} className="h-11 rounded-xl border-2 bg-white" placeholder={isRtl ? "البنك أو شركة التمويل" : "Bank Name"} />
-                 </div>
-                 <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">Installment (KWD)</Label>
-                    <Input type="number" value={form.monthlyInstallment ?? ''} onChange={e => setForm({...form, monthlyInstallment: e.target.value})} className="h-11 rounded-xl border-2 bg-white font-black text-emerald-600" />
-                 </div>
-                 <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">Due Day</Label>
-                    <Input type="number" min="1" max="31" value={form.installmentDay ?? ''} onChange={e => setForm({...form, installmentDay: e.target.value})} className="h-11 rounded-xl border-2 bg-white font-black text-center" />
-                 </div>
+                 <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'جهة التمويل' : 'Financier'}</Label><Input value={form.financierName ?? ''} onChange={e => setForm({...form, financierName: e.target.value})} className="h-11 rounded-xl border-2 bg-white" placeholder={isRtl ? "البنك أو شركة التمويل" : "Bank Name"} /></div>
+                 <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'القسط الشهري (KWD)' : 'Installment'}</Label><Input type="number" value={form.monthlyInstallment ?? ''} onChange={e => setForm({...form, monthlyInstallment: e.target.value})} className="h-11 rounded-xl border-2 bg-white font-black text-emerald-600" /></div>
+                 <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'يوم الاستحقاق' : 'Due Day'}</Label><Input type="number" min="1" max="31" value={form.installmentDay ?? ''} onChange={e => setForm({...form, installmentDay: e.target.value})} className="h-11 rounded-xl border-2 bg-white font-black text-center" /></div>
               </div>
            )}
         </CardContent>
@@ -346,47 +314,30 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
       {/* 4. Financial & Operating Section */}
       <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
         <CardHeader className="bg-slate-50/50 p-8 border-b">
-           <div className="flex items-center gap-4 text-start">
-              <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center text-emerald-600 shadow-sm border border-emerald-100">
-                 <Calculator className="h-6 w-6" />
-              </div>
-              <div>
-                 <CardTitle className="text-xl font-black">{isRtl ? 'المعالجة المالية والتشغيلية' : 'Finance & Operations'}</CardTitle>
-                 <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Cost Recovery Metrics</p>
-              </div>
-           </div>
+           <AdminSectionHeader title={isRtl ? 'المعالجة المالية والتشغيلية' : 'Finance & Operations'} sub={isRtl ? 'مؤشرات استرداد التكلفة' : 'Cost Recovery Metrics'} icon={Calculator} />
         </CardHeader>
         <CardContent className="p-8 space-y-8 text-start">
            {isOwned ? (
              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="space-y-2">
-                   <Label className="text-[10px] font-black uppercase text-slate-400">Purchase Cost (KWD)</Label>
-                   <Input type="number" value={form.purchaseCost ?? ''} onChange={e => setForm({...form, purchaseCost: e.target.value})} className="h-12 rounded-xl border-2 font-black text-emerald-600 bg-white" />
-                </div>
-                <div className="space-y-2">
-                   <Label className="text-[10px] font-black uppercase text-slate-400">Salvage Value (KWD)</Label>
-                   <Input type="number" value={form.salvageValue ?? ''} onChange={e => setForm({...form, salvageValue: e.target.value})} className="h-12 rounded-xl border-2 font-black bg-white" placeholder="1" />
-                </div>
-                <div className="space-y-2">
-                   <Label className="text-[10px] font-black uppercase text-slate-400">Operating Rate (KWD/HR)</Label>
-                   <Input type="number" step="0.001" value={form.hourlyDepreciationRate ?? ''} onChange={e => setForm({...form, hourlyDepreciationRate: e.target.value})} className="h-12 rounded-xl border-2 font-black text-primary bg-white" />
-                </div>
+                <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'سعر الشراء الأصل' : 'Purchase Cost'}</Label><Input type="number" value={form.purchaseCost ?? ''} onChange={e => setForm({...form, purchaseCost: e.target.value})} className="h-12 rounded-xl border-2 font-black text-emerald-600 bg-white" /></div>
+                <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'القيمة التخريدية (الخردة)' : 'Salvage Value'}</Label><Input type="number" value={form.salvageValue ?? ''} onChange={e => setForm({...form, salvageValue: e.target.value})} className="h-12 rounded-xl border-2 font-black bg-white" placeholder="1" /></div>
+                <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'تعرفة التشغيل بالساعة' : 'Operating Rate'}</Label><Input type="number" step="0.001" value={form.hourlyDepreciationRate ?? ''} onChange={e => setForm({...form, hourlyDepreciationRate: e.target.value})} className="h-12 rounded-xl border-2 font-black text-primary bg-white" /></div>
              </div>
            ) : (
              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-8 bg-slate-50 rounded-[2rem] border-2 border-white shadow-inner text-start">
                 <div className="space-y-2">
-                   <Label className="text-[10px] font-black uppercase text-slate-400">Rental Rate Basis</Label>
+                   <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'أساس تعرفة الاستئجار' : 'Rental Basis'}</Label>
                    <Select value={form.costMethod ?? 'hourly'} onValueChange={(v: any) => setForm({...form, costMethod: v})}>
-                      <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
-                      <SelectContent>
-                         <SelectItem value="hourly" className="font-bold">بالساعة (KWD/HR)</SelectItem>
-                         <SelectItem value="daily" className="font-bold">يومي (KWD/Day)</SelectItem>
-                         <SelectItem value="monthly" className="font-bold">شهري (KWD/Month)</SelectItem>
+                      <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-white"><SelectValue /></SelectTrigger>
+                      <SelectContent className="rounded-xl">
+                         <SelectItem value="hourly" className="font-bold">{isRtl ? 'بالساعة (KWD/HR)' : 'Hourly'}</SelectItem>
+                         <SelectItem value="daily" className="font-bold">{isRtl ? 'يومي (KWD/Day)' : 'Daily'}</SelectItem>
+                         <SelectItem value="monthly" className="font-bold">{isRtl ? 'شهري (KWD/Month)' : 'Monthly'}</SelectItem>
                       </SelectContent>
                    </Select>
                 </div>
                 <div className="space-y-2">
-                   <Label className="text-[10px] font-black uppercase text-slate-400">Rental Value</Label>
+                   <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'قيمة الاستئجار' : 'Rental Value'}</Label>
                    <Input type="number" step="0.001" value={form.costValue ?? ''} onChange={e => setForm({...form, costValue: e.target.value})} className="h-12 rounded-xl border-2 font-black text-xl text-orange-600 bg-white" />
                 </div>
              </div>
@@ -396,7 +347,7 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
 
       {/* Footer Actions */}
       <div className="flex justify-end gap-4 pt-10 px-4">
-         <Button variant="outline" onClick={() => window.history.back()} className="h-14 px-10 rounded-[1.5rem] font-bold border-2 bg-white text-slate-600">إلغاء</Button>
+         <Button variant="outline" type="button" onClick={() => window.history.back()} className="h-14 px-10 rounded-[1.5rem] font-bold border-2 bg-white text-slate-600">{isRtl ? 'إلغاء' : 'Cancel'}</Button>
          <button 
            type="button"
            onClick={handlePreSubmit} 
