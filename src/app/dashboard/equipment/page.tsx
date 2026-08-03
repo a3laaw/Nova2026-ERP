@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,21 +10,23 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { 
   Truck, Plus, Search, Loader2, 
   Edit3, Trash2, Settings2,
-  Calculator, Save, CheckCircle2, 
-  Link as LinkIcon, RefreshCcw,
-  Calendar, CreditCard, Banknote,
-  TrendingDown, Hammer, AlertTriangle,
-  ArrowRight, Filter, Info, Clock
+  RefreshCcw,
+  Link as LinkIcon,
+  Filter,
+  Hammer,
+  ArrowRight,
+  PlusCircle
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, doc, deleteDoc } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
-import { Equipment, EquipmentStatus, DepreciationMethod } from '@/types/equipment';
+import { Equipment } from '@/types/equipment';
 import { EquipmentService } from '@/services/equipment-service';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 import {
   Dialog,
   DialogContent,
@@ -33,29 +36,18 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { SmartDateInput } from "@/components/ui/smart-date-input";
 
 export default function EquipmentMasterPage() {
   const { globalUser, user } = useAuthContext();
   const { lang, dir, t } = useLanguage();
   const db = useFirestore();
+  const router = useRouter();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [isAdding, setIsAdding] = useState(false);
   const [isAssigning, setIsAssigning] = useState<Equipment | null>(null);
   const [loading, setLoading] = useState(false);
-
-  // Form State
-  const [form, setForm] = useState<Partial<Equipment>>({
-    code: '', name: '', type: '', ownershipType: 'owned', 
-    purchaseCost: 0, salvageValue: 1, 
-    depreciationMethod: 'hours', isFinanced: false,
-    hourlyRentalRate: 0, hourlyDepreciationRate: 0, status: 'available'
-  });
-
   const [assignForm, setAssignForm] = useState({ projectId: '', fromDate: new Date().toISOString().split('T')[0] });
 
   const equipQuery = useMemo(() => 
@@ -71,59 +63,6 @@ export default function EquipmentMasterPage() {
 
   const equipmentService = useMemo(() => db && companyId ? new EquipmentService(db, companyId) : null, [db, companyId]);
 
-  const handleAutoCalculateRate = () => {
-    const cost = Number(form.purchaseCost) || 0;
-    const salvage = Number(form.salvageValue) || 0;
-    const hours = Number(form.expectedTotalHours) || 0;
-
-    if (hours > 0) {
-      const rate = (cost - salvage) / hours;
-      setForm({ ...form, hourlyDepreciationRate: Number(rate.toFixed(3)) });
-      toast({ title: isRtl ? "تم احتساب التعرفة تلقائياً" : "Rate calculated" });
-    } else {
-      toast({ variant: "destructive", title: isRtl ? "يرجى إدخال إجمالي الساعات" : "Enter total hours first" });
-    }
-  };
-
-  const handleSave = async () => {
-    if (!equipmentService || !user || !form.name || !form.code) return;
-    
-    // Validation for Owned Equipment
-    if (form.ownershipType === 'owned' && form.depreciationMethod === 'hours' && !form.hourlyDepreciationRate) {
-      toast({ 
-        variant: "destructive", 
-        title: isRtl ? "تنبيه محاسبي" : "Accounting Alert", 
-        description: isRtl ? "يجب إدخال معدل الإهلاك لضمان دقة تكاليف المشاريع." : "Hourly rate is required for cost accuracy." 
-      });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      if (form.id) {
-        await equipmentService.updateEquipment(form.id, form, user.uid);
-      } else {
-        await equipmentService.createEquipment(form, user.uid);
-      }
-      toast({ title: t('saved') });
-      setIsAdding(false);
-      resetForm();
-    } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const resetForm = () => {
-    setForm({ 
-      code: '', name: '', type: '', ownershipType: 'owned', 
-      purchaseCost: 0, salvageValue: 1, 
-      depreciationMethod: 'hours', isFinanced: false,
-      hourlyRentalRate: 0, hourlyDepreciationRate: 0 
-    });
-  };
-
   const handleAssign = async () => {
     if (!equipmentService || !user || !isAssigning || !assignForm.projectId) return;
     setLoading(true);
@@ -138,7 +77,7 @@ export default function EquipmentMasterPage() {
         user.uid,
         globalUser?.fullName || 'Admin'
       );
-      toast({ title: isRtl ? "تم تخصيص المعدة للمشروع" : "Equipment Assigned" });
+      toast({ title: isRtl ? "تم تخصيص المعدة لمشروع" : "Equipment Assigned" });
       setIsAssigning(null);
     } catch (e) {
       toast({ variant: "destructive", title: t('error') });
@@ -178,7 +117,7 @@ export default function EquipmentMasterPage() {
             {isRtl ? 'إدارة الأصول التشغيلية، تتبع التخصيص، والتحليل المحاسبي للإهلاك.' : 'Manage operational assets, track assignments, and depreciation analysis.'}
           </p>
         </div>
-        <Button onClick={() => { resetForm(); setIsAdding(true); }} className="h-12 px-8 rounded-xl shadow-xl shadow-primary/20 gap-2 border-b-4 border-orange-700">
+        <Button onClick={() => router.push('/dashboard/equipment/new')} className="h-12 px-8 rounded-xl shadow-xl shadow-primary/20 gap-2 border-b-4 border-orange-700 font-black">
            <Plus className="h-5 w-5" /> {isRtl ? 'إضافة معدة جديدة' : 'Add New Equipment'}
         </Button>
       </header>
@@ -243,7 +182,7 @@ export default function EquipmentMasterPage() {
                        </div>
                     </TableCell>
                     <TableCell className="text-center font-mono font-black text-emerald-600 text-lg">
-                       {item.ownershipType === 'owned' ? item.hourlyDepreciationRate : item.hourlyRentalRate}
+                       {item.ownershipType === 'owned' ? (item.hourlyDepreciationRate || 0) : (item.hourlyRentalRate || 0)}
                        <span className="text-[8px] text-slate-300 ms-1">KWD</span>
                     </TableCell>
                     <TableCell className="text-start">
@@ -273,7 +212,7 @@ export default function EquipmentMasterPage() {
                                <RefreshCcw className="h-3 w-3" /> {isRtl ? 'تحرير' : 'Release'}
                             </Button>
                           )}
-                          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-blue-600" onClick={() => { setForm(item); setIsAdding(true); }}>
+                          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-blue-600" onClick={() => router.push(`/dashboard/equipment/${item.id}/edit`)}>
                              <Edit3 className="h-4 w-4" />
                           </Button>
                        </div>
@@ -286,211 +225,7 @@ export default function EquipmentMasterPage() {
         </CardContent>
       </Card>
 
-      {/* Glassmorphism Modal for Add/Edit */}
-      <Dialog open={isAdding} onOpenChange={setIsAdding}>
-         <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white/80 backdrop-blur-2xl max-w-4xl flex flex-col h-fit max-h-[95vh] border-white/40 ring-1 ring-black/5" dir={dir}>
-            <div className="bg-gradient-to-r from-primary/10 to-accent/10 p-8 text-slate-900 text-start border-b border-white/20 shrink-0">
-               <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3">
-                  <Settings2 className="h-8 w-8 text-primary" />
-                  {form.id ? (isRtl ? 'تعديل بيانات المعدة' : 'Edit Equipment') : (isRtl ? 'إضافة معدة جديدة' : 'Add New Equipment')}
-               </DialogTitle>
-               <p className="text-xs font-bold text-slate-500 mt-1 uppercase tracking-widest">{isRtl ? 'إدارة الأصول الهندسية والمالية' : 'Engineering Asset Management'}</p>
-            </div>
-
-            <div className="p-8 space-y-10 text-start overflow-y-auto scrollbar-hide">
-               {/* 1. Basic Info Section */}
-               <section className="space-y-4">
-                  <div className="flex items-center gap-2 text-primary">
-                     <Info className="h-4 w-4" />
-                     <h4 className="text-xs font-black uppercase tracking-widest">{isRtl ? 'البيانات الأساسية' : 'Basic Information'}</h4>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400">Code</Label>
-                       <Input value={form.code} onChange={e => setForm({...form, code: e.target.value.toUpperCase()})} className="h-11 rounded-xl border-2 font-mono font-black" placeholder="EQP-0000" />
-                    </div>
-                    <div className="md:col-span-2 space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'اسم المعدة' : 'Name'}</Label>
-                       <Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="h-11 rounded-xl border-2 font-bold" placeholder={isRtl ? "مثلاً: حفار كوماتسو" : "e.g. Komatsu Excavator"} />
-                    </div>
-                    <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'النوع' : 'Type'}</Label>
-                       <Input value={form.type} onChange={e => setForm({...form, type: e.target.value})} className="h-11 rounded-xl border-2 font-bold" />
-                    </div>
-                    <div className="md:col-span-2 space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'تاريخ الشراء / بدء التشغيل' : 'Start Date'}</Label>
-                       <SmartDateInput value={form.purchaseDate || ''} onChange={v => setForm({...form, purchaseDate: v})} />
-                    </div>
-                    <div className="md:col-span-2 space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'رقم اللوحة' : 'Plate Number'}</Label>
-                       <Input value={form.plateNumber || ''} onChange={e => setForm({...form, plateNumber: e.target.value})} className="h-11 rounded-xl border-2 font-bold" />
-                    </div>
-                  </div>
-               </section>
-
-               {/* 2. Ownership & Financing Section */}
-               <section className="space-y-4 pt-6 border-t border-slate-100">
-                  <div className="flex items-center gap-2 text-primary">
-                     <CreditCard className="h-4 w-4" />
-                     <h4 className="text-xs font-black uppercase tracking-widest">{isRtl ? 'الملكية والتمويل' : 'Ownership & Financing'}</h4>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                     <div className="space-y-4">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'نوع الملكية' : 'Ownership Type'}</Label>
-                        <Select value={form.ownershipType} onValueChange={(v: any) => setForm({...form, ownershipType: v})}>
-                           <SelectTrigger className="h-12 rounded-xl border-2 font-black bg-white shadow-sm">
-                              <SelectValue />
-                           </SelectTrigger>
-                           <SelectContent className="rounded-2xl border-2 shadow-2xl">
-                              <SelectItem value="owned" className="font-bold">{isRtl ? 'مملوكة للمنشأة' : 'Owned'}</SelectItem>
-                              <SelectItem value="rented" className="font-bold">{isRtl ? 'مستأجرة من الغير' : 'Rented'}</SelectItem>
-                           </SelectContent>
-                        </Select>
-                     </div>
-
-                     {form.ownershipType === 'owned' && (
-                        <div className="p-5 rounded-2xl bg-primary/5 border-2 border-primary/10 flex items-center justify-between group animate-in slide-in-from-left-2">
-                           <div className="space-y-0.5">
-                              <Label className="font-black text-xs uppercase text-primary">{isRtl ? 'معدة ممولة / أقساط' : 'Financed / Installments'}</Label>
-                              <p className="text-[9px] font-bold text-slate-400">{isRtl ? 'تفعيل في حال وجود أقساط بنكية' : 'Enable for monthly installments'}</p>
-                           </div>
-                           <Switch checked={form.isFinanced} onCheckedChange={v => setForm({...form, isFinanced: v})} />
-                        </div>
-                     )}
-                  </div>
-
-                  {form.ownershipType === 'owned' && form.isFinanced && (
-                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 bg-slate-50/50 rounded-[2rem] border-2 border-white shadow-inner animate-in zoom-in-95">
-                        <div className="space-y-1.5">
-                           <Label className="text-[9px] font-bold text-slate-400 uppercase">{isRtl ? 'جهة التمويل' : 'Financier'}</Label>
-                           <Input value={form.financierName || ''} onChange={e => setForm({...form, financierName: e.target.value})} className="h-10 rounded-lg bg-white font-bold" />
-                        </div>
-                        <div className="space-y-1.5">
-                           <Label className="text-[9px] font-bold text-slate-400 uppercase">{isRtl ? 'القسط الشهري' : 'Monthly Payment'}</Label>
-                           <Input type="number" value={form.monthlyInstallment || 0} onChange={e => setForm({...form, monthlyInstallment: Number(e.target.value)})} className="h-10 rounded-lg bg-white font-black text-emerald-600" />
-                        </div>
-                        <div className="space-y-1.5">
-                           <Label className="text-[9px] font-bold text-slate-400 uppercase">{isRtl ? 'يوم استحقاق القسط' : 'Due Day'}</Label>
-                           <Input type="number" min="1" max="31" value={form.installmentDay || 1} onChange={e => setForm({...form, installmentDay: Number(e.target.value)})} className="h-10 rounded-lg bg-white font-black text-center" />
-                        </div>
-                     </div>
-                  )}
-               </section>
-
-               {/* 3. Financial & Depreciation Section */}
-               {form.ownershipType === 'owned' && (
-                 <section className="space-y-6 pt-6 border-t border-slate-100">
-                    <div className="flex items-center gap-2 text-primary">
-                       <TrendingDown className="h-4 w-4" />
-                       <h4 className="text-xs font-black uppercase tracking-widest">{isRtl ? 'المعالجة المالية والإهلاك' : 'Depreciation & Valuation'}</h4>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                       <div className="space-y-4">
-                          <div className="grid grid-cols-2 gap-4">
-                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'سعر شراء الأصل' : 'Purchase Cost'}</Label>
-                                <Input type="number" value={form.purchaseCost} onChange={e => setForm({...form, purchaseCost: Number(e.target.value)})} className="h-11 rounded-xl border-2 font-black text-base" />
-                             </div>
-                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'القيمة التخريدية (الخردة)' : 'Salvage Value'}</Label>
-                                <Input type="number" value={form.salvageValue} onChange={e => setForm({...form, salvageValue: Number(e.target.value)})} className="h-11 rounded-xl border-2 font-black text-base" />
-                             </div>
-                          </div>
-                          <div className="space-y-1.5">
-                             <Label className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'طريقة احتساب الإهلاك' : 'Depreciation Method'}</Label>
-                             <Select value={form.depreciationMethod} onValueChange={(v: any) => setForm({...form, depreciationMethod: v})}>
-                                <SelectTrigger className="h-11 rounded-xl border-2 font-bold bg-white">
-                                   <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl shadow-2xl">
-                                   <SelectItem value="hours" className="font-bold">{isRtl ? 'ساعات التشغيل (KWD/HR)' : 'Operating Hours'}</SelectItem>
-                                   <SelectItem value="straight" className="font-bold">{isRtl ? 'قسط ثابت (سنوي %)' : 'Straight Line'}</SelectItem>
-                                   <SelectItem value="none" className="font-bold text-slate-400">{isRtl ? 'لا يوجد إهلاك' : 'None'}</SelectItem>
-                                </SelectContent>
-                             </Select>
-                          </div>
-                       </div>
-
-                       <div className="p-6 bg-slate-900 text-white rounded-[2.5rem] shadow-2xl space-y-6 relative overflow-hidden">
-                          <div className="absolute top-0 right-0 p-8 opacity-5"><Calculator className="h-24 w-24" /></div>
-                          <div className="relative z-10 space-y-4">
-                             <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
-                                <Clock className="h-4 w-4" /> {isRtl ? 'معدل الإهلاك المعتمد بالساعة' : 'Hourly Depreciation Rate'}
-                             </Label>
-                             <div className="flex gap-2">
-                                <div className="relative flex-1">
-                                   <Input 
-                                      type="number" 
-                                      step="0.001" 
-                                      value={form.hourlyDepreciationRate || ''} 
-                                      onChange={e => setForm({...form, hourlyDepreciationRate: e.target.value === '' ? undefined : Number(e.target.value)})} 
-                                      className="h-14 rounded-2xl bg-white/10 border-0 text-3xl font-black text-emerald-400 text-center shadow-inner"
-                                      placeholder="0.000"
-                                   />
-                                   <span className="absolute right-4 bottom-4 text-[9px] font-black text-slate-500 uppercase">KWD / HR</span>
-                                </div>
-                                <Button 
-                                  type="button"
-                                  onClick={handleAutoCalculateRate}
-                                  className="h-14 w-14 rounded-2xl bg-white/10 hover:bg-primary transition-all border-0 shadow-lg shrink-0"
-                                  title={isRtl ? "حساب تلقائي 🧮" : "Auto Calc"}
-                                >
-                                   <RefreshCcw className="h-6 w-6" />
-                                </Button>
-                             </div>
-                             
-                             <div className="pt-4 border-t border-white/5 space-y-2">
-                                <Label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'إجمالي الساعات المتوقعة للمعايرة' : 'Expected Lifetime Hours'}</Label>
-                                <Input 
-                                   type="number" 
-                                   value={form.expectedTotalHours || ''} 
-                                   onChange={e => setForm({...form, expectedTotalHours: Number(e.target.value)})} 
-                                   className="h-9 rounded-lg bg-white/5 border-white/10 text-white font-mono text-center font-black"
-                                   placeholder="..."
-                                />
-                             </div>
-                          </div>
-                       </div>
-                    </div>
-                 </section>
-               )}
-
-               {/* Rented Equipment Price Section */}
-               {form.ownershipType === 'rented' && (
-                 <section className="p-8 rounded-[2.5rem] bg-orange-600 text-white shadow-2xl relative overflow-hidden animate-in zoom-in-95">
-                    <div className="absolute top-0 right-0 p-8 opacity-10"><Banknote className="h-32 w-32" /></div>
-                    <div className="relative z-10 space-y-4 text-center">
-                       <Label className="text-sm font-black uppercase tracking-[0.2em] text-orange-200">{isRtl ? 'تعرفة الإيجار بالساعة' : 'Hourly Rental Rate'}</Label>
-                       <div className="relative max-w-xs mx-auto">
-                          <Input 
-                             type="number" 
-                             step="0.001" 
-                             value={form.hourlyRentalRate} 
-                             onChange={e => setForm({...form, hourlyRentalRate: Number(e.target.value)})} 
-                             className="h-20 rounded-3xl bg-white border-0 text-5xl font-black text-orange-600 text-center shadow-inner" 
-                          />
-                          <span className="absolute right-4 bottom-4 text-xs font-black text-slate-300">KWD / HR</span>
-                       </div>
-                       <p className="text-[10px] font-bold text-orange-100 opacity-70 italic">{isRtl ? 'سيتم استخدام هذه التعرفة عند ربط المعدة بسجل إنجاز ميداني.' : 'This rate will be used for field execution cost calculation.'}</p>
-                    </div>
-                 </section>
-               )}
-            </div>
-
-            <DialogFooter className="p-8 bg-slate-50/50 backdrop-blur-xl border-t border-white/20 shrink-0">
-               <Button variant="outline" onClick={() => setIsAdding(false)} className="rounded-2xl h-16 px-10 font-bold border-2 bg-white">
-                  {isRtl ? 'إلغاء' : 'Cancel'}
-               </Button>
-               <Button onClick={handleSave} disabled={loading} className="flex-1 h-16 rounded-2xl bg-primary text-white font-black text-2xl shadow-xl shadow-primary/20 transition-all border-b-8 border-orange-700 hover:scale-[1.02]">
-                  {loading ? <Loader2 className="animate-spin h-8 w-8" /> : <Save className="h-8 w-8 me-2" />}
-                  {t('save')}
-               </Button>
-            </DialogFooter>
-         </DialogContent>
-      </Dialog>
-
-      {/* Assign to Project Dialog */}
+      {/* Assign to Project Dialog - Keep as small dialog since it's simple */}
       <Dialog open={!!isAssigning} onOpenChange={() => setIsAssigning(null)}>
          <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-md" dir={dir}>
             <div className="bg-blue-600 p-8 text-white text-start">
