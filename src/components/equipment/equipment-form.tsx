@@ -7,12 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { 
-  Info, Save, Truck, 
+  Save, Truck, 
   Calculator, ShieldCheck, 
-  MapPin, Gavel, LayoutGrid,
-  Zap, HardHat, Construction, 
-  Wrench, Sparkles, Calendar,
-  ShieldAlert, AlertCircle, Loader2,
+  LayoutGrid,
+  Zap, HardHat, 
+  Wrench, Info, Loader2,
   RefreshCw, Clock
 } from "lucide-react";
 import { 
@@ -130,10 +129,10 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
     onSubmit(form);
   };
 
-  const AdminSectionHeader = ({ title, sub, icon: Icon }: any) => (
+  const AdminSectionHeader = ({ title, sub, icon: Icon, colorClass = "text-primary" }: any) => (
     <div className="flex items-center gap-4 text-start">
-      <div className="h-12 w-12 bg-primary/5 rounded-2xl flex items-center justify-center text-primary shadow-sm border border-primary/10">
-        <Icon className="h-6 w-6" />
+      <div className={cn("h-12 w-12 bg-white rounded-2xl flex items-center justify-center shadow-sm border", colorClass === "text-primary" ? "border-primary/10" : "border-secondary/10")}>
+        <Icon className={cn("h-6 w-6", colorClass)} />
       </div>
       <div>
         <CardTitle className="text-xl font-black">{title}</CardTitle>
@@ -202,17 +201,17 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
          <CardHeader className="bg-slate-50/50 p-8 border-b">
             {cat === 'heavy_machinery' && (
               <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-                 <AdminSectionHeader title={isRtl ? 'بيانات الآلية الثقيلة' : 'Heavy Machinery'} sub={isRtl ? 'الامتثال الميداني والمروري' : 'Field vs Street Compliance'} icon={HardHat} />
+                 <AdminSectionHeader title={isRtl ? 'بيانات الآلية الثقيلة' : 'Heavy Machinery'} sub={isRtl ? 'الامتثال الميداني والمروري' : 'Field vs Street Compliance'} icon={HardHat} colorClass="text-secondary" />
                  <div className="flex items-center gap-4 bg-white px-6 py-2.5 rounded-2xl border-2 shadow-sm">
                     <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'مرخصة للسير في الشارع؟' : 'Street Licensed?'}</Label>
                     <Switch checked={form.isStreetLicensed} onCheckedChange={v => setForm({...form, isStreetLicensed: v})} />
                  </div>
               </div>
             )}
-            {cat === 'vehicle' && <AdminSectionHeader title={isRtl ? 'بيانات ترخيص المركبة' : 'Vehicle Licensing'} sub={isRtl ? 'المرور والتأمين' : 'Traffic & Insurance'} icon={Truck} />}
-            {cat === 'stationary' && <AdminSectionHeader title={isRtl ? 'الصيانة والسلامة' : 'Maintenance & Safety'} sub={isRtl ? 'الفحص الدوري والشهادات' : 'Service & Certification'} icon={Zap} />}
-            {cat === 'hand_tool' && <AdminSectionHeader title={isRtl ? 'الماركة والحالة الفنية' : 'Brand & Condition'} sub={isRtl ? 'البيانات المرجعية للأداة' : 'Master Tool Data'} icon={Wrench} />}
-            {cat === 'other' && <AdminSectionHeader title={isRtl ? 'بيانات إضافية' : 'Additional Info'} sub={isRtl ? 'تفاصيل متنوعة' : 'Miscellaneous Details'} icon={Info} />}
+            {cat === 'vehicle' && <AdminSectionHeader title={isRtl ? 'بيانات ترخيص المركبة' : 'Vehicle Licensing'} sub={isRtl ? 'المرور والتأمين' : 'Traffic & Insurance'} icon={Truck} colorClass="text-secondary" />}
+            {cat === 'stationary' && <AdminSectionHeader title={isRtl ? 'الصيانة والسلامة' : 'Maintenance & Safety'} sub={isRtl ? 'الفحص الدوري والشهادات' : 'Service & Certification'} icon={Zap} colorClass="text-secondary" />}
+            {cat === 'hand_tool' && <AdminSectionHeader title={isRtl ? 'الماركة والحالة الفنية' : 'Brand & Condition'} sub={isRtl ? 'البيانات المرجعية للأداة' : 'Master Tool Data'} icon={Wrench} colorClass="text-secondary" />}
+            {cat === 'other' && <AdminSectionHeader title={isRtl ? 'بيانات إضافية' : 'Additional Info'} sub={isRtl ? 'تفاصيل متنوعة' : 'Miscellaneous Details'} icon={Info} colorClass="text-secondary" />}
          </CardHeader>
 
          <CardContent className="p-8">
@@ -280,7 +279,7 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
                     <SmartDateInput value={form.manufacturingYear ?? ''} onChange={v => setForm({...form, manufacturingYear: v})} />
                  </div>
                  <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الرقم التسلسلي' : 'Serial No'}</Label><Input value={form.serialNumber ?? ''} onChange={e => setForm({...form, serialNumber: e.target.value})} className="h-12 rounded-xl border-2 font-mono" /></div>
-                 <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'القدرة (KVA/HP)' : 'Capacity'}</Label><Input value={form.capacity ?? ''} onChange={e => setForm({...form, capacity: e.target.value})} className="h-12 rounded-xl border-2 font-black text-primary" /></div>
+                 <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'القدرة (KVA/HP)' : 'Capacity'}</Label><Input value={form.capacity ?? ''} onChange={e => setForm({...form, capacity: e.target.value})} className="h-12 rounded-xl border-2 font-black text-secondary" /></div>
                  <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'موعد السيرفس القادم' : 'Next Service'}</Label><SmartDateInput value={form.nextServiceDate ?? ''} onChange={v => setForm({...form, nextServiceDate: v})} /></div>
                  <div className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'انتهاء شهادة السلامة' : 'Safety Cert'}</Label><SmartDateInput value={form.safetyCertExpiry ?? ''} onChange={v => setForm({...form, safetyCertExpiry: v})} /></div>
               </div>
@@ -403,7 +402,7 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
            type="button"
            onClick={handlePreSubmit} 
            disabled={loading || !form.name || !form.code}
-           className="h-14 px-24 rounded-full bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-3 border-b-8 border-orange-700"
+           className="h-14 px-24 rounded-full bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-3 border-b-8 border-[#f57c00]"
          >
             {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
             {isRtl ? 'اعتماد وحفظ الأصل' : 'Commit Asset'}
