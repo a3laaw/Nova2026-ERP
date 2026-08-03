@@ -60,7 +60,7 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
     isLicensed: false,
     isStreetLicensed: false,
     chassisNumber: '',
-    plateNumber: '', // Now serves as Plate / Registration Number
+    plateNumber: '', 
     registrationExpiry: '',
     insuranceType: 'none',
     insuranceCompany: '',
@@ -113,6 +113,7 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
   const cat = form.category;
 
   const handlePreSubmit = () => {
+    // 1. الرقابة القانونية للمركبات
     if (isOwned) {
       if (cat === 'vehicle' || (cat === 'heavy_machinery' && form.isStreetLicensed)) {
         if (!form.registrationExpiry || !form.insuranceExpiry || !form.plateNumber) {
@@ -126,19 +127,35 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
       }
     }
 
+    // 2. الرقابة على سنة التصنيع
     if (form.manufacturingYear) {
       const year = parseInt(form.manufacturingYear);
       if (year && year < 1980) {
         toast({ 
           variant: "destructive", 
           title: isRtl ? "بيانات غير دقيقة" : "Invalid Data", 
-          description: isRtl ? "يرجى إدخال سنة صنع صحيحة وحديثة." : "Please enter a valid and recent manufacturing year."
+          description: isRtl ? "يرجى إدخال سنة صنع صحيحة وحديثة." : "Please enter a valid and recent year."
         });
         return;
       }
     }
 
-    onSubmit(form);
+    // 3. التحويل الرقمي السيادي (المعالجة قبل الحفظ)
+    const submissionData = { ...form };
+    const numericFields = [
+      'purchaseCost', 'salvageValue', 'hourlyDepreciationRate', 
+      'hourlyRentalRate', 'costValue', 'monthlyInstallment', 'installmentDay'
+    ];
+    
+    numericFields.forEach(field => {
+      if (submissionData[field] !== undefined && submissionData[field] !== '') {
+        submissionData[field] = Number(submissionData[field]);
+      } else if (submissionData[field] === '') {
+        submissionData[field] = 0; 
+      }
+    });
+
+    onSubmit(submissionData);
   };
 
   const AdminSectionHeader = ({ title, sub, icon: Icon, colorClass = "text-primary" }: any) => (
@@ -212,7 +229,7 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
            <CardHeader className="bg-slate-50/50 p-8 border-b">
               {cat === 'heavy_machinery' && (
                 <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-                   <AdminSectionHeader title={isRtl ? 'بيانات الآلية الثقيلة' : 'Heavy Machinery'} sub={isRtl ? 'الامتثال الميداني والمروري' : 'Field vs Street Compliance'} icon={HardHat} colorClass="text-secondary" />
+                   <AdminSectionHeader title={isRtl ? 'البيانات الإدارية والتراخيص' : 'Admin & Licensing'} sub={isRtl ? 'الامتثال الميداني والحالة المرورية' : 'Field & Street Compliance'} icon={HardHat} colorClass="text-secondary" />
                    <div className="flex items-center gap-4 bg-white px-6 py-2.5 rounded-2xl border-2 shadow-sm">
                       <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'مرخصة للسير في الشارع؟' : 'Street Licensed?'}</Label>
                       <Switch checked={form.isStreetLicensed} onCheckedChange={v => setForm({...form, isStreetLicensed: v})} />

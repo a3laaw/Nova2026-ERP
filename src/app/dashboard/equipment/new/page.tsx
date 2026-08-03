@@ -31,8 +31,12 @@ export default function NewEquipmentPage() {
       await equipmentService.createEquipment(formData, user.uid);
       toast({ title: isRtl ? "تمت إضافة المعدة بنجاح" : "Equipment Registered" });
       router.push('/dashboard/equipment');
-    } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
+    } catch (e: any) {
+      toast({ 
+        variant: "destructive", 
+        title: isRtl ? "فشل حفظ البيانات" : "Save Failed",
+        description: e.message || (isRtl ? "حدث خطأ غير متوقع أثناء معالجة الطلب." : "An unexpected error occurred.")
+      });
     } finally {
       setLoading(false);
     }
