@@ -28,7 +28,7 @@ service cloud.firestore {
     function isAdmin(companyId) {
       let hasGlobalUser = exists(/databases/$(database)/documents/global_users/$(request.auth.uid));
       let globalUser = hasGlobalUser ? get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data : null;
-      let company = get(/databases/$(database)/documents/companies/$(companyId)).data;
+      let company = exists(/databases/$(database)/documents/companies/$(companyId)) ? get(/databases/$(database)/documents/companies/$(companyId)).data : null;
       
       return isAuthenticated() && (
         (globalUser != null && globalUser.companyId == companyId && (globalUser.roleCode == 'ADMIN' || globalUser.role == 'admin')) ||
@@ -38,11 +38,19 @@ service cloud.firestore {
     }
 
     // --- 3. قواعد الهوية العالمية (Global Identity) ---
+    // تم التحصين لمنع تصعيد الصلاحيات يدوياً
     match /global_users/{uid} {
       allow read: if isAuthenticated() && (request.auth.uid == uid || isAdmin(resource.data.companyId));
-      allow create: if isAuthenticated() && (request.auth.uid == uid || isAdmin(request.resource.data.companyId));
+      
+      // السماح بإنشاء الملف الشخصي فقط لصاحب العلاقة أو الأدمن، مع منع وضع صلاحيات مطور يدوياً
+      allow create: if isAuthenticated() && (
+        (request.auth.uid == uid && request.resource.data.get('isDeveloper', false) == false) || 
+        isAdmin(request.resource.data.companyId)
+      );
+      
+      // منع تغيير الحقول الحساسة (isDeveloper, roleCode, companyId) إلا من خلال الأدمن أو المطور
       allow update: if isAuthenticated() && (
-        request.auth.uid == uid || 
+        (request.auth.uid == uid && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isDeveloper', 'roleCode', 'role', 'companyId'])) || 
         isAdmin(resource.data.companyId) || 
         isSovereignDev()
       );
@@ -50,8 +58,12 @@ service cloud.firestore {
     
     // --- 4. قواعد المنشآت (Multi-Tenant Core) ---
     match /companies/{companyId} {
-      allow read: if isAuthenticated(); 
-      allow create: if isAuthenticated(); 
+      // تصحيح: القراءة فقط لأعضاء الشركة أو الأدمن
+      allow read: if belongsToCompany(companyId) || isAdmin(companyId); 
+      
+      // تصحيح: التحقق من أن منشئ الشركة هو نفسه المالك المسجل في البيانات
+      allow create: if isAuthenticated() && request.resource.data.ownerUid == request.auth.uid; 
+      
       allow update: if isAdmin(companyId);
 
       // السماح للمدير بكتابة العدادات التسلسلية
