@@ -9,23 +9,39 @@ import { BaseReference } from './reference';
 export type EquipmentOwnershipType = 'owned' | 'rented';
 export type EquipmentStatus = 'available' | 'in_use' | 'under_maintenance' | 'retired';
 export type RentalCostMethod = 'hourly' | 'daily' | 'monthly';
+export type DepreciationMethod = 'hours' | 'straight' | 'none';
 
 export interface Equipment extends BaseReference {
   id: string;
-  code: string;                          // كود المعدة (مثال: EQ-R-001)
-  name: string;                          // اسم المعدة (مثال: حفار كوماتسو)
-  type: string;                          // تصنيف المعدة
-  ownershipType: EquipmentOwnershipType; // مملوكة أو مستأجرة
-  
-  // بيانات التأجير (المرحلة الحالية)
-  supplierId?: string;                   // معرف شركة التأجير
-  supplierName?: string;                 // اسم شركة التأجير
-  costMethod?: RentalCostMethod;         // طريقة التكلفة (ساعة/يوم/شهر)
-  costValue?: number;                    // قيمة التكلفة (KWD)
-
+  code: string;                          // كود المعدة (مثال: EQ-001)
+  name: string;                          // اسم المعدة
+  type: string;                          // تصنيف المعدة (حفار، بوكات، إلخ)
+  ownershipType: EquipmentOwnershipType; 
   status: EquipmentStatus;
-  currentProjectId?: string;
-  currentProjectName?: string;
+  
+  // --- بيانات الملكية (للنوع: مملوكة) ---
+  purchaseDate?: string;
+  purchaseCost?: number;
+  salvageValue?: number;                 // القيمة التخريدية
+  expectedTotalHours?: number;           // العمر الافتراضي بالساعات
+  depreciationMethod?: DepreciationMethod;
+  hourlyDepreciationRate?: number;       // معدل الإهلاك للساعة (محسوب أو يدوي)
+  
+  // بيانات التمويل
+  isFinanced?: boolean;
+  financierName?: string;
+  monthlyInstallment?: number;
+  installmentDay?: number;
+
+  // --- بيانات التأجير (للنوع: مستأجرة) ---
+  supplierId?: string;
+  supplierName?: string;
+  costMethod?: RentalCostMethod;         // ساعة/يوم/شهر
+  costValue?: number;                    // القيمة المتفق عليها
+  hourlyRentalRate?: number;             // القيمة المحولة للساعة للربط الميداني
+
+  plateNumber?: string;
+  notes?: string;
   isActive: boolean;
   createdBy?: string;
   updatedBy?: string;

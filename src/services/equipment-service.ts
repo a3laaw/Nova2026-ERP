@@ -19,12 +19,10 @@ import { handleWriteError } from '@/lib/write-error';
 export class EquipmentService {
   constructor(private db: Firestore, private companyId: string) {}
 
-  async createRentedEquipment(data: Partial<Equipment>, userId: string) {
+  async createEquipment(data: Partial<Equipment>, userId: string) {
     const path = paths.equipment(this.companyId);
     const docData = {
       ...data,
-      type: 'rented_asset',
-      ownershipType: 'rented',
       companyId: this.companyId,
       status: 'available',
       isActive: true,
@@ -37,6 +35,21 @@ export class EquipmentService {
       return await addDoc(collection(this.db, path), docData);
     } catch (err: any) {
       await handleWriteError(err, { path, operation: 'create', requestResourceData: docData });
+    }
+  }
+
+  async updateEquipment(id: string, data: Partial<Equipment>, userId: string) {
+    const path = paths.equipment(this.companyId);
+    const ref = doc(this.db, path, id);
+    const docData = {
+      ...data,
+      updatedBy: userId,
+      updatedAt: serverTimestamp()
+    };
+    try {
+      await updateDoc(ref, docData);
+    } catch (err: any) {
+      await handleWriteError(err, { path, operation: 'update', requestResourceData: docData });
     }
   }
 

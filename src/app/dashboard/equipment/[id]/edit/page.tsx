@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -35,7 +34,7 @@ export default function EditEquipmentPage() {
   const { data: equipment, loading: fetchLoading } = useDoc<Equipment>(equipRef);
 
   const handleSave = async (formData: any) => {
-    if (!db || !companyId || !user || !formData.name) return;
+    if (!db || !companyId || !user) return;
     
     setLoading(true);
     try {
@@ -53,14 +52,14 @@ export default function EditEquipmentPage() {
   if (fetchLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto pb-20 animate-in fade-in duration-700" dir={dir}>
-      <div className="flex items-center gap-6 border-b pb-8 border-slate-200/60 text-start">
-        <Button variant="ghost" onClick={() => router.push('/dashboard/equipment')} className="h-12 w-12 p-0 rounded-2xl bg-white border-2 border-slate-100 text-slate-400">
+    <div className="space-y-8 max-w-6xl mx-auto pb-20 animate-in fade-in duration-700" dir={dir}>
+      <div className="flex items-center gap-6 border-b pb-8 border-slate-100 text-start">
+        <Button variant="ghost" onClick={() => router.push('/dashboard/equipment')} className="h-12 w-12 p-0 rounded-2xl bg-white border-2 text-slate-400 shadow-sm">
            <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-180")} />
         </Button>
         <div className="text-start space-y-1">
           <h1 className="text-4xl font-black font-headline text-slate-900 tracking-tight">
-             {isRtl ? 'تعديل بيانات المعدة' : 'Edit Equipment Details'}
+             {isRtl ? 'تعديل بيانات الأصل' : 'Edit Asset Details'}
           </h1>
           <p className="text-muted-foreground font-bold italic text-sm">
              {equipment?.name} | {equipment?.code}

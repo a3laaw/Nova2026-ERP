@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFirestore } from '@/firebase';
 import { useAuthContext } from '@/context/auth-context';
@@ -24,16 +23,13 @@ export default function NewEquipmentPage() {
   const [loading, setLoading] = useState(false);
 
   const handleSave = async (formData: any) => {
-    if (!db || !companyId || !user || !formData.name || !formData.code) {
-      toast({ variant: "destructive", title: isRtl ? "بيانات ناقصة" : "Missing Data" });
-      return;
-    }
+    if (!db || !companyId || !user) return;
     
     setLoading(true);
     try {
       const equipmentService = new EquipmentService(db, companyId);
       await equipmentService.createEquipment(formData, user.uid);
-      toast({ title: isRtl ? "تمت إضافة المعدة بنجاح" : "Equipment Added" });
+      toast({ title: isRtl ? "تمت إضافة المعدة بنجاح" : "Equipment Registered" });
       router.push('/dashboard/equipment');
     } catch (e) {
       toast({ variant: "destructive", title: t('error') });
@@ -43,17 +39,17 @@ export default function NewEquipmentPage() {
   };
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto pb-20 animate-in fade-in duration-700" dir={dir}>
-      <div className="flex items-center gap-6 border-b pb-8 border-slate-200/60 text-start">
-        <Button variant="ghost" onClick={() => router.push('/dashboard/equipment')} className="h-12 w-12 p-0 rounded-2xl bg-white border-2 border-slate-100 text-slate-400">
+    <div className="space-y-8 max-w-6xl mx-auto pb-20 animate-in fade-in duration-700" dir={dir}>
+      <div className="flex items-center gap-6 border-b pb-8 border-slate-100 text-start">
+        <Button variant="ghost" onClick={() => router.push('/dashboard/equipment')} className="h-12 w-12 p-0 rounded-2xl bg-white border-2 text-slate-400 shadow-sm">
            <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-180")} />
         </Button>
         <div className="text-start space-y-1">
           <h1 className="text-4xl font-black font-headline text-slate-900 tracking-tight">
-             {isRtl ? 'تسجيل معدة جديدة' : 'New Equipment Registry'}
+             {isRtl ? 'تسجيل أصل تشغيلي جديد' : 'Register New Asset'}
           </h1>
           <p className="text-muted-foreground font-bold italic text-sm">
-             {isRtl ? 'إدراج أصل تشغيلي جديد وتحديد مساره المالي والميداني.' : 'Register new operational asset and define its financial path.'}
+             {isRtl ? 'إدراج معدة مملوكة أو مستأجرة وتحديد مسارها المالي.' : 'Register owned or rented equipment with financial metrics.'}
           </p>
         </div>
       </div>
