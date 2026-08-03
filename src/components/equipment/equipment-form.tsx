@@ -56,7 +56,7 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
     name: '', 
     category: 'heavy_machinery', 
     ownershipType: 'owned', 
-    manufacturingYear: '', // Will store 4 digits e.g. "2024"
+    manufacturingYear: '', 
     isLicensed: false,
     isStreetLicensed: false,
     chassisNumber: '',
@@ -127,14 +127,13 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
       }
     }
 
-    // Final Year Validation
     if (form.manufacturingYear) {
       const year = parseInt(form.manufacturingYear);
       if (year < 1980) {
         toast({ 
           variant: "destructive", 
           title: isRtl ? "سنة غير صالحة" : "Invalid Year", 
-          description: isRtl ? "سنة الصنع لا يمكن أن تكون قبل 1980." : "Manufacturing year cannot be before 1980."
+          description: isRtl ? "يرجى إدخال سنة صنع صحيحة وحديثة." : "Please enter a valid and recent manufacturing year."
         });
         return;
       }
@@ -158,7 +157,6 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
   return (
     <div className="space-y-8 text-start pb-20 animate-in fade-in duration-700 bg-transparent">
       
-      {/* 1. قسم الهوية والتصنيف */}
       <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
         <CardHeader className="bg-primary/5 p-8 border-b">
            <div className="flex items-center gap-4">
@@ -210,7 +208,6 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
         </CardContent>
       </Card>
 
-      {/* 2. البيانات الإدارية والتراخيص (تتغير ديناميكياً) */}
       <Card className="border-0 shadow-xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
          <CardHeader className="bg-slate-50/50 p-8 border-b">
             {cat === 'heavy_machinery' && (
@@ -249,7 +246,7 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
                             toast({ 
                               variant: "destructive", 
                               title: isRtl ? "سنة غير صالحة" : "Invalid Year", 
-                              description: isRtl ? "سنة الصنع لا يمكن أن تكون قبل 1980." : "Manufacturing year cannot be before 1980."
+                              description: isRtl ? "يرجى إدخال سنة صنع صحيحة وحديثة." : "Please enter a valid and recent manufacturing year."
                             });
                             setForm({...form, manufacturingYear: ''});
                           }
@@ -299,7 +296,7 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
                             toast({ 
                               variant: "destructive", 
                               title: isRtl ? "سنة غير صالحة" : "Invalid Year", 
-                              description: isRtl ? "سنة الصنع لا يمكن أن تكون قبل 1980." : "Manufacturing year cannot be before 1980."
+                              description: isRtl ? "يرجى إدخال سنة صنع صحيحة وحديثة." : "Please enter a valid and recent manufacturing year."
                             });
                             setForm({...form, manufacturingYear: ''});
                           }
@@ -347,7 +344,7 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
                             toast({ 
                               variant: "destructive", 
                               title: isRtl ? "سنة غير صالحة" : "Invalid Year", 
-                              description: isRtl ? "سنة الصنع لا يمكن أن تكون قبل 1980." : "Manufacturing year cannot be before 1980."
+                              description: isRtl ? "يرجى إدخال سنة صنع صحيحة وحديثة." : "Please enter a valid and recent manufacturing year."
                             });
                             setForm({...form, manufacturingYear: ''});
                           }
@@ -389,7 +386,6 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
          </CardContent>
       </Card>
 
-      {/* 3. الملكية والتمويل */}
       <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
         <CardHeader className="bg-white p-8 border-b">
            <div className="flex items-center justify-between">
@@ -434,7 +430,6 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
         </CardContent>
       </Card>
 
-      {/* 4. المعالجة المالية */}
       <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
         <CardHeader className="bg-slate-50/50 p-8 border-b">
            <AdminSectionHeader title={isRtl ? 'المعطيات المالية والتشغيلية' : 'Finance & Rates'} sub={isRtl ? 'تحديد تعرفة الساعة وتكاليف التشغيل' : 'Cost Recovery Metrics'} icon={Calculator} />
