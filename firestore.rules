@@ -7,7 +7,7 @@ service cloud.firestore {
       return request.auth != null && request.auth.token.email == 'admin@novaflow.com';
     }
 
-    // السماح الشامل للمطور
+    // السماح الشامل للمطور (Bypass)
     match /{document=**} {
       allow read, write: if isSovereignDev();
     }
@@ -17,17 +17,20 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    // جلب بيانات الهوية العالمية (المنقذ من القفل الدائري)
+    // جلب بيانات الهوية العالمية
     function getGlobalUser() {
       return get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
     }
 
-    // فحص صلاحية الإدارة السيادية (تعتمد على الهوية العالمية فقط لسرعة التنفيذ)
+    // فحص صلاحية الإدارة (تعتمد على المالك المباشر أو الهوية العالمية)
     function isAdmin(companyId) {
-      let userDoc = getGlobalUser();
-      return isAuthenticated() && 
-             userDoc.companyId == companyId && 
-             (userDoc.roleCode == 'ADMIN' || userDoc.role == 'admin' || userDoc.isDeveloper == true);
+      // السماح إذا كان المستخدم هو المالك المسجل للشركة
+      let isOwner = get(/databases/$(database)/documents/companies/$(companyId)).data.ownerUid == request.auth.uid;
+      // أو إذا كان يحمل دور ADMIN في الهوية العالمية
+      let hasAdminRole = getGlobalUser().companyId == companyId && 
+                         (getGlobalUser().roleCode == 'ADMIN' || getGlobalUser().role == 'admin');
+      
+      return isAuthenticated() && (isOwner || hasAdminRole || isSovereignDev());
     }
 
     // --- 3. قواعد الهوية العالمية ---
@@ -39,20 +42,13 @@ service cloud.firestore {
     
     // --- 4. قواعد المنشآت (Multi-Tenant Core) ---
     match /companies/{companyId} {
-      // السماح بالقراءة للمالك والموظفين المنتمين للشركة عبر هويتهم العالمية
-      allow read: if isAuthenticated() && (getGlobalUser().companyId == companyId);
+      allow read: if isAuthenticated() && (getGlobalUser().companyId == companyId || isSovereignDev());
       allow create: if isAuthenticated(); 
       allow update: if isAuthenticated() && (resource.data.ownerUid == request.auth.uid || isSovereignDev());
 
-      // حماية سيادية للمعدات: وصول كامل وحصري للأدمن/المالك
-      match /equipment/{id} { 
-        allow read: if isAuthenticated() && getGlobalUser().companyId == companyId; 
-        allow write: if isAdmin(companyId); 
-      }
-
-      // القواعد العامة لباقي المجموعات الفرعية
+      // القاعدة الذهبية للمجموعات الفرعية: أي كتابة تتطلب صلاحية Admin (التي تشمل المالك)
       match /{allSubCollections=**} {
-        allow read: if isAuthenticated() && getGlobalUser().companyId == companyId;
+        allow read: if isAuthenticated() && (getGlobalUser().companyId == companyId || isSovereignDev());
         allow write: if isAdmin(companyId);
       }
     }
@@ -61,11 +57,6 @@ service cloud.firestore {
        allow create: if isAuthenticated(); 
        allow read: if isAuthenticated() && (request.auth.uid == resource.data.ownerUid || isSovereignDev());
        allow delete: if isSovereignDev();
-    }
-
-    // تتبع الحركات الميدانية
-    match /{path=**}/fieldVisits/{id} { 
-      allow read: if isAuthenticated() && getGlobalUser().companyId == resource.data.companyId; 
     }
   }
 }

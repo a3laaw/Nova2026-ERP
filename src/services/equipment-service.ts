@@ -15,11 +15,14 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
 
 /**
  * خدمة إدارة المعدات والآليات (Equipment Service).
- * تم تحصينها بنظام الأخطاء السياقية ونمط الحفظ غير الحاصر.
+ * تتبع نمط Pattern 1 (Non-blocking) لضمان سلاسة تجربة المستخدم.
  */
 export class EquipmentService {
   constructor(private db: Firestore, private companyId: string) {}
 
+  /**
+   * إنشاء معدة جديدة - يتم الحفظ دون انتظار (Optimistic)
+   */
   createEquipment(data: Partial<Equipment>, userId: string) {
     if (!this.db || !this.companyId) return;
 
@@ -37,10 +40,10 @@ export class EquipmentService {
       updatedAt: serverTimestamp()
     };
     
-    // تنفيذ الكتابة بنمط Pattern 1 (بدون await)
+    // تنفيذ الكتابة دون await (Pattern 1)
     setDoc(equipRef, docData)
       .catch(async (serverError) => {
-        // إنشاء خطأ سياقي غني لإرشاد المبرمج الآلي
+        // إذا فشل الحفظ في السحاب، نطلق الخطأ السياقي للمستمع العالمي
         const permissionError = new FirestorePermissionError({
           path: equipRef.path,
           operation: 'create',
@@ -53,6 +56,9 @@ export class EquipmentService {
     return equipRef.id;
   }
 
+  /**
+   * تحديث معدة موجودة
+   */
   updateEquipment(id: string, data: Partial<Equipment>, userId: string) {
     const ref = doc(this.db, paths.equipment(this.companyId), id);
     const docData = {

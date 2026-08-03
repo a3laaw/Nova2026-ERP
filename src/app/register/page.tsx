@@ -10,12 +10,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, Loader2, AlertCircle, ArrowRight, Eye, EyeOff, Building2, HardHat, PencilRuler, Zap, Clock } from 'lucide-react';
+import { Sparkles, Loader2, AlertCircle, ArrowRight, Eye, EyeOff, Building2, Clock } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
-import { cn } from '@/lib/utils';
 
+/**
+ * صفحة تسجيل الشركات الجديدة.
+ * تم تحصينها لضمان حقن صلاحية ADMIN للمالك فوراً.
+ */
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
     companyName: '',
@@ -79,12 +82,11 @@ export default function RegisterPage() {
       const globalUserData = {
         companyId,
         role: 'admin',
-        roleCode: 'ADMIN',
+        roleCode: 'ADMIN', // القفل السيادي: ضمان تعريف المالك كمدير
         fullName: formData.contactName, 
         username: formData.username || formData.email.split('@')[0],
         email: formData.email,
-        activity: formData.activity, 
-        isActive: false, 
+        isActive: true, 
         isPendingApproval: true,
         updatedAt: serverTimestamp()
       };
@@ -99,18 +101,10 @@ export default function RegisterPage() {
         role: 'admin',
         roleCode: 'ADMIN',
         joinedAt: serverTimestamp(),
-        isActive: false
+        isActive: true
       });
 
-      await batch.commit().catch(err => {
-         const permissionError = new FirestorePermissionError({
-            path: 'registration_batch',
-            operation: 'write',
-            requestResourceData: { companyId, uid }
-         } satisfies SecurityRuleContext);
-         errorEmitter.emit('permission-error', permissionError);
-         throw err;
-      });
+      await batch.commit();
 
       setIsSubmitted(true);
       toast({ title: "تم إرسال طلبك بنجاح" });
@@ -132,11 +126,11 @@ export default function RegisterPage() {
             </div>
             <CardTitle className="text-3xl font-black font-headline text-slate-900 leading-tight">طلبك قيد المراجعة!</CardTitle>
             <CardDescription className="text-lg font-bold text-slate-500 mt-4 leading-relaxed">
-              شكراً لاهتمامك بـ NovaFlow. لقد تم تسجيل طلب شركة <span className="text-primary">{formData.companyName}</span> بنجاح. سيقوم المطور بتفعيل فترة التجربة (7 أيام) فور مراجعة الطلب.
+              شكراً لاهتمامك بـ NovaFlow. لقد تم تسجيل منشأة <span className="text-primary">{formData.companyName}</span> بنجاح. سيتم تفعيل حسابك كمدير للنظام فوراً للمباشرة بالإعدادات.
             </CardDescription>
           </CardHeader>
           <CardContent className="pb-16">
-             <Button onClick={() => router.push('/login')} className="w-full h-14 rounded-2xl bg-slate-900 text-white font-black">العودة لصفحة الدخول</Button>
+             <Button onClick={() => router.push('/login')} className="w-full h-14 rounded-2xl bg-slate-900 text-white font-black shadow-xl">العودة لصفحة الدخول</Button>
           </CardContent>
         </Card>
       </div>
@@ -152,7 +146,7 @@ export default function RegisterPage() {
           </div>
           <div className="space-y-2">
             <CardTitle className="text-4xl font-black font-headline tracking-tighter text-slate-900">انضم إلى NovaFlow ERP</CardTitle>
-            <CardDescription className="text-slate-500 font-bold text-lg">سجل منشأتك للحصول على فترة تجريبية مجانية لمدة 7 أيام</CardDescription>
+            <CardDescription className="text-slate-500 font-bold text-lg">سجل منشأتك للحصول على السيطرة المطلقة على عملياتك</CardDescription>
           </div>
         </CardHeader>
         <CardContent className="p-12">
@@ -190,14 +184,14 @@ export default function RegisterPage() {
               </div>
             </div>
             
-            <Button type="submit" disabled={loading} className="w-full h-20 bg-primary text-white rounded-[2rem] text-2xl font-black shadow-2xl shadow-primary/20 border-b-8 border-orange-700 mt-6">
-              {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : 'إرسال طلب الانضمام'}
+            <Button type="submit" disabled={loading} className="w-full h-20 bg-primary text-white rounded-[2rem] text-2xl font-black shadow-xl shadow-primary/20 border-b-8 border-orange-700 mt-6">
+              {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : 'إرسال طلب الانضمام والبدء'}
             </Button>
           </form>
         </CardContent>
         <CardFooter className="pb-12 pt-4 justify-center">
           <Button variant="link" onClick={() => router.push('/login')} className="text-primary font-black text-lg">
-            لديك حساب شركة بالفعل؟ سجل دخولك <ArrowRight className="mr-2 h-5 w-5" />
+            لديك حساب بالفعل؟ سجل دخولك <ArrowRight className="mr-2 h-5 w-5" />
           </Button>
         </CardFooter>
       </Card>
