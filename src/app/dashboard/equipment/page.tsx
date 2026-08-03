@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -9,15 +10,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { 
   Truck, Plus, Search, Loader2, 
   ArrowRight, Filter, Settings2,
-  AlertTriangle, Hammer, Boxes,
-  Save, X, CheckCircle2, Link as LinkIcon
+  AlertTriangle, Hammer,
+  Save, X, CheckCircle2, Link as LinkIcon, RefreshCcw
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
-import { Equipment, EquipmentStatus, EquipmentOwnershipType } from '@/types/equipment';
+import { Equipment, EquipmentStatus } from '@/types/equipment';
 import { EquipmentService } from '@/services/equipment-service';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
@@ -205,7 +206,7 @@ export default function EquipmentMasterPage() {
                     <TableCell className="text-start">
                        <div className="space-y-1.5">
                           <Badge className={cn(
-                            "font-black px-3 py-0.5 rounded-lg border-0 shadow-sm uppercase text-[8px]",
+                            "font-black px-3 py-0.5 rounded-lg border-0 shadow-sm uppercase text-[9px]",
                             item.status === 'available' ? 'bg-emerald-50 text-emerald-600' :
                             item.status === 'in_use' ? 'bg-blue-50 text-blue-600' : 'bg-rose-50 text-rose-600'
                           )}>
@@ -242,7 +243,6 @@ export default function EquipmentMasterPage() {
         </CardContent>
       </Card>
 
-      {/* Add/Edit Dialog */}
       <Dialog open={isAdding} onOpenChange={setIsAdding}>
          <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
             <div className="bg-primary/5 p-8 text-slate-900 text-start border-b shrink-0">
@@ -309,7 +309,6 @@ export default function EquipmentMasterPage() {
          </DialogContent>
       </Dialog>
 
-      {/* Assign Dialog */}
       <Dialog open={!!isAssigning} onOpenChange={() => setIsAssigning(null)}>
          <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-md" dir={dir}>
             <div className="bg-blue-600 p-8 text-white text-start">
@@ -339,12 +338,6 @@ export default function EquipmentMasterPage() {
                <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'تاريخ التخصيص' : 'From Date'}</Label>
                   <Input type="date" value={assignForm.fromDate} onChange={e => setAssignForm({...assignForm, fromDate: e.target.value})} className="h-12 rounded-xl border-2 font-bold" />
-               </div>
-               <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex items-start gap-3">
-                  <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                  <p className="text-[9px] font-bold text-amber-800 leading-relaxed">
-                     {isRtl ? 'سيتم تحويل حالة المعدة إلى (قيد الاستخدام) وتجميدها عن التخصيص لمشاريع أخرى.' : 'Status will be updated to (In Use) and locked for other assignments.'}
-                  </p>
                </div>
             </div>
             <DialogFooter className="p-8 bg-slate-50 border-t">

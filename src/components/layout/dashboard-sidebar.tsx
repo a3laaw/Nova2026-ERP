@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview القائمة الجانبية (Sidebar) بتصميم الكبسولات البرتقالية كاملة الاستدارة.
  * تم إعادة هيكلة العناصر لنقل المواعيد والاجتماعات وسجل التفاعل إلى موديول CRM.
@@ -16,7 +15,8 @@ import {
   Layers, FileSearch, Truck,
   Building2, ChevronLeft, Settings2, ChevronDown,
   Database, FileSpreadsheet, CalendarDays, Gavel,
-  MapPinned, Hammer, MapPin, Landmark
+  MapPinned, Hammer, MapPin, Landmark,
+  TrendingUp
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
@@ -81,6 +81,7 @@ export function DashboardSidebar() {
         resource: 'projects',
         subItems: [
           { title: t('fieldRadar'), url: "/dashboard/construction/bookings", icon: MapPin },
+          { title: isRtl ? 'سجل المعدات والآليات' : 'Equipment Registry', url: "/dashboard/equipment", icon: Truck },
           { title: isRtl ? 'زيارات المواقع المنفذة' : 'Site Reports', url: "/dashboard/construction/field-visits", icon: FileText },
         ]
       },
@@ -132,6 +133,7 @@ export function DashboardSidebar() {
         resource: 'settings',
         subItems: [
           { title: t('users'), url: "/dashboard/settings/users", icon: Users },
+          { title: isRtl ? 'جداول تعرفة العمالة' : 'Labor Cost Rates', url: "/dashboard/settings/cost-rates", icon: TrendingUp },
           { title: t('companyIdentity'), url: "/dashboard/settings/company", icon: Building2 },
           { title: t('checklists'), url: "/dashboard/settings/checklists", icon: Database },
           { title: t('rolesRef'), url: "/dashboard/settings/roles", icon: ShieldCheck },

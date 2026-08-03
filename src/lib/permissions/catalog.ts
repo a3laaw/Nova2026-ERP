@@ -43,11 +43,25 @@ export const SYSTEM_RESOURCES: SystemResource[] = [
     allowedActions: ['view', 'create', 'edit', 'archive', 'print']
   },
   {
+    id: 'equipment',
+    labelAr: 'سجل المعدات والآليات',
+    labelEn: 'Equipment Master',
+    module: 'Operations',
+    allowedActions: ['view', 'create', 'edit', 'delete']
+  },
+  {
     id: 'hr',
     labelAr: 'الموارد البشرية',
     labelEn: 'HR',
     module: 'HCM',
     allowedActions: ['view', 'create', 'edit', 'delete', 'approve', 'print']
+  },
+  {
+    id: 'cost_rates',
+    labelAr: 'جداول تعرفة العمالة',
+    labelEn: 'Labor Cost Rates',
+    module: 'Finance',
+    allowedActions: ['view', 'create', 'edit', 'approve']
   },
   {
     id: 'accounting',
