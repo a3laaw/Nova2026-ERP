@@ -76,6 +76,7 @@ export default function DeveloperDashboard() {
     }
   };
 
+  // محرك التأسيس السيادي (Provisioning Engine)
   const handleActivate = async (req: any) => {
     if (!db) return;
     setProcessingId(req.id);
@@ -158,7 +159,7 @@ export default function DeveloperDashboard() {
         departmentId: deptRef.id
       });
 
-      // 6. إنشاء سجل الموظف الموازي لضمان عمل الـ HR
+      // 6. إنشاء سجل الموظف الموازي لضمان عمل الـ HR فورياً
       await setDoc(doc(db, 'companies', companyId, 'employees', empId), {
         id: empId,
         employeeNumber: '1001',
@@ -179,8 +180,7 @@ export default function DeveloperDashboard() {
         createdAt: serverTimestamp()
       });
 
-      // 7. ربط الملكية بالشركة وتحديث الطلب
-      await updateDoc(companyRef, { ownerUid: uid });
+      // 7. تحديث الطلب بالنتيجة
       await updateDoc(doc(db, 'company_requests', req.id), { 
         status: 'activated', 
         activatedAt: serverTimestamp(),
@@ -197,6 +197,25 @@ export default function DeveloperDashboard() {
     }
   };
 
+  const handleSubscriptionChange = (type: string) => {
+    let days = 7;
+    if (type === 'monthly') days = 30;
+    if (type === 'annual') days = 365;
+    const newExpiry = addDays(new Date(), days).toISOString();
+    setEditingCompany({ ...editingCompany, subscriptionType: type, expiryDate: newExpiry });
+  };
+
+  const handleSendPasswordReset = async () => {
+    if (!db || !editingCompany) return;
+    const userService = new UserService(db, editingCompany.id);
+    try {
+      await userService.sendPasswordReset(editingCompany.ownerEmail);
+      toast({ title: isRtl ? "تم إرسال رابط إعادة التعيين لبريد المالك" : "Password Reset Sent" });
+    } catch (e) {
+      toast({ variant: "destructive", title: "Error" });
+    }
+  };
+
   const handleApplyUpdate = async () => {
     if (!db || !editingCompany) return;
     setProcessingId(editingCompany.id);
@@ -208,6 +227,14 @@ export default function DeveloperDashboard() {
         expiryDate: editingCompany.expiryDate,
         updatedAt: serverTimestamp()
       });
+
+      // مزامنة حالة الدخول في السجل العالمي (دقة الإنفاذ)
+      if (editingCompany.ownerUid) {
+        await updateDoc(doc(db, 'global_users', editingCompany.ownerUid), {
+          isActive: editingCompany.status === 'active'
+        });
+      }
+
       toast({ title: isRtl ? "تم تحديث الترخيص بنجاح" : "License Updated" });
       setEditingCompany(null);
     } catch (e: any) {
@@ -249,7 +276,7 @@ export default function DeveloperDashboard() {
                   <TableRow>
                     <TableHead className="py-4 ps-8">المنشأة</TableHead>
                     <TableHead>النشاط</TableHead>
-                    <TableHead>كلمة المرور المقترحة</TableHead>
+                    <TableHead>كلمة المرور</TableHead>
                     <TableHead className="pe-8 text-end">الإجراء السيادي</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -271,7 +298,7 @@ export default function DeveloperDashboard() {
                          </div>
                       </TableCell>
                       <TableCell><Badge variant="outline" className="text-[8px] font-black uppercase border-primary/20 text-primary">{req.activity}</Badge></TableCell>
-                      <TableCell><code className="text-[10px] bg-slate-100 px-2 py-1 rounded font-mono font-bold">{req.proposedPassword}</code></TableCell>
+                      <TableCell><code className="text-[10px] bg-slate-100 px-2 py-1 rounded font-mono font-bold">********</code></TableCell>
                       <TableCell className="pe-8 text-end">
                          <div className="flex items-center justify-end gap-2">
                             <Button 
@@ -363,7 +390,7 @@ export default function DeveloperDashboard() {
         </TabsContent>
       </Tabs>
 
-      {/* مودال إدارة المنشأة المطور */}
+      {/* مودال إدارة المنشأة السيادي */}
       <Dialog open={!!editingCompany} onOpenChange={v => !v && setEditingCompany(null)}>
          <DialogContent className="rounded-[2.5rem] max-w-xl p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
             <div className="bg-slate-50 p-8 border-b text-start flex justify-between items-center">
@@ -379,10 +406,13 @@ export default function DeveloperDashboard() {
             <div className="p-10 space-y-8 text-start bg-white">
                <div className="grid grid-cols-2 gap-8">
                   <div className="space-y-2">
-                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">نوع الاشتراك الفعال</Label>
-                     <Select value={editingCompany?.subscriptionType} onValueChange={v => setEditingCompany({...editingCompany, subscriptionType: v})}>
-                        <SelectTrigger className="h-12 border-2 rounded-xl font-black text-slate-700">
-                           <SelectValue placeholder="..." />
+                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">نوع الاشتراك</Label>
+                     <Select 
+                        value={editingCompany?.subscriptionType} 
+                        onValueChange={handleSubscriptionChange}
+                     >
+                        <SelectTrigger className="h-12 border-2 rounded-xl font-black">
+                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl border-2 shadow-2xl">
                            <SelectItem value="trial" className="font-bold">Trial (تجريبي)</SelectItem>
@@ -392,7 +422,7 @@ export default function DeveloperDashboard() {
                      </Select>
                   </div>
                   <div className="space-y-2">
-                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">تاريخ انتهاء الوصول</Label>
+                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">تاريخ الانتهاء</Label>
                      <Input 
                        type="date" 
                        value={editingCompany?.expiryDate?.split('T')[0] || ''} 
@@ -402,37 +432,44 @@ export default function DeveloperDashboard() {
                   </div>
                </div>
 
-               <div className="p-8 rounded-[2rem] bg-slate-50 border-2 border-white shadow-inner space-y-6">
+               <div className="space-y-4 pt-4 border-t">
                   <div className="flex items-center justify-between">
-                     <div className="space-y-1">
-                        <Label className="font-black text-lg text-slate-800">الحالة التشغيلية للمنصة</Label>
-                        <p className="text-[10px] text-slate-400 font-bold leading-relaxed">
-                           {isRtl ? 'تعطيل وصول المنشأة للنظام يمنع كافة الموظفين من الدخول فوراً.' : 'Suspending prevents all users from logging in immediately.'}
-                        </p>
-                     </div>
+                     <Label className="font-black text-sm text-slate-800">الأمان وكلمات المرور</Label>
+                     <Button 
+                       onClick={handleSendPasswordReset}
+                       variant="outline" 
+                       size="sm" 
+                       className="h-9 rounded-xl font-bold border-primary/20 text-primary gap-2"
+                     >
+                        <Key className="h-3.5 w-3.5" /> إعادة تعيين كلمة مرور المالك
+                     </Button>
                   </div>
-                  
+                  <p className="text-[9px] text-slate-400 font-bold italic">سيتم إرسال رابط آمن للبريد {editingCompany?.ownerEmail}</p>
+               </div>
+
+               <div className="p-8 rounded-[2rem] bg-slate-50 border-2 border-white shadow-inner space-y-6">
+                  <Label className="font-black text-lg text-slate-800">الحالة التشغيلية</Label>
                   <div className="grid grid-cols-2 gap-4">
                      <Button 
                        onClick={() => setEditingCompany({...editingCompany, status: 'active'})} 
                        variant={editingCompany?.status === 'active' ? 'default' : 'outline'} 
-                       className={cn("h-14 rounded-2xl font-black gap-2 transition-all", editingCompany?.status === 'active' ? "bg-emerald-600 shadow-emerald-100" : "bg-white")}
+                       className={cn("h-14 rounded-2xl font-black gap-2", editingCompany?.status === 'active' ? "bg-emerald-600 shadow-emerald-100" : "bg-white")}
                      >
-                        <CheckCircle className="h-5 w-5" /> فعال (Active)
+                        <CheckCircle className="h-5 w-5" /> فعال
                      </Button>
                      <Button 
                        onClick={() => setEditingCompany({...editingCompany, status: 'suspended'})} 
                        variant={editingCompany?.status === 'suspended' ? 'destructive' : 'outline'} 
-                       className={cn("h-14 rounded-2xl font-black gap-2 transition-all", editingCompany?.status === 'suspended' ? "bg-rose-600 shadow-rose-100" : "bg-white")}
+                       className={cn("h-14 rounded-2xl font-black gap-2", editingCompany?.status === 'suspended' ? "bg-rose-600 shadow-rose-100" : "bg-white")}
                      >
-                        <Ban className="h-5 w-5" /> مجمد (Suspend)
+                        <Ban className="h-5 w-5" /> تجميد
                      </Button>
                   </div>
                </div>
             </div>
 
             <DialogFooter className="p-8 bg-slate-50 border-t">
-               <Button onClick={handleApplyUpdate} disabled={!!processingId} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 gap-3">
+               <Button onClick={handleApplyUpdate} disabled={!!processingId} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 gap-3 border-b-8 border-orange-700">
                   {processingId ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
                   حفظ وتطبيق التعديلات السيادية
                </Button>
@@ -440,7 +477,6 @@ export default function DeveloperDashboard() {
          </DialogContent>
       </Dialog>
 
-      {/* حوار تأكيد الحذف السيادي */}
       <AlertDialog open={!!deletingContext} onOpenChange={v => !v && setDeletingContext(null)}>
          <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white" dir={dir}>
             <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50">
@@ -448,12 +484,10 @@ export default function DeveloperDashboard() {
             </div>
             <AlertDialogHeader className="text-center">
                <AlertDialogTitle className="font-black text-3xl font-headline text-slate-900 leading-tight">
-                  {isRtl ? 'حذف السجل نهائياً' : 'Permanent Deletion'}
+                  حذف السجل نهائياً
                </AlertDialogTitle>
                <AlertDialogDescription className="text-center font-bold text-slate-400 mt-4 text-lg leading-relaxed">
-                  {isRtl 
-                    ? 'تحذير سيادي: هذا الإجراء سيمحو كافة البيانات المرتبطة بهذا السجل (طلبات أو شركات) من قاعدة البيانات السحابية فوراً. لا يمكن التراجع عن هذا الإجراء.' 
-                    : 'Sovereign Warning: This will permanently wipe all data linked to this record from the cloud. This action is irreversible.'}
+                  تحذير سيادي: هذا الإجراء سيمحو كافة البيانات المرتبطة بهذا السجل من قاعدة البيانات السحابية فوراً. لا يمكن التراجع.
                </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="mt-12 gap-4 flex flex-row items-center justify-center">
@@ -463,7 +497,7 @@ export default function DeveloperDashboard() {
                   disabled={!!processingId}
                   className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200"
                >
-                  {processingId ? <Loader2 className="animate-spin h-5 w-5" /> : (isRtl ? 'نعم، احذف نهائياً' : 'Confirm Wipeout')}
+                  {processingId ? <Loader2 className="animate-spin h-5 w-5" /> : 'نعم، احذف نهائياً'}
                </AlertDialogAction>
             </AlertDialogFooter>
          </AlertDialogContent>

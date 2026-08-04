@@ -32,7 +32,6 @@ export default function RegisterPage() {
     e.preventDefault();
     if (!db) return;
 
-    // التحقق السيادي من اكتمال البيانات الأساسية
     if (!formData.phone.trim()) {
       toast({ 
         variant: "destructive", 
@@ -45,7 +44,7 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      // إرسال طلب تأسيس منشأة إلى المطور
+      // إرسال طلب تأسيس منشأة إلى المطور (صالة الانتظار السيادية)
       const requestsRef = collection(db, 'company_requests');
       await addDoc(requestsRef, {
         companyName: formData.companyName,
