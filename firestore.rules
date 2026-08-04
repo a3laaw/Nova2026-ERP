@@ -13,11 +13,14 @@ service cloud.firestore {
 
     // يرجع بيانات المستخدم الحالي من السجل العالمي الموحد
     function currentUser() {
-      return get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
+      return exists(/databases/$(database)/documents/global_users/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data
+        : null;
     }
 
     function getUserCompany() {
-      return currentUser().companyId;
+      let user = currentUser();
+      return user != null ? user.companyId : null;
     }
 
     // مقارنة غير حساسة لحالة الأحرف لضمان الأمان المطلق
@@ -29,8 +32,10 @@ service cloud.firestore {
       let user = currentUser();
       return isAuthenticated() && (
         isSovereignDev() ||
-        isAdminRoleValue(user.roleCode) ||
-        isAdminRoleValue(user.role)
+        (user != null && (
+          isAdminRoleValue(user.roleCode) ||
+          isAdminRoleValue(user.role)
+        ))
       );
     }
 
@@ -61,8 +66,8 @@ service cloud.firestore {
         // الاستثناء الوحيد: صاحب شركة جديدة يسجلها بنفس العملية ويصير أدمن عليها هو تحديداً
         (
           'companyId' in request.resource.data &&
-          exists(/databases/$(database)/documents/companies/$(request.resource.data.companyId)) &&
-          get(/databases/$(database)/documents/companies/$(request.resource.data.companyId)).data.ownerUid == request.auth.uid
+          existsAfter(/databases/$(database)/documents/companies/$(request.resource.data.companyId)) &&
+          getAfter(/databases/$(database)/documents/companies/$(request.resource.data.companyId)).data.ownerUid == request.auth.uid
         )
       ) &&
       (!('isDeveloper' in request.resource.data) || request.resource.data.isDeveloper == false);
@@ -91,6 +96,14 @@ service cloud.firestore {
       match /{allSubCollections=**} {
         allow read: if belongsToCompany(companyId) || isGlobalAdmin();
         allow write: if belongsToCompany(companyId) || isGlobalAdmin();
+      }
+
+      // سجل المستخدم داخل الشركة (users/{uid}): استثناء صريح يسمح للمستخدم
+      // ينشئ سجله الخاص بنفسه وقت التسجيل الذاتي
+      match /users/{uid} {
+        allow read: if belongsToCompany(companyId) || isGlobalAdmin();
+        allow create: if isAuthenticated() && request.auth.uid == uid;
+        allow update, delete: if belongsToCompany(companyId) || isGlobalAdmin();
       }
 
       // مجموعات مالية/إدارية حساسة: القراءة للكل، الكتابة للأدمن فقط
