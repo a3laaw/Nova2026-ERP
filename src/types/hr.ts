@@ -1,12 +1,14 @@
 import { BaseReference } from './reference';
 
 export type EmployeeStatus = 'active' | 'on-leave' | 'terminated';
+export type EmployeeType = 'internal' | 'external';
+export type PaymentBasis = 'monthly' | 'daily';
 export type LeaveStatus = 'pending' | 'approved' | 'rejected' | 'on-leave' | 'returned' | 'commenced';
 export type LeaveType = 'annual' | 'sick' | 'emergency' | 'unpaid';
 export type PermissionType = 'late_arrival' | 'early_departure';
 export type AttendanceStatus = 'present' | 'absent' | 'weekend' | 'holiday' | 'late' | 'early_leave';
 export type PayrollStatus = 'draft' | 'reviewed' | 'approved' | 'paid';
-export type PaymentMethod = 'cash' | 'transfer' | 'check' | 'payroll';
+export type PaymentMethod = 'cash' | 'check' | 'site_petty_cash' | 'lead_engineer' | 'payroll' | 'transfer';
 
 export interface Employee extends BaseReference {
   employeeNumber: string;
@@ -20,12 +22,14 @@ export interface Employee extends BaseReference {
   departmentName?: string;
   jobId: string;
   jobTitle?: string;
-  roleId?: string;       // الدور المكتسب تلقائياً من الوظيفة
+  roleId?: string;       
   roleName?: string;
   roleCode?: string;
   hireDate: string;
   contractType?: string;
   status: EmployeeStatus;
+  employeeType: EmployeeType; // 'internal' | 'external'
+  paymentBasis: PaymentBasis; // 'monthly' | 'daily'
   paymentMethod: PaymentMethod;
   basicSalary: number;
   housingAllowance?: number;
@@ -43,7 +47,7 @@ export interface Employee extends BaseReference {
 export interface LeaveRequest extends BaseReference {
   userId: string;
   userName: string;
-  employeeId: string; // معرف الموظف المرجعي (إلزامي للخصم)
+  employeeId: string; 
   type: LeaveType;
   startDate: string;
   endDate: string;
@@ -75,9 +79,9 @@ export interface PermissionRequest extends BaseReference {
   userName: string;
   employeeId?: string;
   type: 'late_arrival' | 'early_departure';
-  date: string; // YYYY-MM-DD
-  startTime: string; // HH:mm
-  endTime: string; // HH:mm
+  date: string; 
+  startTime: string; 
+  endTime: string; 
   durationHours: number;
   reason: string;
   status: 'pending' | 'approved' | 'rejected';
@@ -100,13 +104,13 @@ export interface AttendanceRecord extends BaseReference {
   employeeId: string;
   employeeName: string;
   employeeNumber: string;
-  date: string; // YYYY-MM-DD
-  checkIn?: string; // HH:mm (Morning or Primary)
+  date: string; 
+  checkIn?: string; 
   checkOut?: string; 
-  checkIn2?: string; // Evening (Secondary)
+  checkIn2?: string; 
   checkOut2?: string;
   status: AttendanceStatus;
-  minutesLate: number; // Combined lateness from both shifts
+  minutesLate: number; 
   minutesEarlyLeave: number;
   isHoliday: boolean;
   isWeekend: boolean;

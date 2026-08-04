@@ -36,8 +36,7 @@ export default function CostRatesPage() {
   const [isAdding, setIsAdding] = useState(false);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ name: '', effectiveFrom: new Date().toISOString().split('T')[0] });
-  const [rates, setRates] = useState<LaborRateEntry[]>([{ jobTitle: '', hourlyCost: 0 }]);
-  const [availableJobs, setAvailableJobs] = useState<Job[]>([]);
+  const [rates, setRates] = useState<LaborRateEntry[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(false);
 
   const cardsQuery = useMemo(() => 
@@ -50,15 +49,13 @@ export default function CostRatesPage() {
   useEffect(() => {
      if (isAdding && db && companyId) {
         setLoadingJobs(true);
-        // سحب الوظائف عبر استعلام المجموعة المحصن بالقواعد الجديدة
         getDocs(collectionGroup(db, 'jobs'))
           .then(snap => {
              const allJobs = snap.docs
                 .map(d => ({ id: d.id, ...d.data() } as Job))
                 .filter(j => j.companyId === companyId);
-             setAvailableJobs(allJobs);
              
-             // حقن الوظائف آلياً في الجدول عند الفتح
+             // التعبئة الآلية الحتمية: لا يوجد زر إضافة يدوية
              if (allJobs.length > 0) {
                 const autoRates = allJobs.map(job => ({
                    jobTitle: isRtl ? job.name : (job.nameEn || job.name),
@@ -68,31 +65,21 @@ export default function CostRatesPage() {
              }
           })
           .catch(() => {
-             toast({ variant: "destructive", title: isRtl ? "خطأ في الصلاحيات" : "Permission Error" });
+             toast({ variant: "destructive", title: t('error') });
           })
           .finally(() => setLoadingJobs(false));
      }
-  }, [isAdding, db, companyId, isRtl]);
+  }, [isAdding, db, companyId, isRtl, t]);
 
   const handleCreate = async () => {
     if (!costService || !user || !form.name) return;
     
-    const cleanedRates = rates.filter(r => r.jobTitle.trim() !== '').map(r => ({
-      jobTitle: r.jobTitle,
-      hourlyCost: Number(r.hourlyCost) || 0
-    }));
-
-    if (cleanedRates.length === 0) {
-      toast({ variant: "destructive", title: isRtl ? "بيانات ناقصة" : "Missing Data" });
-      return;
-    }
-
     setLoading(true);
     try {
-      await costService.createCard({ ...form, laborRates: cleanedRates }, user.uid);
+      await costService.createCard({ ...form, laborRates: rates }, user.uid);
       toast({ title: t('saved') });
       setIsAdding(false);
-      setRates([{ jobTitle: '', hourlyCost: 0 }]);
+      setRates([]);
       setForm({ name: '', effectiveFrom: new Date().toISOString().split('T')[0] });
     } catch (e) {
       toast({ variant: "destructive", title: t('error') });
@@ -114,8 +101,6 @@ export default function CostRatesPage() {
     }
   };
 
-  const addRateRow = () => setRates([...rates, { jobTitle: '', hourlyCost: 0 }]);
-  const removeRateRow = (idx: number) => setRates(rates.filter((_, i) => i !== idx));
   const updateRate = (idx: number, field: keyof LaborRateEntry, val: any) => {
     const newRates = [...rates];
     (newRates[idx] as any)[field] = val;
@@ -131,7 +116,7 @@ export default function CostRatesPage() {
            </div>
            <h1 className="text-4xl font-black font-headline text-slate-900">{isRtl ? 'جداول تعرفة العمالة' : 'Labor Cost Rates'}</h1>
            <p className="text-muted-foreground font-bold text-sm opacity-80 italic">
-             {isRtl ? 'تحديد تكلفة الساعة للوظائف المعتمدة لاحتساب تكاليف الإنتاج آلياً.' : 'Define hourly rates for jobs to automate COGS calculations.'}
+             {isRtl ? 'تحديد تكلفة الساعة للوظائف المعتمدة لاحتساب تكاليف الإنتاج آلياً.' : 'Define hourly rates for jobs to automate COGS.'}
            </p>
         </div>
         <button onClick={() => setIsAdding(true)} className="h-16 px-10 rounded-[2rem] bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-105 transition-all flex items-center gap-3 border-b-8 border-[#f57c00]">
@@ -148,8 +133,7 @@ export default function CostRatesPage() {
         ) : cards?.length === 0 ? (
           <Card className="border-4 border-dashed border-slate-100 bg-slate-50/50 rounded-[3rem] p-24 text-center opacity-40">
              <Calculator className="h-20 w-20 mx-auto text-slate-200 mb-6" />
-             <h3 className="text-2xl font-black text-slate-400">{isRtl ? 'لا يوجد جداول تعرفة مسجلة' : 'No Rate Cards Found'}</h3>
-             <p className="text-sm font-bold text-slate-300 mt-2">{isRtl ? 'قم بإضافة أول جدول لتمكين حساب التكاليف الميدانية.' : 'Create your first card to enable field costing.'}</p>
+             <h3 className="text-2xl font-black text-slate-400">{isRtl ? 'لا يوجد جداول تعرفة مسجلة' : 'No Rate Cards'}</h3>
           </Card>
         ) : (
           cards?.map(card => (
@@ -160,7 +144,7 @@ export default function CostRatesPage() {
                <div className="p-8 flex flex-col md:flex-row items-center justify-between gap-8">
                   <div className="flex items-center gap-8 text-start">
                      <div className={cn(
-                       "h-20 w-20 rounded-[2rem] flex items-center justify-center shadow-2xl transition-transform group-hover:rotate-6",
+                       "h-20 w-20 rounded-[2rem] flex items-center justify-center shadow-2xl",
                        card.isActive ? "bg-primary text-white" : "bg-slate-100 text-slate-400"
                      )}>
                         <History className="h-10 w-10" />
@@ -169,28 +153,18 @@ export default function CostRatesPage() {
                         <div className="flex items-center gap-3">
                            <h3 className="text-2xl font-black text-slate-800">{card.name}</h3>
                            {card.isActive && (
-                             <Badge className="bg-emerald-500 text-white font-black text-[10px] px-5 py-1 rounded-full border-0 shadow-lg shadow-emerald-200">
-                                ACTIVE REFERENCE
-                             </Badge>
+                             <Badge className="bg-emerald-500 text-white font-black text-[10px] px-5 py-1 rounded-full shadow-lg shadow-emerald-200 border-0">ACTIVE REFERENCE</Badge>
                            )}
                         </div>
                         <div className="flex items-center gap-4 text-xs font-bold text-slate-400 uppercase tracking-widest">
                            <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> Effective: {card.effectiveFrom}</span>
-                           <span className="h-1 w-1 rounded-full bg-slate-200" />
-                           <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {card.laborRates.length} Trades</span>
                         </div>
                      </div>
                   </div>
                   <div className="flex gap-4">
                      {!card.isActive && (
-                       <Button 
-                         onClick={() => handleActivate(card.id)} 
-                         disabled={loading}
-                         variant="outline" 
-                         className="h-14 px-10 rounded-2xl border-2 font-black gap-3 hover:bg-primary hover:text-white transition-all shadow-sm"
-                       >
-                          {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <ShieldCheck className="h-6 w-6 text-primary" />} 
-                          {isRtl ? 'تفعيل كمرجع حالي' : 'Activate Card'}
+                       <Button onClick={() => handleActivate(card.id)} disabled={loading} variant="outline" className="h-14 px-10 rounded-2xl border-2 font-black gap-3 shadow-sm hover:bg-primary hover:text-white transition-all">
+                          <ShieldCheck className="h-6 w-6 text-primary" /> {isRtl ? 'تفعيل كمرجع حالي' : 'Activate Card'}
                        </Button>
                      )}
                   </div>
@@ -204,7 +178,7 @@ export default function CostRatesPage() {
                              <TableCell className="text-end pe-12">
                                 <div className="flex flex-col items-end">
                                    <span className="font-mono font-black text-2xl text-emerald-600">{r.hourlyCost.toFixed(3)}</span>
-                                   <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Kuwaiti Dinars / Hour</span>
+                                   <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">KWD / Hour</span>
                                 </div>
                              </TableCell>
                           </TableRow>
@@ -219,35 +193,31 @@ export default function CostRatesPage() {
 
       <Dialog open={isAdding} onOpenChange={setIsAdding}>
          <DialogContent className="rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-3xl flex flex-col h-fit max-h-[90vh]" dir={dir}>
-            <div className="bg-primary/5 p-10 text-slate-900 text-start border-b shrink-0 relative">
-               <div className="absolute top-0 right-0 p-8 opacity-5"><TrendingUp className="h-32 w-32 text-primary" /></div>
-               <DialogTitle className="text-3xl font-black font-headline flex items-center gap-4 relative z-10">
+            <div className="bg-primary/5 p-10 text-slate-900 text-start border-b shrink-0">
+               <DialogTitle className="text-3xl font-black font-headline flex items-center gap-4">
                   <Calculator className="h-9 w-9 text-primary" /> 
-                  {isRtl ? 'تجهيز جدول تعرفة جديد' : 'Design New Rate Card'}
+                  {isRtl ? 'تجهيز جدول تعرفة سيادي' : 'Design Master Rate Card'}
                </DialogTitle>
-               <p className="text-slate-500 font-bold mt-2 relative z-10">{isRtl ? 'يتم سحب الوظائف والتعرفات المرجعية آلياً من الهيكل التنظيمي.' : 'Jobs and reference rates are synced automatically.'}</p>
+               <p className="text-slate-500 font-bold mt-2">{isRtl ? 'يتم جلب كافة المسميات المعتمدة آلياً لضمان المطابقة.' : 'Auto-syncing trade names for integrity.'}</p>
             </div>
             
             <div className="p-10 space-y-10 text-start bg-white overflow-y-auto scrollbar-hide">
                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-2">
-                     <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">Card Name</Label>
-                     <Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="h-14 rounded-2xl border-2 font-black text-lg bg-slate-50 focus:bg-white transition-all shadow-inner" placeholder={isRtl ? "مثلاً: تعرفة 2026" : "e.g. 2026 Standard Rates"} />
+                     <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">Card Label</Label>
+                     <Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="h-14 rounded-2xl border-2 font-black text-lg bg-slate-50" placeholder="..." />
                   </div>
                   <div className="space-y-2">
-                     <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">Effective Date</Label>
+                     <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">Start Date</Label>
                      <SmartDateInput value={form.effectiveFrom} onChange={v => setForm({...form, effectiveFrom: v})} />
                   </div>
                </div>
 
                <div className="space-y-6">
-                  <div className="flex justify-between items-center border-b-2 border-slate-50 pb-4">
+                  <div className="flex items-center gap-2 border-b-2 border-slate-50 pb-4">
                      <Label className="text-sm font-black uppercase text-primary flex items-center gap-2">
-                        <Users className="h-5 w-5" /> {isRtl ? 'تعرفة الساعة للمسميات المعتمدة' : 'Hourly Rates for Approved Trades'}
+                        <Users className="h-5 w-5" /> {isRtl ? 'تسعير المهن والمسميات المعتمدة' : 'Official Trade Pricing'}
                      </Label>
-                     <Button variant="outline" size="sm" onClick={addRateRow} className="h-10 rounded-xl font-black text-xs gap-2 border-2 bg-white hover:bg-primary/5 transition-all">
-                        <Plus className="h-4 w-4" /> {isRtl ? 'إضافة مهنة مخصصة' : 'Manual Add'}
-                     </Button>
                   </div>
                   
                   {loadingJobs ? (
@@ -255,31 +225,24 @@ export default function CostRatesPage() {
                   ) : (
                     <div className="space-y-4">
                        {rates.map((r, i) => (
-                          <div key={i} className="flex gap-4 animate-in slide-in-from-top-2 duration-300 items-end">
+                          <div key={i} className="flex gap-4 animate-in slide-in-from-top-2 duration-300 items-end bg-slate-50 p-4 rounded-2xl border-2 border-white shadow-sm">
                              <div className="flex-1 space-y-1.5 text-start">
-                                <Label className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'الوظيفة' : 'Job Title'}</Label>
-                                <Input 
-                                  value={r.jobTitle} 
-                                  onChange={e => updateRate(i, 'jobTitle', e.target.value)} 
-                                  className="h-12 rounded-xl border-2 font-black bg-white" 
-                                />
+                                <Label className="text-[9px] font-black text-slate-400 uppercase">Trade Name</Label>
+                                <p className="font-black text-slate-700 py-2">{r.jobTitle}</p>
                              </div>
-                             <div className="w-40 space-y-1.5 relative text-start">
-                                <Label className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'تكلفة الساعة' : 'Rate/hr'}</Label>
+                             <div className="w-48 space-y-1.5 relative text-start">
+                                <Label className="text-[9px] font-black uppercase text-primary tracking-tighter">Hourly Rate (KWD/hr)</Label>
                                 <div className="relative">
                                    <Input 
                                      type="number" 
                                      step="0.001" 
                                      value={r.hourlyCost === 0 ? "" : r.hourlyCost} 
                                      onChange={e => updateRate(i, 'hourlyCost', e.target.value)} 
-                                     className="h-12 rounded-xl border-2 font-black text-center text-emerald-600 bg-white text-lg" 
+                                     className="h-12 rounded-xl border-2 font-black text-center text-emerald-600 bg-white text-lg shadow-inner" 
                                    />
                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[7px] font-black text-slate-300">KWD</span>
                                 </div>
                              </div>
-                             <Button variant="ghost" size="icon" onClick={() => removeRateRow(i)} className="h-12 w-12 rounded-xl text-rose-300 hover:text-rose-600 hover:bg-rose-50">
-                                <Trash2 className="h-5 w-5" />
-                             </Button>
                           </div>
                        ))}
                     </div>
@@ -288,18 +251,18 @@ export default function CostRatesPage() {
 
                <div className="p-8 rounded-[2.5rem] bg-amber-50 border-2 border-dashed border-amber-200 flex items-start gap-4">
                   <Info className="h-6 w-6 text-amber-600 shrink-0 mt-1" />
-                  <p className="text-xs text-amber-800 font-bold leading-relaxed">
+                  <p className="text-xs text-amber-800 font-bold leading-relaxed italic">
                      {isRtl 
-                       ? 'ملاحظة سيادية: الربط بالوظائف يضمن أن الموظف سيتقاضى تعرفة التكلفة المحددة لمسماه الوظيفي تلقائياً عند تسجيل العمل الميداني.' 
-                       : 'Note: Linking to Job Titles ensures employees automatically use the defined rate when logging field work.'}
+                       ? 'تنبيه سيادي: تم إيقاف الإضافة اليدوية لضمان أن كل بند مالي في الموقع مرتبط حصراً بمسمى وظيفي معتمد في هيكل المنشأة.' 
+                       : 'Sovereign Note: Manual entries disabled to ensure cost tracking integrity.'}
                   </p>
                </div>
             </div>
 
             <DialogFooter className="p-10 bg-slate-50 border-t shrink-0">
-               <Button onClick={handleCreate} disabled={loading || !form.name} className="w-full h-16 rounded-[2.5rem] bg-primary text-white font-black text-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-4 border-b-8 border-[#f57c00]">
+               <Button onClick={handleCreate} disabled={loading || !form.name || rates.length === 0} className="w-full h-16 rounded-[2.5rem] bg-primary text-white font-black text-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-4 border-b-8 border-orange-700">
                   {loading ? <Loader2 className="animate-spin h-8 w-8" /> : <Save className="h-8 w-8" />}
-                  {isRtl ? 'حفظ واصدار جدول التعرفة' : 'Confirm & Issue Rates'}
+                  {isRtl ? 'حفظ واصدار جدول التعرفة' : 'Commit & Issue Card'}
                </Button>
             </DialogFooter>
          </DialogContent>
