@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -11,7 +10,7 @@ import {
   Calculator, Plus, Loader2, Save, Trash2, 
   CheckCircle2, AlertTriangle, ShieldCheck,
   TrendingUp, History, X, Clock, Users,
-  Briefcase, Building2, ChevronDown
+  Briefcase, Building2, ChevronDown, Info
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, collectionGroup, getDocs } from 'firebase/firestore';
