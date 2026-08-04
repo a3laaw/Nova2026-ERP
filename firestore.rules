@@ -2,30 +2,26 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // --- 1. قانون الأمان الأسمى (Sovereign Master Key) ---
+    // --- 1. القانون الأسمى (Sovereign Master Key) ---
+    // المطور والمدير الرئيسي لهم حق الوصول المطلق دون قيود
     function isSovereignDev() {
-      return request.auth != null && request.auth.token.email == 'admin@novaflow.com';
+      return request.auth != null && (
+        request.auth.token.email == 'admin@novaflow.com' || 
+        get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.roleCode == 'ADMIN'
+      );
     }
 
-    // السماح الشامل للمطور (Bypass)
     match /{document=**} {
       allow read, write: if isSovereignDev();
     }
 
-    // --- 2. الدوال المساعدة المحصنة (Sovereign Helpers) ---
+    // --- 2. الدوال المساعدة المحصنة ---
     function isAuthenticated() {
       return request.auth != null;
     }
     
-    // جلب بيانات الهوية العالمية (مستقر وغير دائري)
-    function getGlobalUser() {
+    function getUserData() {
       return get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
-    }
-
-    // فحص صلاحية الإدارة (المباشر من السجل العالمي)
-    function isAdmin() {
-      let user = getGlobalUser();
-      return isAuthenticated() && (user.roleCode == 'ADMIN' || user.role == 'admin');
     }
 
     // --- 3. قواعد الهوية العالمية ---
@@ -36,30 +32,29 @@ service cloud.firestore {
     }
     
     // --- 4. قواعد المجموعات الفرعية (Collection Groups) ---
-    // تم الإصلاح: السماح بالبحث الشامل للموظفين التابعين لنفس الشركة
+    // السماح بالبحث الشامل والفلترة لموظفي نفس الشركة
     match /{path=**}/jobs/{jobId} {
-      allow read: if isAuthenticated() && (getGlobalUser().companyId == resource.data.companyId);
+      allow read: if isAuthenticated() && (getUserData().companyId == resource.data.companyId || isSovereignDev());
     }
     
     match /{path=**}/fieldVisits/{visitId} {
-      allow read: if isAuthenticated() && (getGlobalUser().companyId == resource.data.companyId);
+      allow read: if isAuthenticated() && (getUserData().companyId == resource.data.companyId || isSovereignDev());
     }
 
     match /{path=**}/executions/{execId} {
-      allow read: if isAuthenticated() && (getGlobalUser().companyId == resource.data.companyId);
-      allow write: if isAuthenticated() && (getGlobalUser().companyId == resource.data.companyId);
+      allow read, write: if isAuthenticated() && (getUserData().companyId == resource.data.companyId || isSovereignDev());
     }
 
     // --- 5. قواعد المنشآت (Multi-Tenant Core) ---
     match /companies/{companyId} {
-      allow read: if isAuthenticated() && (getGlobalUser().companyId == companyId || isSovereignDev());
+      allow read: if isAuthenticated() && (getUserData().companyId == companyId || isSovereignDev());
       allow create: if isAuthenticated(); 
       allow update: if isAuthenticated() && (resource.data.ownerUid == request.auth.uid || isSovereignDev());
 
-      // القاعدة الذهبية: الأدمن له حق الوصول الكامل لكل شيء داخل شركته
+      // القاعدة الذهبية: الوصول الكامل داخل نطاق الشركة للمصرح لهم
       match /{allSubCollections=**} {
-        allow read: if isAuthenticated() && (getGlobalUser().companyId == companyId);
-        allow write: if isAuthenticated() && (getGlobalUser().companyId == companyId && (getGlobalUser().roleCode == 'ADMIN' || getGlobalUser().role == 'admin'));
+        allow read: if isAuthenticated() && (getUserData().companyId == companyId || isSovereignDev());
+        allow write: if isAuthenticated() && (getUserData().companyId == companyId && (getUserData().roleCode == 'ADMIN' || isSovereignDev()));
       }
     }
 

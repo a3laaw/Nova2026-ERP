@@ -26,13 +26,12 @@ import {
   CreditCard, 
   ShieldCheck,
   Building2,
-  Calendar as CalendarIcon,
   RefreshCw,
   Lock,
-  HardHat,
   Construction,
   Wallet,
-  Landmark
+  Landmark,
+  UserCircle
 } from "lucide-react";
 import { Employee } from '@/types/hr';
 import { SmartDateInput } from '@/components/ui/smart-date-input';
@@ -51,11 +50,11 @@ const employeeSchema = z.object({
   employeeNumber: z.string().min(1, "Required"),
   fullName: z.string().min(3, "Required"),
   nameEn: z.string().min(3, "Required"),
-  civilId: z.string().length(12, "Must be 12 digits"),
+  civilId: z.string().length(12, "Must be 12 digits").optional().or(z.literal('')),
   mobile: z.string().min(8, "Invalid mobile"),
   email: z.string().email().optional().or(z.literal('')),
   hireDate: z.string().min(1, "Required"),
-  residencyExpiry: z.string().optional(),
+  residencyExpiry: z.string().optional().or(z.literal('')),
   departmentId: z.string().min(1, "Required"),
   departmentName: z.string().optional(),
   jobId: z.string().min(1, "Required"),
@@ -66,8 +65,8 @@ const employeeSchema = z.object({
   paymentBasis: z.enum(['monthly', 'daily']),
   paymentMethod: z.enum(['cash', 'check', 'site_petty_cash', 'lead_engineer', 'payroll', 'transfer']),
   basicSalary: z.coerce.number().min(0),
-  bankName: z.string().optional(),
-  iban: z.string().optional(),
+  bankName: z.string().optional().or(z.literal('')),
+  iban: z.string().optional().or(z.literal('')),
   status: z.string().default('active'),
   isActive: z.boolean().default(true)
 });
@@ -168,7 +167,7 @@ export function EmployeeForm({ initialData, onSubmit, loading, readOnly = false 
   const isExternal = employeeType === 'external';
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8" dir={dir}>
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 animate-in fade-in duration-500" dir={dir}>
       
       {readOnly && (
         <div className="bg-amber-50 border-2 border-amber-100 rounded-2xl p-4 flex items-center gap-3 text-amber-800 mb-6 text-start">
@@ -206,7 +205,7 @@ export function EmployeeForm({ initialData, onSubmit, loading, readOnly = false 
            )}
          >
             <div className="flex items-center gap-4">
-               <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center shadow-lg", employeeType === 'external' ? "bg-[#1e1b4b] text-[#e87c24]" : "bg-slate-100 text-slate-400")}>
+               <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center shadow-lg", employeeType === 'external' ? "bg-slate-900 text-primary" : "bg-slate-100 text-slate-400")}>
                   <Construction className="h-6 w-6" />
                </div>
                <div>
@@ -214,15 +213,15 @@ export function EmployeeForm({ initialData, onSubmit, loading, readOnly = false 
                   <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Daily / Site Based</p>
                </div>
             </div>
-            {employeeType === 'external' && <div className="absolute top-2 right-6"><Badge className="bg-[#1e1b4b] text-[#e87c24] text-[8px] font-black uppercase">Simplified</Badge></div>}
+            {employeeType === 'external' && <div className="absolute top-2 right-6"><Badge className="bg-slate-900 text-primary text-[8px] font-black uppercase">Simplified</Badge></div>}
          </Card>
       </div>
 
       <Card className="border-0 shadow-lg rounded-[1.5rem] bg-white ring-1 ring-black/5">
         <CardContent className="p-8 space-y-6">
           <div className="flex items-center justify-end gap-3 text-primary mb-4 border-b pb-4">
-             <h3 className="text-xl font-black font-headline">{isRtl ? 'البيانات الأساسية' : 'Personal Identity'}</h3>
-             <UserPlus className="h-6 w-6" />
+             <h3 className="text-xl font-black font-headline">{isRtl ? 'بيانات الهوية' : 'Personal Identity'}</h3>
+             <UserCircle className="h-6 w-6" />
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -237,14 +236,25 @@ export function EmployeeForm({ initialData, onSubmit, loading, readOnly = false 
               <Label className="font-black text-xs text-slate-400 uppercase">{isRtl ? 'الاسم الكامل' : 'Full Name'}</Label>
               <Input {...form.register('fullName')} readOnly={readOnly} className="h-12 rounded-xl border-2 font-bold bg-slate-50/30" />
             </div>
-            <div className="space-y-2 text-start">
-              <Label className="font-black text-xs text-slate-400 uppercase">{isRtl ? 'الرقم المدني' : 'Civil ID'}</Label>
-              <Input {...form.register('civilId')} readOnly={readOnly} maxLength={12} className="h-12 rounded-xl font-mono border-2 bg-slate-50/30" />
-            </div>
+            
+            {!isExternal && (
+               <div className="space-y-2 text-start animate-in zoom-in-95">
+                 <Label className="font-black text-xs text-slate-400 uppercase">{isRtl ? 'الرقم المدني' : 'Civil ID'}</Label>
+                 <Input {...form.register('civilId')} readOnly={readOnly} maxLength={12} className="h-12 rounded-xl font-mono border-2 bg-slate-50/30" />
+               </div>
+            )}
+
             <div className="space-y-2 text-start">
               <Label className="font-black text-xs text-slate-400 uppercase">{isRtl ? 'رقم الهاتف' : 'Mobile'}</Label>
               <Input {...form.register('mobile')} readOnly={readOnly} className="h-12 rounded-xl border-2 font-bold bg-slate-50/30" />
             </div>
+
+            {!isExternal && (
+               <div className="space-y-2 text-start animate-in zoom-in-95">
+                 <Label className="font-black text-xs text-slate-400 uppercase">{isRtl ? 'البريد الإلكتروني' : 'Email'}</Label>
+                 <Input {...form.register('email')} type="email" readOnly={readOnly} className="h-12 rounded-xl border-2 font-bold bg-slate-50/30 text-start" dir="ltr" />
+               </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -314,12 +324,12 @@ export function EmployeeForm({ initialData, onSubmit, loading, readOnly = false 
             </div>
 
             <div className="space-y-2">
-              <Label className="font-black text-xs text-slate-400 uppercase">{isRtl ? 'طريقة صرف المستحقات الميدانية' : 'Payout Method'}</Label>
+              <Label className="font-black text-xs text-slate-400 uppercase">{isRtl ? 'طريقة صرف المستحقات' : 'Payout Method'}</Label>
               <Select value={paymentMethod} onValueChange={(v: any) => form.setValue('paymentMethod', v)} disabled={readOnly}>
                   <SelectTrigger className="h-16 rounded-2xl border-2 font-black text-lg bg-white">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="rounded-2xl border-0 shadow-3xl">
+                  <SelectContent className="rounded-xl border-0 shadow-3xl">
                     <SelectItem value="cash" className="font-bold py-3">{isRtl ? 'نقدي (كاش)' : 'Cash'}</SelectItem>
                     <SelectItem value="site_petty_cash" className="font-bold py-3 text-primary">{isRtl ? 'عهدة الموقع' : 'Site Petty Cash'}</SelectItem>
                     <SelectItem value="lead_engineer" className="font-bold py-3">{isRtl ? 'المهندس المسؤول' : 'Lead Engineer'}</SelectItem>
