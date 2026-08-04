@@ -241,9 +241,9 @@ export default function DepartmentsPage() {
                     <div className="grid grid-cols-2 gap-6 items-end">
                        <div className="space-y-2">
                           <Label className="text-xs font-black uppercase text-primary flex items-center gap-2">
-                             <Clock className="h-4 w-4" /> {isRtl ? 'تعرفة الساعة (KWD)' : 'Hourly Rate (KWD)'}
+                             <Clock className="h-4 w-4" /> {isRtl ? 'تعرفة الساعة المرجعية (KWD)' : 'Ref. Hourly Rate (KWD)'}
                           </Label>
-                          <Input type="number" step="0.001" value={jobForm.hourlyCost || ''} onChange={e => setJobForm({...jobForm, hourlyCost: Number(e.target.value)})} className="h-11 border-2 font-black text-emerald-600" />
+                          <Input type="number" step="0.001" value={jobForm.hourlyCost === 0 ? '' : jobForm.hourlyCost} onChange={e => setJobForm({...jobForm, hourlyCost: Number(e.target.value)})} className="h-11 border-2 font-black text-emerald-600" />
                        </div>
                        <div className="space-y-2">
                           <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'ربط الصلاحيات' : 'Role Context'}</Label>

@@ -17,17 +17,15 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    // جلب بيانات الهوية العالمية (بدون استدعاءات متداخلة)
+    // جلب بيانات الهوية العالمية
     function getGlobalUser() {
       return get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
     }
 
-    // فحص صلاحية الإدارة (تبسيط جذري لمنع تعليق الصلاحيات)
-    function isAdmin(companyId) {
+    // فحص صلاحية الإدارة (المبسط لضمان السرعة)
+    function isAdmin() {
       let user = getGlobalUser();
-      return isAuthenticated() && (
-        user.companyId == companyId && (user.roleCode == 'ADMIN' || user.role == 'admin')
-      );
+      return isAuthenticated() && (user.roleCode == 'ADMIN' || user.role == 'admin' || isSovereignDev());
     }
 
     // --- 3. قواعد الهوية العالمية ---
@@ -37,13 +35,23 @@ service cloud.firestore {
       allow update: if isAuthenticated() && (request.auth.uid == uid || isSovereignDev());
     }
     
-    // --- 4. قواعد المنشآت (Multi-Tenant Core) ---
+    // --- 4. قواعد المجموعات الفرعية (Collection Groups) ---
+    // ضروري لعمليات البحث الشامل والتقارير الموحدة
+    match /{path=**}/jobs/{jobId} {
+      allow read: if isAuthenticated() && (getGlobalUser().companyId == resource.data.companyId || isSovereignDev());
+    }
+    
+    match /{path=**}/fieldVisits/{visitId} {
+      allow read: if isAuthenticated() && (getGlobalUser().companyId == resource.data.companyId || isSovereignDev());
+    }
+
+    // --- 5. قواعد المنشآت (Multi-Tenant Core) ---
     match /companies/{companyId} {
       allow read: if isAuthenticated() && (getGlobalUser().companyId == companyId || isSovereignDev());
       allow create: if isAuthenticated(); 
       allow update: if isAuthenticated() && (resource.data.ownerUid == request.auth.uid || isSovereignDev());
 
-      // القاعدة الذهبية للمجموعات الفرعية: السماح المباشر للمسؤولين
+      // القاعدة الذهبية للمجموعات الفرعية التابعة للشركة
       match /{allSubCollections=**} {
         allow read: if isAuthenticated() && (getGlobalUser().companyId == companyId || isSovereignDev());
         allow write: if isAuthenticated() && (

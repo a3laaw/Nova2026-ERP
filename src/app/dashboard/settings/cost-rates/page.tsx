@@ -50,27 +50,29 @@ export default function CostRatesPage() {
   useEffect(() => {
      if (isAdding && db && companyId) {
         setLoadingJobs(true);
+        // سحب الوظائف عبر استعلام المجموعة المحصن بالقواعد الجديدة
         getDocs(collectionGroup(db, 'jobs'))
           .then(snap => {
              const allJobs = snap.docs
                 .map(d => ({ id: d.id, ...d.data() } as Job))
                 .filter(j => j.companyId === companyId);
              setAvailableJobs(allJobs);
+             
+             // حقن الوظائف آلياً في الجدول عند الفتح
+             if (allJobs.length > 0) {
+                const autoRates = allJobs.map(job => ({
+                   jobTitle: isRtl ? job.name : (job.nameEn || job.name),
+                   hourlyCost: job.hourlyCost || 0
+                }));
+                setRates(autoRates);
+             }
+          })
+          .catch(() => {
+             toast({ variant: "destructive", title: isRtl ? "خطأ في الصلاحيات" : "Permission Error" });
           })
           .finally(() => setLoadingJobs(false));
      }
-  }, [isAdding, db, companyId]);
-
-  // محرك الأتمتة: تعبئة الجدول بكافة الوظائف المتاحة فوراً عند بدء الإضافة
-  useEffect(() => {
-    if (isAdding && availableJobs.length > 0 && rates.length <= 1 && rates[0].jobTitle === '') {
-       const initialRates = availableJobs.map(job => ({
-          jobTitle: isRtl ? job.name : job.nameEn,
-          hourlyCost: job.hourlyCost || 0
-       }));
-       setRates(initialRates);
-    }
-  }, [isAdding, availableJobs, isRtl]);
+  }, [isAdding, db, companyId, isRtl]);
 
   const handleCreate = async () => {
     if (!costService || !user || !form.name) return;
@@ -223,7 +225,7 @@ export default function CostRatesPage() {
                   <Calculator className="h-9 w-9 text-primary" /> 
                   {isRtl ? 'تجهيز جدول تعرفة جديد' : 'Design New Rate Card'}
                </DialogTitle>
-               <p className="text-slate-500 font-bold mt-2 relative z-10">{isRtl ? 'يتم سحب الوظائف آلياً من الهيكل التنظيمي لضمان دقة الربط.' : 'Jobs are synced from Org Structure automatically.'}</p>
+               <p className="text-slate-500 font-bold mt-2 relative z-10">{isRtl ? 'يتم سحب الوظائف والتعرفات المرجعية آلياً من الهيكل التنظيمي.' : 'Jobs and reference rates are synced automatically.'}</p>
             </div>
             
             <div className="p-10 space-y-10 text-start bg-white overflow-y-auto scrollbar-hide">
@@ -248,51 +250,54 @@ export default function CostRatesPage() {
                      </Button>
                   </div>
                   
-                  <div className="space-y-4">
-                     {rates.map((r, i) => (
-                        <div key={i} className="flex gap-4 animate-in slide-in-from-top-2 duration-300 items-end">
-                           <div className="flex-1 space-y-1.5 text-start">
-                              <Label className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'الوظيفة' : 'Job Title'}</Label>
-                              <Input 
-                                value={r.jobTitle} 
-                                onChange={e => updateRate(i, 'jobTitle', e.target.value)} 
-                                className="h-12 rounded-xl border-2 font-black bg-white" 
-                                placeholder={isRtl ? "اسم المهنة..." : "Trade name..."}
-                              />
-                           </div>
-                           <div className="w-40 space-y-1.5 relative text-start">
-                              <Label className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'تكلفة الساعة' : 'Rate/hr'}</Label>
-                              <div className="relative">
-                                 <Input 
-                                   type="number" 
-                                   step="0.001" 
-                                   value={r.hourlyCost === 0 ? "" : r.hourlyCost} 
-                                   onChange={e => updateRate(i, 'hourlyCost', e.target.value)} 
-                                   className="h-12 rounded-xl border-2 font-black text-center text-emerald-600 bg-white text-lg" 
-                                 />
-                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[7px] font-black text-slate-300">KWD</span>
-                              </div>
-                           </div>
-                           <Button variant="ghost" size="icon" onClick={() => removeRateRow(i)} className="h-12 w-12 rounded-xl text-rose-300 hover:text-rose-600 hover:bg-rose-50">
-                              <Trash2 className="h-5 w-5" />
-                           </Button>
-                        </div>
-                     ))}
-                  </div>
+                  {loadingJobs ? (
+                    <div className="py-20 text-center"><Loader2 className="animate-spin mx-auto text-primary" /></div>
+                  ) : (
+                    <div className="space-y-4">
+                       {rates.map((r, i) => (
+                          <div key={i} className="flex gap-4 animate-in slide-in-from-top-2 duration-300 items-end">
+                             <div className="flex-1 space-y-1.5 text-start">
+                                <Label className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'الوظيفة' : 'Job Title'}</Label>
+                                <Input 
+                                  value={r.jobTitle} 
+                                  onChange={e => updateRate(i, 'jobTitle', e.target.value)} 
+                                  className="h-12 rounded-xl border-2 font-black bg-white" 
+                                />
+                             </div>
+                             <div className="w-40 space-y-1.5 relative text-start">
+                                <Label className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'تكلفة الساعة' : 'Rate/hr'}</Label>
+                                <div className="relative">
+                                   <Input 
+                                     type="number" 
+                                     step="0.001" 
+                                     value={r.hourlyCost === 0 ? "" : r.hourlyCost} 
+                                     onChange={e => updateRate(i, 'hourlyCost', e.target.value)} 
+                                     className="h-12 rounded-xl border-2 font-black text-center text-emerald-600 bg-white text-lg" 
+                                   />
+                                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[7px] font-black text-slate-300">KWD</span>
+                                </div>
+                             </div>
+                             <Button variant="ghost" size="icon" onClick={() => removeRateRow(i)} className="h-12 w-12 rounded-xl text-rose-300 hover:text-rose-600 hover:bg-rose-50">
+                                <Trash2 className="h-5 w-5" />
+                             </Button>
+                          </div>
+                       ))}
+                    </div>
+                  )}
                </div>
 
                <div className="p-8 rounded-[2.5rem] bg-amber-50 border-2 border-dashed border-amber-200 flex items-start gap-4">
                   <Info className="h-6 w-6 text-amber-600 shrink-0 mt-1" />
                   <p className="text-xs text-amber-800 font-bold leading-relaxed">
                      {isRtl 
-                       ? 'تم سحب المسميات الوظيفية آلياً من الهيكل التنظيمي لشركتك. قم فقط بإدخال سعر الساعة لكل تخصص لاعتماد التكاليف الميدانية.' 
-                       : 'Job titles have been automatically fetched from your Org Structure. Simply enter the hourly rate for each trade.'}
+                       ? 'ملاحظة سيادية: الربط بالوظائف يضمن أن الموظف سيتقاضى تعرفة التكلفة المحددة لمسماه الوظيفي تلقائياً عند تسجيل العمل الميداني.' 
+                       : 'Note: Linking to Job Titles ensures employees automatically use the defined rate when logging field work.'}
                   </p>
                </div>
             </div>
 
             <DialogFooter className="p-10 bg-slate-50 border-t shrink-0">
-               <Button onClick={handleCreate} disabled={loading || !form.name} className="w-full h-20 rounded-[2.5rem] bg-primary text-white font-black text-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-4 border-b-8 border-[#f57c00]">
+               <Button onClick={handleCreate} disabled={loading || !form.name} className="w-full h-16 rounded-[2.5rem] bg-primary text-white font-black text-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-4 border-b-8 border-[#f57c00]">
                   {loading ? <Loader2 className="animate-spin h-8 w-8" /> : <Save className="h-8 w-8" />}
                   {isRtl ? 'حفظ واصدار جدول التعرفة' : 'Confirm & Issue Rates'}
                </Button>
