@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -16,9 +15,6 @@ import {
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { SEED_DATA } from '@/lib/seed-data';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
-import { ReferenceListService } from './reference-list-service';
 import { BOQReferenceNode } from '@/types/reference';
 
 export class SeedService {
@@ -53,7 +49,7 @@ export class SeedService {
         }
       }
 
-      // 2. التوحيد القطعي لحالة الأحرف
+      // 2. التوحيد القطعي لحالة الأحرف (Sovereign Normalization)
       const rawCode = currentRoleCode || currentRole || 'USER';
       const finalRoleCode = String(rawCode).toUpperCase();
       const finalRole = finalRoleCode.toLowerCase();
@@ -248,9 +244,6 @@ export class SeedService {
     } as BOQReferenceNode);
 
     await batch.commit();
-
-    const refListService = new ReferenceListService(this.db, this.companyId);
-    await refListService.seedAllLists('SYSTEM_ADMIN');
   }
 
   async purgeAllAppointments() {

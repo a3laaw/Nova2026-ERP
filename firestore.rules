@@ -20,7 +20,7 @@ service cloud.firestore {
       return currentUser().companyId;
     }
 
-    // مقارنة غير حساسة لحالة الأحرف: يقبل ADMIN / Admin / admin
+    // مقارنة غير حساسة لحالة الأحرف لضمان الأمان المطلق
     function isAdminRoleValue(v) {
       return v != null && v.upper() == 'ADMIN';
     }

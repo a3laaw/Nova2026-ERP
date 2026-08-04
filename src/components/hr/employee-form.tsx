@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -47,7 +46,7 @@ import { HRService } from '@/services/hr-service';
 import { cn } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
 
-// مخطط التحقق المطور: جعل الحقول اختيارية بناءً على نوع التوظيف لمنع تعطل زر الحفظ
+// مخطط التحقق المطور: جعل الحقول اختيارية للسماح بحفظ الموظفين الخارجيين
 const employeeSchema = z.object({
   employeeNumber: z.string().min(1, "Required"),
   fullName: z.string().min(3, "Required"),
@@ -168,10 +167,9 @@ export function EmployeeForm({ initialData, onSubmit, loading, readOnly = false 
 
   const isExternal = employeeType === 'external';
 
-  // معالجة البيانات قبل الإرسال لضمان عدم وجود أخطاء في الحقول المخفية
   const handleFinalSubmit = (data: any) => {
     if (isExternal && !data.nameEn) {
-       data.nameEn = data.fullName; // تعبئة آلية لتجاوز القيود
+       data.nameEn = data.fullName; 
     }
     onSubmit(data);
   };

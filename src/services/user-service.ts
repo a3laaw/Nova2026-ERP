@@ -61,7 +61,7 @@ export class UserService {
       
       const roleCodeUpper = data.roleCode.toUpperCase();
 
-      // 1. السجل العالمي (Global Identity)
+      // 1. السجل العالمي (Global Identity) - توحيد قسري
       batch.set(doc(this.db, 'global_users', uid), {
         companyId: this.companyId,
         roleId: data.roleId,
