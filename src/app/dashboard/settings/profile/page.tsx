@@ -130,8 +130,6 @@ export default function ProfilePage() {
 
   if (authLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
-  const isAdmin = globalUser?.role?.toLowerCase() === 'admin' || globalUser?.roleCode === 'ADMIN';
-
   return (
     <div className="space-y-8 max-w-4xl mx-auto pb-20" dir={dir}>
       <div className="text-start">
@@ -195,7 +193,7 @@ export default function ProfilePage() {
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-50">
                     <div className="space-y-2">
                        <Label className="font-black text-[10px] text-slate-400 uppercase tracking-widest">{t('username')}</Label>
-                       <Input value={formData.username} readOnly={!isAdmin} onChange={e => setFormData({...formData, username: e.target.value})} className={cn("h-12 rounded-xl border-2 font-mono font-bold", !isAdmin && "bg-slate-100")} />
+                       <Input value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} className="h-12 rounded-xl border-2 font-mono font-bold" />
                     </div>
                     <div className="space-y-2">
                        <Label className="font-black text-[10px] text-slate-400 uppercase tracking-widest">Email (Read-only)</Label>

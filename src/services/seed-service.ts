@@ -24,9 +24,9 @@ export class SeedService {
   constructor(private db: Firestore, private companyId: string) {}
 
   /**
-   * سكربت هجرة الهوية السيادي (Sovereign Identity Migration)
-   * يمر على كافة المستخدمين لتوحيد حقول الأدوار (roleCode / role)
-   * يحل مشكلة حسابات "نور" والحسابات القديمة بشكل جذري.
+   * سكربت هجرة الهوية السيادي الجذري (Absolute Identity Migration)
+   * - يصحح حالة الأحرف لـ roleCode (UPPERCASE) و role (lowercase).
+   * - يحل مشكلة "نور" بسحب الكود المفقود من سجلات الشركة الأصلية.
    */
   async runIdentityMigration() {
     const globalUsersRef = collection(this.db, 'global_users');
@@ -36,29 +36,36 @@ export class SeedService {
 
     for (const userDoc of snap.docs) {
       const data = userDoc.data();
+      let currentRoleCode = data.roleCode;
+      let currentRole = data.role;
+      let companyId = data.companyId;
+      let roleId = data.roleId;
+
       const updates: any = {};
 
-      // 1. استخراج وتوحيد roleCode ليكون UPPERCASE
-      if (data.roleId && data.companyId && !data.roleCode) {
-        // حالة "نور": لديه roleId لكن يفتقر لـ roleCode
-        const roleSnap = await getDoc(doc(this.db, 'companies', data.companyId, 'roles', data.roleId));
-        if (roleSnap.exists()) {
-          updates.roleCode = roleSnap.data().code.toUpperCase();
+      // 1. حل مشكلة "نور": لو roleCode مفقود لكن roleId موجود
+      if (!currentRoleCode && roleId && companyId && companyId !== 'awaiting_setup') {
+        try {
+          const roleSnap = await getDoc(doc(this.db, 'companies', companyId, 'roles', roleId));
+          if (roleSnap.exists()) {
+            currentRoleCode = roleSnap.data().code;
+          }
+        } catch (e) {
+          console.error("Migration Error for user:", userDoc.id, e);
         }
-      } else if (data.roleCode) {
-        updates.roleCode = data.roleCode.toUpperCase();
-      } else if (data.role) {
-        // حالة طوارئ: استخلاص الكود من حقل role النصي
-        updates.roleCode = data.role.toUpperCase();
       }
 
-      // 2. توحيد حقل role ليكون lowercase لضمان عمل الواجهات
-      if (updates.roleCode) {
-        updates.role = updates.roleCode.toLowerCase();
-      }
+      // 2. توحيد حالة الأحرف بشكل قطعي
+      // لو ما زال مفقود، نستخدم role كبديل، وإلا USER كافتراضي
+      const rawCode = currentRoleCode || currentRole || 'USER';
+      const finalRoleCode = String(rawCode).toUpperCase();
+      const finalRole = finalRoleCode.toLowerCase();
 
-      if (Object.keys(updates).length > 0) {
-        batch.update(userDoc.ref, { ...updates, updatedAt: serverTimestamp() });
+      if (data.roleCode !== finalRoleCode || data.role !== finalRole) {
+        updates.roleCode = finalRoleCode;
+        updates.role = finalRole;
+        updates.updatedAt = serverTimestamp();
+        batch.update(userDoc.ref, updates);
         count++;
       }
     }
