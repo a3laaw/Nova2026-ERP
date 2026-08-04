@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -76,7 +75,6 @@ export class HRService {
       await handleWriteError(err, { path: empRef.path, operation: 'update', requestResourceData: updates });
     }
 
-    // مزامنة الهوية العالمية مع توحيد حالة أحرف الأدوار قسرياً لضمان السيادة
     if ((newData.roleId && newData.roleId !== oldData.roleId) || 
         (newData.departmentId && newData.departmentId !== oldData.departmentId) ||
         (newData.fullName && newData.fullName !== oldData.fullName)) {
@@ -121,9 +119,9 @@ export class HRService {
           updates.roleId = roleId;
           const roleSnap = await getDoc(doc(this.db, 'companies', this.companyId, 'roles', roleId));
           if (roleSnap.exists()) {
-             const code = String(roleSnap.data().code).toUpperCase();
-             updates.roleCode = code; // توحيد الحروف الكبيرة للسيادة المطلقة
-             updates.role = code.toLowerCase(); // توحيد الحروف الصغيرة للواجهة
+             const codeUpper = String(roleSnap.data().code).toUpperCase();
+             updates.roleCode = codeUpper; 
+             updates.role = codeUpper.toLowerCase(); 
           }
         }
 

@@ -58,15 +58,14 @@ export default function EmployeeJoinPage() {
 
       const batch = writeBatch(db);
       
-      // التوحيد القسري للأدوار لضمان الأمان السيادي المطلق
-      const unifiedRoleCode = (invite.roleCode || 'USER').toUpperCase();
+      const roleCodeUpper = String(invite.roleCode || 'USER').toUpperCase();
 
       // 1. السجل العالمي (Global Identity)
       batch.set(doc(db, 'global_users', uid), {
         companyId: invite.companyId,
         roleId: invite.roleId,
-        roleCode: unifiedRoleCode,
-        role: unifiedRoleCode.toLowerCase(),
+        roleCode: roleCodeUpper, 
+        role: roleCodeUpper.toLowerCase(),
         fullName: invite.employeeName,
         departmentId: invite.departmentId,
         employeeId: invite.employeeId,
@@ -84,8 +83,8 @@ export default function EmployeeJoinPage() {
         email: invite.email,
         employeeId: invite.employeeId,
         roleId: invite.roleId,
-        roleCode: unifiedRoleCode,
-        role: unifiedRoleCode.toLowerCase(),
+        roleCode: roleCodeUpper,
+        role: roleCodeUpper.toLowerCase(),
         joinedAt: serverTimestamp(),
         isActive: true
       });

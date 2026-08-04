@@ -59,15 +59,14 @@ export class UserService {
 
       const batch = writeBatch(this.db);
       
-      // التوحيد القسري للأدوار لضمان الأمان السيادي المطلق في القواعد السحابية
-      const unifiedRoleCode = data.roleCode.toUpperCase();
+      const roleCodeUpper = data.roleCode.toUpperCase();
 
-      // 1. السجل العالمي (Global Identity) - المصدر الأساسي للصلاحيات
+      // 1. السجل العالمي (Global Identity)
       batch.set(doc(this.db, 'global_users', uid), {
         companyId: this.companyId,
         roleId: data.roleId,
-        roleCode: unifiedRoleCode,
-        role: unifiedRoleCode.toLowerCase(),
+        roleCode: roleCodeUpper,
+        role: roleCodeUpper.toLowerCase(),
         fullName: data.employeeName,
         departmentId: data.departmentId,
         employeeId: data.employeeId,
@@ -78,7 +77,7 @@ export class UserService {
         updatedAt: serverTimestamp()
       });
 
-      // 2. السجل المحلي داخل الشركة - لعزل البيانات
+      // 2. السجل المحلي داخل الشركة
       batch.set(doc(this.db, 'companies', this.companyId, 'users', uid), {
         id: uid,
         displayName: data.employeeName,
@@ -86,8 +85,8 @@ export class UserService {
         username: data.username,
         employeeId: data.employeeId,
         roleId: data.roleId,
-        roleCode: unifiedRoleCode,
-        role: unifiedRoleCode.toLowerCase(),
+        roleCode: roleCodeUpper,
+        role: roleCodeUpper.toLowerCase(),
         initialPasswordSetAt: serverTimestamp(),
         joinedAt: serverTimestamp(),
         isActive: true
@@ -120,8 +119,7 @@ export class UserService {
     const tenantUserRef = doc(this.db, 'companies', this.companyId, 'users', uid);
     const globalUserRef = doc(this.db, 'global_users', uid);
     
-    // التوحيد القسري للأدوار
-    const unifiedRoleCode = data.roleCode.toUpperCase();
+    const roleCodeUpper = data.roleCode.toUpperCase();
 
     try {
       const batch = writeBatch(this.db);
@@ -130,8 +128,8 @@ export class UserService {
         displayName: data.displayName,
         username: data.username,
         roleId: data.roleId,
-        roleCode: unifiedRoleCode,
-        role: unifiedRoleCode.toLowerCase(),
+        roleCode: roleCodeUpper,
+        role: roleCodeUpper.toLowerCase(),
         updatedAt: serverTimestamp()
       });
 
@@ -139,8 +137,8 @@ export class UserService {
         username: data.username,
         fullName: data.displayName,
         roleId: data.roleId,
-        roleCode: unifiedRoleCode,
-        role: unifiedRoleCode.toLowerCase(),
+        roleCode: roleCodeUpper,
+        role: roleCodeUpper.toLowerCase(),
         updatedAt: serverTimestamp()
       });
 
