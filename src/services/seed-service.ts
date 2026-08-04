@@ -50,8 +50,6 @@ export class SeedService {
       }
 
       // 2. التوحيد القطعي لحالة الأحرف (Sovereign Normalization)
-      // roleCode -> UPPERCASE دائماً
-      // role -> lowercase دائماً
       const rawCode = currentRoleCode || currentRole || 'USER';
       const finalRoleCode = String(rawCode).toUpperCase();
       const finalRole = finalRoleCode.toLowerCase();

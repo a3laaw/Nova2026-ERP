@@ -168,7 +168,7 @@ export function EmployeeForm({ initialData, onSubmit, loading, readOnly = false 
   const isExternal = employeeType === 'external';
 
   const handleFinalSubmit = (data: any) => {
-    // العمالة الخارجية: توليد اسم إنجليزي تلقائياً لتجاوز قيود الـ Schema
+    // العمالة الخارجية: توليد بيانات بديلة لتجاوز قيود الـ Schema
     if (isExternal) {
        if (!data.nameEn) data.nameEn = data.fullName;
        if (!data.civilId) data.civilId = "EXT-" + Date.now().toString().slice(-8);
