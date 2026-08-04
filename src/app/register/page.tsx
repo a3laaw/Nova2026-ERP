@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, Loader2, Building2, Clock, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { Sparkles, Loader2, Building2, Clock, Eye, EyeOff, ArrowRight, Phone } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 export default function RegisterPage() {
@@ -32,10 +32,20 @@ export default function RegisterPage() {
     e.preventDefault();
     if (!db) return;
 
+    // التحقق السيادي من اكتمال البيانات الأساسية
+    if (!formData.phone.trim()) {
+      toast({ 
+        variant: "destructive", 
+        title: "بيانات ناقصة", 
+        description: "رقم الهاتف إلزامي للتواصل وتفعيل الحساب." 
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // المهمة الجديدة: إرسال طلب فقط دون إنشاء أي حسابات تقنية
+      // إرسال طلب تأسيس منشأة إلى المطور
       const requestsRef = collection(db, 'company_requests');
       await addDoc(requestsRef, {
         companyName: formData.companyName,
@@ -44,13 +54,16 @@ export default function RegisterPage() {
         phone: formData.phone,
         activity: formData.activity,
         proposedUsername: formData.username || formData.email.split('@')[0],
-        proposedPassword: formData.password, // تخزن مؤقتاً ليقوم المطور بإنشاء الحساب بها
+        proposedPassword: formData.password,
         status: 'pending',
         createdAt: serverTimestamp(),
       });
 
       setIsSubmitted(true);
-      toast({ title: "تم إرسال طلبك بنجاح", description: "سيقوم فريق التطوير بمراجعة طلبك وتفعيل الحساب قريباً." });
+      toast({ 
+        title: "تم إرسال طلبك بنجاح", 
+        description: "سيقوم فريق التطوير بمراجعة طلبك وتفعيل الحساب قريباً." 
+      });
 
     } catch (error: any) {
       toast({ variant: "destructive", title: "خطأ في إرسال الطلب", description: error.message });
@@ -116,11 +129,18 @@ export default function RegisterPage() {
                 <Input value={formData.contactName} onChange={(e) => setFormData({...formData, contactName: e.target.value})} required className="h-14 rounded-2xl border-2 font-bold bg-slate-50/50" />
               </div>
               <div className="space-y-2 text-start">
+                <Label className="font-black text-xs text-slate-400 uppercase tracking-widest">رقم الهاتف للتواصل</Label>
+                <div className="relative">
+                  <Input type="tel" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} required className="h-14 rounded-2xl border-2 ps-12 font-black text-lg bg-slate-50/50" placeholder="+965" />
+                  <Phone className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
+                </div>
+              </div>
+              <div className="md:col-span-2 space-y-2 text-start">
                 <Label className="font-black text-xs text-slate-400 uppercase tracking-widest">البريد الإلكتروني للشركة</Label>
                 <Input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} required className="h-14 rounded-2xl border-2 text-left bg-slate-50/50" dir="ltr" />
               </div>
               <div className="space-y-2 text-start md:col-span-2">
-                <Label className="font-black text-xs text-slate-400 uppercase tracking-widest">كلمة المرور المقترحة</Label>
+                <Label className="font-black text-xs text-slate-400 uppercase tracking-widest">كلمة المرور المقترحة للمدير</Label>
                 <div className="relative">
                   <Input type={showPassword ? "text" : "password"} value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} required className="h-14 rounded-2xl border-2 text-left bg-slate-50/50" dir="ltr" />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"><Eye className="h-5 w-5" /></button>
