@@ -23,7 +23,6 @@ service cloud.firestore {
       return user != null ? user.companyId : null;
     }
 
-    // مقارنة غير حساسة لحالة الأحرف لضمان الأمان المطلق
     function isAdminRoleValue(v) {
       return v != null && v.upper() == 'ADMIN';
     }
@@ -32,14 +31,10 @@ service cloud.firestore {
       let user = currentUser();
       return isAuthenticated() && (
         isSovereignDev() ||
-        (user != null && (
-          isAdminRoleValue(user.roleCode) ||
-          isAdminRoleValue(user.role)
-        ))
+        (user != null && isAdminRoleValue(user.roleCode))
       );
     }
 
-    // أدمن هذي الشركة بالذات (مو أي شركة) لضمان عزل البيانات
     function isCompanyAdmin(companyId) {
       return isAuthenticated() && (
         isSovereignDev() ||
@@ -51,102 +46,46 @@ service cloud.firestore {
       return isAuthenticated() && getUserCompany() == companyId;
     }
 
+    // فحص حالة المنشأة (فقط الشركات النشطة يمكن لموظفيها القراءة والكتابة)
+    function isCompanyActive(companyId) {
+      return get(/databases/$(database)/documents/companies/$(companyId)).data.status == 'active' || isSovereignDev();
+    }
+
     // --- 2. قواعد الهوية العالمية (global_users) ---
     match /global_users/{uid} {
       allow read: if isAuthenticated() && (request.auth.uid == uid || isGlobalAdmin());
-
-      // إنشاء الملف الشخصي أول مرة: مسموح للمستخدم لنفسه فقط
-      allow create: if isAuthenticated() && request.auth.uid == uid && (
-        // الحالة الطبيعية: تسجيل عادي، ممنوع يحط لنفسه صلاحية أدمن
-        (
-          (!('roleCode' in request.resource.data) || !isAdminRoleValue(request.resource.data.roleCode)) &&
-          (!('role' in request.resource.data) || !isAdminRoleValue(request.resource.data.role))
-        )
-        ||
-        // الاستثناء الوحيد: صاحب شركة جديدة يسجلها بنفس العملية ويصير أدمن عليها هو تحديداً
-        (
-          'companyId' in request.resource.data &&
-          existsAfter(/databases/$(database)/documents/companies/$(request.resource.data.companyId)) &&
-          getAfter(/databases/$(database)/documents/companies/$(request.resource.data.companyId)).data.ownerUid == request.auth.uid
-        )
-      ) &&
-      (!('isDeveloper' in request.resource.data) || request.resource.data.isDeveloper == false);
-
-      // تعديل الملف: المستخدم يقدر يعدّل بياناته العادية، لكن ممنوع
-      // يغيّر الحقول الحساسة بنفسه. تغيير هذي الحقول يكون فقط من أدمن/مطور
-      allow update: if isAuthenticated() && (
-        (request.auth.uid == uid &&
-          !request.resource.data.diff(resource.data).affectedKeys()
-            .hasAny(['roleCode', 'role', 'isDeveloper', 'companyId'])
-        ) || isGlobalAdmin()
-      );
-
-      // الكتابة الكاملة (بما فيها الحقول الحساسة والحذف) للمدير أو المطور السيادي فقط
-      allow write: if isAuthenticated() && isGlobalAdmin();
+      // إنشاء الهوية العالمية يتم فقط عبر لوحة المطور (admin@novaflow.com)
+      allow create: if isSovereignDev();
+      allow update: if isAuthenticated() && (request.auth.uid == uid || isGlobalAdmin());
+      allow write: if isSovereignDev();
     }
 
     // --- 3. قواعد المنشآت (Multi-Tenant Core) ---
     match /companies/{companyId} {
       allow read: if belongsToCompany(companyId) || isGlobalAdmin();
-      allow create: if isAuthenticated() && request.resource.data.ownerUid == request.auth.uid;
-      allow update: if isCompanyAdmin(companyId) || (isAuthenticated() && resource.data.ownerUid == request.auth.uid);
+      // المنشآت يتم تأسيسها فقط من قبل المطور
+      allow create: if isSovereignDev();
+      allow update: if isCompanyAdmin(companyId) || isSovereignDev();
 
-      // الافتراضي لكل المجموعات الفرعية: أي عضو بالشركة يقرأ ويكتب،
-      // ما عدا المجموعات الحساسة المحددة تحت اللي تتطلب أدمن
       match /{allSubCollections=**} {
-        allow read: if belongsToCompany(companyId) || isGlobalAdmin();
-        allow write: if belongsToCompany(companyId) || isGlobalAdmin();
-      }
-
-      // سجل المستخدم داخل الشركة (users/{uid}): استثناء صريح يسمح للمستخدم
-      // ينشئ سجله الخاص بنفسه وقت التسجيل الذاتي
-      match /users/{uid} {
-        allow read: if belongsToCompany(companyId) || isGlobalAdmin();
-        allow create: if isAuthenticated() && request.auth.uid == uid;
-        allow update, delete: if belongsToCompany(companyId) || isGlobalAdmin();
-      }
-
-      // مجموعات مالية/إدارية حساسة: القراءة للكل، الكتابة للأدمن فقط
-      match /interimCertificates/{id} {
-        allow read: if belongsToCompany(companyId);
-        allow write: if isCompanyAdmin(companyId);
-      }
-      match /costRateCards/{id} {
-        allow read: if belongsToCompany(companyId);
-        allow write: if isCompanyAdmin(companyId);
-      }
-      match /equipment/{id} {
-        allow read: if belongsToCompany(companyId);
-        allow write: if isCompanyAdmin(companyId);
-      }
-      match /roles/{id} {
-        allow read: if belongsToCompany(companyId);
-        allow write: if isCompanyAdmin(companyId);
-      }
-      match /counters/{id} {
-        allow read, write: if isCompanyAdmin(companyId);
+        allow read: if (belongsToCompany(companyId) && isCompanyActive(companyId)) || isGlobalAdmin();
+        allow write: if (belongsToCompany(companyId) && isCompanyActive(companyId)) || isGlobalAdmin();
       }
     }
 
-    // --- 4. مجموعات جماعية (Collection Group) للبحث/التقارير الشاملة ---
-    match /{path=**}/jobs/{jobId} {
-      allow read: if belongsToCompany(resource.data.companyId) || isGlobalAdmin();
-    }
-
-    match /{path=**}/fieldVisits/{visitId} {
-      allow read: if belongsToCompany(resource.data.companyId) || isGlobalAdmin();
-      allow write: if belongsToCompany(resource.data.companyId) || isGlobalAdmin();
-    }
-
-    match /{path=**}/executions/{execId} {
-      allow read, write: if belongsToCompany(resource.data.companyId) || isGlobalAdmin();
-    }
-
-    // --- 5. طلبات إنشاء شركة جديدة ---
+    // --- 4. طلبات التأسيس (Public Access) ---
     match /company_requests/{reqId} {
-      allow create: if isAuthenticated();
+      // مسموح لأي زائر إرسال طلب انضمام
+      allow create: if true; 
+      // القراءة للمطور أو صاحب الطلب فقط
       allow read: if isAuthenticated() && (request.auth.uid == resource.data.ownerUid || isGlobalAdmin());
       allow delete: if isGlobalAdmin();
+      allow update: if isGlobalAdmin();
+    }
+
+    // --- 5. مجموعات جماعية للبحث ---
+    match /{path=**}/executions/{execId} {
+      allow read, write: if belongsToCompany(resource.data.companyId) || isGlobalAdmin();
     }
   }
 }
