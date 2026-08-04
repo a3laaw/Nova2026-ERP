@@ -10,10 +10,10 @@ import {
   Hammer, Check, Save,
   Target, X, RotateCcw, Lock, Info, Play,
   Users, Truck, Plus, Trash2, Link as LinkIcon,
-  ShieldAlert, ShieldX, Sparkles, DollarSign
+  ShieldAlert, ShieldX, Sparkles, DollarSign, Building2, Briefcase, Clock
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
-import { doc, collection, query, where, orderBy, limit, updateDoc, serverTimestamp, getDocs } from 'firebase/firestore';
+import { doc, collection, query, where, orderBy, limit, updateDoc, serverTimestamp, getDocs, collectionGroup } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -21,11 +21,11 @@ import { paths } from '@/firebase/multi-tenant';
 import { Appointment } from '@/types/appointment';
 import { Transaction, StageInstance } from '@/types/transaction';
 import { BOQ, BOQItem, BOQItemExecutionEntry, LaborDetail, EquipmentUsed } from '@/types/documents';
+import { Job } from '@/types/reference';
 import { CommentSection } from '@/components/transactions/comment-section';
 import { BOQExecutionService, StageProgressResult } from '@/services/boq-execution-service';
 import { AppointmentService } from '@/services/appointment-service';
 import { TransactionService } from '@/services/transaction-service';
-import { CostRateService } from '@/services/cost-rate-service';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -64,8 +64,7 @@ export default function AppointmentDetailPage() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [stageProgressMap, setStageProgressMap] = useState<Record<string, StageProgressResult>>({});
   const [isRecordOpen, setIsRecordOpen] = useState(false);
-  const [isLinkOpen, setIsLinkOpen] = useState(false);
-  const [activeRateCard, setActiveRateCard] = useState<any>(null);
+  const [availableJobs, setAvailableJobs] = useState<Job[]>([]);
 
   const apptRef = useMemo(() => companyId && db ? doc(db, paths.appointments(companyId), apptId) : null, [db, companyId, apptId]);
   const { data: appt, loading: apptLoading } = useDoc<Appointment>(apptRef);
@@ -103,13 +102,14 @@ export default function AppointmentDetailPage() {
 
   useEffect(() => {
      if (isRecordOpen && db && companyId) {
-        const costService = new CostRateService(db, companyId);
-        costService.getActiveCard().then(setActiveRateCard);
+        // جلب الوظائف مباشرة للحصول على تعرفة الساعة المعتمدة
+        getDocs(query(collectionGroup(db, 'jobs'), where('companyId', '==', companyId)))
+           .then(snap => setAvailableJobs(snap.docs.map(d => ({ id: d.id, ...d.data() } as Job))))
+           .catch(() => setAvailableJobs([]));
      }
   }, [isRecordOpen, db, companyId]);
 
   const executionService = useMemo(() => (db && companyId) ? new BOQExecutionService(db, companyId, permissions) : null, [db, companyId, permissions]);
-  const transactionService = useMemo(() => (db && companyId) ? new TransactionService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
   useEffect(() => {
     let active = true;
@@ -229,14 +229,14 @@ export default function AppointmentDetailPage() {
                      <Label className="text-[10px] font-black uppercase text-slate-400">Target Stage</Label>
                      <Select value={selectedStageId} onValueChange={setSelectedStageId}>
                         <SelectTrigger className="h-11 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                        <SelectContent>{stages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold">{s.name}</SelectItem>)}</SelectContent>
+                        <SelectContent className="z-[150]">{stages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold">{s.name}</SelectItem>)}</SelectContent>
                      </Select>
                   </div>
                   <div className="space-y-2">
                      <Label className="text-[10px] font-black uppercase text-slate-400">BOQ Item</Label>
                      <Select value={selectedItemId} onValueChange={setSelectedItemId}>
                         <SelectTrigger className="h-11 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                        <SelectContent>{boqItems?.map(i => <SelectItem key={i.id} value={i.id!} className="font-bold text-xs">{i.referenceTitle}</SelectItem>)}</SelectContent>
+                        <SelectContent className="z-[150]">{boqItems?.map(i => <SelectItem key={i.id} value={i.id!} className="font-bold text-xs">{i.referenceTitle}</SelectItem>)}</SelectContent>
                      </Select>
                   </div>
                </div>
@@ -248,19 +248,20 @@ export default function AppointmentDetailPage() {
 
                <div className="space-y-6">
                   <div className="flex justify-between items-center border-b pb-2">
-                     <Label className="font-black text-sm text-slate-800">العمالة الميدانية</Label>
+                     <Label className="font-black text-sm text-slate-800">العمالة الميدانية (حسب المسميات المعتمدة)</Label>
                      <Button variant="ghost" size="sm" onClick={() => setLaborDetails([...laborDetails, { trade: '', count: 1, hours: 8, hourlyCostRef: 0 }])} className="h-8 text-[10px] font-black"><Plus className="h-3 w-3" /> Add Trade</Button>
                   </div>
                   {laborDetails.map((l, i) => (
                     <div key={i} className="grid grid-cols-12 gap-3 items-end bg-slate-50 p-4 rounded-2xl border-2 border-white shadow-sm">
                        <div className="col-span-5 space-y-1">
-                          <Label className="text-[9px] font-bold text-slate-400 uppercase">Trade</Label>
+                          <Label className="text-[9px] font-bold text-slate-400 uppercase">Official Job Title</Label>
                           <Select value={l.trade} onValueChange={v => {
-                             const rate = activeRateCard?.laborRates.find((r:any) => r.jobTitle === v)?.hourlyCost || 0;
+                             const job = availableJobs.find(j => (isRtl ? j.name : j.nameEn) === v || j.name === v);
+                             const rate = job?.hourlyCost || 0;
                              const nl = [...laborDetails]; nl[i].trade = v; nl[i].hourlyCostRef = rate; setLaborDetails(nl);
                           }}>
                              <SelectTrigger className="h-10 rounded-xl bg-white border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                             <SelectContent>{activeRateCard?.laborRates.map((r:any) => <SelectItem key={r.jobTitle} value={r.jobTitle} className="font-bold">{r.jobTitle}</SelectItem>)}</SelectContent>
+                             <SelectContent className="z-[151]">{availableJobs.map(j => <SelectItem key={j.id} value={isRtl ? j.name : (j.nameEn || j.name)} className="font-bold">{isRtl ? j.name : (j.nameEn || j.name)}</SelectItem>)}</SelectContent>
                           </Select>
                        </div>
                        <div className="col-span-2 space-y-1">
@@ -296,7 +297,7 @@ export default function AppointmentDetailPage() {
                              const ne = [...equipmentUsed]; ne[i].equipmentId = v; ne[i].name = item?.name || ''; ne[i].hourlyRateRef = rate || 0; setEquipmentUsed(ne);
                           }}>
                              <SelectTrigger className="h-10 rounded-xl bg-white border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                             <SelectContent>{equipmentItems?.map((x:any) => <SelectItem key={x.id} value={x.id!} className="font-bold">{x.name} ({x.code})</SelectItem>)}</SelectContent>
+                             <SelectContent className="z-[151]">{equipmentItems?.map((x:any) => <SelectItem key={x.id} value={x.id!} className="font-bold">{x.name} ({x.code})</SelectItem>)}</SelectContent>
                           </Select>
                        </div>
                        <div className="col-span-2 space-y-1">

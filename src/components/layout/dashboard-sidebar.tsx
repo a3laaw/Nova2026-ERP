@@ -1,6 +1,6 @@
 /**
  * @fileOverview القائمة الجانبية (Sidebar) بتصميم الكبسولات البرتقالية كاملة الاستدارة.
- * تم إعادة هيكلة العناصر لنقل المواعيد والاجتماعات وسجل التفاعل إلى موديول CRM.
+ * تم حذف "جداول التعرفة" لتوحيد الإدارة داخل الهيكل التنظيمي.
  */
 
 "use client"
@@ -133,7 +133,6 @@ export function DashboardSidebar() {
         resource: 'settings',
         subItems: [
           { title: t('users'), url: "/dashboard/settings/users", icon: Users },
-          { title: isRtl ? 'جداول تعرفة العمالة' : 'Labor Cost Rates', url: "/dashboard/settings/cost-rates", icon: TrendingUp },
           { title: t('companyIdentity'), url: "/dashboard/settings/company", icon: Building2 },
           { title: t('checklists'), url: "/dashboard/settings/checklists", icon: Database },
           { title: t('rolesRef'), url: "/dashboard/settings/roles", icon: ShieldCheck },
@@ -144,26 +143,18 @@ export function DashboardSidebar() {
     ];
   }, [t, isRtl, globalUser, check]);
 
-  // تصحيح خوارزمية الفلترة لضمان عدم تمرير العناصر المحجوبة
   const visibleItems = React.useMemo(() => {
     const finalItems: any[] = [];
-
     menuItems.forEach(item => {
       if (!canAccess(item.resource)) return;
-
       if (item.subItems) {
         const filteredSubs = item.subItems.filter(sub => {
           const action = (sub as any).requiredAction || 'view';
           const access = check(item.resource, action);
-          
           if (!access.can) return false;
-          
-          // إذا كان الموظف يرى نفسه فقط، نحجب القوائم الكلية (مثل سجلات الموظفين والرواتب)
           if ((sub as any).hideIfOwnScope && access.scope === 'own') return false;
-          
           return true;
         });
-
         if (filteredSubs.length > 0) {
           finalItems.push({ ...item, subItems: filteredSubs });
         } else if (item.url === "/dashboard") {
@@ -173,7 +164,6 @@ export function DashboardSidebar() {
         finalItems.push(item);
       }
     });
-
     return finalItems;
   }, [menuItems, canAccess, check]);
 
@@ -225,7 +215,6 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
   const isActive = isSelfActive || isGroupActive
   
   const [isExpanded, setIsExpanded] = React.useState(isActive)
-
   const commonStyle = "flex items-center w-full h-11 px-5 transition-all duration-300 rounded-full shadow-md hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98] border-0"
   
   const expandedStyle = cn(
@@ -242,7 +231,6 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
         ? "bg-white text-[#e87c24] border-2 border-orange-100 scale-110 z-10" 
         : "bg-[#FFA000] text-white hover:scale-105"
     )
-
     return (
       <SidebarMenuItem className="flex justify-center">
         {item.subItems ? (

@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 
 /**
  * محطة الإعدادات المركزية - NovaFlow ERP
- * تم دمج موديول "القوائم المرجعية" داخل "الإعدادات الفنية" لتبسيط الهيكل.
+ * تم حذف موديول "جداول التعرفة" لدمجه في الهيكل التنظيمي والوظائف.
  */
 export default function SettingsHubPage() {
   const { t, lang, dir } = useLanguage();
