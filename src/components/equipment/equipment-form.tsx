@@ -12,7 +12,8 @@ import {
   LayoutGrid,
   Zap, HardHat, 
   Wrench, Info, Loader2,
-  RefreshCw, Clock
+  RefreshCw, Clock, Landmark,
+  Banknote
 } from "lucide-react";
 import { 
   Select, 
@@ -167,6 +168,7 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
 
   return (
     <div className="space-y-8 text-start pb-20 animate-in fade-in duration-700 bg-transparent">
+      {/* القسم الأول: الهوية */}
       <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
         <CardHeader className="bg-primary/5 p-8 border-b">
            <div className="flex items-center gap-4 text-start">
@@ -181,7 +183,7 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
         </CardHeader>
         <CardContent className="p-8">
            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-              <div className="space-y-2">
+              <div className="space-y-2 text-start">
                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'كود المعدة' : 'Equipment Code'}</Label>
                  <div className="relative">
                     <Input 
@@ -192,7 +194,7 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
                     <RefreshCw className="absolute end-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/20 animate-pulse" />
                  </div>
               </div>
-              <div className="md:col-span-2 space-y-2">
+              <div className="md:col-span-2 space-y-2 text-start">
                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اسم المعدة / الوصف' : 'Equipment Name'}</Label>
                  <Input 
                    value={form.name ?? ''} 
@@ -201,7 +203,7 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
                    placeholder={isRtl ? "مثلاً: حفار كوماتسو 200" : "e.g. Komatsu Excavator 200"}
                  />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 text-start">
                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'تصنيف المعدة' : 'Category'}</Label>
                  <Select value={form.category ?? 'heavy_machinery'} onValueChange={(v: EquipmentCategory) => setForm({...form, category: v})}>
                     <SelectTrigger className="h-12 rounded-xl border-2 font-black bg-white"><SelectValue /></SelectTrigger>
@@ -218,6 +220,7 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
         </CardContent>
       </Card>
 
+      {/* القسم الثاني: البيانات الإدارية */}
       {isOwned && (
         <Card className="border-0 shadow-xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
            <CardHeader className="bg-slate-50/50 p-8 border-b">
@@ -237,108 +240,79 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
            </CardHeader>
 
            <CardContent className="p-8">
-              {cat === 'heavy_machinery' && (
-                <div className="space-y-8 animate-in slide-in-from-top-2 text-start">
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                     <div className="space-y-1.5 text-start">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'سنة التصنيع / الموديل' : 'Model Year'}</Label>
-                        <Input 
-                          type="text"
-                          maxLength={4}
-                          placeholder="YYYY"
-                          value={form.manufacturingYear ?? ''} 
-                          onChange={e => {
-                            const val = e.target.value.replace(/\D/g, '').slice(0, 4);
-                            setForm({...form, manufacturingYear: val});
-                          }}
-                          className="h-12 rounded-xl border-2 font-black text-center bg-white" 
-                        />
-                     </div>
-                     {form.isStreetLicensed ? (
-                       <>
-                          <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'رقم اللوحة / الدفتر' : 'Plate / Reg No'}</Label><Input value={form.plateNumber ?? ''} onChange={e => setForm({...form, plateNumber: e.target.value})} className="h-12 rounded-xl border-2 font-black" /></div>
-                          <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'انتهاء الدفتر' : 'Reg Expiry'}</Label><SmartDateInput value={form.registrationExpiry ?? ''} onChange={v => setForm({...form, registrationExpiry: v})} /></div>
-                          <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'انتهاء التأمين' : 'Insurance Expiry'}</Label><SmartDateInput value={form.insuranceExpiry ?? ''} onChange={v => setForm({...form, insuranceExpiry: v})} /></div>
-                       </>
-                     ) : (
-                       <>
-                          <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'رقم الشاصي / السيريال' : 'Chassis / Serial'}</Label><Input value={form.chassisNumber ?? ''} onChange={e => setForm({...form, chassisNumber: e.target.value})} className="h-12 rounded-xl border-2 font-mono" /></div>
-                          <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'انتهاء الفحص الفني (3rd Party)' : '3rd Party Inspection'}</Label><SmartDateInput value={form.thirdPartyInspectionExpiry ?? ''} onChange={v => setForm({...form, thirdPartyInspectionExpiry: v})} /></div>
-                          <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'انتهاء تأمين الموقع' : 'Site Insurance Expiry'}</Label><SmartDateInput value={form.siteInsuranceExpiry ?? ''} onChange={v => setForm({...form, siteInsuranceExpiry: v})} /></div>
-                       </>
-                     )}
-                  </div>
-                </div>
-              )}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-start">
+                 <div className="space-y-1.5 text-start">
+                    <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'سنة التصنيع / الموديل' : 'Model Year'}</Label>
+                    <Input 
+                      type="text"
+                      maxLength={4}
+                      placeholder="YYYY"
+                      value={form.manufacturingYear ?? ''} 
+                      onChange={e => {
+                        const val = e.target.value.replace(/\D/g, '').slice(0, 4);
+                        setForm({...form, manufacturingYear: val});
+                      }}
+                      className="h-12 rounded-xl border-2 font-black text-center bg-white" 
+                    />
+                 </div>
 
-              {cat === 'vehicle' && (
-                <div className="space-y-8 animate-in slide-in-from-top-2 text-start">
-                   <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                 {cat === 'heavy_machinery' && (
+                    <>
+                       {form.isStreetLicensed ? (
+                         <>
+                            <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'رقم اللوحة / الدفتر' : 'Plate / Reg No'}</Label><Input value={form.plateNumber ?? ''} onChange={e => setForm({...form, plateNumber: e.target.value})} className="h-12 rounded-xl border-2 font-black" /></div>
+                            <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'انتهاء الدفتر' : 'Reg Expiry'}</Label><SmartDateInput value={form.registrationExpiry ?? ''} onChange={v => setForm({...form, registrationExpiry: v})} /></div>
+                            <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'انتهاء التأمين' : 'Insurance Expiry'}</Label><SmartDateInput value={form.insuranceExpiry ?? ''} onChange={v => setForm({...form, insuranceExpiry: v})} /></div>
+                         </>
+                       ) : (
+                         <>
+                            <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'رقم الشاصي / السيريال' : 'Chassis / Serial'}</Label><Input value={form.chassisNumber ?? ''} onChange={e => setForm({...form, chassisNumber: e.target.value})} className="h-12 rounded-xl border-2 font-mono" /></div>
+                            <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'انتهاء الفحص الفني (3rd Party)' : '3rd Party Inspection'}</Label><SmartDateInput value={form.thirdPartyInspectionExpiry ?? ''} onChange={v => setForm({...form, thirdPartyInspectionExpiry: v})} /></div>
+                            <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'انتهاء تأمين الموقع' : 'Site Insurance Expiry'}</Label><SmartDateInput value={form.siteInsuranceExpiry ?? ''} onChange={v => setForm({...form, siteInsuranceExpiry: v})} /></div>
+                         </>
+                       )}
+                    </>
+                 )}
+
+                 {cat === 'vehicle' && (
+                    <>
+                       <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'رقم اللوحة / الدفتر' : 'Plate / Reg No'}</Label><Input value={form.plateNumber ?? ''} onChange={e => setForm({...form, plateNumber: e.target.value})} className="h-12 rounded-xl border-2 font-black" /></div>
+                       <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'رقم الشاصي (VIN)' : 'Chassis VIN'}</Label><Input value={form.chassisNumber ?? ''} onChange={e => setForm({...form, chassisNumber: e.target.value})} className="h-12 rounded-xl border-2 font-mono" /></div>
+                       <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'انتهاء الدفتر' : 'Reg Expiry'}</Label><SmartDateInput value={form.registrationExpiry ?? ''} onChange={v => setForm({...form, registrationExpiry: v})} /></div>
+                    </>
+                 )}
+
+                 {cat === 'stationary' && (
+                   <>
+                      <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الرقم التسلسلي' : 'Serial No'}</Label><Input value={form.serialNumber ?? ''} onChange={e => setForm({...form, serialNumber: e.target.value})} className="h-12 rounded-xl border-2 font-mono" /></div>
+                      <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'القدرة (KVA/HP)' : 'Capacity'}</Label><Input value={form.capacity ?? ''} onChange={e => setForm({...form, capacity: e.target.value})} className="h-12 rounded-xl border-2 font-black text-secondary" /></div>
+                      <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'موعد الصيانة القادم' : 'Next Service'}</Label><SmartDateInput value={form.nextServiceDate ?? ''} onChange={v => setForm({...form, nextServiceDate: v})} /></div>
+                   </>
+                 )}
+
+                 {cat === 'hand_tool' && (
+                   <>
+                      <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الرقم التسلسلي (SN)' : 'Serial No'}</Label><Input value={form.serialNumber ?? ''} onChange={e => setForm({...form, serialNumber: e.target.value})} className="h-12 rounded-xl border-2 font-mono" /></div>
+                      <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الماركة / الموديل' : 'Brand / Model'}</Label><Input value={form.brandModel ?? ''} onChange={e => setForm({...form, brandModel: e.target.value})} className="h-12 rounded-xl border-2 font-bold" /></div>
                       <div className="space-y-1.5 text-start">
-                         <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'سنة التصنيع / الموديل' : 'Model Year'}</Label>
-                         <Input 
-                          type="text"
-                          maxLength={4}
-                          placeholder="YYYY"
-                          value={form.manufacturingYear ?? ''} 
-                          onChange={e => {
-                            const val = e.target.value.replace(/\D/g, '').slice(0, 4);
-                            setForm({...form, manufacturingYear: val});
-                          }}
-                          className="h-12 rounded-xl border-2 font-black text-center bg-white" 
-                        />
+                         <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الحالة الفنية' : 'Condition'}</Label>
+                         <Select value={form.toolCondition} onValueChange={(v: ToolCondition) => setForm({...form, toolCondition: v})}>
+                            <SelectTrigger className="h-12 rounded-xl border-2 font-bold"><SelectValue /></SelectTrigger>
+                            <SelectContent className="rounded-xl">
+                               <SelectItem value="new" className="font-bold">{isRtl ? 'جديدة' : 'New'}</SelectItem>
+                               <SelectItem value="used_good" className="font-bold">{isRtl ? 'مستعملة - حالة جيدة' : 'Used - Good'}</SelectItem>
+                               <SelectItem value="under_maintenance" className="font-bold text-rose-600">{isRtl ? 'تحت الصيانة' : 'Maintenance'}</SelectItem>
+                            </SelectContent>
+                         </Select>
                       </div>
-                      <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'رقم اللوحة / الدفتر' : 'Plate / Reg No'}</Label><Input value={form.plateNumber ?? ''} onChange={e => setForm({...form, plateNumber: e.target.value})} className="h-12 rounded-xl border-2 font-black" /></div>
-                      <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'رقم الشاصي (VIN)' : 'Chassis VIN'}</Label><Input value={form.chassisNumber ?? ''} onChange={e => setForm({...form, chassisNumber: e.target.value})} className="h-12 rounded-xl border-2 font-mono" /></div>
-                      <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'انتهاء الدفتر' : 'Reg Expiry'}</Label><SmartDateInput value={form.registrationExpiry ?? ''} onChange={v => setForm({...form, registrationExpiry: v})} /></div>
-                   </div>
-                </div>
-              )}
-
-              {cat === 'stationary' && (
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-6 animate-in slide-in-from-top-2 text-start">
-                   <div className="space-y-1.5 text-start">
-                      <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'سنة التصنيع' : 'Model Year'}</Label>
-                      <Input 
-                          type="text"
-                          maxLength={4}
-                          placeholder="YYYY"
-                          value={form.manufacturingYear ?? ''} 
-                          onChange={e => {
-                            const val = e.target.value.replace(/\D/g, '').slice(0, 4);
-                            setForm({...form, manufacturingYear: val});
-                          }}
-                          className="h-12 rounded-xl border-2 font-black text-center bg-white" 
-                        />
-                   </div>
-                   <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الرقم التسلسلي' : 'Serial No'}</Label><Input value={form.serialNumber ?? ''} onChange={e => setForm({...form, serialNumber: e.target.value})} className="h-12 rounded-xl border-2 font-mono" /></div>
-                   <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'القدرة (KVA/HP)' : 'Capacity'}</Label><Input value={form.capacity ?? ''} onChange={e => setForm({...form, capacity: e.target.value})} className="h-12 rounded-xl border-2 font-black text-secondary" /></div>
-                   <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'موعد الصيانة القادم' : 'Next Service'}</Label><SmartDateInput value={form.nextServiceDate ?? ''} onChange={v => setForm({...form, nextServiceDate: v})} /></div>
-                   <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'انتهاء شهادة السلامة' : 'Safety Cert'}</Label><SmartDateInput value={form.safetyCertExpiry ?? ''} onChange={v => setForm({...form, safetyCertExpiry: v})} /></div>
-                </div>
-              )}
-
-              {cat === 'hand_tool' && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-top-2 text-start">
-                   <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الرقم التسلسلي (SN)' : 'Serial No'}</Label><Input value={form.serialNumber ?? ''} onChange={e => setForm({...form, serialNumber: e.target.value})} className="h-12 rounded-xl border-2 font-mono" /></div>
-                   <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الماركة / الموديل' : 'Brand / Model'}</Label><Input value={form.brandModel ?? ''} onChange={e => setForm({...form, brandModel: e.target.value})} className="h-12 rounded-xl border-2 font-bold" placeholder="e.g. Bosch / Makita" /></div>
-                   <div className="space-y-2 text-start">
-                      <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الحالة الفنية' : 'Condition'}</Label>
-                      <Select value={form.toolCondition} onValueChange={(v: ToolCondition) => setForm({...form, toolCondition: v})}>
-                         <SelectTrigger className="h-12 rounded-xl border-2 font-bold"><SelectValue /></SelectTrigger>
-                         <SelectContent className="rounded-xl">
-                            <SelectItem value="new" className="font-bold">{isRtl ? 'جديدة' : 'New'}</SelectItem>
-                            <SelectItem value="used_good" className="font-bold">{isRtl ? 'مستعملة - حالة جيدة' : 'Used - Good'}</SelectItem>
-                            <SelectItem value="under_maintenance" className="font-bold text-rose-600">{isRtl ? 'تحت الصيانة' : 'Maintenance'}</SelectItem>
-                         </SelectContent>
-                      </Select>
-                   </div>
-                </div>
-              )}
+                   </>
+                 )}
+              </div>
            </CardContent>
         </Card>
       )}
 
+      {/* القسم الثالث: الملكية والتمويل (تم إصلاحه) */}
       <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
         <CardHeader className="bg-white p-8 border-b text-start">
            <div className="flex items-center justify-between">
@@ -350,38 +324,62 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
            </div>
         </CardHeader>
         <CardContent className="p-8 space-y-8">
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-start">
-              {isOwned ? (
-                 <div className="flex items-center justify-between p-6 bg-primary/5 rounded-[2rem] border-2 border-primary/10">
-                    <div className="space-y-1">
-                       <Label className="font-black text-sm text-slate-800">{isRtl ? 'هل المعدة ممولة (أقساط)؟' : 'Is it Financed?'}</Label>
-                       <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tight">Linked to Bank/Finance Co.</p>
-                    </div>
-                    <Switch checked={form.isFinanced ?? false} onCheckedChange={v => setForm({...form, isFinanced: v})} />
-                 </div>
-              ) : (
-                 <div className="space-y-2 text-start">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'المورد المؤجر' : 'Renting Supplier'}</Label>
-                    <Select value={form.supplierId ?? ''} onValueChange={v => {
-                       const s = suppliers?.find((x:any) => x.id === v);
-                       setForm({...form, supplierId: v, supplierName: s?.name || ''});
-                    }}>
-                       <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
-                       <SelectContent className="rounded-xl">{suppliers?.map((s:any) => <SelectItem key={s.id} value={s.id!}>{s.name}</SelectItem>)}</SelectContent>
-                    </Select>
-                 </div>
-              )}
-           </div>
+           {isOwned ? (
+             <div className="space-y-6">
+                <div className="flex items-center justify-between p-6 bg-primary/5 rounded-[2rem] border-2 border-primary/10">
+                   <div className="space-y-1 text-start">
+                      <Label className="font-black text-sm text-slate-800">{isRtl ? 'هل المعدة ممولة (أقساط)؟' : 'Is it Financed?'}</Label>
+                      <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tight">Linked to Bank/Finance Co.</p>
+                   </div>
+                   <Switch checked={form.isFinanced ?? false} onCheckedChange={v => setForm({...form, isFinanced: v})} />
+                </div>
+
+                {form.isFinanced && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-top-2 duration-300">
+                     <div className="space-y-1.5 text-start">
+                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                           <Landmark className="h-3 w-3" /> {isRtl ? 'جهة التمويل / البنك' : 'Financier Name'}
+                        </Label>
+                        <Input value={form.financierName ?? ''} onChange={e => setForm({...form, financierName: e.target.value})} className="h-11 rounded-xl border-2 font-bold bg-white" />
+                     </div>
+                     <div className="space-y-1.5 text-start">
+                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                           <Banknote className="h-3 w-3" /> {isRtl ? 'القسط الشهري' : 'Monthly Payment'}
+                        </Label>
+                        <Input type="number" step="0.001" value={form.monthlyInstallment ?? ''} onChange={e => setForm({...form, monthlyInstallment: e.target.value})} className="h-11 rounded-xl border-2 font-black text-rose-600 bg-white" />
+                     </div>
+                     <div className="space-y-1.5 text-start">
+                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                           <Clock className="h-3 w-3" /> {isRtl ? 'يوم الاستحقاق (1-31)' : 'Due Day'}
+                        </Label>
+                        <Input type="number" min="1" max="31" value={form.installmentDay ?? ''} onChange={e => setForm({...form, installmentDay: e.target.value})} className="h-11 rounded-xl border-2 font-black text-center bg-white" />
+                     </div>
+                  </div>
+                )}
+             </div>
+           ) : (
+             <div className="space-y-2 text-start">
+                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'المورد المؤجر' : 'Renting Supplier'}</Label>
+                <Select value={form.supplierId ?? ''} onValueChange={v => {
+                   const s = suppliers?.find((x:any) => x.id === v);
+                   setForm({...form, supplierId: v, supplierName: s?.name || ''});
+                }}>
+                   <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
+                   <SelectContent className="rounded-xl">{suppliers?.map((s:any) => <SelectItem key={s.id} value={s.id!}>{s.name}</SelectItem>)}</SelectContent>
+                </Select>
+             </div>
+           )}
         </CardContent>
       </Card>
 
+      {/* القسم الرابع: المعطيات المالية */}
       <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
         <CardHeader className="bg-slate-50/50 p-8 border-b text-start">
            <AdminSectionHeader title={isRtl ? 'المعطيات المالية والتشغيلية' : 'Finance & Rates'} sub={isRtl ? 'تحديد تعرفة الساعة وتكاليف التشغيل' : 'Cost Recovery Metrics'} icon={Calculator} />
         </CardHeader>
         <CardContent className="p-8 space-y-8 text-start">
            {isOwned ? (
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-start">
                 <div className="space-y-2 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'سعر شراء الأصل' : 'Purchase Cost'}</Label><Input type="number" value={form.purchaseCost ?? ''} onChange={e => setForm({...form, purchaseCost: e.target.value})} className="h-12 rounded-xl border-2 font-black text-emerald-600 bg-white" /></div>
                 <div className="space-y-2 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'القيمة التخريدية' : 'Salvage Value'}</Label><Input type="number" value={form.salvageValue ?? ''} onChange={e => setForm({...form, salvageValue: e.target.value})} className="h-12 rounded-xl border-2 font-black bg-white" placeholder="1" /></div>
                 <div className="space-y-2 text-start">
