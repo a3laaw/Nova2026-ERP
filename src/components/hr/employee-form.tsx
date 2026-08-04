@@ -46,7 +46,7 @@ import { HRService } from '@/services/hr-service';
 import { cn } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
 
-// مخطط التحقق المطور: جعل الحقول اختيارية للسماح بحفظ الموظفين الخارجيين
+// مخطط التحقق المطور: الحقول المخفية للعمالة الخارجية اختيارية لتمكين الحفظ
 const employeeSchema = z.object({
   employeeNumber: z.string().min(1, "Required"),
   fullName: z.string().min(3, "Required"),
@@ -168,8 +168,10 @@ export function EmployeeForm({ initialData, onSubmit, loading, readOnly = false 
   const isExternal = employeeType === 'external';
 
   const handleFinalSubmit = (data: any) => {
-    if (isExternal && !data.nameEn) {
-       data.nameEn = data.fullName; 
+    // العمالة الخارجية: توليد اسم إنجليزي تلقائياً لتجاوز قيود الـ Schema
+    if (isExternal) {
+       if (!data.nameEn) data.nameEn = data.fullName;
+       if (!data.civilId) data.civilId = "EXT-" + Date.now().toString().slice(-8);
     }
     onSubmit(data);
   };
@@ -184,7 +186,7 @@ export function EmployeeForm({ initialData, onSubmit, loading, readOnly = false 
         </div>
       )}
 
-      {/* نوع التوظيف - رادار سيادي */}
+      {/* نوع التوظيف */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
          <Card 
            onClick={() => !readOnly && form.setValue('employeeType', 'internal')}
@@ -372,7 +374,7 @@ export function EmployeeForm({ initialData, onSubmit, loading, readOnly = false 
 
       {!readOnly && (
         <div className="flex justify-end pt-6">
-          <Button type="submit" disabled={loading} className="h-20 rounded-[2.5rem] px-24 bg-primary text-white font-black text-2xl shadow-2xl shadow-primary/20 hover:scale-[1.02] transition-all gap-4 border-b-8 border-orange-700">
+          <Button type="submit" disabled={loading} className="h-20 rounded-[2.5rem] px-24 bg-primary text-white font-black text-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-4 border-b-8 border-orange-700">
             {loading ? <Loader2 className="animate-spin h-8 w-8" /> : <Save className="h-8 w-8" />}
             {initialData ? (isRtl ? 'تحديث البيانات' : 'Update Profile') : (isRtl ? 'اعتماد التوظيف' : 'Commit Registration')}
           </Button>

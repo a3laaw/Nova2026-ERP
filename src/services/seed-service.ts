@@ -37,7 +37,7 @@ export class SeedService {
       let targetCompanyId = data.companyId;
       let roleId = data.roleId;
 
-      // 1. استرجاع الكود المفقود من ملف الشركة (حالة نور)
+      // 1. استرجاع الكود المفقود من ملف الشركة (حالة حسابات مثل نور)
       if (!currentRoleCode && roleId && targetCompanyId && targetCompanyId !== 'awaiting_setup') {
         try {
           const roleSnap = await getDoc(doc(this.db, 'companies', targetCompanyId, 'roles', roleId));
@@ -50,6 +50,8 @@ export class SeedService {
       }
 
       // 2. التوحيد القطعي لحالة الأحرف (Sovereign Normalization)
+      // roleCode -> UPPERCASE دائماً
+      // role -> lowercase دائماً
       const rawCode = currentRoleCode || currentRole || 'USER';
       const finalRoleCode = String(rawCode).toUpperCase();
       const finalRole = finalRoleCode.toLowerCase();

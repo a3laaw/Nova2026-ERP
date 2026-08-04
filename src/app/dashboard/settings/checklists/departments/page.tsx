@@ -50,7 +50,7 @@ export default function DepartmentsPage() {
   const [isDeptOpen, setIsDeptOpen] = useState(false);
   const [isJobOpen, setIsJobOpen] = useState(false);
   const [deptForm, setDeptForm] = useState<Partial<Department>>({ name: '', nameEn: '', description: '' });
-  const [jobForm, setJobForm] = useState<Partial<Job>>({ name: '', nameEn: '', roleId: '' });
+  const [jobForm, setJobForm] = useState<Partial<Job>>({ name: '', nameEn: '', roleId: '', hourlyCost: 0 });
 
   const deptService = useMemo(() => {
     if (!db || !companyId) return null;
@@ -150,7 +150,7 @@ export default function DepartmentsPage() {
         <Dialog open={isDeptOpen} onOpenChange={setIsDeptOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => setDeptForm({ name: '', nameEn: '', description: '' })} variant="default" className="h-11 shadow-lg shadow-primary/20 flex items-center gap-2">
-              <Plus className="h-4 w-4" /> {t('newDept')}
+              <Plus className="h-4 w-4 me-2" /> {t('newDept')}
             </Button>
           </DialogTrigger>
           <DialogContent className="rounded-xl p-8 max-w-2xl border-0 shadow-3xl bg-white" dir={dir}>
@@ -223,7 +223,7 @@ export default function DepartmentsPage() {
                     disabled={!selectedDept}
                     variant="outline"
                     className="h-11 transition-all gap-2 rounded-xl border-2"
-                    onClick={() => setJobForm({ name: '', nameEn: '', roleId: '' })}
+                    onClick={() => setJobForm({ name: '', nameEn: '', roleId: '', hourlyCost: 0 })}
                   >
                     <Plus className="h-4 w-4" /> {isRtl ? 'إضافة وظيفة/مهنة' : 'Add Job'}
                   </Button>
@@ -240,6 +240,11 @@ export default function DepartmentsPage() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('name')} (Ar)</Label><Input value={jobForm.name || ''} onChange={e => setJobForm({...jobForm, name: e.target.value})} className="h-11 border-2 font-bold" /></div>
                       <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('name')} (En)</Label><Input value={jobForm.nameEn || ''} onChange={e => setJobForm({...jobForm, nameEn: e.target.value})} className="h-11 border-2 font-bold text-start" dir="ltr" /></div>
+                    </div>
+
+                    <div className="space-y-2">
+                       <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'تعرفة الساعة المرجعية (KWD)' : 'Reference Hourly Rate'}</Label>
+                       <Input type="number" step="0.001" value={jobForm.hourlyCost || ''} onChange={e => setJobForm({...jobForm, hourlyCost: Number(e.target.value)})} className="h-11 border-2 font-black text-emerald-600" />
                     </div>
                     
                     <div className="space-y-2 p-5 bg-primary/5 rounded-2xl border-2 border-dashed border-primary/20">
@@ -262,9 +267,6 @@ export default function DepartmentsPage() {
                              ))}
                          </SelectContent>
                        </Select>
-                       <p className="text-[9px] text-slate-500 font-bold mt-2 leading-relaxed italic">
-                          {isRtl ? '* المهن بدون ربط (مثل العمالة اليومية) لن يتاح لها تسجيل دخول للنظام ولكن ستظهر في رادار الميدان.' : '* Roles without links (like daily labor) will have no login access but will appear in field radar.'}
-                       </p>
                     </div>
                   </div>
                   <DialogFooter className="pt-4 border-t">
@@ -289,6 +291,7 @@ export default function DepartmentsPage() {
                         <div className="text-start">
                            <span className="text-sm font-black text-slate-800 block leading-none">{isRtl ? job.name : job.nameEn}</span>
                            <div className="flex items-center gap-3 mt-2">
+                              <Badge className="bg-emerald-50 text-emerald-600 border-0 font-black text-[9px] px-2">{(job.hourlyCost || 0).toFixed(3)} KWD/hr</Badge>
                               {job.roleId ? (
                                 <Badge className="bg-primary/5 text-primary border-primary/20 font-black text-[8px] h-5 px-3 rounded-lg uppercase">
                                    {job.roleName}
