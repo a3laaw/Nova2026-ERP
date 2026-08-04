@@ -13,7 +13,8 @@ import {
   Save, Building2, ShieldCheck, Trash2, 
   Power, Search, Key, Copy, Eye, EyeOff,
   Settings2, Zap, Rocket, AlertTriangle,
-  Clock, CalendarClock, Ban, CheckCircle
+  Clock, CalendarClock, Ban, CheckCircle,
+  X
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useLanguage } from '@/context/language-context';
@@ -470,4 +471,3 @@ export default function DeveloperDashboard() {
     </div>
   );
 }
-
