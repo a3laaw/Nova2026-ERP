@@ -37,7 +37,7 @@ export class SeedService {
       const data = userDoc.data();
       const updates: any = {};
 
-      // 1. استخراج وتوحيد roleCode
+      // 1. استخراج وتوحيد roleCode ليكون UPPERCASE
       if (data.roleId && data.companyId && !data.roleCode) {
         const roleSnap = await getDoc(doc(this.db, 'companies', data.companyId, 'roles', data.roleId));
         if (roleSnap.exists()) {
@@ -46,11 +46,11 @@ export class SeedService {
       } else if (data.roleCode) {
         updates.roleCode = data.roleCode.toUpperCase();
       } else if (data.role) {
-        // إذا كان role موجود كنص فقط
+        // حالة طوارئ: استخلاص الكود من حقل role النصي
         updates.roleCode = data.role.toUpperCase();
       }
 
-      // 2. توحيد حقل role ليكون lowercase (للتوافق مع الواجهات القديمة)
+      // 2. توحيد حقل role ليكون lowercase لضمان عمل الواجهات
       if (updates.roleCode) {
         updates.role = updates.roleCode.toLowerCase();
       }
@@ -68,7 +68,7 @@ export class SeedService {
   async runSeed() {
     const batch = writeBatch(this.db);
     
-    // 1. الأقسام والوظائف (ربط سيادي مع الألوان)
+    // 1. الأقسام والوظائف
     const deptRefs: Record<string, string> = {};
     for (const dept of SEED_DATA.departments) {
       const deptRef = doc(collection(this.db, paths.departments(this.companyId)));
@@ -122,7 +122,7 @@ export class SeedService {
       }
     }
 
-    // 3. الهيكل الفني الرباعي (المسارات)
+    // 3. الهيكل الفني
     const activityRefs: Record<string, string> = {};
     const serviceRefs: Record<string, string> = {};
     const stageRefs: Record<string, string> = {};
@@ -195,16 +195,6 @@ export class SeedService {
         }
       }
     }
-
-    const rooms = [
-       { name: 'القاعة الكبرى', nameEn: 'Grand Hall', order: 1 },
-       { name: 'غرفة اجتماعات (1)', nameEn: 'Meeting Room 1', order: 2 },
-       { name: 'المكتب الفني', nameEn: 'Technical Office', order: 3 },
-    ];
-    rooms.forEach(r => {
-       const ref = doc(collection(this.db, paths.meetingRooms(this.companyId)));
-       batch.set(ref, { ...r, isActive: true, companyId: this.companyId, createdAt: serverTimestamp() });
-    });
 
     const rootCivilRef = doc(collection(this.db, paths.boqReferenceNodes(this.companyId)));
     batch.set(rootCivilRef, {

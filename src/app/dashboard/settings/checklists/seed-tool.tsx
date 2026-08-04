@@ -62,8 +62,8 @@ export function SeedTool() {
     try {
       const count = await service.runIdentityMigration();
       toast({ 
-        title: isRtl ? "اكتملت هجرة الهوية" : "Migration Complete", 
-        description: isRtl ? `تم تحديث ${count} حساب بنجاح.` : `Updated ${count} accounts.` 
+        title: isRtl ? "اكتملت هجرة الهوية" : "Identity Migration Complete", 
+        description: isRtl ? `تم تحديث ${count} سجل هوية بنجاح.` : `Updated ${count} user identities.` 
       });
     } catch (e) {
       toast({ variant: "destructive", title: t('error') });
@@ -90,7 +90,7 @@ export function SeedTool() {
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
-      {/* قسم هجرة الهوية السيادية - جديد */}
+      {/* قسم هجرة الهوية السيادية */}
       <Card className="border-4 border-emerald-100 rounded-[3rem] bg-emerald-50/20 overflow-hidden shadow-2xl">
         <CardHeader className="p-10 text-start">
            <div className="flex items-center gap-4">
@@ -104,7 +104,7 @@ export function SeedTool() {
         <CardContent className="p-10 pt-0 flex flex-col md:flex-row items-center justify-between gap-6">
            <div className="text-start space-y-2">
               <p className="text-xs font-bold text-slate-500 max-w-md">
-                 سيقوم هذا الإجراء بفحص كافة حسابات `global_users` وتأكيد أن حقل `roleCode` مكتوب بحروف كبيرة (UPPERCASE) لتفعيل مفتاح الأدمن الرئيسي.
+                 سيقوم هذا الإجراء بفحص كافة حسابات `global_users` وتأكيد أن حقل `roleCode` مكتوب بحروف كبيرة (UPPERCASE) لتفعيل مفتاح الأدمن الرئيسي فوراً.
               </p>
            </div>
            <Button 
@@ -113,7 +113,7 @@ export function SeedTool() {
              className="h-16 px-10 rounded-2xl bg-emerald-600 text-white font-black shadow-xl shadow-emerald-200 gap-3 min-w-[200px]"
            >
               {migrating ? <Loader2 className="animate-spin h-6 w-6" /> : <RefreshCcw className="h-6 w-6" />}
-              {isRtl ? 'بدء الهوية السيادية' : 'Unify Identities'}
+              {isRtl ? 'بدء الهوية السيادية' : 'Run Identity Fix'}
            </Button>
         </CardContent>
       </Card>
@@ -173,7 +173,6 @@ export function SeedTool() {
         </CardContent>
       </Card>
 
-      {/* أدوات سلامة البيانات (Data Maintenance) */}
       <Card className="border-2 border-rose-100 rounded-[2.5rem] bg-white overflow-hidden shadow-xl">
          <CardHeader className="bg-rose-50/50 p-8 border-b">
             <CardTitle className="text-lg font-black flex items-center gap-3 text-rose-800">

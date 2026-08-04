@@ -54,17 +54,18 @@ export default function EmployeeJoinPage() {
       const cred = await createUserWithEmailAndPassword(auth, invite.email, password);
       const uid = cred.user.uid;
 
-      // تحديث ملف Auth الأساسي
       await updateProfile(cred.user, { displayName: invite.employeeName });
 
       const batch = writeBatch(db);
+      const unifiedRoleCode = (invite.roleCode || 'USER').toUpperCase();
 
-      // 1. السجل العالمي (Global Identity) - فرض fullName لضمان السيادة الاسمية
+      // 1. السجل العالمي (Global Identity)
       batch.set(doc(db, 'global_users', uid), {
         companyId: invite.companyId,
         roleId: invite.roleId,
-        role: invite.roleCode,
-        fullName: invite.employeeName, // تم التصحيح لضمان الربط الشامل
+        roleCode: unifiedRoleCode,
+        role: unifiedRoleCode.toLowerCase(),
+        fullName: invite.employeeName,
         departmentId: invite.departmentId,
         employeeId: invite.employeeId,
         username: invite.email.split('@')[0],
@@ -81,7 +82,8 @@ export default function EmployeeJoinPage() {
         email: invite.email,
         employeeId: invite.employeeId,
         roleId: invite.roleId,
-        role: invite.roleCode,
+        roleCode: unifiedRoleCode,
+        role: unifiedRoleCode.toLowerCase(),
         joinedAt: serverTimestamp(),
         isActive: true
       });

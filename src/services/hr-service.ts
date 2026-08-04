@@ -120,8 +120,8 @@ export class HRService {
           const roleSnap = await getDoc(doc(this.db, 'companies', this.companyId, 'roles', roleId));
           if (roleSnap.exists()) {
              const code = roleSnap.data().code.toUpperCase();
-             updates.roleCode = code;
-             updates.role = code.toLowerCase();
+             updates.roleCode = code; // توحيد الأحرف الكبيرة
+             updates.role = code.toLowerCase(); // توحيد الأحرف الصغيرة
           }
         }
 
