@@ -50,7 +50,7 @@ export default function DepartmentsPage() {
   const [isDeptOpen, setIsDeptOpen] = useState(false);
   const [isJobOpen, setIsJobOpen] = useState(false);
   const [deptForm, setDeptForm] = useState<Partial<Department>>({ name: '', nameEn: '', description: '' });
-  const [jobForm, setJobForm] = useState<Partial<Job>>({ name: '', nameEn: '', roleId: '', hourlyCost: 0 });
+  const [jobForm, setJobForm] = useState<Partial<Job>>({ name: '', nameEn: '', roleId: '' });
 
   const deptService = useMemo(() => {
     if (!db || !companyId) return null;
@@ -99,8 +99,7 @@ export default function DepartmentsPage() {
         roleName: selectedRole ? (isRtl ? selectedRole.name : selectedRole.nameEn) : '',
         name: jobForm.name || '', 
         nameEn: jobForm.nameEn || '',
-        departmentName: selectedDept.name,
-        hourlyCost: Number(jobForm.hourlyCost) || 0
+        departmentName: selectedDept.name
       };
       if (jobForm.id) await deptService.updateJob(selectedDept.id, jobForm.id, data);
       else await deptService.addJob(selectedDept.id, data as any);
@@ -220,7 +219,7 @@ export default function DepartmentsPage() {
                     disabled={!selectedDept}
                     variant="outline"
                     className="h-11 transition-all gap-2"
-                    onClick={() => setJobForm({ name: '', nameEn: '', roleId: '', hourlyCost: 0 })}
+                    onClick={() => setJobForm({ name: '', nameEn: '', roleId: '' })}
                   >
                     <Plus className="h-4 w-4" /> {isRtl ? 'إضافة وظيفة' : 'Add Job'}
                   </Button>
@@ -239,26 +238,18 @@ export default function DepartmentsPage() {
                       <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('name')} (En)</Label><Input value={jobForm.nameEn || ''} onChange={e => setJobForm({...jobForm, nameEn: e.target.value})} className="h-11 border-2 font-bold text-start" dir="ltr" /></div>
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-6 items-end">
-                       <div className="space-y-2">
-                          <Label className="text-xs font-black uppercase text-primary flex items-center gap-2">
-                             <Clock className="h-4 w-4" /> {isRtl ? 'تعرفة الساعة المرجعية (KWD)' : 'Ref. Hourly Rate (KWD)'}
-                          </Label>
-                          <Input type="number" step="0.001" value={jobForm.hourlyCost === 0 ? '' : jobForm.hourlyCost} onChange={e => setJobForm({...jobForm, hourlyCost: Number(e.target.value)})} className="h-11 border-2 font-black text-emerald-600" />
-                       </div>
-                       <div className="space-y-2">
-                          <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'ربط الصلاحيات' : 'Role Context'}</Label>
-                          <Select value={jobForm.roleId} onValueChange={v => setJobForm({...jobForm, roleId: v})}>
-                            <SelectTrigger className="h-11 rounded-lg bg-white border-2 font-black">
-                                <SelectValue placeholder="..." />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl">
-                                {roles?.map(r => (
-                                  <SelectItem key={r.id} value={r.id!} className="font-bold">{isRtl ? r.name : r.nameEn}</SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
-                       </div>
+                    <div className="space-y-2">
+                       <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'ربط الصلاحيات' : 'Role Context'}</Label>
+                       <Select value={jobForm.roleId} onValueChange={v => setJobForm({...jobForm, roleId: v})}>
+                         <SelectTrigger className="h-11 rounded-lg bg-white border-2 font-black">
+                             <SelectValue placeholder="..." />
+                         </SelectTrigger>
+                         <SelectContent className="rounded-xl">
+                             {roles?.map(r => (
+                               <SelectItem key={r.id} value={r.id!} className="font-bold">{isRtl ? r.name : r.nameEn}</SelectItem>
+                             ))}
+                         </SelectContent>
+                       </Select>
                     </div>
                   </div>
                   <DialogFooter>
@@ -283,7 +274,6 @@ export default function DepartmentsPage() {
                         <div className="text-start">
                            <span className="text-sm font-black text-slate-800 block">{isRtl ? job.name : job.nameEn}</span>
                            <div className="flex items-center gap-3 mt-1">
-                              <Badge className="bg-emerald-50 text-emerald-600 border-0 font-black text-[9px] px-2">{job.hourlyCost?.toFixed(3)} KWD/hr</Badge>
                               <span className="text-[8px] font-bold text-slate-400 uppercase">{job.roleName}</span>
                            </div>
                         </div>

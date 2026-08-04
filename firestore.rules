@@ -2,17 +2,15 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // --- 1. الدوال المساعدة الأساسية (Sovereign Helpers) ---
+    // --- 1. الدوال المساعدة السيادية (Sovereign Helpers) ---
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // التحقق من صلاحية الإدارة العليا (توحيد الأحرف لضمان عدم الفشل)
+    // الإنفاذ القطعي: الاعتماد حصراً على roleCode الموحد (حروف كبيرة)
     function isGlobalAdmin() {
       let user = get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
-      // الإصلاح الجذري: الاعتماد على roleCode الموحد فقط بعد الهجرة
-      return user.roleCode == 'ADMIN' || 
-             request.auth.token.email == 'admin@novaflow.com';
+      return user.roleCode == 'ADMIN';
     }
     
     function getUserCompany() {
@@ -22,7 +20,10 @@ service cloud.firestore {
     // --- 2. قواعد الهوية العالمية ---
     match /global_users/{uid} {
       allow read: if isAuthenticated() && (request.auth.uid == uid || isGlobalAdmin());
-      allow write: if isAuthenticated() && (request.auth.uid == uid || isGlobalAdmin());
+      // السماح للمستخدم بتحديث بياناته الشخصية (مثل الصورة والاسم)
+      allow update: if isAuthenticated() && request.auth.uid == uid;
+      // الكتابة الكاملة للمدير فقط
+      allow write: if isAuthenticated() && isGlobalAdmin();
     }
 
     // --- 3. قواعد المنشآت (Multi-Tenant Core) ---
@@ -38,15 +39,17 @@ service cloud.firestore {
     }
 
     // --- 4. قواعد المجموعات المشتركة (Collection Groups) ---
+    // ضرورية للبحث والتقارير الشاملة
     match /{path=**}/jobs/{jobId} {
       allow read: if isAuthenticated() && (getUserCompany() == resource.data.companyId || isGlobalAdmin());
     }
     
-    match /{path=**}/executions/{execId} {
-      allow read, write: if isAuthenticated() && (getUserCompany() == resource.data.companyId || isGlobalAdmin());
+    match /{path=**}/fieldVisits/{visitId} {
+      allow read: if isAuthenticated() && (getUserCompany() == resource.data.companyId || isGlobalAdmin());
+      allow write: if isAuthenticated() && (getUserCompany() == resource.data.companyId || isGlobalAdmin());
     }
 
-    match /{path=**}/fieldVisits/{visitId} {
+    match /{path=**}/executions/{execId} {
       allow read, write: if isAuthenticated() && (getUserCompany() == resource.data.companyId || isGlobalAdmin());
     }
 
