@@ -11,7 +11,7 @@ import {
   UserCircle, Ban, CheckCircle2, UserCog,
   ShieldAlert, UserPlus, Info, Save,
   LayoutGrid, Copy, Key, Eye, EyeOff,
-  Pencil, Lock, RefreshCcw
+  Pencil, Lock, RefreshCcw, UserX
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -69,6 +69,11 @@ export default function UsersManagementPage() {
   const { data: roles } = useCollection<Role>(rolesQuery);
   const { data: employees } = useCollection<Employee>(empsQuery);
 
+  // تصفية الموظفين: فقط من لديهم مهنة مرتبطة بدور أمني
+  const systemEligibleEmployees = useMemo(() => {
+    return (employees || []).filter(emp => !!emp.roleId);
+  }, [employees]);
+
   useEffect(() => {
     if (editingUser) {
       setEditForm({
@@ -95,7 +100,7 @@ export default function UsersManagementPage() {
         username: createForm.username || emp.employeeNumber,
         password: createForm.password,
         roleId: role.id!,
-        roleCode: role.code.toUpperCase(), // توحيد قسري
+        roleCode: role.code.toUpperCase(), 
         departmentId: emp.departmentId
       });
 
@@ -120,7 +125,7 @@ export default function UsersManagementPage() {
         displayName: editForm.fullName,
         username: editForm.username,
         roleId: role.id!,
-        roleCode: role.code.toUpperCase() // توحيد قسري
+        roleCode: role.code.toUpperCase() 
       });
 
       if (editForm.newPassword && editingUser.email) {
@@ -173,7 +178,7 @@ export default function UsersManagementPage() {
             {isRtl ? 'إدارة مستخدمي النظام' : 'User Management'}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-            {isRtl ? 'التحكم في حسابات الدخول، الصلاحيات، واسترجاع كلمات المرور' : 'Control accounts, permissions, and password retrieval'}
+            {isRtl ? 'التحكم في حسابات الدخول والصلاحيات الميدانية والادارية.' : 'Control accounts, permissions, and field/admin roles.'}
           </p>
         </div>
 
@@ -194,16 +199,29 @@ export default function UsersManagementPage() {
 
             <div className="p-10 space-y-6 text-start bg-white">
                 <div className="space-y-2">
-                   <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'اختر الموظف' : 'Select Employee'}</Label>
+                   <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'اختر الموظف (المرتبط بدور)' : 'Select Eligible Employee'}</Label>
                    <Select value={createForm.employeeId} onValueChange={v => {
                       const emp = employees?.find(e => e.id === v);
-                      setCreateForm({...createForm, employeeId: v, email: emp?.email || '', username: emp?.employeeNumber || ''});
+                      setCreateForm({...createForm, employeeId: v, email: emp?.email || '', username: emp?.employeeNumber || '', roleId: emp?.roleId || ''});
                    }}>
                       <SelectTrigger className="h-14 rounded-2xl border-2 font-black">
-                         <SelectValue placeholder="..." />
+                         <SelectValue placeholder={isRtl ? "اختيار الموظف..." : "Choose staff..."} />
                       </SelectTrigger>
-                      <SelectContent className="rounded-xl border-0 shadow-2xl">
-                         {employees?.map(e => <SelectItem key={e.id} value={e.id!} className="font-bold">{e.fullName}</SelectItem>)}
+                      <SelectContent className="rounded-xl border-0 shadow-2xl z-[200]">
+                         {systemEligibleEmployees.map(e => (
+                           <SelectItem key={e.id} value={e.id!} className="font-bold py-3">
+                              <div className="flex flex-col text-start">
+                                 <span>{e.fullName}</span>
+                                 <span className="text-[8px] text-slate-400 uppercase">{e.jobTitle}</span>
+                              </div>
+                           </SelectItem>
+                         ))}
+                         {systemEligibleEmployees.length === 0 && (
+                            <div className="p-10 text-center space-y-2">
+                               <UserX className="h-8 w-8 mx-auto text-slate-200" />
+                               <p className="text-[10px] font-bold text-slate-400 uppercase">لا يوجد موظفين مؤهلين لحسابات النظام. يرجى ربط دور وظيفي بالمهنة في الهيكل التنظيمي أولاً.</p>
+                            </div>
+                         )}
                       </SelectContent>
                    </Select>
                 </div>
@@ -214,10 +232,10 @@ export default function UsersManagementPage() {
                       <Input value={createForm.username} onChange={e => setCreateForm({...createForm, username: e.target.value})} className="h-12 rounded-xl border-2 font-mono" placeholder={isRtl ? "اختياري (الافتراضي الرقم الوظيفي)" : "Optional (Default Emp #)"} />
                    </div>
                    <div className="space-y-2">
-                      <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'الدور الأمني' : 'Role'}</Label>
+                      <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'تعديل الدور الأمني' : 'Override Role'}</Label>
                       <Select value={createForm.roleId} onValueChange={v => setCreateForm({...createForm, roleId: v})}>
                          <SelectTrigger className="h-12 rounded-xl border-2 font-bold"><SelectValue /></SelectTrigger>
-                         <SelectContent className="rounded-xl border-0 shadow-2xl">
+                         <SelectContent className="rounded-xl border-0 shadow-2xl z-[200]">
                             {roles?.map(r => <SelectItem key={r.id} value={r.id!} className="font-bold">{isRtl ? r.name : r.nameEn}</SelectItem>)}
                          </SelectContent>
                       </Select>
@@ -225,7 +243,7 @@ export default function UsersManagementPage() {
                 </div>
 
                 <div className="space-y-2 text-start">
-                   <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'البريد الإلكتروني للدخول' : 'Email'}</Label>
+                   <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'البريد الإلكتروني للدخول' : 'Login Email'}</Label>
                    <Input value={createForm.email} onChange={e => setCreateForm({...createForm, email: e.target.value})} className="h-12 rounded-xl border-2 text-start" dir="ltr" />
                 </div>
 
@@ -234,7 +252,7 @@ export default function UsersManagementPage() {
                    <Input value={createForm.password} onChange={e => setCreateForm({...createForm, password: e.target.value})} className="h-14 rounded-xl border-2 font-mono text-lg text-primary" placeholder="P@ssw0rd123" />
                 </div>
 
-                <Button onClick={handleCreateAccount} disabled={loadingAction === 'creating'} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 mt-4 border-b-8 border-orange-700">
+                <Button onClick={handleCreateAccount} disabled={loadingAction === 'creating' || !createForm.employeeId} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 mt-4 border-b-8 border-orange-700">
                    {loadingAction === 'creating' ? <Loader2 className="animate-spin h-6 w-6" /> : (isRtl ? 'إنشاء الحساب الآن' : 'Create Account Now')}
                 </Button>
             </div>
@@ -243,7 +261,7 @@ export default function UsersManagementPage() {
       </div>
 
       <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
-        <CardHeader className="bg-slate-50/50 border-b p-8 flex flex-row items-center justify-between gap-4">
+        <CardHeader className="bg-slate-50/50 border-b p-8">
            <div className="relative w-full max-w-md">
               <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
               <Input 
@@ -260,7 +278,7 @@ export default function UsersManagementPage() {
               <TableRow>
                 <TableHead className="py-6 ps-8 text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'المستخدم' : 'User'}</TableHead>
                 <TableHead className="text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'الدور' : 'Role'}</TableHead>
-                <TableHead className="text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'كلمة المرور الحالية' : 'Managed Pass'}</TableHead>
+                <TableHead className="text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'كلمة المرور' : 'Auth'}</TableHead>
                 <TableHead className="text-center text-xs font-black uppercase tracking-widest">{isRtl ? 'الحالة' : 'Status'}</TableHead>
                 <TableHead className="pe-8 text-end"></TableHead>
               </TableRow>
@@ -357,7 +375,7 @@ export default function UsersManagementPage() {
                         <SelectTrigger className="h-12 rounded-xl border-2 font-bold">
                            <SelectValue placeholder="..." />
                         </SelectTrigger>
-                        <SelectContent className="rounded-xl border-0 shadow-2xl">
+                        <SelectContent className="rounded-xl border-0 shadow-2xl z-[200]">
                            {roles?.map(role => (
                              <SelectItem key={role.id} value={role.id!} className="font-bold">{isRtl ? role.name : role.nameEn}</SelectItem>
                            ))}

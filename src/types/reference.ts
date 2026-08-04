@@ -122,9 +122,10 @@ export interface Job extends BaseReference {
   departmentName?: string;
   name: string;
   nameEn: string;
-  roleId?: string;
-  roleName?: string;
-  hourlyCost?: number; // مضاف: تكلفة الساعة المرجعية للوظيفة
+  roleId?: string;       // اختياري: لتمكين المهن (Trades) بدون وصول للنظام
+  roleName?: string;     // اختياري
+  roleCode?: string;     // اختياري
+  hourlyCost?: number;   // تكلفة الساعة المرجعية للوظيفة
   order: number;
   isActive: boolean;
 }

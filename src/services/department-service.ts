@@ -60,6 +60,8 @@ export class DepartmentService {
       ...data, 
       companyId: this.companyId, 
       departmentId: deptId, 
+      roleId: data.roleId || '',
+      roleCode: data.roleCode || '',
       createdAt: serverTimestamp(), 
       updatedAt: serverTimestamp() 
     };
@@ -75,7 +77,12 @@ export class DepartmentService {
     const path = paths.jobs(this.companyId, deptId);
     const docRef = doc(this.db, path, jobId);
     try {
-      await updateDoc(docRef, { ...data, updatedAt: serverTimestamp() });
+      await updateDoc(docRef, { 
+        ...data, 
+        roleId: data.roleId || '',
+        roleCode: data.roleCode || '',
+        updatedAt: serverTimestamp() 
+      });
     } catch (err: any) {
       await handleWriteError(err, { path: docRef.path, operation: 'update', requestResourceData: data });
     }
