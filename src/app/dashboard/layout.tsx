@@ -11,7 +11,7 @@ import { UserNav } from "@/components/layout/user-nav"
 import { NotificationBell } from "@/components/layout/notification-bell"
 import { BreadcrumbNav } from "@/components/layout/breadcrumb-nav"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, LogOut, Lock, Clock, ShieldAlert } from 'lucide-react';
+import { Loader2, LogOut, Lock, Clock, ShieldAlert, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -33,14 +33,16 @@ export default function DashboardLayout({
   }, [user, authLoading, router]);
 
   const isSovereignDev = globalUser?.isDeveloper === true;
+  
+  // منطق القفل السيادي
   const isSuspended = company?.status === 'suspended';
   const isInactive = company?.status === 'inactive';
-  const isPending = globalUser?.isPendingApproval === true;
-  const isExpired = company?.status === 'expired' || subscription.isExpired;
+  const isExpired = subscription.isExpired;
   
-  // فك قفل الانتظار: إذا كان المستخدم مسجلاً ولكن السجل لم يكتمل بعد
   const isStuck = user && !globalUser && !authLoading;
-  const needsLock = !isSovereignDev && (isExpired || isSuspended || isInactive || isPending);
+  
+  // المنع فقط للمستخدمين العاديين، المطور له وصول مطلق دائماً
+  const needsLock = !isSovereignDev && (isExpired || isSuspended || isInactive);
 
   if (authLoading || companyLoading) {
     return (
@@ -53,7 +55,6 @@ export default function DashboardLayout({
 
   if (!user) return null;
 
-  // إذا كان المستخدم عالقاً بسبب نقص البيانات، نعطيه فرصة للخروج أو إعادة المحاولة
   if (isStuck) {
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-white p-6 text-center" dir={dir}>
@@ -61,7 +62,7 @@ export default function DashboardLayout({
            <div className="h-20 w-20 bg-rose-50 text-rose-500 rounded-3xl flex items-center justify-center mx-auto shadow-inner"><ShieldAlert className="h-10 w-10" /></div>
            <div className="space-y-2">
               <h1 className="text-2xl font-black text-slate-900">{isRtl ? 'تعذر تحميل ملف الصلاحيات' : 'Profile Link Failed'}</h1>
-              <p className="text-sm font-bold text-slate-400 leading-relaxed">عذراً، لم نتمكن من العثور على سجل الموظف المرتبط بهذا الحساب. قد يكون حسابك قيد الإعداد.</p>
+              <p className="text-sm font-bold text-slate-400 leading-relaxed">عذراً، لم نتمكن من العثور على سجل الموظف المرتبط بهذا الحساب. قد يكون حسابك قيد الإعداد أو بانتظار التفعيل من المطور.</p>
            </div>
            <Button onClick={logout} variant="outline" className="w-full rounded-xl h-12 gap-2"><LogOut className="h-4 w-4" /> تسجيل الخروج</Button>
         </div>
@@ -71,37 +72,39 @@ export default function DashboardLayout({
 
   if (needsLock) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-950 p-6 text-center" dir={dir}>
-        <div className="max-w-md space-y-8 animate-in zoom-in-95 duration-500">
+      <div className="h-screen w-screen flex items-center justify-center bg-slate-950 p-6" dir={dir}>
+        <div className="max-w-xl w-full bg-white rounded-[3rem] p-12 text-center shadow-3xl animate-in zoom-in-95 duration-500 border-t-8 border-rose-500">
            <div className={cn(
-             "w-24 h-24 rounded-[2.5rem] flex items-center justify-center mx-auto shadow-2xl ring-8",
-             isSuspended ? "bg-amber-500/20 text-amber-500 ring-amber-500/5" : 
-             (isInactive || isPending) ? "bg-blue-500/20 text-blue-500 ring-blue-500/5" :
-             "bg-rose-500/20 text-rose-500 ring-rose-500/5"
+             "w-24 h-24 rounded-[2.5rem] flex items-center justify-center mx-auto shadow-2xl ring-8 mb-8",
+             isSuspended ? "bg-amber-100 text-amber-600 ring-amber-50" : 
+             isInactive ? "bg-blue-100 text-blue-600 ring-blue-50" :
+             "bg-rose-100 text-rose-600 ring-rose-50"
            )}>
               {isSuspended ? <Lock className="h-12 w-12" /> : 
-               (isInactive || isPending) ? <Clock className="h-12 w-12" /> :
-               <ShieldAlert className="h-12 w-12" />}
+               isInactive ? <Clock className="h-12 w-12" /> :
+               <AlertTriangle className="h-12 w-12" />}
            </div>
-           <div className="space-y-3">
-              <h1 className="text-4xl font-black text-white font-headline">
+           
+           <div className="space-y-4">
+              <h1 className="text-4xl font-black text-slate-900 font-headline leading-tight">
                 {isSuspended ? (isRtl ? 'المنشأة مجمدة مؤقتاً' : 'Account Frozen') : 
-                 (isInactive || isPending) ? (isRtl ? 'بانتظار تفعيل المنشأة' : 'Awaiting Activation') :
+                 isInactive ? (isRtl ? 'بانتظار تفعيل المنشأة' : 'Awaiting Activation') :
                  (isRtl ? 'انتهت صلاحية الوصول' : 'Subscription Expired')}
               </h1>
-              <p className="text-slate-400 font-bold text-lg leading-relaxed">
+              <p className="text-slate-500 font-bold text-lg leading-relaxed">
                  {isSuspended 
-                   ? (isRtl ? `عذراً، تم إيقاف الوصول لمنشأة ${company?.name} مؤقتاً بقرار إداري من المطور.` : `Access for ${company?.name} has been temporarily suspended by the developer.`)
-                   : (isInactive || isPending)
-                   ? (isRtl ? `شكراً لطلبكم. حساب منشأة ${company?.name || 'الجديدة'} قيد المراجعة حالياً من قبل المطور، سيتم إخطاركم فور التفعيل.` : `Thank you. Your account for ${company?.name || 'the new company'} is currently under review. You will be notified once activated.`)
-                   : (isRtl ? `عذراً، انتهت فترة اشتراك منشأة ${company?.name}. يرجى التجديد لاستعادة الوصول للبيانات.` : `Subscription for ${company?.name} has expired. Please renew to regain access.`)
+                   ? (isRtl ? `عذراً، تم إيقاف الوصول لمنشأة ${company?.name} مؤقتاً بقرار إداري سيادي من قبل المطور.` : `Access for ${company?.name} has been temporarily suspended by the platform developer.`)
+                   : isInactive
+                   ? (isRtl ? `شكراً لطلبكم. منشأة ${company?.name} قيد المراجعة الفنية حالياً، سيتم تفعيل حسابكم قريباً.` : `Thank you. ${company?.name} is currently under technical review. You will be notified once active.`)
+                   : (isRtl ? `عذراً، انتهت فترة الاشتراك لمنشأة ${company?.name}. يرجى التواصل مع الإدارة للتجديد.` : `The subscription for ${company?.name} has expired. Please contact support to renew.`)
                  }
               </p>
            </div>
-           <div className="p-6 bg-white/5 rounded-3xl border border-white/10 space-y-4">
-              <p className="text-[10px] text-slate-500 font-black text-center uppercase tracking-widest">Sovereign Cloud Guard</p>
-              <Button onClick={logout} variant="outline" className="w-full border-white/10 text-white hover:bg-white/10 rounded-xl h-12 font-black">
-                 <LogOut className="me-2 h-4 w-4" /> {t('logout')}
+
+           <div className="mt-12 pt-8 border-t space-y-4">
+              <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.3em]">Sovereign Cloud Guard Engine</p>
+              <Button onClick={logout} className="w-full h-16 rounded-2xl bg-slate-900 text-white font-black text-xl hover:bg-slate-800 transition-all gap-3 shadow-xl">
+                 <LogOut className="h-6 w-6" /> {t('logout')}
               </Button>
            </div>
         </div>

@@ -1,11 +1,10 @@
-
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { useAuthContext } from './auth-context';
-import { differenceInDays, parseISO } from 'date-fns';
+import { differenceInDays, parseISO, isAfter } from 'date-fns';
 
 interface CompanyData {
   id: string;
@@ -38,7 +37,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!db || !globalUser?.companyId) {
+    if (!db || !globalUser?.companyId || globalUser.companyId === 'awaiting_setup') {
       setCompany(null);
       setLoading(false);
       return;
@@ -62,9 +61,12 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
 
     const now = new Date();
     const expiry = company.expiryDate ? parseISO(company.expiryDate) : null;
+    
+    // حساب الأيام المتبقية
     const daysRemaining = expiry ? differenceInDays(expiry, now) : 999;
     
-    const isExpired = company.status === 'expired' || (expiry !== null && daysRemaining < 0);
+    // فحص انتهاء الصلاحية
+    const isExpired = company.status === 'expired' || (expiry !== null && !isAfter(expiry, now));
     const isTrial = company.subscriptionType === 'trial';
 
     // ذكاء التنبيه:
@@ -73,9 +75,9 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
     let showWarning = false;
     if (!isExpired) {
       if (isTrial) {
-        showWarning = true; // تظهر كل يوم في الـ Trial
+        showWarning = true; 
       } else if (expiry !== null && daysRemaining <= 5) {
-        showWarning = true; // تظهر قبل 5 أيام في الاشتراك الرسمي
+        showWarning = true; 
       }
     }
 
@@ -100,3 +102,4 @@ export const useCompanyContext = () => {
   if (!context) throw new Error('useCompanyContext must be used within CompanyProvider');
   return context;
 };
+
