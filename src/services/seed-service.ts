@@ -26,6 +26,7 @@ export class SeedService {
   /**
    * سكربت هجرة الهوية السيادي (Sovereign Identity Migration)
    * يمر على كافة المستخدمين لتوحيد حقول الأدوار (roleCode / role)
+   * يحل مشكلة حسابات "نور" والحسابات القديمة بشكل جذري.
    */
   async runIdentityMigration() {
     const globalUsersRef = collection(this.db, 'global_users');
@@ -39,6 +40,7 @@ export class SeedService {
 
       // 1. استخراج وتوحيد roleCode ليكون UPPERCASE
       if (data.roleId && data.companyId && !data.roleCode) {
+        // حالة "نور": لديه roleId لكن يفتقر لـ roleCode
         const roleSnap = await getDoc(doc(this.db, 'companies', data.companyId, 'roles', data.roleId));
         if (roleSnap.exists()) {
           updates.roleCode = roleSnap.data().code.toUpperCase();
@@ -61,7 +63,9 @@ export class SeedService {
       }
     }
 
-    if (count > 0) await batch.commit();
+    if (count > 0) {
+      await batch.commit();
+    }
     return count;
   }
 

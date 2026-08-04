@@ -90,7 +90,7 @@ export function SeedTool() {
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
-      {/* قسم هجرة الهوية السيادية */}
+      {/* قسم هجرة الهوية السيادية - الحل الجذري لأخطاء الصلاحيات */}
       <Card className="border-4 border-emerald-100 rounded-[3rem] bg-emerald-50/20 overflow-hidden shadow-2xl">
         <CardHeader className="p-10 text-start">
            <div className="flex items-center gap-4">

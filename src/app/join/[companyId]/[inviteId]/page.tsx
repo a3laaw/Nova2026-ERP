@@ -57,6 +57,8 @@ export default function EmployeeJoinPage() {
       await updateProfile(cred.user, { displayName: invite.employeeName });
 
       const batch = writeBatch(db);
+      
+      // التوحيد القسري للأدوار لضمان الأمان السيادي المطلق
       const unifiedRoleCode = (invite.roleCode || 'USER').toUpperCase();
 
       // 1. السجل العالمي (Global Identity)

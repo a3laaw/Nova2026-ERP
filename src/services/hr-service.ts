@@ -5,8 +5,8 @@ import {
   collection, 
   doc, 
   updateDoc, 
-  deleteDoc,
-  setDoc,
+  deleteDoc, 
+  setDoc, 
   serverTimestamp,
   query,
   where,
@@ -75,6 +75,7 @@ export class HRService {
       await handleWriteError(err, { path: empRef.path, operation: 'update', requestResourceData: updates });
     }
 
+    // مزامنة الهوية العالمية مع توحيد حالة أحرف الأدوار قسرياً
     if ((newData.roleId && newData.roleId !== oldData.roleId) || 
         (newData.departmentId && newData.departmentId !== oldData.departmentId) ||
         (newData.fullName && newData.fullName !== oldData.fullName)) {
@@ -120,8 +121,8 @@ export class HRService {
           const roleSnap = await getDoc(doc(this.db, 'companies', this.companyId, 'roles', roleId));
           if (roleSnap.exists()) {
              const code = roleSnap.data().code.toUpperCase();
-             updates.roleCode = code; // توحيد الأحرف الكبيرة
-             updates.role = code.toLowerCase(); // توحيد الأحرف الصغيرة
+             updates.roleCode = code; // توحيد الحروف الكبيرة للسيادة
+             updates.role = code.toLowerCase(); // توحيد الحروف الصغيرة للواجهة
           }
         }
 

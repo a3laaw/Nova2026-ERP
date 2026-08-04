@@ -75,8 +75,8 @@ export default function RegisterPage() {
       const globalUserRef = doc(db, 'global_users', uid);
       const globalUserData = {
         companyId,
-        roleCode: 'ADMIN', // توحيد قسري
-        role: 'admin',
+        roleCode: 'ADMIN', // توحيد الحروف الكبيرة للسيادة
+        role: 'admin',      // توحيد الحروف الصغيرة للواجهة
         fullName: formData.contactName, 
         username: formData.username || formData.email.split('@')[0],
         email: formData.email,

@@ -59,7 +59,7 @@ export class UserService {
 
       const batch = writeBatch(this.db);
       
-      // توحيد الأكواد لضمان الأمان السيادي
+      // التوحيد القسري للأدوار لضمان الأمان السيادي
       const unifiedRoleCode = data.roleCode.toUpperCase();
 
       batch.set(doc(this.db, 'global_users', uid), {
@@ -118,6 +118,7 @@ export class UserService {
     const tenantUserRef = doc(this.db, 'companies', this.companyId, 'users', uid);
     const globalUserRef = doc(this.db, 'global_users', uid);
     
+    // التوحيد القسري للأدوار
     const unifiedRoleCode = data.roleCode.toUpperCase();
 
     try {

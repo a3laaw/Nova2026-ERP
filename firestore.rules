@@ -8,9 +8,10 @@ service cloud.firestore {
     }
 
     // الإنفاذ القطعي: الاعتماد حصراً على roleCode الموحد (حروف كبيرة)
+    // يدعم مؤقتاً 'ADMIN' أو 'admin' لضمان عمل الهجرة
     function isGlobalAdmin() {
       let user = get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
-      return user.roleCode == 'ADMIN';
+      return user.roleCode == 'ADMIN' || user.role == 'admin';
     }
     
     function getUserCompany() {
