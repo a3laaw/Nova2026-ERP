@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -24,9 +25,8 @@ export class SeedService {
   constructor(private db: Firestore, private companyId: string) {}
 
   /**
-   * سكربت هجرة الهوية السيادي الجذري (Absolute Identity Migration)
-   * - يصحح حالة الأحرف لـ roleCode (UPPERCASE) و role (lowercase).
-   * - يحل مشكلة "نور" بسحب الكود المفقود من سجلات الشركة الأصلية.
+   * سكربت هجرة الهوية السيادي (The Great Identity Migration)
+   * يحل مشاكل الصلاحيات بتوحيد حالة أحرف roleCode ومعالجة السجلات المفقودة.
    */
   async runIdentityMigration() {
     const globalUsersRef = collection(this.db, 'global_users');
@@ -38,34 +38,32 @@ export class SeedService {
       const data = userDoc.data();
       let currentRoleCode = data.roleCode;
       let currentRole = data.role;
-      let companyId = data.companyId;
+      let targetCompanyId = data.companyId;
       let roleId = data.roleId;
 
-      const updates: any = {};
-
-      // 1. حل مشكلة "نور": لو roleCode مفقود لكن roleId موجود
-      if (!currentRoleCode && roleId && companyId && companyId !== 'awaiting_setup') {
+      // 1. استرجاع الكود المفقود من ملف الشركة (حالة نور)
+      if (!currentRoleCode && roleId && targetCompanyId && targetCompanyId !== 'awaiting_setup') {
         try {
-          const roleSnap = await getDoc(doc(this.db, 'companies', companyId, 'roles', roleId));
+          const roleSnap = await getDoc(doc(this.db, 'companies', targetCompanyId, 'roles', roleId));
           if (roleSnap.exists()) {
             currentRoleCode = roleSnap.data().code;
           }
         } catch (e) {
-          console.error("Migration Error for user:", userDoc.id, e);
+          console.error("Migration fetch failed for:", userDoc.id);
         }
       }
 
-      // 2. توحيد حالة الأحرف بشكل قطعي
-      // لو ما زال مفقود، نستخدم role كبديل، وإلا USER كافتراضي
+      // 2. التوحيد القطعي لحالة الأحرف
       const rawCode = currentRoleCode || currentRole || 'USER';
       const finalRoleCode = String(rawCode).toUpperCase();
       const finalRole = finalRoleCode.toLowerCase();
 
       if (data.roleCode !== finalRoleCode || data.role !== finalRole) {
-        updates.roleCode = finalRoleCode;
-        updates.role = finalRole;
-        updates.updatedAt = serverTimestamp();
-        batch.update(userDoc.ref, updates);
+        batch.update(userDoc.ref, {
+          roleCode: finalRoleCode,
+          role: finalRole,
+          updatedAt: serverTimestamp()
+        });
         count++;
       }
     }
@@ -249,12 +247,7 @@ export class SeedService {
       createdAt: serverTimestamp()
     } as BOQReferenceNode);
 
-    await batch.commit().catch(async (err) => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: 'seed_final_purge', operation: 'write'
-      }));
-      throw err;
-    });
+    await batch.commit();
 
     const refListService = new ReferenceListService(this.db, this.companyId);
     await refListService.seedAllLists('SYSTEM_ADMIN');

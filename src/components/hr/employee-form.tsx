@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -46,11 +47,12 @@ import { HRService } from '@/services/hr-service';
 import { cn } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
 
+// مخطط التحقق المطور: جعل الحقول اختيارية بناءً على نوع التوظيف لمنع تعطل زر الحفظ
 const employeeSchema = z.object({
   employeeNumber: z.string().min(1, "Required"),
   fullName: z.string().min(3, "Required"),
-  nameEn: z.string().min(3, "Required"),
-  civilId: z.string().length(12, "Must be 12 digits").optional().or(z.literal('')),
+  nameEn: z.string().optional().or(z.literal('')), 
+  civilId: z.string().optional().or(z.literal('')),
   mobile: z.string().min(8, "Invalid mobile"),
   email: z.string().email().optional().or(z.literal('')),
   hireDate: z.string().min(1, "Required"),
@@ -166,8 +168,16 @@ export function EmployeeForm({ initialData, onSubmit, loading, readOnly = false 
 
   const isExternal = employeeType === 'external';
 
+  // معالجة البيانات قبل الإرسال لضمان عدم وجود أخطاء في الحقول المخفية
+  const handleFinalSubmit = (data: any) => {
+    if (isExternal && !data.nameEn) {
+       data.nameEn = data.fullName; // تعبئة آلية لتجاوز القيود
+    }
+    onSubmit(data);
+  };
+
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 animate-in fade-in duration-500" dir={dir}>
+    <form onSubmit={form.handleSubmit(handleFinalSubmit)} className="space-y-8 animate-in fade-in duration-500" dir={dir}>
       
       {readOnly && (
         <div className="bg-amber-50 border-2 border-amber-100 rounded-2xl p-4 flex items-center gap-3 text-amber-800 mb-6 text-start">
@@ -237,6 +247,13 @@ export function EmployeeForm({ initialData, onSubmit, loading, readOnly = false 
               <Input {...form.register('fullName')} readOnly={readOnly} className="h-12 rounded-xl border-2 font-bold bg-slate-50/30" />
             </div>
             
+            {!isExternal && (
+               <div className="space-y-2 text-start animate-in zoom-in-95">
+                 <Label className="font-black text-xs text-slate-400 uppercase">{isRtl ? 'الاسم بالإنجليزية' : 'Name (EN)'}</Label>
+                 <Input {...form.register('nameEn')} readOnly={readOnly} className="h-12 rounded-xl border-2 font-bold bg-slate-50/30 text-start" dir="ltr" />
+               </div>
+            )}
+
             {!isExternal && (
                <div className="space-y-2 text-start animate-in zoom-in-95">
                  <Label className="font-black text-xs text-slate-400 uppercase">{isRtl ? 'الرقم المدني' : 'Civil ID'}</Label>
