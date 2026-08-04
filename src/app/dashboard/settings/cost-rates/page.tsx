@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { 
   Calculator, Plus, Loader2, Save, Trash2, 
   CheckCircle2, AlertTriangle, ShieldCheck,
-  TrendingUp, History, X, Clock
+  TrendingUp, History, X, Clock, Users
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -109,9 +109,9 @@ export default function CostRatesPage() {
              {isRtl ? 'تحديد تكلفة الساعة لكل مسمى وظيفي لاحتساب تكاليف الإنتاج المباشرة (COGS) آلياً.' : 'Define hourly rates to automate COGS and WIP calculations.'}
            </p>
         </div>
-        <Button onClick={() => setIsAdding(true)} className="h-16 px-10 rounded-[2rem] bg-primary text-white font-black text-xl shadow-2xl shadow-primary/20 hover:scale-105 transition-all gap-3 border-b-8 border-[#f57c00]">
+        <button onClick={() => setIsAdding(true)} className="h-16 px-10 rounded-[2rem] bg-primary text-white font-black text-xl shadow-2xl shadow-primary/20 hover:scale-105 transition-all flex items-center gap-3 border-b-8 border-[#f57c00]">
            <Plus className="h-7 w-7" /> {isRtl ? 'إنشاء جدول تعرفة' : 'New Rate Card'}
-        </Button>
+        </button>
       </header>
 
       <div className="grid grid-cols-1 gap-8">
@@ -259,14 +259,14 @@ export default function CostRatesPage() {
                   <AlertTriangle className="h-6 w-6 text-amber-600 shrink-0 mt-1" />
                   <p className="text-xs text-amber-800 font-bold leading-relaxed">
                      {isRtl 
-                       ? 'تنبيه: تعرفة الساعة هي الأساس الذي يعتمد عليه النظام لخصم "تكلفة العمالة" من ميزانية المشروع عند كل تسجيل إنجاز. يرجى التأكد من دقة الأرقام لضمان صحة تقارير الربحية.' 
+                       ? 'تنبيه: تعرفة الساعة هي الأساس الذي يعتمد عليه النظام لخصم "تكلفة العمالة" من ميزانية المشروع عند كل تسجيل إنجاز. يرجى التأكد من دقة الأرقال لضمان صحة تقارير الربحية.' 
                        : 'Note: Hourly rates are used to deduct "Labor Cost" from project budget on every field log. Accuracy is critical for profitability reports.'}
                   </p>
                </div>
             </div>
 
             <DialogFooter className="p-10 bg-slate-50 border-t shrink-0">
-               <Button onClick={handleCreate} disabled={loading || !form.name} className="w-full h-20 rounded-[2.5rem] bg-primary text-white font-black text-2xl shadow-2xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all gap-4 border-b-8 border-[#f57c00]">
+               <Button onClick={handleCreate} disabled={loading || !form.name} className="w-full h-20 rounded-[2.5rem] bg-primary text-white font-black text-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all gap-4 border-b-8 border-[#f57c00]">
                   {loading ? <Loader2 className="animate-spin h-8 w-8" /> : <Save className="h-8 w-8" />}
                   {isRtl ? 'حفظ واصدار جدول التعرفة' : 'Confirm & Issue Rates'}
                </Button>
