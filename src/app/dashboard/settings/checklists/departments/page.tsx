@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { 
   Building2, Plus, Loader2, Trash2, Edit3, 
   ChevronRight, Briefcase, Search, ShieldCheck,
@@ -151,7 +152,7 @@ export default function DepartmentsPage() {
           </DialogTrigger>
           <DialogContent className="rounded-xl p-8 max-w-2xl border-0 shadow-3xl bg-white" dir={dir}>
             <DialogHeader className="text-start"><DialogTitle className="font-black text-2xl">{deptForm.id ? t('edit') : t('newDept')}</DialogTitle></DialogHeader>
-            <div className="grid grid-cols-2 gap-6 py-4 text-start">
+            <div className="grid grid-cols-2 gap-4 py-4 text-start">
               <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('name')} (Ar)</Label><Input value={deptForm.name || ''} onChange={e => setDeptForm({...deptForm, name: e.target.value})} className="h-11 border-2" /></div>
               <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('name')} (En)</Label><Input value={deptForm.nameEn || ''} onChange={e => setDeptForm({...deptForm, nameEn: e.target.value})} className="h-11 border-2 text-start" dir="ltr" /></div>
               <div className="col-span-2 space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'الوصف' : 'Description'}</Label><Textarea value={deptForm.description || ''} onChange={e => setDeptForm({...deptForm, description: e.target.value})} className="min-h-[100px] border-2" /></div>

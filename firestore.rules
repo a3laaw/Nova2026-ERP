@@ -10,10 +10,8 @@ service cloud.firestore {
     // التحقق من صلاحية الإدارة العليا (توحيد الأحرف لضمان عدم الفشل)
     function isGlobalAdmin() {
       let user = get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
-      // الإصلاح الجذري: قبول roleCode الموحد أو role القديم بحالاته المختلفة لمرة واحدة
+      // الإصلاح الجذري: الاعتماد على roleCode الموحد فقط بعد الهجرة
       return user.roleCode == 'ADMIN' || 
-             user.role == 'admin' || 
-             user.role == 'Admin' || 
              request.auth.token.email == 'admin@novaflow.com';
     }
     
