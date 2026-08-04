@@ -25,7 +25,6 @@ import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { SmartDateInput } from '@/components/ui/smart-date-input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function CostRatesPage() {
   const { globalUser, user } = useAuthContext();
@@ -48,11 +47,9 @@ export default function CostRatesPage() {
   const { data: cards, loading: cardsLoading } = useCollection<CostRateCard>(cardsQuery);
   const costService = useMemo(() => db && companyId ? new CostRateService(db, companyId) : null, [db, companyId]);
 
-  // جلب قائمة الوظائف المرجعية لربطها بالتعرفة
   useEffect(() => {
      if (isAdding && db && companyId) {
         setLoadingJobs(true);
-        // استخدام collectionGroup لجلب كافة الوظائف من جميع الأقسام
         getDocs(collectionGroup(db, 'jobs'))
           .then(snap => {
              const allJobs = snap.docs
@@ -64,6 +61,17 @@ export default function CostRatesPage() {
      }
   }, [isAdding, db, companyId]);
 
+  // محرك الأتمتة: تعبئة الجدول بكافة الوظائف المتاحة فوراً عند بدء الإضافة
+  useEffect(() => {
+    if (isAdding && availableJobs.length > 0 && rates.length <= 1 && rates[0].jobTitle === '') {
+       const initialRates = availableJobs.map(job => ({
+          jobTitle: isRtl ? job.name : job.nameEn,
+          hourlyCost: job.hourlyCost || 0
+       }));
+       setRates(initialRates);
+    }
+  }, [isAdding, availableJobs, isRtl]);
+
   const handleCreate = async () => {
     if (!costService || !user || !form.name) return;
     
@@ -73,7 +81,7 @@ export default function CostRatesPage() {
     }));
 
     if (cleanedRates.length === 0) {
-      toast({ variant: "destructive", title: isRtl ? "بيانات ناقصة" : "Missing Data", description: isRtl ? "يرجى إضافة وظيفة واحدة على الأقل." : "Add at least one job." });
+      toast({ variant: "destructive", title: isRtl ? "بيانات ناقصة" : "Missing Data" });
       return;
     }
 
@@ -215,7 +223,7 @@ export default function CostRatesPage() {
                   <Calculator className="h-9 w-9 text-primary" /> 
                   {isRtl ? 'تجهيز جدول تعرفة جديد' : 'Design New Rate Card'}
                </DialogTitle>
-               <p className="text-slate-500 font-bold mt-2 relative z-10">{isRtl ? 'اربط المسميات الوظيفية المعتمدة بتكلفة الساعة.' : 'Link official jobs to hourly rates.'}</p>
+               <p className="text-slate-500 font-bold mt-2 relative z-10">{isRtl ? 'يتم سحب الوظائف آلياً من الهيكل التنظيمي لضمان دقة الربط.' : 'Jobs are synced from Org Structure automatically.'}</p>
             </div>
             
             <div className="p-10 space-y-10 text-start bg-white overflow-y-auto scrollbar-hide">
@@ -233,10 +241,10 @@ export default function CostRatesPage() {
                <div className="space-y-6">
                   <div className="flex justify-between items-center border-b-2 border-slate-50 pb-4">
                      <Label className="text-sm font-black uppercase text-primary flex items-center gap-2">
-                        <Users className="h-5 w-5" /> {isRtl ? 'ربط الوظائف المرجعية بالتكلفة' : 'Link Job References'}
+                        <Users className="h-5 w-5" /> {isRtl ? 'تعرفة الساعة للمسميات المعتمدة' : 'Hourly Rates for Approved Trades'}
                      </Label>
                      <Button variant="outline" size="sm" onClick={addRateRow} className="h-10 rounded-xl font-black text-xs gap-2 border-2 bg-white hover:bg-primary/5 transition-all">
-                        <Plus className="h-4 w-4" /> {isRtl ? 'إضافة مسمى' : 'Add Row'}
+                        <Plus className="h-4 w-4" /> {isRtl ? 'إضافة مهنة مخصصة' : 'Manual Add'}
                      </Button>
                   </div>
                   
@@ -244,24 +252,13 @@ export default function CostRatesPage() {
                      {rates.map((r, i) => (
                         <div key={i} className="flex gap-4 animate-in slide-in-from-top-2 duration-300 items-end">
                            <div className="flex-1 space-y-1.5 text-start">
-                              <Label className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'الوظيفة' : 'Job Reference'}</Label>
-                              <Select value={r.jobTitle} onValueChange={v => updateRate(i, 'jobTitle', v)}>
-                                 <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-white">
-                                    <SelectValue placeholder={isRtl ? "اختر من الهيكل التنظيمي..." : "Select from Org..."} />
-                                 </SelectTrigger>
-                                 <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
-                                    {loadingJobs ? <div className="p-4 text-center"><Loader2 className="h-4 w-4 animate-spin mx-auto" /></div> : (
-                                       availableJobs.map(job => (
-                                          <SelectItem key={job.id} value={isRtl ? job.name : job.nameEn} className="font-bold py-3 border-b last:border-0 border-slate-50">
-                                             <div className="flex flex-col text-start">
-                                                <span className="text-sm font-black">{isRtl ? job.name : job.nameEn}</span>
-                                                <span className="text-[9px] text-slate-400 font-bold uppercase">{job.departmentName}</span>
-                                             </div>
-                                          </SelectItem>
-                                       ))
-                                    )}
-                                 </SelectContent>
-                              </Select>
+                              <Label className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'الوظيفة' : 'Job Title'}</Label>
+                              <Input 
+                                value={r.jobTitle} 
+                                onChange={e => updateRate(i, 'jobTitle', e.target.value)} 
+                                className="h-12 rounded-xl border-2 font-black bg-white" 
+                                placeholder={isRtl ? "اسم المهنة..." : "Trade name..."}
+                              />
                            </div>
                            <div className="w-40 space-y-1.5 relative text-start">
                               <Label className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'تكلفة الساعة' : 'Rate/hr'}</Label>
@@ -288,8 +285,8 @@ export default function CostRatesPage() {
                   <Info className="h-6 w-6 text-amber-600 shrink-0 mt-1" />
                   <p className="text-xs text-amber-800 font-bold leading-relaxed">
                      {isRtl 
-                       ? 'ملاحظة سيادية: الربط بالوظائف يضمن أن الموظف سيتقاضى تعرفة التكلفة المحددة لمسماه الوظيفي تلقائياً عند تسجيل العمل الميداني.' 
-                       : 'Sovereign Note: Linking to official jobs ensures that labor costs are automatically matched to the employee\'s registered role.'}
+                       ? 'تم سحب المسميات الوظيفية آلياً من الهيكل التنظيمي لشركتك. قم فقط بإدخال سعر الساعة لكل تخصص لاعتماد التكاليف الميدانية.' 
+                       : 'Job titles have been automatically fetched from your Org Structure. Simply enter the hourly rate for each trade.'}
                   </p>
                </div>
             </div>

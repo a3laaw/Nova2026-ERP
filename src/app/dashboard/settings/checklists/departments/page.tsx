@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { 
   Building2, Plus, Loader2, Trash2, Edit3, 
   ChevronRight, Briefcase, Search, ShieldCheck,
-  AlertTriangle
+  AlertTriangle, Clock
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,7 +49,7 @@ export default function DepartmentsPage() {
   const [isDeptOpen, setIsDeptOpen] = useState(false);
   const [isJobOpen, setIsJobOpen] = useState(false);
   const [deptForm, setDeptForm] = useState<Partial<Department>>({ name: '', nameEn: '', description: '' });
-  const [jobForm, setJobForm] = useState<Partial<Job>>({ name: '', nameEn: '', roleId: '' });
+  const [jobForm, setJobForm] = useState<Partial<Job>>({ name: '', nameEn: '', roleId: '', hourlyCost: 0 });
 
   const deptService = useMemo(() => {
     if (!db || !companyId) return null;
@@ -97,7 +97,9 @@ export default function DepartmentsPage() {
         isActive: true, 
         roleName: selectedRole ? (isRtl ? selectedRole.name : selectedRole.nameEn) : '',
         name: jobForm.name || '', 
-        nameEn: jobForm.nameEn || '' 
+        nameEn: jobForm.nameEn || '',
+        departmentName: selectedDept.name,
+        hourlyCost: Number(jobForm.hourlyCost) || 0
       };
       if (jobForm.id) await deptService.updateJob(selectedDept.id, jobForm.id, data);
       else await deptService.addJob(selectedDept.id, data as any);
@@ -144,7 +146,7 @@ export default function DepartmentsPage() {
         <Dialog open={isDeptOpen} onOpenChange={setIsDeptOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => setDeptForm({ name: '', nameEn: '', description: '' })} variant="default" className="h-11 shadow-lg flex items-center gap-2">
-              <Plus className="h-4 w-4" /> {t('newDept')}
+              <Plus className="h-4 w-4 me-2" /> {t('newDept')}
             </Button>
           </DialogTrigger>
           <DialogContent className="rounded-xl p-8 max-w-2xl border-0 shadow-3xl bg-white" dir={dir}>
@@ -164,7 +166,7 @@ export default function DepartmentsPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-5">
+        <div className="lg:col-span-4">
           <Card className="border-0 shadow-lg rounded-xl overflow-hidden bg-white">
             <CardHeader className="bg-slate-50/50 border-b p-4 text-start">
               <div className="relative">
@@ -206,7 +208,7 @@ export default function DepartmentsPage() {
           </Card>
         </div>
 
-        <div className={cn("lg:col-span-7", !selectedDept && 'opacity-60')}>
+        <div className={cn("lg:col-span-8", !selectedDept && 'opacity-60')}>
           <Card className="border-0 shadow-lg rounded-xl overflow-hidden bg-white">
             <CardHeader className="bg-slate-50/50 border-b p-6 flex flex-row items-center justify-between">
               <div><CardTitle className="text-lg font-black flex items-center gap-2"><Briefcase className="h-5 w-5 text-primary" /> {isRtl ? 'الوظائف' : 'Job Titles'}</CardTitle></div>
@@ -217,7 +219,7 @@ export default function DepartmentsPage() {
                     disabled={!selectedDept}
                     variant="outline"
                     className="h-11 transition-all gap-2"
-                    onClick={() => setJobForm({ name: '', nameEn: '', roleId: '' })}
+                    onClick={() => setJobForm({ name: '', nameEn: '', roleId: '', hourlyCost: 0 })}
                   >
                     <Plus className="h-4 w-4" /> {isRtl ? 'إضافة وظيفة' : 'Add Job'}
                   </Button>
@@ -236,20 +238,26 @@ export default function DepartmentsPage() {
                       <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('name')} (En)</Label><Input value={jobForm.nameEn || ''} onChange={e => setJobForm({...jobForm, nameEn: e.target.value})} className="h-11 border-2 font-bold text-start" dir="ltr" /></div>
                     </div>
                     
-                    <div className="p-6 bg-slate-50 rounded-xl border-2 space-y-4">
-                        <div className="flex items-center gap-2 text-primary font-black text-xs uppercase tracking-widest">
-                          <ShieldCheck className="h-4 w-4" /> {isRtl ? 'ربط الصلاحيات (الدور الأمني)' : 'Security Permissions Link'}
-                        </div>
-                        <Select value={jobForm.roleId} onValueChange={v => setJobForm({...jobForm, roleId: v})}>
-                          <SelectTrigger className="h-11 rounded-lg bg-white border-2 font-black">
-                              <SelectValue placeholder={isRtl ? "اختر قالب الصلاحيات" : "Select Role"} />
-                          </SelectTrigger>
-                          <SelectContent className="rounded-xl">
-                              {roles?.map(r => (
-                                <SelectItem key={r.id} value={r.id!} className="font-bold">{isRtl ? r.name : r.nameEn}</SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
+                    <div className="grid grid-cols-2 gap-6 items-end">
+                       <div className="space-y-2">
+                          <Label className="text-xs font-black uppercase text-primary flex items-center gap-2">
+                             <Clock className="h-4 w-4" /> {isRtl ? 'تعرفة الساعة (KWD)' : 'Hourly Rate (KWD)'}
+                          </Label>
+                          <Input type="number" step="0.001" value={jobForm.hourlyCost || ''} onChange={e => setJobForm({...jobForm, hourlyCost: Number(e.target.value)})} className="h-11 border-2 font-black text-emerald-600" />
+                       </div>
+                       <div className="space-y-2">
+                          <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'ربط الصلاحيات' : 'Role Context'}</Label>
+                          <Select value={jobForm.roleId} onValueChange={v => setJobForm({...jobForm, roleId: v})}>
+                            <SelectTrigger className="h-11 rounded-lg bg-white border-2 font-black">
+                                <SelectValue placeholder="..." />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl">
+                                {roles?.map(r => (
+                                  <SelectItem key={r.id} value={r.id!} className="font-bold">{isRtl ? r.name : r.nameEn}</SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                       </div>
                     </div>
                   </div>
                   <DialogFooter>
@@ -273,9 +281,10 @@ export default function DepartmentsPage() {
                       <div key={job.id} className="p-5 rounded-xl border border-slate-100 bg-white hover:border-primary/20 transition-all flex items-center justify-between group shadow-sm">
                         <div className="text-start">
                            <span className="text-sm font-black text-slate-800 block">{isRtl ? job.name : job.nameEn}</span>
-                           <span className="text-[9px] font-bold text-primary flex items-center gap-1 mt-1">
-                              <ShieldCheck className="h-2.5 w-2.5" /> {job.roleName || (isRtl ? 'بدون دور' : 'No Role')}
-                           </span>
+                           <div className="flex items-center gap-3 mt-1">
+                              <Badge className="bg-emerald-50 text-emerald-600 border-0 font-black text-[9px] px-2">{job.hourlyCost?.toFixed(3)} KWD/hr</Badge>
+                              <span className="text-[8px] font-bold text-slate-400 uppercase">{job.roleName}</span>
+                           </div>
                         </div>
                         <div className="flex gap-1 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
                            <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:bg-blue-50" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setJobForm(job); setIsJobOpen(true); }}>

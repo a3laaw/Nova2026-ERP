@@ -119,25 +119,12 @@ export interface Department extends BaseReference {
 
 export interface Job extends BaseReference {
   departmentId: string;
+  departmentName?: string;
   name: string;
   nameEn: string;
   roleId?: string;
   roleName?: string;
-  order: number;
-  isActive: boolean;
-}
-
-export interface Governorate extends BaseReference {
-  name: string;
-  nameEn: string;
-  order: number;
-  isActive: boolean;
-}
-
-export interface Area extends BaseReference {
-  governorateId: string;
-  name: string;
-  nameEn: string;
+  hourlyCost?: number; // مضاف: تكلفة الساعة المرجعية للوظيفة
   order: number;
   isActive: boolean;
 }
