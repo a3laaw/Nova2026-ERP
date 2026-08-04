@@ -7,22 +7,32 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCollection, useFirestore } from '@/firebase';
-import { collection, query, doc, updateDoc, serverTimestamp, writeBatch, getDoc, setDoc, addDoc } from 'firebase/firestore';
+import { collection, query, doc, updateDoc, serverTimestamp, writeBatch, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
 import { 
   Loader2, CheckCircle2, RefreshCw, 
   Save, Building2, ShieldCheck, Trash2, 
   Power, Search, Key, Copy, Eye, EyeOff,
-  Settings2, Zap, Rocket
+  Settings2, Zap, Rocket, AlertTriangle
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { addDays, isAfter, parseISO } from 'date-fns';
+import { addDays } from 'date-fns';
 import { UserService } from '@/services/user-service';
 
 export default function DeveloperDashboard() {
@@ -34,9 +44,7 @@ export default function DeveloperDashboard() {
   const [activeTab, setActiveTab] = useState("requests");
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [editingCompany, setEditingCompany] = useState<any>(null);
-  const [ownerData, setOwnerData] = useState<any>(null);
-  const [loadingOwner, setLoadingOwner] = useState(false);
-  const [showPass, setShowPass] = useState(false);
+  const [deletingContext, setDeletingContext] = useState<{ id: string, type: 'request' | 'company' } | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
   const companiesQuery = useMemo(() => 
@@ -50,10 +58,22 @@ export default function DeveloperDashboard() {
   const { data: companies, loading: companiesLoading } = useCollection<any>(companiesQuery);
   const { data: requests, loading: requestsLoading } = useCollection<any>(requestsQuery);
 
-  /**
-   * محرك التأسيس السيادي (Sovereign Provisioning Engine)
-   * يقوم بإنشاء الشركة، الدور، الحساب، وأول سجل موظف في عملية واحدة.
-   */
+  const handleDelete = async () => {
+    if (!db || !deletingContext) return;
+    const { id, type } = deletingContext;
+    setProcessingId(id);
+    try {
+      const path = type === 'request' ? 'company_requests' : 'companies';
+      await deleteDoc(doc(db, path, id));
+      toast({ title: isRtl ? "تم الحذف بنجاح" : "Deleted Successfully" });
+      setDeletingContext(null);
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Error", description: e.message });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   const handleActivate = async (req: any) => {
     if (!db) return;
     setProcessingId(req.id);
@@ -64,7 +84,6 @@ export default function DeveloperDashboard() {
     try {
       const batch = writeBatch(db);
 
-      // 1. تأسيس سجل الشركة
       const companyRef = doc(db, 'companies', companyId);
       const expiry = addDays(new Date(), 7).toISOString();
       batch.set(companyRef, {
@@ -78,7 +97,6 @@ export default function DeveloperDashboard() {
         updatedAt: serverTimestamp()
       });
 
-      // 2. تأسيس دور الأدمن الافتراضي (لأنه مطلوب لربط المستخدم)
       const roleRef = doc(collection(db, 'companies', companyId, 'roles'));
       batch.set(roleRef, {
         code: 'ADMIN',
@@ -93,7 +111,6 @@ export default function DeveloperDashboard() {
         createdAt: serverTimestamp()
       });
 
-      // 3. تأسيس أول قسم (إداري) وأول وظيفة للمالك
       const deptRef = doc(collection(db, 'companies', companyId, 'departments'));
       batch.set(deptRef, {
         name: 'الإدارة العليا',
@@ -117,11 +134,8 @@ export default function DeveloperDashboard() {
         createdAt: serverTimestamp()
       });
 
-      // تنفيذ الكتابات الهيكلية أولاً لضمان وجود الرول قبل إنشاء المستخدم
       await batch.commit();
 
-      // 4. إنشاء حساب المستخدم (Auth + Global + Company User)
-      // نستخدم معرف مؤقت للموظف سيتم تثبيته لاحقاً
       const empId = `emp_1001`;
       const uid = await userService.createUserAccount({
         employeeId: empId,
@@ -134,7 +148,6 @@ export default function DeveloperDashboard() {
         departmentId: deptRef.id
       });
 
-      // 5. إنشاء سجل الموظف الفعلي (لربط موديول HR)
       await setDoc(doc(db, 'companies', companyId, 'employees', empId), {
         id: empId,
         employeeNumber: '1001',
@@ -155,7 +168,6 @@ export default function DeveloperDashboard() {
         createdAt: serverTimestamp()
       });
 
-      // 6. تحديث سجل الشركة بـ ownerUid وتحديث الطلب
       await updateDoc(companyRef, { ownerUid: uid });
       await updateDoc(doc(db, 'company_requests', req.id), { 
         status: 'activated', 
@@ -175,13 +187,6 @@ export default function DeveloperDashboard() {
 
   const handleOpenEdit = async (company: any) => {
     setEditingCompany(company);
-    setOwnerData(null);
-    if (company.ownerUid && db) {
-      setLoadingOwner(true);
-      const ownerSnap = await getDoc(doc(db, 'global_users', company.ownerUid));
-      if (ownerSnap.exists()) setOwnerData(ownerSnap.data());
-      setLoadingOwner(false);
-    }
   };
 
   if (authLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
@@ -201,8 +206,8 @@ export default function DeveloperDashboard() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="bg-white border h-12 rounded-xl p-1.5 gap-2 mb-6 shadow-sm inline-flex">
-           <TabsTrigger value="requests" className="rounded-lg px-8 font-black text-xs data-[state=active]:bg-primary data-[state=active]:text-white">طلبات التأسيس المعلقة</TabsTrigger>
-           <TabsTrigger value="companies" className="rounded-lg px-8 font-black text-xs data-[state=active]:bg-primary data-[state=active]:text-white">المنشآت المفعلة</TabsTrigger>
+           <TabsTrigger value="requests" className="rounded-lg px-8 font-black text-xs data-[state=active]:bg-primary data-[state=active]:text-white transition-all">طلبات التأسيس</TabsTrigger>
+           <TabsTrigger value="companies" className="rounded-lg px-8 font-black text-xs data-[state=active]:bg-primary data-[state=active]:text-white transition-all">المنشآت المفعلة</TabsTrigger>
         </TabsList>
 
         <TabsContent value="requests" className="animate-in slide-in-from-bottom-2">
@@ -212,7 +217,7 @@ export default function DeveloperDashboard() {
                   <TableRow>
                     <TableHead className="py-4 ps-8">المنشأة</TableHead>
                     <TableHead>النشاط</TableHead>
-                    <TableHead>كلمة المرور المقترحة</TableHead>
+                    <TableHead>كلمة المرور</TableHead>
                     <TableHead className="pe-8 text-end">الإجراء السيادي</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -222,7 +227,7 @@ export default function DeveloperDashboard() {
                   ) : requests?.filter(r => r.status === 'pending').length === 0 ? (
                     <TableRow><TableCell colSpan={4} className="text-center py-20 text-slate-300 font-bold italic">لا يوجد طلبات تأسيس جديدة.</TableCell></TableRow>
                   ) : requests?.filter(r => r.status === 'pending').map((req: any) => (
-                    <TableRow key={req.id} className="hover:bg-primary/[0.01]">
+                    <TableRow key={req.id} className="hover:bg-primary/[0.01] group">
                       <TableCell className="ps-8 py-4">
                          <div className="text-start">
                             <p className="font-black text-slate-800 text-sm">{req.companyName}</p>
@@ -232,10 +237,20 @@ export default function DeveloperDashboard() {
                       <TableCell><Badge variant="outline" className="text-[8px] font-black uppercase">{req.activity}</Badge></TableCell>
                       <TableCell><code className="text-[10px] bg-slate-100 px-2 py-1 rounded">{req.proposedPassword}</code></TableCell>
                       <TableCell className="pe-8 text-end">
-                         <Button onClick={() => handleActivate(req)} disabled={!!processingId} size="sm" className="h-10 px-6 gap-2 bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-100 border-b-4 border-emerald-800">
-                            {processingId === req.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Rocket className="h-4 w-4" />}
-                            تأسيس وتفعيل الآن
-                         </Button>
+                         <div className="flex items-center justify-end gap-2">
+                            <Button 
+                              onClick={() => setDeletingContext({ id: req.id, type: 'request' })}
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-rose-300 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                               <Trash2 className="h-4 w-4" />
+                            </Button>
+                            <Button onClick={() => handleActivate(req)} disabled={!!processingId} size="sm" className="h-10 px-6 gap-2 bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-100 border-b-4 border-emerald-800">
+                               {processingId === req.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Rocket className="h-4 w-4" />}
+                               تأسيس وتفعيل
+                            </Button>
+                         </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -250,8 +265,8 @@ export default function DeveloperDashboard() {
                 <TableHeader className="bg-slate-50/50">
                   <TableRow>
                     <TableHead className="py-4 ps-8">المنشأة</TableHead>
-                    <TableHead>الحالة / الخطة</TableHead>
-                    <TableHead>تاريخ الانتهاء</TableHead>
+                    <TableHead>الحالة</TableHead>
+                    <TableHead>الاشتراك</TableHead>
                     <TableHead className="pe-8 text-end">التحكم</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -259,7 +274,7 @@ export default function DeveloperDashboard() {
                   {companiesLoading ? (
                     <TableRow><TableCell colSpan={4} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
                   ) : companies?.map((comp: any) => (
-                    <TableRow key={comp.id} className="hover:bg-primary/[0.01]">
+                    <TableRow key={comp.id} className="hover:bg-primary/[0.01] group">
                       <TableCell className="ps-8 py-4">
                          <div className="text-start">
                             <p className="font-black text-slate-900 text-sm">{comp.name}</p>
@@ -271,14 +286,24 @@ export default function DeveloperDashboard() {
                            "font-black text-[9px] uppercase px-3 py-1 rounded-md border-0 shadow-sm",
                            comp.status === 'active' ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"
                          )}>
-                            {comp.status === 'active' ? comp.subscriptionType : comp.status}
+                            {comp.status}
                          </Badge>
                       </TableCell>
-                      <TableCell className="font-mono text-xs font-black text-slate-600 text-start">{comp.expiryDate?.split('T')[0] || '---'}</TableCell>
+                      <TableCell className="font-mono text-[10px] font-black text-slate-600 text-start uppercase">{comp.subscriptionType}</TableCell>
                       <TableCell className="pe-8 text-end">
-                        <Button variant="outline" size="sm" onClick={() => handleOpenEdit(comp)} className="h-8 gap-2 border-2 hover:bg-slate-50">
-                           <Settings2 className="h-3 w-3" /> إدارة
-                        </Button>
+                        <div className="flex items-center justify-end gap-2">
+                           <Button 
+                             onClick={() => setDeletingContext({ id: comp.id, type: 'company' })}
+                             variant="ghost" 
+                             size="icon" 
+                             className="h-8 w-8 text-rose-300 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                           >
+                              <Trash2 className="h-4 w-4" />
+                           </Button>
+                           <Button variant="outline" size="sm" onClick={() => handleOpenEdit(comp)} className="h-8 gap-2 border-2 hover:bg-slate-50">
+                              <Settings2 className="h-3 w-3" /> إدارة
+                           </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -288,6 +313,7 @@ export default function DeveloperDashboard() {
         </TabsContent>
       </Tabs>
 
+      {/* مودال إدارة المنشأة */}
       <Dialog open={!!editingCompany} onOpenChange={v => !v && setEditingCompany(null)}>
          <DialogContent className="rounded-3xl max-w-xl p-0 overflow-hidden border-0 shadow-3xl bg-white">
             <div className="bg-slate-50 p-8 border-b text-start">
@@ -300,7 +326,7 @@ export default function DeveloperDashboard() {
                   <div className="space-y-2">
                      <Label className="text-[10px] font-black uppercase text-slate-400">نوع الاشتراك</Label>
                      <Select value={editingCompany?.subscriptionType} onValueChange={v => setEditingCompany({...editingCompany, subscriptionType: v})}>
-                        <SelectTrigger className="h-12 border-2 rounded-xl font-bold"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="h-12 border-2 rounded-xl font-bold"><SelectValue placeholder="..." /></SelectTrigger>
                         <SelectContent className="rounded-xl">
                            <SelectItem value="trial" className="font-bold">Trial</SelectItem>
                            <SelectItem value="monthly" className="font-bold">Monthly</SelectItem>
@@ -326,6 +352,34 @@ export default function DeveloperDashboard() {
             </DialogFooter>
          </DialogContent>
       </Dialog>
+
+      {/* حوار تأكيد الحذف السيادي */}
+      <AlertDialog open={!!deletingContext} onOpenChange={v => !v && setDeletingContext(null)}>
+         <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white">
+            <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50">
+               <Trash2 className="h-10 w-10" />
+            </div>
+            <AlertDialogHeader className="text-center">
+               <AlertDialogTitle className="font-black text-3xl font-headline text-slate-900 leading-tight">
+                  {isRtl ? 'حذف السجل نهائياً' : 'Permanent Deletion'}
+               </AlertDialogTitle>
+               <AlertDialogDescription className="text-center font-bold text-slate-400 mt-4 text-lg leading-relaxed">
+                  {isRtl 
+                    ? 'تحذير سيادي: هذا الإجراء سيمحو كافة البيانات المرتبطة بهذا السجل من قاعدة البيانات السحابية فوراً. لا يمكن التراجع عن هذا الإجراء.' 
+                    : 'Sovereign Warning: This will permanently wipe all data linked to this record from the cloud. This action is irreversible.'}
+               </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="mt-12 gap-4 flex flex-row items-center justify-center">
+               <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white">إلغاء</AlertDialogCancel>
+               <AlertDialogAction 
+                  onClick={handleDelete} 
+                  className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200"
+               >
+                  {isRtl ? 'نعم، احذف نهائياً' : 'Confirm Wipeout'}
+               </AlertDialogAction>
+            </AlertDialogFooter>
+         </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
