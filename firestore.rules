@@ -1,59 +1,122 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
     // --- 1. الدوال المساعدة السيادية (Sovereign Helpers) ---
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // الإنفاذ القطعي: الاعتماد حصراً على roleCode الموحد (حروف كبيرة)
-    // يدعم مؤقتاً 'ADMIN' أو 'admin' لضمان عمل الهجرة
-    function isGlobalAdmin() {
-      let user = get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
-      return user.roleCode == 'ADMIN' || user.role == 'admin';
-    }
-    
-    function getUserCompany() {
-      return get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.companyId;
+    function isSovereignDev() {
+      return isAuthenticated() && request.auth.token.email == 'admin@novaflow.com';
     }
 
-    // --- 2. قواعد الهوية العالمية ---
+    // يرجع بيانات المستخدم الحالي من السجل العالمي الموحد
+    function currentUser() {
+      return get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
+    }
+
+    function getUserCompany() {
+      return currentUser().companyId;
+    }
+
+    // الإنفاذ القطعي: الاعتماد حصراً على roleCode الموحد (حروف كبيرة)
+    // يدعم مؤقتاً 'ADMIN' أو 'admin' لضمان عمل الهجرة
+    function isAdminRoleValue(v) {
+      return v != null && v.upper() == 'ADMIN';
+    }
+
+    function isGlobalAdmin() {
+      let user = currentUser();
+      return isAuthenticated() && (
+        isSovereignDev() ||
+        isAdminRoleValue(user.roleCode) ||
+        isAdminRoleValue(user.role)
+      );
+    }
+
+    // أدمن هذي الشركة بالذات (مو أي شركة) لضمان عزل البيانات
+    function isCompanyAdmin(companyId) {
+      return isAuthenticated() && (
+        isSovereignDev() ||
+        (getUserCompany() == companyId && isGlobalAdmin())
+      );
+    }
+
+    function belongsToCompany(companyId) {
+      return isAuthenticated() && getUserCompany() == companyId;
+    }
+
+    // --- 2. قواعد الهوية العالمية (global_users) ---
     match /global_users/{uid} {
       allow read: if isAuthenticated() && (request.auth.uid == uid || isGlobalAdmin());
-      // السماح للمستخدم بتحديث بياناته الشخصية (مثل الصورة والاسم)
-      allow update: if isAuthenticated() && request.auth.uid == uid;
+
+      // إنشاء الملف الشخصي أول مرة (تسجيل جديد): مسموح للمستخدم لنفسه فقط،
+      // وممنوع يحط لنفسه صلاحيات أدمن أو مطور مباشرة
+      allow create: if isAuthenticated() && request.auth.uid == uid &&
+        (!('roleCode' in request.resource.data) || !isAdminRoleValue(request.resource.data.roleCode)) &&
+        (!('role' in request.resource.data) || !isAdminRoleValue(request.resource.data.role)) &&
+        (!('isDeveloper' in request.resource.data) || request.resource.data.isDeveloper == false);
+
+      // تعديل الملف: المستخدم يقدر يعدّل بياناته العادية، لكن ممنوع
+      // يغيّر الحقول الحساسة بنفسه. تغيير هذي الحقول يكون فقط من أدمن/مطور
+      allow update: if isAuthenticated() && (
+        (request.auth.uid == uid &&
+          !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['roleCode', 'role', 'isDeveloper', 'companyId'])
+        ) || isGlobalAdmin()
+      );
+
       // الكتابة الكاملة للمدير فقط
       allow write: if isAuthenticated() && isGlobalAdmin();
     }
 
     // --- 3. قواعد المنشآت (Multi-Tenant Core) ---
     match /companies/{companyId} {
-      allow read: if isAuthenticated() && (getUserCompany() == companyId || isGlobalAdmin());
+      allow read: if belongsToCompany(companyId) || isGlobalAdmin();
       allow create: if isAuthenticated(); 
-      allow update: if isAuthenticated() && (isGlobalAdmin() || resource.data.ownerUid == request.auth.uid);
+      allow update: if isCompanyAdmin(companyId) || (isAuthenticated() && resource.data.ownerUid == request.auth.uid);
 
+      // الافتراضي لكل المجموعات الفرعية: أي عضو بالشركة يقرأ ويكتب،
+      // ما عدا المجموعات الحساسة المحددة تحت اللي تتطلب أدمن
       match /{allSubCollections=**} {
-        allow read: if isAuthenticated() && (getUserCompany() == companyId || isGlobalAdmin());
-        allow write: if isAuthenticated() && (getUserCompany() == companyId && isGlobalAdmin());
+        allow read: if belongsToCompany(companyId) || isGlobalAdmin();
+        allow write: if belongsToCompany(companyId) || isGlobalAdmin();
+      }
+
+      // مجموعات مالية/إدارية حساسة: القراءة للكل، الكتابة للأدمن فقط
+      match /interimCertificates/{id} {
+        allow read: if belongsToCompany(companyId);
+        allow write: if isCompanyAdmin(companyId);
+      }
+      match /equipment/{id} {
+        allow read: if belongsToCompany(companyId);
+        allow write: if isCompanyAdmin(companyId);
+      }
+      match /roles/{id} {
+        allow read: if belongsToCompany(companyId);
+        allow write: if isCompanyAdmin(companyId);
+      }
+      match /counters/{id} {
+        allow read, write: if isCompanyAdmin(companyId);
       }
     }
 
-    // --- 4. قواعد المجموعات المشتركة (Collection Groups) ---
-    // ضرورية للبحث والتقارير الشاملة
+    // --- 4. مجموعات جماعية (Collection Group) للبحث/التقارير الشاملة ---
     match /{path=**}/jobs/{jobId} {
-      allow read: if isAuthenticated() && (getUserCompany() == resource.data.companyId || isGlobalAdmin());
+      allow read: if belongsToCompany(resource.data.companyId) || isGlobalAdmin();
     }
     
     match /{path=**}/fieldVisits/{visitId} {
-      allow read: if isAuthenticated() && (getUserCompany() == resource.data.companyId || isGlobalAdmin());
-      allow write: if isAuthenticated() && (getUserCompany() == resource.data.companyId || isGlobalAdmin());
+      allow read: if belongsToCompany(resource.data.companyId) || isGlobalAdmin();
+      allow write: if belongsToCompany(resource.data.companyId) || isGlobalAdmin();
     }
 
     match /{path=**}/executions/{execId} {
-      allow read, write: if isAuthenticated() && (getUserCompany() == resource.data.companyId || isGlobalAdmin());
+      allow read, write: if belongsToCompany(resource.data.companyId) || isGlobalAdmin();
     }
 
+    // --- 5. طلبات إنشاء شركة جديدة ---
     match /company_requests/{reqId} {
        allow create: if isAuthenticated(); 
        allow read: if isAuthenticated() && (request.auth.uid == resource.data.ownerUid || isGlobalAdmin());

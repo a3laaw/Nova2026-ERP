@@ -80,7 +80,7 @@ export default function ProfilePage() {
     const globalUserRef = doc(db, 'global_users', user.uid);
     const tenantUserRef = doc(db, 'companies', globalUser.companyId, 'users', user.uid);
 
-    // توحيد قسري لبيانات الهوية
+    // توحيد قسري لبيانات الهوية لضمان عدم حدوث Loop أو فشل صلاحيات
     const unifiedRoleCode = (globalUser.roleCode || globalUser.role || 'USER').toUpperCase();
 
     const globalPayload = {

@@ -59,9 +59,10 @@ export class UserService {
 
       const batch = writeBatch(this.db);
       
-      // التوحيد القسري للأدوار لضمان الأمان السيادي
+      // التوحيد القسري للأدوار لضمان الأمان السيادي المطلق في القواعد السحابية
       const unifiedRoleCode = data.roleCode.toUpperCase();
 
+      // 1. السجل العالمي (Global Identity) - المصدر الأساسي للصلاحيات
       batch.set(doc(this.db, 'global_users', uid), {
         companyId: this.companyId,
         roleId: data.roleId,
@@ -77,6 +78,7 @@ export class UserService {
         updatedAt: serverTimestamp()
       });
 
+      // 2. السجل المحلي داخل الشركة - لعزل البيانات
       batch.set(doc(this.db, 'companies', this.companyId, 'users', uid), {
         id: uid,
         displayName: data.employeeName,
