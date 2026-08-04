@@ -2,66 +2,56 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // --- 1. القانون الأسمى (Sovereign Master Key) ---
-    // المطور والمدير الرئيسي لهم حق الوصول المطلق دون قيود
-    function isSovereignDev() {
-      return request.auth != null && (
-        request.auth.token.email == 'admin@novaflow.com' || 
-        get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.roleCode == 'ADMIN'
-      );
-    }
-
-    match /{document=**} {
-      allow read, write: if isSovereignDev();
-    }
-
-    // --- 2. الدوال المساعدة المحصنة ---
+    // --- 1. الدوال المساعدة الأساسية (Sovereign Helpers) ---
     function isAuthenticated() {
       return request.auth != null;
     }
+
+    function isGlobalAdmin() {
+      let user = get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
+      return user.roleCode == 'ADMIN' || user.role == 'admin' || request.auth.token.email == 'admin@novaflow.com';
+    }
     
-    function getUserData() {
-      return get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
+    function getUserCompany() {
+      return get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data.companyId;
     }
 
-    // --- 3. قواعد الهوية العالمية ---
+    // --- 2. قواعد الهوية العالمية ---
     match /global_users/{uid} {
-      allow read: if isAuthenticated() && (request.auth.uid == uid || isSovereignDev());
-      allow create: if isAuthenticated() && request.auth.uid == uid;
-      allow update: if isAuthenticated() && (request.auth.uid == uid || isSovereignDev());
-    }
-    
-    // --- 4. قواعد المجموعات الفرعية (Collection Groups) ---
-    // السماح بالبحث الشامل والفلترة لموظفي نفس الشركة
-    match /{path=**}/jobs/{jobId} {
-      allow read: if isAuthenticated() && (getUserData().companyId == resource.data.companyId || isSovereignDev());
-    }
-    
-    match /{path=**}/fieldVisits/{visitId} {
-      allow read: if isAuthenticated() && (getUserData().companyId == resource.data.companyId || isSovereignDev());
+      allow read: if isAuthenticated() && (request.auth.uid == uid || isGlobalAdmin());
+      allow write: if isAuthenticated() && (request.auth.uid == uid || isGlobalAdmin());
     }
 
-    match /{path=**}/executions/{execId} {
-      allow read, write: if isAuthenticated() && (getUserData().companyId == resource.data.companyId || isSovereignDev());
-    }
-
-    // --- 5. قواعد المنشآت (Multi-Tenant Core) ---
+    // --- 3. قواعد المنشآت (Multi-Tenant Core) ---
     match /companies/{companyId} {
-      allow read: if isAuthenticated() && (getUserData().companyId == companyId || isSovereignDev());
+      allow read: if isAuthenticated() && (getUserCompany() == companyId || isGlobalAdmin());
       allow create: if isAuthenticated(); 
-      allow update: if isAuthenticated() && (resource.data.ownerUid == request.auth.uid || isSovereignDev());
+      allow update: if isAuthenticated() && (isGlobalAdmin() || resource.data.ownerUid == request.auth.uid);
 
-      // القاعدة الذهبية: الوصول الكامل داخل نطاق الشركة للمصرح لهم
+      // القاعدة الذهبية: الوصول الكامل داخل نطاق الشركة للمسؤولين
       match /{allSubCollections=**} {
-        allow read: if isAuthenticated() && (getUserData().companyId == companyId || isSovereignDev());
-        allow write: if isAuthenticated() && (getUserData().companyId == companyId && (getUserData().roleCode == 'ADMIN' || isSovereignDev()));
+        allow read: if isAuthenticated() && (getUserCompany() == companyId || isGlobalAdmin());
+        allow write: if isAuthenticated() && (getUserCompany() == companyId && (isGlobalAdmin() || request.auth.token.email == 'admin@novaflow.com'));
       }
+    }
+
+    // --- 4. قواعد المجموعات المشتركة (Collection Groups) ---
+    match /{path=**}/jobs/{jobId} {
+      allow read: if isAuthenticated() && (getUserCompany() == resource.data.companyId || isGlobalAdmin());
+    }
+    
+    match /{path=**}/executions/{execId} {
+      allow read, write: if isAuthenticated() && (getUserCompany() == resource.data.companyId || isGlobalAdmin());
+    }
+
+    match /{path=**}/fieldVisits/{visitId} {
+      allow read, write: if isAuthenticated() && (getUserCompany() == resource.data.companyId || isGlobalAdmin());
     }
 
     match /company_requests/{reqId} {
        allow create: if isAuthenticated(); 
-       allow read: if isAuthenticated() && (request.auth.uid == resource.data.ownerUid || isSovereignDev());
-       allow delete: if isSovereignDev();
+       allow read: if isAuthenticated() && (request.auth.uid == resource.data.ownerUid || isGlobalAdmin());
+       allow delete: if isGlobalAdmin();
     }
   }
 }
