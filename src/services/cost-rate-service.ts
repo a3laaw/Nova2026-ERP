@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -17,40 +18,65 @@ import {
 import { paths } from '@/firebase/multi-tenant';
 import { CostRateCard, LaborRateEntry } from '@/types/cost-rate';
 
+/**
+ * خدمة إدارة جداول تعرفة العمالة (Cost Rate Service).
+ * تضمن وجود مرجع مالي موحد لحساب تكاليف الإنتاج.
+ */
 export class CostRateService {
   constructor(private db: Firestore, private companyId: string) {}
 
+  /**
+   * إنشاء جدول تعرفة جديد (يكون غير نشط افتراضياً)
+   */
   async createCard(data: Partial<CostRateCard>, userId: string) {
     const collRef = collection(this.db, paths.costRateCards(this.companyId));
-    return addDoc(collRef, {
+    const docData = {
       ...data,
       companyId: this.companyId,
       isActive: false,
       createdBy: userId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
-    });
+    };
+    
+    return addDoc(collRef, docData);
   }
 
+  /**
+   * تفعيل جدول تعرفة محدد وتعطيل كافة الجداول السابقة (عملية ذرية)
+   */
   async activateCard(cardId: string) {
     const collRef = collection(this.db, paths.costRateCards(this.companyId));
+    
+    // 1. جلب كافة الجداول النشطة حالياً
     const activeQuery = query(collRef, where('isActive', '==', true));
     const snap = await getDocs(activeQuery);
     
     const batch = writeBatch(this.db);
     
-    // تعطيل القديم
+    // 2. تعطيل الجداول القديمة
     snap.docs.forEach(d => {
-      batch.update(d.ref, { isActive: false, updatedAt: serverTimestamp() });
+      batch.update(d.ref, { 
+        isActive: false, 
+        updatedAt: serverTimestamp(),
+        deactivatedAt: serverTimestamp() 
+      });
     });
     
-    // تفعيل الجديد
+    // 3. تفعيل الجدول المستهدف
     const newRef = doc(this.db, paths.costRateCards(this.companyId), cardId);
-    batch.update(newRef, { isActive: true, updatedAt: serverTimestamp() });
+    batch.update(newRef, { 
+      isActive: true, 
+      activatedAt: serverTimestamp(),
+      updatedAt: serverTimestamp() 
+    });
     
     return batch.commit();
   }
 
+  /**
+   * جلب الجدول الفعال حالياً لاستخدامه في محركات الحساب
+   */
   async getActiveCard(): Promise<CostRateCard | null> {
     const q = query(
       collection(this.db, paths.costRateCards(this.companyId)), 
