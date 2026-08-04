@@ -7,9 +7,11 @@ import {
   writeBatch, 
   serverTimestamp, 
   getDocs,
+  getDoc,
   query,
   limit,
-  deleteDoc
+  deleteDoc,
+  where
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { SEED_DATA } from '@/lib/seed-data';
@@ -18,11 +20,50 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { ReferenceListService } from './reference-list-service';
 import { BOQReferenceNode } from '@/types/reference';
 
-/**
- * خدمة تهيئة وتطهير النظام الموحدة (Consolidated Seed & Purge Service).
- */
 export class SeedService {
   constructor(private db: Firestore, private companyId: string) {}
+
+  /**
+   * سكربت هجرة الهوية السيادي (Sovereign Identity Migration)
+   * يمر على كافة المستخدمين لتوحيد حقول الأدوار (roleCode / role)
+   */
+  async runIdentityMigration() {
+    const globalUsersRef = collection(this.db, 'global_users');
+    const snap = await getDocs(globalUsersRef);
+    const batch = writeBatch(this.db);
+    let count = 0;
+
+    for (const userDoc of snap.docs) {
+      const data = userDoc.data();
+      const updates: any = {};
+
+      // 1. استخراج وتوحيد roleCode
+      if (data.roleId && data.companyId && !data.roleCode) {
+        const roleSnap = await getDoc(doc(this.db, 'companies', data.companyId, 'roles', data.roleId));
+        if (roleSnap.exists()) {
+          updates.roleCode = roleSnap.data().code.toUpperCase();
+        }
+      } else if (data.roleCode) {
+        updates.roleCode = data.roleCode.toUpperCase();
+      } else if (data.role) {
+        // إذا كان role موجود كنص فقط
+        updates.roleCode = data.role.toUpperCase();
+      }
+
+      // 2. توحيد حقل role ليكون lowercase (للتوافق مع الواجهات القديمة)
+      if (updates.roleCode) {
+        updates.role = updates.roleCode.toLowerCase();
+      }
+
+      if (Object.keys(updates).length > 0) {
+        batch.update(userDoc.ref, { ...updates, updatedAt: serverTimestamp() });
+        count++;
+      }
+    }
+
+    if (count > 0) await batch.commit();
+    return count;
+  }
 
   async runSeed() {
     const batch = writeBatch(this.db);
@@ -134,7 +175,6 @@ export class SeedService {
             const stageRef = doc(collection(this.db, paths.technicalStages(this.companyId, actRef.id, srvRef.id, subRef.id)));
             stageRefs[stage.code] = stageRef.id;
             
-            // ربط تلقائي للأقسام بناءً على الكود
             const allowedDepts = [];
             if (act.code === 'CONSULTING') allowedDepts.push(deptRefs['ARCH']);
             if (act.code === 'CONSTRUCTION') allowedDepts.push(deptRefs['CIVIL']);
@@ -156,7 +196,6 @@ export class SeedService {
       }
     }
 
-    // 4. ضخ قاعات الاجتماعات الافتراضية
     const rooms = [
        { name: 'القاعة الكبرى', nameEn: 'Grand Hall', order: 1 },
        { name: 'غرفة اجتماعات (1)', nameEn: 'Meeting Room 1', order: 2 },
@@ -167,7 +206,6 @@ export class SeedService {
        batch.set(ref, { ...r, isActive: true, companyId: this.companyId, createdAt: serverTimestamp() });
     });
 
-    // 5. ضخ القاموس الهندسي الشجري الموحد (boqReferenceNodes)
     const rootCivilRef = doc(collection(this.db, paths.boqReferenceNodes(this.companyId)));
     batch.set(rootCivilRef, {
       code: 'CONSTRUCTION_ROOT',

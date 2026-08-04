@@ -58,11 +58,15 @@ export class UserService {
       await updateProfile(cred.user, { displayName: data.employeeName });
 
       const batch = writeBatch(this.db);
+      
+      // توحيد الأكواد لضمان الأمان السيادي
+      const unifiedRoleCode = data.roleCode.toUpperCase();
 
       batch.set(doc(this.db, 'global_users', uid), {
         companyId: this.companyId,
         roleId: data.roleId,
-        role: data.roleCode,
+        roleCode: unifiedRoleCode,
+        role: unifiedRoleCode.toLowerCase(),
         fullName: data.employeeName,
         departmentId: data.departmentId,
         employeeId: data.employeeId,
@@ -80,7 +84,8 @@ export class UserService {
         username: data.username,
         employeeId: data.employeeId,
         roleId: data.roleId,
-        role: data.roleCode,
+        roleCode: unifiedRoleCode,
+        role: unifiedRoleCode.toLowerCase(),
         initialPasswordSetAt: serverTimestamp(),
         joinedAt: serverTimestamp(),
         isActive: true
@@ -112,6 +117,8 @@ export class UserService {
   }) {
     const tenantUserRef = doc(this.db, 'companies', this.companyId, 'users', uid);
     const globalUserRef = doc(this.db, 'global_users', uid);
+    
+    const unifiedRoleCode = data.roleCode.toUpperCase();
 
     try {
       const batch = writeBatch(this.db);
@@ -120,7 +127,8 @@ export class UserService {
         displayName: data.displayName,
         username: data.username,
         roleId: data.roleId,
-        role: data.roleCode,
+        roleCode: unifiedRoleCode,
+        role: unifiedRoleCode.toLowerCase(),
         updatedAt: serverTimestamp()
       });
 
@@ -128,7 +136,8 @@ export class UserService {
         username: data.username,
         fullName: data.displayName,
         roleId: data.roleId,
-        role: data.roleCode,
+        roleCode: unifiedRoleCode,
+        role: unifiedRoleCode.toLowerCase(),
         updatedAt: serverTimestamp()
       });
 
@@ -143,9 +152,6 @@ export class UserService {
     }
   }
 
-  /**
-   * إرسال رابط إعادة تعيين كلمة المرور إلى بريد المستخدم (آمن، دون تخزين كلمات المرور).
-   */
   async sendPasswordReset(email: string): Promise<void> {
     const auth = getAuth();
     await sendPasswordResetEmail(auth, email);

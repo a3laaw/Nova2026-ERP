@@ -12,13 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sparkles, Loader2, AlertCircle, ArrowRight, Eye, EyeOff, Building2, Clock } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
-/**
- * صفحة تسجيل الشركات الجديدة.
- * تم تحصينها لضمان حقن صلاحية ADMIN للمالك فوراً.
- */
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
     companyName: '',
@@ -81,8 +75,8 @@ export default function RegisterPage() {
       const globalUserRef = doc(db, 'global_users', uid);
       const globalUserData = {
         companyId,
+        roleCode: 'ADMIN', 
         role: 'admin',
-        roleCode: 'ADMIN', // القفل السيادي: ضمان تعريف المالك كمدير
         fullName: formData.contactName, 
         username: formData.username || formData.email.split('@')[0],
         email: formData.email,
@@ -98,8 +92,8 @@ export default function RegisterPage() {
         displayName: formData.contactName,
         email: formData.email,
         username: formData.username || formData.email.split('@')[0],
-        role: 'admin',
         roleCode: 'ADMIN',
+        role: 'admin',
         joinedAt: serverTimestamp(),
         isActive: true
       });

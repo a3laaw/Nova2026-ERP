@@ -7,9 +7,10 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // الاعتماد الكلي على roleCode بحروف كبيرة موحدة
     function isGlobalAdmin() {
       let user = get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
-      return user.roleCode == 'ADMIN' || user.role == 'admin' || request.auth.token.email == 'admin@novaflow.com';
+      return user.roleCode == 'ADMIN' || request.auth.token.email == 'admin@novaflow.com';
     }
     
     function getUserCompany() {
@@ -28,7 +29,6 @@ service cloud.firestore {
       allow create: if isAuthenticated(); 
       allow update: if isAuthenticated() && (isGlobalAdmin() || resource.data.ownerUid == request.auth.uid);
 
-      // القاعدة الذهبية: الوصول الكامل داخل نطاق الشركة للمسؤولين
       match /{allSubCollections=**} {
         allow read: if isAuthenticated() && (getUserCompany() == companyId || isGlobalAdmin());
         allow write: if isAuthenticated() && (getUserCompany() == companyId && (isGlobalAdmin() || request.auth.token.email == 'admin@novaflow.com'));

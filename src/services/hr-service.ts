@@ -28,7 +28,6 @@ export class HRService {
   ) {}
 
   async getNextEmployeeNumber(): Promise<string> {
-    // الترقيم يبدأ من 1001 لضمان الاحترافية والذرية
     const num = await nextSequential(this.db, this.companyId, 'employee', '', 0, 1000);
     return num;
   }
@@ -53,7 +52,7 @@ export class HRService {
     }
 
     if (data.email) {
-      await this.syncGlobalUserData(data.email, data.roleId, data.departmentId);
+      await this.syncGlobalUserData(data.email, data.roleId, data.departmentId, data.fullName);
     }
 
     return empRef.id;
@@ -77,11 +76,13 @@ export class HRService {
     }
 
     if ((newData.roleId && newData.roleId !== oldData.roleId) || 
-        (newData.departmentId && newData.departmentId !== oldData.departmentId)) {
+        (newData.departmentId && newData.departmentId !== oldData.departmentId) ||
+        (newData.fullName && newData.fullName !== oldData.fullName)) {
       await this.syncGlobalUserData(
         newData.email || oldData.email!, 
         newData.roleId || oldData.roleId, 
-        newData.departmentId || oldData.departmentId
+        newData.departmentId || oldData.departmentId,
+        newData.fullName || oldData.fullName
       );
     }
 
@@ -100,18 +101,31 @@ export class HRService {
     }
   }
 
-  private async syncGlobalUserData(email: string, roleId?: string, departmentId?: string) {
+  private async syncGlobalUserData(email: string, roleId?: string, departmentId?: string, fullName?: string) {
     try {
       const q = query(collection(this.db, 'global_users'), where('email', '==', email));
       const snap = await getDocs(q);
 
       if (!snap.empty) {
         const globalUserRef = doc(this.db, 'global_users', snap.docs[0].id);
-        await updateDoc(globalUserRef, {
-          roleId: roleId || '',
-          departmentId: departmentId || '',
+        const updates: any = {
           updatedAt: serverTimestamp()
-        });
+        };
+
+        if (fullName) updates.fullName = fullName;
+        if (departmentId) updates.departmentId = departmentId;
+        
+        if (roleId) {
+          updates.roleId = roleId;
+          const roleSnap = await getDoc(doc(this.db, 'companies', this.companyId, 'roles', roleId));
+          if (roleSnap.exists()) {
+             const code = roleSnap.data().code.toUpperCase();
+             updates.roleCode = code;
+             updates.role = code.toLowerCase();
+          }
+        }
+
+        await updateDoc(globalUserRef, updates);
       }
     } catch (e) {
       console.warn("Security sync bypass:", e);

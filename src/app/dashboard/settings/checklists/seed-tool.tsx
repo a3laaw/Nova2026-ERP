@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { 
   Sparkles, Loader2, Database, ShieldCheck, 
   CheckCircle2, AlertTriangle, Trash2, CalendarX,
-  Settings2
+  Settings2, Fingerprint, RefreshCcw
 } from "lucide-react";
 import { useFirestore } from '@/firebase';
 import { useAuthContext } from '@/context/auth-context';
@@ -20,6 +20,7 @@ export function SeedTool() {
   const db = useFirestore();
   const [loading, setLoading] = useState(false);
   const [purging, setPurging] = useState(false);
+  const [migrating, setMigrating] = useState(false);
   const [isDone, setIsDone] = useState(false);
   
   const isRtl = lang === 'ar';
@@ -54,6 +55,23 @@ export function SeedTool() {
     }
   };
 
+  const handleIdentityMigration = async () => {
+    if (!db || !globalUser?.companyId) return;
+    setMigrating(true);
+    const service = new SeedService(db, globalUser.companyId);
+    try {
+      const count = await service.runIdentityMigration();
+      toast({ 
+        title: isRtl ? "اكتملت هجرة الهوية" : "Migration Complete", 
+        description: isRtl ? `تم تحديث ${count} حساب بنجاح.` : `Updated ${count} accounts.` 
+      });
+    } catch (e) {
+      toast({ variant: "destructive", title: t('error') });
+    } finally {
+      setMigrating(false);
+    }
+  };
+
   const handlePurgeAppointments = async () => {
     if (!db || !globalUser?.companyId) return;
     if (!confirm(isRtl ? 'تنبيه: سيتم حذف كافة المواعيد (المجدولة والمكتملة) نهائياً. هل أنت متأكد؟' : 'Warning: All appointments will be permanently deleted. Proceed?')) return;
@@ -72,6 +90,34 @@ export function SeedTool() {
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
+      {/* قسم هجرة الهوية السيادية - جديد */}
+      <Card className="border-4 border-emerald-100 rounded-[3rem] bg-emerald-50/20 overflow-hidden shadow-2xl">
+        <CardHeader className="p-10 text-start">
+           <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-lg"><Fingerprint className="h-6 w-6" /></div>
+              <div>
+                 <CardTitle className="text-2xl font-black">{isRtl ? 'توحيد هويات النظام' : 'Identity Standardization'}</CardTitle>
+                 <CardDescription className="font-bold">{isRtl ? 'إصلاح تباين الصلاحيات وتوحيد الأكواد المرجعية لكافة المستخدمين.' : 'Fix permission variances and unify role codes for all users.'}</CardDescription>
+              </div>
+           </div>
+        </CardHeader>
+        <CardContent className="p-10 pt-0 flex flex-col md:flex-row items-center justify-between gap-6">
+           <div className="text-start space-y-2">
+              <p className="text-xs font-bold text-slate-500 max-w-md">
+                 سيقوم هذا الإجراء بفحص كافة حسابات `global_users` وتأكيد أن حقل `roleCode` مكتوب بحروف كبيرة (UPPERCASE) لتفعيل مفتاح الأدمن الرئيسي.
+              </p>
+           </div>
+           <Button 
+             onClick={handleIdentityMigration} 
+             disabled={migrating}
+             className="h-16 px-10 rounded-2xl bg-emerald-600 text-white font-black shadow-xl shadow-emerald-200 gap-3 min-w-[200px]"
+           >
+              {migrating ? <Loader2 className="animate-spin h-6 w-6" /> : <RefreshCcw className="h-6 w-6" />}
+              {isRtl ? 'بدء الهوية السيادية' : 'Unify Identities'}
+           </Button>
+        </CardContent>
+      </Card>
+
       <Card className="border-4 border-dashed border-primary/20 rounded-[3rem] bg-white overflow-hidden shadow-2xl">
         <CardHeader className="bg-primary/5 p-12 text-center">
           <div className="mx-auto w-24 h-24 bg-primary text-white rounded-[2rem] flex items-center justify-center shadow-2xl shadow-primary/30 mb-6 rotate-3">

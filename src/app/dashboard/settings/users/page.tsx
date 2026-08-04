@@ -95,7 +95,7 @@ export default function UsersManagementPage() {
         username: createForm.username || emp.employeeNumber,
         password: createForm.password,
         roleId: role.id!,
-        roleCode: role.code,
+        roleCode: role.code.toUpperCase(), // توحيد قسري
         departmentId: emp.departmentId
       });
 
@@ -116,15 +116,13 @@ export default function UsersManagementPage() {
       const role = roles?.find(r => r.id === editForm.roleId);
       if (!role) return;
 
-      // 1) تحديث بيانات الحساب (بدون كلمة مرور)
       await userService.updateUserAccount(editingUser.id, {
         displayName: editForm.fullName,
         username: editForm.username,
         roleId: role.id!,
-        roleCode: role.code
+        roleCode: role.code.toUpperCase() // توحيد قسري
       });
 
-      // 2) إعادة تعيين كلمة المرور عبر رابط آمن إن طُلبت كلمة جديدة
       if (editForm.newPassword && editingUser.email) {
         await userService.sendPasswordReset(editingUser.email);
         toast({
@@ -287,7 +285,7 @@ export default function UsersManagementPage() {
                   </TableCell>
                   <TableCell className="text-start">
                      <Badge variant="outline" className="font-black border-2 px-4 py-1 bg-white text-[10px] uppercase text-primary border-primary/20">
-                        {u.role || 'Basic User'}
+                        {u.roleCode || u.role || 'Basic User'}
                      </Badge>
                   </TableCell>
                   <TableCell className="text-start">
