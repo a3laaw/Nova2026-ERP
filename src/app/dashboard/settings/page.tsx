@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 
 /**
  * محطة الإعدادات المركزية - NovaFlow ERP
- * تم حذف موديول "جداول التعرفة" لدمجه في الهيكل التنظيمي والوظائف.
+ * تم دمج كافة القواعد المرجعية في الدستور التشغيلي والوظائف.
  */
 export default function SettingsHubPage() {
   const { t, lang, dir } = useLanguage();
@@ -113,7 +113,7 @@ export default function SettingsHubPage() {
             className="border-0 shadow-lg hover:shadow-2xl transition-all duration-300 rounded-[2.5rem] bg-white cursor-pointer group overflow-hidden"
             onClick={() => router.push(card.path)}
           >
-            <CardHeader className="p-8 pb-4">
+            <CardHeader className="p-8 pb-4 text-start">
               <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110", card.bg, card.color)}>
                 <card.icon className="h-7 w-7" />
               </div>

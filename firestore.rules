@@ -17,15 +17,15 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    // جلب بيانات الهوية العالمية
+    // جلب بيانات الهوية العالمية (مستقر وغير دائري)
     function getGlobalUser() {
       return get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
     }
 
-    // فحص صلاحية الإدارة (المبسط لضمان السرعة)
+    // فحص صلاحية الإدارة (المباشر من السجل العالمي)
     function isAdmin() {
       let user = getGlobalUser();
-      return isAuthenticated() && (user.roleCode == 'ADMIN' || user.role == 'admin' || isSovereignDev());
+      return isAuthenticated() && (user.roleCode == 'ADMIN' || user.role == 'admin');
     }
 
     // --- 3. قواعد الهوية العالمية ---
@@ -36,13 +36,18 @@ service cloud.firestore {
     }
     
     // --- 4. قواعد المجموعات الفرعية (Collection Groups) ---
-    // ضروري لعمليات البحث الشامل والتقارير الموحدة
+    // تم الإصلاح: السماح بالبحث الشامل للموظفين التابعين لنفس الشركة
     match /{path=**}/jobs/{jobId} {
-      allow read: if isAuthenticated() && (getGlobalUser().companyId == resource.data.companyId || isSovereignDev());
+      allow read: if isAuthenticated() && (getGlobalUser().companyId == resource.data.companyId);
     }
     
     match /{path=**}/fieldVisits/{visitId} {
-      allow read: if isAuthenticated() && (getGlobalUser().companyId == resource.data.companyId || isSovereignDev());
+      allow read: if isAuthenticated() && (getGlobalUser().companyId == resource.data.companyId);
+    }
+
+    match /{path=**}/executions/{execId} {
+      allow read: if isAuthenticated() && (getGlobalUser().companyId == resource.data.companyId);
+      allow write: if isAuthenticated() && (getGlobalUser().companyId == resource.data.companyId);
     }
 
     // --- 5. قواعد المنشآت (Multi-Tenant Core) ---
@@ -51,13 +56,10 @@ service cloud.firestore {
       allow create: if isAuthenticated(); 
       allow update: if isAuthenticated() && (resource.data.ownerUid == request.auth.uid || isSovereignDev());
 
-      // القاعدة الذهبية للمجموعات الفرعية التابعة للشركة
+      // القاعدة الذهبية: الأدمن له حق الوصول الكامل لكل شيء داخل شركته
       match /{allSubCollections=**} {
-        allow read: if isAuthenticated() && (getGlobalUser().companyId == companyId || isSovereignDev());
-        allow write: if isAuthenticated() && (
-           getGlobalUser().companyId == companyId && 
-           (getGlobalUser().roleCode == 'ADMIN' || getGlobalUser().role == 'admin')
-        );
+        allow read: if isAuthenticated() && (getGlobalUser().companyId == companyId);
+        allow write: if isAuthenticated() && (getGlobalUser().companyId == companyId && (getGlobalUser().roleCode == 'ADMIN' || getGlobalUser().role == 'admin'));
       }
     }
 

@@ -61,7 +61,6 @@ export default function AppointmentDetailPage() {
   const [equipmentUsed, setEquipmentUsed] = useState<any[]>([]);
 
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
-  const [processingId, setProcessingId] = useState<string | null>(null);
   const [stageProgressMap, setStageProgressMap] = useState<Record<string, StageProgressResult>>({});
   const [isRecordOpen, setIsRecordOpen] = useState(false);
   const [availableJobs, setAvailableJobs] = useState<Job[]>([]);
@@ -75,7 +74,7 @@ export default function AppointmentDetailPage() {
   const stagesQuery = useMemo(() => companyId && db && appt?.transactionId ? query(collection(db, paths.transactionStages(companyId, appt.transactionId)), orderBy('order')) : null, [db, companyId, appt?.transactionId]);
   const { data: rawStages } = useCollection<StageInstance>(stagesQuery);
 
-  const { stages, isEligible, blockerStage } = useMemo(() => {
+  const { stages, isEligible } = useMemo(() => {
     const allStages = (rawStages || []).sort((a, b) => (a.order || 0) - (b.order || 0));
     const apptDeptId = appt?.departmentId;
     if (!apptDeptId) return { stages: allStages, isEligible: true };
@@ -84,7 +83,7 @@ export default function AppointmentDetailPage() {
     const firstDeptStageOrder = filteredStages[0].order;
     const previousStages = allStages.filter(s => s.order < firstDeptStageOrder);
     const incompleteBlocker = previousStages.find(s => s.status !== 'completed');
-    return { stages: filteredStages, isEligible: !incompleteBlocker, blockerStage: incompleteBlocker };
+    return { stages: filteredStages, isEligible: !incompleteBlocker };
   }, [rawStages, appt?.departmentId]);
 
   const boqQuery = useMemo(() => companyId && db && appt?.transactionId ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', appt.transactionId), limit(1)) : null, [db, companyId, appt?.transactionId]);
@@ -102,7 +101,7 @@ export default function AppointmentDetailPage() {
 
   useEffect(() => {
      if (isRecordOpen && db && companyId) {
-        // جلب الوظائف مباشرة للحصول على تعرفة الساعة المعتمدة
+        // جلب الوظائف مباشرة للحصول على تعرفة الساعة المعتمدة من الهيكل التنظيمي
         getDocs(query(collectionGroup(db, 'jobs'), where('companyId', '==', companyId)))
            .then(snap => setAvailableJobs(snap.docs.map(d => ({ id: d.id, ...d.data() } as Job))))
            .catch(() => setAvailableJobs([]));
@@ -194,8 +193,8 @@ export default function AppointmentDetailPage() {
                  {stages.map((stage, idx) => (
                     <div key={stage.id} onClick={() => setSelectedStageId(stage.id!)} className={cn("p-5 rounded-3xl border-2 cursor-pointer transition-all", selectedStageId === stage.id ? "bg-primary/5 border-primary shadow-lg" : "bg-white border-slate-100")}>
                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4">
-                             <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center font-black", stage.status === 'completed' ? "bg-emerald-50 text-emerald-600" : "bg-white text-slate-400")}>{stage.status === 'completed' ? <Check className="h-5 w-5" /> : (idx + 1)}</div>
+                          <div className="flex items-center gap-4 text-start">
+                             <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center font-black shadow-inner border", stage.status === 'completed' ? "bg-emerald-50 text-emerald-600" : "bg-white text-slate-400")}>{stage.status === 'completed' ? <Check className="h-5 w-5" /> : (idx + 1)}</div>
                              <p className="font-black text-base">{stage.name}</p>
                           </div>
                           <Badge variant="outline" className="text-[8px] font-black uppercase">{stage.status}</Badge>
