@@ -1,6 +1,6 @@
 /**
  * @fileOverview القائمة الجانبية (Sidebar) بتصميم الكبسولات البرتقالية كاملة الاستدارة.
- * تم حذف "جداول التعرفة" لتوحيد الإدارة داخل الهيكل التنظيمي.
+ * تم نقل مجموعات العمل إلى قسم المقاولات.
  */
 
 "use client"
@@ -80,6 +80,7 @@ export function DashboardSidebar() {
         resource: 'projects',
         subItems: [
           { title: t('fieldRadar'), url: "/dashboard/construction/bookings", icon: MapPin },
+          { title: isRtl ? 'مجموعات العمل (أطقم)' : 'Work Groups', url: "/dashboard/construction/groups", icon: Users },
           { title: isRtl ? 'سجل المعدات والآليات' : 'Equipment Registry', url: "/dashboard/equipment", icon: Truck },
           { title: isRtl ? 'زيارات المواقع المنفذة' : 'Site Reports', url: "/dashboard/construction/field-visits", icon: FileText },
         ]

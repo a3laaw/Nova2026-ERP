@@ -23,6 +23,7 @@ export const paths = {
   clients: (companyId: string) => getTenantPath(companyId, 'clients'),
   clientHistory: (companyId: string, clientId: string) => `${getTenantPath(companyId, 'clients')}/${clientId}/history`,
   employees: (companyId: string) => getTenantPath(companyId, 'employees'),
+  workGroups: (companyId: string) => getTenantPath(companyId, 'workGroups'),
   applications: (companyId: string) => getTenantPath(companyId, 'applications'),
   leaveRequests: (companyId: string) => getTenantPath(companyId, 'leaveRequests'),
   permissionRequests: (companyId: string) => getTenantPath(companyId, 'permissionRequests'),

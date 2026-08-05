@@ -232,6 +232,11 @@ const translations: Record<Language, Record<string, string>> = {
     construction: 'المقاولات',
     fieldRadar: 'رادار العمليات الميدانية',
     fieldBookings: 'حجز زيارات الموقع',
+    workGroups: 'مجموعات العمل (Crews)',
+    workGroupsDesc: 'إدارة أطقم الميدان، التخصصات، ورؤساء الفرق.',
+    newGroup: 'مجموعة جديدة',
+    supervisor: 'المشرف المسؤول',
+    members: 'أعضاء الفريق',
   },
   en: {
     dashboard: 'Dashboard',
@@ -452,6 +457,11 @@ const translations: Record<Language, Record<string, string>> = {
     construction: 'Construction',
     fieldRadar: 'Field Operations Radar',
     fieldBookings: 'Site Bookings',
+    workGroups: 'Work Groups',
+    workGroupsDesc: 'Manage field crews, trades, and supervisors.',
+    newGroup: 'New Group',
+    supervisor: 'Supervisor',
+    members: 'Team Members',
   }
 };
 

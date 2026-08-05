@@ -44,6 +44,19 @@ export interface Employee extends BaseReference {
   isActive: boolean;
 }
 
+export interface WorkGroup extends BaseReference {
+  id?: string;
+  name: string;
+  code: string;
+  supervisorId: string;
+  supervisorName: string;
+  category: 'skeleton' | 'finishing' | 'electrical' | 'plumbing' | 'general' | string;
+  memberIds: string[];
+  isActive: boolean;
+  memberCount: number;
+  description?: string;
+}
+
 export interface LeaveRequest extends BaseReference {
   userId: string;
   userName: string;
