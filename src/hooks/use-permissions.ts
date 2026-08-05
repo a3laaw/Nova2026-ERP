@@ -13,19 +13,22 @@ export function usePermissions() {
   const role = roleData as any;
   
   const isAdmin = useMemo(() => {
+    if (loading) return false;
+
     // السيادة المعلوماتية:
-    // 1. إذا كان المالك المسجل في وثيقة الشركة (Sovereign Owner)
+    // 1. حالة المطور (وصول مطلق دائماً)
+    const isDev = globalUser?.isDeveloper === true || user?.email === 'admin@novaflow.com';
+    if (isDev) return true;
+
+    // 2. إذا كان المالك المسجل في وثيقة الشركة
     const isOwner = company && globalUser && company.ownerUid === globalUser.uid;
     
-    // 2. إذا كان يحمل كود ADMIN أو دور إداري
-    const isExplicitAdmin = globalUser?.roleCode === 'ADMIN' || 
-                           globalUser?.role?.toLowerCase() === 'admin';
-                           
-    // 3. حالة المطور
-    const isDev = globalUser?.isDeveloper === true;
+    // 3. إذا كان يحمل كود ADMIN بشكل قطعي
+    const isExplicitAdmin = globalUser?.roleCode?.toUpperCase() === 'ADMIN' || 
+                           globalUser?.role?.toUpperCase() === 'ADMIN';
 
-    return isOwner || isExplicitAdmin || isDev;
-  }, [globalUser, company]);
+    return isOwner || isExplicitAdmin;
+  }, [globalUser, company, user, loading]);
 
   const effectivePermissions = useMemo(() => {
     if (isAdmin) return ['*'];
@@ -33,9 +36,10 @@ export function usePermissions() {
   }, [isAdmin, role]);
 
   const check = useCallback((resourceId: string, action: Action = 'view') => {
+    // تجاوز فوري للأدمن في الواجهة الأمامية لضمان عدم ظهور رسائل الخطأ
     if (isAdmin) return { can: true, scope: 'all' as const };
     
-    const access = hasResourceAccess(role, resourceId, action);
+    const access = hasResourceAccess(role, resourceId, action, user?.email || '');
     
     return {
       ...access,
@@ -48,8 +52,8 @@ export function usePermissions() {
 
   const canAccess = useCallback((resourceId: string) => {
     if (isAdmin) return true;
-    return canViewModule(role, resourceId);
-  }, [role, isAdmin]);
+    return canViewModule(role, resourceId, user?.email || '');
+  }, [role, isAdmin, user]);
 
   return {
     isLoading: loading,
