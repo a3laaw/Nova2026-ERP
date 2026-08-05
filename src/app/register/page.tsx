@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -45,14 +46,15 @@ export default function RegisterPage() {
 
     try {
       // إرسال طلب تأسيس منشأة إلى المطور (صالة الانتظار السيادية)
+      // ملاحظة: لا يتم إنشاء حساب Auth هنا لضمان نظافة السحاب
       const requestsRef = collection(db, 'company_requests');
       await addDoc(requestsRef, {
         companyName: formData.companyName,
         contactName: formData.contactName,
-        email: formData.email,
-        phone: formData.phone,
+        email: formData.email.toLowerCase().trim(),
+        phone: formData.phone.trim(),
         activity: formData.activity,
-        proposedUsername: formData.username || formData.email.split('@')[0],
+        proposedUsername: formData.username.toLowerCase().trim() || formData.email.split('@')[0],
         proposedPassword: formData.password,
         status: 'pending',
         createdAt: serverTimestamp(),
