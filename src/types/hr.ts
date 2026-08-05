@@ -48,9 +48,10 @@ export interface WorkGroup extends BaseReference {
   id?: string;
   name: string;
   code: string;
+  departmentId: string;
+  departmentName: string;
   supervisorId: string;
   supervisorName: string;
-  category: 'skeleton' | 'finishing' | 'electrical' | 'plumbing' | 'general' | string;
   memberIds: string[];
   isActive: boolean;
   memberCount: number;
