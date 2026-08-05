@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
@@ -164,7 +165,7 @@ export default function NewStructuredFieldVisitPage() {
       trade: job.name, 
       count: 1, 
       hours: 8, 
-      hourlyCostRef: job.hourlyCost || 0 // سحب التكلفة من الوظيفة (Reference)
+      hourlyCostRef: job.hourlyCost || 0 
     }]);
   };
 
@@ -180,7 +181,6 @@ export default function NewStructuredFieldVisitPage() {
     setLoading(true);
     try {
       const project = clientProjects?.find(p => p.id === selectedProjectId);
-      const batch = []; // We use individual saves or a service
 
       // إنشاء سجلات التنفيذ الفنية (Snapshot)
       for (const row of gridRows) {
