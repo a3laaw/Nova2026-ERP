@@ -9,7 +9,7 @@ import {
   Users, Plus, Search, Loader2, 
   Trash2, Edit3, 
   Briefcase, HardHat, Filter, ArrowRight,
-  Building2, Check
+  Building2, Check, LayoutGrid
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useFirestore, useCollection } from '@/firebase';
@@ -68,7 +68,6 @@ export default function WorkGroupsPage() {
     (employees || []).filter(e => e.jobTitle?.includes('مراقب') || e.jobTitle?.includes('Supervisor') || e.jobTitle?.includes('مهندس')),
   [employees]);
 
-  // فلترة الموظفين حسب القسم المختار في النافذة
   const filteredEmployeesForSelection = useMemo(() => {
     let list = employees || [];
     if (filterDeptId !== "all") {
@@ -134,7 +133,7 @@ export default function WorkGroupsPage() {
                <Plus className="h-5 w-5" /> {t('newGroup')}
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
+          <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
              <div className="bg-slate-900 p-8 text-white text-start flex items-center gap-4">
                 <div className="h-12 w-12 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg shadow-primary/20"><Users className="h-6 w-6" /></div>
                 <DialogTitle className="text-2xl font-black">{isRtl ? 'تكوين طاقم عمل سيادي' : 'Setup Sovereign Crew'}</DialogTitle>
@@ -317,7 +316,7 @@ export default function WorkGroupsPage() {
                           <Badge variant="outline" className="font-black border-2 border-slate-100 bg-white shadow-sm px-4 h-7 text-xs">{group.memberCount} {isRtl ? 'عامل' : 'Workers'}</Badge>
                        </TableCell>
                        <TableCell className="text-start">
-                          <Badge className={cn("text-[9px] font-black uppercase border-0 px-4", group.isActive ? "bg-emerald-500 text-white" : "bg-slate-300 text-white")}>
+                          <Badge className={cn("text-[9px] font-black uppercase border-0 px-4", group.isActive ? "bg-emerald-50 text-white" : "bg-slate-300 text-white")}>
                              {group.isActive ? 'Active' : 'Inactive'}
                           </Badge>
                        </TableCell>
