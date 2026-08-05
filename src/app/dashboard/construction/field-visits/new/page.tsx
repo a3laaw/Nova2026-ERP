@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
@@ -30,8 +32,6 @@ import { paths } from '@/firebase/multi-tenant';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Progress } from "@/components/ui/progress";
-import { Switch } from "@/components/ui/switch";
 import { Employee, WorkGroup } from '@/types/hr';
 import { Transaction, StageInstance } from '@/types/transaction';
 import { Equipment } from '@/types/equipment';
@@ -89,10 +89,11 @@ export default function NewStructuredFieldVisitPage() {
     return { workerIds, equipIds };
   }, [dayExecutions]);
 
-  // General lookups
-  const activitiesQuery = useMemo(() => 
+  // General lookups - FIXED naming mismatch from activitiesQuery to activityTypesQuery
+  const activityTypesQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.activityTypes(companyId))) : null, [db, companyId]);
   const { data: activityTypes } = useCollection<any>(activityTypesQuery);
+  
   const constructionActivityId = useMemo(() => 
     activityTypes?.find(a => a.code === 'CONSTRUCTION' || a.name.includes('مقاولات'))?.id, [activityTypes]);
 
@@ -581,3 +582,4 @@ export default function NewStructuredFieldVisitPage() {
     </div>
   );
 }
+
