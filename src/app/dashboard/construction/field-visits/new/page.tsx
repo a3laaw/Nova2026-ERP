@@ -23,7 +23,7 @@ import {
   Activity, AlertTriangle, UserMinus,
   Construction, Globe, ShieldCheck, UserCircle
 } from "lucide-react";
-import { useFirestore, useCollection } from '@/firebase';
+import { useFirestore, useCollection, useDoc } from '@/firebase';
 import { collection, query, where, getDocs, orderBy, addDoc, serverTimestamp, doc, setDoc } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
@@ -35,6 +35,8 @@ import { Employee, WorkGroup } from '@/types/hr';
 import { Transaction, StageInstance } from '@/types/transaction';
 import { Equipment } from '@/types/equipment';
 import { Department } from '@/types/reference';
+import { BOQ, BOQItem } from '@/types/documents';
+import { BOQExecutionService } from '@/services/boq-execution-service';
 
 export default function NewStructuredFieldVisitPage() {
   const { globalUser, user } = useAuthContext();
@@ -56,7 +58,7 @@ export default function NewStructuredFieldVisitPage() {
   const [equipmentList, setEquipmentList] = useState<any[]>([]);
 
   const [gridRows, setGridRows] = useState<any[]>([
-    { stageId: '', quantity: '', notes: '', photoUrls: [], isUploading: false }
+    { boqItemId: '', quantity: '', notes: '', photoUrls: [], isUploading: false }
   ]);
 
   // --- Queries ---
@@ -103,6 +105,17 @@ export default function NewStructuredFieldVisitPage() {
   [db, companyId, selectedProjectId]);
   const { data: projectStages } = useCollection<StageInstance>(stagesQuery);
 
+  const boqQuery = useMemo(() => 
+    companyId && db && selectedProjectId ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', selectedProjectId)) : null,
+  [db, companyId, selectedProjectId]);
+  const { data: boqs } = useCollection<BOQ>(boqQuery);
+  const activeBoq = boqs?.[0];
+
+  const itemsQuery = useMemo(() => 
+    companyId && db && activeBoq?.id ? query(collection(db, paths.boqItems(companyId, activeBoq.id))) : null,
+  [db, companyId, activeBoq]);
+  const { data: boqItems } = useCollection<BOQItem>(itemsQuery);
+
   const groupsQuery = useMemo(() => companyId && db ? query(collection(db, paths.workGroups(companyId)), where('isActive', '==', true)) : null, [db, companyId]);
   const deptsQuery = useMemo(() => companyId && db ? query(collection(db, paths.departments(companyId)), orderBy('order')) : null, [db, companyId]);
   const equipQuery = useMemo(() => companyId && db ? query(collection(db, paths.equipment(companyId)), where('isActive', '==', true)) : null, [db, companyId]);
@@ -133,7 +146,7 @@ export default function NewStructuredFieldVisitPage() {
 
   // --- Handlers ---
   const handleAddRow = () => {
-    setGridRows([...gridRows, { stageId: '', quantity: '', notes: '', photoUrls: [], isUploading: false }]);
+    setGridRows([...gridRows, { boqItemId: '', quantity: '', notes: '', photoUrls: [], isUploading: false }]);
   };
 
   const removeRow = (idx: number) => {
@@ -175,7 +188,7 @@ export default function NewStructuredFieldVisitPage() {
     if (!group) return;
     const busyMembers = group.memberIds?.filter(id => busyResourceSets.workerIds.has(id));
     if (busyMembers && busyMembers.length > 0) {
-      toast({ variant: "destructive", title: isRtl ? "تعارض في الطاقم" : "Crew Conflict" });
+      toast({ variant: "destructive", title: isRtl ? "تنبيه: بعض أعضاء الطاقم مسجلون في مواقع أخرى" : "Some crew members are busy on other sites" });
     }
     if (!selectedGroups.find(g => g.id === v)) {
       setSelectedGroups([...selectedGroups, group]);
@@ -187,7 +200,7 @@ export default function NewStructuredFieldVisitPage() {
     if (!emp) return;
     if (activeSelectedMemberIds.has(v)) return;
     if (busyResourceSets.workerIds.has(v)) {
-      toast({ variant: "destructive", title: isRtl ? "تنبيه انشغال" : "Busy Alert" });
+      toast({ variant: "destructive", title: isRtl ? "الموظف مسجل في موقع آخر اليوم" : "Employee is busy elsewhere today" });
     }
     setIndividualLabor([...individualLabor, {
       employeeId: emp.id,
@@ -213,8 +226,8 @@ export default function NewStructuredFieldVisitPage() {
   };
 
   const handleSave = async () => {
-    if (!db || !companyId || !user || !selectedProjectId) return;
-    if (gridRows.some(r => !r.stageId || !r.notes)) {
+    if (!db || !companyId || !user || !selectedProjectId || !activeBoq) return;
+    if (gridRows.some(r => !r.boqItemId || !r.notes)) {
       toast({ variant: "destructive", title: "بيانات ناقصة", description: "يجب اختيار البند وكتابة ملاحظة لكل سطر." });
       return;
     }
@@ -222,30 +235,54 @@ export default function NewStructuredFieldVisitPage() {
     setLoading(true);
     try {
       const project = clientProjects?.find(p => p.id === selectedProjectId);
+      const executionService = new BOQExecutionService(db, companyId);
+      
       const laborDetails = [
         ...selectedGroups.map(g => ({ type: 'group', id: g.id, trade: g.name, count: g.memberCount, employeeId: null })),
         ...individualLabor.map(i => ({ type: 'individual', employeeId: i.employeeId, trade: i.trade, count: 1 }))
       ];
 
-      const itemsForReport = gridRows.map(row => {
-        const stage = projectStages?.find(s => s.id === row.stageId);
-        return {
-          stageInstanceId: row.stageId,
-          technicalStageId: stage?.technicalStageId,
-          itemName: stage?.name,
-          quantity: Number(row.quantity) || 1,
-          notes: row.notes,
-          photoUrls: row.photoUrls
-        };
-      });
-
-      // 1. استخدام المسار الموحد المباشر للمنشأة (التسطيح السيادي)
-      const visitCollPath = paths.fieldVisits(companyId);
-      const visitRef = doc(collection(db, visitCollPath));
+      const visitRef = doc(collection(db, paths.fieldVisits(companyId)));
       const visitId = visitRef.id;
 
-      const visitPayload = {
-        id: visitId, 
+      // 1. تسجيل حركات التنفيذ المستقلة وتحديث كميات المقايسة آلياً
+      const itemsForReport = [];
+      for (const row of gridRows) {
+        const boqItem = boqItems?.find(i => i.id === row.boqItemId);
+        if (!boqItem) continue;
+
+        const stageInstance = projectStages?.find(s => 
+          s.technicalStageId === boqItem.technicalStageId || 
+          boqItem.technicalStageIds?.includes(s.technicalStageId)
+        );
+
+        await executionService.recordBOQItemExecution(
+          activeBoq.id,
+          row.boqItemId,
+          boqItem.technicalStageId || '',
+          Number(row.quantity) || 1,
+          user.uid,
+          globalUser?.fullName || user.displayName || 'Engineer',
+          row.notes,
+          stageInstance?.id || '',
+          false,
+          undefined,
+          { laborDetails, equipmentUsed: equipmentList }
+        );
+
+        itemsForReport.push({
+          boqItemId: row.boqItemId,
+          itemName: boqItem.referenceTitle,
+          quantity: Number(row.quantity) || 1,
+          unit: boqItem.unitSymbol,
+          notes: row.notes,
+          photoUrls: row.photoUrls
+        });
+      }
+
+      // 2. حفظ وثيقة الزيارة المجمعة للسجل
+      await setDoc(visitRef, {
+        id: visitId,
         companyId,
         transactionId: selectedProjectId,
         transactionNumber: project?.transactionNumber,
@@ -261,30 +298,9 @@ export default function NewStructuredFieldVisitPage() {
         createdBy: user.uid,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
-      };
+      });
 
-      await setDoc(visitRef, visitPayload);
-
-      // 2. تسجيل حركات تنفيذ مستقلة للتقارير الفنية
-      for (const item of itemsForReport) {
-        await addDoc(collection(db, paths.executions(companyId)), {
-          ...item,
-          visitId: visitId,
-          companyId,
-          transactionId: selectedProjectId,
-          transactionNumber: project?.transactionNumber,
-          clientId: selectedClientId,
-          clientName: selectedClient?.nameAr,
-          visitDate,
-          laborDetails,
-          equipmentUsed: equipmentList,
-          recordedBy: user.uid,
-          recordedByName: globalUser?.fullName || user.displayName || 'Engineer',
-          createdAt: serverTimestamp()
-        });
-      }
-
-      toast({ title: isRtl ? "تم توثيق الزيارة بنجاح" : "Visit Logged Successfully" });
+      toast({ title: isRtl ? "تم توثيق الزيارة وتحديث المسار الفني" : "Visit Logged & Pipeline Updated" });
       router.push('/dashboard/construction/field-visits');
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
@@ -495,7 +511,7 @@ export default function NewStructuredFieldVisitPage() {
                      <Table>
                         <TableHeader className="bg-slate-50">
                            <TableRow>
-                              <TableHead className="ps-8 text-start w-[220px]">{isRtl ? 'البند / المرحلة' : 'Technical Stage'}</TableHead>
+                              <TableHead className="ps-8 text-start w-[320px]">{isRtl ? 'البند / المرحلة' : 'Work Item'}</TableHead>
                               <TableHead className="text-center w-[120px]">{isRtl ? 'الكمية' : 'Qty'}</TableHead>
                               <TableHead className="text-start">{isRtl ? 'الملاحظة الفنية' : 'Technical Note'}</TableHead>
                               <TableHead className="pe-8 w-[120px] text-center">{isRtl ? 'الإثبات' : 'Evidence'}</TableHead>
@@ -505,10 +521,17 @@ export default function NewStructuredFieldVisitPage() {
                            {gridRows.map((row, idx) => (
                              <TableRow key={idx} className="hover:bg-primary/[0.01] border-b-slate-50 group">
                                 <TableCell className="ps-8 py-6">
-                                   <Select value={row.stageId} onValueChange={v => updateRow(idx, 'stageId', v)}>
+                                   <Select value={row.boqItemId} onValueChange={v => updateRow(idx, 'boqItemId', v)}>
                                       <SelectTrigger className="h-10 border-2 font-bold text-[10px]"><SelectValue placeholder="..." /></SelectTrigger>
                                       <SelectContent className="z-[151]">
-                                         {projectStages?.filter(s => s.status !== 'completed').map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-[11px]">{s.name}</SelectItem>)}
+                                         {boqItems?.filter(i => (i.plannedQuantity || 0) > 0).map(i => (
+                                           <SelectItem key={i.id} value={i.id!} className="font-bold text-[11px] py-3 border-b last:border-0 border-slate-50">
+                                              <div className="flex flex-col text-start">
+                                                <span className="font-black text-slate-800">{i.referenceTitle}</span>
+                                                <span className="text-[8px] text-slate-400 uppercase">#{i.referenceCode}</span>
+                                              </div>
+                                           </SelectItem>
+                                         ))}
                                       </SelectContent>
                                    </Select>
                                 </TableCell>
@@ -554,7 +577,7 @@ export default function NewStructuredFieldVisitPage() {
                <div className="text-start space-y-1">
                   <h4 className="font-black text-sm text-blue-900 uppercase">ميثاق الصحة والامتثال الميداني</h4>
                   <p className="text-[10px] text-blue-800 font-bold leading-relaxed">
-                     يتم فحص تعارض الموارد بشكل لحظي لضمان عدم ازدواجية التكاليف. 
+                     يتم فحص تعارض الموارد بشكل لحظي لضمان عدم ازدواجية التكاليف. تسجيل الإنجاز الكمي يساهم فوراً في تحريك المسار الفني للمشروع وفتح المطالبات المالية.
                   </p>
                </div>
             </div>
