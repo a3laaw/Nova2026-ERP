@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
@@ -24,8 +25,6 @@ import { BOQ, BOQItem, BOQItemExecutionEntry, LaborDetail, EquipmentUsed } from 
 import { Job } from '@/types/reference';
 import { CommentSection } from '@/components/transactions/comment-section';
 import { BOQExecutionService, StageProgressResult } from '@/services/boq-execution-service';
-import { AppointmentService } from '@/services/appointment-service';
-import { TransactionService } from '@/services/transaction-service';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -93,15 +92,11 @@ export default function AppointmentDetailPage() {
   const itemsQuery = useMemo(() => companyId && db && activeBoq?.id ? query(collection(db, paths.boqItems(companyId, activeBoq.id))) : null, [db, companyId, activeBoq]);
   const { data: boqItems } = useCollection<BOQItem>(itemsQuery);
 
-  const execsQuery = useMemo(() => companyId && db && appt?.transactionId ? query(collection(db, paths.executions(companyId)), where('transactionId', '==', appt.transactionId)) : null, [db, companyId, appt?.transactionId]);
-  const { data: allExecutions } = useCollection<BOQItemExecutionEntry>(execsQuery);
-
   const inventoryQuery = useMemo(() => companyId && db ? query(collection(db, paths.equipment(companyId)), where('status', '==', 'available')) : null, [db, companyId]);
   const { data: equipmentItems } = useCollection<any>(inventoryQuery);
 
   useEffect(() => {
      if (isRecordOpen && db && companyId) {
-        // جلب الوظائف مباشرة للحصول على تعرفة الساعة المعتمدة من الهيكل التنظيمي
         getDocs(query(collectionGroup(db, 'jobs'), where('companyId', '==', companyId)))
            .then(snap => setAvailableJobs(snap.docs.map(d => ({ id: d.id, ...d.data() } as Job))))
            .catch(() => setAvailableJobs([]));
@@ -125,7 +120,7 @@ export default function AppointmentDetailPage() {
     }
     fetchAllProgress();
     return () => { active = false; };
-  }, [executionService, stages, appt?.transactionId, allExecutions]);
+  }, [executionService, stages, appt?.transactionId]);
 
   const handleRecordProgress = async () => {
     if (!db || !companyId || !user || !activeBoq || !selectedItemId || !selectedStageId) return;

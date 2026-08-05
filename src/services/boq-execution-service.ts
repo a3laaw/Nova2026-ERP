@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -32,7 +33,7 @@ export class BOQExecutionService {
   ) {}
 
   /**
-   * تسجيل إنجاز ميداني مع حساب التكاليف الفوري بناءً على جداول التعرفة (Phase 2 logic)
+   * تسجيل إنجاز ميداني متكامل مع الموارد والتكاليف (Cost Snapping)
    */
   async recordBOQItemExecution(
     boqId: string,
@@ -64,23 +65,24 @@ export class BOQExecutionService {
        }));
     }
 
-    const executionData: Partial<BOQItemExecutionEntry> = {
+    const executionData: any = {
       id: executionRef.id,
       companyId: this.companyId,
       boqId,
       boqItemId: itemId,
-      transactionId: '', // ستُملأ لاحقاً من البند
+      transactionId: '', // ستُملأ لاحقاً
       appointmentId: appointmentId || null,
       stageInstanceId: stageInstanceId,
       technicalStageId,
-      quantity,
+      quantity: Number(quantity) || 0,
       status: 'executed',
       notes,
       laborDetails: processedLabor,
       equipmentUsed: processedEquip,
       recordedBy: userId,
       recordedByName: userName,
-      createdAt: serverTimestamp()
+      createdAt: serverTimestamp(),
+      isArchived: false
     };
 
     const batch = writeBatch(this.db);
@@ -91,10 +93,13 @@ export class BOQExecutionService {
     const itemData = itemSnap.data() as BOQItem;
 
     executionData.transactionId = itemData.transactionId;
+    executionData.clientId = itemData.clientId || (itemData as any).clientId || ''; // لضمان الظهور في الـ Dossier
+    executionData.unitSymbol = itemData.unitSymbol || '';
+
     batch.set(executionRef, executionData);
     
     batch.update(itemRef, {
-      executedQuantity: increment(quantity),
+      executedQuantity: increment(Number(quantity) || 0),
       updatedAt: serverTimestamp()
     });
 
@@ -107,7 +112,7 @@ export class BOQExecutionService {
         technicalStageId,
         appointmentId: appointmentId || null,
         type: 'numeric_update',
-        content: `تم تسجيل إنجاز ميداني للبنّد (${itemData.referenceTitle}) بكمية: ${quantity} ${itemData.unitSymbol || ''}.`,
+        content: `[إنجاز متكامل] تم تسجيل تنفيذ ${quantity} ${itemData.unitSymbol || ''} مع توثيق الموارد المستخدمة.`,
         userId,
         userName,
         companyId: this.companyId,
@@ -123,7 +128,7 @@ export class BOQExecutionService {
     const execRef = doc(this.db, paths.executions(this.companyId), executionId);
     const snap = await getDoc(execRef);
     if (!snap.exists()) return;
-    const data = snap.data() as BOQItemExecutionEntry;
+    const data = snap.data() as any;
 
     const batch = writeBatch(this.db);
     batch.update(execRef, {

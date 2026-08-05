@@ -37,9 +37,7 @@ export default function FieldVisitDetailsPage() {
 
   const [verifying, setVerifying] = useState(false);
 
-  // جلب بيانات الزيارة باستخدام collectionGroup (لأنها مجموعة فرعية)
-  // ملاحظة: بما أننا نعرف الـ transactionId من الرابط أو التوجيه، يفضل استخدامه مباشرة لسرعة الجلب
-  // هنا سنفترض أننا سنستخدم محرك البحث الذكي للعثور عليها
+  // جلب بيانات الزيارة باستخدام المعرف المباشر من مجموعة التنفيذيات (Executions)
   const visitRef = useMemo(() => 
     companyId && db ? doc(db, 'companies', companyId, 'executions', visitId) : null, 
   [db, companyId, visitId]);
@@ -63,6 +61,9 @@ export default function FieldVisitDetailsPage() {
   if (loading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
   if (!visit) return <div className="p-20 text-center font-black">404 - Log Not Found</div>;
 
+  const totalCost = visit.laborDetails?.reduce((acc: number, l: any) => acc + (l.totalCost || 0), 0) + 
+                    visit.equipmentUsed?.reduce((acc: number, e: any) => acc + (e.totalCost || 0), 0);
+
   return (
     <div className="space-y-8 pb-20 animate-in fade-in duration-700 bg-[#fdfaf3]" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 px-4 pt-4 print:hidden">
@@ -71,7 +72,7 @@ export default function FieldVisitDetailsPage() {
              <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-180")} />
            </Button>
            <div className="text-start">
-              <h1 className="text-3xl font-black font-headline text-slate-900">{isRtl ? 'تفاصيل الإنجاز الميداني' : 'Field Execution Details'}</h1>
+              <h1 className="text-3xl font-black font-headline text-slate-900">{isRtl ? 'تقرير إنجاز ميداني متكامل' : 'Sovereign Field Log'}</h1>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">LOG ID: {visit.id?.slice(-8)}</p>
            </div>
         </div>
@@ -93,7 +94,7 @@ export default function FieldVisitDetailsPage() {
         </div>
       </div>
 
-      <PrintWrapper title={isRtl ? "تقرير إنجاز ميداني معتمد" : "Verified Field Progress Report"} className="mx-4">
+      <PrintWrapper title={isRtl ? "تقرير إنجاز ميداني وتحليل تكاليف" : "Verified Field Progress & WIP Analysis"} className="mx-4">
          <div className="space-y-10 text-start">
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -118,11 +119,11 @@ export default function FieldVisitDetailsPage() {
                         <p className="text-base font-black text-slate-800">{visit.recordedByName}</p>
                      </div>
                   </div>
-                  <div className="p-6 rounded-[2rem] bg-white border-2 border-slate-50 shadow-sm flex items-center gap-5">
-                     <div className="h-12 w-12 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center shadow-sm"><Calendar className="h-6 w-6" /></div>
+                  <div className="p-6 rounded-[2rem] bg-emerald-50/20 border-2 border-emerald-100 shadow-sm flex items-center gap-5">
+                     <div className="h-12 w-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center shadow-sm"><DollarSign className="h-6 w-6" /></div>
                      <div className="text-start">
-                        <p className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'تاريخ التوثيق' : 'Entry Date'}</p>
-                        <p className="text-base font-black text-slate-800">{visit.createdAt?.toDate().toLocaleDateString()}</p>
+                        <p className="text-[9px] font-black text-emerald-600 uppercase">{isRtl ? 'تكلفة الإنتاج المباشرة (WIP)' : 'Direct Production Cost'}</p>
+                        <p className="text-xl font-black text-slate-900">{totalCost?.toLocaleString()} <span className="text-xs">KWD</span></p>
                      </div>
                   </div>
                </div>
@@ -136,8 +137,11 @@ export default function FieldVisitDetailsPage() {
                   <div className="grid grid-cols-1 gap-3">
                      {visit.laborDetails?.map((l: any, i: number) => (
                         <div key={i} className="p-4 rounded-xl bg-slate-50/50 border-2 border-white shadow-inner flex justify-between items-center">
-                           <span className="text-sm font-black text-slate-700">{l.trade}</span>
-                           <Badge className="bg-slate-900 text-white font-black">{l.count}</Badge>
+                           <div className="text-start">
+                              <span className="text-sm font-black text-slate-700">{l.trade}</span>
+                              <p className="text-[9px] font-bold text-slate-400">{l.hours} hrs x {l.count} count</p>
+                           </div>
+                           <Badge className="bg-slate-900 text-white font-black">{l.totalCost?.toLocaleString()} KWD</Badge>
                         </div>
                      ))}
                      {(!visit.laborDetails || visit.laborDetails.length === 0) && (
@@ -153,8 +157,11 @@ export default function FieldVisitDetailsPage() {
                   <div className="grid grid-cols-1 gap-3">
                      {visit.equipmentUsed?.map((e: any, i: number) => (
                         <div key={i} className="p-4 rounded-xl bg-slate-50/50 border-2 border-white shadow-inner flex justify-between items-center">
-                           <span className="text-sm font-black text-slate-700">{e.name}</span>
-                           <Badge variant="outline" className="border-primary/20 text-primary font-black">{e.hoursUsed} hrs</Badge>
+                           <div className="text-start">
+                              <span className="text-sm font-black text-slate-700">{e.name}</span>
+                              <p className="text-[9px] font-bold text-slate-400">{e.hoursUsed} hrs utilization</p>
+                           </div>
+                           <Badge variant="outline" className="border-primary/20 text-primary font-black">{e.totalCost?.toLocaleString()} KWD</Badge>
                         </div>
                      ))}
                      {(!visit.equipmentUsed || visit.equipmentUsed.length === 0) && (
@@ -179,8 +186,8 @@ export default function FieldVisitDetailsPage() {
                   <h5 className="font-black text-sm text-slate-800 uppercase tracking-widest">{isRtl ? 'شهادة مطابقة الميدان والمالية' : 'Field-Finance Certification'}</h5>
                   <p className="text-[10px] text-slate-500 font-bold leading-relaxed italic">
                      {isRtl 
-                       ? 'يتم استخدام هذه البيانات كمرجع أساسي لتوليد المستخلصات الشهرية وحساب تكاليف الإنتاج المباشرة (COGS). أي تعديل في هذه البيانات يتطلب تدقيقاً من مدير المشاريع.' 
-                       : 'This data is the primary reference for monthly IPC generation and COGS calculation. Any modifications require project manager audit.'}
+                       ? 'تم تسجيل هذا الإنجاز مع توزيع الموارد الفعلية (Cost Snapped). يتم استخدام هذه البيانات كمرجع أساسي لتوليد المستخلصات الشهرية وحساب تكاليف الإنتاج المباشرة (COGS).' 
+                       : 'Progress logged with actual resources (Cost Snapped). This data is the primary reference for monthly IPC generation and COGS calculation.'}
                   </p>
                </div>
             </div>
