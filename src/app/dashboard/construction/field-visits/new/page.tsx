@@ -25,7 +25,7 @@ import {
   Construction, Globe, ShieldCheck, UserCircle
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, where, getDocs, orderBy, addDoc, serverTimestamp, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, addDoc, serverTimestamp, doc, setDoc } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
@@ -228,7 +228,6 @@ export default function NewStructuredFieldVisitPage() {
         ...individualLabor.map(i => ({ type: 'individual', employeeId: i.employeeId, trade: i.trade, count: 1 }))
       ];
 
-      // بناء مصفوفة البنود للتقرير الموحد
       const itemsForReport = gridRows.map(row => {
         const stage = projectStages?.find(s => s.id === row.stageId);
         return {
@@ -241,9 +240,13 @@ export default function NewStructuredFieldVisitPage() {
         };
       });
 
-      // 1. حفظ الزيارة في المجموعة الفرعية (لظهورها في السجل)
-      const visitPath = paths.fieldVisits(companyId, selectedProjectId);
+      // 1. إنشاء المعرف السيادي للزيارة
+      const visitColl = collection(db, paths.fieldVisits(companyId, selectedProjectId));
+      const visitRef = doc(visitColl);
+      const visitId = visitRef.id;
+
       const visitPayload = {
+        id: visitId, // تخزين المعرف داخل الوثيقة للبحث لاحقاً
         companyId,
         transactionId: selectedProjectId,
         transactionNumber: project?.transactionNumber,
@@ -261,12 +264,13 @@ export default function NewStructuredFieldVisitPage() {
         updatedAt: serverTimestamp()
       };
 
-      await addDoc(collection(db, visitPath), visitPayload);
+      await setDoc(visitRef, visitPayload);
 
       // 2. تسجيل حركات تنفيذ مستقلة (للتقارير الفنية العميقة)
       for (const item of itemsForReport) {
         await addDoc(collection(db, paths.executions(companyId)), {
           ...item,
+          visitId: visitId, // ربط التنفيذ بالزيارة الأم
           companyId,
           transactionId: selectedProjectId,
           transactionNumber: project?.transactionNumber,
@@ -561,3 +565,4 @@ export default function NewStructuredFieldVisitPage() {
     </div>
   );
 }
+

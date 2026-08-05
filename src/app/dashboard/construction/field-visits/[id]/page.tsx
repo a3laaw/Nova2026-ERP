@@ -12,10 +12,11 @@ import {
   HardHat, Target, Users, 
   Truck, CheckCircle2, ShieldCheck,
   Camera, Info, DollarSign, Printer,
-  LayoutGrid, ExternalLink
+  LayoutGrid, ExternalLink,
+  ShieldAlert
 } from "lucide-react";
-import { useFirestore, useDoc } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { useFirestore, useCollection } from '@/firebase';
+import { collection, query, where, collectionGroup, limit, doc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -26,7 +27,7 @@ import { PrintWrapper } from '@/components/layout/print-wrapper';
 
 /**
  * تقرير إنجاز ميداني متكامل (Official Field Log Report)
- * يعرض تفاصيل التنفيذ والموارد والصور في تخطيط رسمي جاهز للطباعة.
+ * يستخدم تقنية البحث السيادي (CollectionGroup) للعثور على التقرير بـ ID الخاص به.
  */
 export default function FieldVisitDetailsPage() {
   const visitId = useParams().id as string;
@@ -40,18 +41,25 @@ export default function FieldVisitDetailsPage() {
 
   const [verifying, setVerifying] = useState(false);
 
-  const visitRef = useMemo(() => 
-    companyId && db ? doc(db, 'companies', companyId, 'executions', visitId) : null, 
-  [db, companyId, visitId]);
+  // البحث عن الزيارة باستخدام المعرف الفريد عبر كافة المشاريع
+  const visitQuery = useMemo(() => 
+    companyId && db && visitId ? query(
+      collectionGroup(db, 'fieldVisits'),
+      where('companyId', '==', companyId),
+      where('id', '==', visitId),
+      limit(1)
+    ) : null, [db, companyId, visitId]);
   
-  const { data: visit, loading } = useDoc<any>(visitRef);
+  const { data: visits, loading } = useCollection<any>(visitQuery);
+  const visit = visits?.[0];
 
   const handleVerify = async () => {
     if (!db || !companyId || !user || !visit) return;
     setVerifying(true);
     try {
       const service = new BOQExecutionService(db, companyId, permissions);
-      await service.verifyExecutionForBilling(visitId, user.uid, globalUser?.fullName || 'Admin');
+      // استخدام المعرف الفعلي من الوثيقة المجلوبة
+      await service.verifyExecutionForBilling(visit.id, user.uid, globalUser?.fullName || 'Admin');
       toast({ title: isRtl ? "تم اعتماد الإنجاز للاستحقاق" : "Progress Verified" });
     } catch (e) {
       toast({ variant: "destructive", title: t('error') });
@@ -61,7 +69,20 @@ export default function FieldVisitDetailsPage() {
   };
 
   if (loading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
-  if (!visit) return <div className="p-20 text-center font-black">404 - Log Not Found</div>;
+  if (!visit) return (
+    <div className="h-[60vh] flex flex-col items-center justify-center space-y-6 text-center">
+       <div className="h-20 w-20 bg-rose-50 text-rose-500 rounded-3xl flex items-center justify-center shadow-inner">
+          <ShieldAlert className="h-10 w-10" />
+       </div>
+       <div>
+          <h2 className="text-xl font-black text-slate-800">404 - التقرير غير موجود</h2>
+          <p className="text-xs font-bold text-slate-400 mt-1">قد يكون التقرير قد حُذف أو تم نقله لمسار آخر.</p>
+       </div>
+       <Button onClick={() => router.push('/dashboard/construction/field-visits')} variant="outline" className="rounded-xl px-8 h-10 gap-2">
+          <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} /> العودة للسجل
+       </Button>
+    </div>
+  );
 
   return (
     <div className="space-y-8 pb-20 animate-in fade-in duration-700 bg-[#fdfaf3]" dir={dir}>
@@ -126,7 +147,7 @@ export default function FieldVisitDetailsPage() {
                               <td className="ps-8 py-6 font-black text-slate-300">{(i + 1).toString().padStart(2, '0')}</td>
                               <td className="py-6 text-start">
                                  <p className="font-black text-slate-800 text-sm leading-tight">{item.itemName}</p>
-                                 <Badge variant="outline" className="text-[8px] font-black text-slate-400 border-slate-100 mt-1 uppercase">{item.unit}</Badge>
+                                 <Badge variant="outline" className="text-[8px] font-black text-slate-400 border-slate-100 mt-1 uppercase">{item.unit || '---'}</Badge>
                               </td>
                               <td className="py-6 text-center font-black text-2xl text-primary">{item.quantity}</td>
                               <td className="py-6 text-xs font-bold text-slate-600 leading-relaxed italic">
