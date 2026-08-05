@@ -31,7 +31,8 @@ import {
   Construction,
   Wallet,
   Landmark,
-  UserCircle
+  UserCircle,
+  Key
 } from "lucide-react";
 import { Employee } from '@/types/hr';
 import { SmartDateInput } from '@/components/ui/smart-date-input';
@@ -42,11 +43,11 @@ import { useAuthContext } from '@/context/auth-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { Department, Job } from '@/types/reference';
+import { Role } from '@/types/roles';
 import { HRService } from '@/services/hr-service';
 import { cn } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
 
-// مخطط التحقق المطور: الحقول المخفية للعمالة الخارجية اختيارية لتمكين الحفظ
 const employeeSchema = z.object({
   employeeNumber: z.string().min(1, "Required"),
   fullName: z.string().min(3, "Required"),
@@ -60,7 +61,7 @@ const employeeSchema = z.object({
   departmentName: z.string().optional(),
   jobId: z.string().min(1, "Required"),
   jobTitle: z.string().optional(),
-  roleId: z.string().optional(),
+  roleId: z.string().optional().or(z.literal('')),
   roleName: z.string().optional(),
   employeeType: z.enum(['internal', 'external']),
   paymentBasis: z.enum(['monthly', 'daily']),
@@ -97,7 +98,12 @@ export function EmployeeForm({ initialData, onSubmit, loading, readOnly = false 
     companyId && db ? query(collection(db, paths.departments(companyId)), orderBy('name')) : null, 
   [db, companyId]);
   
+  const rolesQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.roles(companyId)), orderBy('order')) : null, 
+  [db, companyId]);
+
   const { data: departments } = useCollection<Department>(deptsQuery);
+  const { data: roles } = useCollection<Role>(rolesQuery);
 
   const form = useForm({
     resolver: zodResolver(employeeSchema),
@@ -129,6 +135,7 @@ export function EmployeeForm({ initialData, onSubmit, loading, readOnly = false 
   const paymentBasis = form.watch('paymentBasis');
   const selectedDeptId = form.watch('departmentId');
   const selectedJobId = form.watch('jobId');
+  const selectedRoleId = form.watch('roleId');
   const paymentMethod = form.watch('paymentMethod');
 
   const jobsQuery = useMemo(() => 
@@ -159,16 +166,27 @@ export function EmployeeForm({ initialData, onSubmit, loading, readOnly = false 
       const job = jobs.find(j => j.id === selectedJobId);
       if (job) {
         form.setValue('jobTitle', isRtl ? job.name : job.nameEn);
-        form.setValue('roleId', job.roleId || '');
-        form.setValue('roleName', job.roleName || '');
+        // استحقاق آلي للدور الأمني من الوظيفة المرجعية
+        if (job.roleId) {
+          form.setValue('roleId', job.roleId);
+          form.setValue('roleName', job.roleName || '');
+        }
       }
     }
   }, [selectedJobId, jobs, isRtl, form]);
 
+  useEffect(() => {
+    if (selectedRoleId && roles) {
+      const role = roles.find(r => r.id === selectedRoleId);
+      if (role) {
+        form.setValue('roleName', isRtl ? role.name : role.nameEn);
+      }
+    }
+  }, [selectedRoleId, roles, isRtl, form]);
+
   const isExternal = employeeType === 'external';
 
   const handleFinalSubmit = (data: any) => {
-    // العمالة الخارجية: توليد بيانات بديلة لتجاوز قيود الـ Schema
     if (isExternal) {
        if (!data.nameEn) data.nameEn = data.fullName;
        if (!data.civilId) data.civilId = "EXT-" + Date.now().toString().slice(-8);
@@ -279,28 +297,53 @@ export function EmployeeForm({ initialData, onSubmit, loading, readOnly = false 
       <Card className="border-0 shadow-lg rounded-[1.5rem] bg-white ring-1 ring-black/5">
         <CardContent className="p-8 space-y-6">
           <div className="flex items-center justify-end gap-3 text-primary mb-4 border-b pb-4">
-             <h3 className="text-xl font-black font-headline">{isRtl ? 'البيانات الوظيفية' : 'Work Context'}</h3>
+             <h3 className="text-xl font-black font-headline">{isRtl ? 'البيانات الوظيفية والصلاحيات' : 'Work Context & Roles'}</h3>
              <Briefcase className="h-6 w-6" />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2 text-start">
-              <Label className="font-black text-xs text-slate-400 uppercase">{isRtl ? 'القسم' : 'Department'}</Label>
+              <Label className="font-black text-xs text-slate-400 uppercase">{isRtl ? 'القسم المسؤول' : 'Department'}</Label>
               <Select disabled={readOnly} value={selectedDeptId} onValueChange={(v) => { form.setValue('departmentId', v); form.setValue('jobId', ''); }}>
                 <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/30"><SelectValue placeholder="..." /></SelectTrigger>
                 <SelectContent className="rounded-xl">{departments?.map(d => <SelectItem key={d.id} value={d.id!} className="font-bold">{isRtl ? d.name : d.nameEn}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="space-y-2 text-start">
-              <Label className="font-black text-xs text-slate-400 uppercase">{isRtl ? 'المسمى الوظيفي' : 'Job Title'}</Label>
+              <Label className="font-black text-xs text-slate-400 uppercase">{isRtl ? 'المسمى الوظيفي (المهنة المرجعية)' : 'Official Job Title'}</Label>
               <Select disabled={readOnly || !selectedDeptId} value={selectedJobId} onValueChange={(v) => form.setValue('jobId', v)}>
                 <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/30"><SelectValue placeholder="..." /></SelectTrigger>
                 <SelectContent className="rounded-xl">{jobs?.map(j => <SelectItem key={j.id} value={j.id!} className="font-bold">{isRtl ? j.name : j.nameEn}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div className="space-y-2 text-start">
-              <Label className="font-black text-xs text-slate-400 uppercase">{isRtl ? 'تاريخ المباشرة' : 'Start Date'}</Label>
-              <SmartDateInput value={form.watch('hireDate')} onChange={(v) => form.setValue('hireDate', v)} />
-            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-50">
+             <div className="space-y-2 text-start">
+                <Label className="font-black text-[10px] text-primary uppercase tracking-widest flex items-center gap-1.5">
+                   <Key className="h-3 w-3" /> {isRtl ? 'الدور الأمني (صلاحيات النظام)' : 'Security Access Role'}
+                </Label>
+                <Select disabled={readOnly || !isAdmin} value={selectedRoleId || 'NONE'} onValueChange={(v) => form.setValue('roleId', v === 'NONE' ? '' : v)}>
+                   <SelectTrigger className="h-12 rounded-xl border-2 font-black bg-slate-50/50 shadow-inner">
+                      <SelectValue placeholder="..." />
+                   </SelectTrigger>
+                   <SelectContent className="rounded-xl border-0 shadow-2xl">
+                      <SelectItem value="NONE" className="font-bold text-xs py-3 border-b text-slate-400 italic">
+                         {isRtl ? '--- لا يوجد وصول للنظام (ميداني فقط) ---' : '--- No System Access (Field only) ---'}
+                      </SelectItem>
+                      {roles?.map(r => (
+                        <SelectItem key={r.id} value={r.id!} className="font-bold py-3 border-b last:border-0">
+                           {isRtl ? r.name : r.nameEn}
+                        </SelectItem>
+                      ))}
+                   </SelectContent>
+                </Select>
+                <p className="text-[9px] text-slate-400 font-bold italic">{isRtl ? '* تعيين دور هنا يسمح للموظف بالدخول للنظام لاحقاً.' : '* Assigning a role enables system login for this employee.'}</p>
+             </div>
+
+             <div className="space-y-2 text-start">
+                <Label className="font-black text-xs text-slate-400 uppercase">{isRtl ? 'تاريخ المباشرة' : 'Start Date'}</Label>
+                <SmartDateInput value={form.watch('hireDate')} onChange={(v) => form.setValue('hireDate', v)} />
+             </div>
           </div>
 
           {!isExternal && (

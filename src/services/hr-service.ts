@@ -75,6 +75,7 @@ export class HRService {
       await handleWriteError(err, { path: empRef.path, operation: 'update', requestResourceData: updates });
     }
 
+    // مزامنة الصلاحيات والبيانات العالمية عند التغيير
     if ((newData.roleId && newData.roleId !== oldData.roleId) || 
         (newData.departmentId && newData.departmentId !== oldData.departmentId) ||
         (newData.fullName && newData.fullName !== oldData.fullName)) {
@@ -117,12 +118,18 @@ export class HRService {
         
         if (roleId) {
           updates.roleId = roleId;
+          // جلب كود الدور لضمان استمرارية القواعد الأمنية السيادية
           const roleSnap = await getDoc(doc(this.db, 'companies', this.companyId, 'roles', roleId));
           if (roleSnap.exists()) {
              const codeUpper = String(roleSnap.data().code).toUpperCase();
              updates.roleCode = codeUpper; 
              updates.role = codeUpper.toLowerCase(); 
           }
+        } else {
+          // في حال إزالة الدور، يتم تحويله لمستخدم عادي بدون صلاحيات إدارية
+          updates.roleId = "";
+          updates.roleCode = "USER";
+          updates.role = "user";
         }
 
         await updateDoc(globalUserRef, updates);
