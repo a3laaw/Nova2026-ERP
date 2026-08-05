@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -7,50 +8,56 @@ import {
   setDoc, 
   serverTimestamp,
   writeBatch,
-  increment
+  increment,
+  getDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { FieldVisit } from '@/types/field-visit';
 import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
+/**
+ * خدمة إدارة الزيارات الميدانية وتقارير الموقع المتقدمة.
+ */
 export class FieldVisitService {
   constructor(private db: Firestore, private companyId: string) {}
 
   /**
-   * إرسال تقرير إنجاز ميداني متكامل مع تحديث المقايسة والتايملاين
+   * إرسال تقرير إنجاز ميداني متكامل (The Sovereign Field Log).
+   * يتم الحفظ في مجموعة executions المركزية لضمان الظهور في كافة الرادارات.
    */
   async submitFieldLog(data: Partial<FieldVisit>, userId: string) {
-    const logRef = doc(collection(this.db, 'companies', this.companyId, 'executions'));
-    const batch = writeBatch(this.db);
+    if (!this.db || !this.companyId) return;
 
+    // استخدام مسار executions المركزي لضمان التوافق مع محرك التقارير
+    const logsCollRef = collection(this.db, 'companies', this.companyId, 'executions');
+    const logRef = doc(logsCollRef);
+    
     const finalData = {
       ...data,
       id: logRef.id,
       companyId: this.companyId,
       status: 'submitted',
+      isVerified: false,
       createdBy: userId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
 
-    // 1. حفظ التقرير الرئيسي
-    batch.set(logRef, finalData);
+    // تنفيذ الكتابة دون await (Pattern 1) لضمان تجربة مستخدم سلسة
+    setDoc(logRef, finalData)
+      .catch((serverError) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: logRef.path,
+          operation: 'create',
+          requestResourceData: finalData
+        } satisfies SecurityRuleContext));
+      });
 
-    // 2. تحديث الكميات المنفذة في بنود المقايسة (تحديث تراكمي)
-    if (data.items && data.items.length > 0 && data.transactionId) {
-       // نحتاج لمعرف المقايسة - نفترض وجوده أو جلبه مسبقاً
-       // للتبسيط، نقوم بتحديث البنود إذا كانت المعرفات مباشرة
-       data.items.forEach(item => {
-          // ملاحظة: التحديث الفعلي للـ BOQItem يتم عبر BOQExecutionService
-          // هنا نوثق الحركة في التايملاين
-       });
-    }
-
-    // 3. توثيق الحدث في تايملاين المشروع
+    // توثيق في تايملاين المشروع بشكل متوازي
     if (data.transactionId) {
       const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, data.transactionId)));
-      batch.set(timelineRef, {
+      const timelineData = {
         transactionId: data.transactionId,
         type: 'numeric_update',
         content: `[تقرير ميداني متكامل] تم توثيق إنجاز ${data.items?.length} بنود عمل بواسطة المهندس ${data.engineerName}.`,
@@ -58,19 +65,12 @@ export class FieldVisitService {
         userName: data.engineerName,
         companyId: this.companyId,
         createdAt: serverTimestamp()
-      });
+      };
+      
+      setDoc(timelineRef, timelineData).catch(() => {});
     }
 
-    try {
-      await batch.commit();
-      return logRef.id;
-    } catch (err: any) {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: logRef.path,
-        operation: 'create',
-        requestResourceData: finalData
-      }));
-      throw err;
-    }
+    return logRef.id;
   }
 }
+
