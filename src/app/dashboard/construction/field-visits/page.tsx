@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -6,18 +5,18 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { 
   HardHat, Plus, Search, Loader2, ArrowRight,
-  Filter, Hammer, Calendar, MapPin, Camera,
+  Filter, Calendar, MapPin, Camera,
   UserCircle, LayoutGrid
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collectionGroup, query, where } from 'firebase/firestore';
+import { collection, query, orderBy, where } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
+import { paths } from '@/firebase/multi-tenant';
 
 export default function FieldVisitsListPage() {
   const { globalUser } = useAuthContext();
@@ -28,28 +27,22 @@ export default function FieldVisitsListPage() {
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
-  // جلب كافة الزيارات الميدانية الموثقة عبر كل المشاريع
+  // استخدام المسار الموحد المباشر للمنشأة (التسطيح السيادي)
   const visitsQuery = useMemo(() => 
     companyId && db ? query(
-      collectionGroup(db, 'fieldVisits'), 
-      where('companyId', '==', companyId)
+      collection(db, paths.fieldVisits(companyId)),
+      orderBy('visitDate', 'desc')
     ) : null, 
   [db, companyId]);
 
   const { data: rawVisits, loading } = useCollection<any>(visitsQuery);
 
-  const visits = useMemo(() => {
-    return [...rawVisits].sort((a, b) => {
-      const dateA = a.visitDate || '';
-      const dateB = b.visitDate || '';
-      return dateB.localeCompare(dateA);
-    });
-  }, [rawVisits]);
-
-  const filtered = visits.filter(v => 
-    v.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    v.engineerName?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filtered = useMemo(() => {
+    return (rawVisits || []).filter(v => 
+      v.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      v.engineerName?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [rawVisits, searchTerm]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500" dir={dir}>

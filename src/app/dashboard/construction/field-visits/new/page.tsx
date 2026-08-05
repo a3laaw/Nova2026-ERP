@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -240,13 +239,13 @@ export default function NewStructuredFieldVisitPage() {
         };
       });
 
-      // 1. إنشاء المعرف السيادي للزيارة
-      const visitColl = collection(db, paths.fieldVisits(companyId, selectedProjectId));
-      const visitRef = doc(visitColl);
+      // 1. استخدام المسار الموحد المباشر للمنشأة (التسطيح السيادي)
+      const visitCollPath = paths.fieldVisits(companyId);
+      const visitRef = doc(collection(db, visitCollPath));
       const visitId = visitRef.id;
 
       const visitPayload = {
-        id: visitId, // تخزين المعرف داخل الوثيقة للبحث لاحقاً
+        id: visitId, 
         companyId,
         transactionId: selectedProjectId,
         transactionNumber: project?.transactionNumber,
@@ -266,11 +265,11 @@ export default function NewStructuredFieldVisitPage() {
 
       await setDoc(visitRef, visitPayload);
 
-      // 2. تسجيل حركات تنفيذ مستقلة (للتقارير الفنية العميقة)
+      // 2. تسجيل حركات تنفيذ مستقلة للتقارير الفنية
       for (const item of itemsForReport) {
         await addDoc(collection(db, paths.executions(companyId)), {
           ...item,
-          visitId: visitId, // ربط التنفيذ بالزيارة الأم
+          visitId: visitId,
           companyId,
           transactionId: selectedProjectId,
           transactionNumber: project?.transactionNumber,
@@ -297,7 +296,6 @@ export default function NewStructuredFieldVisitPage() {
   return (
     <div className="space-y-8 max-w-6xl mx-auto pb-20 animate-in fade-in duration-500 text-start" dir={dir}>
       
-      {/* Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b-4 border-primary/20 pb-8">
         <div className="text-start">
            <h1 className="text-3xl font-black font-headline text-slate-900">{isRtl ? 'توثيق الموارد والإنجاز الميداني' : 'Resource & Progress Log'}</h1>
@@ -565,4 +563,3 @@ export default function NewStructuredFieldVisitPage() {
     </div>
   );
 }
-

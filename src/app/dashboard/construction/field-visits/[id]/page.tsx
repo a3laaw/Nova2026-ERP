@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -15,8 +14,8 @@ import {
   LayoutGrid, ExternalLink,
   ShieldAlert
 } from "lucide-react";
-import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, where, collectionGroup, limit, doc, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { useFirestore, useDoc } from '@/firebase';
+import { doc } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -24,10 +23,10 @@ import { BOQExecutionService } from '@/services/boq-execution-service';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
+import { paths } from '@/firebase/multi-tenant';
 
 /**
  * تقرير إنجاز ميداني متكامل (Official Field Log Report)
- * يستخدم تقنية البحث السيادي (CollectionGroup) للعثور على التقرير بـ ID الخاص به.
  */
 export default function FieldVisitDetailsPage() {
   const visitId = useParams().id as string;
@@ -41,24 +40,17 @@ export default function FieldVisitDetailsPage() {
 
   const [verifying, setVerifying] = useState(false);
 
-  // البحث عن الزيارة باستخدام المعرف الفريد عبر كافة المشاريع
-  const visitQuery = useMemo(() => 
-    companyId && db && visitId ? query(
-      collectionGroup(db, 'fieldVisits'),
-      where('companyId', '==', companyId),
-      where('id', '==', visitId),
-      limit(1)
-    ) : null, [db, companyId, visitId]);
+  // الوصول المباشر للوثيقة باستخدام المسار المسطح الجديد (الأكثر استقراراً)
+  const visitRef = useMemo(() => 
+    companyId && db && visitId ? doc(db, paths.fieldVisits(companyId), visitId) : null, [db, companyId, visitId]);
   
-  const { data: visits, loading } = useCollection<any>(visitQuery);
-  const visit = visits?.[0];
+  const { data: visit, loading } = useDoc<any>(visitRef);
 
   const handleVerify = async () => {
     if (!db || !companyId || !user || !visit) return;
     setVerifying(true);
     try {
       const service = new BOQExecutionService(db, companyId, permissions);
-      // استخدام المعرف الفعلي من الوثيقة المجلوبة
       await service.verifyExecutionForBilling(visit.id, user.uid, globalUser?.fullName || 'Admin');
       toast({ title: isRtl ? "تم اعتماد الإنجاز للاستحقاق" : "Progress Verified" });
     } catch (e) {
@@ -71,7 +63,7 @@ export default function FieldVisitDetailsPage() {
   if (loading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
   if (!visit) return (
     <div className="h-[60vh] flex flex-col items-center justify-center space-y-6 text-center">
-       <div className="h-20 w-20 bg-rose-50 text-rose-500 rounded-3xl flex items-center justify-center shadow-inner">
+       <div className="h-20 w-20 bg-rose-50 text-rose-500 rounded-3xl flex items-center justify-center mx-auto shadow-inner">
           <ShieldAlert className="h-10 w-10" />
        </div>
        <div>
@@ -209,4 +201,3 @@ export default function FieldVisitDetailsPage() {
     </div>
   );
 }
-
