@@ -1,36 +1,51 @@
 import { BaseReference } from './reference';
 import { LaborDetail, EquipmentUsed } from './documents';
 
-export type FieldVisitStatus = 'draft' | 'submitted' | 'approved';
+export type FieldVisitStatus = 'draft' | 'submitted' | 'approved' | 'verified';
+
+export interface WorkItemLog {
+  boqItemId: string;
+  itemName: string;
+  quantity: number;
+  unit: string;
+  notes: string;
+  photoUrls: string[];
+}
 
 export interface FieldVisit extends BaseReference {
   id: string;
   companyId: string;
-  projectId: string; // Transaction ID
-  transactionId?: string;
-  boqItemId?: string;
-  boqItemName?: string;
-  technicalStageId?: string;
-  engineerId?: string;
-  engineerName?: string;
+  transactionId: string;
+  transactionNumber: string;
+  clientId: string;
+  clientName: string;
+  engineerId: string;
+  engineerName: string;
   visitDate: string; // YYYY-MM-DD
+  
+  // الموقع الموثق
+  locationUrl?: string;
   gpsLocation?: {
     lat: number;
     lng: number;
-    accuracy?: number;
   } | null;
-  progressPercentage?: number;
+
+  // الإنجاز التفصيلي (الجدول)
+  items: WorkItemLog[];
   
-  // تحديث لدعم تفاصيل الموارد
-  workersCount?: number;
-  laborDetails?: LaborDetail[];
-  equipmentUsed?: EquipmentUsed[];
+  // الموارد المستخدمة
+  laborSelectionMode: 'group' | 'individual';
+  workGroupId?: string;
+  workGroupName?: string;
+  laborDetails: LaborDetail[];
   
-  completedWork?: string;
-  issues?: string;
-  photoUrls?: string[];
+  equipmentUsed: EquipmentUsed[];
+  
+  overallProgress?: number;
+  generalNotes?: string;
   status: FieldVisitStatus;
-  createdBy?: string;
-  createdAt?: any;
-  updatedAt?: any;
+  
+  createdBy: string;
+  createdAt: any;
+  updatedAt: any;
 }

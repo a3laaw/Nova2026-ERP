@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
@@ -11,7 +10,7 @@ import {
   Hammer, Check, Save,
   Target, X, RotateCcw, Lock, Info, Play,
   Users, Truck, Plus, Trash2, Link as LinkIcon,
-  ShieldAlert, ShieldX, Sparkles, DollarSign, Building2, Briefcase, Clock
+  ShieldAlert, ShieldX, Sparkles, DollarSign, Building2, Briefcase, Clock, Camera, LayoutGrid
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, where, orderBy, limit, updateDoc, serverTimestamp, getDocs, collectionGroup } from 'firebase/firestore';
@@ -38,6 +37,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export default function AppointmentDetailPage() {
   const apptId = useParams().id as string;
@@ -52,15 +52,11 @@ export default function AppointmentDetailPage() {
   const currentUserName = useMemo(() => globalUser?.fullName || user?.displayName || globalUser?.username || 'Engineer', [globalUser, user]);
 
   const [selectedStageId, setSelectedStageId] = useState("");
-  const [selectedItemId, setSelectedItemId] = useState("");
-  const [progressQty, setProgressQty] = useState<number | "">(""); 
-  const [progressNotes, setProgressNotes] = useState("");
-  
+  const [loggedItems, setLoggedItems] = useState<any[]>([]);
   const [laborDetails, setLaborDetails] = useState<any[]>([{ trade: '', count: 1, hours: 8, hourlyCostRef: 0 }]);
   const [equipmentUsed, setEquipmentUsed] = useState<any[]>([]);
 
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
-  const [stageProgressMap, setStageProgressMap] = useState<Record<string, StageProgressResult>>({});
   const [isRecordOpen, setIsRecordOpen] = useState(false);
   const [availableJobs, setAvailableJobs] = useState<Job[]>([]);
 
@@ -71,19 +67,7 @@ export default function AppointmentDetailPage() {
   const { data: transaction } = useDoc<Transaction>(transRef);
 
   const stagesQuery = useMemo(() => companyId && db && appt?.transactionId ? query(collection(db, paths.transactionStages(companyId, appt.transactionId)), orderBy('order')) : null, [db, companyId, appt?.transactionId]);
-  const { data: rawStages } = useCollection<StageInstance>(stagesQuery);
-
-  const { stages, isEligible } = useMemo(() => {
-    const allStages = (rawStages || []).sort((a, b) => (a.order || 0) - (b.order || 0));
-    const apptDeptId = appt?.departmentId;
-    if (!apptDeptId) return { stages: allStages, isEligible: true };
-    const filteredStages = allStages.filter(s => s.allowedDepartmentIds?.includes(apptDeptId));
-    if (filteredStages.length === 0) return { stages: [], isEligible: false };
-    const firstDeptStageOrder = filteredStages[0].order;
-    const previousStages = allStages.filter(s => s.order < firstDeptStageOrder);
-    const incompleteBlocker = previousStages.find(s => s.status !== 'completed');
-    return { stages: filteredStages, isEligible: !incompleteBlocker };
-  }, [rawStages, appt?.departmentId]);
+  const { data: stages } = useCollection<StageInstance>(stagesQuery);
 
   const boqQuery = useMemo(() => companyId && db && appt?.transactionId ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', appt.transactionId), limit(1)) : null, [db, companyId, appt?.transactionId]);
   const { data: boqs } = useCollection<BOQ>(boqQuery);
@@ -103,56 +87,52 @@ export default function AppointmentDetailPage() {
      }
   }, [isRecordOpen, db, companyId]);
 
-  const executionService = useMemo(() => (db && companyId) ? new BOQExecutionService(db, companyId, permissions) : null, [db, companyId, permissions]);
-
+  // تحديث البنود المتاحة للتسجيل عند اختيار المرحلة
   useEffect(() => {
-    let active = true;
-    async function fetchAllProgress() {
-      if (!executionService || !stages || stages.length === 0 || !appt?.transactionId) return;
-      const results: Record<string, StageProgressResult> = {};
-      const promises = stages.map(async (s) => {
-        const res = await executionService.getTechnicalStageProgress(appt.transactionId!, s.technicalStageId);
-        return { id: s.technicalStageId, res };
-      });
-      const resolved = await Promise.all(promises);
-      resolved.forEach(item => { results[item.id] = item.res; });
-      if (active) setStageProgressMap(results);
-    }
-    fetchAllProgress();
-    return () => { active = false; };
-  }, [executionService, stages, appt?.transactionId]);
+     if (selectedStageId && boqItems) {
+        const stage = stages?.find(s => s.id === selectedStageId);
+        if (stage) {
+           const filtered = boqItems.filter(i => (i.technicalStageIds?.includes(stage.technicalStageId) || i.technicalStageId === stage.technicalStageId));
+           setLoggedItems(filtered.map(i => ({ 
+             boqItemId: i.id, 
+             itemName: i.referenceTitle, 
+             quantity: 0, 
+             unit: i.unitSymbol || 'unit', 
+             notes: '',
+             technicalStageId: stage.technicalStageId
+           })));
+        }
+     }
+  }, [selectedStageId, boqItems, stages]);
 
   const handleRecordProgress = async () => {
-    if (!db || !companyId || !user || !activeBoq || !selectedItemId || !selectedStageId) return;
+    if (!db || !companyId || !user || !activeBoq || loggedItems.length === 0) return;
     setLoadingAction('recording');
     try {
       const service = new BOQExecutionService(db, companyId, permissions);
       const stage = stages?.find(s => s.id === selectedStageId);
       if (!stage) throw new Error("Stage not found");
 
-      await service.recordBOQItemExecution(
-        activeBoq.id, selectedItemId, stage.technicalStageId, Number(progressQty) || 0, 
-        user.uid, currentUserName, progressNotes, 
-        selectedStageId, false, apptId, 
-        { laborDetails, equipmentUsed }
-      );
+      // تسجيل كل بند كعملية تنفيذ منفصلة مربوطة بنفس الموعد
+      for (const item of loggedItems) {
+         if (item.quantity > 0) {
+            await service.recordBOQItemExecution(
+               activeBoq.id, item.boqItemId, stage.technicalStageId, item.quantity, 
+               user.uid, currentUserName, item.notes, 
+               selectedStageId, false, apptId, 
+               { laborDetails, equipmentUsed }
+            );
+         }
+      }
       
-      toast({ title: isRtl ? "تم تسجيل الإنجاز والتكاليف" : "Progress & Costs Logged" });
+      toast({ title: isRtl ? "تم تسجيل الإنجاز المتكامل" : "Progress & Resources Logged" });
       setIsRecordOpen(false);
-      setLaborDetails([{ trade: '', count: 1, hours: 8, hourlyCostRef: 0 }]);
-      setEquipmentUsed([]);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
       setLoadingAction(null);
     }
   };
-
-  const totalEstimatedCost = useMemo(() => {
-    const labor = laborDetails.reduce((acc, l) => acc + (l.count * l.hours * l.hourlyCostRef), 0);
-    const equip = equipmentUsed.reduce((acc, e) => acc + (e.hoursUsed * e.hourlyRateRef), 0);
-    return labor + equip;
-  }, [laborDetails, equipmentUsed]);
 
   if (apptLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
   if (!appt) return <div className="p-20 text-center font-black">404 - Not Found</div>;
@@ -166,26 +146,26 @@ export default function AppointmentDetailPage() {
            </button>
            <div className="text-start">
              <h1 className="text-3xl font-black font-headline text-slate-900">{appt.title}</h1>
-             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{appt.clientName} | {transaction?.transactionNumber || 'External'}</p>
+             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{appt.clientName} | Project: {transaction?.transactionNumber || '---'}</p>
            </div>
         </div>
         {appt.status !== 'completed' && (
            <Button onClick={() => setIsRecordOpen(true)} className="h-14 px-10 rounded-2xl bg-primary text-white font-black text-lg shadow-xl gap-3 border-b-8 border-orange-700">
-               <Hammer className="h-6 w-6" /> {isRtl ? 'تسجيل إنجاز فني ومالي' : 'Log Field Progress'}
+               <Hammer className="h-6 w-6" /> {isRtl ? 'تسجيل إنجاز فني وموارد' : 'Log Daily Progress'}
            </Button>
         )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-7">
+        <div className="lg:col-span-7 space-y-6">
            <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden">
               <CardHeader className="bg-slate-50 p-8 border-b text-start">
                  <CardTitle className="text-xl font-black flex items-center gap-3">
-                    <Target className="h-6 w-6 text-primary" /> {isRtl ? 'رادار التنفيذ والمراحل' : 'Technical Radar'}
+                    <Target className="h-6 w-6 text-primary" /> {isRtl ? 'مراحل التنفيذ المباشرة' : 'Active Execution Pipeline'}
                  </CardTitle>
               </CardHeader>
               <CardContent className="p-8 space-y-4">
-                 {stages.map((stage, idx) => (
+                 {stages?.map((stage, idx) => (
                     <div key={stage.id} onClick={() => setSelectedStageId(stage.id!)} className={cn("p-5 rounded-3xl border-2 cursor-pointer transition-all", selectedStageId === stage.id ? "bg-primary/5 border-primary shadow-lg" : "bg-white border-slate-100")}>
                        <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4 text-start">
@@ -205,119 +185,67 @@ export default function AppointmentDetailPage() {
       </div>
 
       <Dialog open={isRecordOpen} onOpenChange={setIsRecordOpen}>
-         <DialogContent className="max-w-3xl rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
+         <DialogContent className="max-w-5xl rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
             <div className="bg-slate-900 p-8 text-white text-start flex justify-between items-center">
                <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 bg-primary rounded-2xl flex items-center justify-center text-white"><Hammer className="h-6 w-6" /></div>
-                  <DialogTitle className="text-2xl font-black">توثيق الإنجاز والتكاليف الميدانية</DialogTitle>
-               </div>
-               <div className="text-end">
-                  <p className="text-[9px] font-black text-primary uppercase">Estimated WIP Cost</p>
-                  <h3 className="text-3xl font-black text-emerald-400 font-mono">{totalEstimatedCost.toLocaleString()} <span className="text-xs">KWD</span></h3>
+                  <div className="h-12 w-12 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg"><LayoutGrid className="h-6 w-6" /></div>
+                  <DialogTitle className="text-2xl font-black">توثيق الإنجاز اليومي المتكامل</DialogTitle>
                </div>
             </div>
 
             <div className="p-8 space-y-8 max-h-[70vh] overflow-y-auto scrollbar-hide text-start bg-white">
-               <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                     <Label className="text-[10px] font-black uppercase text-slate-400">Target Stage</Label>
-                     <Select value={selectedStageId} onValueChange={setSelectedStageId}>
-                        <SelectTrigger className="h-11 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                        <SelectContent className="z-[150]">{stages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold">{s.name}</SelectItem>)}</SelectContent>
-                     </Select>
-                  </div>
-                  <div className="space-y-2">
-                     <Label className="text-[10px] font-black uppercase text-slate-400">BOQ Item</Label>
-                     <Select value={selectedItemId} onValueChange={setSelectedItemId}>
-                        <SelectTrigger className="h-11 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                        <SelectContent className="z-[150]">{boqItems?.map(i => <SelectItem key={i.id} value={i.id!} className="font-bold text-xs">{i.referenceTitle}</SelectItem>)}</SelectContent>
-                     </Select>
-                  </div>
+               <div className="space-y-4">
+                  <Label className="text-[10px] font-black uppercase text-slate-400">Target Stage</Label>
+                  <Select value={selectedStageId} onValueChange={setSelectedStageId}>
+                     <SelectTrigger className="h-11 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
+                     <SelectContent className="z-[150]">{stages?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold">{s.name}</SelectItem>)}</SelectContent>
+                  </Select>
                </div>
 
-               <div className="p-6 bg-primary/5 rounded-[2rem] border-2 border-primary/10">
-                  <Label className="text-[10px] font-black text-primary uppercase tracking-widest block mb-2">Quantity Executed Today</Label>
-                  <Input type="number" value={progressQty} onChange={e => setProgressQty(e.target.value === '' ? '' : Number(e.target.value))} className="h-16 rounded-2xl border-0 bg-white text-4xl font-black text-center shadow-inner" />
-               </div>
-
-               <div className="space-y-6">
-                  <div className="flex justify-between items-center border-b pb-2">
-                     <Label className="font-black text-sm text-slate-800">العمالة الميدانية (حسب المسميات المعتمدة)</Label>
-                     <Button variant="ghost" size="sm" onClick={() => setLaborDetails([...laborDetails, { trade: '', count: 1, hours: 8, hourlyCostRef: 0 }])} className="h-8 text-[10px] font-black"><Plus className="h-3 w-3" /> Add Trade</Button>
+               {selectedStageId && (
+                  <div className="space-y-4 animate-in fade-in">
+                     <h4 className="font-black text-sm text-primary flex items-center gap-2 border-b pb-2"><Hammer className="h-4 w-4" /> {isRtl ? 'كميات الإنجاز (BOQ)' : 'BOQ Progress Grid'}</h4>
+                     <Table>
+                        <TableHeader>
+                           <TableRow className="bg-slate-50">
+                              <TableHead className="text-start">{isRtl ? 'البند' : 'Item'}</TableHead>
+                              <TableHead className="text-center w-[120px]">{isRtl ? 'الكمية' : 'Qty'}</TableHead>
+                              <TableHead className="text-start">{isRtl ? 'ملاحظة فنية' : 'Note'}</TableHead>
+                           </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                           {loggedItems.map((item, idx) => (
+                             <TableRow key={idx}>
+                                <TableCell className="text-start"><p className="font-bold text-xs">{item.itemName}</p><Badge variant="secondary" className="text-[7px] font-black uppercase h-4">{item.unit}</Badge></TableCell>
+                                <TableCell><Input type="number" step="0.01" value={item.quantity === 0 ? '' : item.quantity} onChange={e => { const ni = [...loggedItems]; ni[idx].quantity = Number(e.target.value); setLoggedItems(ni); }} className="h-9 border-2 font-black text-center" /></TableCell>
+                                <TableCell><Input value={item.notes} onChange={e => { const ni = [...loggedItems]; ni[idx].notes = e.target.value; setLoggedItems(ni); }} className="h-9 border-2 text-xs" /></TableCell>
+                             </TableRow>
+                           ))}
+                        </TableBody>
+                     </Table>
                   </div>
-                  {laborDetails.map((l, i) => (
-                    <div key={i} className="grid grid-cols-12 gap-3 items-end bg-slate-50 p-4 rounded-2xl border-2 border-white shadow-sm">
-                       <div className="col-span-5 space-y-1">
-                          <Label className="text-[9px] font-bold text-slate-400 uppercase">Official Job Title</Label>
-                          <Select value={l.trade} onValueChange={v => {
-                             const job = availableJobs.find(j => (isRtl ? j.name : j.nameEn) === v || j.name === v);
-                             const rate = job?.hourlyCost || 0;
-                             const nl = [...laborDetails]; nl[i].trade = v; nl[i].hourlyCostRef = rate; setLaborDetails(nl);
-                          }}>
-                             <SelectTrigger className="h-10 rounded-xl bg-white border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                             <SelectContent className="z-[151]">{availableJobs.map(j => <SelectItem key={j.id} value={isRtl ? j.name : (j.nameEn || j.name)} className="font-bold">{isRtl ? j.name : (j.nameEn || j.name)}</SelectItem>)}</SelectContent>
-                          </Select>
-                       </div>
-                       <div className="col-span-2 space-y-1">
-                          <Label className="text-[9px] font-bold text-slate-400 uppercase">Count</Label>
-                          <Input type="number" value={l.count} onChange={e => { const nl = [...laborDetails]; nl[i].count = Number(e.target.value); setLaborDetails(nl); }} className="h-10 rounded-xl bg-white text-center font-black" />
-                       </div>
-                       <div className="col-span-2 space-y-1">
-                          <Label className="text-[9px] font-bold text-slate-400 uppercase">Hrs</Label>
-                          <Input type="number" value={l.hours} onChange={e => { const nl = [...laborDetails]; nl[i].hours = Number(e.target.value); setLaborDetails(nl); }} className="h-10 rounded-xl bg-white text-center font-black" />
-                       </div>
-                       <div className="col-span-2 text-end">
-                          <p className="text-[9px] font-black text-emerald-600">{(l.count * l.hours * l.hourlyCostRef).toLocaleString()} KWD</p>
-                       </div>
-                       <div className="col-span-1 flex justify-end">
-                          <Button variant="ghost" size="icon" onClick={() => setLaborDetails(laborDetails.filter((_, idx) => idx !== i))} className="h-8 w-8 text-rose-300"><Trash2 className="h-4 w-4" /></Button>
-                       </div>
-                    </div>
-                  ))}
-               </div>
+               )}
 
-               <div className="space-y-6">
-                  <div className="flex justify-between items-center border-b pb-2">
-                     <Label className="font-black text-sm text-slate-800">المعدات والآليات</Label>
-                     <Button variant="ghost" size="sm" onClick={() => setEquipmentUsed([...equipmentUsed, { equipmentId: '', name: '', hoursUsed: 4, hourlyRateRef: 0 }])} className="h-8 text-[10px] font-black"><Plus className="h-3 w-3" /> Add Gear</Button>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-10 pt-6 border-t">
+                  <div className="space-y-6">
+                     <div className="flex justify-between items-center"><Label className="font-black text-sm text-slate-800">العمالة الميدانية</Label><Button variant="ghost" size="sm" onClick={() => setLaborDetails([...laborDetails, { trade: '', count: 1, hours: 8, hourlyCostRef: 0 }])} className="h-7 text-[10px] font-black"><Plus className="h-3 w-3" /> Add Trade</Button></div>
+                     {laborDetails.map((l, i) => (
+                       <div key={i} className="flex gap-2 items-end"><Select onValueChange={v => { const j = availableJobs.find(x => x.name === v); const nl = [...laborDetails]; nl[i].trade = v; nl[i].hourlyCostRef = j?.hourlyCost || 0; setLaborDetails(nl); }}><SelectTrigger className="h-9 rounded-lg border-2 text-xs"><SelectValue /></SelectTrigger><SelectContent>{availableJobs.map(j => <SelectItem key={j.id} value={j.name}>{j.name}</SelectItem>)}</SelectContent></Select><Input type="number" value={l.count} onChange={e => { const nl = [...laborDetails]; nl[i].count = Number(e.target.value); setLaborDetails(nl); }} className="h-9 w-16 text-center font-black" /></div>
+                     ))}
                   </div>
-                  {equipmentUsed.map((e, i) => (
-                    <div key={i} className="grid grid-cols-12 gap-3 items-end bg-slate-50 p-4 rounded-2xl border-2 border-white shadow-sm">
-                       <div className="col-span-6 space-y-1">
-                          <Label className="text-[9px] font-bold text-slate-400 uppercase">Equipment</Label>
-                          <Select value={e.equipmentId} onValueChange={v => {
-                             const item = equipmentItems?.find((x:any) => x.id === v);
-                             const rate = item?.ownershipType === 'owned' ? item.hourlyDepreciationRate : item.hourlyRentalRate;
-                             const ne = [...equipmentUsed]; ne[i].equipmentId = v; ne[i].name = item?.name || ''; ne[i].hourlyRateRef = rate || 0; setEquipmentUsed(ne);
-                          }}>
-                             <SelectTrigger className="h-10 rounded-xl bg-white border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                             <SelectContent className="z-[151]">{equipmentItems?.map((x:any) => <SelectItem key={x.id} value={x.id!} className="font-bold">{x.name} ({x.code})</SelectItem>)}</SelectContent>
-                          </Select>
-                       </div>
-                       <div className="col-span-2 space-y-1">
-                          <Label className="text-[9px] font-bold text-slate-400 uppercase">Hrs</Label>
-                          <Input type="number" value={e.hoursUsed} onChange={val => { const ne = [...equipmentUsed]; ne[i].hoursUsed = Number(val.target.value); setEquipmentUsed(ne); }} className="h-10 rounded-xl bg-white text-center font-black" />
-                       </div>
-                       <div className="col-span-3 text-end">
-                          <p className="text-[9px] font-black text-blue-600">{(e.hoursUsed * e.hourlyRateRef).toLocaleString()} KWD</p>
-                       </div>
-                       <div className="col-span-1 flex justify-end">
-                          <Button variant="ghost" size="icon" onClick={() => setEquipmentUsed(equipmentUsed.filter((_, idx) => idx !== i))} className="h-8 w-8 text-rose-300"><Trash2 className="h-4 w-4" /></Button>
-                       </div>
-                    </div>
-                  ))}
-               </div>
-
-               <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-400">Internal Field Notes</Label>
-                  <Textarea value={progressNotes} onChange={e => setProgressNotes(e.target.value)} className="min-h-[100px] rounded-2xl border-2" />
+                  <div className="space-y-6">
+                     <div className="flex justify-between items-center"><Label className="font-black text-sm text-slate-800">المعدات</Label><Button variant="ghost" size="sm" onClick={() => setEquipmentUsed([...equipmentUsed, { equipmentId: '', hoursUsed: 4 }])} className="h-7 text-[10px] font-black"><Plus className="h-3 w-3" /> Add Gear</Button></div>
+                     {equipmentUsed.map((e, i) => (
+                        <div key={i} className="flex gap-2 items-center"><Select onValueChange={v => { const ne = [...equipmentUsed]; ne[i].equipmentId = v; setEquipmentUsed(ne); }}><SelectTrigger className="h-9 rounded-lg border-2 text-xs"><SelectValue /></SelectTrigger><SelectContent>{equipmentItems?.map((x:any) => <SelectItem key={x.id} value={x.id!}>{x.name}</SelectItem>)}</SelectContent></Select><Input type="number" value={e.hoursUsed} onChange={v => { const ne = [...equipmentUsed]; ne[i].hoursUsed = Number(v.target.value); setEquipmentUsed(ne); }} className="h-9 w-16 text-center font-black" /><Trash2 className="h-4 w-4 text-rose-300" onClick={() => setEquipmentUsed(equipmentUsed.filter((_, idx) => idx !== i))} /></div>
+                     ))}
+                  </div>
                </div>
             </div>
 
-            <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4 shrink-0">
+            <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4 shrink-0 shadow-lg">
                <Button variant="outline" onClick={() => setIsRecordOpen(false)} className="flex-1 h-14 rounded-2xl font-bold border-2 bg-white">إلغاء</Button>
-               <Button onClick={handleRecordProgress} disabled={loadingAction === 'recording' || !selectedItemId} className="flex-[2] h-14 rounded-2xl bg-primary text-white font-black text-xl shadow-xl gap-3">
-                  {loadingAction === 'recording' ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />} الاعتماد والحفظ
+               <Button onClick={handleRecordProgress} disabled={loadingAction === 'recording' || !selectedStageId} className="flex-[2] h-14 rounded-2xl bg-primary text-white font-black text-xl shadow-xl gap-3 border-b-8 border-orange-700">
+                  {loadingAction === 'recording' ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />} الاعتماد والحفظ الميداني
                </Button>
             </DialogFooter>
          </DialogContent>
