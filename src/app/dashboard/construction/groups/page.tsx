@@ -159,7 +159,7 @@ export default function WorkGroupsPage() {
                          <SelectTrigger className="h-11 border-2 font-black rounded-xl bg-slate-50/50 shadow-inner">
                             <SelectValue placeholder={isRtl ? "اختر القسم أولاً..." : "Select Department..."} />
                          </SelectTrigger>
-                         <SelectContent className="rounded-xl border-0 shadow-2xl z-[150]">
+                         <SelectContent className="rounded-xl border-0 shadow-2xl z-[200]">
                             {departments?.map(d => <SelectItem key={d.id} value={d.id!} className="font-bold">{isRtl ? d.name : d.nameEn}</SelectItem>)}
                          </SelectContent>
                       </Select>
@@ -170,7 +170,7 @@ export default function WorkGroupsPage() {
                    <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'المشرف المسؤول (من داخل القسم)' : 'Department Supervisor'}</Label>
                    <Select value={form.supervisorId} onValueChange={v => setForm({...form, supervisorId: v})}>
                       <SelectTrigger className="h-12 border-2 font-black rounded-xl"><SelectValue placeholder="..." /></SelectTrigger>
-                      <SelectContent className="rounded-xl border-0 shadow-2xl z-[150]">
+                      <SelectContent className="rounded-xl border-0 shadow-2xl z-[200]">
                          {supervisors.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold py-3">{s.fullName}</SelectItem>)}
                          {supervisors.length === 0 && <div className="p-4 text-center text-[10px] font-bold text-slate-400">لا يوجد مهندسين أو مراقبين في هذا القسم.</div>}
                       </SelectContent>
