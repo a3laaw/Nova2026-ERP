@@ -20,7 +20,7 @@ import {
   Building2, Briefcase, ExternalLink,
   Info, Image as ImageIcon, X,
   Activity, AlertTriangle, UserMinus,
-  Construction, Globe
+  Construction, Globe, ShieldCheck, UserCircle
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, where, getDocs, orderBy, addDoc, serverTimestamp, doc } from 'firebase/firestore';
@@ -30,8 +30,8 @@ import { paths } from '@/firebase/multi-tenant';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { Switch } from "@/components/ui/switch";
 import { Employee, WorkGroup } from '@/types/hr';
 import { Transaction, StageInstance } from '@/types/transaction';
 import { Equipment } from '@/types/equipment';
@@ -92,7 +92,7 @@ export default function NewStructuredFieldVisitPage() {
   // General lookups
   const activitiesQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.activityTypes(companyId))) : null, [db, companyId]);
-  const { data: activityTypes } = useCollection<any>(activitiesQuery);
+  const { data: activityTypes } = useCollection<any>(activityTypesQuery);
   const constructionActivityId = useMemo(() => 
     activityTypes?.find(a => a.code === 'CONSTRUCTION' || a.name.includes('مقاولات'))?.id, [activityTypes]);
 
@@ -221,7 +221,7 @@ export default function NewStructuredFieldVisitPage() {
       employeeName: emp.fullName,
       trade: emp.jobTitle,
       hours: 8,
-      hourlyCostRef: 0 // Will be linked to RateCard
+      hourlyCostRef: 0 
     }]);
   };
 
@@ -468,7 +468,7 @@ export default function NewStructuredFieldVisitPage() {
                               <Trash2 className="h-4 w-4 text-rose-300 cursor-pointer" onClick={() => setEquipmentList(equipmentList.filter((_, idx) => idx !== i))} />
                            </div>
                            <div className="flex items-center justify-between gap-4">
-                              <div className="flex items-center gap-2 flex-1">
+                              <div className="flex items-center gap-2 flex-1 text-start">
                                  <Label className="text-[8px] font-black uppercase text-slate-400">Hours</Label>
                                  <Input type="number" value={e.hoursUsed} onChange={v => { const nl = [...equipmentList]; nl[i].hoursUsed = Number(v.target.value); setEquipmentList(nl); }} className="h-7 text-center font-black text-[10px]" />
                               </div>
