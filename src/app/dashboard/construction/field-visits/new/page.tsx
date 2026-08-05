@@ -51,22 +51,16 @@ export default function NewStructuredFieldVisitPage() {
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [visitDate, setVisitDate] = useState(new Date().toISOString().split('T')[0]);
   
-  // Labor States (Hybrid: Groups + Individuals)
   const [selectedGroups, setSelectedGroups] = useState<any[]>([]);
   const [individualLabor, setIndividualLabor] = useState<any[]>([]);
   const [selectedDeptId, setSelectedDeptId] = useState('');
-  
-  // Equipment State (Multiple)
   const [equipmentList, setEquipmentList] = useState<any[]>([]);
 
-  // The Execution Grid State
   const [gridRows, setGridRows] = useState<any[]>([
     { stageId: '', quantity: '', notes: '', photoUrls: [], isUploading: false }
   ]);
 
-  // --- Queries & Data Fetches ---
-
-  // Get Busy Resources for Conflict Detection
+  // --- Queries ---
   const dayExecutionsQuery = useMemo(() => 
     companyId && db && visitDate ? query(collection(db, paths.executions(companyId)), where('visitDate', '==', visitDate)) : null,
   [db, companyId, visitDate]);
@@ -76,12 +70,10 @@ export default function NewStructuredFieldVisitPage() {
     const workerIds = new Set<string>();
     const equipIds = new Set<string>();
     dayExecutions?.forEach(ex => {
-      // Extract from labor
       ex.laborDetails?.forEach((l: any) => {
         if (l.employeeId) workerIds.add(l.employeeId);
         if (l.memberIds) l.memberIds.forEach((id: string) => workerIds.add(id));
       });
-      // Extract from equipment
       ex.equipmentUsed?.forEach((e: any) => {
         if (e.equipmentId && !e.isMultiSite) equipIds.add(e.equipmentId);
       });
@@ -89,7 +81,6 @@ export default function NewStructuredFieldVisitPage() {
     return { workerIds, equipIds };
   }, [dayExecutions]);
 
-  // General lookups - FIXED naming mismatch from activitiesQuery to activityTypesQuery
   const activityTypesQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.activityTypes(companyId))) : null, [db, companyId]);
   const { data: activityTypes } = useCollection<any>(activityTypesQuery);
@@ -126,7 +117,6 @@ export default function NewStructuredFieldVisitPage() {
   [db, companyId, selectedDeptId]);
   const { data: deptEmployees } = useCollection<Employee>(employeesInDeptQuery);
 
-  // --- Computations ---
   const selectedClient = useMemo(() => constructionClients?.find(c => c.id === selectedClientId), [constructionClients, selectedClientId]);
   
   const progressPercent = useMemo(() => {
@@ -184,17 +174,10 @@ export default function NewStructuredFieldVisitPage() {
   const handleAddGroup = (v: string) => {
     const group = workGroups?.find(g => g.id === v);
     if (!group) return;
-    
-    // Check if any member is already busy
     const busyMembers = group.memberIds?.filter(id => busyResourceSets.workerIds.has(id));
     if (busyMembers && busyMembers.length > 0) {
-      toast({ 
-        variant: "destructive", 
-        title: isRtl ? "تعارض في الطاقم" : "Crew Conflict", 
-        description: isRtl ? `يوجد ${busyMembers.length} أعضاء من هذا الطاقم مسجلين في مواقع أخرى اليوم.` : `${busyMembers.length} members are busy elsewhere.`
-      });
+      toast({ variant: "destructive", title: isRtl ? "تعارض في الطاقم" : "Crew Conflict" });
     }
-
     if (!selectedGroups.find(g => g.id === v)) {
       setSelectedGroups([...selectedGroups, group]);
     }
@@ -203,20 +186,10 @@ export default function NewStructuredFieldVisitPage() {
   const handleAddEmployee = (v: string) => {
     const emp = deptEmployees?.find(e => e.id === v);
     if (!emp) return;
-
-    if (activeSelectedMemberIds.has(v)) {
-      toast({ title: isRtl ? "الموظف مختار مسبقاً" : "Already Selected" });
-      return;
-    }
-
+    if (activeSelectedMemberIds.has(v)) return;
     if (busyResourceSets.workerIds.has(v)) {
-      toast({ 
-        variant: "destructive", 
-        title: isRtl ? "تنبيه انشغال" : "Busy Alert", 
-        description: isRtl ? "هذا الموظف مسجل في مهمة أخرى في نفس هذا التاريخ." : "Employee is assigned to another task today."
-      });
+      toast({ variant: "destructive", title: isRtl ? "تنبيه انشغال" : "Busy Alert" });
     }
-
     setIndividualLabor([...individualLabor, {
       employeeId: emp.id,
       employeeName: emp.fullName,
@@ -229,17 +202,7 @@ export default function NewStructuredFieldVisitPage() {
   const handleAddEquipment = (v: string) => {
     const equip = equipmentRegistry?.find(e => e.id === v);
     if (!equip) return;
-
     if (equipmentList.find(e => e.equipmentId === v)) return;
-
-    if (busyResourceSets.equipIds.has(v)) {
-      toast({ 
-        variant: "destructive", 
-        title: isRtl ? "المعدة مشغولة" : "Equipment Busy", 
-        description: isRtl ? "هذه المعدة مسجلة في موقع آخر. سيتم تفعيل خيار 'تعدد المواقع' تلقائياً." : "Busy elsewhere. Multi-site enabled."
-      });
-    }
-
     setEquipmentList([...equipmentList, {
       equipmentId: v,
       name: equip.name,
@@ -260,40 +223,65 @@ export default function NewStructuredFieldVisitPage() {
     setLoading(true);
     try {
       const project = clientProjects?.find(p => p.id === selectedProjectId);
-
-      // Construct Unified Labor Payload
       const laborDetails = [
         ...selectedGroups.map(g => ({ type: 'group', id: g.id, trade: g.name, count: g.memberCount, employeeId: null })),
         ...individualLabor.map(i => ({ type: 'individual', employeeId: i.employeeId, trade: i.trade, count: 1 }))
       ];
 
-      for (const row of gridRows) {
+      // بناء مصفوفة البنود للتقرير الموحد
+      const itemsForReport = gridRows.map(row => {
         const stage = projectStages?.find(s => s.id === row.stageId);
-        
-        const payload = {
+        return {
+          stageInstanceId: row.stageId,
+          technicalStageId: stage?.technicalStageId,
+          itemName: stage?.name,
+          quantity: Number(row.quantity) || 1,
+          notes: row.notes,
+          photoUrls: row.photoUrls
+        };
+      });
+
+      // 1. حفظ الزيارة في المجموعة الفرعية (لظهورها في السجل)
+      const visitPath = paths.fieldVisits(companyId, selectedProjectId);
+      const visitPayload = {
+        companyId,
+        transactionId: selectedProjectId,
+        transactionNumber: project?.transactionNumber,
+        clientId: selectedClientId,
+        clientName: selectedClient?.nameAr,
+        visitDate,
+        items: itemsForReport,
+        laborDetails,
+        equipmentUsed: equipmentList,
+        progressPercentage: progressPercent,
+        engineerName: globalUser?.fullName || user.displayName || 'Engineer',
+        status: 'submitted',
+        createdBy: user.uid,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      };
+
+      await addDoc(collection(db, visitPath), visitPayload);
+
+      // 2. تسجيل حركات تنفيذ مستقلة (للتقارير الفنية العميقة)
+      for (const item of itemsForReport) {
+        await addDoc(collection(db, paths.executions(companyId)), {
+          ...item,
           companyId,
           transactionId: selectedProjectId,
           transactionNumber: project?.transactionNumber,
           clientId: selectedClientId,
           clientName: selectedClient?.nameAr,
           visitDate,
-          technicalStageId: stage?.technicalStageId,
-          stageInstanceId: row.stageId,
-          quantity: Number(row.quantity) || 1,
-          notes: row.notes,
-          photoUrls: row.photoUrls,
           laborDetails,
           equipmentUsed: equipmentList,
-          status: 'pending_review',
           recordedBy: user.uid,
           recordedByName: globalUser?.fullName || user.displayName || 'Engineer',
           createdAt: serverTimestamp()
-        };
-
-        await addDoc(collection(db, paths.executions(companyId)), payload);
+        });
       }
 
-      toast({ title: isRtl ? "تم توثيق الإنجاز والموارد" : "Progress & Resources Logged" });
+      toast({ title: isRtl ? "تم توثيق الزيارة بنجاح" : "Visit Logged Successfully" });
       router.push('/dashboard/construction/field-visits');
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
@@ -322,7 +310,6 @@ export default function NewStructuredFieldVisitPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
          
-         {/* Sidebar Controls */}
          <div className="lg:col-span-4 space-y-6">
             <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 text-start">
                <CardHeader className="bg-primary/5 border-b p-6">
@@ -377,11 +364,9 @@ export default function NewStructuredFieldVisitPage() {
                </CardContent>
             </Card>
 
-            {/* Labor Section (Distributed) */}
             <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 text-start">
                <CardHeader className="bg-slate-50 border-b p-6"><CardTitle className="text-sm font-black flex items-center gap-2"><Users className="h-4 w-4 text-primary" /> {isRtl ? 'توزيع القوى العاملة' : 'Labor Hub'}</CardTitle></CardHeader>
                <CardContent className="p-6 space-y-6">
-                  {/* Groups Picker */}
                   <div className="space-y-2">
                      <Label className="text-[10px] font-black uppercase text-slate-400">إضافة طاقم عمل (Crew)</Label>
                      <Select onValueChange={handleAddGroup}>
@@ -390,7 +375,6 @@ export default function NewStructuredFieldVisitPage() {
                      </Select>
                   </div>
 
-                  {/* Individual Picker with Dept Filter */}
                   <div className="space-y-4 pt-4 border-t">
                      <div className="grid grid-cols-1 gap-2">
                         <Label className="text-[10px] font-black uppercase text-slate-400">إضافة موظف منفرد</Label>
@@ -414,7 +398,6 @@ export default function NewStructuredFieldVisitPage() {
                      </div>
                   </div>
 
-                  {/* Active List */}
                   <div className="space-y-2 pt-4 border-t">
                      {selectedGroups.map((g, i) => (
                         <div key={`g-${i}`} className="flex gap-2 items-center bg-primary/5 p-3 rounded-xl border border-primary/20">
@@ -440,7 +423,6 @@ export default function NewStructuredFieldVisitPage() {
                </CardContent>
             </Card>
 
-            {/* Equipment Section (Multiple) */}
             <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 text-start">
                <CardHeader className="bg-slate-50 border-b p-6"><CardTitle className="text-sm font-black flex items-center gap-2"><Truck className="h-4 w-4 text-primary" /> {isRtl ? 'المعدات والآليات' : 'Equipment Fleet'}</CardTitle></CardHeader>
                <CardContent className="p-6 space-y-4">
@@ -485,7 +467,6 @@ export default function NewStructuredFieldVisitPage() {
             </Card>
          </div>
 
-         {/* The Main Execution Grid */}
          <div className="lg:col-span-8 space-y-6">
             <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5 min-h-[600px] flex flex-col">
                <CardHeader className="bg-slate-900 text-white p-8 border-b text-start shrink-0">
@@ -572,8 +553,6 @@ export default function NewStructuredFieldVisitPage() {
                   <h4 className="font-black text-sm text-blue-900 uppercase">ميثاق الصحة والامتثال الميداني</h4>
                   <p className="text-[10px] text-blue-800 font-bold leading-relaxed">
                      يتم فحص تعارض الموارد بشكل لحظي لضمان عدم ازدواجية التكاليف. 
-                     * تنبيه: الموظفين المختارين ضمن طاقم (Group) لا يمكن اختيارهم كأفراد لتجنب تكرار الراتب.
-                     * المعدات الثقيلة تخضع لقفل الموقع الواحد إلا في حال تفعيل خيار 'تعدد المواقع'.
                   </p>
                </div>
             </div>
@@ -582,4 +561,3 @@ export default function NewStructuredFieldVisitPage() {
     </div>
   );
 }
-

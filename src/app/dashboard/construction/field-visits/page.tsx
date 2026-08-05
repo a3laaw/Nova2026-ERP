@@ -9,13 +9,13 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { 
   HardHat, Plus, Search, Loader2, ArrowRight,
-  Filter, Hammer, Calendar, MapPin, Camera
+  Filter, Hammer, Calendar, MapPin, Camera,
+  UserCircle, LayoutGrid
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collectionGroup, query, where } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
-import { FieldVisit } from '@/types/field-visit';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 
@@ -28,7 +28,7 @@ export default function FieldVisitsListPage() {
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
-  // بروتوكول الالتفاف: جلب المجموعة بدون orderBy لتجنب الحاجة لفهرس مركب (companyId + visitDate)
+  // جلب كافة الزيارات الميدانية الموثقة عبر كل المشاريع
   const visitsQuery = useMemo(() => 
     companyId && db ? query(
       collectionGroup(db, 'fieldVisits'), 
@@ -36,9 +36,8 @@ export default function FieldVisitsListPage() {
     ) : null, 
   [db, companyId]);
 
-  const { data: rawVisits, loading } = useCollection<FieldVisit>(visitsQuery);
+  const { data: rawVisits, loading } = useCollection<any>(visitsQuery);
 
-  // الفرز البرمجي في الذاكرة (In-Memory Sorting) لتجنب أخطاء الفهرسة
   const visits = useMemo(() => {
     return [...rawVisits].sort((a, b) => {
       const dateA = a.visitDate || '';
@@ -48,8 +47,8 @@ export default function FieldVisitsListPage() {
   }, [rawVisits]);
 
   const filtered = visits.filter(v => 
-    v.engineerName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    v.completedWork?.toLowerCase().includes(searchTerm.toLowerCase())
+    v.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    v.engineerName?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -58,10 +57,10 @@ export default function FieldVisitsListPage() {
         <div className="text-start">
            <h1 className="text-3xl font-black font-headline flex items-center gap-3 text-slate-900">
              <HardHat className="h-8 w-8 text-primary" />
-             {isRtl ? 'سجل الزيارات الميدانية' : 'Field Visits Log'}
+             {isRtl ? 'سجل الزيارات الميدانية المعتمد' : 'Official Field Visits Log'}
            </h1>
            <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-              {isRtl ? 'تتبع الإنجاز الميداني، صور المواقع، وتقارير القوى العاملة.' : 'Track field progress, site photos, and labor reports.'}
+              {isRtl ? 'أرشيف تقارير الإنجاز اليومية الموثقة بالصور والموارد.' : 'Archive of daily progress reports with evidence and resources.'}
            </p>
         </div>
         <Button onClick={() => router.push('/dashboard/construction/field-visits/new')} className="h-12 px-8 rounded-xl shadow-xl shadow-primary/20 gap-2">
@@ -74,13 +73,13 @@ export default function FieldVisitsListPage() {
           <div className="relative w-full max-w-md">
             <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary" />
             <Input 
-              placeholder={isRtl ? 'بحث...' : 'Search...'} 
+              placeholder={isRtl ? 'بحث باسم العميل أو المهندس...' : 'Search clients or engineers...'} 
               className="ps-12 h-11 bg-slate-50/50 border-slate-200 font-bold" 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button variant="outline" className="h-11 px-6 border-slate-200">
+          <Button variant="outline" className="h-11 px-6 border-slate-200 font-bold">
              <Filter className="h-4 w-4 me-2" /> {isRtl ? 'تصفية' : 'Filter'}
           </Button>
         </div>
@@ -90,7 +89,10 @@ export default function FieldVisitsListPage() {
         {loading ? (
           <div className="col-span-full py-20 text-center"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></div>
         ) : filtered.length === 0 ? (
-          <div className="col-span-full py-20 text-center text-slate-400 font-bold italic">{isRtl ? 'لا يوجد تقارير زيارات.' : 'No site reports found.'}</div>
+          <div className="col-span-full py-40 text-center flex flex-col items-center gap-6 opacity-30">
+             <Calendar className="h-16 w-16 text-slate-200" />
+             <p className="text-xl font-black text-slate-400">{isRtl ? 'لا يوجد تقارير زيارات مسجلة حالياً.' : 'No site reports found.'}</p>
+          </div>
         ) : (
           filtered.map((visit) => (
             <Card key={visit.id} className="border-0 shadow-xl rounded-[2rem] bg-white overflow-hidden group hover:ring-2 hover:ring-primary/20 transition-all cursor-pointer" onClick={() => router.push(`/dashboard/construction/field-visits/${visit.id}`)}>
@@ -101,43 +103,37 @@ export default function FieldVisitsListPage() {
                      </div>
                      <span className="font-black text-xs text-slate-600">{visit.visitDate}</span>
                   </div>
-                  <Badge variant="secondary" className="bg-emerald-50 text-emerald-600 border-0 font-black text-[9px] uppercase">
-                    {visit.status}
+                  <Badge variant="secondary" className="bg-emerald-50 text-emerald-600 border-0 font-black text-[9px] uppercase px-3">
+                    {visit.status || 'Submitted'}
                   </Badge>
                </CardHeader>
                <CardContent className="p-6 space-y-4 text-start">
                   <div className="space-y-1">
-                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'المهندس المنفذ' : 'Site Engineer'}</p>
-                     <h4 className="font-black text-sm text-slate-800 flex items-center gap-2">
-                        <Hammer className="h-3.5 w-3.5 text-primary" /> {visit.engineerName}
-                     </h4>
-                  </div>
-                  
-                  <div className="space-y-1.5">
-                     <div className="flex justify-between items-center text-[9px] font-black uppercase text-slate-400">
-                        <span>{isRtl ? 'نسبة الإنجاز المبلغ عنها' : 'Progress'}</span>
-                        <span className="text-primary">{visit.progressPercentage}%</span>
-                     </div>
-                     <Progress value={visit.progressPercentage} className="h-1.5" />
+                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'العميل المالك' : 'Client Name'}</p>
+                     <h4 className="font-black text-base text-slate-800 truncate">{visit.clientName}</h4>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2">
-                     <div className="flex -space-x-2">
-                        {(visit.photoUrls || []).slice(0, 3).map((url, i) => (
-                          <div key={i} className="h-7 w-7 rounded-lg border-2 border-white bg-slate-100 overflow-hidden shadow-sm">
-                             <img src={url} alt="Site" className="h-full w-full object-cover" />
-                          </div>
-                        ))}
-                        {(visit.photoUrls?.length || 0) > 3 && (
-                           <div className="h-7 w-7 rounded-lg border-2 border-white bg-slate-900 text-white flex items-center justify-center text-[8px] font-black">
-                              +{(visit.photoUrls?.length || 0) - 3}
-                           </div>
-                        )}
+                  <div className="flex items-center gap-2 pt-2 border-t border-slate-50">
+                     <UserCircle className="h-3.5 w-3.5 text-primary" />
+                     <span className="text-[10px] font-bold text-slate-500">{visit.engineerName}</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4 py-2 bg-slate-50/50 rounded-xl px-4">
+                     <div className="flex items-center gap-2">
+                        <LayoutGrid className="h-3 w-3 text-blue-500" />
+                        <span className="text-[10px] font-black text-slate-700">{visit.items?.length || 0} {isRtl ? 'بنود' : 'Items'}</span>
                      </div>
-                     <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400">
-                        <Camera className="h-3 w-3" />
-                        {visit.photoUrls?.length || 0}
+                     <div className="flex items-center gap-2">
+                        <Camera className="h-3 w-3 text-orange-500" />
+                        <span className="text-[10px] font-black text-slate-700">{visit.items?.reduce((acc: number, i: any) => acc + (i.photoUrls?.length || 0), 0)} {isRtl ? 'صور' : 'Photos'}</span>
                      </div>
+                  </div>
+
+                  <div className="flex justify-end pt-2">
+                     <Button variant="ghost" size="sm" className="h-8 rounded-lg text-[9px] font-black gap-2 group-hover:text-primary">
+                        {isRtl ? 'عرض التقرير الكامل' : 'View Full Report'}
+                        <ArrowRight className={cn("h-3 w-3 transition-transform group-hover:translate-x-1", isRtl && "rotate-180")} />
+                     </Button>
                   </div>
                </CardContent>
             </Card>
