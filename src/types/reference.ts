@@ -36,6 +36,21 @@ export interface MilestoneTimingType extends BaseReferenceList {}
 export interface ItemCategory extends BaseReferenceList {}
 export interface CostTypeCategory extends BaseReferenceList {}
 
+export interface Governorate extends BaseReference {
+  name: string;
+  nameEn: string;
+  order: number;
+  isActive: boolean;
+}
+
+export interface Area extends BaseReference {
+  governorateId: string;
+  name: string;
+  nameEn: string;
+  order: number;
+  isActive: boolean;
+}
+
 export interface MeetingRoom extends BaseReference {
   id: string;
   name: string;
