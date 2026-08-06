@@ -226,7 +226,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
 
   if (isCollapsed) {
     const collapsedStyle = cn(
-      "flex h-12 w-9 items-center justify-center transition-all duration-300 rounded-full shadow-lg",
+      "flex h-9 w-9 items-center justify-center transition-all duration-300 rounded-lg shadow-sm",
       isActive 
         ? "bg-white text-[#e87c24] border-2 border-orange-100 scale-110 z-10" 
         : "bg-[#FFA000] text-white hover:scale-105"
@@ -239,7 +239,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
               <TooltipTrigger asChild>
                 <div className="relative group">
                   <button className={collapsedStyle}>
-                    <item.icon className="h-6 w-6" />
+                    <item.icon className="h-4 w-4" />
                   </button>
                   <div className={cn(
                     "absolute top-0 z-[999] hidden group-hover:block animate-in fade-in zoom-in-95 duration-200",
@@ -283,7 +283,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link href={item.url} className={collapsedStyle}>
-                  <item.icon className="h-6 w-6" />
+                  <item.icon className="h-4 w-4" />
                 </Link>
               </TooltipTrigger>
               <TooltipContent side={isRtl ? "left" : "right"} className="bg-white text-slate-900 font-black text-[10px] rounded-lg border-2 shadow-2xl py-2 px-4">
