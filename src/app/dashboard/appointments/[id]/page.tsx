@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
@@ -38,6 +39,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { WorkGroup } from '@/types/hr';
 
 export default function AppointmentDetailPage() {
   const apptId = useParams().id as string;
@@ -79,6 +81,9 @@ export default function AppointmentDetailPage() {
   const inventoryQuery = useMemo(() => companyId && db ? query(collection(db, paths.equipment(companyId)), where('status', '==', 'available')) : null, [db, companyId]);
   const { data: equipmentItems } = useCollection<any>(inventoryQuery);
 
+  const groupsQuery = useMemo(() => companyId && db ? query(collection(db, paths.workGroups(companyId)), where('isActive', '==', true)) : null, [db, companyId]);
+  const { data: workGroups } = useCollection<WorkGroup>(groupsQuery);
+
   useEffect(() => {
      if (isRecordOpen && db && companyId) {
         getDocs(query(collection(db, paths.employees(companyId)), where('isActive', '==', true)))
@@ -103,6 +108,34 @@ export default function AppointmentDetailPage() {
         }
      }
   }, [selectedStageId, boqItems, stages]);
+
+  const handleApplyGroup = (groupId: string) => {
+     const group = workGroups?.find(g => g.id === groupId);
+     if (!group) return;
+
+     const groupLabor = (group.memberIds || []).map(mid => {
+        const emp = availableEmployees?.find(e => e.id === mid);
+        return {
+           trade: emp?.fullName || 'Worker',
+           count: 1,
+           hours: 8,
+           hourlyCostRef: (emp?.basicSalary || 0) / 26 / 8
+        };
+     });
+
+     const supervisor = availableEmployees?.find(e => e.id === group.supervisorId);
+     if (supervisor) {
+        groupLabor.unshift({
+           trade: supervisor.fullName,
+           count: 1,
+           hours: 8,
+           hourlyCostRef: (supervisor.basicSalary || 0) / 26 / 8
+        });
+     }
+
+     setLaborDetails([...laborDetails.filter(l => l.trade), ...groupLabor]);
+     toast({ title: isRtl ? `تم تحميل طاقم ${group.name}` : `Crew ${group.name} Loaded` });
+  };
 
   const handleRecordProgress = async () => {
     if (!db || !companyId || !user || !activeBoq || loggedItems.length === 0) return;
@@ -138,8 +171,8 @@ export default function AppointmentDetailPage() {
   return (
     <div className="space-y-4 w-full px-4 md:px-6 animate-in fade-in" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4 border-slate-100">
-        <div className="flex items-center gap-3">
-           <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-8 w-8 rounded-lg border text-slate-400">
+        <div className="flex items-center gap-3 text-start">
+           <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-8 w-8 rounded-lg border text-slate-400 shadow-sm">
              <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
            </Button>
            <div className="text-start">
@@ -230,11 +263,20 @@ export default function AppointmentDetailPage() {
 
                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t border-slate-50">
                   <div className="space-y-4">
-                     <div className="flex justify-between items-center"><Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{t('common.labor')}</Label><Button variant="ghost" size="sm" onClick={() => setLaborDetails([...laborDetails, { trade: '', count: 1, hours: 8, hourlyCostRef: 0 }])} className="h-6 text-[9px] font-black"><Plus className="h-3 w-3" /> ADD</Button></div>
+                     <div className="flex justify-between items-center">
+                        <Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{t('common.labor')}</Label>
+                        <div className="flex gap-2">
+                           <Select onValueChange={handleApplyGroup}>
+                              <SelectTrigger className="h-7 w-32 rounded-lg text-[9px] font-black border-primary/20"><SelectValue placeholder={t('common.loadFromGroup')} /></SelectTrigger>
+                              <SelectContent className="z-[160]">{workGroups?.map(g => <SelectItem key={g.id} value={g.id!} className="text-[10px] font-bold">{g.name}</SelectItem>)}</SelectContent>
+                           </Select>
+                           <Button variant="ghost" size="sm" onClick={() => setLaborDetails([...laborDetails, { trade: '', count: 1, hours: 8, hourlyCostRef: 0 }])} className="h-6 text-[9px] font-black"><Plus className="h-3 w-3" /></Button>
+                        </div>
+                     </div>
                      <div className="space-y-2">
                         {laborDetails.map((l, i) => (
                           <div key={i} className="flex gap-2 items-end group">
-                            <Select onValueChange={v => { 
+                            <Select value={l.trade} onValueChange={v => { 
                               const emp = availableEmployees.find(x => x.fullName === v); 
                               const nl = [...laborDetails]; 
                               nl[i].trade = v; 
@@ -242,7 +284,7 @@ export default function AppointmentDetailPage() {
                               setLaborDetails(nl); 
                             }}>
                               <SelectTrigger className="h-9 rounded-lg border-2 text-[11px] font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                              <SelectContent className="rounded-xl z-[160]">{availableEmployees.map(e => <SelectItem key={e.id} value={e.fullName} className="text-xs">{e.fullName} ({e.jobTitle})</SelectItem>)}</SelectContent>
+                              <SelectContent className="rounded-xl z-[160]">{availableEmployees.map(e => <SelectItem key={e.id} value={e.fullName} className="text-xs">{e.fullName}</SelectItem>)}</SelectContent>
                             </Select>
                             <Input type="number" value={l.count} onChange={e => { const nl = [...laborDetails]; nl[i].count = Number(e.target.value); setLaborDetails(nl); }} className="h-9 w-14 text-center text-xs font-black border-2" />
                             <Button variant="ghost" size="icon" className="h-9 w-9 text-slate-200 hover:text-rose-500 opacity-0 group-hover:opacity-100" onClick={() => setLaborDetails(laborDetails.filter((_, idx) => idx !== i))}><Trash2 className="h-4 w-4" /></Button>
@@ -252,11 +294,11 @@ export default function AppointmentDetailPage() {
                   </div>
                   
                   <div className="space-y-4">
-                     <div className="flex justify-between items-center"><Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{t('common.equipment')}</Label><Button variant="ghost" size="sm" onClick={() => setEquipmentUsed([...equipmentUsed, { equipmentId: '', hoursUsed: 4, hourlyRateRef: 0 }])} className="h-6 text-[9px] font-black"><Plus className="h-3 w-3" /> ADD</Button></div>
+                     <div className="flex justify-between items-center"><Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{t('common.equipment')}</Label><Button variant="ghost" size="sm" onClick={() => setEquipmentUsed([...equipmentUsed, { equipmentId: '', hoursUsed: 4, hourlyRateRef: 0 }])} className="h-6 text-[9px] font-black"><Plus className="h-3 w-3" /></Button></div>
                      <div className="space-y-2">
                         {equipmentUsed.map((e, i) => (
                           <div key={i} className="flex gap-2 items-center group">
-                             <Select onValueChange={v => { 
+                             <Select value={e.equipmentId} onValueChange={v => { 
                                const equip = equipmentItems?.find((x:any) => x.id === v);
                                const ne = [...equipmentUsed]; 
                                ne[i].equipmentId = v; 
@@ -265,7 +307,7 @@ export default function AppointmentDetailPage() {
                                setEquipmentUsed(ne); 
                              }}>
                                <SelectTrigger className="h-9 rounded-lg border-2 text-[11px] font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                               <SelectContent className="rounded-xl z-[160]">{equipmentItems?.map((x:any) => <SelectItem key={x.id} value={x.id!} className="text-xs">{x.name} (#{x.code})</SelectItem>)}</SelectContent>
+                               <SelectContent className="rounded-xl z-[160]">{equipmentItems?.map((x:any) => <SelectItem key={x.id} value={x.id!} className="text-xs">{x.name}</SelectItem>)}</SelectContent>
                              </Select>
                              <Input type="number" value={e.hoursUsed} onChange={v => { const ne = [...equipmentUsed]; ne[i].hoursUsed = Number(v.target.value); setEquipmentUsed(ne); }} className="h-9 w-14 text-center text-xs font-black border-2" />
                              <Button variant="ghost" size="icon" className="h-9 w-9 text-slate-200 hover:text-rose-500 opacity-0 group-hover:opacity-100" onClick={() => setEquipmentUsed(equipmentUsed.filter((_, idx) => idx !== i))}><Trash2 className="h-4 w-4" /></Button>

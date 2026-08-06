@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
@@ -67,7 +68,9 @@ const translations: Record<Language, Record<string, any>> = {
       quantity: 'الكمية',
       unit: 'الوحدة',
       notes: 'ملاحظات',
-      photos: 'الصور'
+      photos: 'الصور',
+      workGroups: 'مجموعات العمل',
+      loadFromGroup: 'تحميل طاقم كامل'
     },
     dashboard: {
       title: 'نظرة عامة على العمليات',
@@ -120,7 +123,8 @@ const translations: Record<Language, Record<string, any>> = {
       equipment: 'سجل المعدات والآليات',
       reports: 'زيارات المواقع المنفذة',
       context: 'سياق العمل والموقع',
-      siteProgress: 'الأعمال والكميات المنجزة'
+      siteProgress: 'الأعمال والكميات المنجزة',
+      siteResources: 'الموارد والمعدات'
     },
     hr: {
       title: 'شؤون الموظفين والامتثال',
@@ -186,7 +190,9 @@ const translations: Record<Language, Record<string, any>> = {
       quantity: 'Qty',
       unit: 'Unit',
       notes: 'Notes',
-      photos: 'Photos'
+      photos: 'Photos',
+      workGroups: 'Work Crews',
+      loadFromGroup: 'Load Whole Crew'
     },
     dashboard: {
       title: 'Operations Overview',
@@ -239,7 +245,8 @@ const translations: Record<Language, Record<string, any>> = {
       equipment: 'Equipment Registry',
       reports: 'Site Reports',
       context: 'Work Context & Project',
-      siteProgress: 'Work Progress & Quantities'
+      siteProgress: 'Work Progress & Quantities',
+      siteResources: 'Resources & Equipment'
     },
     hr: {
       title: 'HR & Compliance',
