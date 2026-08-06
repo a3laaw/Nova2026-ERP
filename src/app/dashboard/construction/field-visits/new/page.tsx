@@ -21,7 +21,7 @@ import {
   Truck, LayoutGrid, Sparkles,
   Building2, Briefcase, Globe, 
   ShieldCheck, UserCircle, X,
-  AlertTriangle
+  AlertTriangle, Lock, Gavel
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, where, getDocs, orderBy, doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
@@ -35,7 +35,7 @@ import { Employee, WorkGroup } from '@/types/hr';
 import { Transaction, StageInstance } from '@/types/transaction';
 import { Equipment } from '@/types/equipment';
 import { Department } from '@/types/reference';
-import { BOQ, BOQItem } from '@/types/documents';
+import { BOQ, BOQItem, Contract } from '@/types/documents';
 import { BOQExecutionService } from '@/services/boq-execution-service';
 
 function NewFieldVisitForm() {
@@ -64,19 +64,16 @@ function NewFieldVisitForm() {
     { boqItemId: '', quantity: '', notes: '', photoUrls: [], isUploading: false }
   ]);
 
-  // --- Logic for Cloning (Comprehensive Protocol) ---
+  // --- Logic for Cloning ---
   useEffect(() => {
     async function fetchCloneData() {
       if (!cloneId || !db || !companyId) return;
       const snap = await getDoc(doc(db, paths.fieldVisits(companyId), cloneId));
       if (snap.exists()) {
         const data = snap.data();
-        
-        // 1. الأساسيات
         setSelectedClientId(data.clientId);
         setSelectedProjectId(data.transactionId);
         
-        // 2. استنساخ العمالة المزدوج (Crews & Individuals)
         if (data.laborDetails) {
            const groups = data.laborDetails.filter((l: any) => l.type === 'group').map((g: any) => ({
               id: g.id,
@@ -95,10 +92,8 @@ function NewFieldVisitForm() {
            setIndividualLabor(individuals);
         }
 
-        // 3. استنساخ المعدات
         setEquipmentList(data.equipmentUsed || []);
 
-        // 4. استنساخ جدول الإنجاز (BOQ Rows)
         if (data.items) {
            setGridRows(data.items.map((i: any) => ({
               boqItemId: i.boqItemId,
@@ -108,12 +103,10 @@ function NewFieldVisitForm() {
               isUploading: false
            })));
         }
-
-        toast({ title: isRtl ? "تم استنساخ كافة بيانات الزيارة" : "Full visit data cloned" });
       }
     }
     fetchCloneData();
-  }, [cloneId, db, companyId, isRtl]);
+  }, [cloneId, db, companyId]);
 
   // --- Queries ---
   const dayExecutionsQuery = useMemo(() => 
@@ -123,30 +116,37 @@ function NewFieldVisitForm() {
 
   const busyResourceSets = useMemo(() => {
     const workerIds = new Set<string>();
-    const equipIds = new Set<string>();
     dayExecutions?.forEach(ex => {
       if (ex.employeeId) workerIds.add(ex.employeeId);
     });
-    return { workerIds, equipIds };
+    return { workerIds };
   }, [dayExecutions]);
 
-  const activityTypesQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.activityTypes(companyId))) : null, [db, companyId]);
-  const { data: activityTypes } = useCollection<any>(activityTypesQuery);
-  
-  const constructionActivityId = useMemo(() => 
-    activityTypes?.find(a => a.code === 'CONSTRUCTION' || a.name.includes('مقاولات'))?.id, [activityTypes]);
-
   const clientsQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.clients(companyId))) : null, [db, companyId]);
-  const { data: allClients } = useCollection<any>(clientsQuery);
-  const constructionClients = useMemo(() => 
-    allClients?.filter(c => c.activityTypeId === constructionActivityId || c.status === 'contracted'), [allClients, constructionActivityId]);
+    companyId && db ? query(collection(db, paths.clients(companyId)), where('status', '==', 'contracted')) : null, 
+  [db, companyId]);
+  const { data: constructionClients } = useCollection<any>(clientsQuery);
 
   const projectsQuery = useMemo(() => 
     companyId && db && selectedClientId ? query(collection(db, paths.transactions(companyId)), where('clientId', '==', selectedClientId)) : null, 
   [db, companyId, selectedClientId]);
   const { data: clientProjects } = useCollection<Transaction>(projectsQuery);
+
+  // استعلام العقود للتحقق من الاعتماد المالي
+  const contractsQuery = useMemo(() => 
+    companyId && db && selectedProjectId ? query(collection(db, paths.contracts(companyId)), where('transactionId', '==', selectedProjectId)) : null,
+  [db, companyId, selectedProjectId]);
+  const { data: contracts, loading: contractsLoading } = useCollection<Contract>(contractsQuery);
+
+  const activeContract = useMemo(() => 
+    contracts?.find(c => ['approved', 'paid', 'active', 'signed'].includes(c.status || '') || c.isPaid),
+  [contracts]);
+
+  const isFinancialLockActive = useMemo(() => {
+     if (!selectedProjectId) return false;
+     if (contractsLoading) return false;
+     return !activeContract;
+  }, [selectedProjectId, activeContract, contractsLoading]);
 
   const stagesQuery = useMemo(() => 
     companyId && db && selectedProjectId ? query(collection(db, paths.transactionStages(companyId, selectedProjectId)), orderBy('order')) : null,
@@ -194,6 +194,7 @@ function NewFieldVisitForm() {
 
   // --- Handlers ---
   const handleAddRow = () => {
+    if (isFinancialLockActive) return;
     setGridRows([...gridRows, { boqItemId: '', quantity: '', notes: '', photoUrls: [], isUploading: false }]);
   };
 
@@ -268,6 +269,10 @@ function NewFieldVisitForm() {
 
   const handleSave = async () => {
     if (!db || !companyId || !user || !selectedProjectId || !activeBoq) return;
+    if (isFinancialLockActive) {
+       toast({ variant: "destructive", title: isRtl ? "تنبيه سيادي" : "Sovereign Alert", description: isRtl ? "لا يمكن حفظ التقرير لمشروع غير معتمد مالياً." : "Cannot save logs for non-contracted projects." });
+       return;
+    }
     if (gridRows.some(r => !r.boqItemId || !r.notes)) {
       toast({ variant: "destructive", title: "بيانات ناقصة", description: "يجب اختيار البند وكتابة ملاحظة لكل سطر." });
       return;
@@ -364,7 +369,7 @@ function NewFieldVisitForm() {
         </div>
         <div className="flex gap-3">
            <Button variant="outline" onClick={() => router.back()} className="h-16 px-8 rounded-2xl border-2 font-black">إلغاء</Button>
-           <Button onClick={handleSave} disabled={loading || !selectedProjectId} className="h-16 px-12 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 border-b-8 border-orange-700 hover:scale-105 transition-all gap-3">
+           <Button onClick={handleSave} disabled={loading || !selectedProjectId || isFinancialLockActive} className="h-16 px-12 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 border-b-8 border-orange-700 hover:scale-105 transition-all gap-3">
               {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-7 w-7" />}
               {isRtl ? 'اعتماد الموارد والحفظ' : 'Commit Visit'}
            </Button>
@@ -381,7 +386,7 @@ function NewFieldVisitForm() {
                </CardHeader>
                <CardContent className="p-6 space-y-6">
                   <div className="space-y-2">
-                     <Label className="text-[10px] font-black uppercase text-slate-400">العميل المالك</Label>
+                     <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'العميل المتعاقد حصراً' : 'Contracted Client Only'}</Label>
                      <Select value={selectedClientId} onValueChange={v => { setSelectedClientId(v); setSelectedProjectId(''); }}>
                         <SelectTrigger className="h-11 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
                         <SelectContent className="rounded-xl border-2 shadow-2xl z-[150]">
@@ -400,7 +405,22 @@ function NewFieldVisitForm() {
                      </Select>
                   </div>
 
-                  {selectedProjectId && (
+                  {isFinancialLockActive && (
+                     <div className="p-6 bg-rose-50 border-4 border-rose-100 rounded-[2rem] text-center space-y-4 animate-in shake-in duration-500">
+                        <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto text-rose-500 shadow-lg ring-4 ring-rose-50/50"><Lock className="h-6 w-6" /></div>
+                        <div className="space-y-1">
+                           <h4 className="font-black text-sm text-rose-900">{isRtl ? 'مشروع مغلق مالياً' : 'Financial Lock Active'}</h4>
+                           <p className="text-[9px] font-bold text-rose-600 leading-relaxed">
+                              {isRtl 
+                                ? 'لا يمكن تسجيل زيارات لهذا المشروع لعدم وجود عقد معتمد أو مسدد. يرجى مراجعة الإدارة.' 
+                                : 'Logs disabled: No approved or paid contract found for this project.'}
+                           </p>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/clients/${selectedClientId}`)} className="h-8 rounded-lg bg-white border-rose-200 text-rose-600 font-bold text-[9px] gap-1"><Gavel className="h-3 w-3" /> مراجعة العقود</Button>
+                     </div>
+                  )}
+
+                  {selectedProjectId && !isFinancialLockActive && (
                     <div className="p-5 bg-blue-50/50 rounded-2xl border-2 border-white shadow-inner space-y-3 animate-in fade-in">
                        <div className="flex justify-between items-center text-[10px] font-black uppercase text-blue-600">
                           <span>{isRtl ? 'الإنجاز الفني للمسار' : 'Path Progress'}</span>
@@ -426,7 +446,7 @@ function NewFieldVisitForm() {
                </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 text-start">
+            <Card className={cn("border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 text-start transition-opacity", isFinancialLockActive && "opacity-30 pointer-events-none")}>
                <CardHeader className="bg-slate-50 border-b p-6"><CardTitle className="text-sm font-black flex items-center gap-2"><Users className="h-4 w-4 text-primary" /> {isRtl ? 'توزيع القوى العاملة' : 'Labor Hub'}</CardTitle></CardHeader>
                <CardContent className="p-6 space-y-6">
                   <div className="space-y-2">
@@ -485,7 +505,7 @@ function NewFieldVisitForm() {
                </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 text-start">
+            <Card className={cn("border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 text-start transition-opacity", isFinancialLockActive && "opacity-30 pointer-events-none")}>
                <CardHeader className="bg-slate-50 border-b p-6"><CardTitle className="text-sm font-black flex items-center gap-2"><Truck className="h-4 w-4 text-primary" /> {isRtl ? 'المعدات والآليات' : 'Equipment Fleet'}</CardTitle></CardHeader>
                <CardContent className="p-6 space-y-4">
                   <Select onValueChange={handleAddEquipment}>
@@ -523,7 +543,7 @@ function NewFieldVisitForm() {
          </div>
 
          <div className="lg:col-span-8 space-y-6">
-            <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5 min-h-[600px] flex flex-col">
+            <Card className={cn("border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5 min-h-[600px] flex flex-col transition-opacity", isFinancialLockActive && "opacity-30 pointer-events-none")}>
                <CardHeader className="bg-slate-900 text-white p-8 border-b text-start shrink-0">
                   <div className="flex justify-between items-center">
                      <div className="flex items-center gap-4">
@@ -533,7 +553,7 @@ function NewFieldVisitForm() {
                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Sovereign Progress Tracking</p>
                         </div>
                      </div>
-                     <Button onClick={handleAddRow} disabled={!selectedProjectId} className="h-10 px-6 rounded-xl bg-white/10 text-white hover:bg-white/20 font-black text-xs gap-2">
+                     <Button onClick={handleAddRow} disabled={!selectedProjectId || isFinancialLockActive} className="h-10 px-6 rounded-xl bg-white/10 text-white hover:bg-white/20 font-black text-xs gap-2">
                         <Plus className="h-4 w-4" /> {isRtl ? 'إضافة سطر إنجاز' : 'Add Work Line'}
                      </Button>
                   </div>
@@ -543,6 +563,11 @@ function NewFieldVisitForm() {
                      <div className="py-40 text-center opacity-30 flex flex-col items-center gap-6">
                         <Sparkles className="h-16 w-16 text-slate-200" />
                         <p className="text-xl font-black text-slate-400">{isRtl ? 'يرجى اختيار المشروع أولاً' : 'Select Project to enable grid'}</p>
+                     </div>
+                  ) : isFinancialLockActive ? (
+                     <div className="py-40 text-center opacity-30 flex flex-col items-center gap-6">
+                        <Lock className="h-16 w-16 text-rose-200" />
+                        <p className="text-xl font-black text-rose-400">{isRtl ? 'الجدول مغلق لعدم وجود عقد' : 'Grid locked due to missing contract'}</p>
                      </div>
                   ) : (
                      <Table>
