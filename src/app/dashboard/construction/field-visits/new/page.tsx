@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, Suspense } from 'react';
@@ -59,30 +60,56 @@ function NewFieldVisitForm() {
   const [selectedDeptId, setSelectedDeptId] = useState('');
   const [equipmentList, setEquipmentList] = useState<any[]>([]);
 
-  // تم تعديل الصفوف لإزالة خيار "رد المسؤول" في مرحلة الرفع
   const [gridRows, setGridRows] = useState<any[]>([
     { boqItemId: '', quantity: '', notes: '', photoUrls: [], isUploading: false }
   ]);
 
-  // --- Logic for Cloning ---
+  // --- Logic for Cloning (Comprehensive Protocol) ---
   useEffect(() => {
     async function fetchCloneData() {
       if (!cloneId || !db || !companyId) return;
       const snap = await getDoc(doc(db, paths.fieldVisits(companyId), cloneId));
       if (snap.exists()) {
         const data = snap.data();
+        
+        // 1. الأساسيات
         setSelectedClientId(data.clientId);
         setSelectedProjectId(data.transactionId);
-        setSelectedGroups(data.laborDetails?.filter((l: any) => l.type === 'group') || []);
+        
+        // 2. استنساخ العمالة المزدوج (Crews & Individuals)
+        if (data.laborDetails) {
+           const groups = data.laborDetails.filter((l: any) => l.type === 'group').map((g: any) => ({
+              id: g.id,
+              name: g.trade,
+              memberCount: g.count
+           }));
+           setSelectedGroups(groups);
+
+           const individuals = data.laborDetails.filter((l: any) => l.type === 'individual').map((i: any) => ({
+              employeeId: i.employeeId,
+              employeeName: i.employeeName || '---',
+              trade: i.trade,
+              hours: i.hours || 8,
+              hourlyCostRef: i.hourlyCostRef || 0
+           }));
+           setIndividualLabor(individuals);
+        }
+
+        // 3. استنساخ المعدات
         setEquipmentList(data.equipmentUsed || []);
-        setGridRows(data.items.map((i: any) => ({
-           boqItemId: i.boqItemId,
-           quantity: i.quantity,
-           notes: i.notes,
-           photoUrls: i.photoUrls,
-           isUploading: false
-        })));
-        toast({ title: isRtl ? "تم استنساخ بيانات الزيارة" : "Visit data cloned" });
+
+        // 4. استنساخ جدول الإنجاز (BOQ Rows)
+        if (data.items) {
+           setGridRows(data.items.map((i: any) => ({
+              boqItemId: i.boqItemId,
+              quantity: i.quantity,
+              notes: i.notes,
+              photoUrls: i.photoUrls || [],
+              isUploading: false
+           })));
+        }
+
+        toast({ title: isRtl ? "تم استنساخ كافة بيانات الزيارة" : "Full visit data cloned" });
       }
     }
     fetchCloneData();
@@ -90,7 +117,7 @@ function NewFieldVisitForm() {
 
   // --- Queries ---
   const dayExecutionsQuery = useMemo(() => 
-    companyId && db && visitDate ? query(collection(db, paths.executions(companyId)), where('visitDate', '==', visitDate)) : null,
+    companyId && db && visitDate ? query(collection(db, paths.attendance(companyId)), where('date', '==', visitDate)) : null,
   [db, companyId, visitDate]);
   const { data: dayExecutions } = useCollection<any>(dayExecutionsQuery);
 
@@ -98,13 +125,7 @@ function NewFieldVisitForm() {
     const workerIds = new Set<string>();
     const equipIds = new Set<string>();
     dayExecutions?.forEach(ex => {
-      ex.laborDetails?.forEach((l: any) => {
-        if (l.employeeId) workerIds.add(l.employeeId);
-        if (l.memberIds) l.memberIds.forEach((id: string) => workerIds.add(id));
-      });
-      ex.equipmentUsed?.forEach((e: any) => {
-        if (e.equipmentId && !e.isMultiSite) equipIds.add(e.equipmentId);
-      });
+      if (ex.employeeId) workerIds.add(ex.employeeId);
     });
     return { workerIds, equipIds };
   }, [dayExecutions]);
@@ -213,10 +234,6 @@ function NewFieldVisitForm() {
   const handleAddGroup = (v: string) => {
     const group = workGroups?.find(g => g.id === v);
     if (!group) return;
-    const busyMembers = group.memberIds?.filter(id => busyResourceSets.workerIds.has(id));
-    if (busyMembers && busyMembers.length > 0) {
-      toast({ variant: "destructive", title: isRtl ? "تنبيه: بعض أعضاء الطاقم مسجلون في مواقع أخرى" : "Some crew members are busy on other sites" });
-    }
     if (!selectedGroups.find(g => g.id === v)) {
       setSelectedGroups([...selectedGroups, group]);
     }
@@ -226,9 +243,6 @@ function NewFieldVisitForm() {
     const emp = deptEmployees?.find(e => e.id === v);
     if (!emp) return;
     if (activeSelectedMemberIds.has(v)) return;
-    if (busyResourceSets.workerIds.has(v)) {
-      toast({ variant: "destructive", title: isRtl ? "الموظف مسجل في موقع آخر اليوم" : "Employee is busy elsewhere today" });
-    }
     setIndividualLabor([...individualLabor, {
       employeeId: emp.id,
       employeeName: emp.fullName,
@@ -247,7 +261,7 @@ function NewFieldVisitForm() {
       name: equip.name,
       code: equip.code,
       hoursUsed: 4,
-      isMultiSite: busyResourceSets.equipIds.has(v),
+      isMultiSite: false,
       hourlyRateRef: 0
     }]);
   };
@@ -266,7 +280,7 @@ function NewFieldVisitForm() {
       
       const laborDetails = [
         ...selectedGroups.map(g => ({ type: 'group', id: g.id, trade: g.name, count: g.memberCount, employeeId: null })),
-        ...individualLabor.map(i => ({ type: 'individual', employeeId: i.employeeId, trade: i.trade, count: 1 }))
+        ...individualLabor.map(i => ({ type: 'individual', employeeId: i.employeeId, trade: i.trade, employeeName: i.employeeName, count: 1 }))
       ];
 
       const visitRef = doc(collection(db, paths.fieldVisits(companyId)));
@@ -305,7 +319,7 @@ function NewFieldVisitForm() {
           unit: boqItem.unitSymbol,
           notes: row.notes,
           photoUrls: row.photoUrls,
-          executionStatus: 'pending' // افتراضي: بانتظار رد المسؤول
+          executionStatus: 'pending'
         });
       }
 
@@ -358,7 +372,6 @@ function NewFieldVisitForm() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-         
          <div className="lg:col-span-4 space-y-6">
             <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 text-start">
                <CardHeader className="bg-primary/5 border-b p-6">
@@ -482,7 +495,6 @@ function NewFieldVisitForm() {
                            <SelectItem key={e.id} value={e.id!} disabled={equipmentList.some(x => x.equipmentId === e.id)}>
                               <div className="flex justify-between items-center w-full gap-4">
                                  <span>{e.name} (#{e.code})</span>
-                                 {busyResourceSets.equipIds.has(e.id!) && <Badge variant="destructive" className="text-[7px] h-4">BUSY</Badge>}
                               </div>
                            </SelectItem>
                         ))}
@@ -499,15 +511,9 @@ function NewFieldVisitForm() {
                               </div>
                               <Trash2 className="h-4 w-4 text-rose-300 cursor-pointer" onClick={() => setEquipmentList(equipmentList.filter((_, idx) => idx !== i))} />
                            </div>
-                           <div className="flex items-center justify-between gap-4">
-                              <div className="flex items-center gap-2 flex-1 text-start">
-                                 <Label className="text-[8px] font-black uppercase text-slate-400">Hours</Label>
-                                 <Input type="number" value={e.hoursUsed} onChange={v => { const nl = [...equipmentList]; nl[i].hoursUsed = Number(v.target.value); setEquipmentList(nl); }} className="h-7 text-center font-black text-[10px]" />
-                              </div>
-                              <div className="flex items-center gap-2">
-                                 <Label className="text-[8px] font-black uppercase text-slate-400">Multi-Site</Label>
-                                 <Switch checked={e.isMultiSite} onCheckedChange={v => { const nl = [...equipmentList]; nl[i].isMultiSite = v; setEquipmentList(nl); }} className="scale-75" />
-                              </div>
+                           <div className="flex items-center gap-2 text-start">
+                              <Label className="text-[8px] font-black uppercase text-slate-400">Hours</Label>
+                              <Input type="number" value={e.hoursUsed} onChange={v => { const nl = [...equipmentList]; nl[i].hoursUsed = Number(v.target.value); setEquipmentList(nl); }} className="h-7 w-20 text-center font-black text-[10px]" />
                            </div>
                         </div>
                      ))}
