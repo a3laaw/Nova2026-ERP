@@ -4,18 +4,19 @@ import { LaborDetail, EquipmentUsed } from './documents';
 export type FieldVisitStatus = 'draft' | 'submitted' | 'approved' | 'verified';
 
 /**
- * حالات الإنجاز الفني (رد المهندس المسؤول)
+ * حالات الإنجاز الفني (رد المهندس المسؤول - يتم تحديدها بعد التقرير)
  */
-export type WorkItemExecutionStatus = 'completed' | 'partial' | 'not_completed';
+export type WorkItemExecutionStatus = 'pending' | 'completed' | 'partial' | 'not_completed';
 
 export interface WorkItemLog {
   boqItemId: string;
   itemName: string;
   quantity: number;
   unit: string;
-  notes: string;
+  notes: string;           // ملاحظات المهندس الميداني/المراقب
   photoUrls: string[];
-  executionStatus: WorkItemExecutionStatus; // الرد الفني للمسؤول عن البند
+  executionStatus?: WorkItemExecutionStatus; // رد المهندس المسؤول (الحالة)
+  engineerResponseNote?: string;             // رد المهندس المسؤول (نصي)
 }
 
 export interface FieldVisit extends BaseReference {
@@ -53,5 +54,5 @@ export interface FieldVisit extends BaseReference {
   updatedAt: any;
   updatedByName?: string;
   isEdited?: boolean;
-  clonedFromId?: string; // مرجع في حال تم النسخ من تقرير سابق
+  clonedFromId?: string; 
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, Suspense, useCallback } from 'react';
+import { useState, useMemo, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ import {
   Truck, LayoutGrid, Sparkles,
   Building2, Briefcase, Globe, 
   ShieldCheck, UserCircle, X,
-  AlertTriangle, Copy
+  AlertTriangle
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, where, getDocs, orderBy, doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
@@ -36,7 +36,6 @@ import { Equipment } from '@/types/equipment';
 import { Department } from '@/types/reference';
 import { BOQ, BOQItem } from '@/types/documents';
 import { BOQExecutionService } from '@/services/boq-execution-service';
-import { WorkItemExecutionStatus } from '@/types/field-visit';
 
 function NewFieldVisitForm() {
   const { globalUser, user } = useAuthContext();
@@ -60,8 +59,9 @@ function NewFieldVisitForm() {
   const [selectedDeptId, setSelectedDeptId] = useState('');
   const [equipmentList, setEquipmentList] = useState<any[]>([]);
 
+  // تم تعديل الصفوف لإزالة خيار "رد المسؤول" في مرحلة الرفع
   const [gridRows, setGridRows] = useState<any[]>([
-    { boqItemId: '', quantity: '', notes: '', photoUrls: [], isUploading: false, executionStatus: 'completed' as WorkItemExecutionStatus }
+    { boqItemId: '', quantity: '', notes: '', photoUrls: [], isUploading: false }
   ]);
 
   // --- Logic for Cloning ---
@@ -76,7 +76,10 @@ function NewFieldVisitForm() {
         setSelectedGroups(data.laborDetails?.filter((l: any) => l.type === 'group') || []);
         setEquipmentList(data.equipmentUsed || []);
         setGridRows(data.items.map((i: any) => ({
-           ...i,
+           boqItemId: i.boqItemId,
+           quantity: i.quantity,
+           notes: i.notes,
+           photoUrls: i.photoUrls,
            isUploading: false
         })));
         toast({ title: isRtl ? "تم استنساخ بيانات الزيارة" : "Visit data cloned" });
@@ -170,7 +173,7 @@ function NewFieldVisitForm() {
 
   // --- Handlers ---
   const handleAddRow = () => {
-    setGridRows([...gridRows, { boqItemId: '', quantity: '', notes: '', photoUrls: [], isUploading: false, executionStatus: 'completed' }]);
+    setGridRows([...gridRows, { boqItemId: '', quantity: '', notes: '', photoUrls: [], isUploading: false }]);
   };
 
   const removeRow = (idx: number) => {
@@ -302,7 +305,7 @@ function NewFieldVisitForm() {
           unit: boqItem.unitSymbol,
           notes: row.notes,
           photoUrls: row.photoUrls,
-          executionStatus: row.executionStatus
+          executionStatus: 'pending' // افتراضي: بانتظار رد المسؤول
         });
       }
 
@@ -539,10 +542,9 @@ function NewFieldVisitForm() {
                      <Table>
                         <TableHeader className="bg-slate-50">
                            <TableRow>
-                              <TableHead className="ps-8 text-start w-[300px]">{isRtl ? 'البند' : 'BOQ Item'}</TableHead>
-                              <TableHead className="text-start w-[180px]">{isRtl ? 'رد المهندس (الحالة)' : 'Engineer Reply'}</TableHead>
+                              <TableHead className="ps-8 text-start w-[300px]">{isRtl ? 'البند من المقايسة' : 'BOQ Item'}</TableHead>
                               <TableHead className="text-center w-[100px]">{isRtl ? 'الكمية' : 'Qty'}</TableHead>
-                              <TableHead className="text-start">{isRtl ? 'الملاحظة الفنية' : 'Technical Note'}</TableHead>
+                              <TableHead className="text-start">{isRtl ? 'ملاحظة الموقع' : 'Field Note'}</TableHead>
                               <TableHead className="pe-8 w-[100px] text-center">{isRtl ? 'إثبات' : 'Img'}</TableHead>
                            </TableRow>
                         </TableHeader>
@@ -565,18 +567,6 @@ function NewFieldVisitForm() {
                                    </Select>
                                 </TableCell>
                                 <TableCell>
-                                   <Select value={row.executionStatus} onValueChange={v => updateRow(idx, 'executionStatus', v)}>
-                                      <SelectTrigger className="h-9 border-2 font-black text-[9px]">
-                                         <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent className="z-[151]">
-                                         <SelectItem value="completed" className="text-emerald-600 font-bold text-[10px]">تم الإنجاز بالكامل</SelectItem>
-                                         <SelectItem value="partial" className="text-amber-600 font-bold text-[10px]">إنجاز جزئي</SelectItem>
-                                         <SelectItem value="not_completed" className="text-rose-600 font-bold text-[10px]">لم يتم الإنجاز</SelectItem>
-                                      </SelectContent>
-                                   </Select>
-                                </TableCell>
-                                <TableCell>
                                    <Input 
                                       value={row.quantity} 
                                       onChange={e => updateRow(idx, 'quantity', e.target.value)} 
@@ -589,7 +579,7 @@ function NewFieldVisitForm() {
                                       value={row.notes} 
                                       onChange={e => updateRow(idx, 'notes', e.target.value)} 
                                       className="h-10 border-2 text-xs font-bold bg-white" 
-                                      placeholder={isRtl ? "رد أو ملاحظة..." : "Note..."} 
+                                      placeholder={isRtl ? "ملاحظة المهندس الميداني..." : "Note..."} 
                                    />
                                 </TableCell>
                                 <TableCell className="pe-8 text-center">
@@ -616,9 +606,9 @@ function NewFieldVisitForm() {
             <div className="p-8 rounded-[3rem] bg-blue-50/50 border-4 border-dashed border-blue-100 flex items-start gap-4">
                <ShieldCheck className="h-8 w-8 text-blue-600 shrink-0 mt-1" />
                <div className="text-start space-y-1">
-                  <h4 className="font-black text-sm text-blue-900 uppercase">ميثاق الصحة والامتثال الميداني</h4>
+                  <h4 className="font-black text-sm text-blue-900 uppercase">دورة الاعتماد السيادي</h4>
                   <p className="text-[10px] text-blue-800 font-bold leading-relaxed">
-                     يتم فحص تعارض الموارد بشكل لحظي لضمان عدم ازدواجية التكاليف. تسجيل الإنجاز الكمي يساهم فوراً في تحريك المسار الفني للمشروع وفتح المطالبات المالية.
+                     يتم تسجيل هذا التقرير كـ "بيان إنجاز خام". سيقوم المهندس المسؤول لاحقاً بمراجعة البنود وتقديم الرد الفني (تم/جزئي/لم يتم) لكل بند على حدة لاعتماده مالياً.
                   </p>
                </div>
             </div>
