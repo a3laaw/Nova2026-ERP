@@ -103,11 +103,8 @@ export default function TransactionDetailsPage() {
   const [revisionComment, setRevisionComment] = useState("");
 
   const editAccess = check('projects', 'edit');
-  
   const canSeeFinance = check('accounting', 'view').can || check('procurement', 'view').can;
 
-  // خوارزمية استخراج الاسم السيادي (Sovereign Identity Resolver)
-  // فرض الاسم الكامل (fullName) من السجل العالمي لضمان عدم ظهور "اليوزر" أو "1004"
   const currentUserName = useMemo(() => {
     return globalUser?.fullName || user?.displayName || globalUser?.username || 'مهندس غير معرف';
   }, [globalUser, user]);
@@ -124,8 +121,10 @@ export default function TransactionDetailsPage() {
   
   const isFinancialLockActive = !activeContract;
 
+  // تحديد نوع المعاملة بدقة لفلترة الرادار
   const isConsulting = useMemo(() => {
-    const name = transaction?.activityTypeName || '';
+    if (!transaction) return false;
+    const name = transaction.activityTypeName || '';
     return name.includes('استشارات') || name.includes('Consulting') || name.includes('تصميم') || name.includes('Design');
   }, [transaction]);
 
@@ -307,7 +306,7 @@ export default function TransactionDetailsPage() {
            </div>
         </div>
         <div className="flex gap-2">
-           {!isConsulting && activeBoq && (
+           {activeBoq && (
              <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="btn-gradient h-10 px-6 rounded-xl gap-2">
                 <FileSpreadsheet className="h-4 w-4" /> {isRtl ? 'عرض المقايسة' : 'View BOQ'}
              </Button>
@@ -367,7 +366,7 @@ export default function TransactionDetailsPage() {
                    ) : (
                      <div className="space-y-6 text-start">
                         <div className="flex justify-between items-end px-2">
-                           <h3 className="text-lg font-black font-headline text-slate-800 flex items-center gap-2"><Workflow className="h-5 w-5 text-primary" /> {isRtl ? 'رادار المسار الميداني' : 'Field Pipeline'}</h3>
+                           <h3 className="text-lg font-black font-headline text-slate-800 flex items-center gap-2"><Workflow className="h-5 w-5 text-primary" /> {isRtl ? (isConsulting ? 'مسار التصميم الهندسي' : 'رادار المسار الميداني') : (isConsulting ? 'Design Pipeline' : 'Field Pipeline')}</h3>
                            <span className="text-3xl font-black font-headline text-primary">{progressPercent}%</span>
                         </div>
                         <div className="space-y-4">
@@ -377,7 +376,6 @@ export default function TransactionDetailsPage() {
                               const isOperationalFrontier = stage.status === 'in-progress' || (stage.status === 'pending' && isPreviousCompleted);
                               const isReadyToStart = stage.status === 'pending' && isPreviousCompleted;
                               
-                              // تصحيح منطق الوصول: السماح للمهندس المسؤول بالوصول المطلق لمسار مشروعه
                               const isAssignedEngineer = globalUser?.employeeId === transaction?.assignedEngineerId;
                               const isDeptAllowed = !stage.allowedDepartmentIds?.length || isAssignedEngineer || (globalUser?.departmentId && stage.allowedDepartmentIds.includes(globalUser.departmentId));
 
@@ -393,7 +391,7 @@ export default function TransactionDetailsPage() {
                                               {isConsulting && (stage.revisionCount || 0) > 0 && <Badge className="bg-orange-100 text-orange-700 border-0 font-black text-[9px] px-2 h-5">{isRtl ? `مراجعة #${stage.revisionCount}` : `Rev #${stage.revisionCount}`}</Badge>}
                                               {!isAdmin && !isDeptAllowed && <Badge variant="outline" className="bg-rose-50 text-rose-600 border-rose-100 font-black text-[7px] gap-1 h-4"><Lock className="h-2 w-2" /> {isRtl ? 'خاص بقسم آخر' : 'Dept Locked'}</Badge>}
                                            </div>
-                                           {boqProgress && boqProgress.linkedItemsCount > 0 && (<div className="mt-2 space-y-1.5"><div className="flex justify-between text-[8px] font-black uppercase text-slate-400"><span>{isRtl ? 'الإنجاز الفني' : 'Progress'}</span><span>{boqProgress.progressPercent} %</span></div><Progress value={boqProgress.progressPercent} className="h-1.5" /></div>)}
+                                           {!isConsulting && boqProgress && boqProgress.linkedItemsCount > 0 && (<div className="mt-2 space-y-1.5"><div className="flex justify-between text-[8px] font-black uppercase text-slate-400"><span>{isRtl ? 'الإنجاز الفني' : 'Progress'}</span><span>{boqProgress.progressPercent} %</span></div><Progress value={boqProgress.progressPercent} className="h-1.5" /></div>)}
                                         </div>
                                      </div>
                                      <div className="flex gap-2" onClick={e => e.stopPropagation()}>
@@ -464,7 +462,22 @@ export default function TransactionDetailsPage() {
             <div className="bg-slate-50 p-6 text-slate-900 border-b text-start"><DialogTitle className="text-lg font-black flex items-center gap-3"><Hammer className="h-5 w-5 text-primary" />{isRtl ? 'تسجيل إنجاز فني' : 'Log Progress'}</DialogTitle></div>
             <div className="p-6 space-y-6 text-start">
                <Label className="text-[11px] font-black uppercase text-slate-400">Target Item</Label>
-               <Select value={selectedItemId} onValueChange={setSelectedItemId}><SelectTrigger className="h-10 rounded-lg border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger><SelectContent className="rounded-xl border shadow-2xl">{boqItems?.filter(i => (i.plannedQuantity || 0) > 0 && (i.technicalStageIds?.includes(targetStage?.technicalStageId!) || i.technicalStageId === targetStage?.technicalStageId)).map(i => (<SelectItem key={i.id} value={i.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50 text-start"><div className="flex flex-col text-start"><span className="font-black text-slate-800">{i.referenceTitle}</span><span className="text-[8px] text-slate-400">#{i.referenceCode}</span></div></SelectItem>))}</SelectContent></Select>
+               <Select value={selectedItemId} onValueChange={setSelectedItemId}>
+                  <SelectTrigger className="h-10 rounded-lg border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
+                  <SelectContent className="rounded-xl border shadow-2xl z-[160]">
+                    {boqItems?.filter(i => (i.plannedQuantity || 0) > 0 && (i.technicalStageIds?.includes(targetStage?.technicalStageId!) || i.technicalStageId === targetStage?.technicalStageId)).map(i => (
+                      <SelectItem key={i.id} value={i.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50 text-start">
+                        <div className="flex flex-col text-start">
+                          <span className="font-black text-slate-800">{i.referenceTitle}</span>
+                          <span className="text-[8px] text-slate-400">#{i.referenceCode}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                    {boqItems?.filter(i => (i.plannedQuantity || 0) > 0 && (i.technicalStageIds?.includes(targetStage?.technicalStageId!) || i.technicalStageId === targetStage?.technicalStageId)).length === 0 && (
+                       <div className="p-4 text-center text-slate-300 text-xs italic">لا توجد بنود مربوطة بهذه المرحلة.</div>
+                    )}
+                  </SelectContent>
+               </Select>
                <div className="space-y-4 pt-2">
                   <div className="space-y-2"><Label className="text-[11px] font-black uppercase text-slate-400">Quantity Executed</Label><Input type="number" step="0.01" value={progressQty} onChange={e => setProgressQty(e.target.value === '' ? '' : Number(e.target.value))} className="h-12 rounded-lg border-2 font-black text-2xl text-center shadow-inner" /></div>
                   <div className="space-y-1.5"><Label className="text-[11px] font-black uppercase text-slate-400">Field Notes</Label><Textarea value={progressNotes} onChange={e => setProgressNotes(e.target.value)} className="min-h-[100px] rounded-lg bg-slate-50/50 border-2 text-xs font-bold resize-none" /></div>

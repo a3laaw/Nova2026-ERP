@@ -87,7 +87,6 @@ export default function BOQExplorerPage() {
   const [reviewItems, setReviewItems] = useState<BOQVariationItem[]>([]);
   const [loadingReview, setLoadingReview] = useState(false);
 
-  // جلب المقايسات بدون orderBy لتجنب الحاجة لفهرس مركب
   const boqsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.boqs(companyId))) : null, 
   [db, companyId]);
@@ -101,7 +100,7 @@ export default function BOQExplorerPage() {
     });
   }, [rawBoqs]);
 
-  // تفعيل استعلام المجموعة بدون orderBy لتجنب طلب الفهارس المركبة في الكونسول
+  // استعلام شامل للأوامر التغييرية مع حماية ضد غياب الفهارس
   const allVOsQuery = useMemo(() => 
     companyId && db ? query(
       collectionGroup(db, 'variations'), 
@@ -221,7 +220,7 @@ export default function BOQExplorerPage() {
         </div>
 
         <TabsContent value="boqs" className="animate-in fade-in slide-in-from-bottom-2">
-          <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
+          <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
             <CardContent className="p-0 overflow-x-auto">
               <Table>
                 <TableHeader className="bg-muted/30">
@@ -236,6 +235,8 @@ export default function BOQExplorerPage() {
                 <TableBody>
                   {boqLoading ? (
                     <TableRow><TableCell colSpan={5} className="text-center py-32"><Loader2 className="animate-spin h-12 w-12 mx-auto text-primary/20" /></TableCell></TableRow>
+                  ) : filteredBoqs.length === 0 ? (
+                     <TableRow><TableCell colSpan={5} className="text-center py-32 text-slate-300 italic font-bold">لا يوجد مقايسات حالياً.</TableCell></TableRow>
                   ) : filteredBoqs.map((boq) => (
                     <TableRow key={boq.id} className="hover:bg-slate-50 transition-colors group border-b-slate-50 cursor-pointer" onClick={() => router.push(`/dashboard/clients/${boq.clientId}/transactions/${boq.transactionId}/boq`)}>
                       <TableCell className="py-8 ps-10 text-start">
@@ -293,7 +294,7 @@ export default function BOQExplorerPage() {
                          </div>
                       </TableCell>
                       <TableCell className="text-start font-black text-slate-500 text-xs">{vo.boqNumber}</TableCell>
-                      <TableCell className="text-end font-mono font-black text-xl pe-4" style={{ color: vo.totalAmount >= 0 ? '#10b981' : '#ef4444' }}>{vo.totalAmount >= 0 ? '+' : ''}{vo.totalAmount.toLocaleString()}</TableCell>
+                      <TableCell className="text-end font-mono font-black text-xl pe-4" style={{ color: (vo.totalAmount || 0) >= 0 ? '#10b981' : '#ef4444' }}>{(vo.totalAmount || 0) >= 0 ? '+' : ''}{(vo.totalAmount || 0).toLocaleString()}</TableCell>
                       <TableCell className="text-start">
                          <Badge className={cn("font-black px-4 py-1.5 rounded-lg border-0 shadow-sm uppercase text-[9px]", vo.status === 'approved' ? 'bg-emerald-50 text-emerald-600' : vo.status === 'cancelled' ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600')}>{vo.status}</Badge>
                       </TableCell>
@@ -322,7 +323,7 @@ export default function BOQExplorerPage() {
                </div>
                <div className="text-end">
                   <p className="text-[9px] font-black text-primary uppercase mb-1">Impact</p>
-                  <h3 className={cn("text-3xl font-black font-mono", (reviewVO?.totalAmount || 0) >= 0 ? "text-emerald-400" : "text-rose-400")}>{reviewVO?.totalAmount.toLocaleString()} <span className="text-xs opacity-40">KWD</span></h3>
+                  <h3 className={cn("text-3xl font-black font-mono", (reviewVO?.totalAmount || 0) >= 0 ? "text-emerald-400" : "text-rose-400")}>{(reviewVO?.totalAmount || 0).toLocaleString()} <span className="text-xs opacity-40">KWD</span></h3>
                </div>
             </div>
             <div className="p-8 space-y-6 max-h-[60vh] overflow-y-auto scrollbar-hide text-start">
