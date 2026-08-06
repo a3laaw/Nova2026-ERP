@@ -129,7 +129,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
     if (formData.pricingMode === 'percentage' && !stats.isValid) {
       toast({ 
         variant: "destructive", 
-        title: isRtl ? "خطأ في الميزانية" : "Budget Mismatch", 
+        title: t('error'), 
         description: isRtl ? `يجب أن يكون مجموع الحصص 100% (الحالي: ${stats.totalPercentage}%)` : `Total percentage must be 100%` 
       });
       return;
@@ -230,7 +230,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                       <div className="flex items-center gap-3 text-start">
                         <Calculator className="h-4 w-4 text-primary" />
                         <div>
-                          <p className="text-[7px] font-black uppercase text-primary">Pricing Mode</p>
+                          <p className="text-[7px] font-black uppercase text-primary">{t('pricingMode')}</p>
                           <Select value={formData.pricingMode} onValueChange={(v: PricingMode) => setFormData({...formData, pricingMode: v})}>
                              <SelectTrigger className="h-6 w-32 rounded-md bg-white/10 border-0 text-white font-black text-[9px] mt-0.5"><SelectValue /></SelectTrigger>
                              <SelectContent className="rounded-xl">
@@ -256,7 +256,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
 
                   <div className="space-y-2 text-start">
                      <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                        <FileText className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'المقدمة التعاقدية (الديباجة)' : 'Contract Preamble'}
+                        <FileText className="h-3.5 w-3.5 text-primary" /> {t('introText')}
                      </h4>
                      <Textarea value={formData.introText || ''} onChange={e => setFormData({...formData, introText: e.target.value})} className="min-h-[80px] rounded-xl border-2 p-3 text-[10px] font-bold bg-slate-50/30" />
                   </div>
@@ -278,9 +278,9 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                  <th className="p-3 w-10 text-start">#</th>
                                  <th className="p-3 text-start">{isRtl ? 'مسمى الدفعة' : 'Milestone Name'}</th>
                                  {formData.pricingMode === 'percentage' && <th className="p-3 text-center w-16">%</th>}
-                                 <th className="p-3 text-center w-24">{isRtl ? 'التوقيت' : 'Timing'}</th>
-                                 <th className="p-3 text-start w-32">{isRtl ? 'الارتباط الميداني' : 'Technical Link'}</th>
-                                 <th className="p-3 text-end pe-6 w-32">{isRtl ? 'القيمة' : 'Amount'}</th>
+                                 <th className="p-3 text-center w-24">{t('milestoneTiming')}</th>
+                                 <th className="p-3 text-start w-32">{t('technicalLink')}</th>
+                                 <th className="p-3 text-end pe-6 w-32">{t('amount')}</th>
                                  <th className="p-3 w-10"></th>
                               </tr>
                            </thead>
@@ -298,11 +298,10 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                       <td className="p-2">
                                          <div className="space-y-1">
                                             <Input value={m.name} onChange={e => updateMilestone(idx, 'name', e.target.value)} className="h-8 rounded-lg font-bold text-[10px] bg-slate-50/50" />
-                                            {/* عرض الوصف المولد في وضع التعديل لضمان المعاينة الفورية */}
                                             {m.technicalStageId && m.technicalStageId !== 'NONE' && (
                                               <p className="text-[7px] font-black text-primary/60 italic flex items-center gap-1 mt-1">
                                                 <Clock className="h-2 w-2" />
-                                                {t(m.timing || 'at')} {m.technicalStageId === 'SIGNING' ? (isRtl ? 'توقيع العقد' : 'Contract Signing') : linkedStageName}
+                                                {t(m.timing || 'at')} {m.technicalStageId === 'SIGNING' ? t('contractSigning') : linkedStageName}
                                               </p>
                                             )}
                                          </div>
@@ -330,14 +329,14 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                          <Select value={m.technicalStageId || 'SIGNING'} onValueChange={v => updateMilestone(idx, 'technicalStageId', v)}>
                                             <SelectTrigger className="h-8 rounded-lg border-2 font-bold text-[9px] bg-white"><SelectValue /></SelectTrigger>
                                             <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
-                                               <SelectItem value="SIGNING" className="font-bold text-[10px]">توقيع العقد</SelectItem>
+                                               <SelectItem value="SIGNING" className="font-bold text-[10px]">{t('contractSigning')}</SelectItem>
                                                {pathStages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-[10px] py-2 border-b last:border-0 border-slate-50">
                                                   <span className="flex items-center gap-1"><Workflow className="h-2.5 w-2.5 text-primary" /> {s.name}</span>
                                                </SelectItem>)}
                                             </SelectContent>
                                          </Select>
                                       </td>
-                                      <td className="p-2 text-end pe-6">
+                                      <td className="p-2 text-end pe-6 w-32">
                                          {formData.pricingMode === 'itemized' ? (
                                             <Input type="number" step="0.001" value={m.amount === 0 ? "" : m.amount} onChange={e => updateMilestone(idx, 'amount', e.target.value === "" ? 0 : Number(e.target.value))} className="h-8 w-24 ms-auto text-end font-black text-emerald-600 text-[10px]" />
                                          ) : (
@@ -375,7 +374,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
 
                   <div className="space-y-4 pt-4 text-start">
                      <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 border-b-2 border-slate-900 pb-2">
-                        <Gavel className="h-4 w-4 text-primary" /> {isRtl ? 'البنود والالتزامات القانونية' : 'Legal Clauses & Conditions'}
+                        <Gavel className="h-4 w-4 text-primary" /> {t('legalText')}
                      </h4>
                      <Textarea value={formData.legalText || ''} onChange={e => setFormData({...formData, legalText: e.target.value})} className="min-h-[250px] rounded-2xl border-2 p-5 text-xs font-bold leading-relaxed bg-slate-50/30 focus:bg-white transition-all shadow-inner" placeholder="..." />
                   </div>
