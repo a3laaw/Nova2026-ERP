@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,10 +12,10 @@ import {
   Truck, CheckCircle2, ShieldCheck,
   Camera, Info, DollarSign, Printer,
   LayoutGrid, ExternalLink,
-  ShieldAlert
+  ShieldAlert, Edit3, Save, X, Copy
 } from "lucide-react";
 import { useFirestore, useDoc } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -24,10 +24,9 @@ import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
 import { paths } from '@/firebase/multi-tenant';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-/**
- * تقرير إنجاز ميداني متكامل (Official Field Log Report)
- */
 export default function FieldVisitDetailsPage() {
   const visitId = useParams().id as string;
   const { globalUser, user } = useAuthContext();
@@ -38,13 +37,47 @@ export default function FieldVisitDetailsPage() {
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
+  const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [verifying, setVerifying] = useState(false);
-
-  // الوصول المباشر للوثيقة باستخدام المسار المسطح الجديد (الأكثر استقراراً)
+  
   const visitRef = useMemo(() => 
     companyId && db && visitId ? doc(db, paths.fieldVisits(companyId), visitId) : null, [db, companyId, visitId]);
   
   const { data: visit, loading } = useDoc<any>(visitRef);
+
+  const [editItems, setEditItems] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (visit) {
+      setEditItems(visit.items || []);
+    }
+  }, [visit]);
+
+  const handleUpdateItem = (idx: number, field: string, val: any) => {
+    const newItems = [...editItems];
+    newItems[idx] = { ...newItems[idx], [field]: val };
+    setEditItems(newItems);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!db || !companyId || !visitId) return;
+    setSaving(true);
+    try {
+      await updateDoc(visitRef!, {
+        items: editItems,
+        isEdited: true,
+        updatedAt: serverTimestamp(),
+        updatedByName: globalUser?.fullName || user?.displayName || 'Admin'
+      });
+      toast({ title: isRtl ? "تم تحديث التقرير بنجاح" : "Report Updated" });
+      setIsEditing(false);
+    } catch (e) {
+      toast({ variant: "destructive", title: t('error') });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleVerify = async () => {
     if (!db || !companyId || !user || !visit) return;
@@ -60,19 +93,18 @@ export default function FieldVisitDetailsPage() {
     }
   };
 
+  const handleClone = () => {
+    router.push(`/dashboard/construction/field-visits/new?cloneId=${visitId}`);
+  };
+
   if (loading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
   if (!visit) return (
     <div className="h-[60vh] flex flex-col items-center justify-center space-y-6 text-center">
        <div className="h-20 w-20 bg-rose-50 text-rose-500 rounded-3xl flex items-center justify-center mx-auto shadow-inner">
           <ShieldAlert className="h-10 w-10" />
        </div>
-       <div>
-          <h2 className="text-xl font-black text-slate-800">404 - التقرير غير موجود</h2>
-          <p className="text-xs font-bold text-slate-400 mt-1">قد يكون التقرير قد حُذف أو تم نقله لمسار آخر.</p>
-       </div>
-       <Button onClick={() => router.push('/dashboard/construction/field-visits')} variant="outline" className="rounded-xl px-8 h-10 gap-2">
-          <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} /> العودة للسجل
-       </Button>
+       <div><h2 className="text-xl font-black text-slate-800">404 - التقرير غير موجود</h2></div>
+       <Button onClick={() => router.push('/dashboard/construction/field-visits')} variant="outline" className="rounded-xl px-8 h-10">العودة للسجل</Button>
     </div>
   );
 
@@ -90,19 +122,36 @@ export default function FieldVisitDetailsPage() {
         </div>
         
         <div className="flex gap-3">
-           {!visit.isVerified && isAdmin && (
-             <Button onClick={handleVerify} disabled={verifying} className="h-14 px-10 rounded-2xl bg-emerald-600 text-white font-black text-lg shadow-xl shadow-emerald-100 gap-3 border-b-8 border-emerald-800">
+           {!visit.isVerified && isAdmin && !isEditing && (
+             <Button onClick={handleVerify} disabled={verifying} className="h-14 px-8 rounded-2xl bg-emerald-600 text-white font-black shadow-xl shadow-emerald-100 gap-2">
                 {verifying ? <Loader2 className="animate-spin" /> : <ShieldCheck className="h-6 w-6" />}
-                {isRtl ? 'اعتماد للاستحقاق المالي' : 'Verify for Billing'}
+                {isRtl ? 'اعتماد للاستحقاق' : 'Verify Billing'}
              </Button>
            )}
-           <Button variant="outline" onClick={() => window.print()} className="h-14 px-8 rounded-2xl border-2 font-black gap-2 bg-white shadow-sm">
-              <Printer className="h-5 w-5 text-primary" /> {isRtl ? 'طباعة التقرير' : 'Print'}
+           {!isEditing ? (
+             <>
+               <Button onClick={() => setIsEditing(true)} variant="outline" className="h-14 px-8 rounded-2xl border-2 font-black gap-2 bg-white shadow-sm">
+                 <Edit3 className="h-5 w-5" /> {isRtl ? 'تعديل التقرير' : 'Edit Report'}
+               </Button>
+               <Button onClick={handleClone} variant="outline" className="h-14 px-8 rounded-2xl border-2 font-black gap-2 bg-blue-50 text-blue-600 border-blue-100">
+                 <Copy className="h-5 w-5" /> {isRtl ? 'استنساخ لتاريخ آخر' : 'Clone to Date'}
+               </Button>
+             </>
+           ) : (
+             <div className="flex gap-2">
+               <Button onClick={() => setIsEditing(false)} variant="outline" className="h-14 px-6 rounded-2xl border-2 font-bold">إلغاء</Button>
+               <Button onClick={handleSaveEdit} disabled={saving} className="h-14 px-10 rounded-2xl bg-primary text-white font-black shadow-xl gap-2">
+                 {saving ? <Loader2 className="animate-spin" /> : <Save className="h-6 w-6" />} {isRtl ? 'حفظ التعديلات' : 'Save Changes'}
+               </Button>
+             </div>
+           )}
+           <Button variant="outline" onClick={() => window.print()} className="h-14 px-6 rounded-2xl border-2 font-black gap-2 bg-slate-900 text-white shadow-xl">
+              <Printer className="h-5 w-5" /> {isRtl ? 'طباعة' : 'Print'}
            </Button>
         </div>
       </div>
 
-      <PrintWrapper title={isRtl ? "تقرير إنجاز ميداني وتحليل تكاليف" : "Verified Field Progress Log"}>
+      <PrintWrapper title={isRtl ? "تقرير إنجاز ميداني وتحليل موارد" : "Verified Field Progress Log"}>
          <div className="space-y-12">
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12 border-b-4 border-primary/20 pb-10">
@@ -123,27 +172,55 @@ export default function FieldVisitDetailsPage() {
 
             <div className="space-y-6 text-start">
                <h3 className="font-black text-xl flex items-center gap-3"><LayoutGrid className="h-6 w-6 text-primary" /> {isRtl ? 'جدول الأعمال المنجزة (BOQ)' : 'Executed Work Grid'}</h3>
-               <div className="border-2 rounded-[2.5rem] overflow-hidden bg-white shadow-xl ring-1 ring-black/[0.02]">
+               <div className="border-2 rounded-[2.5rem] overflow-hidden bg-white shadow-xl">
                   <Table>
                      <TableHeader className="bg-slate-900">
                         <TableRow className="hover:bg-slate-900 border-0">
                            <TableHead className="ps-8 text-white font-black text-[10px] uppercase">#</TableHead>
-                           <TableHead className="text-white font-black text-[10px] uppercase">{isRtl ? 'البند المنفذ' : 'Description'}</TableHead>
-                           <TableHead className="text-center text-white font-black text-[10px] uppercase">{isRtl ? 'الكمية' : 'Qty'}</TableHead>
-                           <TableHead className="text-white font-black text-[10px] uppercase">{isRtl ? 'الملاحظات الفنية للمهندس' : 'Field Technical Notes'}</TableHead>
+                           <TableHead className="text-white font-black text-[10px] uppercase w-[250px]">{isRtl ? 'البند المنفذ' : 'Description'}</TableHead>
+                           <TableHead className="text-white font-black text-[10px] uppercase w-[180px]">{isRtl ? 'رد المهندس (الحالة)' : 'Engineer Reply'}</TableHead>
+                           <TableHead className="text-center text-white font-black text-[10px] uppercase w-[100px]">{isRtl ? 'الكمية' : 'Qty'}</TableHead>
+                           <TableHead className="text-white font-black text-[10px] uppercase">{isRtl ? 'الملاحظات الفنية' : 'Technical Notes'}</TableHead>
                         </TableRow>
                      </TableHeader>
                      <TableBody>
-                        {visit.items?.map((item: any, i: number) => (
+                        {editItems.map((item: any, i: number) => (
                            <TableRow key={i} className="border-b-slate-100 hover:bg-slate-50 transition-colors">
                               <td className="ps-8 py-6 font-black text-slate-300">{(i + 1).toString().padStart(2, '0')}</td>
                               <td className="py-6 text-start">
                                  <p className="font-black text-slate-800 text-sm leading-tight">{item.itemName}</p>
                                  <Badge variant="outline" className="text-[8px] font-black text-slate-400 border-slate-100 mt-1 uppercase">{item.unit || '---'}</Badge>
                               </td>
-                              <td className="py-6 text-center font-black text-2xl text-primary">{item.quantity}</td>
-                              <td className="py-6 text-xs font-bold text-slate-600 leading-relaxed italic">
-                                 {item.notes ? `"${item.notes}"` : '---'}
+                              <td className="py-6">
+                                 {isEditing ? (
+                                    <Select value={item.executionStatus} onValueChange={v => handleUpdateItem(i, 'executionStatus', v)}>
+                                       <SelectTrigger className="h-9 border-2 font-black text-[9px] bg-white"><SelectValue /></SelectTrigger>
+                                       <SelectContent>
+                                          <SelectItem value="completed" className="text-emerald-600 font-bold text-[10px]">تم الإنجاز بالكامل</SelectItem>
+                                          <SelectItem value="partial" className="text-amber-600 font-bold text-[10px]">إنجاز جزئي</SelectItem>
+                                          <SelectItem value="not_completed" className="text-rose-600 font-bold text-[10px]">لم يتم الإنجاز</SelectItem>
+                                       </SelectContent>
+                                    </Select>
+                                 ) : (
+                                    <Badge className={cn(
+                                       "font-black text-[8px] border-0",
+                                       item.executionStatus === 'completed' ? "bg-emerald-50 text-emerald-600" :
+                                       item.executionStatus === 'partial' ? "bg-amber-50 text-amber-600" :
+                                       "bg-rose-50 text-rose-600"
+                                    )}>
+                                       {item.executionStatus === 'completed' ? 'تم الإنجاز' : item.executionStatus === 'partial' ? 'إنجاز جزئي' : 'لم يتم'}
+                                    </Badge>
+                                 )}
+                              </td>
+                              <td className="py-6 text-center">
+                                 {isEditing ? (
+                                    <Input type="number" value={item.quantity} onChange={e => handleUpdateItem(i, 'quantity', Number(e.target.value))} className="h-9 text-center font-black border-2" />
+                                 ) : <span className="font-black text-lg text-primary">{item.quantity}</span>}
+                              </td>
+                              <td className="py-6 text-start">
+                                 {isEditing ? (
+                                    <Input value={item.notes} onChange={e => handleUpdateItem(i, 'notes', e.target.value)} className="h-9 border-2 text-xs font-bold" />
+                                 ) : <p className="text-xs font-bold text-slate-600 leading-relaxed italic">"{item.notes}"</p>}
                               </td>
                            </TableRow>
                         ))}
@@ -162,7 +239,6 @@ export default function FieldVisitDetailsPage() {
                            <Badge className="bg-slate-900 text-white font-black px-4">{l.count} Staff</Badge>
                         </div>
                      ))}
-                     {(!visit.laborDetails || visit.laborDetails.length === 0) && <p className="text-xs font-bold text-slate-300 italic">No labor recorded.</p>}
                   </div>
                </div>
                <div className="space-y-6">
@@ -174,7 +250,6 @@ export default function FieldVisitDetailsPage() {
                            <Badge variant="outline" className="text-primary border-primary/20 font-black px-4 bg-white">{e.hoursUsed} hrs</Badge>
                         </div>
                      ))}
-                     {(!visit.equipmentUsed || visit.equipmentUsed.length === 0) && <p className="text-xs font-bold text-slate-300 italic">No equipment used.</p>}
                   </div>
                </div>
             </div>

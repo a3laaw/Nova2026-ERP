@@ -5,18 +5,26 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   HardHat, Plus, Search, Loader2, ArrowRight,
-  Filter, Calendar, MapPin, Camera,
-  UserCircle, LayoutGrid
+  Filter, Calendar, Camera,
+  UserCircle, LayoutGrid, Copy, Edit3
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, where } from 'firebase/firestore';
+import { collection, query, orderBy } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { paths } from '@/firebase/multi-tenant';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreVertical } from "lucide-react";
 
 export default function FieldVisitsListPage() {
   const { globalUser } = useAuthContext();
@@ -27,7 +35,6 @@ export default function FieldVisitsListPage() {
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
-  // استخدام المسار الموحد المباشر للمنشأة (التسطيح السيادي)
   const visitsQuery = useMemo(() => 
     companyId && db ? query(
       collection(db, paths.fieldVisits(companyId)),
@@ -64,7 +71,7 @@ export default function FieldVisitsListPage() {
       <Card className="border-0 shadow-sm rounded-2xl bg-white overflow-hidden">
         <div className="p-5 flex flex-row items-center justify-between gap-4">
           <div className="relative w-full max-w-md">
-            <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary" />
+            <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
             <Input 
               placeholder={isRtl ? 'بحث باسم العميل أو المهندس...' : 'Search clients or engineers...'} 
               className="ps-12 h-11 bg-slate-50/50 border-slate-200 font-bold" 
@@ -88,7 +95,7 @@ export default function FieldVisitsListPage() {
           </div>
         ) : (
           filtered.map((visit) => (
-            <Card key={visit.id} className="border-0 shadow-xl rounded-[2rem] bg-white overflow-hidden group hover:ring-2 hover:ring-primary/20 transition-all cursor-pointer" onClick={() => router.push(`/dashboard/construction/field-visits/${visit.id}`)}>
+            <Card key={visit.id} className="border-0 shadow-xl rounded-[2rem] bg-white overflow-hidden group hover:ring-2 hover:ring-primary/20 transition-all">
                <CardHeader className="bg-slate-50/50 p-6 border-b flex flex-row justify-between items-center">
                   <div className="flex items-center gap-3">
                      <div className="h-9 w-9 rounded-xl bg-white shadow-sm flex items-center justify-center text-primary border border-primary/10">
@@ -96,11 +103,21 @@ export default function FieldVisitsListPage() {
                      </div>
                      <span className="font-black text-xs text-slate-600">{visit.visitDate}</span>
                   </div>
-                  <Badge variant="secondary" className="bg-emerald-50 text-emerald-600 border-0 font-black text-[9px] uppercase px-3">
-                    {visit.status || 'Submitted'}
-                  </Badge>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                       <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full"><MoreVertical className="h-4 w-4" /></Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="rounded-xl border-2 shadow-2xl">
+                       <DropdownMenuItem className="font-bold text-xs gap-2" onClick={() => router.push(`/dashboard/construction/field-visits/${visit.id}`)}>
+                          <ArrowRight className="h-3.5 w-3.5" /> عرض التقرير
+                       </DropdownMenuItem>
+                       <DropdownMenuItem className="font-bold text-xs gap-2" onClick={() => router.push(`/dashboard/construction/field-visits/new?cloneId=${visit.id}`)}>
+                          <Copy className="h-3.5 w-3.5" /> استنساخ للنسخ
+                       </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                </CardHeader>
-               <CardContent className="p-6 space-y-4 text-start">
+               <CardContent className="p-6 space-y-4 text-start cursor-pointer" onClick={() => router.push(`/dashboard/construction/field-visits/${visit.id}`)}>
                   <div className="space-y-1">
                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'العميل المالك' : 'Client Name'}</p>
                      <h4 className="font-black text-base text-slate-800 truncate">{visit.clientName}</h4>
@@ -120,13 +137,6 @@ export default function FieldVisitsListPage() {
                         <Camera className="h-3 w-3 text-orange-500" />
                         <span className="text-[10px] font-black text-slate-700">{visit.items?.reduce((acc: number, i: any) => acc + (i.photoUrls?.length || 0), 0)} {isRtl ? 'صور' : 'Photos'}</span>
                      </div>
-                  </div>
-
-                  <div className="flex justify-end pt-2">
-                     <Button variant="ghost" size="sm" className="h-8 rounded-lg text-[9px] font-black gap-2 group-hover:text-primary">
-                        {isRtl ? 'عرض التقرير الكامل' : 'View Full Report'}
-                        <ArrowRight className={cn("h-3 w-3 transition-transform group-hover:translate-x-1", isRtl && "rotate-180")} />
-                     </Button>
                   </div>
                </CardContent>
             </Card>

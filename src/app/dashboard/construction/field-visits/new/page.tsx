@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useMemo, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,13 +18,12 @@ import {
   MapPin, Camera, Users, Target,
   Plus, CheckCircle2, Trash2,
   Truck, LayoutGrid, Sparkles,
-  Building2, Briefcase, ExternalLink,
-  Info, Image as ImageIcon, X,
-  Activity, AlertTriangle, UserMinus,
-  Construction, Globe, ShieldCheck, UserCircle
+  Building2, Briefcase, Globe, 
+  ShieldCheck, UserCircle, X,
+  AlertTriangle, Copy
 } from "lucide-react";
 import { useFirestore, useCollection, useDoc } from '@/firebase';
-import { collection, query, where, getDocs, orderBy, addDoc, serverTimestamp, doc, setDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, addDoc, serverTimestamp, doc, setDoc, getDoc } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
@@ -37,14 +36,18 @@ import { Equipment } from '@/types/equipment';
 import { Department } from '@/types/reference';
 import { BOQ, BOQItem } from '@/types/documents';
 import { BOQExecutionService } from '@/services/boq-execution-service';
+import { WorkItemExecutionStatus } from '@/types/field-visit';
 
-export default function NewStructuredFieldVisitPage() {
+function NewFieldVisitForm() {
   const { globalUser, user } = useAuthContext();
   const { lang, dir, t } = useLanguage();
   const db = useFirestore();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
+
+  const cloneId = searchParams.get('cloneId');
 
   // --- States ---
   const [loading, setLoading] = useState(false);
@@ -58,8 +61,30 @@ export default function NewStructuredFieldVisitPage() {
   const [equipmentList, setEquipmentList] = useState<any[]>([]);
 
   const [gridRows, setGridRows] = useState<any[]>([
-    { boqItemId: '', quantity: '', notes: '', photoUrls: [], isUploading: false }
+    { boqItemId: '', quantity: '', notes: '', photoUrls: [], isUploading: false, executionStatus: 'completed' as WorkItemExecutionStatus }
   ]);
+
+  // --- Logic for Cloning ---
+  useEffect(() => {
+    async function fetchCloneData() {
+      if (!cloneId || !db || !companyId) return;
+      const snap = await getDoc(doc(db, paths.fieldVisits(companyId), cloneId));
+      if (snap.exists()) {
+        const data = snap.data();
+        setSelectedClientId(data.clientId);
+        setSelectedProjectId(data.transactionId);
+        setSelectedGroups(data.laborDetails?.filter((l: any) => l.type === 'group') || []);
+        // Note: individual labor needs to be mapped properly if stored differently
+        setEquipmentList(data.equipmentUsed || []);
+        setGridRows(data.items.map((i: any) => ({
+           ...i,
+           isUploading: false
+        })));
+        toast({ title: isRtl ? "تم استنساخ بيانات الزيارة" : "Visit data cloned" });
+      }
+    }
+    fetchCloneData();
+  }, [cloneId, db, companyId]);
 
   // --- Queries ---
   const dayExecutionsQuery = useMemo(() => 
@@ -146,7 +171,7 @@ export default function NewStructuredFieldVisitPage() {
 
   // --- Handlers ---
   const handleAddRow = () => {
-    setGridRows([...gridRows, { boqItemId: '', quantity: '', notes: '', photoUrls: [], isUploading: false }]);
+    setGridRows([...gridRows, { boqItemId: '', quantity: '', notes: '', photoUrls: [], isUploading: false, executionStatus: 'completed' }]);
   };
 
   const removeRow = (idx: number) => {
@@ -245,7 +270,6 @@ export default function NewStructuredFieldVisitPage() {
       const visitRef = doc(collection(db, paths.fieldVisits(companyId)));
       const visitId = visitRef.id;
 
-      // 1. تسجيل حركات التنفيذ المستقلة وتحديث كميات المقايسة آلياً
       const itemsForReport = [];
       for (const row of gridRows) {
         const boqItem = boqItems?.find(i => i.id === row.boqItemId);
@@ -256,31 +280,34 @@ export default function NewStructuredFieldVisitPage() {
           boqItem.technicalStageIds?.includes(s.technicalStageId)
         );
 
-        await executionService.recordBOQItemExecution(
-          activeBoq.id,
-          row.boqItemId,
-          boqItem.technicalStageId || '',
-          Number(row.quantity) || 1,
-          user.uid,
-          globalUser?.fullName || user.displayName || 'Engineer',
-          row.notes,
-          stageInstance?.id || '',
-          false,
-          undefined,
-          { laborDetails, equipmentUsed: equipmentList }
-        );
+        // تسجيل الإنجاز فقط إذا كان هناك كمية فعلية منفذة
+        if (Number(row.quantity) > 0) {
+            await executionService.recordBOQItemExecution(
+              activeBoq.id,
+              row.boqItemId,
+              boqItem.technicalStageId || '',
+              Number(row.quantity) || 1,
+              user.uid,
+              globalUser?.fullName || user.displayName || 'Engineer',
+              row.notes,
+              stageInstance?.id || '',
+              false,
+              undefined,
+              { laborDetails, equipmentUsed: equipmentList }
+            );
+        }
 
         itemsForReport.push({
           boqItemId: row.boqItemId,
           itemName: boqItem.referenceTitle,
-          quantity: Number(row.quantity) || 1,
+          quantity: Number(row.quantity) || 0,
           unit: boqItem.unitSymbol,
           notes: row.notes,
-          photoUrls: row.photoUrls
+          photoUrls: row.photoUrls,
+          executionStatus: row.executionStatus
         });
       }
 
-      // 2. حفظ وثيقة الزيارة المجمعة للسجل
       await setDoc(visitRef, {
         id: visitId,
         companyId,
@@ -296,11 +323,12 @@ export default function NewStructuredFieldVisitPage() {
         engineerName: globalUser?.fullName || user.displayName || 'Engineer',
         status: 'submitted',
         createdBy: user.uid,
+        clonedFromId: cloneId || null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
 
-      toast({ title: isRtl ? "تم توثيق الزيارة وتحديث المسار الفني" : "Visit Logged & Pipeline Updated" });
+      toast({ title: isRtl ? "تم توثيق الزيارة بنجاح" : "Visit Logged Successfully" });
       router.push('/dashboard/construction/field-visits');
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
@@ -314,13 +342,15 @@ export default function NewStructuredFieldVisitPage() {
       
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b-4 border-primary/20 pb-8">
         <div className="text-start">
-           <h1 className="text-3xl font-black font-headline text-slate-900">{isRtl ? 'توثيق الموارد والإنجاز الميداني' : 'Resource & Progress Log'}</h1>
+           <h1 className="text-3xl font-black font-headline text-slate-900">
+             {cloneId ? (isRtl ? 'استنساخ تقرير زيارة' : 'Clone Field Report') : (isRtl ? 'توثيق الموارد والإنجاز الميداني' : 'Resource & Progress Log')}
+           </h1>
            <p className="text-muted-foreground font-bold mt-1 uppercase text-[10px] tracking-widest opacity-60">Sovereign Asset Control Unit</p>
         </div>
         <div className="flex gap-3">
            <Button variant="outline" onClick={() => router.back()} className="h-16 px-8 rounded-2xl border-2 font-black">إلغاء</Button>
-           <Button onClick={handleSave} disabled={loading || !selectedProjectId} className="h-16 px-12 rounded-2xl bg-primary text-white font-black text-xl shadow-2xl shadow-primary/20 border-b-8 border-orange-700 hover:scale-105 transition-all gap-3">
-              {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <CheckCircle2 className="h-7 w-7" />}
+           <Button onClick={handleSave} disabled={loading || !selectedProjectId} className="h-16 px-12 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 border-b-8 border-orange-700 hover:scale-105 transition-all gap-3">
+              {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-7 w-7" />}
               {isRtl ? 'اعتماد الموارد والحفظ' : 'Commit Visit'}
            </Button>
         </div>
@@ -511,10 +541,11 @@ export default function NewStructuredFieldVisitPage() {
                      <Table>
                         <TableHeader className="bg-slate-50">
                            <TableRow>
-                              <TableHead className="ps-8 text-start w-[320px]">{isRtl ? 'البند / المرحلة' : 'Work Item'}</TableHead>
-                              <TableHead className="text-center w-[120px]">{isRtl ? 'الكمية' : 'Qty'}</TableHead>
+                              <TableHead className="ps-8 text-start w-[300px]">{isRtl ? 'البند' : 'BOQ Item'}</TableHead>
+                              <TableHead className="text-start w-[180px]">{isRtl ? 'رد المهندس (الحالة)' : 'Engineer Reply'}</TableHead>
+                              <TableHead className="text-center w-[100px]">{isRtl ? 'الكمية' : 'Qty'}</TableHead>
                               <TableHead className="text-start">{isRtl ? 'الملاحظة الفنية' : 'Technical Note'}</TableHead>
-                              <TableHead className="pe-8 w-[120px] text-center">{isRtl ? 'الإثبات' : 'Evidence'}</TableHead>
+                              <TableHead className="pe-8 w-[100px] text-center">{isRtl ? 'إثبات' : 'Img'}</TableHead>
                            </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -536,11 +567,23 @@ export default function NewStructuredFieldVisitPage() {
                                    </Select>
                                 </TableCell>
                                 <TableCell>
+                                   <Select value={row.executionStatus} onValueChange={v => updateRow(idx, 'executionStatus', v)}>
+                                      <SelectTrigger className="h-9 border-2 font-black text-[9px]">
+                                         <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent className="z-[151]">
+                                         <SelectItem value="completed" className="text-emerald-600 font-bold text-[10px]">تم الإنجاز بالكامل</SelectItem>
+                                         <SelectItem value="partial" className="text-amber-600 font-bold text-[10px]">إنجاز جزئي</SelectItem>
+                                         <SelectItem value="not_completed" className="text-rose-600 font-bold text-[10px]">لم يتم الإنجاز</SelectItem>
+                                      </SelectContent>
+                                   </Select>
+                                </TableCell>
+                                <TableCell>
                                    <Input 
                                       value={row.quantity} 
                                       onChange={e => updateRow(idx, 'quantity', e.target.value)} 
                                       className="h-10 border-2 font-black text-center text-lg bg-slate-50/50" 
-                                      placeholder="1"
+                                      placeholder="0"
                                    />
                                 </TableCell>
                                 <TableCell>
@@ -548,7 +591,7 @@ export default function NewStructuredFieldVisitPage() {
                                       value={row.notes} 
                                       onChange={e => updateRow(idx, 'notes', e.target.value)} 
                                       className="h-10 border-2 text-xs font-bold bg-white" 
-                                      placeholder={isRtl ? "وصف دقيق لما تم..." : "Log details..."} 
+                                      placeholder={isRtl ? "رد أو ملاحظة..." : "Note..."} 
                                    />
                                 </TableCell>
                                 <TableCell className="pe-8 text-center">
@@ -585,4 +628,12 @@ export default function NewStructuredFieldVisitPage() {
       </div>
     </div>
   );
+}
+
+export default function NewStructuredFieldVisitPage() {
+   return (
+     <Suspense fallback={<div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>}>
+        <NewFieldVisitForm />
+     </Suspense>
+   );
 }
