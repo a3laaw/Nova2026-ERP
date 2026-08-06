@@ -3,6 +3,9 @@ import { LaborDetail, EquipmentUsed } from './documents';
 
 export type FieldVisitStatus = 'draft' | 'submitted' | 'approved' | 'verified';
 
+/**
+ * حالات الإنجاز الفني (رد المهندس المسؤول)
+ */
 export type WorkItemExecutionStatus = 'completed' | 'partial' | 'not_completed';
 
 export interface WorkItemLog {
@@ -12,7 +15,7 @@ export interface WorkItemLog {
   unit: string;
   notes: string;
   photoUrls: string[];
-  executionStatus: WorkItemExecutionStatus; // الحالة الفنية لكل بند
+  executionStatus: WorkItemExecutionStatus; // الرد الفني للمسؤول عن البند
 }
 
 export interface FieldVisit extends BaseReference {
@@ -33,15 +36,11 @@ export interface FieldVisit extends BaseReference {
     lng: number;
   } | null;
 
-  // الإنجاز التفصيلي (الجدول)
+  // الإنجاز التفصيلي (الجدول مع رد المسؤول)
   items: WorkItemLog[];
   
   // الموارد المستخدمة
-  laborSelectionMode: 'group' | 'individual';
-  workGroupId?: string;
-  workGroupName?: string;
   laborDetails: any[];
-  
   equipmentUsed: any[];
   
   overallProgress?: number;

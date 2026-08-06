@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, Suspense } from 'react';
+import { useState, useMemo, useEffect, Suspense, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,8 +22,8 @@ import {
   ShieldCheck, UserCircle, X,
   AlertTriangle, Copy
 } from "lucide-react";
-import { useFirestore, useCollection, useDoc } from '@/firebase';
-import { collection, query, where, getDocs, orderBy, addDoc, serverTimestamp, doc, setDoc, getDoc } from 'firebase/firestore';
+import { useFirestore, useCollection } from '@/firebase';
+import { collection, query, where, getDocs, orderBy, doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
@@ -74,7 +74,6 @@ function NewFieldVisitForm() {
         setSelectedClientId(data.clientId);
         setSelectedProjectId(data.transactionId);
         setSelectedGroups(data.laborDetails?.filter((l: any) => l.type === 'group') || []);
-        // Note: individual labor needs to be mapped properly if stored differently
         setEquipmentList(data.equipmentUsed || []);
         setGridRows(data.items.map((i: any) => ({
            ...i,
@@ -84,7 +83,7 @@ function NewFieldVisitForm() {
       }
     }
     fetchCloneData();
-  }, [cloneId, db, companyId]);
+  }, [cloneId, db, companyId, isRtl]);
 
   // --- Queries ---
   const dayExecutionsQuery = useMemo(() => 
@@ -280,7 +279,6 @@ function NewFieldVisitForm() {
           boqItem.technicalStageIds?.includes(s.technicalStageId)
         );
 
-        // تسجيل الإنجاز فقط إذا كان هناك كمية فعلية منفذة
         if (Number(row.quantity) > 0) {
             await executionService.recordBOQItemExecution(
               activeBoq.id,

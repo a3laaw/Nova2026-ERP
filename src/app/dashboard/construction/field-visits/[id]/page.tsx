@@ -141,7 +141,7 @@ export default function FieldVisitDetailsPage() {
              <div className="flex gap-2">
                <Button onClick={() => setIsEditing(false)} variant="outline" className="h-14 px-6 rounded-2xl border-2 font-bold">إلغاء</Button>
                <Button onClick={handleSaveEdit} disabled={saving} className="h-14 px-10 rounded-2xl bg-primary text-white font-black shadow-xl gap-2">
-                 {saving ? <Loader2 className="animate-spin" /> : <Save className="h-6 w-6" />} {isRtl ? 'حفظ التعديلات' : 'Save Changes'}
+                 {saving ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />} {isRtl ? 'حفظ التعديلات' : 'Save Changes'}
                </Button>
              </div>
            )}
