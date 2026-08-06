@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
@@ -119,14 +118,11 @@ export default function TransactionDetailsPage() {
     contracts?.find(c => ['approved', 'paid', 'active', 'signed'].includes(c.status || '') || c.isPaid),
   [contracts]);
   
-  // القفل المالي يمنع التنفيذ فقط وليس التخطيط (BOQ)
   const isExecutionLockActive = !activeContract;
 
-  // تحديد طبيعة المشروع بدقة سيادية
   const isFieldProject = useMemo(() => {
     if (!transaction) return false;
     const type = transaction.activityTypeName || '';
-    // دعم كافة مسميات المقاولات والبناء
     return type.includes('مقاولات') || type.includes('Construction') || type.includes('بناء') || type.includes('Build');
   }, [transaction]);
 
@@ -273,11 +269,13 @@ export default function TransactionDetailsPage() {
 
   const handleReopenStage = async (stageId: string) => {
     if (!transactionService || !user) return;
-    if (!confirm(isRtl ? "تنبيه سيادي: إعادة فتح المرحلة سيجمد كافة المراحل اللاحقة لضمان دقة المسار. هل ترغب في المتابعة؟" : "Warning: Reopening will freeze subsequent stages. Continue?")) return;
-    setProcessingId(stageId);
+    if (!confirm(isRtl ? "تنبيه سيادي: إعادة فتح المرحلة سيجمد كافة المراحل اللاحقة ويطهر سجلات الإنجاز لضمان دقة المسار. هل ترغب في المتابعة؟" : "Warning: Reopening will freeze subsequent stages and purge progress logs. Continue?")) return;
+    setProcessingId(`reopen_${stageId}`);
     try {
       await transactionService.reopenStage(transactionId, stageId, user.uid, currentUserName);
       toast({ title: isRtl ? "تم إعادة فتح المرحلة وتجميد المسار اللاحق" : "Stage Reopened & Path Frozen" });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
       setProcessingId(null);
     }
@@ -297,6 +295,8 @@ export default function TransactionDetailsPage() {
         finally { setLoadingAction(null); }
     }, 100);
   };
+
+  const isAssignedEngineer = globalUser?.employeeId === transaction?.assignedEngineerId;
 
   if (transLoading || stagesLoading || contractsLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
@@ -385,8 +385,8 @@ export default function TransactionDetailsPage() {
                               const isOperationalFrontier = stage.status === 'in-progress' || (stage.status === 'pending' && isPreviousCompleted);
                               const isReadyToStart = stage.status === 'pending' && isPreviousCompleted;
                               
-                              const isAssignedEngineer = globalUser?.employeeId === transaction?.assignedEngineerId;
-                              const isDeptAllowed = !stage.allowedDepartmentIds?.length || isAssignedEngineer || (globalUser?.departmentId && stage.allowedDepartmentIds.includes(globalUser.departmentId));
+                              const isAssignedEngineerLocal = globalUser?.employeeId === transaction?.assignedEngineerId;
+                              const isDeptAllowed = !stage.allowedDepartmentIds?.length || isAssignedEngineerLocal || (globalUser?.departmentId && stage.allowedDepartmentIds.includes(globalUser.departmentId));
 
                               return (
                                 <Card key={stage.id} onClick={() => setFilterStageId(filterStageId === stage.id ? null : stage.id!)} className={cn("border-0 shadow-lg rounded-2xl bg-white transition-all border-s-8 cursor-pointer", stage.status === 'completed' ? 'border-s-emerald-500' : stage.status === 'in-progress' ? 'border-s-blue-500' : isOperationalFrontier ? 'border-s-orange-300' : 'border-s-slate-100 opacity-50')}>
@@ -412,7 +412,17 @@ export default function TransactionDetailsPage() {
                                                 {stage.status === 'in-progress' && editAccess.can && isFieldProject && !isExecutionLockActive && (<Button disabled={!isAdmin && !isDeptAllowed} onClick={() => { setTargetStage(stage); setIsRecordOpen(true); }} className="btn-gradient h-10 px-6 rounded-xl text-[10px] gap-2"><Hammer className="h-4 w-4" /> {isRtl ? 'تسجيل إنجاز' : 'Log'}</Button>)}
                                               </>
                                            )}
-                                           {isAdmin && stage.status === 'completed' && <Button onClick={() => handleReopenStage(stage.id!)} variant="outline" className="h-9 px-4 rounded-lg text-orange-600 border-orange-200 hover:bg-orange-50 text-[9px] gap-1"><RotateCcw className="h-3 w-3" /> {isRtl ? 'إعادة فتح' : 'Reopen'}</Button>}
+                                           {(isAdmin || isAssignedEngineer) && stage.status === 'completed' && (
+                                              <Button 
+                                                onClick={() => handleReopenStage(stage.id!)} 
+                                                disabled={processingId === `reopen_${stage.id}`}
+                                                variant="outline" 
+                                                className="h-9 px-4 rounded-lg text-orange-600 border-orange-200 hover:bg-orange-50 text-[9px] gap-1 shadow-sm"
+                                              >
+                                                {processingId === `reopen_${stage.id}` ? <Loader2 className="animate-spin h-3 w-3" /> : <RotateCcw className="h-3 w-3" />}
+                                                {isRtl ? 'إعادة فتح' : 'Reopen'}
+                                              </Button>
+                                           )}
                                            {isAdmin && <Button variant="ghost" size="icon" className="h-9 w-9 text-rose-300 hover:text-rose-600"><Trash2 className="h-4 w-4" /></Button>}
                                      </div>
                                   </CardContent>

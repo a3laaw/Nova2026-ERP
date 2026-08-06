@@ -361,34 +361,34 @@ export class TransactionService {
        ensureActionPermission(this.permissions, 'projects:edit');
     }
     
+    // جلب كافة المراحل لترتيبها
     const allStagesSnap = await getDocs(collection(this.db, paths.transactionStages(this.companyId, transactionId)));
     const currentStageDoc = allStagesSnap.docs.find(d => d.id === stageId);
     if (!currentStageDoc) return;
     const stageData = currentStageDoc.data() as StageInstance;
 
-    const affectedStageIds: string[] = [stageId];
-    allStagesSnap.docs.forEach(d => {
-       const s = d.data() as StageInstance;
-       if (s.order > stageData.order) {
-          affectedStageIds.push(d.id!);
-       }
-    });
+    // تحديد المراحل التي ستتأثر (الحالية وما يليها)
+    const affectedStages = allStagesSnap.docs
+      .map(d => ({ id: d.id, ...d.data() } as StageInstance))
+      .filter(s => s.order >= stageData.order);
 
     const commentService = new CommentService(this.db, this.companyId, this.permissions);
     const boqService = new BOQExecutionService(this.db, this.companyId, this.permissions);
 
-    // 1) أرشفة التعليقات والتنفيذيات أولاً (عمليات مستقلة)
-    for (const sid of affectedStageIds) {
-       await commentService.archiveStageComments(transactionId, sid);
-       const sData = allStagesSnap.docs.find(d => d.id === sid)?.data() as StageInstance;
-       if (sData) {
-          await boqService.archiveStageExecutions(transactionId, sData.technicalStageId, true);
+    // 1. أرشفة السجلات الفنية (تعليقات وإنجازات) بشكل متوازٍ لضمان السرعة
+    await Promise.all(affectedStages.map(async (s) => {
+       // أرشفة تعليقات المرحلة
+       await commentService.archiveStageComments(transactionId, s.id!);
+       // أرشفة سجلات الإنجاز الميدانية المرتبطة بالكود الفني للمرحلة
+       if (s.technicalStageId) {
+          await boqService.archiveStageExecutions(transactionId, s.technicalStageId, true);
        }
-    }
+    }));
 
     const batch = writeBatch(this.db);
     
-    // 2) إعادة ضبط المراحل والتايملاين في دفعة واحدة
+    // 2. تحديث الحالات في السحاب (Batch)
+    // المرحلة المختارة تعود لـ In-Progress
     batch.update(currentStageDoc.ref, {
       status: 'in-progress',
       completedAt: null,
@@ -398,10 +398,11 @@ export class TransactionService {
       updatedBy: userId
     });
 
-    allStagesSnap.docs.forEach(d => {
-       const s = d.data() as StageInstance;
-       if (s.order > stageData.order) {
-          batch.update(d.ref, {
+    // المراحل اللاحقة تعود لـ Pending
+    affectedStages.forEach(s => {
+       if (s.id !== stageId) {
+          const sRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), s.id!);
+          batch.update(sRef, {
              status: 'pending',
              startedAt: null,
              completedAt: null,
@@ -413,13 +414,14 @@ export class TransactionService {
        }
     });
 
+    // 3. توثيق التراجع في التايملاين
     const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
     batch.set(timelineRef, {
       transactionId,
       stageId,
       technicalStageId: stageData.technicalStageId,
       type: 'stage_reopen',
-      content: `[إجراء استثنائي] إعادة فتح مرحلة "${stageData.name}" وتجميد المسار اللاحق وتطهير السجلات لضمان سلامة التنفيذ.`,
+      content: `[إجراء تصحيحي] إعادة فتح مرحلة "${stageData.name}" وتجميد المسار اللاحق وتطهير السجلات الفنية لضمان دقة التنفيذ.`,
       userId,
       userName,
       isArchived: false,
@@ -439,19 +441,16 @@ export class TransactionService {
     const transData = transSnap.data() as Transaction;
     const clientId = transData.clientId;
 
-    // فحص المعاملات المتبقية لهذا العميل قبل الحذف
     const allTransQuery = query(
       collection(this.db, paths.transactions(this.companyId)),
       where('clientId', '==', clientId)
     );
     const allTransSnap = await getDocs(allTransQuery);
-    const remainingCount = allTransSnap.size - 1; // استبعاد الحالية
+    const remainingCount = allTransSnap.size - 1;
 
     const batch = writeBatch(this.db);
     batch.delete(transRef);
     
-    // --- الإنفاذ التعاقدي (Sovereign Reversion) ---
-    // إذا كانت هذه آخر معاملة للعميل، نعيد حالته إلى "جديد" ونصفر العداد
     if (remainingCount <= 0) {
       const clientRef = doc(this.db, paths.clients(this.companyId), clientId);
       batch.update(clientRef, { 
@@ -460,7 +459,6 @@ export class TransactionService {
         updatedAt: serverTimestamp() 
       });
 
-      // توثيق التراجع في سجل العميل
       const historyRef = doc(collection(this.db, paths.clientHistory(this.companyId, clientId)));
       batch.set(historyRef, {
          clientId,
