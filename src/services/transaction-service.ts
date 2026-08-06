@@ -26,6 +26,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { ensureActionPermission } from '@/lib/permissions/engine';
 import { BOQExecutionService } from './boq-execution-service';
 import { CommentService } from './comment-service';
+import { ClientService } from './client-service';
 
 export class TransactionService {
   constructor(
@@ -431,9 +432,45 @@ export class TransactionService {
 
   async deleteTransaction(transactionId: string) {
     ensureActionPermission(this.permissions, 'projects:delete');
+
+    const transRef = doc(this.db, paths.transactions(this.companyId), transactionId);
+    const transSnap = await getDoc(transRef);
+    if (!transSnap.exists()) return;
+    const transData = transSnap.data() as Transaction;
+    const clientId = transData.clientId;
+
+    // فحص المعاملات المتبقية لهذا العميل قبل الحذف
+    const allTransQuery = query(
+      collection(this.db, paths.transactions(this.companyId)),
+      where('clientId', '==', clientId)
+    );
+    const allTransSnap = await getDocs(allTransQuery);
+    const remainingCount = allTransSnap.size - 1; // استبعاد الحالية
+
     const batch = writeBatch(this.db);
-    batch.delete(doc(this.db, paths.transactions(this.companyId), transactionId));
+    batch.delete(transRef);
     
+    // --- الإنفاذ التعاقدي (Sovereign Reversion) ---
+    // إذا كانت هذه آخر معاملة للعميل، نعيد حالته إلى "جديد" ونصفر العداد
+    if (remainingCount <= 0) {
+      const clientRef = doc(this.db, paths.clients(this.companyId), clientId);
+      batch.update(clientRef, { 
+        status: 'new',
+        transactionCounter: 0,
+        updatedAt: serverTimestamp() 
+      });
+
+      // توثيق التراجع في سجل العميل
+      const historyRef = doc(collection(this.db, paths.clientHistory(this.companyId, clientId)));
+      batch.set(historyRef, {
+         clientId,
+         type: 'system_log',
+         content: `[تطهير سحابي] تم حذف كافة المعاملات الفنية. إعادة تعيين حالة العميل إلى (جديد) وتصفير عداد المشاريع.`,
+         companyId: this.companyId,
+         createdAt: serverTimestamp()
+      });
+    }
+
     const subCollections = ['stageInstances', 'timeline', 'comments', 'fieldVisits'];
     const txBase = `companies/${this.companyId}/transactions/${transactionId}`;
     for (const sub of subCollections) {
@@ -441,7 +478,6 @@ export class TransactionService {
        snap.forEach(d => batch.delete(d.ref));
     }
 
-    // حذف عمليات التنفيذ المرتبطة بالمعاملة (مستوى المنشأة)
     const execSnap = await getDocs(query(
       collection(this.db, paths.executions(this.companyId)),
       where('transactionId', '==', transactionId)
