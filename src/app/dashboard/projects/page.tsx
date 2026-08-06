@@ -53,109 +53,101 @@ export default function ProjectsPage() {
     });
   }, [allTransactions, searchTerm, activeFilter]);
 
-  const stats = useMemo(() => ({
-      total: filteredProjects.length,
-      active: filteredProjects.filter(p => p.status !== 'completed').length,
-      completed: filteredProjects.filter(p => p.status === 'completed').length
-  }), [filteredProjects]);
-
   return (
-    <div className="space-y-6 animate-in fade-in duration-700" dir={dir}>
+    <div className="space-y-4 w-full px-4 md:px-6 animate-in fade-in" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start">
-          <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
-            <HardHat className="h-10 w-10 text-primary" />
+          <h1 className="text-xl md:text-2xl font-bold text-slate-900">
             {isRtl ? 'رادار المشاريع والفوترة' : 'Projects & Billing Radar'}
           </h1>
-          <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-            {isRtl ? 'تتبع الإنجاز الميداني وتحويله لمطالبات مالية (IPCs) بشكل آلي.' : 'Track field progress and auto-generate IPCs.'}
+          <p className="text-[10px] font-medium text-slate-400 uppercase">
+            {isRtl ? 'تتبع الإنجاز الميداني والمطالبات المالية' : 'Field progress and Interim Payments'}
           </p>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex gap-2">
           <Button 
             variant="outline" 
+            size="sm"
             onClick={() => setActiveFilter(activeFilter === 'all' ? 'contracting' : 'all')}
-            className={cn("h-12 px-6 rounded-xl font-black border-2", activeFilter === 'contracting' ? "bg-primary/10 border-primary text-primary" : "bg-white")}
+            className={cn("h-9 px-4 rounded-md font-bold text-xs border-slate-200", activeFilter === 'contracting' ? "bg-primary/10 border-primary text-primary" : "bg-white")}
           >
-            <TrendingUp className="h-4 w-4" />
-            {isRtl ? 'المقاولات (فوترة كميات)' : 'Contracting Billing'}
+            <TrendingUp className="h-4 w-4 me-2" />
+            {isRtl ? 'المقاولات' : 'Contracting'}
           </Button>
-          <Button onClick={() => router.push('/dashboard/clients')} className="h-12 px-8 rounded-xl shadow-xl">
-            <Plus className="h-5 w-5" /> {isRtl ? 'بدء مشروع' : 'New Project'}
+          <Button onClick={() => router.push('/dashboard/clients')} size="sm" className="h-9 px-4 rounded-md font-bold text-xs shadow-sm">
+            <Plus className="h-4 w-4 me-2" /> {isRtl ? 'بدء مشروع' : 'New Project'}
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-         <Card className="border-0 shadow-lg rounded-[2rem] p-6 bg-white flex items-center justify-between group hover:scale-[1.02] transition-all">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+         <Card className="rounded-lg shadow-sm border-slate-100 p-4 bg-white flex items-center justify-between group hover:shadow-md transition-all">
             <div className="text-start">
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إجمالي المحفظة' : 'Total Portfolio'}</p>
-               <h3 className="text-3xl font-black text-slate-900">2.4M <span className="text-xs">KWD</span></h3>
+               <p className="text-[10px] font-bold text-slate-400 uppercase">{isRtl ? 'إجمالي المحفظة' : 'Total Portfolio'}</p>
+               <h3 className="text-xl font-bold text-slate-900">2.4M <span className="text-xs font-medium text-slate-400">KWD</span></h3>
             </div>
-            <div className="h-12 w-12 rounded-2xl bg-primary/5 text-primary flex items-center justify-center"><Wallet className="h-6 w-6" /></div>
+            <div className="h-10 w-10 rounded-lg bg-primary/5 text-primary flex items-center justify-center shrink-0"><Wallet className="h-5 w-5" /></div>
          </Card>
-         <Card className="border-0 shadow-lg rounded-[2rem] p-6 bg-white flex items-center justify-between group hover:scale-[1.02] transition-all">
+         <Card className="rounded-lg shadow-sm border-slate-100 p-4 bg-white flex items-center justify-between group hover:shadow-md transition-all">
             <div className="text-start">
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'مطالبات قيد المراجعة' : 'Pending Claims'}</p>
-               <h3 className="text-3xl font-black text-blue-600">12</h3>
+               <p className="text-[10px] font-bold text-slate-400 uppercase">{isRtl ? 'مطالبات نشطة' : 'Active Claims'}</p>
+               <h3 className="text-xl font-bold text-blue-600">12</h3>
             </div>
-            <div className="h-12 w-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center"><Activity className="h-6 w-6" /></div>
+            <div className="h-10 w-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0"><Activity className="h-5 w-5" /></div>
          </Card>
-         <Card className="border-0 shadow-lg rounded-[2rem] p-6 bg-white flex items-center justify-between group hover:scale-[1.02] transition-all">
+         <Card className="rounded-lg shadow-sm border-slate-100 p-4 bg-white flex items-center justify-between group hover:shadow-md transition-all">
             <div className="text-start">
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'نسبة التحصيل' : 'Collection Rate'}</p>
-               <h3 className="text-3xl font-black text-emerald-600">88%</h3>
+               <p className="text-[10px] font-bold text-slate-400 uppercase">{isRtl ? 'نسبة التحصيل' : 'Collection'}</p>
+               <h3 className="text-xl font-bold text-emerald-600">88%</h3>
             </div>
-            <div className="h-12 w-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><CheckCircle2 className="h-6 w-6" /></div>
+            <div className="h-10 w-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0"><CheckCircle2 className="h-5 w-5" /></div>
          </Card>
       </div>
 
-      <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
-        <CardContent className="p-0 overflow-x-auto">
+      <Card className="rounded-lg shadow-sm border-slate-100 overflow-hidden bg-white">
+        <CardContent className="p-0">
           <Table>
-            <TableHeader className="bg-[#F4F6F9] border-b">
+            <TableHeader className="bg-slate-50">
               <TableRow>
-                <TableHead className="py-6 ps-8 text-start">{isRtl ? 'المشروع / العميل' : 'Project / Client'}</TableHead>
-                <TableHead className="text-start">{isRtl ? 'الإنجاز الفني' : 'Progress'}</TableHead>
-                <TableHead className="text-end">{isRtl ? 'المطالبات المالية' : 'Interim Billing'}</TableHead>
-                <TableHead className="text-start">{t('status')}</TableHead>
-                <TableHead className="pe-8 text-end"></TableHead>
+                <TableHead className="py-3 ps-6 text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'المشروع / العميل' : 'Project / Client'}</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'الإنجاز' : 'Progress'}</TableHead>
+                <TableHead className="text-end text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'المطالبات' : 'Billing'}</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase text-slate-500">{t('status')}</TableHead>
+                <TableHead className="pe-6"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-24"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></TableCell></TableRow>
               ) : filteredProjects.map((proj) => (
-                <TableRow key={proj.id} className="hover:bg-primary/[0.02] cursor-pointer border-b-slate-100" onClick={() => router.push(`/dashboard/clients/${proj.clientId}/transactions/${proj.id}`)}>
-                    <TableCell className="py-6 ps-8 text-start">
-                       <div className="flex items-center gap-5">
-                          <div className={cn("h-12 w-12 rounded-2xl shadow-sm flex items-center justify-center font-black", proj.status === 'completed' ? "bg-emerald-50 text-emerald-600" : "bg-primary/5 text-primary")}>
-                             <Building2 className="h-6 w-6" />
+                <TableRow key={proj.id} className="hover:bg-slate-50/50 cursor-pointer border-b-slate-100" onClick={() => router.push(`/dashboard/clients/${proj.clientId}/transactions/${proj.id}`)}>
+                    <TableCell className="py-2.5 ps-6 text-start">
+                       <div className="flex items-center gap-3">
+                          <div className={cn("h-10 w-10 rounded-lg shadow-sm flex items-center justify-center shrink-0", proj.status === 'completed' ? "bg-emerald-50 text-emerald-600" : "bg-primary/5 text-primary")}>
+                             <Building2 className="h-5 w-5" />
                           </div>
-                          <div className="text-start">
-                             <span className="font-black text-slate-800 text-lg block leading-none">{proj.subServiceName}</span>
-                             <span className="text-[10px] font-bold text-slate-400 mt-2 block">{proj.clientName}</span>
+                          <div className="text-start truncate">
+                             <span className="font-bold text-slate-800 text-sm block leading-none truncate">{proj.subServiceName}</span>
+                             <span className="text-[10px] text-slate-400 font-medium mt-1.5 block truncate">{proj.clientName}</span>
                           </div>
                        </div>
                     </TableCell>
                     <TableCell className="text-start">
-                       <div className="flex items-center gap-2">
-                          <Badge variant="secondary" className="bg-blue-50 text-blue-600 font-black text-[9px] uppercase px-3">42% Executed</Badge>
-                       </div>
+                       <Badge variant="outline" className="bg-blue-50/50 text-blue-600 font-bold text-[9px] uppercase px-2 h-5 border-0">42% Done</Badge>
                     </TableCell>
                     <TableCell className="text-end">
                        <div className="flex flex-col text-end">
-                          <span className="font-black text-sm text-slate-800">15,400 <span className="text-[8px] opacity-40">KWD</span></span>
-                          <span className="text-[8px] font-bold text-emerald-600 uppercase">3 IPCs Issued</span>
+                          <span className="font-bold text-xs text-slate-900">15,400 <span className="text-[8px] opacity-40">KWD</span></span>
+                          <span className="text-[8px] font-bold text-emerald-600">3 IPCs</span>
                        </div>
                     </TableCell>
                     <TableCell className="text-start">
-                       <Badge className={cn("font-black px-4 py-1 rounded-xl border-0 shadow-sm uppercase text-[9px]", proj.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600')}>{proj.status}</Badge>
+                       <Badge className={cn("font-bold px-2 h-5 rounded-md border-0 text-[9px] uppercase", proj.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600')}>{proj.status}</Badge>
                     </TableCell>
-                    <TableCell className="pe-8 text-end">
-                      <Button variant="ghost" size="icon" className="rounded-xl group-hover:bg-primary group-hover:text-white transition-all h-10 w-10">
-                        <ArrowRight className={cn("h-6 w-6", isRtl && "rotate-180")} />
+                    <TableCell className="pe-6 text-end">
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-300">
+                        <ArrowRight className={cn("h-4 w-4", isRtl && "rotate-180")} />
                       </Button>
                     </TableCell>
                 </TableRow>

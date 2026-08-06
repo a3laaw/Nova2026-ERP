@@ -71,7 +71,6 @@ export default function DashboardPage() {
   const companyId = globalUser?.companyId;
   const isAdmin = globalUser?.roleCode === 'ADMIN' || globalUser?.role?.toLowerCase() === 'admin';
 
-  // جلب المواعيد المتأخرة للرقابة (The Sovereign Watch)
   const apptsQuery = useMemo(() => {
     if (!companyId || !db) return null;
     return query(
@@ -86,8 +85,6 @@ export default function DashboardPage() {
   const overdueMissions = useMemo(() => {
     const today = startOfDay(new Date());
     let list = allScheduled.filter(a => isBefore(parseISO(a.start), today));
-
-    // عزل البيانات: الموظف يرى مهامه فقط، المدير يرى الكل
     if (!isAdmin && globalUser?.employeeId) {
       list = list.filter(a => a.engineerId === globalUser.employeeId);
     }
@@ -134,70 +131,61 @@ export default function DashboardPage() {
   ]
 
   return (
-    <div className="space-y-8" dir={dir}>
+    <div className="space-y-6 w-full px-4 md:px-6" dir={dir}>
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="text-start">
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{isRtl ? 'نظرة عامة على العمليات' : 'Operations Overview'}</h1>
-          <p className="text-muted-foreground text-sm font-medium">{company?.name || '...'}</p>
+          <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">{isRtl ? 'نظرة عامة على العمليات' : 'Operations Overview'}</h1>
+          <p className="text-xs text-muted-foreground font-medium">{company?.name || '...'}</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" className="bg-white border-slate-200 text-slate-700 h-9 font-bold px-4">
-            <FileText className="me-2 h-4 w-4" />
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="h-9 font-semibold px-4 border-slate-200">
+            <FileText className="me-2 h-3.5 w-3.5" />
             {isRtl ? `تصدير التقرير` : `Export`}
           </Button>
-          <Button size="sm" onClick={() => router.push('/dashboard/clients')} className="bg-[#FFA000] hover:bg-[#F57C00] text-white shadow-sm h-9 font-bold px-5">
-            <Plus className="me-2 h-4 w-4" />
+          <Button size="sm" onClick={() => router.push('/dashboard/clients')} className="h-9 font-semibold px-4">
+            <Plus className="me-2 h-3.5 w-3.5" />
             {isRtl ? 'مشروع جديد' : 'New Project'}
           </Button>
         </div>
       </header>
 
-      {/* قسم المهمات المتأخرة - تم نقله هنا للإنفاذ الإداري */}
       {overdueMissions.length > 0 && (
         <div className="animate-in slide-in-from-top-4 duration-500">
-           <div className="flex items-center gap-3 mb-4 px-2">
-              <ShieldAlert className="h-6 w-6 text-rose-500" />
-              <h2 className="text-xl font-black font-headline text-rose-900">
-                {isRtl ? (isAdmin ? 'تنبيه: مهمات متأخرة لم تغلق بعد' : 'لديك مهمات بانتظار الإغلاق الفني') : 'Missions Awaiting Closure'}
+           <div className="flex items-center gap-2 mb-3 px-1">
+              <ShieldAlert className="h-4 w-4 text-rose-500" />
+              <h2 className="text-sm font-bold text-rose-900">
+                {isRtl ? (isAdmin ? 'تنبيه: مهمات متأخرة' : 'مهام بانتظار الإغلاق') : 'Missions Awaiting Closure'}
               </h2>
-              <Badge className="bg-rose-500 text-white font-black border-0 h-6 px-3 rounded-full shadow-lg shadow-rose-200">
-                 {overdueMissions.length.toLocaleString('en-US')}
+              <Badge className="bg-rose-500 text-white font-bold h-5 px-2 text-[10px] rounded-full">
+                 {overdueMissions.length}
               </Badge>
            </div>
            
-           <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide px-1">
+           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
               {overdueMissions.map((mission) => {
                 const daysLate = differenceInDays(startOfDay(new Date()), startOfDay(parseISO(mission.start)));
                 return (
                   <Card 
                     key={mission.id} 
                     onClick={() => router.push(`/dashboard/appointments/${mission.id}`)}
-                    className="min-w-[280px] border-2 border-rose-100 bg-white hover:border-rose-300 transition-all cursor-pointer rounded-2xl shadow-sm group"
+                    className="min-w-[240px] border-rose-100 bg-white hover:border-rose-300 transition-all cursor-pointer rounded-lg shadow-sm"
                   >
-                     <CardContent className="p-5 space-y-4">
+                     <CardContent className="p-4 space-y-3">
                         <div className="flex justify-between items-start">
                            <div className="text-start">
-                              <p className="text-[10px] font-black text-rose-400 uppercase tracking-widest">{isRtl ? 'تجاوزت الموعد بـ' : 'Late by'}</p>
-                              <p className="text-sm font-black text-rose-600">{daysLate} {isRtl ? 'أيام' : 'Days'}</p>
+                              <p className="text-[10px] font-bold text-rose-400 uppercase">{isRtl ? 'تأخير' : 'Late'}</p>
+                              <p className="text-xs font-bold text-rose-600">{daysLate} {isRtl ? 'أيام' : 'Days'}</p>
                            </div>
-                           <Badge variant="outline" className="bg-rose-50 border-rose-200 text-rose-500 text-[8px] font-black uppercase">ACTION REQUIRED</Badge>
                         </div>
-                        
-                        <div className="text-start space-y-1">
-                           <h4 className="font-black text-xs text-slate-800 line-clamp-1">{mission.clientName}</h4>
-                           <p className="text-[9px] font-bold text-slate-400 flex items-center gap-1 uppercase">
-                              <Clock className="h-3 w-3" /> {format(parseISO(mission.start), 'dd MMM yyyy')}
+                        <div className="text-start space-y-0.5">
+                           <h4 className="font-bold text-xs text-slate-800 line-clamp-1">{mission.clientName}</h4>
+                           <p className="text-[9px] font-medium text-slate-400 flex items-center gap-1">
+                              <Clock className="h-3 w-3" /> {format(parseISO(mission.start), 'dd MMM')}
                            </p>
                         </div>
-
                         <div className="flex items-center justify-between pt-2 border-t border-slate-50">
-                           <div className="flex items-center gap-2">
-                              <div className="h-6 w-6 rounded-lg bg-rose-50 flex items-center justify-center text-rose-500">
-                                 <Users className="h-3.5 w-3.5" />
-                              </div>
-                              <span className="text-[9px] font-black text-slate-500 truncate max-w-[100px]">{mission.engineerName}</span>
-                           </div>
-                           <ArrowRight className={cn("h-4 w-4 text-slate-200 group-hover:text-rose-600 transition-all", isRtl && "rotate-180")} />
+                           <span className="text-[9px] font-bold text-slate-500 truncate">{mission.engineerName}</span>
+                           <ArrowRight className={cn("h-3.5 w-3.5 text-slate-300", isRtl && "rotate-180")} />
                         </div>
                      </CardContent>
                   </Card>
@@ -209,22 +197,22 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat, i) => (
-          <Card key={i} className="border-none shadow-sm card-shadow bg-white">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className={cn("p-2 rounded-lg", stat.bg)}>
+          <Card key={i} className="rounded-lg shadow-sm border-slate-100">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className={cn("p-1.5 rounded-md", stat.bg)}>
                   <stat.icon className={cn("h-4 w-4", stat.color)} />
                 </div>
-                <Badge variant="outline" className={cn(
-                  "text-[10px] font-bold border-none",
-                  stat.trend === "up" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"
+                <span className={cn(
+                  "text-[10px] font-bold",
+                  stat.trend === "up" ? "text-emerald-600" : "text-slate-500"
                 )}>
                   {stat.change}
-                </Badge>
+                </span>
               </div>
               <div className="text-start">
-                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{stat.title}</p>
-                <h3 className="text-2xl font-black text-slate-900 mt-1">{stat.value}</h3>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{stat.title}</p>
+                <h3 className="text-xl font-bold text-slate-900">{stat.value}</h3>
               </div>
             </CardContent>
           </Card>
@@ -232,16 +220,15 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 border-none shadow-sm card-shadow bg-white">
-          <CardHeader className="flex flex-row items-center justify-between px-6 py-5 border-b border-slate-50">
+        <Card className="lg:col-span-2 rounded-lg border-slate-100 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between px-6 py-4 border-b border-slate-50">
             <div className="text-start">
-              <CardTitle className="text-lg font-bold text-slate-900">{isRtl ? 'الأداء المالي والإنتاجي' : 'Financial Performance'}</CardTitle>
-              <CardDescription className="text-xs font-bold text-slate-500">{isRtl ? 'تحليل الإيرادات والمصروفات' : 'Monthly revenue analysis'}</CardDescription>
+              <CardTitle className="text-sm font-bold text-slate-900">{isRtl ? 'الأداء المالي' : 'Financial Performance'}</CardTitle>
             </div>
-            <Activity className="h-5 w-5 text-slate-300" />
+            <Activity className="h-4 w-4 text-slate-300" />
           </CardHeader>
           <CardContent className="p-6">
-            <div className="h-[300px] w-full">
+            <div className="h-[260px] w-full">
               <ChartContainer config={chartConfig}>
                 <BarChart data={data}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
@@ -249,47 +236,46 @@ export default function DashboardPage() {
                     dataKey="name" 
                     axisLine={false} 
                     tickLine={false} 
-                    tick={{ fill: "#64748B", fontSize: 11, fontWeight: 700 }}
+                    tick={{ fill: "#64748B", fontSize: 10, fontWeight: 600 }}
                   />
                   <YAxis 
                     axisLine={false} 
                     tickLine={false} 
-                    tick={{ fill: "#64748B", fontSize: 11, fontWeight: 700 }}
+                    tick={{ fill: "#64748B", fontSize: 10, fontWeight: 600 }}
                   />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="revenue" fill="var(--color-revenue)" radius={[4, 4, 0, 0]} barSize={20} />
-                  <Bar dataKey="expenses" fill="var(--color-expenses)" radius={[4, 4, 0, 0]} barSize={20} />
+                  <Bar dataKey="revenue" fill="var(--color-revenue)" radius={[2, 2, 0, 0]} barSize={16} />
+                  <Bar dataKey="expenses" fill="var(--color-expenses)" radius={[2, 2, 0, 0]} barSize={16} />
                 </BarChart>
               </ChartContainer>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-sm card-shadow bg-white">
-          <CardHeader className="px-6 py-5 border-b border-slate-50 text-start">
-            <CardTitle className="text-lg font-bold text-slate-900">{isRtl ? 'سجل العمليات' : 'Live Activity'}</CardTitle>
-            <CardDescription className="text-xs font-bold text-slate-500">Real-time site updates</CardDescription>
+        <Card className="rounded-lg border-slate-100 shadow-sm">
+          <CardHeader className="px-6 py-4 border-b border-slate-50 text-start">
+            <CardTitle className="text-sm font-bold text-slate-900">{isRtl ? 'سجل العمليات' : 'Live Activity'}</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y divide-slate-50">
               {[
-                { title: isRtl ? "موافقة على عرض سعر" : "Quote Approved", detail: "Project Alpha - Steel Supply", time: "5m", color: "bg-[#039BE5]" },
-                { title: isRtl ? "تحديث بصمة الحضور" : "Attendance Logged", detail: "120 Staff checked-in", time: "1h", color: "bg-[#FFCA28]" },
-                { title: isRtl ? "إصدار مستند مالي" : "Payment Voucher", detail: "Contract #2291 - Installment 1", time: "3h", color: "bg-emerald-500" },
+                { title: isRtl ? "موافقة عرض سعر" : "Quote Approved", detail: "Project Alpha", time: "5m", color: "bg-blue-500" },
+                { title: isRtl ? "تحديث الحضور" : "Attendance Logged", detail: "120 Staff present", time: "1h", color: "bg-orange-500" },
+                { title: isRtl ? "إصدار مستند" : "Payment Voucher", detail: "Contract #2291", time: "3h", color: "bg-emerald-500" },
               ].map((activity, i) => (
-                <div key={i} className="flex items-start gap-4 p-5 hover:bg-slate-50/50 transition-colors">
-                  <div className={cn("h-2 w-2 rounded-full mt-2 shrink-0", activity.color)} />
+                <div key={i} className="flex items-start gap-3 p-4 hover:bg-slate-50/50 transition-colors">
+                  <div className={cn("h-1.5 w-1.5 rounded-full mt-1.5 shrink-0", activity.color)} />
                   <div className="flex-1 min-w-0 text-start">
-                    <p className="text-sm font-bold text-slate-800 truncate">{activity.title}</p>
-                    <p className="text-xs text-slate-600 font-bold truncate mt-0.5">{activity.detail}</p>
+                    <p className="text-xs font-bold text-slate-800 truncate">{activity.title}</p>
+                    <p className="text-[10px] text-slate-500 font-medium truncate">{activity.detail}</p>
                   </div>
-                  <span className="text-[10px] font-bold text-slate-400">{activity.time}</span>
+                  <span className="text-[9px] font-bold text-slate-300">{activity.time}</span>
                 </div>
               ))}
             </div>
-            <div className="p-4 bg-slate-50/30">
-              <Button variant="ghost" className="w-full h-9 text-xs font-black text-[#039BE5] hover:bg-blue-50">
-                {isRtl ? 'عرض السجل الكامل' : 'View All'}
+            <div className="p-3 bg-slate-50/30">
+              <Button variant="ghost" className="w-full h-8 text-[10px] font-bold text-blue-600 hover:bg-blue-50">
+                {isRtl ? 'عرض الكل' : 'View All'}
               </Button>
             </div>
           </CardContent>
