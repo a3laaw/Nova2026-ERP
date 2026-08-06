@@ -53,102 +53,97 @@ export default function LeaveRequestsPage() {
   );
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500" dir={dir}>
+    <div className="space-y-4 w-full animate-in fade-in duration-500" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start">
-          <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
-            <Plane className="h-10 w-10 text-primary" />
+          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2 text-slate-900">
+            <Plane className="h-6 w-6 text-primary" />
             {isRtl ? 'طلبات الإجازات' : 'Leave Requests'}
           </h1>
-          <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
+          <p className="text-muted-foreground text-xs font-medium">
             {viewAccess.scope === 'own' ? (isRtl ? 'عرض سجلاتك الشخصية فقط' : 'Viewing your own records only') : (isRtl ? 'إدارة الغيابات والأرصدة' : 'Manage absences and balances')}
           </p>
         </div>
 
-        <Button 
-          onClick={() => router.push('/dashboard/hr/leaves/new')}
-          className="bg-primary text-white font-black rounded-xl px-8 h-12 shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all"
-        >
-          <Plus className="me-2 h-5 w-5" />
-          {isRtl ? 'طلب إجازة جديد' : 'New Request'}
+        <Button onClick={() => router.push('/dashboard/hr/leaves/new')} size="sm" className="h-9 px-6 font-bold rounded-md shadow-sm">
+          <Plus className="me-2 h-4 w-4" />
+          {isRtl ? 'طلب جديد' : 'New Request'}
         </Button>
       </div>
 
-      <Card className="border-0 shadow-xl rounded-xl bg-white overflow-hidden ring-1 ring-black/5">
-        <CardHeader className="bg-slate-50/50 border-b p-6 flex flex-row items-center justify-between gap-4">
-          <div className="relative w-full max-w-md">
-            <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#FFA000]" />
+      <Card className="rounded-lg shadow-sm border overflow-hidden bg-white">
+        <div className="p-3 flex flex-row items-center justify-between gap-4 bg-slate-50/30 border-b">
+          <div className="relative w-full max-w-sm">
+            <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input 
               placeholder={isRtl ? 'بحث...' : 'Search...'} 
-              className="ps-12 rounded-xl h-11 bg-white border-slate-200 focus-visible:ring-primary/10 focus-visible:border-primary transition-all" 
+              className="ps-9 h-9 border-slate-200 bg-white font-medium text-sm" 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button variant="outline" className="rounded-xl font-bold h-11 px-4 flex items-center gap-2 border-slate-200">
-             <Filter className="h-4 w-4 text-[#FFA000]" /> {isRtl ? 'تصفية' : 'Filter'}
-          </Button>
-        </CardHeader>
+          <Button variant="outline" size="sm" className="h-9 px-4 border-slate-200 font-bold text-xs"><Filter className="h-3.5 w-3.5 me-2" /> {isRtl ? 'تصفية' : 'Filter'}</Button>
+        </div>
         <CardContent className="p-0 overflow-x-auto">
           <Table>
-            <TableHeader className="bg-muted/10 border-b">
+            <TableHeader className="bg-slate-50">
               <TableRow>
-                <TableHead className="py-5 ps-8 text-start font-black text-slate-500 uppercase text-[10px] tracking-widest">{isRtl ? 'الموظف' : 'Employee'}</TableHead>
-                <TableHead className="text-start font-black text-slate-500 uppercase text-[10px] tracking-widest">{isRtl ? 'النوع' : 'Type'}</TableHead>
-                <TableHead className="text-start font-black text-slate-500 uppercase text-[10px] tracking-widest">{isRtl ? 'الفترة' : 'Period'}</TableHead>
-                <TableHead className="text-center font-black text-slate-500 uppercase text-[10px] tracking-widest">{isRtl ? 'أيام العمل' : 'Work Days'}</TableHead>
-                <TableHead className="text-start font-black text-slate-500 uppercase text-[10px] tracking-widest">{isRtl ? 'الحالة' : 'Status'}</TableHead>
-                <TableHead className="pe-8"></TableHead>
+                <TableHead className="py-3 ps-6 text-start text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'الموظف' : 'Employee'}</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'النوع' : 'Type'}</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'الفترة' : 'Period'}</TableHead>
+                <TableHead className="text-center text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'أيام العمل' : 'Work Days'}</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'الحالة' : 'Status'}</TableHead>
+                <TableHead className="pe-6"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-24"><Loader2 className="animate-spin h-12 w-12 mx-auto text-primary/30" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-20"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></TableCell></TableRow>
               ) : filteredLeaves.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-24 text-slate-400 font-bold italic">{isRtl ? 'لا توجد طلبات.' : 'No requests found.'}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-20 italic text-slate-400 font-bold">{isRtl ? 'لا يوجد طلبات.' : 'No requests found.'}</TableCell></TableRow>
               ) : (
                 filteredLeaves.map((leave) => (
                   <TableRow 
                     key={leave.id} 
-                    className="hover:bg-primary/[0.02] transition-colors group cursor-pointer border-b-slate-100"
+                    className="cursor-pointer border-b-slate-100 hover:bg-slate-50/50 group"
                     onClick={() => router.push(`/dashboard/hr/leaves/${leave.id}`)}
                   >
-                    <TableCell className="py-5 ps-8 text-start">
+                    <TableCell className="py-2.5 ps-6 text-start">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                           <CalendarDays className="h-5 w-5" />
+                        <div className="h-8 w-8 rounded-md bg-slate-100 flex items-center justify-center text-slate-400 group-hover:text-primary transition-colors">
+                           <CalendarDays className="h-4 w-4" />
                         </div>
-                        <span className="font-black text-slate-800 text-sm">{leave.userName}</span>
+                        <span className="font-bold text-slate-800 text-sm">{leave.userName}</span>
                       </div>
                     </TableCell>
                     <TableCell className="text-start">
-                       <Badge variant="outline" className="font-black border-slate-200 px-3 uppercase text-[9px] bg-white">
+                       <Badge variant="outline" className="font-bold border-slate-200 px-2 uppercase text-[9px] h-5 bg-white">
                           {leave.type}
                        </Badge>
                     </TableCell>
                     <TableCell className="text-start">
-                       <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400">
+                       <div className="flex items-center gap-2 text-[10px] font-medium text-slate-400 font-mono">
                           <span>{leave.startDate}</span>
-                          <ArrowRight className={cn("h-3 w-3 opacity-30", isRtl && "rotate-180")} />
+                          <ArrowRight className={cn("h-3 w-3", isRtl && "rotate-180")} />
                           <span>{leave.endDate}</span>
                        </div>
                     </TableCell>
                     <TableCell className="text-center">
-                       <span className="font-black text-slate-700 bg-slate-100 px-3 py-1 rounded-lg text-xs">{leave.workingDays}</span>
+                       <span className="font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-[11px]">{leave.workingDays}</span>
                     </TableCell>
                     <TableCell className="text-start">
-                       <Badge variant="outline" className={cn(
-                         "font-black px-4 py-1 rounded-lg border-0 shadow-sm text-[9px] uppercase",
+                       <Badge className={cn(
+                         "font-bold px-2 py-0.5 rounded-md border-0 text-[9px] uppercase",
                          leave.status === 'approved' ? 'bg-emerald-50 text-emerald-600' : 
-                         leave.status === 'pending' ? 'bg-[#FFCA28]/10 text-[#FFCA28]' : 
+                         leave.status === 'pending' ? 'bg-amber-50 text-amber-600' : 
                          'bg-rose-50 text-rose-600'
                        )}>
                           {leave.status}
                        </Badge>
                     </TableCell>
-                    <TableCell className="text-center pe-8">
-                       <Button variant="ghost" size="icon" className="rounded-xl group-hover:bg-primary group-hover:text-white transition-all h-9 w-9">
-                          <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-0", isRtl && "rotate-180")} />
+                    <TableCell className="pe-6 text-end">
+                       <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-300 group-hover:text-primary">
+                          <ArrowRight className={cn("h-4 w-4", isRtl && "rotate-180")} />
                        </Button>
                     </TableCell>
                   </TableRow>

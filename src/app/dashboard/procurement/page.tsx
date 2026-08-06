@@ -45,97 +45,96 @@ export default function ProcurementDashboard() {
   ];
 
   const quickActions = [
-    { title: isRtl ? 'تحليل عرض سعر ذكي' : 'AI Quote Analysis', desc: isRtl ? 'مقارنة عروض الموردين بالذكاء الاصطناعي' : 'Compare quotes using AI', icon: Sparkles, path: '/dashboard/ai', primary: true },
-    { title: isRtl ? 'إصدار أمر شراء' : 'New Purchase Order', desc: isRtl ? 'إنشاء أمر توريد رسمي لمورد' : 'Issue an official PO', icon: ShoppingBag, path: '/dashboard/procurement/orders/new', primary: false },
+    { title: isRtl ? 'تحليل عرض سعر ذكي' : 'AI Quote Analysis', desc: isRtl ? 'مقارنة العروض بالذكاء الاصطناعي' : 'AI Price comparison', icon: Sparkles, path: '/dashboard/ai', primary: true },
+    { title: isRtl ? 'إصدار أمر شراء' : 'New Purchase Order', desc: isRtl ? 'إنشاء أمر توريد رسمي لمورد' : 'Issue official PO', icon: ShoppingBag, path: '/dashboard/procurement/orders/new', primary: false },
     { title: isRtl ? 'سجل الأوامر' : 'Orders History', desc: isRtl ? 'عرض ومتابعة كافة الطلبات' : 'View all purchase history', icon: FileText, path: '/dashboard/procurement/orders', primary: false },
   ];
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-700" dir={dir}>
-      <div className="text-start space-y-2">
-        <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-[#1e1b4b]">
-          <ShoppingCart className="h-10 w-10 text-primary" />
+    <div className="space-y-6 w-full animate-in fade-in duration-700" dir={dir}>
+      <div className="text-start">
+        <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2 text-slate-900">
+          <ShoppingCart className="h-6 w-6 text-primary" />
           {t('procurement')}
         </h1>
-        <p className="text-muted-foreground font-bold text-sm opacity-80 italic">
+        <p className="text-muted-foreground text-xs font-medium italic">
           {isRtl ? 'إدارة سلسلة التوريد الذكية والتحليلات المالية للمشتريات' : 'Smart supply chain management and procurement analytics'}
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {stats.map((stat, i) => (
-          <Card key={i} className="border-0 shadow-xl rounded-[2rem] p-6 text-start bg-white group hover:scale-105 transition-all">
-             <div className={cn("p-4 rounded-2xl w-fit mb-4", stat.bg, stat.color)}>
-                <stat.icon className="h-6 w-6" />
+          <Card key={i} className="border shadow-sm rounded-lg p-4 text-start bg-white group hover:shadow-md transition-all">
+             <div className={cn("p-2.5 rounded-lg w-fit mb-3", stat.bg, stat.color)}>
+                <stat.icon className="h-4 w-4" />
              </div>
-             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{stat.title}</p>
-             <h3 className="text-3xl font-black font-headline text-[#1e1b4b]">{stat.val}</h3>
+             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{stat.title}</p>
+             <h3 className="text-xl font-bold text-slate-900">{stat.val}</h3>
           </Card>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {quickActions.map((action, i) => (
           <Card 
             key={i} 
             onClick={() => router.push(action.path)}
             className={cn(
-              "border-0 shadow-2xl rounded-[2.5rem] p-8 cursor-pointer group transition-all relative overflow-hidden",
-              action.primary ? "bg-gradient-to-br from-[#e87c24] to-[#FFB000] text-white" : "bg-white hover:bg-slate-50"
+              "border shadow-sm rounded-lg p-6 cursor-pointer group transition-all relative overflow-hidden",
+              action.primary ? "bg-orange-50 border-orange-200" : "bg-white hover:bg-slate-50"
             )}
           >
-            {action.primary && <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform"><Sparkles className="h-24 w-24" /></div>}
-            <div className={cn("h-14 w-14 rounded-2xl flex items-center justify-center mb-6 shadow-lg", action.primary ? "bg-white/20" : "bg-primary/10 text-primary")}>
-               <action.icon className="h-7 w-7" />
+            <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center mb-4 shadow-sm", action.primary ? "bg-primary text-white" : "bg-primary/10 text-primary")}>
+               <action.icon className="h-5 w-5" />
             </div>
-            <h3 className="text-xl font-black font-headline mb-2">{action.title}</h3>
-            <p className={cn("text-sm font-bold opacity-70", action.primary ? "text-white" : "text-slate-500")}>{action.desc}</p>
-            <div className="mt-8 flex items-center gap-2 text-xs font-black uppercase tracking-widest">
+            <h3 className="text-sm font-bold mb-1">{action.title}</h3>
+            <p className={cn("text-[10px] font-medium opacity-70", action.primary ? "text-orange-900" : "text-slate-500")}>{action.desc}</p>
+            <div className={cn("mt-4 flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider", action.primary ? "text-primary" : "text-slate-400")}>
                {isRtl ? 'ابدأ الآن' : 'Get Started'}
-               <ArrowUpRight className="h-4 w-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+               <ArrowUpRight className="h-3 w-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
             </div>
           </Card>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-         <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
-            <CardHeader className="bg-slate-50/50 border-b p-8 text-start">
-               <CardTitle className="text-xl font-black flex items-center gap-3">
-                  <Clock className="h-6 w-6 text-primary" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+         <Card className="rounded-lg border shadow-sm bg-white overflow-hidden">
+            <CardHeader className="bg-slate-50/50 border-b p-4 text-start">
+               <CardTitle className="text-sm font-bold flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-primary" />
                   {isRtl ? 'آخر أوامر الشراء' : 'Recent POs'}
                </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
                {orders && orders.length > 0 ? (
-                 <div className="divide-y">
+                 <div className="divide-y divide-slate-100">
                    {orders.map(o => (
-                     <div key={o.id} onClick={() => router.push(`/dashboard/procurement/orders/${o.id}`)} className="p-5 flex items-center justify-between hover:bg-slate-50 cursor-pointer transition-colors">
+                     <div key={o.id} onClick={() => router.push(`/dashboard/procurement/orders/${o.id}`)} className="p-4 flex items-center justify-between hover:bg-slate-50 cursor-pointer transition-colors">
                         <div className="text-start">
-                           <p className="font-black text-slate-800 text-sm">{o.poNumber}</p>
-                           <p className="text-[10px] font-bold text-slate-400">{o.supplierName}</p>
+                           <p className="font-bold text-slate-800 text-xs">{o.poNumber}</p>
+                           <p className="text-[10px] font-medium text-slate-400">{o.supplierName}</p>
                         </div>
-                        <Badge variant="outline" className="text-[8px] font-black uppercase">{o.status}</Badge>
+                        <Badge variant="outline" className="text-[8px] font-bold uppercase h-5">{o.status}</Badge>
                      </div>
                    ))}
                  </div>
                ) : (
-                 <div className="p-20 text-center text-slate-300 italic font-bold">
+                 <div className="p-16 text-center text-slate-300 italic font-medium text-xs">
                     {isRtl ? 'لا يوجد أوامر شراء نشطة حالياً.' : 'No active purchase orders found.'}
                  </div>
                )}
             </CardContent>
          </Card>
 
-         <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
-            <CardHeader className="bg-slate-50/50 border-b p-8 text-start">
-               <CardTitle className="text-xl font-black flex items-center gap-3">
-                  <BarChart3 className="h-6 w-6 text-primary" />
+         <Card className="rounded-lg border shadow-sm bg-white overflow-hidden">
+            <CardHeader className="bg-slate-50/50 border-b p-4 text-start">
+               <CardTitle className="text-sm font-bold flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-primary" />
                   {isRtl ? 'تحليل الإنفاق حسب التصنيف' : 'Spending by Category'}
                </CardTitle>
             </CardHeader>
-            <CardContent className="p-20 text-center text-slate-300 italic font-bold">
-               {isRtl ? 'سيتم عرض المخططات البيانية عند توفر البيانات.' : 'Charts will appear when data is available.'}
+            <CardContent className="p-16 text-center text-slate-200 italic font-medium text-xs">
+               {isRtl ? 'سيتم عرض المخططات البيانية قريباً.' : 'Analytics charts coming soon.'}
             </CardContent>
          </Card>
       </div>

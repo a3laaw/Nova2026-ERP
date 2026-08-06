@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -89,109 +88,97 @@ export default function EmployeesPage() {
   };
 
   return (
-    <div className="space-y-4 animate-in fade-in duration-500" dir={dir}>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
+    <div className="space-y-4 w-full animate-in fade-in duration-500" dir={dir}>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start">
-          <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
-            <Users className="h-10 w-10 text-primary" />
+          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2 text-slate-900">
+            <Users className="h-6 w-6 text-primary" />
             {viewAccess.scope === 'own' ? (isRtl ? 'ملفي الوظيفي' : 'My Profile') : (isRtl ? 'سجل الموظفين' : 'Employee Records')}
           </h1>
-          <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
+          <p className="text-muted-foreground text-xs font-medium">
             {isRtl ? 'إدارة القوى العاملة والبيانات الوظيفية' : 'Manage workforce and job profiles'}
           </p>
         </div>
 
         {createAccess.can && createAccess.scope !== 'own' && (
-          <Button 
-            onClick={() => router.push('/dashboard/hr/employees/new')}
-            variant="default"
-            className="h-11 px-8 shadow-lg"
-          >
-            <UserPlus className="me-2 h-5 w-5" />
+          <Button onClick={() => router.push('/dashboard/hr/employees/new')} size="sm" className="h-9 font-bold px-6 shadow-sm">
+            <UserPlus className="me-2 h-4 w-4" />
             {isRtl ? 'توظيف جديد' : 'New Hire'}
           </Button>
         )}
       </div>
 
-      <Card className="border-0 shadow-sm rounded-xl bg-white mb-4 overflow-hidden">
-        <div className="p-5 flex flex-row items-center justify-between gap-4">
-          <div className="relative w-full max-w-md">
-            <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary" />
+      <Card className="rounded-lg shadow-sm border overflow-hidden bg-white">
+        <div className="p-3 flex flex-row items-center justify-between gap-4 bg-slate-50/30">
+          <div className="relative w-full max-w-sm">
+            <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input 
-              placeholder={isRtl ? 'بحث في سجل الموظفين...' : 'Search staff...'} 
-              className="ps-12 h-11 bg-slate-50/50 border-slate-200 focus-visible:ring-primary/10 focus-visible:border-primary transition-all font-bold" 
+              placeholder={isRtl ? 'بحث...' : 'Search staff...'} 
+              className="ps-9 h-9 border-slate-200 bg-white font-medium text-sm" 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button variant="outline" className="h-11 px-6 border-primary/20">
-             <Filter className="h-4 w-4 me-2" /> {isRtl ? 'تصفية النتائج' : 'Filter Results'}
+          <Button variant="outline" size="sm" className="h-9 px-4 border-slate-200 font-bold text-xs">
+             <Filter className="h-3.5 w-3.5 me-2" /> {isRtl ? 'تصفية' : 'Filter'}
           </Button>
         </div>
-      </Card>
-
-      <Card className="border-0 shadow-xl rounded-xl bg-white overflow-hidden ring-1 ring-black/5">
         <CardContent className="p-0 overflow-x-auto">
           <Table>
-            <TableHeader className="bg-[#F4F6F9] border-b">
+            <TableHeader className="bg-slate-50">
               <TableRow>
-                <TableHead className="py-5 ps-8 text-start">{isRtl ? 'الموظف' : 'Employee'}</TableHead>
-                <TableHead className="text-start">{isRtl ? 'الوظيفة' : 'Job'}</TableHead>
-                <TableHead className="text-start">{isRtl ? 'الحالة' : 'Status'}</TableHead>
-                {canSeeSalaries && <TableHead className="text-end">{isRtl ? 'الراتب' : 'Salary'}</TableHead>}
-                <TableHead className="pe-8 text-end"></TableHead>
+                <TableHead className="py-3 ps-6 text-start text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'الموظف' : 'Employee'}</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'الوظيفة' : 'Job'}</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'الحالة' : 'Status'}</TableHead>
+                {canSeeSalaries && <TableHead className="text-end text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'الراتب' : 'Salary'}</TableHead>}
+                <TableHead className="pe-6"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-24"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></TableCell></TableRow>
               ) : filteredEmployees.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-24 italic text-slate-400 font-bold">{isRtl ? 'لا يوجد موظفين.' : 'No employees found.'}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-20 italic text-slate-400 font-bold">{isRtl ? 'لا يوجد موظفين.' : 'No employees found.'}</TableCell></TableRow>
               ) : filteredEmployees.map((emp) => (
-                <TableRow key={emp.id} className="cursor-pointer border-b-slate-100 group" onClick={() => router.push(`/dashboard/hr/employees/${emp.id}`)}>
-                  <TableCell className="py-5 ps-8 text-start">
-                    <div className="flex items-center gap-4">
-                       <div className="h-10 w-10 rounded-lg bg-slate-100 flex items-center justify-center font-black text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-all">
+                <TableRow key={emp.id} className="cursor-pointer border-b-slate-100 group hover:bg-slate-50/50" onClick={() => router.push(`/dashboard/hr/employees/${emp.id}`)}>
+                  <TableCell className="py-2.5 ps-6 text-start">
+                    <div className="flex items-center gap-3">
+                       <div className="h-8 w-8 rounded-md bg-slate-100 flex items-center justify-center font-bold text-[10px] text-slate-500 shrink-0">
                           {emp.employeeNumber}
                        </div>
                        <div className="flex flex-col text-start">
-                          <span className="font-black text-slate-800 text-sm">{emp.fullName}</span>
-                          <span className="text-[10px] text-muted-foreground font-bold">{emp.mobile}</span>
+                          <span className="font-bold text-slate-800 text-sm">{emp.fullName}</span>
+                          <span className="text-[10px] text-slate-400 font-medium">{emp.mobile}</span>
                        </div>
                     </div>
                   </TableCell>
                   <TableCell className="text-start">
-                     <span className="font-bold text-xs text-slate-700 flex items-center gap-1">
-                        <Briefcase className="h-3 w-3 text-primary" /> {emp.jobTitle}
+                     <span className="font-bold text-xs text-slate-600 flex items-center gap-1.5">
+                        <Briefcase className="h-3 w-3 text-primary/50" /> {emp.jobTitle}
                      </span>
                   </TableCell>
                   <TableCell className="text-start">
                      <Badge variant="outline" className={cn(
-                       "font-black px-3 py-1 rounded-lg border-0 shadow-sm uppercase text-[9px]",
-                       emp.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-[#FFA000]/10 text-[#FFA000]'
+                       "font-bold px-2 py-0.5 rounded-md border-0 text-[9px] uppercase",
+                       emp.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
                      )}>
                         {emp.status}
                      </Badge>
                   </TableCell>
                   {canSeeSalaries && (
-                    <TableCell className="text-end font-mono font-black text-emerald-600">
+                    <TableCell className="text-end font-mono font-bold text-emerald-600 text-sm">
                       {emp.basicSalary?.toLocaleString()}
                     </TableCell>
                   )}
-                  <TableCell className="pe-8 text-end" onClick={e => e.stopPropagation()}>
-                    <div className="flex justify-end gap-2">
+                  <TableCell className="pe-6 text-end" onClick={e => e.stopPropagation()}>
+                    <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                        {deleteAccess.can && (
-                         <Button 
-                           variant="ghost" 
-                           size="icon" 
-                           className="text-rose-400 hover:text-rose-600 rounded-xl h-9 w-9"
-                           onClick={() => setDeletingId(emp.id!)}
-                         >
+                         <Button variant="ghost" size="icon" className="text-rose-300 hover:text-rose-600 h-8 w-8" onClick={() => setDeletingId(emp.id!)}>
                            <Trash2 className="h-4 w-4" />
                          </Button>
                        )}
-                       <Button variant="ghost" size="icon" className="rounded-xl h-9 w-9">
-                         <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-0", isRtl && "rotate-180")} />
+                       <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300 group-hover:text-primary">
+                         <ArrowRight className={cn("h-4 w-4", isRtl && "rotate-180")} />
                        </Button>
                     </div>
                   </TableCell>
@@ -203,18 +190,18 @@ export default function EmployeesPage() {
       </Card>
 
       <AlertDialog open={!!deletingId} onOpenChange={open => !open && setDeletingId(null)}>
-        <AlertDialogContent className="rounded-xl p-8" dir={dir}>
+        <AlertDialogContent className="rounded-lg p-6 max-w-md" dir={dir}>
           <AlertDialogHeader>
-            <div className="mx-auto w-16 h-16 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center mb-4"><AlertTriangle className="h-8 w-8" /></div>
-            <AlertDialogTitle className="text-start font-black text-2xl">{t('confirmDelete')}</AlertDialogTitle>
-            <AlertDialogDescription className="text-start font-bold">
+            <div className="mx-auto w-12 h-12 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mb-4"><AlertTriangle className="h-6 w-6" /></div>
+            <AlertDialogTitle className="text-center font-bold text-lg">{t('confirmDelete')}</AlertDialogTitle>
+            <AlertDialogDescription className="text-center font-medium text-slate-500 mt-2 text-sm leading-relaxed">
               {isRtl ? 'هل أنت متأكد؟ سيتم حذف ملف الموظف نهائياً.' : 'Are you sure? Employee profile will be deleted.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="mt-8 gap-4">
-            <AlertDialogCancel className="rounded-xl h-11 font-bold border-2">{isRtl ? 'إلغاء' : 'Cancel'}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="rounded-xl h-11 bg-rose-600 hover:bg-rose-700 text-white px-8">
-              {isRtl ? 'نعم، احذف' : 'Yes, Delete'}
+          <AlertDialogFooter className="mt-6 gap-2 flex flex-row">
+            <AlertDialogCancel className="flex-1 h-9 rounded-md text-xs font-bold">إلغاء</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="flex-1 h-9 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-md">
+               {isRtl ? 'نعم، احذف' : 'Yes, Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
