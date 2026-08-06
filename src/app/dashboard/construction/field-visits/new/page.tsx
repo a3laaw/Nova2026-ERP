@@ -24,7 +24,7 @@ import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { Employee, WorkGroup } from '@/types/hr';
+import { Employee } from '@/types/hr';
 import { Transaction } from '@/types/transaction';
 import { Equipment } from '@/types/equipment';
 import { BOQ, BOQItem } from '@/types/documents';
@@ -55,7 +55,6 @@ function NewFieldVisitForm() {
     { boqItemId: '', quantity: '', notes: '', photoUrls: [], isUploading: false }
   ]);
 
-  // استرجاع البيانات عند الاستنساخ
   useEffect(() => {
     async function fetchCloneData() {
       if (!cloneId || !db || !companyId) return;
@@ -80,7 +79,6 @@ function NewFieldVisitForm() {
     fetchCloneData();
   }, [cloneId, db, companyId]);
 
-  // الاستعلامات المرجعية
   const transQuery = useMemo(() => 
     (companyId && db) ? query(collection(db, paths.transactions(companyId)), where('status', '!=', 'completed')) : null, [db, companyId]);
   const { data: allTransactions } = useCollection<Transaction>(transQuery);
@@ -177,13 +175,13 @@ function NewFieldVisitForm() {
     <div className="space-y-4 w-full px-4 md:px-6 animate-in fade-in" dir={dir}>
       <div className="flex justify-between items-center border-b pb-4">
         <div className="text-start">
-           <h1 className="text-xl md:text-2xl font-bold text-slate-900">{isRtl ? 'توثيق إنجاز ميداني' : 'Field Progress Log'}</h1>
+           <h1 className="text-xl md:text-2xl font-bold text-slate-900">{t('construction.reports')}</h1>
            <p className="text-xs text-muted-foreground font-medium opacity-60 uppercase tracking-tighter">Sovereign Field Unit</p>
         </div>
         <div className="flex gap-2">
            <Button variant="outline" size="sm" onClick={() => router.back()} className="h-9 font-bold">{t('common.cancel')}</Button>
            <Button onClick={handleSave} disabled={loading || !selectedProjectId} size="sm" className="h-9 px-6 font-bold gap-2">
-              {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
+              {loading ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
               {t('common.saveReport')}
            </Button>
         </div>
@@ -197,20 +195,24 @@ function NewFieldVisitForm() {
                      <Target className="h-4 w-4 text-primary" /> {t('construction.context')}
                   </CardTitle>
                </CardHeader>
-               <CardContent className="p-4 space-y-4">
-                  <div className="space-y-1.5 text-start">
-                     <Label className="text-[10px] font-bold uppercase text-slate-400">العميل</Label>
+               <CardContent className="p-4 space-y-4 text-start">
+                  <div className="space-y-1.5">
+                     <Label className="text-[10px] font-bold uppercase text-slate-400">{t('common.clients')}</Label>
                      <Select value={selectedClientId} onValueChange={setSelectedClientId}>
                         <SelectTrigger className="h-9 text-sm font-medium border-slate-200"><SelectValue placeholder="..." /></SelectTrigger>
                         <SelectContent className="rounded-lg">{contractedClients?.map(c => <SelectItem key={c.id} value={c.id} className="text-xs">{c.nameAr}</SelectItem>)}</SelectContent>
                      </Select>
                   </div>
-                  <div className="space-y-1.5 text-start">
-                     <Label className="text-[10px] font-bold uppercase text-slate-400">المشروع</Label>
+                  <div className="space-y-1.5">
+                     <Label className="text-[10px] font-bold uppercase text-slate-400">{t('common.projects')}</Label>
                      <Select disabled={!selectedClientId} value={selectedProjectId} onValueChange={setSelectedProjectId}>
                         <SelectTrigger className="h-9 text-sm font-medium border-slate-200"><SelectValue placeholder="..." /></SelectTrigger>
                         <SelectContent className="rounded-lg">{clientProjects?.map(p => <SelectItem key={p.id} value={p.id} className="text-xs">{p.subServiceName}</SelectItem>)}</SelectContent>
                      </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                     <Label className="text-[10px] font-bold uppercase text-slate-400">{t('common.date')}</Label>
+                     <Input type="date" value={visitDate} onChange={e => setVisitDate(e.target.value)} className="h-9 text-sm" />
                   </div>
                </CardContent>
             </Card>
@@ -221,9 +223,9 @@ function NewFieldVisitForm() {
                      <Users className="h-4 w-4 text-primary" /> {t('common.labor')}
                   </CardTitle>
                </CardHeader>
-               <CardContent className="p-4 space-y-4">
+               <CardContent className="p-4 space-y-4 text-start">
                   <div className="flex justify-between items-center mb-2">
-                     <span className="text-[10px] font-bold text-slate-400 uppercase">طاقم العمل</span>
+                     <span className="text-[10px] font-bold text-slate-400 uppercase">{t('construction.groups')}</span>
                      <Button variant="ghost" size="sm" onClick={() => setLaborDetails([...laborDetails, { trade: '', count: 1, hours: 8, hourlyCostRef: 0 }])} className="h-6 text-[10px]"><Plus className="h-3 w-3" /></Button>
                   </div>
                   {laborDetails.map((l, i) => (
@@ -236,7 +238,7 @@ function NewFieldVisitForm() {
                              nl[i].hourlyCostRef = (emp?.basicSalary || 0) / 26 / 8;
                              setLaborDetails(nl);
                           }}>
-                             <SelectTrigger className="h-8 text-[11px]"><SelectValue placeholder="التخصص/الموظف..." /></SelectTrigger>
+                             <SelectTrigger className="h-8 text-[11px]"><SelectValue placeholder="..." /></SelectTrigger>
                              <SelectContent className="rounded-lg">
                                 {employees?.map(e => <SelectItem key={e.id} value={e.fullName} className="text-[10px]">{e.fullName} ({e.jobTitle})</SelectItem>)}
                              </SelectContent>
@@ -255,9 +257,9 @@ function NewFieldVisitForm() {
                      <Truck className="h-4 w-4 text-primary" /> {t('common.equipment')}
                   </CardTitle>
                </CardHeader>
-               <CardContent className="p-4 space-y-4">
+               <CardContent className="p-4 space-y-4 text-start">
                   <div className="flex justify-between items-center mb-2">
-                     <span className="text-[10px] font-bold text-slate-400 uppercase">المعدات والآليات</span>
+                     <span className="text-[10px] font-bold text-slate-400 uppercase">{t('construction.equipment')}</span>
                      <Button variant="ghost" size="sm" onClick={() => setEquipmentUsed([...equipmentUsed, { equipmentId: '', hoursUsed: 4, hourlyRateRef: 0 }])} className="h-6 text-[10px]"><Plus className="h-3 w-3" /></Button>
                   </div>
                   {equipmentUsed.map((e, i) => (
@@ -271,7 +273,7 @@ function NewFieldVisitForm() {
                              ne[i].hourlyRateRef = eq?.hourlyRentalRate || eq?.hourlyDepreciationRate || 0;
                              setEquipmentUsed(ne);
                           }}>
-                             <SelectTrigger className="h-8 text-[11px]"><SelectValue placeholder="المعدة..." /></SelectTrigger>
+                             <SelectTrigger className="h-8 text-[11px]"><SelectValue placeholder="..." /></SelectTrigger>
                              <SelectContent className="rounded-lg">
                                 {equipmentRegistry?.map(eq => <SelectItem key={eq.id} value={eq.id!} className="text-[10px]">{eq.name} (#{eq.code})</SelectItem>)}
                              </SelectContent>
@@ -297,27 +299,28 @@ function NewFieldVisitForm() {
                   <Table>
                      <TableHeader className="bg-slate-50/50">
                         <TableRow className="border-0">
-                           <TableHead className="text-[10px] font-bold uppercase ps-4">البند</TableHead>
-                           <TableHead className="text-center w-[100px] text-[10px] font-bold uppercase">الكمية</TableHead>
-                           <TableHead className="text-center w-[100px] text-[10px] font-bold uppercase">الصور</TableHead>
+                           <TableHead className="text-[10px] font-bold uppercase ps-4">{t('common.addLabel')}</TableHead>
+                           <TableHead className="text-center w-[100px] text-[10px] font-bold uppercase">{t('common.quantity')}</TableHead>
+                           <TableHead className="text-center w-[100px] text-[10px] font-bold uppercase">{t('common.photos')}</TableHead>
                            <TableHead className="pe-4"></TableHead>
                         </TableRow>
                      </TableHeader>
                      <TableBody>
                         {gridRows.map((row, idx) => (
                            <TableRow key={idx} className="border-b-slate-50 group">
-                              <TableCell className="ps-4 py-3">
+                              <TableCell className="ps-4 py-3 text-start">
                                  <Select value={row.boqItemId} onValueChange={v => updateRow(idx, 'boqItemId', v)}>
                                     <SelectTrigger className="h-8 text-[11px] font-medium bg-white border-slate-200"><SelectValue placeholder="..." /></SelectTrigger>
                                     <SelectContent className="rounded-lg">{boqItems?.map(i => <SelectItem key={i.id} value={i.id!} className="text-[10px]">{i.referenceTitle}</SelectItem>)}</SelectContent>
                                  </Select>
+                                 <Input value={row.notes} onChange={e => updateRow(idx, 'notes', e.target.value)} className="h-7 text-[10px] mt-1.5 border-transparent hover:border-slate-100 bg-slate-50/50" placeholder={t('common.notes')} />
                               </TableCell>
                               <TableCell><Input value={row.quantity} onChange={e => updateRow(idx, 'quantity', e.target.value)} className="h-8 text-center text-xs font-bold border-slate-200" /></TableCell>
                               <TableCell className="text-center">
                                  <div className="flex items-center justify-center gap-2">
                                     <label className="h-8 w-8 rounded-md bg-white border border-slate-200 flex items-center justify-center cursor-pointer hover:bg-slate-50">
-                                       <Camera className="h-4 w-4 text-slate-400" />
-                                       <input type="file" multiple accept="image/*" className="hidden" onChange={e => handlePhotoUpload(idx, e)} />
+                                       {row.isUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-4 w-4 text-slate-400" />}
+                                       <input type="file" multiple accept="image/*" className="hidden" onChange={e => handlePhotoUpload(idx, e)} disabled={row.isUploading} />
                                     </label>
                                     {row.photoUrls.length > 0 && <span className="text-[10px] font-black text-emerald-600">{row.photoUrls.length}</span>}
                                  </div>

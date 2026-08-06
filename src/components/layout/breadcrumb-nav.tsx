@@ -46,6 +46,9 @@ export function BreadcrumbNav() {
     bookings: t('construction.radar'),
     new: t('common.new'),
     edit: t('common.edit'),
+    boqs: t('projects.boqExplorer'),
+    groups: t('construction.groups'),
+    equipment: t('construction.equipment')
   };
 
   const formatSegment = (segment: string) => {
@@ -59,15 +62,14 @@ export function BreadcrumbNav() {
   if (segments.length <= 1 && segments[0] === 'dashboard') return null;
 
   return (
-    <nav className="flex items-center gap-4 animate-in fade-in slide-in-from-top-1 duration-500" aria-label="Breadcrumb">
-      {/* زر الرجوع الهندسي */}
+    <nav className="flex items-center gap-3 animate-in fade-in slide-in-from-top-1 duration-500" aria-label="Breadcrumb">
       <Button 
         variant="ghost" 
         size="icon" 
         onClick={() => router.back()}
-        className="h-9 w-9 rounded-xl bg-white shadow-sm border border-slate-200 text-slate-400 hover:text-primary transition-all shrink-0"
+        className="h-8 w-8 rounded-lg bg-white shadow-sm border border-slate-200 text-slate-400 hover:text-primary transition-all shrink-0"
       >
-        <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
+        <ArrowRight className={cn("h-3.5 w-3.5", !isRtl && "rotate-180")} />
       </Button>
 
       <ol className="flex items-center whitespace-nowrap overflow-hidden">
@@ -76,7 +78,7 @@ export function BreadcrumbNav() {
             href="/dashboard" 
             className="text-slate-400 hover:text-primary transition-colors flex items-center gap-1.5"
           >
-            <Home className="h-3.5 w-3.5" />
+            <Home className="h-3 w-3" />
           </Link>
         </li>
 
@@ -91,14 +93,14 @@ export function BreadcrumbNav() {
             <li key={href} className="flex items-center">
               <div className="flex items-center">
                 {isRtl ? (
-                  <ChevronLeft className="h-4 w-4 text-slate-300 mx-1 shrink-0" />
+                  <ChevronLeft className="h-3.5 w-3.5 text-slate-300 mx-0.5 shrink-0" />
                 ) : (
-                  <ChevronRight className="h-4 w-4 text-slate-300 mx-1 shrink-0" />
+                  <ChevronRight className="h-3.5 w-3.5 text-slate-300 mx-0.5 shrink-0" />
                 )}
                 <Link
                   href={href}
                   className={cn(
-                    "text-[11px] font-black uppercase tracking-wider transition-all px-2 py-1 rounded-lg",
+                    "text-[10px] font-bold uppercase tracking-wider transition-all px-2 py-1 rounded-md",
                     isLast 
                       ? "text-slate-900 bg-slate-100/50 cursor-default pointer-events-none" 
                       : "text-slate-400 hover:text-primary hover:bg-primary/5"

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
@@ -59,7 +58,7 @@ export default function AppointmentDetailPage() {
 
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [isRecordOpen, setIsRecordOpen] = useState(false);
-  const [availableJobs, setAvailableJobs] = useState<Job[]>([]);
+  const [availableEmployees, setAvailableEmployees] = useState<any[]>([]);
 
   const apptRef = useMemo(() => companyId && db ? doc(db, paths.appointments(companyId), apptId) : null, [db, companyId, apptId]);
   const { data: appt, loading: apptLoading } = useDoc<Appointment>(apptRef);
@@ -82,9 +81,9 @@ export default function AppointmentDetailPage() {
 
   useEffect(() => {
      if (isRecordOpen && db && companyId) {
-        getDocs(query(collectionGroup(db, 'jobs'), where('companyId', '==', companyId)))
-           .then(snap => setAvailableJobs(snap.docs.map(d => ({ id: d.id, ...d.data() } as Job))))
-           .catch(() => setAvailableJobs([]));
+        getDocs(query(collection(db, paths.employees(companyId)), where('isActive', '==', true)))
+           .then(snap => setAvailableEmployees(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+           .catch(() => setAvailableEmployees([]));
      }
   }, [isRecordOpen, db, companyId]);
 
@@ -124,10 +123,10 @@ export default function AppointmentDetailPage() {
          }
       }
       
-      toast({ title: isRtl ? "تم تسجيل الإنجاز" : "Progress Logged" });
+      toast({ title: isRtl ? "تم تسجيل الإنجاز والموارد بنجاح" : "Progress & Resources Logged" });
       setIsRecordOpen(false);
     } catch (e: any) {
-      toast({ variant: "destructive", title: t('error'), description: e.message });
+      toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally {
       setLoadingAction(null);
     }
@@ -137,35 +136,35 @@ export default function AppointmentDetailPage() {
   if (!appt) return <div className="p-20 text-center font-bold">404 - Not Found</div>;
 
   return (
-    <div className="space-y-4 w-full px-4 md:px-6 animate-in fade-in duration-500" dir={dir}>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4">
+    <div className="space-y-4 w-full px-4 md:px-6 animate-in fade-in" dir={dir}>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4 border-slate-100">
         <div className="flex items-center gap-3">
-           <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-9 w-9 rounded-md border text-slate-400">
+           <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-8 w-8 rounded-lg border text-slate-400">
              <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
            </Button>
            <div className="text-start">
-             <h1 className="text-xl md:text-2xl font-bold text-slate-900 leading-none">{appt.title}</h1>
+             <h1 className="text-lg md:text-xl font-bold text-slate-900 leading-none">{appt.title}</h1>
              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">{appt.clientName} | Project: {transaction?.transactionNumber || '---'}</p>
            </div>
         </div>
         {appt.status !== 'completed' && (
-           <Button onClick={() => setIsRecordOpen(true)} size="sm" className="h-9 px-6 rounded-md font-bold gap-2">
-               <Hammer className="h-4 w-4" /> {isRtl ? 'تسجيل إنجاز فني وموارد' : 'Log Daily Progress'}
+           <Button onClick={() => setIsRecordOpen(true)} size="sm" className="h-9 px-6 rounded-md font-bold gap-2 shadow-sm">
+               <Hammer className="h-4 w-4" /> {isRtl ? 'توثيق الموارد والإنجاز' : 'Log Site Resources'}
            </Button>
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         <div className="lg:col-span-7 space-y-6">
            <Card className="rounded-lg shadow-sm border-slate-100 bg-white overflow-hidden text-start">
               <CardHeader className="bg-slate-50 p-4 border-b">
-                 <CardTitle className="text-xs font-bold uppercase text-slate-500 flex items-center gap-2">
+                 <CardTitle className="text-[10px] font-bold uppercase text-slate-500 flex items-center gap-2">
                     <Target className="h-4 w-4 text-primary" /> {isRtl ? 'مراحل التنفيذ' : 'Execution Pipeline'}
                  </CardTitle>
               </CardHeader>
               <CardContent className="p-2 space-y-1">
                  {stages?.map((stage, idx) => (
-                    <div key={stage.id} onClick={() => setSelectedStageId(stage.id!)} className={cn("p-3 rounded-md border cursor-pointer transition-all flex items-center justify-between group", selectedStageId === stage.id ? "bg-primary/5 border-primary" : "bg-white border-transparent hover:border-slate-100")}>
+                    <div key={stage.id} onClick={() => setSelectedStageId(stage.id!)} className={cn("p-3 rounded-md border cursor-pointer transition-all flex items-center justify-between group", selectedStageId === stage.id ? "bg-primary/5 border-primary" : "bg-white border-transparent hover:border-slate-50")}>
                        <div className="flex items-center gap-3 text-start">
                           <div className={cn("h-7 w-7 rounded-md flex items-center justify-center font-bold text-[10px] border", stage.status === 'completed' ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-400")}>{stage.status === 'completed' ? <Check className="h-3.5 w-3.5" /> : (idx + 1)}</div>
                           <p className="font-bold text-xs text-slate-800">{stage.name}</p>
@@ -173,103 +172,114 @@ export default function AppointmentDetailPage() {
                        <Badge variant="outline" className="text-[8px] font-bold uppercase border-0">{stage.status}</Badge>
                     </div>
                  ))}
+                 {!stages?.length && <div className="p-10 text-center italic text-xs text-slate-300">No technical stages defined.</div>}
               </CardContent>
            </Card>
         </div>
-        <div className="lg:col-span-5 h-[500px]">
+        <div className="lg:col-span-5 h-full min-h-[500px]">
            <CommentSection transactionId={appt.transactionId || apptId} path={paths.transactionComments(companyId!, appt.transactionId || apptId)} />
         </div>
       </div>
 
       <Dialog open={isRecordOpen} onOpenChange={setIsRecordOpen}>
-         <DialogContent className="max-w-4xl rounded-lg p-0 overflow-hidden border shadow-3xl bg-white" dir={dir}>
-            <div className="bg-slate-50 p-6 text-slate-900 text-start flex items-center justify-between border-b">
+         <DialogContent className="max-w-4xl rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white flex flex-col max-h-[90vh]" dir={dir}>
+            <div className="bg-slate-50 p-6 text-slate-900 text-start flex items-center justify-between border-b shrink-0">
                <div className="flex items-center gap-3">
                   <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary shadow-sm"><LayoutGrid className="h-5 w-5" /></div>
-                  <DialogTitle className="text-lg font-bold">توثيق الإنجاز اليومي</DialogTitle>
+                  <DialogTitle className="text-lg font-bold">{isRtl ? 'توثيق الإنجاز والموارد' : 'Log Resources & Progress'}</DialogTitle>
                </div>
             </div>
 
-            <div className="p-6 space-y-6 max-h-[65vh] overflow-y-auto scrollbar-hide text-start bg-white">
-               <div className="space-y-1.5">
-                  <Label className="text-[10px] font-bold uppercase text-slate-400">Target Stage</Label>
+            <div className="p-8 space-y-8 overflow-y-auto scrollbar-hide text-start bg-white flex-1">
+               <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">المرحلة التنفيذية المستهدفة</Label>
                   <Select value={selectedStageId} onValueChange={setSelectedStageId}>
-                     <SelectTrigger className="h-9 rounded-md border-slate-200 text-xs font-medium"><SelectValue placeholder="..." /></SelectTrigger>
-                     <SelectContent className="z-[150]">{stages?.map(s => <SelectItem key={s.id} value={s.id!} className="text-xs">{s.name}</SelectItem>)}</SelectContent>
+                     <SelectTrigger className="h-10 rounded-lg border-2 font-bold text-sm bg-white"><SelectValue placeholder="..." /></SelectTrigger>
+                     <SelectContent className="rounded-xl border-0 shadow-2xl z-[150]">{stages?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs">{s.name}</SelectItem>)}</SelectContent>
                   </Select>
                </div>
 
                {selectedStageId && (
-                  <div className="space-y-3 animate-in fade-in">
-                     <h4 className="font-bold text-xs text-primary flex items-center gap-2 border-b pb-2"><Hammer className="h-3.5 w-3.5" /> {isRtl ? 'كميات الإنجاز (BOQ)' : 'BOQ Progress'}</h4>
-                     <Table>
-                        <TableHeader className="bg-slate-50/50">
-                           <TableRow className="border-0">
-                              <TableHead className="text-start text-[10px]">البند</TableHead>
-                              <TableHead className="text-center w-[100px] text-[10px]">الكمية</TableHead>
-                              <TableHead className="text-start text-[10px]">ملاحظة</TableHead>
-                           </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                           {loggedItems.map((item, idx) => (
-                             <TableRow key={idx} className="border-b-slate-100">
-                                <TableCell className="py-2"><p className="font-bold text-[11px] text-slate-700 leading-tight">{item.itemName}</p><Badge variant="outline" className="text-[8px] border-0 h-4 px-0 opacity-40 uppercase">{item.unit}</Badge></TableCell>
-                                <TableCell className="py-2"><Input type="number" step="0.01" value={item.quantity === 0 ? '' : item.quantity} onChange={e => { const ni = [...loggedItems]; ni[idx].quantity = Number(e.target.value); setLoggedItems(ni); }} className="h-8 text-center font-bold text-sm" /></TableCell>
-                                <TableCell className="py-2"><Input value={item.notes} onChange={e => { const ni = [...loggedItems]; ni[idx].notes = e.target.value; setLoggedItems(ni); }} className="h-8 text-[10px]" /></TableCell>
-                             </TableRow>
-                           ))}
-                        </TableBody>
-                     </Table>
+                  <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300">
+                     <h4 className="font-black text-xs text-primary flex items-center gap-2 border-b pb-2 uppercase tracking-widest"><Hammer className="h-3.5 w-3.5" /> {isRtl ? 'كميات الإنجاز (BOQ)' : 'BOQ Work Progress'}</h4>
+                     <div className="border rounded-xl overflow-hidden shadow-sm">
+                        <Table>
+                           <TableHeader className="bg-slate-50/50">
+                              <TableRow className="border-0">
+                                 <TableHead className="text-start text-[10px] font-black uppercase text-slate-400">{t('common.addLabel')}</TableHead>
+                                 <TableHead className="text-center w-[100px] text-[10px] font-black uppercase text-slate-400">{t('common.quantity')}</TableHead>
+                                 <TableHead className="text-start text-[10px] font-black uppercase text-slate-400">{t('common.notes')}</TableHead>
+                              </TableRow>
+                           </TableHeader>
+                           <TableBody>
+                              {loggedItems.map((item, idx) => (
+                                <TableRow key={idx} className="border-b-slate-50">
+                                   <TableCell className="py-3">
+                                      <p className="font-bold text-xs text-slate-800 leading-tight">{item.itemName}</p>
+                                      <Badge variant="outline" className="text-[7px] border-0 h-4 px-0 opacity-40 uppercase">{item.unit}</Badge>
+                                   </TableCell>
+                                   <TableCell className="py-3"><Input type="number" step="0.01" value={item.quantity === 0 ? '' : item.quantity} onChange={e => { const ni = [...loggedItems]; ni[idx].quantity = Number(e.target.value); setLoggedItems(ni); }} className="h-9 text-center font-black text-sm border-2" /></TableCell>
+                                   <TableCell className="py-3"><Input value={item.notes} onChange={e => { const ni = [...loggedItems]; ni[idx].notes = e.target.value; setLoggedItems(ni); }} className="h-9 text-[11px] border-2 bg-slate-50/30" /></TableCell>
+                                </TableRow>
+                              ))}
+                           </TableBody>
+                        </Table>
+                     </div>
                   </div>
                )}
 
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t border-slate-50">
                   <div className="space-y-4">
-                     <div className="flex justify-between items-center"><Label className="font-bold text-xs text-slate-700">العمالة الميدانية</Label><Button variant="ghost" size="sm" onClick={() => setLaborDetails([...laborDetails, { trade: '', count: 1, hours: 8, hourlyCostRef: 0 }])} className="h-6 text-[9px] font-bold"><Plus className="h-3 w-3" /> Add</Button></div>
-                     {laborDetails.map((l, i) => (
-                       <div key={i} className="flex gap-2 items-end">
-                         <Select onValueChange={v => { 
-                           const j = availableJobs.find(x => x.name === v); 
-                           const nl = [...laborDetails]; 
-                           nl[i].trade = v; 
-                           nl[i].hourlyCostRef = j?.hourlyCost || 0; 
-                           setLaborDetails(nl); 
-                         }}>
-                           <SelectTrigger className="h-8 rounded-md border-slate-200 text-[11px]"><SelectValue placeholder="التخصص..." /></SelectTrigger>
-                           <SelectContent className="z-[160]">{availableJobs.map(j => <SelectItem key={j.id} value={j.name} className="text-xs">{j.name}</SelectItem>)}</SelectContent>
-                         </Select>
-                         <Input type="number" value={l.count} onChange={e => { const nl = [...laborDetails]; nl[i].count = Number(e.target.value); setLaborDetails(nl); }} className="h-8 w-12 text-center text-xs font-bold" />
-                         <Trash2 className="h-3.5 w-3.5 text-slate-300 cursor-pointer hover:text-rose-500 mb-2" onClick={() => setLaborDetails(laborDetails.filter((_, idx) => idx !== i))} />
-                       </div>
-                     ))}
+                     <div className="flex justify-between items-center"><Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{t('common.labor')}</Label><Button variant="ghost" size="sm" onClick={() => setLaborDetails([...laborDetails, { trade: '', count: 1, hours: 8, hourlyCostRef: 0 }])} className="h-6 text-[9px] font-black"><Plus className="h-3 w-3" /> ADD</Button></div>
+                     <div className="space-y-2">
+                        {laborDetails.map((l, i) => (
+                          <div key={i} className="flex gap-2 items-end group">
+                            <Select onValueChange={v => { 
+                              const emp = availableEmployees.find(x => x.fullName === v); 
+                              const nl = [...laborDetails]; 
+                              nl[i].trade = v; 
+                              nl[i].hourlyCostRef = (emp?.basicSalary || 0) / 26 / 8; 
+                              setLaborDetails(nl); 
+                            }}>
+                              <SelectTrigger className="h-9 rounded-lg border-2 text-[11px] font-bold"><SelectValue placeholder="..." /></SelectTrigger>
+                              <SelectContent className="rounded-xl z-[160]">{availableEmployees.map(e => <SelectItem key={e.id} value={e.fullName} className="text-xs">{e.fullName} ({e.jobTitle})</SelectItem>)}</SelectContent>
+                            </Select>
+                            <Input type="number" value={l.count} onChange={e => { const nl = [...laborDetails]; nl[i].count = Number(e.target.value); setLaborDetails(nl); }} className="h-9 w-14 text-center text-xs font-black border-2" />
+                            <Button variant="ghost" size="icon" className="h-9 w-9 text-slate-200 hover:text-rose-500 opacity-0 group-hover:opacity-100" onClick={() => setLaborDetails(laborDetails.filter((_, idx) => idx !== i))}><Trash2 className="h-4 w-4" /></Button>
+                          </div>
+                        ))}
+                     </div>
                   </div>
+                  
                   <div className="space-y-4">
-                     <div className="flex justify-between items-center"><Label className="font-bold text-xs text-slate-700">المعدات والآليات</Label><Button variant="ghost" size="sm" onClick={() => setEquipmentUsed([...equipmentUsed, { equipmentId: '', hoursUsed: 4, hourlyRateRef: 0 }])} className="h-6 text-[9px] font-bold"><Plus className="h-3 w-3" /> Add</Button></div>
-                     {equipmentUsed.map((e, i) => (
-                        <div key={i} className="flex gap-2 items-center">
-                           <Select onValueChange={v => { 
-                             const equip = equipmentItems?.find((x:any) => x.id === v);
-                             const ne = [...equipmentUsed]; 
-                             ne[i].equipmentId = v; 
-                             ne[i].name = equip?.name || '';
-                             ne[i].hourlyRateRef = equip?.hourlyRentalRate || equip?.hourlyDepreciationRate || 0;
-                             setEquipmentUsed(ne); 
-                           }}>
-                             <SelectTrigger className="h-8 rounded-md border-slate-200 text-[11px]"><SelectValue placeholder="المعدة..." /></SelectTrigger>
-                             <SelectContent className="z-[160]">{equipmentItems?.map((x:any) => <SelectItem key={x.id} value={x.id!} className="text-xs">{x.name}</SelectItem>)}</SelectContent>
-                           </Select>
-                           <Input type="number" value={e.hoursUsed} onChange={v => { const ne = [...equipmentUsed]; ne[i].hoursUsed = Number(v.target.value); setEquipmentUsed(ne); }} className="h-8 w-12 text-center text-xs font-bold" />
-                           <Trash2 className="h-3.5 w-3.5 text-slate-300 cursor-pointer hover:text-rose-500" onClick={() => setEquipmentUsed(equipmentUsed.filter((_, idx) => idx !== i))} />
-                        </div>
-                     ))}
+                     <div className="flex justify-between items-center"><Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{t('common.equipment')}</Label><Button variant="ghost" size="sm" onClick={() => setEquipmentUsed([...equipmentUsed, { equipmentId: '', hoursUsed: 4, hourlyRateRef: 0 }])} className="h-6 text-[9px] font-black"><Plus className="h-3 w-3" /> ADD</Button></div>
+                     <div className="space-y-2">
+                        {equipmentUsed.map((e, i) => (
+                          <div key={i} className="flex gap-2 items-center group">
+                             <Select onValueChange={v => { 
+                               const equip = equipmentItems?.find((x:any) => x.id === v);
+                               const ne = [...equipmentUsed]; 
+                               ne[i].equipmentId = v; 
+                               ne[i].name = equip?.name || '';
+                               ne[i].hourlyRateRef = equip?.hourlyRentalRate || equip?.hourlyDepreciationRate || 0;
+                               setEquipmentUsed(ne); 
+                             }}>
+                               <SelectTrigger className="h-9 rounded-lg border-2 text-[11px] font-bold"><SelectValue placeholder="..." /></SelectTrigger>
+                               <SelectContent className="rounded-xl z-[160]">{equipmentItems?.map((x:any) => <SelectItem key={x.id} value={x.id!} className="text-xs">{x.name} (#{x.code})</SelectItem>)}</SelectContent>
+                             </Select>
+                             <Input type="number" value={e.hoursUsed} onChange={v => { const ne = [...equipmentUsed]; ne[i].hoursUsed = Number(v.target.value); setEquipmentUsed(ne); }} className="h-9 w-14 text-center text-xs font-black border-2" />
+                             <Button variant="ghost" size="icon" className="h-9 w-9 text-slate-200 hover:text-rose-500 opacity-0 group-hover:opacity-100" onClick={() => setEquipmentUsed(equipmentUsed.filter((_, idx) => idx !== i))}><Trash2 className="h-4 w-4" /></Button>
+                          </div>
+                        ))}
+                     </div>
                   </div>
                </div>
             </div>
 
-            <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-3 shrink-0">
-               <Button variant="outline" size="sm" onClick={() => setIsRecordOpen(false)} className="flex-1 h-10 font-bold bg-white">إلغاء</Button>
-               <Button onClick={handleRecordProgress} disabled={loadingAction === 'recording' || !selectedStageId} size="sm" className="flex-[2] h-10 font-bold gap-2">
-                  {loadingAction === 'recording' ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />} الحفظ الميداني
+            <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-4 shrink-0 shadow-lg">
+               <Button variant="outline" onClick={() => setIsRecordOpen(false)} className="flex-1 h-12 rounded-xl font-bold border-2 bg-white">{t('common.cancel')}</Button>
+               <Button onClick={handleRecordProgress} disabled={loadingAction === 'recording' || !selectedStageId} className="flex-[2] h-12 rounded-xl font-black gap-2 shadow-xl shadow-primary/20 border-b-4 border-orange-700">
+                  {loadingAction === 'recording' ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />} {isRtl ? 'اعتماد التوثيق الميداني' : 'Commit Site Resources'}
                </Button>
             </DialogFooter>
          </DialogContent>

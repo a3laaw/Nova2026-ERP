@@ -63,7 +63,11 @@ const translations: Record<Language, Record<string, any>> = {
       addLabel: 'إضافة سطر',
       saveReport: 'حفظ التقرير الميداني',
       labor: 'العمالة والموارد البشرية',
-      equipment: 'المعدات والآليات الميدانية'
+      equipment: 'المعدات والآليات الميدانية',
+      quantity: 'الكمية',
+      unit: 'الوحدة',
+      notes: 'ملاحظات',
+      photos: 'الصور'
     },
     dashboard: {
       title: 'نظرة عامة على العمليات',
@@ -85,6 +89,11 @@ const translations: Record<Language, Record<string, any>> = {
         staff: 'المسؤول',
         contact: 'الهاتف',
         status: 'الحالة'
+      },
+      details: {
+        transactions: 'المعاملات الجارية',
+        location: 'الموقع الجغرافي',
+        history: 'سجل التفاعل'
       }
     },
     projects: {
@@ -173,7 +182,11 @@ const translations: Record<Language, Record<string, any>> = {
       addLabel: 'Add Row',
       saveReport: 'Save Field Report',
       labor: 'Labor & Manpower',
-      equipment: 'Site Equipment & Assets'
+      equipment: 'Site Equipment & Assets',
+      quantity: 'Qty',
+      unit: 'Unit',
+      notes: 'Notes',
+      photos: 'Photos'
     },
     dashboard: {
       title: 'Operations Overview',
@@ -195,6 +208,11 @@ const translations: Record<Language, Record<string, any>> = {
         staff: 'Assigned Staff',
         contact: 'Mobile',
         status: 'Status'
+      },
+      details: {
+        transactions: 'Active Projects',
+        location: 'Location Map',
+        history: 'Interaction Logs'
       }
     },
     projects: {
