@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -155,7 +154,7 @@ export default function TransactionBOQProgressPage() {
 
   const handleApproveVO = async () => {
     if (!db || !companyId || !user || !reviewVO) return;
-    setProcessingVOId(reviewVO.id);
+    setProcessingId(reviewVO.id);
     try {
       const service = new VariationService(db, companyId, permissions);
       await service.approveVariation(reviewVO.boqId, reviewVO.id!, transactionId, user.uid, globalUser?.username || 'Admin');
@@ -164,13 +163,13 @@ export default function TransactionBOQProgressPage() {
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
-      setProcessingVOId(null);
+      setProcessingId(null);
     }
   };
 
   const handleRejectVO = async () => {
     if (!db || !companyId || !user || !reviewVO) return;
-    setProcessingVOId(reviewVO.id);
+    setProcessingId(reviewVO.id);
     try {
       const service = new VariationService(db, companyId, permissions);
       await service.rejectVariation(reviewVO.boqId, reviewVO.id!, transactionId, user.uid, globalUser?.username || 'Admin');
@@ -179,7 +178,7 @@ export default function TransactionBOQProgressPage() {
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
-      setProcessingVOId(null);
+      setProcessingId(null);
     }
   };
 
@@ -199,7 +198,7 @@ export default function TransactionBOQProgressPage() {
         const totalPct = Math.round(((metrics.prev + metrics.current) / planned) * 100);
 
         return (
-          <TableRow key={item.boqReferenceNodeId} className="hover:bg-primary/[0.02] border-b-slate-50">
+          <TableRow key={item.id || `${item.boqReferenceNodeId}-${iIdx}`} className="hover:bg-primary/[0.02] border-b-slate-50">
             <TableCell className="font-mono text-[10px] font-bold text-slate-300 ps-8 text-start">{itemPrefix}</TableCell>
             <TableCell className="font-mono text-[10px] font-black text-primary/60 text-start">{item.referenceCode}</TableCell>
             <TableCell className="text-xs font-bold text-slate-700 text-start">{item.referenceTitle}</TableCell>
@@ -247,7 +246,7 @@ export default function TransactionBOQProgressPage() {
               <div className="flex gap-2">
                  <Dialog open={isPickerOpen} onOpenChange={setIsPickerOpen}>
                     <DialogTrigger asChild><Button variant="outline" className="h-11 px-6 rounded-xl font-black text-xs gap-2 border-2"><LayoutGrid className="h-4 w-4" /> {isRtl ? 'إضافة بنود من القاموس' : 'Add Items'}</Button></DialogTrigger>
-                    <DialogContent className="max-w-4xl rounded-[2.5rem] p-8 border-0 shadow-3xl bg-white text-start"><DialogHeader><DialogTitle className="text-2xl font-black flex items-center gap-3"><Sparkles className="text-primary h-6 w-6" /> {isRtl ? 'القاموس الهندسي الموحد' : 'Sovereign Registry'}</DialogTitle></DialogHeader><div className="py-6"><BOQReferenceSelector onSelect={handleAddItemFromRegistry} /></div><DialogFooter><Button onClick={() => setIsPickerOpen(false)} className="rounded-xl px-10">إغلاق</Button></DialogFooter></DialogContent>
+                    <DialogContent className="max-w-4xl rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white text-start"><DialogHeader><DialogTitle className="text-2xl font-black flex items-center gap-3"><Sparkles className="text-primary h-6 w-6" /> {isRtl ? 'القاموس الهندسي الموحد' : 'Sovereign Registry'}</DialogTitle></DialogHeader><div className="py-6"><BOQReferenceSelector onSelect={handleAddItemFromRegistry} /></div><DialogFooter><Button onClick={() => setIsPickerOpen(false)} className="rounded-xl px-10">إغلاق</Button></DialogFooter></DialogContent>
                  </Dialog>
                  <Button onClick={handleApproveBaseline} disabled={!!loadingAction} className="h-11 px-8 rounded-xl bg-emerald-600 text-white font-black text-xs gap-2">{isRtl ? 'اعتماد الميزانية' : 'Approve'}</Button>
               </div>
@@ -322,7 +321,7 @@ export default function TransactionBOQProgressPage() {
                      </TableHeader>
                      <TableBody>
                         {loadingReview ? <TableRow><TableCell colSpan={5} className="text-center py-12"><Loader2 className="animate-spin mx-auto text-primary" /></TableCell></TableRow> : reviewItems.map((item, idx) => (
-                          <TableRow key={idx}>
+                          <TableRow key={item.id || idx}>
                              <TableCell className="ps-6"><Badge variant="outline" className="font-black text-[8px] uppercase">{item.type}</Badge></TableCell>
                              <TableCell className="font-bold text-xs text-slate-700">{item.description}</TableCell>
                              <TableCell className="text-center font-mono font-black text-xs">{item.quantityDelta}</TableCell>

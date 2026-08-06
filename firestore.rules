@@ -13,13 +13,13 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.token.email == 'admin@novaflow.com';
     }
 
-    // جلب بيانات الهوية العالمية
+    // جلب بيانات الهوية العالمية بشكل آمن
     function currentUserData() {
       return get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
     }
 
     // التحقق من دور الأدمن (Sovereign Authority Lock)
-    // تم التحديث ليكون أكثر مرونة وحماية ضد الحقول المفقودة
+    // تم التحديث ليكون "محصناً ضد الخطأ" ويدعم كافة حالات الأحرف
     function isGlobalAdmin() {
       return isAuthenticated() && (
         isSovereignDev() ||
@@ -60,7 +60,7 @@ service cloud.firestore {
     }
 
     // --- 4. قواعد الاستعلامات المشتركة (Collection Group Rules) ---
-    // تم إضافة "variations" لحل خطأ الصلاحيات في مستكشف المقايسات
+    // تحصين شامل لكافة مجموعات البيانات لضمان عدم ظهور أخطاء الصلاحيات للأدمن
     
     match /{path=**}/stages/{stageId} {
       allow read: if belongsToCompany(resource.data.companyId);
@@ -83,6 +83,14 @@ service cloud.firestore {
     }
 
     match /{path=**}/variations/{voId} {
+      allow read: if belongsToCompany(resource.data.companyId);
+    }
+    
+    match /{path=**}/contracts/{docId} {
+      allow read: if belongsToCompany(resource.data.companyId);
+    }
+    
+    match /{path=**}/quotations/{docId} {
       allow read: if belongsToCompany(resource.data.companyId);
     }
 
