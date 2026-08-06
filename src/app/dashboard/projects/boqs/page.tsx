@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -12,10 +11,10 @@ import {
   FileSpreadsheet, Search, Loader2, ArrowRight, 
   Trash2, AlertTriangle, Sparkles, Clock,
   CheckCircle2, FileSearch, UserCircle, Settings2,
-  XCircle, RefreshCw
+  XCircle, RefreshCw, Layers
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, where, collectionGroup, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, orderBy } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -83,44 +82,59 @@ export default function BOQExplorerPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [indexError, setIndexError] = useState<string | null>(null);
   
   const [reviewVO, setReviewVO] = useState<BOQVariation | null>(null);
   const [reviewItems, setReviewItems] = useState<BOQVariationItem[]>([]);
   const [loadingReview, setLoadingReview] = useState(false);
 
+  // --- محرك الدمج البرمجي (Bypass CollectionGroup) ---
+  const [allVOs, setAllVOs] = useState<BOQVariation[]>([]);
+  const [voLoading, setVoLoading] = useState(false);
+
   // 1. استعلام المقايسات (مباشر)
   const boqsQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.boqs(companyId))) : null, 
+    companyId && db ? query(collection(db, paths.boqs(companyId)), orderBy('createdAt', 'desc')) : null, 
   [db, companyId]);
-  const { data: rawBoqs, loading: boqLoading } = useCollection<BOQ>(boqsQuery);
+  const { data: boqs, loading: boqLoading } = useCollection<BOQ>(boqsQuery);
 
-  const boqs = useMemo(() => {
-    return [...rawBoqs].sort((a, b) => {
-      const dateA = a.createdAt?.toMillis?.() || 0;
-      const dateB = b.createdAt?.toMillis?.() || 0;
-      return dateB - dateA;
-    });
-  }, [rawBoqs]);
-
-  // 2. استعلام الأوامر التغييرية (شمولي - يتطلب فهرس)
-  const allVOsQuery = useMemo(() => 
-    companyId && db ? query(
-      collectionGroup(db, 'variations'), 
-      where('companyId', '==', companyId)
-    ) : null, 
-  [db, companyId]);
-  
-  const { data: rawVOs, loading: voLoading, error: voError } = useCollection<BOQVariation>(allVOsQuery);
-
-  // مراقبة أخطاء الفهرسة (Critical Monitoring)
+  // 2. دالة جلب الأوامر التغييرية لكل مقايسة ودمجها (Sovereign Fetch & Merge)
   useEffect(() => {
-    if (voError?.message?.includes('index')) {
-      setIndexError(voError.message);
-    } else {
-      setIndexError(null);
+    async function fetchAllVariations() {
+      if (!boqs || boqs.length === 0 || !db || !companyId) {
+        setAllVOs([]);
+        return;
+      }
+      
+      setVoLoading(true);
+      try {
+        const results: BOQVariation[] = [];
+        // جلب الأوامر لكل مقايسة بشكل متوازي
+        const promises = boqs.map(async (boq) => {
+           const voPath = paths.boqVariations(companyId, boq.id!);
+           const snap = await getDocs(collection(db, voPath));
+           return snap.docs.map(d => ({ id: d.id, ...d.data() } as BOQVariation));
+        });
+
+        const voArrays = await Promise.all(promises);
+        voArrays.forEach(arr => results.push(...arr));
+        
+        // ترتيب النتائج زمنياً
+        setAllVOs(results.sort((a, b) => {
+           const dateA = a.createdAt?.toMillis?.() || 0;
+           const dateB = b.createdAt?.toMillis?.() || 0;
+           return dateB - dateA;
+        }));
+      } catch (e) {
+        console.error("Manual variation merge failed:", e);
+      } finally {
+        setVoLoading(false);
+      }
     }
-  }, [voError]);
+
+    if (activeTab === 'variations') {
+       fetchAllVariations();
+    }
+  }, [boqs, db, companyId, activeTab]);
 
   const filteredBoqs = useMemo(() => {
     return (boqs || []).filter(boq => 
@@ -130,17 +144,11 @@ export default function BOQExplorerPage() {
   }, [boqs, searchTerm]);
 
   const filteredVOs = useMemo(() => {
-    return (rawVOs || [])
-      .filter(vo => 
+    return allVOs.filter(vo => 
         (vo.title || "").toLowerCase().includes(searchTerm.toLowerCase()) || 
         (vo.boqNumber || "").toLowerCase().includes(searchTerm.toLowerCase())
-      )
-      .sort((a, b) => {
-         const dateA = a.createdAt?.toMillis?.() || 0;
-         const dateB = b.createdAt?.toMillis?.() || 0;
-         return dateB - dateA;
-      });
-  }, [rawVOs, searchTerm]);
+      );
+  }, [allVOs, searchTerm]);
 
   const handleReviewVO = async (vo: BOQVariation) => {
     if (!db || !companyId) return;
@@ -164,6 +172,9 @@ export default function BOQExplorerPage() {
       await service.approveVariation(reviewVO.boqId, reviewVO.id!, reviewVO.transactionId, user.uid, user.displayName || 'Admin');
       toast({ title: isRtl ? "تم اعتماد التعديل بنجاح" : "Variation Approved" });
       setReviewVO(null);
+      // تحديث القائمة يدوياً
+      setActiveTab("boqs"); 
+      setTimeout(() => setActiveTab("variations"), 100);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
@@ -179,6 +190,8 @@ export default function BOQExplorerPage() {
       await service.rejectVariation(reviewVO.boqId, reviewVO.id!, reviewVO.transactionId, user.uid, user.displayName || 'Admin');
       toast({ title: isRtl ? "تم رفض وإلغاء الطلب" : "Variation Rejected" });
       setReviewVO(null);
+      setActiveTab("boqs");
+      setTimeout(() => setActiveTab("variations"), 100);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
@@ -215,23 +228,6 @@ export default function BOQExplorerPage() {
           </p>
         </div>
       </div>
-
-      {indexError && (
-        <div className="p-6 bg-orange-50 border-4 border-orange-100 rounded-[2.5rem] text-start space-y-4 shadow-xl animate-in shake-in duration-500">
-           <div className="flex items-center gap-3 text-[#f97316]">
-              <AlertTriangle className="h-8 w-8" />
-              <h3 className="text-xl font-black">{isRtl ? 'تنبيه: يتطلب النظام إنشاء فهرس سحابي' : 'Cloud Index Required'}</h3>
-           </div>
-           <p className="text-sm font-bold text-slate-700 leading-relaxed">
-             {isRtl 
-               ? 'يرجى الضغط على الرابط أدناه لمرة واحدة لتمكين البحث الشامل في الأوامر التغييرية. هذا إجراء تقني لضمان سرعة البحث في السحاب:' 
-               : 'Please click the link below once to enable global variation search. This is a technical step to ensure fast cloud querying:'}
-           </p>
-           <Button className="bg-white border-2 border-orange-200 text-[#f97316] font-bold h-12 shadow-sm hover:bg-orange-50 gap-2" onClick={() => window.open(indexError.split(': ')[1], '_blank')}>
-              <RefreshCw className="h-4 w-4" /> {isRtl ? 'إنشاء الفهرس في Firebase Console' : 'Create Index Now'}
-           </Button>
-        </div>
-      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
@@ -315,7 +311,7 @@ export default function BOQExplorerPage() {
                     <TableRow><TableCell colSpan={5} className="text-center py-32"><Loader2 className="animate-spin h-12 w-12 mx-auto text-primary/20" /></TableCell></TableRow>
                   ) : filteredVOs.length === 0 ? (
                     <TableRow><TableCell colSpan={5} className="text-center py-32 text-slate-400 font-bold italic">
-                       {indexError ? (isRtl ? 'بانتظار إنشاء الفهرس السحابي...' : 'Waiting for Index...') : (isRtl ? 'لا يوجد أوامر تغييرية مسجلة.' : 'No variations found.')}
+                       {isRtl ? 'لا يوجد أوامر تغييرية مسجلة.' : 'No variations found.'}
                     </TableCell></TableRow>
                   ) : filteredVOs.map((vo) => (
                     <TableRow key={vo.id} className="hover:bg-slate-50/50 border-b-slate-50">
